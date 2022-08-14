@@ -3,9 +3,14 @@ import csstype.rgb
 import react.FC
 import react.Props
 import emotion.react.css
+import mui.material.*
+import org.w3c.dom.HTMLInputElement
+import react.ReactNode
+import react.dom.events.ChangeEvent
 import react.dom.html.InputType
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.input
+import react.dom.onChange
 import react.useState
 
 external interface WelcomeProps : Props {
@@ -22,16 +27,13 @@ val Welcome = FC<WelcomeProps> { props ->
         }
         +"Hello, $name"
     }
-    input {
-        css {
-            marginTop = 5.px
-            marginBottom = 5.px
-            fontSize = 14.px
-        }
-        type = InputType.text
+    TextField {
+        variant = FormControlVariant.standard
+        id = "name-field"
+        label = ReactNode("Name")
         value = name
-        onChange = { event ->
-            name = event.target.value
+        onChange = {
+            name = it.asDynamic().target.value as String
         }
     }
 }
