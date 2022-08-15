@@ -16,6 +16,7 @@ repositories {
     jcenter()
     mavenCentral()
     maven("https://maven.pkg.jetbrains.space/public/p/kotlinx-html/maven")
+    maven("https://repo.kotlin.link")
 }
 
 kotlin {
@@ -56,6 +57,9 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
                 implementation("io.ktor:ktor-client-core:$ktorVersion")
                 implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+                // Plotly
+                implementation("space.kscience:plotlykt-core:0.5.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.1")
             }
         }
     }

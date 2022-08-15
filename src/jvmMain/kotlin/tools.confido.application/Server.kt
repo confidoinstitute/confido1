@@ -18,7 +18,7 @@ fun HTML.index() {
             +"Hello from Ktor"
         }
         div {
-            id = "root"
+            id = "canvas"
         }
         script(src = "/static/confido1.js") {}
     }

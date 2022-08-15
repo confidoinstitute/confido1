@@ -1,6 +1,8 @@
 import kotlinx.browser.document
+import kotlinx.html.dom.append
 import react.create
 import react.dom.client.createRoot
+import space.kscience.plotly.plot
 
 fun main() {
     val container = document.createElement("div")
