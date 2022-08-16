@@ -1,3 +1,4 @@
+
 val ktorVersion = "2.1.0"
 val serializationVersion = "1.3.3"
 val kotlinVersion = "1.7.10"
@@ -19,6 +20,8 @@ repositories {
     maven("https://repo.kotlin.link")
 }
 
+// https://kotlinlang.org/docs/multiplatform-dsl-reference.html
+// https://docs.gradle.org/current/userguide/kotlin_dsl.html
 kotlin {
     jvm {
         compilations.all {
@@ -30,7 +33,18 @@ kotlin {
         binaries.executable()
         browser {
             commonWebpackConfig {
+                configDirectory = projectDir.resolve("webpack-config")
                 cssSupport.enabled = true
+                devServer?.proxy = mutableMapOf(
+                    "/" to mapOf(
+                        "target" to "http://localhost:8080/",
+                        "secure" to false,
+                    ),
+                    "/api/**" to mapOf(
+                        "target" to "http://localhost:8080/",
+                        "secure" to false,
+                    ),
+                )
             }
         }
     }

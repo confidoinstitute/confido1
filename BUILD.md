@@ -16,3 +16,8 @@
 Note that we are deviating from the common practice of commiting the generated
 `gradlew` script and its accompanying JAR file, `gradle/wrapper/gradle-wrapper.jar`,
 into git, because, well, that's ugly. And it makes merges more painful.
+
+## Hot reload
+
+To support hot reload, run `./gradlew jsBrowserDevelopmentRun --continuous`
+and navigate to `http://localhost:8081/`
