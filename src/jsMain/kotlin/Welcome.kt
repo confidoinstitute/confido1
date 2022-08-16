@@ -2,30 +2,56 @@ import csstype.px
 import csstype.rgb
 import emotion.react.css
 import mui.material.*
-import org.w3c.dom.HTMLInputElement
 import react.*
-import react.dom.events.ChangeEvent
-import react.dom.html.InputType
 import react.dom.html.ReactHTML.div
-import react.dom.html.ReactHTML.input
 import react.dom.onChange
-import space.kscience.plotly.Plotly.plot
-import space.kscience.plotly.plot
-import space.kscience.plotly.layout
+import space.kscience.dataforge.values.Value
 import space.kscience.plotly.models.*
-import space.kscience.plotly.scatter
+import tools.confido.distributions.NormalDistribution
+import tools.confido.distributions.TruncatedNormalDistribution
+import kotlin.math.*
 
 external interface WelcomeProps : Props {
     var name: String
 }
 
+fun heatmap(): Heatmap {
+    val x1 = (5..25).map { (it.toDouble() / 5).pow(2) }
+    val y1 = (5..25).map { it.toDouble() / 5 }
+    val z1 = mutableListOf<MutableList<Double>>()
+
+    for (i in y1.indices) {
+        z1.add(MutableList(x1.size) { 0.0 })
+    }
+
+    for (i in y1.indices) {
+        for (j in x1.indices) {
+            z1[i][j] = sin(x1[i]).pow(10) + cos(10 + y1[j] * x1[i]) * cos(x1[i])
+        }
+    }
+
+    return Heatmap {
+        x.set(x1)
+        y.set(y1)
+        z.set(z1)
+        colorscale = Value.of("Viridis")
+    }
+}
+
 val Welcome = FC<WelcomeProps> { props ->
     var name by useState(props.name)
+    val dist = NormalDistribution(0.0, 1.0)
+    val distT = TruncatedNormalDistribution(0.0, 1.0, 0.0, 2.0)
 
-    var traces by useState(listOf(
+    val xPoints = (0 .. 100).map { it / 100.0 }
+    var traces by useState(listOf<Trace>(
         Scatter {
-            x(1,2,3,4,5)
-            y(1,3,6,10,15)
+            x.set(xPoints)
+            y.set(xPoints.map { dist.cdf(dist.icdf(it)) })
+        },
+        Scatter {
+            x.set(xPoints)
+            y.set(xPoints.map { distT.cdf(distT.icdf(it)) })
         }
     ))
 
@@ -56,11 +82,8 @@ val Welcome = FC<WelcomeProps> { props ->
         +"Let there be a different quadratic function!"
         variant = ButtonVariant.contained
         onClick = {
-            traces = listOf(
-                Scatter {
-                    x(1,2,3,4,5)
-                    y(1,4,9,16,25)
-                }
+            traces = listOf<Trace>(
+                heatmap()
             )
         }
     }

@@ -12,15 +12,9 @@ import java.io.File
 
 fun HTML.index() {
     head {
-        title("Hello from Ktor!")
+        title("Confido")
     }
     body {
-        div {
-            +"Hello from Ktor"
-        }
-        div {
-            id = "canvas"
-        }
         script(src = "/static/confido1.js") {}
     }
 }
