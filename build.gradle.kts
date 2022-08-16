@@ -83,6 +83,22 @@ application {
     mainClass.set("tools.confido.application.ServerKt")
 }
 
+// FŠ: XXX weirdly needed to fix hot restart
+// Otherwise we get a warning:
+//   Execution optimizations have been disabled for task ':jsBrowserDevelopmentRun'
+//   to ensure correctness due to the following reasons:
+//   - Gradle detected a problem with the following location:
+//   '.../confido1/build/js/packages/confido1/kotlin/confido1.js'.
+// Reason: Task ':jsBrowserDevelopmentRun' uses this output of task
+// ':jsDevelopmentExecutableCompileSync' without declaring an explicit
+// or implicit dependency. This can lead to incorrect results being
+// produced, depending on what order the tasks are executed.
+//   Please refer to
+//      https://docs.gradle.org/7.5/userguide/validation_problems.html#implicit_dependency
+//   for more details about this problem.
+val jsBrowserDevelopmentRun by tasks.getting
+val jsDevelopmentExecutableCompileSync by tasks.getting
+jsBrowserDevelopmentRun.dependsOn(jsDevelopmentExecutableCompileSync)
 
 tasks.named<JavaExec>("run") {
     dependsOn(tasks.named<Jar>("jvmJar"))
