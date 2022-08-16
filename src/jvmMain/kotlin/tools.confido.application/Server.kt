@@ -8,6 +8,7 @@ import io.ktor.server.http.content.*
 import io.ktor.server.cio.*
 import io.ktor.server.routing.*
 import kotlinx.html.*
+import java.io.File
 
 fun HTML.index() {
     head {
@@ -30,8 +31,13 @@ fun main() {
             get("/") {
                 call.respondHtml(HttpStatusCode.OK, HTML::index)
             }
+            val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "./build/distributions/").canonicalFile
+            println("static dir: $staticDir")
             static("/static") {
-                resources()
+                staticRootFolder = staticDir
+                preCompressed(CompressedFileType.BROTLI, CompressedFileType.GZIP) {
+                    files(".")
+                }
             }
         }
     }.start(wait = true)
