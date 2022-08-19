@@ -8,19 +8,24 @@ import space.kscience.plotly.*
 import space.kscience.plotly.models.Trace
 
 external interface PlotlyProps : Props {
+    var id: String
     var traces: Collection<Trace>
     var title: String
+    var plotlyInit: ((Plot) -> Unit)?
 }
 
 val ReactPlotly = FC<PlotlyProps> {props ->
-    useEffect(props.title, props.traces) {
-        val element = document.getElementById("xxx") ?: error("No ID xxx")
+    useEffect(props.traces, props.title) {
+        val element = document.getElementById(props.id) ?: error("No ID ${props.id}")
         element.append {
             plot {
                 traces(props.traces)
+
                 layout {
                     title = props.title
                 }
+
+                props.plotlyInit?.invoke(this)
             }
         }
         cleanup {
@@ -28,6 +33,6 @@ val ReactPlotly = FC<PlotlyProps> {props ->
         }
     }
     div {
-        id = "xxx"
+        id = props.id
     }
 }

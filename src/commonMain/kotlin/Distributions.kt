@@ -94,8 +94,8 @@ class NormalDistribution(val mean: Double, val stdDev: Double) : ProbabilityDist
 
     override fun pdf(x: Double) = dist.pdf(xform(x))
     override fun cdf(x: Double) = dist.cdf(xform(x))
-    override fun icdf(p: Double) = dist.icdf(xformInv(p))
-    override fun confidenceInterval(p: Double) = Pair(icdf(1-p)/2, icdf(1+p)/2)
+    override fun icdf(p: Double) = xformInv(dist.icdf(p))
+    override fun confidenceInterval(p: Double) = Pair(icdf((1-p)/2), icdf((1+p)/2))
 }
 
 class TruncatedNormalDistribution(val mean: Double, val stdDev: Double, val min: Double, val max: Double) : ProbabilityDistribution {

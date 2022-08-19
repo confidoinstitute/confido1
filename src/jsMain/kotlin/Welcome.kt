@@ -6,6 +6,7 @@ import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.onChange
 import space.kscience.dataforge.values.Value
+import space.kscience.plotly.layout
 import space.kscience.plotly.models.*
 import tools.confido.distributions.NormalDistribution
 import tools.confido.distributions.TruncatedNormalDistribution
@@ -40,18 +41,14 @@ fun heatmap(): Heatmap {
 
 val Welcome = FC<WelcomeProps> { props ->
     var name by useState(props.name)
-    val dist = NormalDistribution(0.0, 1.0)
-    val distT = TruncatedNormalDistribution(0.0, 1.0, 0.0, 2.0)
+    val dist = NormalDistribution(50.0, 1.0)
+    val distT = TruncatedNormalDistribution(50.0, 1.0, 0.0, 100.0)
 
     val xPoints = (0 .. 100).map { it / 100.0 }
     var traces by useState(listOf<Trace>(
         Scatter {
             x.set(xPoints)
-            y.set(xPoints.map { dist.cdf(dist.icdf(it)) })
-        },
-        Scatter {
-            x.set(xPoints)
-            y.set(xPoints.map { distT.cdf(distT.icdf(it)) })
+            y.set(xPoints.map { distT.icdf(it) })
         }
     ))
 
@@ -64,8 +61,12 @@ val Welcome = FC<WelcomeProps> { props ->
         +"Hello, $name"
     }
     ReactPlotly {
+        id = "xxx"
         title = name
         this.traces = traces
+        plotlyInit = {
+            it.layout { this.showlegend = true }
+        }
     }
 
     TextField {
