@@ -20,5 +20,5 @@ fun main() {
     val welcome = Welcome.create {
         name = "Confido"
     }
-    createRoot(container).render(welcome)
+    createRoot(container).render(questionList)
 }

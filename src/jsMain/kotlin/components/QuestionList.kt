@@ -1,17 +1,12 @@
 package components
 
-import ReactPlotly
 import mui.material.*
 import react.*
+import space.kscience.dataforge.values.asValue
 import space.kscience.plotly.layout
-import space.kscience.plotly.models.Scatter
+import space.kscience.plotly.models.*
 import tools.confido.distributions.*
-
-inline fun jsObject(init: dynamic.() -> Unit): dynamic {
-    val o = js("{}")
-    init(o)
-    return o
-}
+import utils.*
 
 data class Question(
     val id: String,
@@ -46,34 +41,50 @@ val NumericQuestion = FC<BinaryQuestionProps> {
             }
         }
         AccordionDetails {
-            fun confidence(p: Double) = Typography {
-                val confidence = dist.confidenceInterval(1-p)
-                + "You are ${p*100}% confident that the value lies between ${confidence.first} and ${confidence.second}"
-            }
 
             ReactPlotly {
-                id = question.id
-                traces = listOf(
+                id = "${question.id}_distribution"
+                traces = listOf(0.9, 0.5, 0.3).map { p ->
+                    val (iMin, iMax) = dist.confidenceInterval(p)
                     Scatter {
-                        val xPoints = (0 .. 100).map {pt -> pt.toDouble()}
+                        val xPoints = (0..100).filter { pt -> iMin <= pt && pt <= iMax }.map { pt -> pt.toDouble() }
                         x.set(xPoints)
-                        y.set(xPoints.map {pt -> dist.pdf(pt)})
+                        y.set(xPoints.map { pt -> dist.pdf(pt) })
+                        mode = ScatterMode.lines
                     }
-                )
+                }
+
                 plotlyInit = { plot ->
                     plot.layout {
-                        this.yaxis {
+                        margin {
+                            l = 0
+                            r = 0
+                            b = 25
+                            t = 0
+                        }
+                        xaxis {
+                            this.showline = false
+                            this.visible = false
+                            this.range(0.asValue(), 100.asValue())
+                        }
+                        yaxis {
+                            this.showline = false
                             this.visible = false
                         }
+                        height = 100
+                        showlegend = false
                     }
+                }
+                config = jsObject {
+                    staticPlot = true
                 }
             }
 
-            + "Mean is $mean, Standard deviation is $stdDev"
             Slider {
                 value = mean
                 min = 0
                 max = 100
+                step = 0.1
                 valueLabelDisplay = "auto"
                 onChange = { _, value, _ -> mean = value}
             }
@@ -81,12 +92,16 @@ val NumericQuestion = FC<BinaryQuestionProps> {
                 value = stdDev
                 min = 0
                 max = 50
+                step = 0.1
                 valueLabelDisplay = "auto"
                 onChange = { _, value, _ -> stdDev = value}
             }
-            confidence(0.9)
-            confidence(0.5)
-            confidence(0.3)
+            listOf(0.9,0.5,0.3).map {p ->
+                Typography {
+                    val confidence = dist.confidenceInterval(1 - p)
+                    +"You are ${p * 100}% confident that the value lies between ${confidence.first.format(1)} and ${confidence.second.format(1)}"
+                }
+            }
         }
     }
 
