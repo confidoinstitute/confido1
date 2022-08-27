@@ -3,6 +3,7 @@ import csstype.px
 import csstype.rgb
 import emotion.react.css
 import mui.material.*
+import org.w3c.dom.WebSocket
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.onChange

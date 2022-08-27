@@ -38,11 +38,13 @@ val ReactPlotly = FC<PlotlyProps> {props ->
         }
     }
 
+
     useEffectOnce {
         val element = container.current ?: error("Div not found")
         PlotlyJs.newPlot(element, props.traces.toDynamic(), plot.layout.toDynamic(), props.config)
 
         cleanup {
+            console.log("Cleaning up removed plot")
             PlotlyJs.asDynamic().purge(element)
         }
     }

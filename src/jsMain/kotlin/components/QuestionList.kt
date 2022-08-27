@@ -6,13 +6,9 @@ import space.kscience.dataforge.values.asValue
 import space.kscience.plotly.layout
 import space.kscience.plotly.models.*
 import tools.confido.distributions.*
+import tools.confido.question.Question
 import utils.*
 
-data class Question(
-    val id: String,
-    val name: String,
-    val visible: Boolean,
-)
 
 external interface BinaryQuestionProps : Props {
     var question : Question
@@ -146,6 +142,7 @@ val QuestionList = FC<QuestionListProps> {props ->
     visibleQuestions.map {question ->
         NumericQuestion {
             this.question = question
+            this.key = question.id
         }
     }
 }
