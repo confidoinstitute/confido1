@@ -23,11 +23,14 @@ fun mark(value: Number, label: String?) = jsObject {
 val NumericQuestion = FC<BinaryQuestionProps> {
     val question = it.question
 
-
     var mean by useState(50.0)
     var stdDev by useState(0.0)
 
     val dist = TruncatedNormalDistribution(mean, stdDev, 0.0, 100.0)
+
+    fun sendPrediction() {
+        console.log("sending mean $mean and standard deviation $stdDev")
+    }
 
     Accordion {
         AccordionSummary {
@@ -38,42 +41,13 @@ val NumericQuestion = FC<BinaryQuestionProps> {
         }
         AccordionDetails {
 
-            ReactPlotly {
-                id = "${question.id}_distribution"
-                traces = listOf(0.9, 0.5, 0.3).map { p ->
-                    val (iMin, iMax) = dist.confidenceInterval(p)
-                    Scatter {
-                        val xPoints = (0..100).filter { pt -> iMin <= pt && pt <= iMax }.map { pt -> pt.toDouble() }
-                        x.set(xPoints)
-                        y.set(xPoints.map { pt -> dist.pdf(pt) })
-                        mode = ScatterMode.lines
-                    }
-                }
-
-                plotlyInit = { plot ->
-                    plot.layout {
-                        margin {
-                            l = 0
-                            r = 0
-                            b = 25
-                            t = 0
-                        }
-                        xaxis {
-                            this.showline = false
-                            this.visible = false
-                            this.range(0.asValue(), 100.asValue())
-                        }
-                        yaxis {
-                            this.showline = false
-                            this.visible = false
-                        }
-                        height = 100
-                        showlegend = false
-                    }
-                }
-                config = jsObject {
-                    staticPlot = true
-                }
+            DistributionPlot {
+                id = "${question.id}_plot"
+                min = 0.0
+                max = 100.0
+                step = 0.5
+                distribution = dist
+                confidences = listOf(ConfidenceColor(0.9, "#333333".asValue()), ConfidenceColor(0.7, "#666666".asValue()), ConfidenceColor(0.5, "#999999".asValue()))
             }
 
             Slider {
@@ -83,6 +57,7 @@ val NumericQuestion = FC<BinaryQuestionProps> {
                 step = 0.1
                 valueLabelDisplay = "auto"
                 onChange = { _, value, _ -> mean = value}
+                onChangeCommitted = { _,_ -> sendPrediction() }
             }
             Slider {
                 value = stdDev
@@ -91,8 +66,9 @@ val NumericQuestion = FC<BinaryQuestionProps> {
                 step = 0.1
                 valueLabelDisplay = "auto"
                 onChange = { _, value, _ -> stdDev = value}
+                onChangeCommitted = { _,_ -> sendPrediction() }
             }
-            listOf(0.9,0.5,0.3).map {p ->
+            listOf(0.9,0.7,0.5).map {p ->
                 Typography {
                     val confidence = dist.confidenceInterval(1 - p)
                     +"You are ${p * 100}% confident that the value lies between ${confidence.first.format(1)} and ${confidence.second.format(1)}"
