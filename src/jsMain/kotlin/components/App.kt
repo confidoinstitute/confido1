@@ -1,24 +1,24 @@
 package components
+
+import csstype.AlignItems
+import csstype.Display
+import csstype.px
 import io.ktor.client.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import kotlinext.js.getOwnPropertyNames
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import mui.material.*
+import mui.system.sx
 import org.w3c.dom.WebSocket
 import react.*
-import react.dom.html.InputType
-import react.dom.html.ReactHTML.button
-import react.dom.html.ReactHTML.div
-import react.dom.html.ReactHTML.input;
+import react.dom.onChange
 import tools.confido.payloads.SetName
-import tools.confido.question.Question
 import tools.confido.state.AppState
+import kotlin.coroutines.EmptyCoroutineContext
 
 val App = FC<Props> {
     var appState by useState<AppState?>(null)
@@ -41,33 +41,40 @@ val App = FC<Props> {
         this.questions = appState?.questions ?: listOf()
     }
 
-    div {
-        +"Name"
-        input {
-            type = InputType.text
+    Paper {
+        sx {
+            marginTop = 10.px
+            padding = 10.px
+            display = Display.flex
+            alignItems = AlignItems.flexEnd
+        }
+        TextField {
+            variant = FormControlVariant.standard
+            id = "name-field"
+            label = ReactNode("Name")
             value = name
-            onChange = { event ->
-                name = event.target.value
+            onChange = {
+                name = it.asDynamic().target.value as String
             }
         }
-        button {
+        Button {
             onClick = {
-                // TODO: solve scope handling (this is not the way to do it)
-                @OptIn(DelicateCoroutinesApi::class)
-                GlobalScope.launch {
-                    // TODO: persist the client and make it available to all
-                    val client = HttpClient {
-                        install(ContentNegotiation) {
-                            json()
-                        }
+                // TODO: Persist this client and reuse for all requests
+                val client = HttpClient {
+                    install(ContentNegotiation) {
+                        json()
                     }
+                }
+
+                // Not sure if this is the best way to do this.
+                CoroutineScope(EmptyCoroutineContext).launch {
                     client.post("setName") {
                         contentType(ContentType.Application.Json.withParameter("charset", "utf-8"))
                         setBody(SetName(name))
                     }
                 }
             }
-            + "Set name"
+            +"Set name"
         }
     }
 }
