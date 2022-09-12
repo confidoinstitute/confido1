@@ -35,6 +35,7 @@ kotlin {
             commonWebpackConfig {
                 configDirectory = projectDir.resolve("webpack-config")
                 cssSupport.enabled = true
+                devServer?.port = 8081
                 devServer?.proxy = mutableMapOf(
                     "/" to mapOf(
                         "target" to "http://localhost:8080/",
