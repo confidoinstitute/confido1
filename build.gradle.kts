@@ -107,6 +107,9 @@ application {
 val jsBrowserDevelopmentRun by tasks.getting
 val jsDevelopmentExecutableCompileSync by tasks.getting
 jsBrowserDevelopmentRun.dependsOn(jsDevelopmentExecutableCompileSync)
+val jsBrowserProductionRun by tasks.getting
+val jsProductionExecutableCompileSync by tasks.getting
+jsBrowserProductionRun.dependsOn(jsProductionExecutableCompileSync)
 
 tasks.named<JavaExec>("run") {
     dependsOn(tasks.named<Jar>("jvmJar"))
