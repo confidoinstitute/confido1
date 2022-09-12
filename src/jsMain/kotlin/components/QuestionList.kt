@@ -6,6 +6,8 @@ import space.kscience.dataforge.values.asValue
 import space.kscience.plotly.layout
 import space.kscience.plotly.models.*
 import tools.confido.distributions.*
+import tools.confido.question.BinaryAnswerSpace
+import tools.confido.question.NumericAnswerSpace
 import tools.confido.question.Question
 import utils.*
 
@@ -22,11 +24,12 @@ fun mark(value: Number, label: String?) = jsObject {
 
 val NumericQuestion = FC<BinaryQuestionProps> {
     val question = it.question
+    val answerSpace: NumericAnswerSpace = it.question.answerSpace as? NumericAnswerSpace ?: error("This is not numeric answer space!")
 
-    var mean by useState(50.0)
+    var mean by useState(answerSpace.min)
     var stdDev by useState(0.0)
 
-    val dist = TruncatedNormalDistribution(mean, stdDev, 0.0, 100.0)
+    val dist = TruncatedNormalDistribution(mean, stdDev, answerSpace.min, answerSpace.max)
 
     fun sendPrediction() {
         console.log("sending mean $mean and standard deviation $stdDev")
@@ -43,8 +46,8 @@ val NumericQuestion = FC<BinaryQuestionProps> {
 
             DistributionPlot {
                 id = "${question.id}_plot"
-                min = 0.0
-                max = 100.0
+                min = answerSpace.min
+                max = answerSpace.max
                 step = 0.5
                 distribution = dist
                 confidences = listOf(ConfidenceColor(0.9, "#333333".asValue()), ConfidenceColor(0.7, "#666666".asValue()), ConfidenceColor(0.5, "#999999".asValue()))
@@ -52,8 +55,8 @@ val NumericQuestion = FC<BinaryQuestionProps> {
 
             Slider {
                 value = mean
-                min = 0
-                max = 100
+                min = answerSpace.min
+                max = answerSpace.max
                 step = 0.1
                 valueLabelDisplay = "auto"
                 onChange = { _, value, _ -> mean = value}
@@ -62,7 +65,7 @@ val NumericQuestion = FC<BinaryQuestionProps> {
             Slider {
                 value = stdDev
                 min = 0
-                max = 50
+                max = (answerSpace.max - answerSpace.min) / 2
                 step = 0.1
                 valueLabelDisplay = "auto"
                 onChange = { _, value, _ -> stdDev = value}
@@ -98,7 +101,6 @@ val BinaryQuestion = FC<BinaryQuestionProps> {
                 max = 100
                 valueLabelDisplay = "auto"
                 valueLabelFormat = ::formatPercent
-                // TODO find Kotlin typesafe way to implement this
                 marks = arrayOf(
                     mark(0, "0 %"),
                     mark(100, "100 %"),
@@ -116,9 +118,17 @@ val QuestionList = FC<QuestionListProps> {props ->
     val visibleQuestions = props.questions.filter { it.visible }
 
     visibleQuestions.map {question ->
-        NumericQuestion {
-            this.question = question
-            this.key = question.id
+        when(question.answerSpace) {
+            is NumericAnswerSpace ->
+                NumericQuestion {
+                    this.question = question
+                    this.key = question.id
+                }
+            is BinaryAnswerSpace ->
+                BinaryQuestion {
+                    this.question = question
+                    this.key = question.id
+                }
         }
     }
 }
