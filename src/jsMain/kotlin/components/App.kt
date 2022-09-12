@@ -18,9 +18,10 @@ import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.input;
 import tools.confido.payloads.SetName
 import tools.confido.question.Question
+import tools.confido.state.AppState
 
 val App = FC<Props> {
-    var questions by useState<List<Question>>(emptyList())
+    var appState by useState<AppState?>(null)
     val webSocket = useRef<WebSocket>(null)
     var name by useState<String>("")
 
@@ -28,7 +29,7 @@ val App = FC<Props> {
         webSocket.current = WebSocket("ws://localhost:8080/state")
         val ws = webSocket.current ?: error("WebSocket does not exist???")
         ws.onmessage = {
-            questions = Json.decodeFromString(it.data.toString())
+            appState = Json.decodeFromString(it.data.toString())
             Unit // This is not redundant, because assignment fails some weird type checks
         }
         cleanup {
@@ -37,7 +38,7 @@ val App = FC<Props> {
     }
 
     QuestionList {
-        this.questions = questions
+        this.questions = appState?.questions ?: listOf()
     }
 
     div {

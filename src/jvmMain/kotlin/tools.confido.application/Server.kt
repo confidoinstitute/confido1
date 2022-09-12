@@ -11,16 +11,17 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
 import io.ktor.server.websocket.*
-import io.ktor.util.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
 import kotlinx.html.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import tools.confido.application.extensions.userSession
 import tools.confido.payloads.SetName
 import tools.confido.question.Question
+import tools.confido.state.AppState
+import tools.confido.state.UserSession
 import java.io.File
 
 fun HTML.index() {
@@ -36,23 +37,22 @@ fun main() {
     embeddedServer(CIO, port = 8080, host = "127.0.0.1") {
         install(WebSockets)
         install(Sessions) {
-            // TODO: get key from a reasonable place
-            val secretSignKey = hex("9dc80be9c980c296536ac7c00dfed4eb")
-            cookie<UserSession>("session") {
-                transform(SessionTransportTransformerMessageAuthentication(secretSignKey))
+            // For now, we only keep sessions in memory.
+            cookie<UserSession>("session", SessionStorageMemory()) {
             }
         }
         routing {
             get("/") {
-                if (call.sessions.get<UserSession>() == null) {
-                    call.sessions.set(UserSession(name = null, lang = "en"))
-                }
                 call.respondHtml(HttpStatusCode.OK, HTML::index)
             }
             post("/setName") {
-                // TODO: discards other settings
                 val setName: SetName = Json.decodeFromString(call.receiveText())
-                call.sessions.set(UserSession(name = setName.name, lang = "en"))
+
+                val session = call.userSession
+                call.userSession = session.copy(name = setName.name)
+
+                // TODO: refresh state when session is updated (session->websocket map?)
+
                 call.respond(HttpStatusCode.OK)
             }
             webSocket("/state") {
@@ -65,13 +65,15 @@ fun main() {
                     Question("invisible_question","Can you not see this?", visible = false),
                 )
 
-                send(Frame.Text(Json.encodeToString(questions)))
+                val state = AppState(questions, call.userSession)
+
+                send(Frame.Text(Json.encodeToString(state)))
                 delay(10000)
                 questions[3].visible = true
-                send(Frame.Text(Json.encodeToString(questions)))
+                send(Frame.Text(Json.encodeToString(state)))
                 delay(10000)
                 questions[1].visible = false
-                send(Frame.Text(Json.encodeToString(questions)))
+                send(Frame.Text(Json.encodeToString(state)))
             }
             val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "./build/distributions/").canonicalFile
             println("static dir: $staticDir")
