@@ -14,7 +14,6 @@ group = "tools.confido"
 version = "1.0-SNAPSHOT"
 
 repositories {
-    jcenter()
     mavenCentral()
     maven("https://maven.pkg.jetbrains.space/public/p/kotlinx-html/maven")
     maven("https://repo.kotlin.link")
