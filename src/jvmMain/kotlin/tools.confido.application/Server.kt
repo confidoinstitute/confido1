@@ -17,6 +17,7 @@ import kotlinx.html.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import tools.confido.application.extensions.createNewSession
 import tools.confido.application.extensions.userSession
 import tools.confido.payloads.SetName
 import tools.confido.question.Question
@@ -43,29 +44,41 @@ fun main() {
         }
         routing {
             get("/") {
+                if (call.userSession == null)
+                    call.createNewSession()
+
                 call.respondHtml(HttpStatusCode.OK, HTML::index)
             }
             post("/setName") {
-                val setName: SetName = Json.decodeFromString(call.receiveText())
-
                 val session = call.userSession
-                call.userSession = session.copy(name = setName.name)
+                if (session == null) {
+                    call.respond(HttpStatusCode.Unauthorized)
+                } else {
+                    val setName: SetName = Json.decodeFromString(call.receiveText())
+                    call.userSession = session.copy(name = setName.name)
 
-                // TODO: refresh state when session is updated (session->websocket map?)
+                    // TODO: refresh state when session is updated (session->websocket map?)
 
-                call.respond(HttpStatusCode.OK)
+                    call.respond(HttpStatusCode.OK)
+                }
             }
             webSocket("/state") {
-                val session = call.sessions.get<UserSession>()
+                // Require a session to already be initialized; it is not possible to edit sessions within websockets.
+                val session = call.userSession
+                if (session == null) {
+                    // Code 3000 is registered with IANA as "Unauthorized".
+                    close(CloseReason(3000, "Missing session"))
+                    return@webSocket
+                }
 
                 val questions = listOf(
-                    Question("question_session","Is your name ${session?.name ?: "unnamed"}?", visible = true),
+                    Question("question_session","Is your name ${session.name ?: "not set yet"}?", visible = true),
                     Question("question1","How are you?", visible = true),
                     Question("question2","Is this good?", visible = true),
                     Question("invisible_question","Can you not see this?", visible = false),
                 )
 
-                val state = AppState(questions, call.userSession)
+                val state = AppState(questions, session)
 
                 send(Frame.Text(Json.encodeToString(state)))
                 delay(10000)
