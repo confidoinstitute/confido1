@@ -9,7 +9,6 @@ import io.ktor.server.cio.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.server.sessions.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.delay
@@ -17,8 +16,7 @@ import kotlinx.html.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import tools.confido.application.extensions.createNewSession
-import tools.confido.application.extensions.userSession
+import tools.confido.application.sessions.*
 import tools.confido.payloads.SetName
 import tools.confido.question.Question
 import tools.confido.state.AppState
@@ -37,15 +35,12 @@ fun HTML.index() {
 fun main() {
     embeddedServer(CIO, port = 8080, host = "127.0.0.1") {
         install(WebSockets)
-        install(Sessions) {
-            // For now, we only keep sessions in memory.
-            cookie<UserSession>("session", SessionStorageMemory()) {
-            }
-        }
+        install(Sessions)
         routing {
             get("/") {
-                if (call.userSession == null)
-                    call.createNewSession()
+                if (call.userSession == null) {
+                    call.userSession = UserSession(name = null, language = "en")
+                }
 
                 call.respondHtml(HttpStatusCode.OK, HTML::index)
             }
@@ -56,8 +51,7 @@ fun main() {
                 } else {
                     val setName: SetName = Json.decodeFromString(call.receiveText())
                     call.userSession = session.copy(name = setName.name)
-
-                    // TODO: refresh state when session is updated (session->websocket map?)
+                    call.transientData?.websocketRefreshChannel?.send(Unit)
 
                     call.respond(HttpStatusCode.OK)
                 }
@@ -65,6 +59,7 @@ fun main() {
             webSocket("/state") {
                 // Require a session to already be initialized; it is not possible to edit sessions within websockets.
                 val session = call.userSession
+
                 if (session == null) {
                     // Code 3000 is registered with IANA as "Unauthorized".
                     close(CloseReason(3000, "Missing session"))
@@ -87,6 +82,13 @@ fun main() {
                 delay(10000)
                 questions[1].visible = false
                 send(Frame.Text(Json.encodeToString(state)))
+
+                while (true) {
+                    call.transientData?.websocketRefreshChannel?.receive() ?: break
+                    val newSession = call.userSession ?: continue
+                    val newState = AppState(questions, newSession)
+                    send(Frame.Text(Json.encodeToString(newState)))
+                }
             }
             val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "./build/distributions/").canonicalFile
             println("static dir: $staticDir")
