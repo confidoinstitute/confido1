@@ -20,6 +20,7 @@ import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.onChange
 import tools.confido.payloads.SetName
+import tools.confido.question.*
 import tools.confido.state.AppState
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -88,5 +89,17 @@ val App = FC<Props> {
                 +"Set name"
             }
         }
+    }
+
+    val groupPredictions = listOf(
+                Question("staticNumeric", "What are you predictions?", true, NumericAnswerSpace(3, 0.0, 1.0))
+                to listOf(0.2, 0.5, 0.3),
+                Question("staticBinary", "Will we manage to finish Confido on time?", true, BinaryAnswerSpace())
+                to listOf(0.40, 0.60),
+                Question("dutchBinary", "Will Dutch government choose our app?", true, BinaryAnswerSpace())
+                to listOf(0.5, 0.5),
+    )
+    GroupPredictions {
+        predictions = groupPredictions
     }
 }
