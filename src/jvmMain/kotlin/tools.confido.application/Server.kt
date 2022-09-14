@@ -1,6 +1,7 @@
 package tools.confido.application
 
 import io.ktor.http.HttpStatusCode
+import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.html.*
@@ -8,10 +9,10 @@ import io.ktor.server.http.content.*
 import io.ktor.server.cio.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
+import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
-import kotlinx.coroutines.delay
 import kotlinx.html.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -21,6 +22,7 @@ import tools.confido.payloads.SetName
 import tools.confido.question.Question
 import tools.confido.state.AppState
 import tools.confido.state.UserSession
+import tools.confido.question.*
 import java.io.File
 
 fun HTML.index() {
@@ -32,9 +34,24 @@ fun HTML.index() {
     }
 }
 
+val commonAnswerSpace = NumericAnswerSpace(32, 0.0, 50.0)
+val questions = listOf(
+    Question("question1", "How are you?", visible = true, answerSpace = commonAnswerSpace),
+    Question("question2", "Is this good?", visible = true, answerSpace = BinaryAnswerSpace()),
+    Question(
+        "invisible_question",
+        "Can you not see this?",
+        visible = false,
+        answerSpace = commonAnswerSpace
+    ),
+)
+
 fun main() {
     embeddedServer(CIO, port = 8080, host = "127.0.0.1") {
         install(WebSockets)
+        install(ContentNegotiation) {
+            this.json()
+        }
         install(Sessions)
         routing {
             get("/") {
@@ -56,6 +73,24 @@ fun main() {
                     call.respond(HttpStatusCode.OK)
                 }
             }
+            post("/send_prediction/{id}") {
+                val prediction: Prediction = call.receive()
+                println(prediction)
+                val id = call.parameters["id"] ?: ""
+
+                val question = questions.firstOrNull { it.id == id }
+                if (question == null) {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+                println(question.answerSpace)
+                if (!question.answerSpace.verifyPrediction(prediction)) {
+                    print("Prediction not compatible with answer space")
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+                call.respond(HttpStatusCode.OK)
+            }
             webSocket("/state") {
                 // Require a session to already be initialized; it is not possible to edit sessions within websockets.
                 val session = call.userSession
@@ -66,28 +101,11 @@ fun main() {
                     return@webSocket
                 }
 
-                val questions = listOf(
-                    Question("question_session","Is your name ${session.name ?: "not set yet"}?", visible = true),
-                    Question("question1","How are you?", visible = true),
-                    Question("question2","Is this good?", visible = true),
-                    Question("invisible_question","Can you not see this?", visible = false),
-                )
-
-                val state = AppState(questions, session)
-
-                send(Frame.Text(Json.encodeToString(state)))
-                delay(10000)
-                questions[3].visible = true
-                send(Frame.Text(Json.encodeToString(state)))
-                delay(10000)
-                questions[1].visible = false
-                send(Frame.Text(Json.encodeToString(state)))
-
                 while (true) {
+                    val sessionData = call.userSession ?: continue
+                    val state = AppState(questions, sessionData)
+                    send(Frame.Text(Json.encodeToString(state)))
                     call.transientData?.websocketRefreshChannel?.receive() ?: break
-                    val newSession = call.userSession ?: continue
-                    val newState = AppState(questions, newSession)
-                    send(Frame.Text(Json.encodeToString(newState)))
                 }
             }
             val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "./build/distributions/").canonicalFile
