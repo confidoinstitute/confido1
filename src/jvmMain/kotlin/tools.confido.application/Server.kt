@@ -7,23 +7,23 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.html.*
 import io.ktor.server.http.content.*
 import io.ktor.server.cio.*
-import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
+import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
 import kotlinx.html.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import tools.confido.application.sessions.*
+import tools.confido.payloads.SetName
+import tools.confido.question.Question
+import tools.confido.state.AppState
+import tools.confido.state.UserSession
 import tools.confido.question.*
 import java.io.File
-
-
 
 fun HTML.index() {
     head {
@@ -52,9 +52,26 @@ fun main() {
         install(ContentNegotiation) {
             this.json()
         }
+        install(Sessions)
         routing {
             get("/") {
+                if (call.userSession == null) {
+                    call.userSession = UserSession(name = null, language = "en")
+                }
+
                 call.respondHtml(HttpStatusCode.OK, HTML::index)
+            }
+            post("/setName") {
+                val session = call.userSession
+                if (session == null) {
+                    call.respond(HttpStatusCode.Unauthorized)
+                } else {
+                    val setName: SetName = Json.decodeFromString(call.receiveText())
+                    call.userSession = session.copy(name = setName.name)
+                    call.transientData?.websocketRefreshChannel?.send(Unit)
+
+                    call.respond(HttpStatusCode.OK)
+                }
             }
             post("/send_prediction/{id}") {
                 val prediction: Prediction = call.receive()
@@ -68,14 +85,28 @@ fun main() {
                 }
                 println(question.answerSpace)
                 if (!question.answerSpace.verifyPrediction(prediction)) {
-                    print("Prediction not compatibile with answer space")
+                    print("Prediction not compatible with answer space")
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
                 }
                 call.respond(HttpStatusCode.OK)
             }
             webSocket("/state") {
-                    this.send(Json.encodeToString(questions))
+                // Require a session to already be initialized; it is not possible to edit sessions within websockets.
+                val session = call.userSession
+
+                if (session == null) {
+                    // Code 3000 is registered with IANA as "Unauthorized".
+                    close(CloseReason(3000, "Missing session"))
+                    return@webSocket
+                }
+
+                while (true) {
+                    val sessionData = call.userSession ?: continue
+                    val state = AppState(questions, sessionData)
+                    send(Frame.Text(Json.encodeToString(state)))
+                    call.transientData?.websocketRefreshChannel?.receive() ?: break
+                }
             }
             val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "./build/distributions/").canonicalFile
             println("static dir: $staticDir")

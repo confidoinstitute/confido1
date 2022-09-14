@@ -77,6 +77,8 @@ kotlin {
                 implementation("org.jetbrains.kotlin-wrappers:kotlin-mui:5.6.2-pre.332-kotlin-1.6.21")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
                 implementation("io.ktor:ktor-client-core:$ktorVersion")
+                implementation("io.ktor:ktor-client-serialization:$ktorVersion")
+                implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
                 implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
                 // Plotly
                 implementation("space.kscience:plotlykt-core:0.5.0")
@@ -106,6 +108,9 @@ application {
 val jsBrowserDevelopmentRun by tasks.getting
 val jsDevelopmentExecutableCompileSync by tasks.getting
 jsBrowserDevelopmentRun.dependsOn(jsDevelopmentExecutableCompileSync)
+val jsBrowserProductionRun by tasks.getting
+val jsProductionExecutableCompileSync by tasks.getting
+jsBrowserProductionRun.dependsOn(jsProductionExecutableCompileSync)
 
 tasks.named<JavaExec>("run") {
     dependsOn(tasks.named<Jar>("jvmJar"))

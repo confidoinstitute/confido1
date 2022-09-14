@@ -1,20 +1,38 @@
 package components
-import kotlinext.js.getOwnPropertyNames
+
+import csstype.AlignItems
+import csstype.Display
+import csstype.px
+import emotion.react.css
+import io.ktor.client.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
+import kotlinx.coroutines.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import mui.material.*
+import mui.material.styles.TypographyVariant
+import mui.system.sx
 import org.w3c.dom.WebSocket
 import react.*
-import tools.confido.question.Question
+import react.dom.html.ReactHTML.div
+import react.dom.onChange
+import tools.confido.payloads.SetName
+import tools.confido.state.AppState
+import kotlin.coroutines.EmptyCoroutineContext
 
 val App = FC<Props> {
-    var questions by useState<List<Question>>(emptyList())
+    var appState by useState<AppState?>(null)
     val webSocket = useRef<WebSocket>(null)
+    var name by useState<String>("")
 
     useEffectOnce {
         webSocket.current = WebSocket("ws://localhost:8080/state")
         val ws = webSocket.current ?: error("WebSocket does not exist???")
         ws.onmessage = {
-            questions = Json.decodeFromString(it.data.toString())
+            appState = Json.decodeFromString(it.data.toString())
             Unit // This is not redundant, because assignment fails some weird type checks
         }
         cleanup {
@@ -23,6 +41,52 @@ val App = FC<Props> {
     }
 
     QuestionList {
-        this.questions = questions
+        this.questions = appState?.questions ?: listOf()
+    }
+
+    Paper {
+        sx {
+            marginTop = 10.px
+            padding = 10.px
+        }
+        Typography {
+            variant = TypographyVariant.body1
+            +"From state: your name is ${appState?.session?.name ?: "not set"} and language is ${appState?.session?.language ?: "not set"}."
+        }
+        div {
+            css {
+                marginTop = 5.px
+                display = Display.flex
+                alignItems = AlignItems.flexEnd
+            }
+            TextField {
+                variant = FormControlVariant.standard
+                id = "name-field"
+                label = ReactNode("Name")
+                value = name
+                onChange = {
+                    name = it.asDynamic().target.value as String
+                }
+            }
+            Button {
+                onClick = {
+                    // TODO: Persist this client and reuse for all requests
+                    val client = HttpClient {
+                        install(ContentNegotiation) {
+                            json()
+                        }
+                    }
+
+                    // Not sure if this is the best way to do this.
+                    CoroutineScope(EmptyCoroutineContext).launch {
+                        client.post("setName") {
+                            contentType(ContentType.Application.Json.withParameter("charset", "utf-8"))
+                            setBody(SetName(name))
+                        }
+                    }
+                }
+                +"Set name"
+            }
+        }
     }
 }
