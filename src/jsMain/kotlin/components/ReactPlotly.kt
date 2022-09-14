@@ -1,5 +1,6 @@
 package components
 
+import io.ktor.http.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToDynamic
@@ -9,6 +10,7 @@ import react.dom.html.ReactHTML.div
 import space.kscience.dataforge.meta.MetaSerializer
 import space.kscience.dataforge.meta.Scheme
 import space.kscience.plotly.*
+import space.kscience.plotly.models.Text
 import space.kscience.plotly.models.Trace
 import utils.*
 
@@ -21,44 +23,39 @@ external interface PlotlyProps : Props {
     var id: String
     var traces: Collection<Trace>
     var title: String
+    var annotations: List<Text>?
     var plotlyInit: ((Plot) -> Unit)?
     var config: dynamic
 }
 
 val ReactPlotly = FC<PlotlyProps> {props ->
     val container = useRef<HTMLDivElement>(null)
-    val plot by useState {
-        console.log("Plot created")
-        Plot().apply {
+    val annotations = props.annotations ?: emptyList()
+    val plot = Plot().apply {
             layout {
                 title = props.title
+                this.annotations = annotations
             }
 
             props.plotlyInit?.invoke(this)
         }
-    }
-
 
     useEffectOnce {
         val element = container.current ?: error("Div not found")
+        console.log("New plot")
         PlotlyJs.newPlot(element, props.traces.toDynamic(), plot.layout.toDynamic(), props.config)
 
         cleanup {
-            console.log("Cleaning up removed plot")
             PlotlyJs.asDynamic().purge(element)
         }
     }
 
-    useEffect(props.traces) {
+    useEffect(props.traces, props.annotations) {
         val element = container.current ?: error("Div not found")
-        console.log("Effect used for traces")
-
         PlotlyJs.react(element, props.traces.toDynamic(), plot.layout.toDynamic(), props.config)
     }
     useEffect(props.title) {
         val element = container.current ?: error("Div not found")
-        console.log("Effect used for title")
-
         PlotlyJs.relayout(element, jsObject { this.title = props.title })
     }
 
