@@ -13,6 +13,8 @@ private fun newSessionId(): String {
 /**
  * Create a new session.
  *
+ * Does not work in websockets (a cookie cannot be set after a websocket is started).
+ *
  * @return the id of the newly created session
  */
 fun ApplicationCall.createNewSession(): String {
@@ -31,6 +33,13 @@ val ApplicationCall.sessionId: String?
         return tracker.sessionId(this)
     }
 
+/**
+ * Provides the session id or creates a new session.
+ *
+ * Does not work in websockets (a cookie cannot be set after a websocket is started).
+ *
+ * @return the id of the current session
+ */
 fun ApplicationCall.getSessionIdOrCreateNew(): String {
     var id = sessionId
     if (id == null) {
@@ -40,6 +49,11 @@ fun ApplicationCall.getSessionIdOrCreateNew(): String {
     return id
 }
 
+/**
+ * Provides access to user session data.
+ *
+ * In case a session does not exist, setting a value will create a new session.
+ */
 var ApplicationCall.userSession: UserSession?
     get() {
         val id = sessionId ?: return null
@@ -56,6 +70,14 @@ var ApplicationCall.userSession: UserSession?
         }
     }
 
+/**
+ * Provides access to short-lived session data, which will be lost upon server shutdown.
+ *
+ * There is no need to set an initial value as long as a session exists already,
+ * a default value is created automatically on first access.
+ *
+ * In case a session does not exist, setting a value will create a new session.
+ */
 var ApplicationCall.transientData: TransientData?
     get() {
         val id = sessionId ?: return null
@@ -72,6 +94,9 @@ var ApplicationCall.transientData: TransientData?
         }
     }
 
+/**
+ * Keeps track of the current session id within a call and handles cookie updates.
+ */
 class SessionTracker {
     private val sessionIdKey = AttributeKey<String>("SessionId")
 
