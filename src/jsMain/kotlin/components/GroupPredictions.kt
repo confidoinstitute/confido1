@@ -13,8 +13,12 @@ external interface PredictionPlotProps : Props {
 }
 
 val PredictionPlot = FC<PredictionPlotProps> {props ->
+    val config = jsObject {
+        this.responsive = true
+    }
     Card {
         raised = true
+
 
         CardHeader {
             title = ReactNode(props.question.name)
@@ -30,6 +34,7 @@ val PredictionPlot = FC<PredictionPlotProps> {props ->
                             values(props.histogram)
                         }
                     )
+                    this.config = config
                 }
                 is NumericAnswerSpace -> ReactPlotly {
                     traces = listOf(
@@ -43,6 +48,8 @@ val PredictionPlot = FC<PredictionPlotProps> {props ->
                             bargap = 0
                         }
                     }
+
+                    this.config = config
                 }
             }
         }
