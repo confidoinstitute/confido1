@@ -73,53 +73,51 @@ val App = FC<Props> {
             Route {
                 path = "/set_name"
 
-                this.element =
-                    Paper.create {}
-            }
-        }
-    }
-    Paper {
-        sx {
-            marginTop = 10.px
-            padding = 10.px
-        }
-        Typography {
-            variant = TypographyVariant.body1
-            +"From state: your name is ${appState?.session?.name ?: "not set"} and language is ${appState?.session?.language ?: "not set"}."
-        }
-        div {
-            css {
-                marginTop = 5.px
-                display = Display.flex
-                alignItems = AlignItems.flexEnd
-            }
-            TextField {
-                variant = FormControlVariant.standard
-                id = "name-field"
-                label = ReactNode("Name")
-                value = name
-                onChange = {
-                    name = it.asDynamic().target.value as String
-                }
-            }
-            Button {
-                onClick = {
-                    // TODO: Persist this client and reuse for all requests
-                    val client = HttpClient {
-                        install(ContentNegotiation) {
-                            json()
-                        }
+                this.element = Paper.create {
+                    sx {
+                        marginTop = 10.px
+                        padding = 10.px
                     }
+                    Typography {
+                        variant = TypographyVariant.body1
+                        +"From state: your name is ${appState?.session?.name ?: "not set"} and language is ${appState?.session?.language ?: "not set"}."
+                    }
+                    div {
+                        css {
+                            marginTop = 5.px
+                            display = Display.flex
+                            alignItems = AlignItems.flexEnd
+                        }
+                        TextField {
+                            variant = FormControlVariant.standard
+                            id = "name-field"
+                            label = ReactNode("Name")
+                            value = name
+                            onChange = {
+                                name = it.asDynamic().target.value as String
+                            }
+                        }
+                        Button {
+                            onClick = {
+                                // TODO: Persist this client and reuse for all requests
+                                val client = HttpClient {
+                                    install(ContentNegotiation) {
+                                        json()
+                                    }
+                                }
 
-                    // Not sure if this is the best way to do this.
-                    CoroutineScope(EmptyCoroutineContext).launch {
-                        client.post("setName") {
-                            contentType(ContentType.Application.Json.withParameter("charset", "utf-8"))
-                            setBody(SetName(name))
+                                // Not sure if this is the best way to do this.
+                                CoroutineScope(EmptyCoroutineContext).launch {
+                                    client.post("setName") {
+                                        contentType(ContentType.Application.Json.withParameter("charset", "utf-8"))
+                                        setBody(SetName(name))
+                                    }
+                                }
+                            }
+                            +"Set name"
                         }
                     }
                 }
-                +"Set name"
             }
         }
     }
