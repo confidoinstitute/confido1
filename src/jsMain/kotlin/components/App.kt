@@ -19,6 +19,11 @@ import org.w3c.dom.WebSocket
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.onChange
+import react.dom.render
+import react.router.Route
+import react.router.Routes
+import react.router.dom.HashRouter
+import react.router.dom.NavLink
 import tools.confido.payloads.SetName
 import tools.confido.question.*
 import tools.confido.state.AppState
@@ -40,11 +45,39 @@ val App = FC<Props> {
             ws.close()
         }
     }
+    HashRouter {
+        Navigation {}
+        Routes {
+            Route {
+                index = true
+                path = "/"
+                this.element = QuestionList.create {
+                    questions = appState?.questions ?: emptyList()
+                }
+            }
+            Route {
+                path = "/group_predictions"
 
-    QuestionList {
-        this.questions = appState?.questions ?: listOf()
+                val groupPredictions = listOf(
+                    Question("staticNumeric", "What are you predictions?", true, NumericAnswerSpace(3, 0.0, 1.0))
+                            to listOf(0.2, 0.5, 0.3),
+                    Question("staticBinary", "Will we manage to finish Confido on time?", true, BinaryAnswerSpace())
+                            to listOf(0.40, 0.60),
+                    Question("dutchBinary", "Will Dutch government choose our app?", true, BinaryAnswerSpace())
+                            to listOf(0.5, 0.5),
+                )
+                this.element = GroupPredictions.create {
+                    predictions = groupPredictions
+                }
+            }
+            Route {
+                path = "/set_name"
+
+                this.element =
+                    Paper.create {}
+            }
+        }
     }
-
     Paper {
         sx {
             marginTop = 10.px
@@ -89,17 +122,5 @@ val App = FC<Props> {
                 +"Set name"
             }
         }
-    }
-
-    val groupPredictions = listOf(
-                Question("staticNumeric", "What are you predictions?", true, NumericAnswerSpace(3, 0.0, 1.0))
-                to listOf(0.2, 0.5, 0.3),
-                Question("staticBinary", "Will we manage to finish Confido on time?", true, BinaryAnswerSpace())
-                to listOf(0.40, 0.60),
-                Question("dutchBinary", "Will Dutch government choose our app?", true, BinaryAnswerSpace())
-                to listOf(0.5, 0.5),
-    )
-    GroupPredictions {
-        predictions = groupPredictions
     }
 }
