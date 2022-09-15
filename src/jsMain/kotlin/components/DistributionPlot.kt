@@ -36,12 +36,13 @@ val DistributionPlot = FC<DistributionPlotProps> {props ->
     fun barColor(x: Double) = confidenceIntervals.find {
             val (start, end) = it.first
             (x in start..end)
-        }?.second ?: Value.of("#cccccc")
+        }?.second ?: Value.of("#000e47")
 
     val colorTicks = xTicks.map { barColor(it) }
 
     ReactPlotly {
         id = props.id
+        annotations = listOf()
 
         traces = listOf(
             Bar {

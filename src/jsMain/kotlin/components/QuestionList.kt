@@ -1,13 +1,14 @@
 package components
 
-import kotlinx.browser.document
+import csstype.ColorProperty
+import emotion.react.css
 import kotlinx.browser.window
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import mui.material.*
 import react.*
+import react.dom.html.ReactHTML.span
 import space.kscience.dataforge.values.asValue
-import space.kscience.plotly.layout
 import space.kscience.plotly.models.*
 import tools.confido.distributions.*
 import tools.confido.question.*
@@ -36,6 +37,12 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
 
     val dist = TruncatedNormalDistribution(mean, stdDev, answerSpace.min, answerSpace.max)
 
+    val confidences = listOf(
+        ConfidenceColor(0.9, "#039be5".asValue()),
+        ConfidenceColor(0.7, "#1565c0".asValue()),
+        ConfidenceColor(0.5, "#311b92".asValue())
+    )
+
     fun sendPrediction() {
         val pred = NumericPrediction(mean, stdDev)
         postPrediction(pred, answerSpace)
@@ -48,11 +55,7 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
             max = answerSpace.max
             step = 0.5
             distribution = dist
-            confidences = listOf(
-                ConfidenceColor(0.9, "#333333".asValue()),
-                ConfidenceColor(0.7, "#666666".asValue()),
-                ConfidenceColor(0.5, "#999999".asValue())
-            )
+            this.confidences = confidences
         }
 
         Slider {
@@ -73,14 +76,17 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
             onChange = { _, value, _ -> stdDev = value }
             onChangeCommitted = { _, _ -> sendPrediction() }
         }
-        listOf(0.9, 0.7, 0.5).map { p ->
+        confidences.map { confidence ->
             Typography {
-                val confidence = dist.confidenceInterval(1 - p)
-                +"You are ${p * 100}% confident that the value lies between ${confidence.first.format(1)} and ${
-                    confidence.second.format(
-                        1
-                    )
-                }"
+                val confidenceInterval = dist.confidenceInterval(1 - confidence.p)
+                +"You are "
+                span {
+                    css {
+                        color = csstype.Color(confidence.color.toString())
+                    }
+                    +"${confidence.p * 100}%"
+                }
+                +" confident that the value lies between ${confidenceInterval.first.format(1)} and ${confidenceInterval.second.format(1)}"
             }
         }
     }

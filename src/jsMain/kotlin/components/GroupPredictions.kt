@@ -1,11 +1,14 @@
 package components
 
+import csstype.px
+import emotion.react.css
 import mui.material.*
 import react.*
 import space.kscience.plotly.layout
 import space.kscience.plotly.models.Bar
 import space.kscience.plotly.models.Pie
 import tools.confido.question.*
+import utils.jsObject
 
 external interface PredictionPlotProps : Props {
     var question: Question
@@ -24,6 +27,9 @@ val PredictionPlot = FC<PredictionPlotProps> {props ->
             title = ReactNode(props.question.name)
         }
         CardContent {
+            css {
+                height = 500.px
+            }
             when(props.question.answerSpace) {
                 is BinaryAnswerSpace -> ReactPlotly {
                     if (props.histogram.size != 2)
