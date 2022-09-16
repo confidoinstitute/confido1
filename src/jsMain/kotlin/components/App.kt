@@ -19,11 +19,9 @@ import org.w3c.dom.WebSocket
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.onChange
-import react.dom.render
 import react.router.Route
 import react.router.Routes
-import react.router.dom.HashRouter
-import react.router.dom.NavLink
+import react.router.dom.BrowserRouter
 import tools.confido.payloads.SetName
 import tools.confido.question.*
 import tools.confido.state.AppState
@@ -45,7 +43,7 @@ val App = FC<Props> {
             ws.close()
         }
     }
-    HashRouter {
+    BrowserRouter {
         Navigation {}
         Routes {
             Route {

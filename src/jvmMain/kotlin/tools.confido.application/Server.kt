@@ -54,7 +54,7 @@ fun main() {
         }
         install(Sessions)
         routing {
-            get("/") {
+            get("/{...}") {
                 if (call.userSession == null) {
                     call.userSession = UserSession(name = null, language = "en")
                 }
