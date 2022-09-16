@@ -2,10 +2,12 @@ package components
 
 import csstype.ColorProperty
 import emotion.react.css
+import hooks.useElementSize
 import kotlinx.browser.window
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import mui.material.*
+import org.w3c.dom.HTMLSpanElement
 import react.*
 import react.dom.html.ReactHTML.span
 import space.kscience.dataforge.values.asValue
@@ -95,6 +97,7 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
 
 val BinaryQuestion = FC<QuestionAnswerFormProps<BinaryAnswerSpace>> { props ->
     var estimate by useState(50)
+    val sliderSize = useElementSize<HTMLSpanElement>()
 
     fun formatPercent(value: Int): String = "$value %"
 
@@ -103,17 +106,25 @@ val BinaryQuestion = FC<QuestionAnswerFormProps<BinaryAnswerSpace>> { props ->
         postPrediction(pred, props.answerSpace)
     }
 
+    val markSpacing = when(sliderSize.width) {
+        in 0.0 .. 500.0 -> emptyList()
+        in 500.0 .. 960.0 -> listOf(0, 100)
+        else -> listOf(0, 50, 100)
+    }
+
+        val marks = markSpacing.map {
+            mark(it, "${it} %")
+        }.toTypedArray()
+
     Fragment {
         Slider {
+            this.ref = sliderSize.ref
             defaultValue = 50
             min = 0
             max = 100
+            this.marks = marks
             valueLabelDisplay = "auto"
             valueLabelFormat = ::formatPercent
-            marks = arrayOf(
-                mark(0, "0 %"),
-                mark(100, "100 %"),
-            )
             onChange = { _, value, _ -> estimate = value }
             onChangeCommitted = { _, _ -> sendPrediction() }
         }
