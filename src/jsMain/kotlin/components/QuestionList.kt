@@ -22,11 +22,6 @@ external interface QuestionAnswerFormProps<T : AnswerSpace> : Props {
     var answerSpace: T
 }
 
-fun mark(value: Number, label: String?) = jsObject {
-    this.value = value
-    this.label = label
-}
-
 fun postPrediction(prediction: Prediction, answerSpace: AnswerSpace) {
     window.alert(Json.encodeToString(prediction))
 }
@@ -97,32 +92,26 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
 
 val BinaryQuestion = FC<QuestionAnswerFormProps<BinaryAnswerSpace>> { props ->
     var estimate by useState(50)
-    val sliderSize = useElementSize<HTMLSpanElement>()
 
-    fun formatPercent(value: Int): String = "$value %"
+    fun formatPercent(value: Number): String = "$value %"
 
     fun sendPrediction() {
         val pred = BinaryPrediction(estimate / 100.0)
         postPrediction(pred, props.answerSpace)
     }
 
-    val markSpacing = when(sliderSize.width) {
+    fun getMarks(width: Double) = when(width) {
         in 0.0 .. 500.0 -> emptyList()
         in 500.0 .. 960.0 -> listOf(0, 100)
         else -> listOf(0, 50, 100)
     }
 
-        val marks = markSpacing.map {
-            mark(it, "${it} %")
-        }.toTypedArray()
-
     Fragment {
-        Slider {
-            this.ref = sliderSize.ref
+        MarkedSlider {
             defaultValue = 50
             min = 0
             max = 100
-            this.marks = marks
+            this.widthToMarks = ::getMarks
             valueLabelDisplay = "auto"
             valueLabelFormat = ::formatPercent
             onChange = { _, value, _ -> estimate = value }
