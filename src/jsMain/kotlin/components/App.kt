@@ -91,8 +91,18 @@ val App = FC<Props> {
             appState = Json.decodeFromString(it.data.toString())
             Unit // This is not redundant, because assignment fails some weird type checks
         }
+        ws.onclose = {
+            appState = null
+            Unit
+        }
         cleanup {
             ws.close()
+        }
+    }
+
+    Backdrop {
+        open = (appState == null)
+        CircularProgress {
         }
     }
 
