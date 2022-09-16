@@ -120,12 +120,10 @@ val BinaryQuestion = FC<QuestionAnswerFormProps<BinaryAnswerSpace>> { props ->
     }
 }
 
-external interface QuestionListProps : Props {
-    var questions: List<Question>
-}
-
-val QuestionList = FC<QuestionListProps> { props ->
-    val visibleQuestions = props.questions.filter { it.visible }
+val QuestionList = FC<Props> {
+    val appState = useContext(AppStateContext)
+    val questions = appState?.questions ?: emptyList()
+    val visibleQuestions = questions.filter { it.visible }
 
     visibleQuestions.map { question ->
         Accordion {
