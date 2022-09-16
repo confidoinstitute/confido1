@@ -8,6 +8,9 @@ import mui.material.Slider
 import mui.material.SliderProps
 import org.w3c.dom.HTMLSpanElement
 import react.FC
+import react.useEffect
+import react.useMemo
+import react.useState
 import utils.jsObject
 
 fun mark(value: Number, label: String?) = jsObject {
@@ -22,12 +25,14 @@ external interface MarkedSliderProps : SliderProps {
 
 val MarkedSlider = FC<MarkedSliderProps> {props ->
     val sliderSize = useElementSize<HTMLSpanElement>()
+    var marks by useState<Array<dynamic>>(emptyArray())
 
-    val marks = props.widthToMarks?.let {
-        it(sliderSize.width).map {value ->
-            mark(value, props.valueLabelFormat?.invoke(value) ?: value.toString())
-        }.toTypedArray()
-    } ?: props.marks
+    useEffect(sliderSize.width, props.min, props.max) {
+        marks = (props.widthToMarks?.invoke(sliderSize.width) ?: utils.markSpacing(sliderSize.width, props.min?.toDouble() ?: 0.0, props.max?.toDouble() ?: 0.0)).map {
+            value ->
+                mark(value, props.valueLabelFormat?.invoke(value) ?: value.toString())
+            }.toTypedArray()
+    }
 
     Slider {
         Object.assign(this, props)

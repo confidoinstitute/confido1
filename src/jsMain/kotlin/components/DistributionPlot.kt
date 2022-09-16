@@ -78,6 +78,7 @@ val DistributionPlot = FC<DistributionPlotProps> {props ->
         }
         config = jsObject {
             staticPlot = true
+            responsive = true
         }
     }
 }

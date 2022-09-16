@@ -55,7 +55,7 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
             this.confidences = confidences
         }
 
-        Slider {
+        MarkedSlider {
             value = mean
             min = answerSpace.min
             max = answerSpace.max
@@ -64,7 +64,7 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
             onChange = { _, value, _ -> mean = value }
             onChangeCommitted = { _, _ -> sendPrediction() }
         }
-        Slider {
+        MarkedSlider {
             value = stdDev
             min = 0
             max = (answerSpace.max - answerSpace.min) / 2
@@ -127,6 +127,7 @@ val QuestionList = FC<Props> {
 
     visibleQuestions.map { question ->
         Accordion {
+            key = question.id
             AccordionSummary {
                 id = question.id
                 Typography {
