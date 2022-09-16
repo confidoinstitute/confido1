@@ -122,7 +122,7 @@ val BinaryQuestion = FC<QuestionAnswerFormProps<BinaryAnswerSpace>> { props ->
 
 val QuestionList = FC<Props> {
     val appState = useContext(AppStateContext)
-    val questions = appState?.questions ?: emptyList()
+    val questions = appState.questions
     val visibleQuestions = questions.filter { it.visible }
 
     visibleQuestions.map { question ->

@@ -27,7 +27,7 @@ import tools.confido.question.*
 import tools.confido.state.AppState
 import kotlin.coroutines.EmptyCoroutineContext
 
-val AppStateContext = createContext<AppState?>(null)
+val AppStateContext = createContext<AppState>()
 
 val SetNameForm = FC<Props> {
     val appState = useContext(AppStateContext)
@@ -40,7 +40,7 @@ val SetNameForm = FC<Props> {
         }
         Typography {
             variant = TypographyVariant.body1
-            +"From state: your name is ${appState?.session?.name ?: "not set"} and language is ${appState?.session?.language ?: "not set"}."
+            +"From state: your name is ${appState.session.name} and language is ${appState.session}."
         }
         div {
             css {
@@ -100,23 +100,26 @@ val App = FC<Props> {
         }
     }
 
-    Backdrop {
-        open = (appState == null)
-        CircularProgress {
+    AppBar {
+        position = AppBarPosition.static
+        Toolbar {
+            Typography {
+                +"Confido"
+            }
         }
     }
 
-    AppStateContext.Provider {
-        value = appState
+    if (appState == null) {
+//        Backdrop {
+//            this.open = true
+//            this.sx { this.zIndex = 42.asDynamic() }
+//            CircularProgress {}
+//        }
+        return@FC
+    }
 
-        AppBar {
-            position = AppBarPosition.static
-            Toolbar {
-                Typography {
-                    +"Confido"
-                }
-            }
-        }
+    AppStateContext.Provider {
+        value = appState ?: error("No app state!")
 
         BrowserRouter {
             Navigation {}
