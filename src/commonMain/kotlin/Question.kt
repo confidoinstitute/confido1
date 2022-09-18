@@ -30,6 +30,7 @@ class NumericAnswerSpace(
     override val bins: Int,
     val min: Double,
     val max: Double,
+    val representsDays: Boolean = false
 ) : AnswerSpace() {
     override fun verifyPrediction(prediction: Prediction): Boolean {
         val pred = prediction as? NumericPrediction ?: return false

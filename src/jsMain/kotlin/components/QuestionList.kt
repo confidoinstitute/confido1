@@ -15,6 +15,7 @@ import space.kscience.plotly.models.*
 import tools.confido.distributions.*
 import tools.confido.question.*
 import utils.*
+import kotlin.js.Date
 
 
 external interface QuestionAnswerFormProps<T : AnswerSpace> : Props {
@@ -30,15 +31,19 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
     val answerSpace = props.answerSpace
 
     var mean by useState(answerSpace.min)
-    var stdDev by useState(0.0)
+    var stdDev by useState(0.1)
 
     val dist = TruncatedNormalDistribution(mean, stdDev, answerSpace.min, answerSpace.max)
+
+    val step = if (props.answerSpace.representsDays) 86400 else 0.1
 
     val confidences = listOf(
         ConfidenceColor(0.9, "#039be5".asValue()),
         ConfidenceColor(0.7, "#1565c0".asValue()),
         ConfidenceColor(0.5, "#311b92".asValue())
     )
+
+    fun formatDate(value: Number): String = Date(value.toDouble() * 1000.0).toISOString().substring(0, 10)
 
     fun sendPrediction() {
         val pred = NumericPrediction(mean, stdDev)
@@ -50,7 +55,7 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
             id = "${props.id}_plot"
             min = answerSpace.min
             max = answerSpace.max
-            step = 0.5
+            this.bins = 200
             distribution = dist
             this.confidences = confidences
         }
@@ -59,16 +64,20 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
             value = mean
             min = answerSpace.min
             max = answerSpace.max
-            step = 0.1
+            this.step = step
             valueLabelDisplay = "auto"
+            if (answerSpace.representsDays) {
+                this.valueLabelFormat = ::formatDate
+                this.widthToMarks = { width -> dateMarkSpacing(width, answerSpace.min, answerSpace.max) }
+            }
             onChange = { _, value, _ -> mean = value }
             onChangeCommitted = { _, _ -> sendPrediction() }
         }
-        MarkedSlider {
+        Slider {
             value = stdDev
             min = 0
             max = (answerSpace.max - answerSpace.min) / 2
-            step = 0.1
+            this.step = 0.1
             valueLabelDisplay = "auto"
             onChange = { _, value, _ -> stdDev = value }
             onChangeCommitted = { _, _ -> sendPrediction() }
@@ -83,7 +92,10 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
                     }
                     +"${confidence.p * 100}%"
                 }
-                +" confident that the value lies between ${confidenceInterval.first.format(1)} and ${confidenceInterval.second.format(1)}"
+                if (props.answerSpace.representsDays)
+                    +" confident that the value lies between ${formatDate(confidenceInterval.first)} and ${formatDate(confidenceInterval.second)}"
+                else
+                    +" confident that the value lies between ${confidenceInterval.first.format(1)} and ${confidenceInterval.second.format(1)}"
             }
         }
     }

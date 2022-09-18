@@ -8,6 +8,8 @@ import space.kscience.plotly.models.Scatter
 import space.kscience.plotly.models.ScatterMode
 import space.kscience.plotly.models.color
 import tools.confido.distributions.ProbabilityDistribution
+import tools.confido.utils.binBorders
+import tools.confido.utils.binRanges
 import utils.jsObject
 import utils.linearSpace
 
@@ -21,13 +23,14 @@ external interface DistributionPlotProps : Props {
     var distribution: ProbabilityDistribution
     var min: Double
     var max: Double
-    var step: Double
+    var bins: Int
     var confidences: List<ConfidenceColor>
 }
 
 val DistributionPlot = FC<DistributionPlotProps> {props ->
 
-    val xTicks = linearSpace(props.min, props.max, props.step).toList()
+
+    val xTicks = binBorders(props.min, props.max, props.bins)
     val yTicks = xTicks.map {props.distribution.pdf(it)}
 
     val confidenceIntervals = props.confidences.map {
