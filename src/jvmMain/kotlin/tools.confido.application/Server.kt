@@ -59,7 +59,6 @@ fun main() {
     val groupDistributions: MutableMap<String, List<Double>> = questions.mapValues { (_, question) -> calculateGroupDistribution(question) }.toMutableMap()
 
     embeddedServer(CIO, port = 8080, host = "127.0.0.1") {
-        val application = this
         install(WebSockets)
         install(ContentNegotiation) {
             this.json(Json)
@@ -67,10 +66,7 @@ fun main() {
         install(Sessions)
         routing {
             get("/init") {
-                if (!application.developmentMode) {
-                    call.respond(HttpStatusCode.NotFound)
-                    return@get
-                }
+                // TODO: Secure this or replace.
                 val commonAnswerSpace = NumericAnswerSpace(32, 0.0, 50.0)
                 val questions = listOf(
                     Question("question1", "How are you?", visible = true, answerSpace = NumericAnswerSpace(32, 0.0, 50.0)),
