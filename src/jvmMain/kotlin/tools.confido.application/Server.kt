@@ -56,7 +56,7 @@ fun main() {
         val application = this
         install(WebSockets)
         install(ContentNegotiation) {
-            this.json()
+            this.json(Json)
         }
         install(Sessions)
         routing {
