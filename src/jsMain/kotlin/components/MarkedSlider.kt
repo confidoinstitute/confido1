@@ -25,10 +25,9 @@ external interface MarkedSliderProps : SliderProps {
 
 val MarkedSlider = FC<MarkedSliderProps> {props ->
     val sliderSize = useElementSize<HTMLSpanElement>()
-    var marks by useState<Array<dynamic>>(emptyArray())
 
-    useEffect(sliderSize.width, props.min, props.max) {
-        marks = (props.widthToMarks?.invoke(sliderSize.width) ?: utils.markSpacing(sliderSize.width, props.min?.toDouble() ?: 0.0, props.max?.toDouble() ?: 0.0)).map {
+    val marks = useMemo(sliderSize.width, props.min, props.max) {
+       (props.widthToMarks?.invoke(sliderSize.width) ?: utils.markSpacing(sliderSize.width, props.min?.toDouble() ?: 0.0, props.max?.toDouble() ?: 0.0)).map {
             value ->
                 mark(value, props.valueLabelFormat?.invoke(value) ?: value.toString())
             }.toTypedArray()

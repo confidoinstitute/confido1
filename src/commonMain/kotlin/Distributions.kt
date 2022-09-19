@@ -11,7 +11,7 @@ interface ProbabilityDistribution {
     fun confidenceInterval(p: Double): Pair<Double, Double>
 }
 
-class CanonicalNormalDistribution : ProbabilityDistribution {
+object CanonicalNormalDistribution : ProbabilityDistribution {
     override fun pdf(x: Double) = exp(-(ln(2 * PI) + x * x) * 0.5)
 
     /*
@@ -86,8 +86,8 @@ class CanonicalNormalDistribution : ProbabilityDistribution {
     override fun confidenceInterval(p: Double) = Pair(icdf(1-p)/2, icdf(1+p)/2)
 }
 
-class NormalDistribution(val mean: Double, val stdDev: Double) : ProbabilityDistribution {
-    val dist = CanonicalNormalDistribution()
+data class NormalDistribution(val mean: Double, val stdDev: Double) : ProbabilityDistribution {
+    val dist = CanonicalNormalDistribution
 
     fun xform(x: Double) = (x - mean) / stdDev
     fun xformInv(x: Double) = x * stdDev + mean
@@ -98,7 +98,7 @@ class NormalDistribution(val mean: Double, val stdDev: Double) : ProbabilityDist
     override fun confidenceInterval(p: Double) = Pair(icdf((1-p)/2), icdf((1+p)/2))
 }
 
-class TruncatedNormalDistribution(val mean: Double, val stdDev: Double, val min: Double, val max: Double) : ProbabilityDistribution {
+data class TruncatedNormalDistribution(val mean: Double, val stdDev: Double, val min: Double, val max: Double) : ProbabilityDistribution {
     val dist = NormalDistribution(mean, stdDev)
     val pIn = dist.probabilityBetween(min, max)
     val pLT = dist.cdf(min)

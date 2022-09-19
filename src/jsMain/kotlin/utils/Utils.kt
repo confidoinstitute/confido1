@@ -104,22 +104,22 @@ fun dateMarkSpacing(width: Double, start: Double, end: Double): List<Double> {
 
     val dates: List<Double> = when {
         // Days granularity possible
-        (dayWidth >= 100.0) -> return linearSpace(ceil(start / 86400.0) * 86400.0, end, 86400.0).toList()
+        (dayWidth >= 100) -> return linearSpace(ceil(start / 86400.0) * 86400.0, end, 86400.0).toList()
         // Month granularity OK
-        (dayWidth * 240 >= 100.0) -> {
+        (dayWidth * 240 >= 100) -> {
             val monthStep = when {
                 (dayWidth * 30 >= 100) -> 1
                 (dayWidth * 90 >= 100) -> 3
                 else -> 6
             }
-            monthSpacing(timestampToDate(start), timestampToDate(end), monthStep).map {it.atStartOfDayIn(TimeZone.UTC).epochSeconds.toDouble()}
+            monthSpacing(timestampToDate(start), timestampToDate(end), monthStep).map {it.toEpochDays() * 86400.0 }
         }
         // Switch to year granularity
         else -> {
             val yearStep = roundNumbers().takeWhile{it * 365 <= rangeDays}.find { step ->
-                dayWidth * 365 * step >= 100.0
+                dayWidth * 365 * step >= 100
             } ?: return emptyList()
-            yearSpacing(timestampToDate(start), timestampToDate(end), yearStep).map {it.atStartOfDayIn(TimeZone.UTC).epochSeconds.toDouble()}
+            yearSpacing(timestampToDate(start), timestampToDate(end), yearStep).map {it.toEpochDays() * 86400.0 }
         }
     }
 

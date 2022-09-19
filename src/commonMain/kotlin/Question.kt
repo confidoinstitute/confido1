@@ -1,5 +1,7 @@
 package tools.confido.question
 
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -35,6 +37,15 @@ class NumericAnswerSpace(
     override fun verifyPrediction(prediction: Prediction): Boolean {
         val pred = prediction as? NumericPrediction ?: return false
         return (pred.mean in min..max && pred.stdDev in 0.0..(max-min)/2)
+    }
+
+    companion object {
+        fun fromDates(minDate: LocalDate, maxDate: LocalDate): NumericAnswerSpace {
+            val min = minDate.toEpochDays() * 86400.0
+            val max = maxDate.toEpochDays() * 86400.0
+            val bins = (maxDate - minDate).days
+            return NumericAnswerSpace(bins, min, max, true)
+        }
     }
 }
 
