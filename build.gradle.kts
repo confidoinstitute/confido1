@@ -1,7 +1,6 @@
 
 val ktorVersion = "2.1.0"
 val serializationVersion = "1.3.3"
-val kotlinVersion = "1.7.10"
 val kmongoVersion = "4.7.0"
 
 plugins {
