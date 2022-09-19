@@ -8,5 +8,6 @@ import tools.confido.question.Prediction
 data class AppState(
     val questions: Map<String, Question>,
     val userPredictions: Map<String, Prediction>,
+    val groupDistributions: Map<String, List<Double>>,
     val session: UserSession,
 )

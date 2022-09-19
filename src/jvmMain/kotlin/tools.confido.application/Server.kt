@@ -47,10 +47,19 @@ fun main() {
     val questionCollection = database.getCollection<Question>("question")
 
     val questions = runBlocking {
-        questionCollection.find().toList().associate { question -> question.id to question }
+        questionCollection.find().toList().associateBy { question -> question.id }
     }
 
+    // TODO connect and persist with database
     val userPredictions: MutableMap<String, MutableMap<String, Prediction>> = mutableMapOf()
+
+    fun calculateGroupDistribution(question: Question) = userPredictions.values.mapNotNull {
+            it[question.id]?.let { prediction -> question.answerSpace.predictionToDistribution(prediction) }
+        }.fold(List(question.answerSpace.bins) { 0.0 }) { acc, dist ->
+            dist.zip(acc) { a, b -> a + b }
+        }
+
+    val groupDistributions: MutableMap<String, List<Double>> = questions.mapValues { (_, question) -> calculateGroupDistribution(question) }.toMutableMap()
 
     embeddedServer(CIO, port = 8080, host = "127.0.0.1") {
         val application = this
@@ -119,6 +128,8 @@ fun main() {
                     return@post
                 }
                 userPredictions[userName]?.set(id, prediction)
+                groupDistributions[id] = calculateGroupDistribution(question)
+
                 call.transientData?.websocketRefreshChannel?.update { !it }
                 call.respond(HttpStatusCode.OK)
             }
@@ -134,7 +145,7 @@ fun main() {
 
                 call.transientData?.websocketRefreshChannel?.collect() {
                     val sessionData = call.userSession ?: return@collect
-                    val state = AppState(questions, userPredictions[sessionData.name]?.toMap() ?: emptyMap(), sessionData)
+                    val state = AppState(questions, userPredictions[sessionData.name]?.toMap() ?: emptyMap(), groupDistributions.toMap(), sessionData)
                     send(Frame.Text(Json.encodeToString(state)))
                 }
             }

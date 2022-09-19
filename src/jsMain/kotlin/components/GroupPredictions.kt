@@ -15,13 +15,15 @@ import kotlin.js.Date
 
 external interface PredictionPlotProps : Props {
     var question: Question
-    var histogram: List<Double>
+    var histogram: List<Double>?
 }
 
 val PredictionPlot = FC<PredictionPlotProps> {props ->
     val config = jsObject {
         this.responsive = true
     }
+    val histogram = props.histogram ?: List(props.question.answerSpace.bins) { 0.0 }
+
     Card {
         raised = true
 
@@ -35,12 +37,12 @@ val PredictionPlot = FC<PredictionPlotProps> {props ->
             }
             when(val answerSpace = props.question.answerSpace) {
                 is BinaryAnswerSpace -> ReactPlotly {
-                    if (props.histogram.size != 2)
+                    if (histogram.size != 2)
                         error("This is not a correct size")
                     traces = listOf(
                         Pie {
                             labels(listOf("No", "Yes"))
-                            values(props.histogram)
+                            values(histogram)
                         }
                     )
                     this.config = config
@@ -54,7 +56,7 @@ val PredictionPlot = FC<PredictionPlotProps> {props ->
                             } else {
                                 x.set(xBins)
                             }
-                            y.set(props.histogram)
+                            y.set(histogram)
                             hoverinfo = "x"
                         }
                     )
@@ -76,22 +78,26 @@ val PredictionPlot = FC<PredictionPlotProps> {props ->
 }
 
 external interface GroupPredictionsProps : Props {
-    var predictions: List<Pair<Question, List<Double>>>
+    var questions: List<Question>?
 }
 
 val GroupPredictions = FC<GroupPredictionsProps> { props ->
+    val appState = useContext(AppStateContext)
+    val questions = props.questions ?: appState.questions.values.filter { it.visible }.sortedBy { it.name }
     Grid {
         container = true
         spacing = 2.asDynamic()
         columns = 2.asDynamic()
 
-        props.predictions.map { (question, histogram) ->
+        questions.map { question ->
             Grid {
                 item = true
                 xs = true
                 PredictionPlot {
+                    appState.groupDistributions[question.id]?.let {
+                        this.histogram = it
+                    }
                     this.question = question
-                    this.histogram = histogram
                     key = question.id
                 }
             }

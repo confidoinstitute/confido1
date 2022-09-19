@@ -3,6 +3,8 @@ package tools.confido.question
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
 import kotlinx.serialization.Serializable
+import tools.confido.distributions.TruncatedNormalDistribution
+import tools.confido.utils.binRanges
 
 @Serializable
 data class Question(
@@ -16,6 +18,7 @@ data class Question(
 sealed class AnswerSpace {
     abstract val bins: Int
     abstract fun verifyPrediction(prediction: Prediction): Boolean
+    abstract fun predictionToDistribution(prediction: Prediction): List<Double>
 }
 
 @Serializable
@@ -24,6 +27,11 @@ class BinaryAnswerSpace() : AnswerSpace() {
     override fun verifyPrediction(prediction: Prediction): Boolean {
         val pred = prediction as? BinaryPrediction ?: return false
         return (pred.estimate in 0.0..1.0)
+    }
+
+    override fun predictionToDistribution(prediction: Prediction): List<Double> {
+        val estimate = (prediction as BinaryPrediction).estimate
+        return listOf(1 - estimate, estimate)
     }
 }
 
@@ -37,6 +45,12 @@ class NumericAnswerSpace(
     override fun verifyPrediction(prediction: Prediction): Boolean {
         val pred = prediction as? NumericPrediction ?: return false
         return (pred.mean in min..max && pred.stdDev in 0.0..(max-min)/2)
+    }
+
+    override fun predictionToDistribution(prediction: Prediction): List<Double> {
+        val pred = prediction as NumericPrediction
+        val distribution = TruncatedNormalDistribution(pred.mean, pred.stdDev, min, max)
+        return binRanges(min, max, bins).map {(a, b) -> distribution.probabilityBetween(a, b)}
     }
 
     companion object {

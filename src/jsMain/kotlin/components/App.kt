@@ -127,16 +127,8 @@ val App = FC<Props> {
                 Route {
                     path = "/group_predictions"
 
-                    val groupPredictions = listOf(
-                        Question("staticNumeric", "What are you predictions?", true, NumericAnswerSpace(3, 0.0, 1.0))
-                                to listOf(0.2, 0.5, 0.3),
-                        Question("staticBinary", "Will we manage to finish Confido on time?", true, BinaryAnswerSpace())
-                                to listOf(0.40, 0.60),
-                        Question("dutchBinary", "Will Dutch government choose our app?", true, BinaryAnswerSpace())
-                                to listOf(0.5, 0.5),
-                    )
                     this.element = GroupPredictions.create {
-                        predictions = groupPredictions
+                        questions = null
                     }
                 }
                 Route {
