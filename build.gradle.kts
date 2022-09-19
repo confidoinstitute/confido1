@@ -65,8 +65,9 @@ kotlin {
                 implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
                 implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.7.2")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
-                implementation("org.litote.kmongo:kmongo-coroutine-serialization:$kmongoVersion")
                 implementation("org.slf4j:slf4j-simple:2.0.0")
+                implementation("org.litote.kmongo:kmongo-coroutine:$kmongoVersion")
+                implementation("org.litote.kmongo:kmongo-coroutine-serialization:$kmongoVersion")
             }
         }
         val jsMain by getting {

@@ -13,10 +13,15 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
+import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.LocalDate
 import kotlinx.html.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.litote.kmongo.coroutine.coroutine
+import org.litote.kmongo.eq
+import org.litote.kmongo.reactivestreams.KMongo
 import tools.confido.application.sessions.*
 import tools.confido.payloads.SetName
 import tools.confido.question.Question
@@ -34,28 +39,44 @@ fun HTML.index() {
     }
 }
 
-val commonAnswerSpace = NumericAnswerSpace(32, 0.0, 50.0)
-val questions = listOf(
-    Question("question1", "How are you?", visible = true, answerSpace = NumericAnswerSpace(32, 0.0, 50.0)),
-    Question("numeric_big", "What big number do you like", visible = true, answerSpace = NumericAnswerSpace(32, 1.0, 7280.0)),
-    Question("numeric_date", "When will this happen?", visible = true, answerSpace = NumericAnswerSpace(365, 1640995200.0, 1861833600.0, representsDays = true)),
-    Question("question2", "Is this good?", visible = true, answerSpace = BinaryAnswerSpace()),
-    Question(
-        "invisible_question",
-        "Can you not see this?",
-        visible = false,
-        answerSpace = commonAnswerSpace
-    ),
-)
-
 fun main() {
+    val client = KMongo.createClient().coroutine
+    val database = client.getDatabase("confido1")
+    val questionCollection = database.getCollection<Question>("question")
+
+    val questions = runBlocking {
+        questionCollection.find().toList().associate { question -> question.id to question }
+    }
+
     embeddedServer(CIO, port = 8080, host = "127.0.0.1") {
+        val application = this
         install(WebSockets)
         install(ContentNegotiation) {
             this.json()
         }
         install(Sessions)
         routing {
+            get("/init") {
+                if (!application.developmentMode) {
+                    call.respond(HttpStatusCode.NotFound)
+                    return@get
+                }
+                val commonAnswerSpace = NumericAnswerSpace(32, 0.0, 50.0)
+                val questions = listOf(
+                    Question("question1", "How are you?", visible = true, answerSpace = NumericAnswerSpace(32, 0.0, 50.0)),
+                    Question("numeric_big", "What big number do you like", visible = true, answerSpace = NumericAnswerSpace(32, 1.0, 7280.0)),
+                    Question("numeric_date", "When will this happen?", visible = true, answerSpace = NumericAnswerSpace.fromDates(LocalDate(2022,1,1), LocalDate(2022,12,31))),
+                    Question("question2", "Is this good?", visible = true, answerSpace = BinaryAnswerSpace()),
+                    Question(
+                        "invisible_question",
+                        "Can you not see this?",
+                        visible = false,
+                        answerSpace = commonAnswerSpace
+                    ),
+                )
+                questionCollection.drop()
+                questionCollection.insertMany(questions)
+            }
             get("/{...}") {
                 if (call.userSession == null) {
                     call.userSession = UserSession(name = null, language = "en")
@@ -80,7 +101,7 @@ fun main() {
                 println(prediction)
                 val id = call.parameters["id"] ?: ""
 
-                val question = questions.firstOrNull { it.id == id }
+                val question = questions[id]
                 if (question == null) {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
@@ -105,7 +126,7 @@ fun main() {
 
                 while (true) {
                     val sessionData = call.userSession ?: continue
-                    val state = AppState(questions, sessionData)
+                    val state = AppState(questions.values.sortedBy { question -> question.name }, sessionData)
                     send(Frame.Text(Json.encodeToString(state)))
                     call.transientData?.websocketRefreshChannel?.receive() ?: break
                 }
