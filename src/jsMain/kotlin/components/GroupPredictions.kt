@@ -8,7 +8,10 @@ import space.kscience.plotly.layout
 import space.kscience.plotly.models.Bar
 import space.kscience.plotly.models.Pie
 import tools.confido.question.*
+import tools.confido.utils.binBorders
+import tools.confido.utils.binRanges
 import utils.jsObject
+import kotlin.js.Date
 
 external interface PredictionPlotProps : Props {
     var question: Question
@@ -30,7 +33,7 @@ val PredictionPlot = FC<PredictionPlotProps> {props ->
             css {
                 height = 500.px
             }
-            when(props.question.answerSpace) {
+            when(val answerSpace = props.question.answerSpace) {
                 is BinaryAnswerSpace -> ReactPlotly {
                     if (props.histogram.size != 2)
                         error("This is not a correct size")
@@ -45,13 +48,23 @@ val PredictionPlot = FC<PredictionPlotProps> {props ->
                 is NumericAnswerSpace -> ReactPlotly {
                     traces = listOf(
                         Bar {
-                            x.set(0 until props.histogram.size)
+                            val xBins = binRanges(answerSpace.min, answerSpace.max, answerSpace.bins).map { (it.second + it.first) / 2 }
+                            if (answerSpace.representsDays) {
+                                x.set(xBins.map { Date(it * 1000).toISOString() })
+                            } else {
+                                x.set(xBins)
+                            }
                             y.set(props.histogram)
+                            hoverinfo = "x"
                         }
                     )
                     plotlyInit = { plot ->
                         plot.layout {
                             bargap = 0
+                            yaxis {
+                                visible = false
+                                showline = false
+                            }
                         }
                     }
 
