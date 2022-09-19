@@ -13,8 +13,6 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
 import kotlinx.html.*
@@ -22,7 +20,6 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.litote.kmongo.coroutine.coroutine
-import org.litote.kmongo.eq
 import org.litote.kmongo.reactivestreams.KMongo
 import tools.confido.application.sessions.*
 import tools.confido.payloads.SetName
@@ -104,10 +101,10 @@ fun main() {
                 } else {
                     val setName: SetName = Json.decodeFromString(call.receiveText())
                     call.userSession = session.copy(name = setName.name)
-                    call.transientData?.websocketRefreshChannel?.update { !it }
                     if (!userPredictions.containsKey(setName.name))
                         userPredictions[setName.name] = mutableMapOf()
 
+                    call.transientUserData?.refreshRunningWebsockets()
                     call.respond(HttpStatusCode.OK)
                 }
             }
@@ -130,7 +127,7 @@ fun main() {
                 userPredictions[userName]?.set(id, prediction)
                 groupDistributions[id] = calculateGroupDistribution(question)
 
-                call.transientData?.websocketRefreshChannel?.update { !it }
+                call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
             }
             webSocket("/state") {
@@ -143,7 +140,7 @@ fun main() {
                     return@webSocket
                 }
 
-                call.transientData?.websocketRefreshChannel?.collect() {
+                call.transientUserData?.websocketRefreshChannel?.collect {
                     val sessionData = call.userSession ?: return@collect
                     val state = AppState(questions, userPredictions[sessionData.name]?.toMap() ?: emptyMap(), groupDistributions.toMap(), sessionData)
                     send(Frame.Text(Json.encodeToString(state)))

@@ -78,7 +78,7 @@ var ApplicationCall.userSession: UserSession?
  *
  * In case a session does not exist, setting a value will create a new session.
  */
-var ApplicationCall.transientData: TransientData?
+var ApplicationCall.transientUserData: TransientData?
     get() {
         val id = sessionId ?: return null
         val storage = application.attributes[SessionStorageTransient]
