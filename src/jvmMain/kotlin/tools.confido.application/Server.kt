@@ -50,6 +50,8 @@ fun main() {
         questionCollection.find().toList().associate { question -> question.id to question }
     }
 
+    val userPredictions: MutableMap<String, MutableMap<String, Prediction>> = mutableMapOf()
+
     embeddedServer(CIO, port = 8080, host = "127.0.0.1") {
         val application = this
         install(WebSockets)
@@ -94,6 +96,8 @@ fun main() {
                     val setName: SetName = Json.decodeFromString(call.receiveText())
                     call.userSession = session.copy(name = setName.name)
                     call.transientData?.websocketRefreshChannel?.update { !it }
+                    if (!userPredictions.containsKey(setName.name))
+                        userPredictions[setName.name] = mutableMapOf()
 
                     call.respond(HttpStatusCode.OK)
                 }
@@ -114,6 +118,8 @@ fun main() {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
                 }
+                userPredictions[userName]?.set(id, prediction)
+                call.transientData?.websocketRefreshChannel?.update { !it }
                 call.respond(HttpStatusCode.OK)
             }
             webSocket("/state") {
@@ -128,7 +134,7 @@ fun main() {
 
                 call.transientData?.websocketRefreshChannel?.collect() {
                     val sessionData = call.userSession ?: return@collect
-                    val state = AppState(questions, emptyMap(), sessionData)
+                    val state = AppState(questions, userPredictions[sessionData.name]?.toMap() ?: emptyMap(), sessionData)
                     send(Frame.Text(Json.encodeToString(state)))
                 }
             }

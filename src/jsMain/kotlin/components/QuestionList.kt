@@ -14,6 +14,7 @@ import kotlin.js.Date
 external interface QuestionAnswerFormProps<T : AnswerSpace> : Props {
     var id: String
     var answerSpace: T
+    var prediction: Prediction?
 }
 
 fun postPrediction(prediction: Prediction, qid: String) {
@@ -22,9 +23,10 @@ fun postPrediction(prediction: Prediction, qid: String) {
 
 val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
     val answerSpace = props.answerSpace
+    val prediction = props.prediction as? NumericPrediction ?: NumericPrediction(answerSpace.min, 0.1)
 
-    var mean by useState(answerSpace.min)
-    var stdDev by useState(0.1)
+    var mean by useState(prediction.mean)
+    var stdDev by useState(prediction.stdDev)
 
     val dist = TruncatedNormalDistribution(mean, stdDev, answerSpace.min, answerSpace.max)
 
@@ -96,7 +98,8 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
 }
 
 val BinaryQuestion = FC<QuestionAnswerFormProps<BinaryAnswerSpace>> { props ->
-    var estimate by useState(50)
+    val prediction = props.prediction as? BinaryPrediction ?: BinaryPrediction(0.5)
+    var estimate by useState(prediction.estimate * 100)
 
     fun formatPercent(value: Number): String = "$value %"
 
@@ -113,7 +116,7 @@ val BinaryQuestion = FC<QuestionAnswerFormProps<BinaryAnswerSpace>> { props ->
 
     Fragment {
         MarkedSlider {
-            defaultValue = 50
+            value = estimate
             min = 0
             max = 100
             this.widthToMarks = ::getMarks
@@ -145,11 +148,13 @@ val QuestionList = FC<Props> {
                         NumericQuestion {
                             this.id = question.id
                             this.answerSpace = answerSpace
+                            this.prediction = appState.userPredictions[question.id]
                         }
                     is BinaryAnswerSpace ->
                         BinaryQuestion {
                             this.id = question.id
                             this.answerSpace = answerSpace
+                            this.prediction = appState.userPredictions[question.id]
                         }
                 }
             }

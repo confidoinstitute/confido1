@@ -18,6 +18,7 @@ import mui.system.sx
 import org.w3c.dom.WebSocket
 import react.*
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.h1
 import react.dom.onChange
 import react.router.Route
 import react.router.Routes
@@ -106,6 +107,14 @@ val App = FC<Props> {
 
     AppStateContext.Provider {
         value = appState ?: error("No app state!")
+
+        if (appState?.session?.name == null) {
+          h1 {
+              +"Please, set your name."
+          }
+          SetNameForm {}
+          return@Provider
+        }
 
         BrowserRouter {
             Navigation {}
