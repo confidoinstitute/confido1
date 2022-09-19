@@ -25,7 +25,6 @@ import react.router.dom.BrowserRouter
 import tools.confido.payloads.SetName
 import tools.confido.question.*
 import tools.confido.state.AppState
-import kotlin.coroutines.EmptyCoroutineContext
 
 val AppStateContext = createContext<AppState>()
 
@@ -40,7 +39,7 @@ val SetNameForm = FC<Props> {
         }
         Typography {
             variant = TypographyVariant.body1
-            +"From state: your name is ${appState.session.name} and language is ${appState.session}."
+            +"From state: your name is ${appState.session.name ?: "not set"} and language is ${appState.session.language}."
         }
         div {
             css {
@@ -59,20 +58,7 @@ val SetNameForm = FC<Props> {
             }
             Button {
                 onClick = {
-                    // TODO: Persist this client and reuse for all requests
-                    val client = HttpClient {
-                        install(ContentNegotiation) {
-                            json()
-                        }
-                    }
-
-                    // Not sure if this is the best way to do this.
-                    CoroutineScope(EmptyCoroutineContext).launch {
-                        client.post("setName") {
-                            contentType(ContentType.Application.Json.withParameter("charset", "utf-8"))
-                            setBody(SetName(name))
-                        }
-                    }
+                    Client.postData("/setName", SetName(name))
                 }
                 +"Set name"
             }

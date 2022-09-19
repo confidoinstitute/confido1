@@ -13,6 +13,8 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
 import kotlinx.html.*
@@ -91,18 +93,18 @@ fun main() {
                 } else {
                     val setName: SetName = Json.decodeFromString(call.receiveText())
                     call.userSession = session.copy(name = setName.name)
-                    call.transientData?.websocketRefreshChannel?.send(Unit)
+                    call.transientData?.websocketRefreshChannel?.update { !it }
 
                     call.respond(HttpStatusCode.OK)
                 }
             }
             post("/send_prediction/{id}") {
                 val prediction: Prediction = call.receive()
-                println(prediction)
                 val id = call.parameters["id"] ?: ""
+                val userName = call.userSession?.name
 
                 val question = questions[id]
-                if (question == null) {
+                if (question == null || userName == null) {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
                 }
@@ -124,11 +126,10 @@ fun main() {
                     return@webSocket
                 }
 
-                while (true) {
-                    val sessionData = call.userSession ?: continue
-                    val state = AppState(questions.values.sortedBy { question -> question.name }, sessionData)
+                call.transientData?.websocketRefreshChannel?.collect() {
+                    val sessionData = call.userSession ?: return@collect
+                    val state = AppState(questions, emptyMap(), sessionData)
                     send(Frame.Text(Json.encodeToString(state)))
-                    call.transientData?.websocketRefreshChannel?.receive() ?: break
                 }
             }
             val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "./build/distributions/").canonicalFile

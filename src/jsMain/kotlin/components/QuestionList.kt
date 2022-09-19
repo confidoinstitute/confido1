@@ -1,17 +1,10 @@
 package components
 
-import csstype.ColorProperty
 import emotion.react.css
-import hooks.useElementSize
-import kotlinx.browser.window
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import mui.material.*
-import org.w3c.dom.HTMLSpanElement
 import react.*
 import react.dom.html.ReactHTML.span
 import space.kscience.dataforge.values.asValue
-import space.kscience.plotly.models.*
 import tools.confido.distributions.*
 import tools.confido.question.*
 import utils.*
@@ -23,8 +16,8 @@ external interface QuestionAnswerFormProps<T : AnswerSpace> : Props {
     var answerSpace: T
 }
 
-fun postPrediction(prediction: Prediction, answerSpace: AnswerSpace) {
-    window.alert(Json.encodeToString(prediction))
+fun postPrediction(prediction: Prediction, qid: String) {
+    Client.postData("/send_prediction/${qid}", prediction)
 }
 
 val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
@@ -47,7 +40,7 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
 
     fun sendPrediction() {
         val pred = NumericPrediction(mean, stdDev)
-        postPrediction(pred, answerSpace)
+        postPrediction(pred, props.id)
     }
 
     Fragment {
@@ -109,7 +102,7 @@ val BinaryQuestion = FC<QuestionAnswerFormProps<BinaryAnswerSpace>> { props ->
 
     fun sendPrediction() {
         val pred = BinaryPrediction(estimate / 100.0)
-        postPrediction(pred, props.answerSpace)
+        postPrediction(pred, props.id)
     }
 
     fun getMarks(width: Double) = when(width) {
@@ -134,7 +127,7 @@ val BinaryQuestion = FC<QuestionAnswerFormProps<BinaryAnswerSpace>> { props ->
 
 val QuestionList = FC<Props> {
     val appState = useContext(AppStateContext)
-    val questions = appState.questions
+    val questions = appState.questions.values.sortedBy { it.name }
     val visibleQuestions = questions.filter { it.visible }
 
     visibleQuestions.map { question ->
