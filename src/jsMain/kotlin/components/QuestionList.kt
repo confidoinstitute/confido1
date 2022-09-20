@@ -135,6 +135,7 @@ val QuestionList = FC<Props> {
 
     visibleQuestions.map { question ->
         Accordion {
+            TransitionProps = jsObject { unmountOnExit = true }
             key = question.id
             AccordionSummary {
                 id = question.id
