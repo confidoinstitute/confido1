@@ -34,6 +34,7 @@ val PredictionPlot = FC<PredictionPlotProps> {props ->
         CardContent {
             css {
                 height = 500.px
+                minWidth = 500.px
             }
             when(val answerSpace = props.question.answerSpace) {
                 is BinaryAnswerSpace -> ReactPlotly {
@@ -43,6 +44,7 @@ val PredictionPlot = FC<PredictionPlotProps> {props ->
                         Pie {
                             labels(listOf("No", "Yes"))
                             values(histogram)
+                            sort = false
                         }
                     )
                     this.config = config

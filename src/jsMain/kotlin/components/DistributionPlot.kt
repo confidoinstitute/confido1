@@ -4,14 +4,10 @@ import space.kscience.dataforge.values.Value
 import space.kscience.dataforge.values.asValue
 import space.kscience.plotly.layout
 import space.kscience.plotly.models.Bar
-import space.kscience.plotly.models.Scatter
-import space.kscience.plotly.models.ScatterMode
-import space.kscience.plotly.models.color
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.utils.binBorders
 import tools.confido.utils.binRanges
 import utils.jsObject
-import utils.linearSpace
 
 data class ConfidenceColor(
     val p: Double,
