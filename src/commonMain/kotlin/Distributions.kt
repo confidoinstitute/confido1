@@ -104,12 +104,14 @@ data class TruncatedNormalDistribution(val mean: Double, val stdDev: Double, val
     val pLT = dist.cdf(min)
 
     override fun pdf(x: Double): Double {
+        if (pIn == 0.0) return 0.0
         if (x < min) return 0.0
         if (x > max) return 0.0
         return dist.pdf(x) / pIn
     }
 
     override fun cdf(x: Double): Double {
+        if (pIn == 0.0) return 0.0
         if (x <= min) return 0.0
         if (x >= max) return 1.0
         return dist.probabilityBetween(min, x) / pIn

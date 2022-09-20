@@ -70,7 +70,7 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
         }
         Slider {
             value = stdDev
-            min = 0
+            min = 0.1
             max = (answerSpace.max - answerSpace.min) / 2
             this.step = 0.1
             valueLabelDisplay = "auto"

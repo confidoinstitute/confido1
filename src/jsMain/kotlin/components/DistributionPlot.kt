@@ -28,10 +28,14 @@ external interface DistributionPlotProps : Props {
 }
 
 val DistributionPlot = FC<DistributionPlotProps> {props ->
+    val xTicks = useMemo(props.min, props.max, props.bins) {
+        binBorders(props.min, props.max, props.bins)
+    }
+    val ranges = useMemo(props.min, props.max, props.bins) {
+        binRanges(props.min, props.max, props.bins)
+    }
 
-
-    val xTicks = binBorders(props.min, props.max, props.bins)
-    val yTicks = xTicks.map {props.distribution.pdf(it)}
+    val yTicks = ranges.map {(a, b) -> props.distribution.probabilityBetween(a, b)}
 
     val confidenceIntervals = props.confidences.map {
         Pair(props.distribution.confidenceInterval(1 - it.p), it.color)
