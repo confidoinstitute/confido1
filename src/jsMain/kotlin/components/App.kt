@@ -87,6 +87,7 @@ val App = FC<Props> {
         }
     }
 
+    CssBaseline {}
     AppBar {
         position = AppBarPosition.static
         Toolbar {
