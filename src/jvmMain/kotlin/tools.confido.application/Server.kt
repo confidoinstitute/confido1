@@ -82,10 +82,10 @@ fun main() {
                 // TODO: Secure this or replace.
                 val commonAnswerSpace = NumericAnswerSpace(32, 0.0, 50.0)
                 val questions = listOf(
-                    Question("question1", "How are you?", visible = true, answerSpace = NumericAnswerSpace(32, 0.0, 50.0)),
-                    Question("numeric_big", "What big number do you like", visible = true, answerSpace = NumericAnswerSpace(32, 1.0, 7280.0)),
-                    Question("numeric_date", "When will this happen?", visible = true, answerSpace = NumericAnswerSpace.fromDates(LocalDate(2022,1,1), LocalDate(2022,12,31))),
-                    Question("question2", "Is this good?", visible = true, answerSpace = BinaryAnswerSpace()),
+                    Question("question1", "How are you?", enabled = false, answerSpace = NumericAnswerSpace(32, 0.0, 50.0)),
+                    Question("numeric_big", "What big number do you like", answerSpace = NumericAnswerSpace(32, 1.0, 7280.0)),
+                    Question("numeric_date", "When will this happen?", predictionsVisible = true, resolved = true, answerSpace = NumericAnswerSpace.fromDates(LocalDate(2022,1,1), LocalDate(2022,12,31))),
+                    Question("question2", "Is this good?", predictionsVisible = true, answerSpace = BinaryAnswerSpace()),
                     Question(
                         "invisible_question",
                         "Can you not see this?",

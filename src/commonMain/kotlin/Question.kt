@@ -14,6 +14,7 @@ data class Question(
     var visible: Boolean = true,
     var enabled: Boolean = true,
     var predictionsVisible: Boolean = false,
+    var resolved: Boolean = false,
 )
 
 @Serializable
