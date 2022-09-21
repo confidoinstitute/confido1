@@ -23,7 +23,7 @@ import org.litote.kmongo.coroutine.CoroutineCollection
 import org.litote.kmongo.coroutine.coroutine
 import org.litote.kmongo.reactivestreams.KMongo
 import tools.confido.application.sessions.*
-import tools.confido.payloads.SetName
+import tools.confido.payloads.*
 import tools.confido.question.Question
 import tools.confido.state.AppState
 import tools.confido.state.UserSession
@@ -117,6 +117,32 @@ fun main() {
                     call.transientUserData?.refreshRunningWebsockets()
                     call.respond(HttpStatusCode.OK)
                 }
+            }
+            post("/edit_question/{id}") {
+                val editQuestion: EditQuestion = call.receive()
+                val id = call.parameters["id"] ?: ""
+
+                val question = ServerState.questions[id]
+                if (question == null) {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                when(editQuestion.field) {
+                    EditQuestionField.VISIBLE -> {
+                        question.visible = editQuestion.value
+                        question.enabled = question.enabled && editQuestion.value
+                    }
+                    EditQuestionField.ENABLED -> question.enabled = editQuestion.value
+                    EditQuestionField.PREDICTIONS_VISIBLE -> question.predictionsVisible = editQuestion.value
+                    EditQuestionField.RESOLVED -> {
+                        question.resolved = editQuestion.value
+                        question.enabled = question.enabled && !editQuestion.value
+                    }
+                }
+
+                call.transientUserData?.refreshRunningWebsockets()
+                call.respond(HttpStatusCode.OK)
             }
             post("/send_prediction/{id}") {
                 val prediction: Prediction = call.receive()

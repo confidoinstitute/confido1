@@ -137,6 +137,11 @@ val App = FC<Props> {
 
                     this.element = SetNameForm.create()
                 }
+                Route {
+                    path = "/edit_questions"
+
+                    this.element = EditQuestions.create()
+                }
             }
         }
     }

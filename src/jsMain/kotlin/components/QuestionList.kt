@@ -176,6 +176,13 @@ val QuestionList = FC<Props> {
                         size = Size.small
                     }
                 }
+                if (question.resolved) {
+                    Chip {
+                        label = ReactNode("Resolved")
+                        variant = ChipVariant.outlined
+                        size = Size.small
+                    }
+                }
             }
             AccordionDetails {
                 when (val answerSpace = question.answerSpace) {

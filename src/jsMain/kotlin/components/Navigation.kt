@@ -9,6 +9,7 @@ import react.router.useLocation
 val locations = mapOf(
     "/" to "Questions",
     "/group_predictions" to "Group predictions",
+    "/edit_questions" to "Edit questions",
     "/set_name" to "Change name",
 )
 
