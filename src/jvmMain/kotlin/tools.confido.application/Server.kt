@@ -19,6 +19,7 @@ import kotlinx.html.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.litote.kmongo.coroutine.CoroutineCollection
 import org.litote.kmongo.coroutine.coroutine
 import org.litote.kmongo.reactivestreams.KMongo
 import tools.confido.application.sessions.*
@@ -38,25 +39,37 @@ fun HTML.index() {
     }
 }
 
+object ServerState {
+    var questions: Map<String, Question> = emptyMap()
+    val userPredictions: MutableMap<String, MutableMap<String, Prediction>> = mutableMapOf()
+    var groupDistributions: MutableMap<String, List<Double>> = mutableMapOf()
+
+    fun loadQuestions(collection: CoroutineCollection<Question>) {
+        questions = runBlocking {
+            collection.find().toList().associateBy { question -> question.id }
+        }
+        calculateGroupDistribution()
+    }
+    fun calculateGroupDistribution(question: Question) {
+        groupDistributions[question.id] = userPredictions.values.mapNotNull {
+            it[question.id]?.let { prediction -> question.answerSpace.predictionToDistribution(prediction) }
+        }.fold(List(question.answerSpace.bins) { 0.0 }) { acc, dist ->
+            dist.zip(acc) { a, b -> a + b }
+        }
+    }
+    fun calculateGroupDistribution() {
+        questions.mapValues { (_, question) -> calculateGroupDistribution(question) }
+    }
+    fun appState(sessionData: UserSession) =
+    AppState(questions, userPredictions[sessionData.name]?.toMap() ?: emptyMap(), groupDistributions.toMap(), sessionData)
+}
+
 fun main() {
     val client = KMongo.createClient().coroutine
     val database = client.getDatabase("confido1")
     val questionCollection = database.getCollection<Question>("question")
 
-    val questions = runBlocking {
-        questionCollection.find().toList().associateBy { question -> question.id }
-    }
-
-    // TODO connect and persist with database
-    val userPredictions: MutableMap<String, MutableMap<String, Prediction>> = mutableMapOf()
-
-    fun calculateGroupDistribution(question: Question) = userPredictions.values.mapNotNull {
-            it[question.id]?.let { prediction -> question.answerSpace.predictionToDistribution(prediction) }
-        }.fold(List(question.answerSpace.bins) { 0.0 }) { acc, dist ->
-            dist.zip(acc) { a, b -> a + b }
-        }
-
-    val groupDistributions: MutableMap<String, List<Double>> = questions.mapValues { (_, question) -> calculateGroupDistribution(question) }.toMutableMap()
+    ServerState.loadQuestions(questionCollection)
 
     embeddedServer(CIO, port = 8080, host = "127.0.0.1") {
         install(WebSockets)
@@ -82,6 +95,7 @@ fun main() {
                 )
                 questionCollection.drop()
                 questionCollection.insertMany(questions)
+                ServerState.loadQuestions(questionCollection)
             }
             get("/{...}") {
                 if (call.userSession == null) {
@@ -97,8 +111,8 @@ fun main() {
                 } else {
                     val setName: SetName = Json.decodeFromString(call.receiveText())
                     call.userSession = session.copy(name = setName.name)
-                    if (!userPredictions.containsKey(setName.name))
-                        userPredictions[setName.name] = mutableMapOf()
+                    if (!ServerState.userPredictions.containsKey(setName.name))
+                        ServerState.userPredictions[setName.name] = mutableMapOf()
 
                     call.transientUserData?.refreshRunningWebsockets()
                     call.respond(HttpStatusCode.OK)
@@ -109,7 +123,7 @@ fun main() {
                 val id = call.parameters["id"] ?: ""
                 val userName = call.userSession?.name
 
-                val question = questions[id]
+                val question = ServerState.questions[id]
                 if (question == null || userName == null) {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
@@ -120,8 +134,8 @@ fun main() {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
                 }
-                userPredictions[userName]?.set(id, prediction)
-                groupDistributions[id] = calculateGroupDistribution(question)
+                ServerState.userPredictions[userName]?.set(id, prediction)
+                ServerState.calculateGroupDistribution(question)
 
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
@@ -138,7 +152,7 @@ fun main() {
 
                 call.transientUserData?.websocketRefreshChannel?.collect {
                     val sessionData = call.userSession ?: return@collect
-                    val state = AppState(questions, userPredictions[sessionData.name]?.toMap() ?: emptyMap(), groupDistributions.toMap(), sessionData)
+                    val state = ServerState.appState(sessionData)
                     send(Frame.Text(Json.encodeToString(state)))
                 }
             }
