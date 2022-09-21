@@ -10,8 +10,9 @@ import tools.confido.utils.binRanges
 data class Question(
     val id: String,
     val name: String,
-    var visible: Boolean,
-    var answerSpace: AnswerSpace,
+    val answerSpace: AnswerSpace,
+    var visible: Boolean = true,
+    var enabled: Boolean = true,
 )
 
 @Serializable

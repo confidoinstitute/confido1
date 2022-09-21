@@ -3,7 +3,9 @@ package components
 import emotion.react.css
 import mui.material.*
 import react.*
+import react.dom.aria.ariaLabel
 import react.dom.html.ReactHTML.span
+import space.kscience.dataforge.values.Value
 import space.kscience.dataforge.values.asValue
 import tools.confido.distributions.*
 import tools.confido.question.*
@@ -13,6 +15,7 @@ import kotlin.js.Date
 
 external interface QuestionAnswerFormProps<T : AnswerSpace> : Props {
     var id: String
+    var enabled: Boolean
     var answerSpace: T
     var prediction: Prediction?
 }
@@ -32,11 +35,17 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
 
     val step = if (props.answerSpace.representsDays) 86400 else 0.1
 
-    val confidences = listOf(
-        ConfidenceColor(0.9, "#039be5".asValue()),
-        ConfidenceColor(0.7, "#1565c0".asValue()),
-        ConfidenceColor(0.5, "#311b92".asValue())
-    )
+    val confidences = useMemo(props.enabled) {
+        if (props.enabled) listOf(
+            ConfidenceColor(0.9, "#039be5".asValue()),
+            ConfidenceColor(0.7, "#1565c0".asValue()),
+            ConfidenceColor(0.5, "#311b92".asValue())
+        ) else listOf(
+            ConfidenceColor(0.9, "#bfbfbf".asValue()),
+            ConfidenceColor(0.7, "#acacac".asValue()),
+            ConfidenceColor(0.5, "#a0a0a0".asValue())
+        )
+    }
 
     fun formatDate(value: Number): String = Date(value.toDouble() * 1000.0).toISOString().substring(0, 10)
 
@@ -53,26 +62,36 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
             this.bins = 200
             distribution = dist
             this.confidences = confidences
+            outsideColor = if (props.enabled) Value.of("#000e47") else Value.of("#9c9c9c")
         }
 
         MarkedSlider {
+            ariaLabel = "Mean Value"
+
+            disabled = !props.enabled
             value = mean
             min = answerSpace.min
             max = answerSpace.max
             this.step = step
+
             valueLabelDisplay = "auto"
             if (answerSpace.representsDays) {
                 this.valueLabelFormat = ::formatDate
                 this.widthToMarks = { width -> dateMarkSpacing(width, answerSpace.min, answerSpace.max) }
             }
+
             onChange = { _, value, _ -> mean = value }
             onChangeCommitted = { _, _ -> sendPrediction() }
         }
         Slider {
+            ariaLabel = "Uncertainty"
+
+            disabled = !props.enabled
             value = stdDev
             min = 0.1
             max = (answerSpace.max - answerSpace.min) / 2
             this.step = 0.1
+
             valueLabelDisplay = "auto"
             onChange = { _, value, _ -> stdDev = value }
             onChangeCommitted = { _, _ -> sendPrediction() }
@@ -116,12 +135,17 @@ val BinaryQuestion = FC<QuestionAnswerFormProps<BinaryAnswerSpace>> { props ->
 
     Fragment {
         MarkedSlider {
+            ariaLabel = "Estimate"
+
+            disabled = !props.enabled
             value = estimate
             min = 0
             max = 100
+
             this.widthToMarks = ::getMarks
             valueLabelDisplay = "auto"
             valueLabelFormat = ::formatPercent
+
             onChange = { _, value, _ -> estimate = value }
             onChangeCommitted = { _, _ -> sendPrediction() }
         }
@@ -142,18 +166,27 @@ val QuestionList = FC<Props> {
                 Typography {
                     +question.name
                 }
+                if (appState.userPredictions[question.id] == null && question.enabled) {
+                    Chip {
+                        label = ReactNode("Unanswered")
+                        variant = ChipVariant.outlined
+                        size = Size.small
+                    }
+                }
             }
             AccordionDetails {
                 when (val answerSpace = question.answerSpace) {
                     is NumericAnswerSpace ->
                         NumericQuestion {
                             this.id = question.id
+                            this.enabled = question.enabled
                             this.answerSpace = answerSpace
                             this.prediction = appState.userPredictions[question.id]
                         }
                     is BinaryAnswerSpace ->
                         BinaryQuestion {
                             this.id = question.id
+                            this.enabled = question.enabled
                             this.answerSpace = answerSpace
                             this.prediction = appState.userPredictions[question.id]
                         }

@@ -21,6 +21,7 @@ external interface DistributionPlotProps : Props {
     var max: Double
     var bins: Int
     var confidences: List<ConfidenceColor>
+    var outsideColor: Value?
 }
 
 val DistributionPlot = FC<DistributionPlotProps> {props ->
@@ -39,9 +40,10 @@ val DistributionPlot = FC<DistributionPlotProps> {props ->
     fun barColor(x: Double) = confidenceIntervals.find {
             val (start, end) = it.first
             (x in start..end)
-        }?.second ?: Value.of("#000e47")
+        }?.second ?: props.outsideColor ?: Value.of("")
 
     val colorTicks = xTicks.map { barColor(it) }
+
 
     ReactPlotly {
         id = props.id
