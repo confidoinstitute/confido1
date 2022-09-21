@@ -13,6 +13,7 @@ data class Question(
     val answerSpace: AnswerSpace,
     var visible: Boolean = true,
     var enabled: Boolean = true,
+    var predictionsVisible: Boolean = false,
 )
 
 @Serializable

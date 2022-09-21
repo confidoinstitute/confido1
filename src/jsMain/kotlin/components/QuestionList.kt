@@ -5,6 +5,7 @@ import mui.material.*
 import react.*
 import react.dom.aria.ariaLabel
 import react.dom.html.ReactHTML.span
+import react.router.useNavigate
 import space.kscience.dataforge.values.Value
 import space.kscience.dataforge.values.asValue
 import tools.confido.distributions.*
@@ -157,6 +158,8 @@ val QuestionList = FC<Props> {
     val questions = appState.questions.values.sortedBy { it.name }
     val visibleQuestions = questions.filter { it.visible }
 
+    val navigate = useNavigate()
+
     visibleQuestions.map { question ->
         Accordion {
             TransitionProps = jsObject { unmountOnExit = true }
@@ -190,6 +193,15 @@ val QuestionList = FC<Props> {
                             this.answerSpace = answerSpace
                             this.prediction = appState.userPredictions[question.id]
                         }
+                }
+                if (question.predictionsVisible) {
+                    Typography {
+                        +"Group predictions:"
+                        Button {
+                            onClick = { navigate("/group_predictions") }
+                            +"Go"
+                        }
+                    }
                 }
             }
         }
