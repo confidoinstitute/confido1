@@ -42,14 +42,14 @@ fun markSpacing(width: Double, start: Double, end: Double): List<Double> {
 
     val markBase = roundNumbers().takeWhile{it <= range}.find {step ->
         val lastMark = floor(end / step) * step
-        (width / (range / step) >= strLength(lastMark) * 20)
+        (width / (range / step) >= strLength(lastMark) * 10 + 10)
     } ?: return emptyList()
 
     var firstMark = ceil(start / markBase) * markBase
-    if (unitWidth * (firstMark - start) < 20 * strLength(firstMark)) firstMark += markBase
+    if (unitWidth * (firstMark - start) < 10 * strLength(firstMark) + 10) firstMark += markBase
 
     var lastMark = floor(end / markBase) * markBase
-    if (unitWidth * (end - lastMark) < 20 * strLength(lastMark)) lastMark -= markBase
+    if (unitWidth * (end - lastMark) < 10 * strLength(lastMark) + 10) lastMark -= markBase
 
     return sequence {
         yield(start)
