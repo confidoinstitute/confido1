@@ -1,6 +1,7 @@
 package components
 
 import emotion.react.css
+import icons.ExpandMore
 import mui.material.*
 import react.*
 import react.dom.aria.ariaLabel
@@ -166,6 +167,7 @@ val QuestionList = FC<Props> {
             key = question.id
             AccordionSummary {
                 id = question.id
+                expandIcon = ExpandMore.create()
                 Typography {
                     +question.name
                 }
