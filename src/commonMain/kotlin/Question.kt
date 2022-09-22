@@ -2,12 +2,14 @@ package tools.confido.question
 
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import tools.confido.distributions.TruncatedNormalDistribution
 import tools.confido.utils.binRanges
 
 @Serializable
 data class Question(
+    @SerialName("_id")
     val id: String,
     val name: String,
     val answerSpace: AnswerSpace,

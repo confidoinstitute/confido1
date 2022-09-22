@@ -40,6 +40,7 @@ val EditQuestions = FC<Props> {
                         ).map {(current, field) ->
                             TableCell {
                                 Checkbox {
+                                    disabled = !appState.isAdmin
                                     checked = current
                                     onChange = { _, checked -> postEditQuestion(question.id, field, checked) }
                                 }

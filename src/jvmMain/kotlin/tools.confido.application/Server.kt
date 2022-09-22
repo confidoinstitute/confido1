@@ -61,7 +61,7 @@ object ServerState {
         questions.mapValues { (_, question) -> calculateGroupDistribution(question) }
     }
     fun appState(sessionData: UserSession) =
-    AppState(questions, userPredictions[sessionData.name]?.toMap() ?: emptyMap(), groupDistributions.toMap(), sessionData)
+    AppState(questions, userPredictions[sessionData.name]?.toMap() ?: emptyMap(), groupDistributions.toMap(), sessionData, sessionData.name == "Admin")
 }
 
 fun main() {

@@ -10,4 +10,5 @@ data class AppState(
     val userPredictions: Map<String, Prediction>,
     val groupDistributions: Map<String, List<Double>>,
     val session: UserSession,
+    val isAdmin: Boolean = false,
 )
