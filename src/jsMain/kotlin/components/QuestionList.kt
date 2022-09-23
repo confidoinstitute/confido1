@@ -5,7 +5,9 @@ import icons.ExpandMore
 import mui.material.*
 import react.*
 import react.dom.aria.ariaLabel
+import react.dom.html.ReactHTML.em
 import react.dom.html.ReactHTML.span
+import react.dom.html.ReactHTML.strong
 import react.router.useNavigate
 import space.kscience.dataforge.values.Value
 import space.kscience.dataforge.values.asValue
@@ -28,7 +30,9 @@ fun postPrediction(prediction: Prediction, qid: String) {
 
 val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
     val answerSpace = props.answerSpace
-    val prediction = props.prediction as? NumericPrediction ?: NumericPrediction(answerSpace.min, 0.1)
+    val prediction = props.prediction as? NumericPrediction ?: NumericPrediction((answerSpace.min + answerSpace.max) / 2.0, (answerSpace.max - answerSpace.min) / 4)
+    var madePrediction by useState(props.prediction != null)
+    var madeUncertainty by useState(madePrediction)
 
     var mean by useState(prediction.mean)
     var stdDev by useState(prediction.stdDev)
@@ -50,6 +54,7 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
     }
 
     fun formatDate(value: Number): String = Date(value.toDouble() * 1000.0).toISOString().substring(0, 10)
+    fun formatUncertainty(value: Number): String = "Specify your uncertainty"
 
     fun sendPrediction() {
         val pred = NumericPrediction(mean, stdDev)
@@ -65,6 +70,7 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
             distribution = dist
             this.confidences = confidences
             outsideColor = if (props.enabled) Value.of("#000e47") else Value.of("#9c9c9c")
+            this.visible = madePrediction && madeUncertainty
         }
 
         MarkedSlider {
@@ -75,29 +81,36 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
             min = answerSpace.min
             max = answerSpace.max
             this.step = step
+            this.madePrediction = madePrediction
 
-            valueLabelDisplay = "auto"
+            valueLabelDisplay = if (madePrediction || !props.enabled) "auto" else "on"
             if (answerSpace.representsDays) {
                 this.valueLabelFormat = ::formatDate
                 this.widthToMarks = { width -> dateMarkSpacing(width, answerSpace.min, answerSpace.max) }
             }
 
+            onFocus = { madePrediction = true }
             onChange = { _, value, _ -> mean = value }
-            onChangeCommitted = { _, _ -> sendPrediction() }
+            onChangeCommitted = { _, _ -> if (madeUncertainty) sendPrediction() }
         }
         Slider {
             ariaLabel = "Uncertainty"
 
-            disabled = !props.enabled
+            disabled = !props.enabled || !madePrediction
             value = stdDev
             min = 0.1
             max = (answerSpace.max - answerSpace.min) / 2
             this.step = 0.1
 
-            valueLabelDisplay = "auto"
+            valueLabelDisplay = if (madeUncertainty || !madePrediction) "off" else "on"
+            if (!madeUncertainty)
+                valueLabelFormat = ::formatUncertainty
+            track = if (madeUncertainty) "normal" else false.asDynamic()
+            onFocus = { madePrediction = true; madeUncertainty = true }
             onChange = { _, value, _ -> stdDev = value }
             onChangeCommitted = { _, _ -> sendPrediction() }
         }
+        if (madePrediction && madeUncertainty)
         confidences.map { confidence ->
             Typography {
                 val confidenceInterval = dist.confidenceInterval(1 - confidence.p)
@@ -121,6 +134,7 @@ val NumericQuestion = FC<QuestionAnswerFormProps<NumericAnswerSpace>> { props ->
 val BinaryQuestion = FC<QuestionAnswerFormProps<BinaryAnswerSpace>> { props ->
     val prediction = props.prediction as? BinaryPrediction ?: BinaryPrediction(0.5)
     var estimate by useState(prediction.estimate * 100)
+    var madePrediction by useState(props.prediction != null)
 
     fun formatPercent(value: Number): String = "$value %"
 
@@ -145,11 +159,40 @@ val BinaryQuestion = FC<QuestionAnswerFormProps<BinaryAnswerSpace>> { props ->
             max = 100
 
             this.widthToMarks = ::getMarks
-            valueLabelDisplay = "auto"
+            valueLabelDisplay = if (madePrediction || !props.enabled) "auto" else "on"
             valueLabelFormat = ::formatPercent
+            this.madePrediction = madePrediction
 
+            onFocus = { madePrediction = true }
             onChange = { _, value, _ -> estimate = value }
             onChangeCommitted = { _, _ -> sendPrediction() }
+        }
+        Typography {
+            if (madePrediction) {
+                when (estimate) {
+                    0.0 -> {
+                        +"There is "
+                        strong {
+                            +"absolutely no chance"
+                        }
+                        +". (Are you sure?)"
+                    }
+                    100.0 -> {
+                        +"This is an "
+                        strong {
+                            +"absolute certainty"
+                        }
+                        +". (Are you sure?)"
+                    }
+                    else -> {
+                        +"There is "
+                        strong {
+                            +"$estimate %"
+                        }
+                        +" chance."
+                    }
+                }
+            }
         }
     }
 }
@@ -173,7 +216,7 @@ val QuestionList = FC<Props> {
                 }
                 if (appState.userPredictions[question.id] == null && question.enabled) {
                     Chip {
-                        label = ReactNode("Unanswered")
+                        label = ReactNode("Make a prediction")
                         variant = ChipVariant.outlined
                         size = Size.small
                     }

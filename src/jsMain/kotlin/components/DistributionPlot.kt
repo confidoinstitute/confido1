@@ -22,6 +22,7 @@ external interface DistributionPlotProps : Props {
     var bins: Int
     var confidences: List<ConfidenceColor>
     var outsideColor: Value?
+    var visible: Boolean
 }
 
 val DistributionPlot = FC<DistributionPlotProps> {props ->
@@ -49,7 +50,7 @@ val DistributionPlot = FC<DistributionPlotProps> {props ->
         id = props.id
         annotations = listOf()
 
-        traces = listOf(
+        traces = if (props.visible) listOf(
             Bar {
                 x.set(xTicks)
                 y.set(yTicks)
@@ -57,7 +58,7 @@ val DistributionPlot = FC<DistributionPlotProps> {props ->
                     colors(colorTicks)
                 }
             }
-        )
+        ) else listOf()
 
         plotlyInit = { plot ->
             plot.layout {
