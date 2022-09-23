@@ -3,6 +3,7 @@ package components
 import emotion.react.css
 import icons.ExpandMore
 import mui.material.*
+import mui.material.styles.TypographyVariant
 import react.*
 import react.dom.aria.ariaLabel
 import react.dom.html.ReactHTML.em
@@ -168,6 +169,14 @@ val BinaryQuestion = FC<QuestionAnswerFormProps<BinaryAnswerSpace>> { props ->
             onChangeCommitted = { _, _ -> sendPrediction() }
         }
         Typography {
+            fun certaintyExplanation() {
+                Explanation {
+                    title = "Absolute certainty"
+                    Typography {
+                        +"To say something with absolute certainty is an extremely strong claim. In most cases during forecasting, there is still even a minimal chance that the true answer is different from your expectations."
+                    }
+                }
+            }
             if (madePrediction) {
                 when (estimate) {
                     0.0 -> {
@@ -176,6 +185,7 @@ val BinaryQuestion = FC<QuestionAnswerFormProps<BinaryAnswerSpace>> { props ->
                             +"absolutely no chance"
                         }
                         +". (Are you sure?)"
+                        certaintyExplanation()
                     }
                     100.0 -> {
                         +"This is an "
@@ -183,6 +193,7 @@ val BinaryQuestion = FC<QuestionAnswerFormProps<BinaryAnswerSpace>> { props ->
                             +"absolute certainty"
                         }
                         +". (Are you sure?)"
+                        certaintyExplanation()
                     }
                     else -> {
                         +"There is "
@@ -212,6 +223,7 @@ val QuestionList = FC<Props> {
                 id = question.id
                 expandIcon = ExpandMore.create()
                 Typography {
+                    variant = TypographyVariant.h4
                     +question.name
                 }
                 if (appState.userPredictions[question.id] == null && question.enabled) {
