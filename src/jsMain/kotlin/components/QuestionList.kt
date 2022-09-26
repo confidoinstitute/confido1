@@ -1,13 +1,15 @@
 package components
 
+import csstype.Position
+import csstype.px
 import emotion.react.css
+import icons.AddIcon
 import icons.EditIcon
 import icons.ExpandMore
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import react.*
 import react.dom.aria.ariaLabel
-import react.dom.html.ReactHTML.em
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.strong
 import react.router.useNavigate
@@ -226,10 +228,6 @@ val QuestionList = FC<Props> {
             onClose = { editOpen = false }
         }
     }
-    Button {
-        +"Create question"
-        onClick = {editQuestion = null; editOpen = true}
-    }
 
     visibleQuestions.map { question ->
         Accordion {
@@ -290,6 +288,19 @@ val QuestionList = FC<Props> {
                     }
                 }
             }
+        }
+    }
+
+    if (appState.isAdmin) {
+        Fab {
+            css {
+                position = Position.absolute
+                right = 16.px
+                bottom = 16.px
+            }
+            onClick = { editQuestion = null; editOpen = true }
+            this.size = Size.small
+            AddIcon {}
         }
     }
 }
