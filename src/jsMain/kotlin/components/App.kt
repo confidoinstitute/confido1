@@ -76,11 +76,13 @@ val App = FC<Props> {
         val ws = webSocket.current ?: error("WebSocket does not exist???")
         ws.onmessage = {
             appState = Json.decodeFromString(it.data.toString())
+            @Suppress("RedundantUnitExpression")
             Unit // This is not redundant, because assignment fails some weird type checks
         }
         ws.onclose = {
             appState = null
-            Unit
+            @Suppress("RedundantUnitExpression")
+            Unit // This is not redundant, because assignment fails some weird type checks
         }
         cleanup {
             ws.close()
