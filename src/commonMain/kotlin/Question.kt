@@ -22,6 +22,7 @@ data class Question(
 @Serializable
 sealed class AnswerSpace {
     abstract val bins: Int
+    abstract fun verifyParams(): Boolean
     abstract fun verifyPrediction(prediction: Prediction): Boolean
     abstract fun predictionToDistribution(prediction: Prediction): List<Double>
 }
@@ -29,6 +30,8 @@ sealed class AnswerSpace {
 @Serializable
 class BinaryAnswerSpace() : AnswerSpace() {
     override val bins: Int = 2
+    override fun verifyParams() = true
+
     override fun verifyPrediction(prediction: Prediction): Boolean {
         val pred = prediction as? BinaryPrediction ?: return false
         return (pred.estimate in 0.0..1.0)
@@ -47,6 +50,8 @@ class NumericAnswerSpace(
     val max: Double,
     val representsDays: Boolean = false
 ) : AnswerSpace() {
+    override fun verifyParams() = (!min.isNaN() && !max.isNaN() && min < max)
+
     override fun verifyPrediction(prediction: Prediction): Boolean {
         val pred = prediction as? NumericPrediction ?: return false
         return (pred.mean in min..max && pred.stdDev in 0.0..(max-min)/2)

@@ -1,6 +1,7 @@
 package components
 
 import emotion.react.css
+import icons.EditIcon
 import icons.ExpandMore
 import mui.material.*
 import mui.material.styles.TypographyVariant
@@ -215,6 +216,21 @@ val QuestionList = FC<Props> {
 
     val navigate = useNavigate()
 
+    var editQuestion by useState<Question?>(null)
+    var editOpen by useState(false)
+
+    if (editOpen) {
+        EditQuestionDialog {
+            question = editQuestion
+            open = editOpen
+            onClose = { editOpen = false }
+        }
+    }
+    Button {
+        +"Create question"
+        onClick = {editQuestion = null; editOpen = true}
+    }
+
     visibleQuestions.map { question ->
         Accordion {
             TransitionProps = jsObject { unmountOnExit = true }
@@ -238,6 +254,12 @@ val QuestionList = FC<Props> {
                         label = ReactNode("Resolved")
                         variant = ChipVariant.outlined
                         size = Size.small
+                    }
+                }
+                if (appState.isAdmin) {
+                    IconButton {
+                        onClick = {editQuestion = question; editOpen = true}
+                        EditIcon {}
                     }
                 }
             }
