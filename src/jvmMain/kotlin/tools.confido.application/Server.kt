@@ -29,7 +29,6 @@ import tools.confido.question.Question
 import tools.confido.state.AppState
 import tools.confido.state.UserSession
 import tools.confido.question.*
-import tools.confido.utils.randomString
 import java.io.File
 
 fun HTML.index() {
@@ -120,50 +119,7 @@ fun main() {
                     call.respond(HttpStatusCode.OK)
                 }
             }
-            post("/edit_question/{id}") {
-                println("Called edit_question")
-                val id = call.parameters["id"] ?: ""
-                println(id)
-                val editQuestion: EditQuestion = call.receive()
-                println(editQuestion)
-
-                when (editQuestion) {
-                    is EditQuestionField -> {
-                        println(editQuestion)
-                        val question = questions[id]
-                        if (question == null) {
-                            call.respond(HttpStatusCode.BadRequest)
-                            return@post
-                        }
-
-                        when (editQuestion.fieldType) {
-                            EditQuestionFieldType.VISIBLE -> {
-                                question.visible = editQuestion.value
-                                question.enabled = question.enabled && editQuestion.value
-                            }
-                            EditQuestionFieldType.ENABLED -> question.enabled = editQuestion.value
-                            EditQuestionFieldType.PREDICTIONS_VISIBLE -> question.predictionsVisible =
-                                editQuestion.value
-                            EditQuestionFieldType.RESOLVED -> {
-                                question.resolved = editQuestion.value
-                                question.enabled = question.enabled && !editQuestion.value
-                            }
-                        }
-                    }
-                    is EditQuestionComplete -> {
-                        val qid = editQuestion.question.id.ifEmpty { randomString(20) }
-                        val question = editQuestion.question.copy(id=qid)
-
-                        questions = questions + mapOf(qid to question)
-                    }
-                }
-
-                call.transientUserData?.refreshRunningWebsockets()
-                call.respond(HttpStatusCode.OK)
-            }
-            get("/error") {
-                throw Exception()
-            }
+            editQuestion(this)
             post("/send_prediction/{id}") {
                 val prediction: Prediction = call.receive()
                 val id = call.parameters["id"] ?: ""
