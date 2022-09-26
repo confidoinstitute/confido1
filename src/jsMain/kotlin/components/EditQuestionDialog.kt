@@ -1,15 +1,9 @@
 package components
 
 import Client
-import kotlinx.browser.document
-import kotlinx.browser.window
 import mui.material.*
-import org.w3c.dom.HTMLInputElement
 import react.*
-import react.dom.events.ChangeEvent
-import react.dom.events.FormEvent
 import react.dom.html.InputType
-import react.dom.html.ReactHTML.input
 import react.dom.onChange
 import tools.confido.payloads.EditQuestion
 import tools.confido.payloads.EditQuestionComplete
@@ -19,9 +13,10 @@ import tools.confido.question.NumericAnswerSpace
 import tools.confido.question.Question
 import utils.eventNumberValue
 import utils.eventValue
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.reflect.KMutableProperty
+import utils.toISODay
+import utils.toTimestamp
+import kotlin.js.Date
+import kotlin.math.floor
 
 external interface EditAnswerSpaceProps<T: AnswerSpace> : Props {
     var minValue: Double
@@ -39,7 +34,6 @@ val EditNumericAnswerSpace = FC<EditAnswerSpaceProps<NumericAnswerSpace>> {props
         props.onChange?.invoke(NumericAnswerSpace(32, minValue, maxValue))
     }
 
-    // TODO error handling
     FormGroup {
         TextField {
             margin = FormControlMargin.dense
@@ -68,7 +62,41 @@ val EditNumericAnswerSpace = FC<EditAnswerSpaceProps<NumericAnswerSpace>> {props
     }
 }
 
-// TODO EditDateAnswerSpace
+val EditDaysAnswerSpace = FC<EditAnswerSpaceProps<NumericAnswerSpace>> {props ->
+    var minValue by useState(props.minValue.toISODay())
+    var maxValue by useState(props.maxValue.toISODay())
+
+    useEffect(minValue, maxValue) {
+        props.onChange?.invoke(NumericAnswerSpace(32, minValue.toTimestamp(), maxValue.toTimestamp(), representsDays = true))
+    }
+
+    FormGroup {
+        TextField {
+            margin = FormControlMargin.dense
+            type = InputType.date
+            value = minValue
+            label = ReactNode("First day")
+            error = props.error
+            disabled = props.disabled
+            onChange = {
+                minValue = it.eventValue()
+            }
+        }
+        TextField {
+            margin = FormControlMargin.dense
+            type = InputType.date
+            value = maxValue
+            label = ReactNode("Last day")
+            error = props.error
+            disabled = props.disabled
+            if (props.error)
+                helperText = ReactNode("Inconsistent range.")
+            onChange = {
+                maxValue = it.eventValue()
+            }
+        }
+    }
+}
 
 external interface EditQuestionDialogProps : Props {
     var question: Question?
@@ -120,7 +148,8 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> {props ->
     val answerSpaceType = when(answerSpace) {
         null -> ""
         is BinaryAnswerSpace -> "binary"
-        is NumericAnswerSpace -> "numeric"
+        is NumericAnswerSpace ->
+            if ((answerSpace as NumericAnswerSpace).representsDays) "day" else "numeric"
     }
 
     Dialog {
@@ -163,10 +192,14 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> {props ->
                             "" -> answerSpace = null
                             "binary" -> answerSpace = BinaryAnswerSpace()
                             "numeric" -> answerSpace = NumericAnswerSpace(32, 0.0, 1.0)
+                            "day" -> {
+                                val today = floor(Date().getTime() / 86400000) * 86400
+                                answerSpace = NumericAnswerSpace(32, today, today, representsDays = true)
+                            }
                         }
                         errorEmptyAnswerSpace = false
                     }
-                    mapOf("" to "Choose...", "binary" to "Binary", "numeric" to "Numeric").map { (value, label) ->
+                    mapOf("" to "Choose...", "binary" to "Binary", "numeric" to "Numeric", "day" to "Day").map { (value, label) ->
                         MenuItem {
                             this.value = value
                             +label
@@ -176,7 +209,8 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> {props ->
             }
             if (answerSpace is NumericAnswerSpace) {
                 val numericAnswerSpace = answerSpace as NumericAnswerSpace
-                EditNumericAnswerSpace {
+                val component = if (numericAnswerSpace.representsDays) EditDaysAnswerSpace else EditNumericAnswerSpace
+                component {
                     minValue = numericAnswerSpace.min
                     maxValue = numericAnswerSpace.max
                     disabled = !answerSpaceEditable

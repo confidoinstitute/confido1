@@ -9,6 +9,5 @@ fun FormEvent<HTMLDivElement>.eventValue(): String = this.asDynamic().target.val
 
 fun FormEvent<HTMLDivElement>.eventNumberValue(): Double {
     val event = (this as ChangeEvent<HTMLInputElement>)
-    val changedValue = event.target.valueAsNumber
-    return changedValue
+    return event.target.valueAsNumber
 }
