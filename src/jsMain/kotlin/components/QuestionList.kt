@@ -258,7 +258,7 @@ val QuestionList = FC<Props> {
                 }
                 if (appState.isAdmin) {
                     IconButton {
-                        onClick = {editQuestion = question; editOpen = true}
+                        onClick = {editQuestion = question; editOpen = true; it.stopPropagation()}
                         EditIcon {}
                     }
                 }

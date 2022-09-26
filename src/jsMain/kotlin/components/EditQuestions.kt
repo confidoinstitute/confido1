@@ -10,8 +10,8 @@ import react.useContext
 val EditQuestions = FC<Props> {
     val appState = useContext(AppStateContext)
     
-    fun postEditQuestion(id: String, field: EditQuestionField, value: Boolean) {
-        val editQuestion = EditQuestion(field, value)
+    fun postEditQuestion(id: String, field: EditQuestionFieldType, value: Boolean) {
+        val editQuestion: EditQuestion = EditQuestionField(field, value)
         Client.postData("/edit_question/$id", editQuestion)
     }
 
@@ -33,10 +33,10 @@ val EditQuestions = FC<Props> {
                     TableRow {
                         TableCell { +question.name }
                         listOf(
-                            question.visible to EditQuestionField.VISIBLE,
-                            question.enabled to EditQuestionField.ENABLED,
-                            question.predictionsVisible to EditQuestionField.PREDICTIONS_VISIBLE,
-                            question.resolved to EditQuestionField.RESOLVED,
+                            question.visible to EditQuestionFieldType.VISIBLE,
+                            question.enabled to EditQuestionFieldType.ENABLED,
+                            question.predictionsVisible to EditQuestionFieldType.PREDICTIONS_VISIBLE,
+                            question.resolved to EditQuestionFieldType.RESOLVED,
                         ).map {(current, field) ->
                             TableCell {
                                 Checkbox {

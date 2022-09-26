@@ -22,12 +22,14 @@ import kotlinx.serialization.json.Json
 import org.litote.kmongo.coroutine.CoroutineCollection
 import org.litote.kmongo.coroutine.coroutine
 import org.litote.kmongo.reactivestreams.KMongo
+import tools.confido.application.ServerState.questions
 import tools.confido.application.sessions.*
 import tools.confido.payloads.*
 import tools.confido.question.Question
 import tools.confido.state.AppState
 import tools.confido.state.UserSession
 import tools.confido.question.*
+import tools.confido.utils.randomString
 import java.io.File
 
 fun HTML.index() {
@@ -119,37 +121,55 @@ fun main() {
                 }
             }
             post("/edit_question/{id}") {
-                val editQuestion: EditQuestion = call.receive()
+                println("Called edit_question")
                 val id = call.parameters["id"] ?: ""
+                println(id)
+                val editQuestion: EditQuestion = call.receive()
+                println(editQuestion)
 
-                val question = ServerState.questions[id]
-                if (question == null) {
-                    call.respond(HttpStatusCode.BadRequest)
-                    return@post
-                }
+                when (editQuestion) {
+                    is EditQuestionField -> {
+                        println(editQuestion)
+                        val question = questions[id]
+                        if (question == null) {
+                            call.respond(HttpStatusCode.BadRequest)
+                            return@post
+                        }
 
-                when(editQuestion.field) {
-                    EditQuestionField.VISIBLE -> {
-                        question.visible = editQuestion.value
-                        question.enabled = question.enabled && editQuestion.value
+                        when (editQuestion.fieldType) {
+                            EditQuestionFieldType.VISIBLE -> {
+                                question.visible = editQuestion.value
+                                question.enabled = question.enabled && editQuestion.value
+                            }
+                            EditQuestionFieldType.ENABLED -> question.enabled = editQuestion.value
+                            EditQuestionFieldType.PREDICTIONS_VISIBLE -> question.predictionsVisible =
+                                editQuestion.value
+                            EditQuestionFieldType.RESOLVED -> {
+                                question.resolved = editQuestion.value
+                                question.enabled = question.enabled && !editQuestion.value
+                            }
+                        }
                     }
-                    EditQuestionField.ENABLED -> question.enabled = editQuestion.value
-                    EditQuestionField.PREDICTIONS_VISIBLE -> question.predictionsVisible = editQuestion.value
-                    EditQuestionField.RESOLVED -> {
-                        question.resolved = editQuestion.value
-                        question.enabled = question.enabled && !editQuestion.value
+                    is EditQuestionComplete -> {
+                        val qid = editQuestion.question.id.ifEmpty { randomString(20) }
+                        val question = editQuestion.question.copy(id=qid)
+
+                        questions = questions + mapOf(qid to question)
                     }
                 }
 
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
             }
+            get("/error") {
+                throw Exception()
+            }
             post("/send_prediction/{id}") {
                 val prediction: Prediction = call.receive()
                 val id = call.parameters["id"] ?: ""
                 val userName = call.userSession?.name
 
-                val question = ServerState.questions[id]
+                val question = questions[id]
                 if (question == null || userName == null) {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post

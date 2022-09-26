@@ -1,5 +1,6 @@
 package components
 
+import Client
 import kotlinx.browser.document
 import kotlinx.browser.window
 import mui.material.*
@@ -10,6 +11,8 @@ import react.dom.events.FormEvent
 import react.dom.html.InputType
 import react.dom.html.ReactHTML.input
 import react.dom.onChange
+import tools.confido.payloads.EditQuestion
+import tools.confido.payloads.EditQuestionComplete
 import tools.confido.question.AnswerSpace
 import tools.confido.question.BinaryAnswerSpace
 import tools.confido.question.NumericAnswerSpace
@@ -75,7 +78,6 @@ external interface EditQuestionDialogProps : Props {
 
 val EditQuestionDialog = FC<EditQuestionDialogProps> {props ->
     val q = props.question
-    console.log(q)
     var id by useState(q?.id ?: "")
     var name by useState(q?.name ?: "")
     var answerSpace : AnswerSpace? by useState(q?.answerSpace)
@@ -105,7 +107,12 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> {props ->
             error = true
         }
         if (error) return
-        window.alert(Question(id, name, answerSpace!!, visible, enabled, predictionsVisible, resolved).toString())
+        val question = Question(id, name, answerSpace!!, visible, enabled, predictionsVisible, resolved)
+        val editQuestion: EditQuestion = EditQuestionComplete(question)
+
+        // TODO Make better REST API, as it now requires ID to be sent in URL path
+        Client.postData("/edit_question/edit", editQuestion)
+        props.onClose?.invoke()
     }
 
     val answerSpaceType = when(answerSpace) {
