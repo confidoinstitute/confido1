@@ -87,6 +87,8 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> {props ->
     var resolved by useState(q?.resolved ?: false)
     val htmlId = useId()
 
+    val answerSpaceEditable = (q == null)
+
     var errorEmptyName by useState(false)
     var errorEmptyAnswerSpace by useState(false)
     var errorBadAnswerSpace by useState(false)
@@ -154,7 +156,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> {props ->
                     value = answerSpaceType.asDynamic()
                     label = ReactNode("Answer Type")
                     placeholder = "Choose..."
-                    disabled = q != null
+                    disabled = !answerSpaceEditable
                     error = errorEmptyAnswerSpace
                     onChange = { event, _ ->
                         when (event.target.value) {
@@ -177,7 +179,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> {props ->
                 EditNumericAnswerSpace {
                     minValue = numericAnswerSpace.min
                     maxValue = numericAnswerSpace.max
-                    disabled = q != null
+                    disabled = !answerSpaceEditable
                     error = errorBadAnswerSpace
                     onChange = {
                         answerSpace = it
