@@ -206,6 +206,9 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> {props ->
                         }
                     }
                 }
+                if (!answerSpaceEditable) FormHelperText {
+                    +"Answer type cannot be changed now as predictions have already been made."
+                }
             }
             if (answerSpace is NumericAnswerSpace) {
                 val numericAnswerSpace = answerSpace as NumericAnswerSpace
@@ -232,7 +235,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> {props ->
                     onChange = {_, value -> visible = value}
                 }
                 FormControlLabel {
-                    label = ReactNode("Predictions enabled")
+                    label = ReactNode("Open for predictions")
                     control = Checkbox.create {
                         checked = enabled
                     }
