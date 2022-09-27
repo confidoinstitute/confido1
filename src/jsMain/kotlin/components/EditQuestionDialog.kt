@@ -146,10 +146,10 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> {props ->
     }
 
     val answerSpaceType = when(answerSpace) {
-        null -> ""
         is BinaryAnswerSpace -> "binary"
         is NumericAnswerSpace ->
             if ((answerSpace as NumericAnswerSpace).representsDays) "day" else "numeric"
+        else -> ""
     }
 
     Dialog {

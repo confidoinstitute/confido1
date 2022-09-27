@@ -75,17 +75,20 @@ class NumericAnswerSpace(
 
 @Serializable
 sealed class Prediction {
+     abstract val timestamp: Double
 }
 
 @Serializable
 data class NumericPrediction (
+    override val timestamp: Double,
     val mean: Double,
     val stdDev: Double,
 ) : Prediction()
 
 @Serializable
 data class BinaryPrediction (
-    val estimate: Double
+    override val timestamp: Double,
+    val estimate: Double,
 ) : Prediction()
 
 @Serializable

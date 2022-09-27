@@ -18,6 +18,8 @@ fun Double.format(digits: Int): String = asDynamic().toFixed(digits)
 fun Double.toISODay(): String = if (this.isNaN()) "" else Date(this * 1000).toISOString().slice(0..9)
 fun String.toTimestamp(): Double = Date(this).getTime() / 1000
 
+fun now() = Date().getTime() / 1000
+
 fun linearSpace(first: Double, last: Double, step: Double) = sequence {
     var current = first
     while (current <= last) {
