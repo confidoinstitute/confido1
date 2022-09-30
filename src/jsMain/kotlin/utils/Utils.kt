@@ -131,3 +131,11 @@ fun dateMarkSpacing(width: Double, start: Double, end: Double): List<Double> {
 
     return dates
 }
+
+fun durationAgo(difference: Double) = when(difference) {
+    in 0.0..10.0 -> "now"
+    in 10.0..120.0 -> "${floor(difference)} s"
+    in 120.0..7200.0 -> "${floor(difference / 60)} min"
+    in 7200.0..172800.0 -> "${floor(difference / 3600)} h"
+    else -> "${floor(difference / 86400)} days"
+}

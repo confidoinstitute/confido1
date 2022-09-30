@@ -11,6 +11,7 @@ import kotlinx.js.timers.clearInterval
 import kotlinx.js.timers.setInterval
 import mui.material.*
 import mui.material.styles.TypographyVariant
+import mui.system.sx
 import react.*
 import react.dom.html.ReactHTML.small
 import react.dom.html.ReactHTML.span
@@ -37,8 +38,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
     useEffect(props.prediction) {
         pendingPrediction = null
     }
-    // Pending predictdion was updated by the input
-    useDebounce(5000, pendingPrediction) {
+    // Pending prediction was updated by the input
+    useDebounce(5000, pendingPrediction, callOnUnmount = true) {
         pendingPrediction?.let {
             postPrediction(it, props.question.id)
         }
@@ -51,13 +52,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         val timestamp = props.prediction!!.timestamp
 
         fun setText() {
-            predictionAgoText = when(val difference = now() - timestamp) {
-                in 0.0..10.0 -> "now"
-                in 10.0..120.0 -> "${floor(difference)} s"
-                in 120.0..7200.0 -> "${floor(difference / 60)} min"
-                in 7200.0..172800.0 -> "${floor(difference / 3600)} h"
-                else -> "${floor(difference / 86400)} days"
-            }
+            predictionAgoText = durationAgo(now() - timestamp)
         }
         setText()
         val interval = setInterval(::setText,5000)
@@ -76,6 +71,9 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             Typography {
                 variant = TypographyVariant.h4
                 +question.name
+                sx {
+                    flexGrow = 1.asDynamic()
+                }
             }
             if (pendingPrediction != null) {
                 Chip {
