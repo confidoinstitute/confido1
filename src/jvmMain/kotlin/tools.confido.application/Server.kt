@@ -22,6 +22,7 @@ import kotlinx.serialization.json.Json
 import org.litote.kmongo.coroutine.CoroutineCollection
 import org.litote.kmongo.coroutine.coroutine
 import org.litote.kmongo.reactivestreams.KMongo
+import payloads.CreatedComment
 import tools.confido.application.ServerState.questions
 import tools.confido.application.sessions.*
 import tools.confido.payloads.*
@@ -44,11 +45,14 @@ object ServerState {
     var questions: Map<String, Question> = emptyMap()
     val userPredictions: MutableMap<String, MutableMap<String, Prediction>> = mutableMapOf()
     var groupDistributions: MutableMap<String, List<Double>> = mutableMapOf()
+    var comments: MutableMap<String, MutableList<Comment>> = mutableMapOf()
 
     fun loadQuestions(collection: CoroutineCollection<Question>) {
         questions = runBlocking {
             collection.find().toList().associateBy { question -> question.id }
         }
+        // TODO actually store comments!
+        comments = questions.mapValues { mutableListOf<Comment>() }.toMutableMap()
         calculateGroupDistribution()
     }
     fun calculateGroupDistribution(question: Question) {
@@ -62,7 +66,13 @@ object ServerState {
         questions.mapValues { (_, question) -> calculateGroupDistribution(question) }
     }
     fun appState(sessionData: UserSession) =
-    AppState(questions, userPredictions[sessionData.name]?.toMap() ?: emptyMap(), groupDistributions.toMap(), sessionData, sessionData.name == "Admin")
+    AppState(
+        questions,
+        userPredictions[sessionData.name]?.toMap() ?: emptyMap(),
+        comments,
+        groupDistributions.toMap(),
+        sessionData,
+        sessionData.name == "Admin")
 }
 
 fun main() {
@@ -120,6 +130,34 @@ fun main() {
                 }
             }
             editQuestion(this)
+            post("/add_comment/{id}") {
+                val createdComment: CreatedComment = call.receive()
+                val id = call.parameters["id"] ?: ""
+                val userName = call.userSession?.name
+
+                val question = questions[id]
+                if (question == null || userName == null) {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                if (createdComment.content.isEmpty()) {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val prediction = ServerState.userPredictions[userName]?.get(id)?.takeIf {
+                    createdComment.attachPrediction
+                }
+
+                val comment = Comment(userName, createdComment.timestamp, createdComment.content, prediction)
+                if (ServerState.comments[id]?.add(comment) == true) {
+                    call.transientUserData?.refreshRunningWebsockets()
+                    call.respond(HttpStatusCode.OK)
+                } else {
+                    call.respond(HttpStatusCode.BadRequest)
+                }
+            }
             post("/send_prediction/{id}") {
                 val prediction: Prediction = call.receive()
                 val id = call.parameters["id"] ?: ""
