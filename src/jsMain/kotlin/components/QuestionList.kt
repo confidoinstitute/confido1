@@ -24,6 +24,7 @@ external interface QuestionItemProps : Props {
     var question: Question
     var prediction: Prediction?
     var editable: Boolean
+    var comments: List<Comment>
     var onEditDialog: ((Question) -> Unit)?
 }
 
@@ -119,6 +120,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 is BinaryAnswerSpace -> BinaryQuestionInput as FC<QuestionInputProps<AnswerSpace>>
                 is NumericAnswerSpace -> NumericQuestionInput as FC<QuestionInputProps<AnswerSpace>>
             }
+            Divider {}
             questionInput {
                 this.id = question.id
                 this.enabled = question.enabled
@@ -126,14 +128,20 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 this.prediction = pendingPrediction ?: props.prediction
                 this.onPredict = {pendingPrediction = it}
             }
-        }
-        if (question.predictionsVisible) {
-            Typography {
-                +"Group predictions:"
-                Button {
-                    onClick = { navigate("/group_predictions") }
-                    +"Go"
+            Divider {}
+            if (question.predictionsVisible) {
+                Typography {
+                    +"Group predictions:"
+                    Button {
+                        onClick = { navigate("/group_predictions") }
+                        +"Go (TODO)"
+                    }
                 }
+            }
+            QuestionComments {
+                this.question = props.question
+                this.comments = props.comments
+                this.prediction = props.prediction
             }
         }
     }
@@ -160,6 +168,7 @@ val QuestionList = FC<Props> {
             this.question = question
             this.prediction = appState.userPredictions[question.id]
             this.editable = appState.isAdmin
+            this.comments = appState.comments[question.id] ?: listOf()
             this.onEditDialog = { editQuestion = it; editOpen = true }
         }
     }

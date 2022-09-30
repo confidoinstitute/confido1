@@ -83,13 +83,21 @@ data class NumericPrediction (
     override val timestamp: Double,
     val mean: Double,
     val stdDev: Double,
-) : Prediction()
+) : Prediction() {
+    override fun toString() = "${mean} ± ${stdDev} (except not really, TODO)"
+}
 
 @Serializable
 data class BinaryPrediction (
     override val timestamp: Double,
     val estimate: Double,
-) : Prediction()
+) : Prediction() {
+    override fun toString() = when(estimate) {
+        0.0 -> "Absolutely no"
+        1.0 -> "Absolutely yes"
+        else -> "${estimate * 100}% chance"
+    }
+}
 
 @Serializable
 sealed interface Answer {
