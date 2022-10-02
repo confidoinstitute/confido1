@@ -1,7 +1,9 @@
 import components.App
 import io.ktor.client.*
+import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.browser.document
@@ -11,6 +13,7 @@ import kotlinx.coroutines.launch
 import react.create
 import react.dom.client.createRoot
 import tools.confido.payloads.SetName
+import utils.postJson
 
 object Client {
     val httpClient = HttpClient {
@@ -20,10 +23,7 @@ object Client {
     }
 
     inline fun <reified T> postData(url: String, payload: T) = CoroutineScope(EmptyCoroutineContext).launch {
-        httpClient.post(url) {
-            contentType(ContentType.Application.Json.withParameter("charset", "utf-8"))
-            setBody(payload)
-        }
+        httpClient.postJson(url, payload) {}
     }
 }
 fun main() {

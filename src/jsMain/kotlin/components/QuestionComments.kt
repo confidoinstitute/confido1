@@ -1,23 +1,16 @@
 package components
 
-import csstype.FlexGrow
 import csstype.Overflow
-import icons.BarChart
 import icons.CloseIcon
 import icons.CommentIcon
 import icons.DeleteIcon
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.js.timers.clearInterval
 import kotlinx.js.timers.setInterval
 import mui.material.*
 import mui.material.styles.TypographyVariant
-import mui.material.transitions.TransitionProps
 import mui.system.sx
 import payloads.CreatedComment
 import react.*
-import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.strong
 import react.dom.onChange
@@ -81,6 +74,9 @@ val Comment = FC<CommentProps> { props ->
             Divider {}
             CardContent {
                 Typography {
+                    sx {
+                        lineHeight = 2.asDynamic()
+                    }
                     strong {
                         +"Prediction: "
                     }
@@ -180,6 +176,8 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
         this.open = open
         this.scroll = DialogScroll.paper
         fullScreen = true
+        this.onClose = { _, _ -> open = false }
+
         AppBar {
             this.position = AppBarPosition.relative
             Toolbar {

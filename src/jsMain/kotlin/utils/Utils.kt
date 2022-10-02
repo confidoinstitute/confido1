@@ -1,5 +1,9 @@
 package utils
 
+import io.ktor.client.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
@@ -139,3 +143,10 @@ fun durationAgo(difference: Double) = when(difference) {
     in 7200.0..172800.0 -> "${floor(difference / 3600)} h"
     else -> "${floor(difference / 86400)} days"
 }
+
+suspend inline fun <reified T> HttpClient.postJson(urlString: String, payload: T, block: HttpRequestBuilder.() -> Unit) =
+    this.post(urlString) {
+        contentType(ContentType.Application.Json.withParameter("charset", "utf-8"))
+        setBody(payload)
+        block.invoke(this)
+    }

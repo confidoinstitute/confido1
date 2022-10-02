@@ -7,6 +7,7 @@ import mui.material.Typography
 import react.*
 import react.dom.aria.ariaLabel
 import react.dom.html.ReactHTML
+import react.dom.html.ReactHTML.em
 import space.kscience.dataforge.values.Value
 import space.kscience.dataforge.values.asValue
 import tools.confido.distributions.TruncatedNormalDistribution
@@ -22,10 +23,6 @@ external interface QuestionInputProps<T : AnswerSpace> : Props {
     var answerSpace: T
     var prediction: Prediction?
     var onPredict: ((Prediction) -> Unit)?
-}
-
-fun postPrediction(prediction: Prediction, qid: String) {
-    Client.postData("/send_prediction/${qid}", prediction)
 }
 
 val NumericQuestionInput = FC<QuestionInputProps<NumericAnswerSpace>> { props ->
@@ -60,7 +57,7 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericAnswerSpace>> { props ->
     }
 
     fun formatDate(value: Number): String = Date(value.toDouble() * 1000.0).toISOString().substring(0, 10)
-    fun formatUncertainty(value: Number): String = "Specify your uncertainty"
+    val formatUncertainty = {_: Number -> "Specify your uncertainty"}
 
     Fragment {
         DistributionPlot {
@@ -105,31 +102,33 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericAnswerSpace>> { props ->
 
             valueLabelDisplay = if (madeUncertainty || !madePrediction) "off" else "on"
             if (!madeUncertainty)
-                valueLabelFormat = ::formatUncertainty
+                valueLabelFormat = formatUncertainty
             track = if (madeUncertainty) "normal" else false.asDynamic()
             onFocus = { madePrediction = true; madeUncertainty = true }
             onChange = { _, value, _ -> stdDev = value }
             onChangeCommitted = { _, _ -> sendPrediction() }
         }
-        if (madePrediction && madeUncertainty)
+        if (madePrediction && madeUncertainty) {
             confidences.map { confidence ->
                 Typography {
                     val confidenceInterval = dist.confidenceInterval(1 - confidence.p)
                     +"You are "
-                    ReactHTML.span {
+                    ReactHTML.strong {
                         css {
                             color = Color(confidence.color.toString())
                         }
                         +"${confidence.p * 100}%"
                     }
                     if (props.answerSpace.representsDays)
-                        +" confident that the value lies between ${formatDate(confidenceInterval.first)} and ${formatDate(confidenceInterval.second)}"
+                        +" confident that the value lies between ${formatDate(confidenceInterval.first)} and ${
+                            formatDate( confidenceInterval.second )
+                        }"
                     else
-                        +" confident that the value lies between ${confidenceInterval.first.format(1)} and ${confidenceInterval.second.format(1)}"
+                        +" confident that the value lies between ${confidenceInterval.first.format(1)} and ${ confidenceInterval.second.format(1) }"
                 }
             }
+        }
     }
-
 }
 
 val BinaryQuestionInput = FC<QuestionInputProps<BinaryAnswerSpace>> { props ->
@@ -203,6 +202,10 @@ val BinaryQuestionInput = FC<QuestionInputProps<BinaryAnswerSpace>> { props ->
                         }
                         +" chance."
                     }
+                }
+            } else {
+                em {
+                    +"No prediction made yet."
                 }
             }
         }
