@@ -4,8 +4,8 @@ val serializationVersion = "1.3.3"
 val kmongoVersion = "4.7.0"
 
 plugins {
-    kotlin("multiplatform") version "1.7.10"
-    kotlin("plugin.serialization") version "1.7.10"
+    kotlin("multiplatform") version "1.7.20"
+    kotlin("plugin.serialization") version "1.7.20"
     application
 }
 
