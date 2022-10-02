@@ -20,6 +20,7 @@ inline fun jsObject(init: dynamic.() -> Unit): dynamic {
 fun Double.format(digits: Int): String = asDynamic().toFixed(digits)
 
 fun Double.toISODay(): String = if (this.isNaN()) "" else Date(this * 1000).toISOString().slice(0..9)
+fun Double.toDateTime(): String = if (this.isNaN()) "" else Date(this * 1000).toLocaleString()
 fun String.toTimestamp(): Double = Date(this).getTime() / 1000
 
 fun now() = Date().getTime() / 1000

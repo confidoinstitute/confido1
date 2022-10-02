@@ -1,9 +1,9 @@
 package components
 
-import csstype.Position
-import csstype.px
+import csstype.*
 import emotion.react.css
 import hooks.useDebounce
+import hooks.useOnUnmount
 import icons.AddIcon
 import icons.EditIcon
 import icons.ExpandMore
@@ -15,7 +15,9 @@ import kotlinx.coroutines.launch
 import kotlinx.js.timers.clearInterval
 import kotlinx.js.timers.setInterval
 import mui.material.*
+import mui.material.Size
 import mui.material.styles.TypographyVariant
+import mui.system.responsive
 import mui.system.sx
 import react.*
 import react.dom.html.ReactHTML.small
@@ -25,52 +27,20 @@ import tools.confido.question.*
 import utils.*
 import kotlin.coroutines.EmptyCoroutineContext
 
-external interface QuestionItemProps : Props {
-    var question: Question
-    var prediction: Prediction?
-    var editable: Boolean
-    var comments: List<Comment>
-    var onEditDialog: ((Question) -> Unit)?
-}
-
 enum class PendingPredictionState {
     NONE,
     ACCEPTED,
     ERROR,
 }
 
-@Suppress("UNCHECKED_CAST_TO_EXTERNAL_INTERFACE", "UNCHECKED_CAST")
-val QuestionItem = FC<QuestionItemProps> { props ->
-    val question = props.question
-    val navigate = useNavigate()
+external interface QuestionPredictionChipProps : Props {
+    var pending: Boolean
+    var enabled: Boolean
+    var prediction: Prediction?
+    var state: PendingPredictionState
+}
 
-    var pendingPrediction: Prediction? by useState(null)
-    var pendingPredictionState by useState(PendingPredictionState.NONE)
-
-    // Actual prediction was updated by app state update
-    useEffect(props.prediction) {
-        pendingPrediction = null
-    }
-    // Pending prediction was updated by the input
-    useDebounce(5000, pendingPrediction, callOnUnmount = true) {
-        pendingPrediction?.let {
-            CoroutineScope(EmptyCoroutineContext).launch {
-                try {
-                    Client.httpClient.postJson("/send_prediction/${props.question.id}", it) {
-                        expectSuccess = true
-                    }
-                    pendingPredictionState = PendingPredictionState.ACCEPTED
-                } catch(e: Throwable) {
-                    pendingPrediction = null
-                    pendingPredictionState = PendingPredictionState.ERROR
-                }
-            }
-        }
-    }
-    useDebounce(5000, pendingPredictionState) {
-        pendingPredictionState = PendingPredictionState.NONE
-    }
-
+val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
     var predictionAgoText by useState("")
     useEffect(props.prediction) {
         if (props.prediction == null)
@@ -88,62 +58,123 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         }
     }
 
+    when(props.state) {
+        PendingPredictionState.ACCEPTED -> Chip {
+            label = ReactNode("Prediction accepted!")
+            variant = ChipVariant.outlined
+            color = ChipColor.success
+        }
+        PendingPredictionState.ERROR -> Chip {
+            label = ReactNode("Prediction failed to send!")
+            variant = ChipVariant.outlined
+            color = ChipColor.error
+        }
+        PendingPredictionState.NONE ->
+            if (props.pending) {
+                Chip {
+                    label = span.create {
+                        CircularProgress {
+                            this.size = "0.8rem"
+                        }
+                        +"Sending prediction..."
+                    }
+                    variant = ChipVariant.outlined
+                }
+            } else if (props.prediction == null && props.enabled) {
+                Chip {
+                    label = ReactNode("Make a prediction")
+                    variant = ChipVariant.outlined
+                }
+            } else if (props.prediction != null) {
+                Chip {
+                    label = span.create {
+                        +"Last prediction: "
+                        Tooltip {
+                            this.title = ReactNode(props.prediction!!.timestamp.toDateTime())
+                            this.placement = TooltipPlacement.left
+                            small {
+                                +predictionAgoText
+                            }
+                        }
+                    }
+                    variant = ChipVariant.outlined
+                }
+            }
+    }
+}
+external interface QuestionItemProps : Props {
+    var question: Question
+    var prediction: Prediction?
+    var editable: Boolean
+    var comments: List<Comment>
+    var onEditDialog: ((Question) -> Unit)?
+}
+
+@Suppress("UNCHECKED_CAST_TO_EXTERNAL_INTERFACE", "UNCHECKED_CAST")
+val QuestionItem = FC<QuestionItemProps> { props ->
+    val question = props.question
+    val navigate = useNavigate()
+
+    var pendingPrediction: Prediction? by useState(null)
+    var pendingPredictionState by useState(PendingPredictionState.NONE)
+
+    // Pending prediction was updated by the input
+    useEffect(pendingPrediction) {
+        pendingPredictionState = PendingPredictionState.NONE
+    }
+    useDebounce(5000, pendingPredictionState) {
+        pendingPredictionState = PendingPredictionState.NONE
+    }
+
+    useDebounce(5000, pendingPrediction) {
+        pendingPrediction?.let {
+            CoroutineScope(EmptyCoroutineContext).launch {
+                try {
+                    Client.httpClient.postJson("/send_prediction/${props.question.id}", it) {
+                        expectSuccess = true
+                    }
+                    pendingPredictionState = PendingPredictionState.ACCEPTED
+                } catch(e: Throwable) {
+                    pendingPredictionState = PendingPredictionState.ERROR
+                } finally {
+                    pendingPrediction = null
+                }
+            }
+        }
+    }
+    useOnUnmount(pendingPrediction) {Client.postData("/send_prediction/${props.question.id}", it) }
+
     Accordion {
         TransitionProps = jsObject { unmountOnExit = true }
         key = question.id
         AccordionSummary {
             id = question.id
             expandIcon = ExpandMore.create()
-            Typography {
-                variant = TypographyVariant.h4
-                +question.name
+            Stack {
+                this.direction = responsive(StackDirection.row)
+                this.spacing = responsive(1)
                 sx {
+                    alignItems = AlignItems.center
                     flexGrow = 1.asDynamic()
                 }
-            }
-            when(pendingPredictionState) {
-                PendingPredictionState.ACCEPTED -> Chip {
-                    label = ReactNode("Prediction accepted!")
-                    variant = ChipVariant.outlined
-                    color = ChipColor.success
-                }
-                PendingPredictionState.ERROR -> Chip {
-                    label = ReactNode("Prediction failed to send!")
-                    variant = ChipVariant.outlined
-                    color = ChipColor.error
-                }
-                PendingPredictionState.NONE ->
-                if (pendingPrediction != null) {
-                    Chip {
-                        label = span.create {
-                            CircularProgress {
-                                this.size = "0.8rem"
-                            }
-                            +"Sending prediction..."
-                        }
-                        variant = ChipVariant.outlined
+                Typography {
+                    variant = TypographyVariant.h4
+                    +question.name
+                    sx {
+                        flexGrow = 1.asDynamic()
                     }
-                } else if (props.prediction == null && question.enabled) {
+                }
+                if (question.resolved) {
                     Chip {
-                        label = ReactNode("Make a prediction")
-                        variant = ChipVariant.outlined
-                    }
-                } else if (props.prediction != null) {
-                    Chip {
-                        label = span.create {
-                            +"Last prediction "
-                            small {
-                                +predictionAgoText
-                            }
-                        }
+                        label = ReactNode("Resolved")
                         variant = ChipVariant.outlined
                     }
                 }
-            }
-            if (question.resolved) {
-                Chip {
-                    label = ReactNode("Resolved")
-                    variant = ChipVariant.outlined
+                QuestionPredictionChip {
+                    this.enabled = question.enabled
+                    this.pending = pendingPrediction != null
+                    this.prediction = props.prediction
+                    this.state = pendingPredictionState
                 }
             }
         }
