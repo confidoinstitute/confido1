@@ -13,7 +13,9 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.onFailure
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.datetime.LocalDate
 import kotlinx.html.*
 import kotlinx.serialization.decodeFromString
@@ -181,7 +183,8 @@ fun main() {
                 call.respond(HttpStatusCode.OK)
             }
             webSocket("/state") {
-                // Require a session to already be initialized; it is not possible to edit sessions within websockets.
+                // Require a session to already be initialized; it is not possible
+                // to edit session cookies within websockets.
                 val session = call.userSession
 
                 if (session == null) {
@@ -190,8 +193,21 @@ fun main() {
                     return@webSocket
                 }
 
-                call.transientUserData?.websocketRefreshChannel?.collect {
-                    val sessionData = call.userSession ?: return@collect
+                val closeNotifier = MutableStateFlow(false)
+
+                launch {
+                    incoming.receiveCatching().onFailure {
+                        closeNotifier.emit(true)
+                    }
+                }
+
+                call.transientUserData?.runRefreshable(closeNotifier) {
+                    val sessionData = call.userSession
+                    if (sessionData == null) {
+                        closeNotifier.emit(true)
+                        return@runRefreshable
+                    }
+
                     val state = ServerState.appState(sessionData)
                     send(Frame.Text(Json.encodeToString(state)))
                 }
