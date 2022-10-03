@@ -7,6 +7,7 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.html.*
 import io.ktor.server.http.content.*
 import io.ktor.server.cio.*
+import io.ktor.server.plugins.callloging.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.plugins.contentnegotiation.*
@@ -86,6 +87,7 @@ fun main() {
 
     embeddedServer(CIO, port = 8080, host = "127.0.0.1") {
         install(WebSockets)
+        install(CallLogging)
         install(ContentNegotiation) {
             this.json(Json)
         }

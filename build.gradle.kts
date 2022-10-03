@@ -59,6 +59,7 @@ kotlin {
                 implementation("io.ktor:ktor-server-cio:$ktorVersion")
                 implementation("io.ktor:ktor-server-html-builder-jvm:$ktorVersion")
                 implementation("io.ktor:ktor-server-websockets:$ktorVersion")
+                implementation("io.ktor:ktor-server-call-logging:$ktorVersion")
                 implementation("io.ktor:ktor-serialization:$ktorVersion")
                 implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
                 implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
