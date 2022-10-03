@@ -1,13 +1,14 @@
 package components
+import hooks.useElementSize
+import org.w3c.dom.CanvasRenderingContext2D
+import org.w3c.dom.HTMLCanvasElement
+import org.w3c.dom.HTMLDivElement
 import react.*
+import react.dom.html.ReactHTML.canvas
+import react.dom.html.ReactHTML.div
 import space.kscience.dataforge.values.Value
-import space.kscience.dataforge.values.asValue
-import space.kscience.plotly.layout
-import space.kscience.plotly.models.Bar
 import tools.confido.distributions.ProbabilityDistribution
-import tools.confido.utils.binBorders
 import tools.confido.utils.binRanges
-import utils.jsObject
 
 data class ConfidenceColor(
     val p: Double,
@@ -15,25 +16,24 @@ data class ConfidenceColor(
 )
 
 external interface DistributionPlotProps : Props {
-    var id: String
     var distribution: ProbabilityDistribution
     var min: Double
     var max: Double
-    var bins: Int
     var confidences: List<ConfidenceColor>
     var outsideColor: Value?
     var visible: Boolean
+    var height: Double?
 }
 
 val DistributionPlot = FC<DistributionPlotProps> {props ->
-    val xTicks = useMemo(props.min, props.max, props.bins) {
-        binBorders(props.min, props.max, props.bins)
-    }
-    val ranges = useMemo(props.min, props.max, props.bins) {
-        binRanges(props.min, props.max, props.bins)
-    }
+    val elementSize = useElementSize<HTMLDivElement>()
+    val bins = elementSize.width.toInt()
 
-    val yTicks = ranges.map {(a, b) -> props.distribution.probabilityBetween(a, b)}
+    val height = props.height ?: 100.0
+
+    val ranges = useMemo(props.min, props.max, bins) {
+        binRanges(props.min, props.max, bins)
+    }
 
     val confidenceIntervals = props.confidences.map {
         Pair(props.distribution.confidenceInterval(1 - it.p), it.color)
@@ -43,48 +43,31 @@ val DistributionPlot = FC<DistributionPlotProps> {props ->
             (x in start..end)
         }?.second ?: props.outsideColor ?: Value.of("")
 
-    val colorTicks = xTicks.map { barColor(it) }
+    val yTicks = ranges.map { (a, b) -> props.distribution.probabilityBetween(a, b) to barColor((b + a) / 2) }
 
-
-    ReactPlotly {
-        id = props.id
-        annotations = listOf()
-
-        traces = if (props.visible) listOf(
-            Bar {
-                x.set(xTicks)
-                y.set(yTicks)
-                marker {
-                    colors(colorTicks)
-                }
-            }
-        ) else listOf()
-
-        plotlyInit = { plot ->
-            plot.layout {
-                margin {
-                    l = 0
-                    r = 0
-                    b = 25
-                    t = 0
-                }
-                xaxis {
-                    this.showline = false
-                    this.visible = false
-                    this.range(props.min.asValue(), props.max.asValue())
-                }
-                yaxis {
-                    this.showline = false
-                    this.visible = false
-                }
-                height = 100
-                showlegend = false
-                bargap = 0
+    val canvas = useRef<HTMLCanvasElement>()
+    useEffect(yTicks, elementSize.width, elementSize.height, props.visible) {
+        val context = canvas.current?.getContext("2d") as? CanvasRenderingContext2D
+        val scale = height / (yTicks.maxByOrNull { (value, _) -> value }?.first ?: 1.0)
+        context?.apply {
+            clearRect(0.0, 0.0, elementSize.width, height)
+            if (props.visible)
+            yTicks.mapIndexed {index, yTick ->
+                beginPath()
+                moveTo(index.toDouble(), height)
+                lineTo(index.toDouble(), height - yTick.first * scale)
+                strokeStyle = yTick.second.toString()
+                stroke()
             }
         }
-        config = jsObject {
-            staticPlot = true
-            responsive = true
+    }
+
+    div {
+        ref = elementSize.ref
+        canvas {
+            width = elementSize.width
+            this.height = height
+            ref = canvas
         }
     }
 }

@@ -61,10 +61,8 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericAnswerSpace>> { props ->
 
     Fragment {
         DistributionPlot {
-            id = "${props.id}_plot"
             min = answerSpace.min
             max = answerSpace.max
-            this.bins = 200
             distribution = dist
             this.confidences = confidences
             outsideColor = if (props.enabled) Value.of("#000e47") else Value.of("#9c9c9c")

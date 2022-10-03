@@ -118,12 +118,9 @@ val QuestionItem = FC<QuestionItemProps> { props ->
     var pendingPrediction: Prediction? by useState(null)
     var pendingPredictionState by useState(PendingPredictionState.NONE)
 
-    // Pending prediction was updated by the input
-    useEffect(pendingPrediction) {
-        pendingPredictionState = PendingPredictionState.NONE
-    }
     useDebounce(5000, pendingPredictionState) {
-        pendingPredictionState = PendingPredictionState.NONE
+        if (pendingPredictionState != PendingPredictionState.NONE)
+            pendingPredictionState = PendingPredictionState.NONE
     }
 
     useDebounce(5000, pendingPrediction) {
