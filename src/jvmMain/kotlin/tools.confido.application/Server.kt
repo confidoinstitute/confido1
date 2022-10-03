@@ -19,7 +19,6 @@ import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.datetime.LocalDate
 import kotlinx.html.*
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.litote.kmongo.coroutine.CoroutineCollection
@@ -124,7 +123,7 @@ fun main() {
                 if (session == null) {
                     call.respond(HttpStatusCode.Unauthorized)
                 } else {
-                    val setName: SetName = Json.decodeFromString(call.receiveText())
+                    val setName: SetName = call.receive()
                     call.userSession = session.copy(name = setName.name)
                     if (!ServerState.userPredictions.containsKey(setName.name))
                         ServerState.userPredictions[setName.name] = mutableMapOf()
