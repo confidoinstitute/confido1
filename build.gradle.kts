@@ -1,5 +1,5 @@
 
-val ktorVersion = "2.1.0"
+val ktorVersion = "2.1.2"
 val serializationVersion = "1.3.3"
 val kmongoVersion = "4.7.0"
 
