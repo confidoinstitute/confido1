@@ -5,8 +5,6 @@ Persistence and data structure:
 - How to handle app state
 
 Frontend missing important functionality:
-- WebSocket is not reloaded when it is closed
-- Websocket URL based on real server location
 - Group predictions do not work
   - How to show a graph? Modal?
 - Error handling for comment post
