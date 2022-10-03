@@ -29,7 +29,7 @@ val EditQuestions = FC<Props> {
                 }
             }
             TableBody {
-                appState.questions.values.map {question ->
+                appState.state.questions.values.map {question ->
                     TableRow {
                         TableCell { +question.name }
                         listOf(
@@ -40,7 +40,7 @@ val EditQuestions = FC<Props> {
                         ).map {(current, field) ->
                             TableCell {
                                 Checkbox {
-                                    disabled = !appState.isAdmin
+                                    disabled = !appState.state.isAdmin || appState.stale
                                     checked = current
                                     onChange = { _, checked -> postEditQuestion(question.id, field, checked) }
                                 }

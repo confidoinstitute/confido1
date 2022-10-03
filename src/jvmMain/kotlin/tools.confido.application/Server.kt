@@ -172,7 +172,6 @@ fun main() {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
                 }
-                println(question.answerSpace)
                 if (!question.answerSpace.verifyPrediction(prediction)) {
                     print("Prediction not compatible with answer space")
                     call.respond(HttpStatusCode.BadRequest)

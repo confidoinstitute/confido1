@@ -12,7 +12,7 @@ enum class EditQuestionFieldType {
 }
 
 @Serializable
-sealed abstract class EditQuestion ()
+sealed class EditQuestion ()
 
 @Serializable
 data class EditQuestionField(

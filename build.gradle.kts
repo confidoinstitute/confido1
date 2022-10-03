@@ -43,6 +43,11 @@ kotlin {
                         "target" to "http://localhost:8080/",
                         "secure" to false,
                     ),
+                    "/state" to mapOf(
+                        "target" to "http://localhost:8080/",
+                        "secure" to false,
+                        "ws" to true,
+                    ),
                 )
             }
         }

@@ -4,6 +4,7 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import kotlinx.browser.window
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
@@ -151,3 +152,12 @@ suspend inline fun <reified T> HttpClient.postJson(urlString: String, payload: T
         setBody(payload)
         block.invoke(this)
     }
+
+fun webSocketUrl(path: String): String {
+    val location = window.location
+    val protocol = when(location.protocol) {
+        "https:" -> "wss:"
+        else -> "ws:"
+    }
+    return protocol + "//" + location.host + location.pathname + path
+}

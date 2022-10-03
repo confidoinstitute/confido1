@@ -37,8 +37,8 @@ val Comment = FC<CommentProps> { props ->
     var textAgo by useState("")
 
     val appState = useContext(AppStateContext)
-    val currentUser = appState.session.name
-    val canDelete = props.comment.user == currentUser || appState.isAdmin
+    val currentUser = appState.state.session.name
+    val canDelete = (props.comment.user == currentUser || appState.state.isAdmin) && !appState.stale
 
     // TODO generalize and fix the "no text on mount" issue
     useEffect(props.comment.timestamp) {
@@ -102,6 +102,7 @@ external interface CommentInputProps : Props {
 }
 
 val CommentInput = FC<CommentInputProps> { props ->
+    val stale = useContext(AppStateContext).stale
     var content by useState("")
     var attachPrediction by useState(false)
     var pendingSend by useState(false)
@@ -117,6 +118,7 @@ val CommentInput = FC<CommentInputProps> { props ->
             this.margin = FormControlMargin.none
             this.value = content
             this.onChange = { content = it.eventValue() }
+            this.disabled = stale
         }
         FormGroup {
             FormControlLabel {
@@ -131,7 +133,7 @@ val CommentInput = FC<CommentInputProps> { props ->
                 }
                 control = Checkbox.create {
                     this.checked = attachPrediction
-                    this.disabled = props.prediction == null
+                    this.disabled = props.prediction == null || stale
                     this.onChange = { _, value -> attachPrediction = value }
                 }
             }
@@ -144,7 +146,7 @@ val CommentInput = FC<CommentInputProps> { props ->
             }
         Button {
             +"Send"
-            disabled = pendingSend || content.isEmpty()
+            disabled = pendingSend || content.isEmpty() || stale
             onClick = {
                 pendingSend = true
                 val createdComment = CreatedComment(now(), content, attachPrediction)
@@ -189,7 +191,7 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
                     sx {
                         flexGrow = 1.asDynamic()
                     }
-                    +"Comments"
+                    +"Comment"
                 }
                 // TODO deletion and edit mechanism
 //                Button {

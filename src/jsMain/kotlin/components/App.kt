@@ -9,16 +9,20 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.browser.window
 import kotlinx.coroutines.*
+import kotlinx.js.timers.setTimeout
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.sx
+import org.w3c.dom.CloseEvent
 import org.w3c.dom.WebSocket
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.h1
+import react.dom.html.ReactHTML.toString
 import react.dom.onChange
 import react.router.Route
 import react.router.Routes
@@ -26,8 +30,9 @@ import react.router.dom.BrowserRouter
 import tools.confido.payloads.SetName
 import tools.confido.question.*
 import tools.confido.state.AppState
+import utils.webSocketUrl
 
-val AppStateContext = createContext<AppState>()
+val AppStateContext = createContext<ClientAppState>()
 
 val SetNameForm = FC<Props> {
     val appState = useContext(AppStateContext)
@@ -40,7 +45,7 @@ val SetNameForm = FC<Props> {
         }
         Typography {
             variant = TypographyVariant.body1
-            +"From state: your name is ${appState.session.name ?: "not set"} and language is ${appState.session.language}."
+            +"From state: your name is ${appState.state.session.name ?: "not set"} and language is ${appState.state.session.language}."
         }
         div {
             css {
@@ -53,6 +58,7 @@ val SetNameForm = FC<Props> {
                 id = "name-field"
                 label = ReactNode("Name")
                 value = name
+                disabled = appState.stale
                 onChange = {
                     name = it.asDynamic().target.value as String
                 }
@@ -61,31 +67,52 @@ val SetNameForm = FC<Props> {
                 onClick = {
                     Client.postData("/setName", SetName(name))
                 }
+                disabled = appState.stale
                 +"Set name"
             }
         }
     }
 }
 
+data class ClientAppState(val state: AppState, val stale: Boolean = false)
+
 val App = FC<Props> {
     var appState by useState<AppState?>(null)
+    var stale by useState(false)
     val webSocket = useRef<WebSocket>(null)
 
+    fun startWebSocket() {
+        val ws = WebSocket(webSocketUrl("state"))
+        console.log("New websocket!")
+        ws.apply {
+            onmessage = {
+                appState = Json.decodeFromString(it.data.toString())
+                stale = false
+                @Suppress("RedundantUnitExpression")
+                Unit // This is not redundant, because assignment fails some weird type checks
+            }
+            onclose = {
+                console.log("Closed websocket")
+                stale = true
+                webSocket.current = null
+                (it as? CloseEvent)?.let {event ->
+                    if (event.code == 3000.toShort())
+                        window.location.reload()
+                }
+                setTimeout(::startWebSocket, 5000)
+            }
+        }
+        webSocket.current = ws
+    }
+
     useEffectOnce {
-        webSocket.current = WebSocket("ws://localhost:8080/state")
-        val ws = webSocket.current ?: error("WebSocket does not exist???")
-        ws.onmessage = {
-            appState = Json.decodeFromString(it.data.toString())
-            @Suppress("RedundantUnitExpression")
-            Unit // This is not redundant, because assignment fails some weird type checks
-        }
-        ws.onclose = {
-            appState = null
-            @Suppress("RedundantUnitExpression")
-            Unit // This is not redundant, because assignment fails some weird type checks
-        }
+        startWebSocket()
         cleanup {
-            ws.close()
+            // Do not push reconnect
+            webSocket.current?.apply {
+                onclose = null
+                close()
+            }
         }
     }
 
@@ -94,7 +121,16 @@ val App = FC<Props> {
         position = AppBarPosition.static
         Toolbar {
             Typography {
+                sx {
+                    flexGrow = 1.asDynamic()
+                }
                 +"Confido"
+            }
+            if (stale) {
+                Chip {
+                    this.color = ChipColor.error
+                    this.label = ReactNode("Disconnected")
+                }
             }
         }
     }
@@ -109,10 +145,11 @@ val App = FC<Props> {
     }
 
     AppStateContext.Provider {
-        value = appState ?: error("No app state!")
+        value = ClientAppState(appState ?: error("No app state!"), stale)
 
         if (appState?.session?.name == null) {
-          h1 {
+          Typography {
+              variant = TypographyVariant.h1
               +"Please, set your name."
           }
           SetNameForm {}

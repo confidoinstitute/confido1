@@ -60,12 +60,12 @@ val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
 
     when(props.state) {
         PendingPredictionState.ACCEPTED -> Chip {
-            label = ReactNode("Prediction accepted!")
+            label = ReactNode("Prediction submitted!")
             variant = ChipVariant.outlined
             color = ChipColor.success
         }
         PendingPredictionState.ERROR -> Chip {
-            label = ReactNode("Prediction failed to send!")
+            label = ReactNode("Prediction submission failed!")
             variant = ChipVariant.outlined
             color = ChipColor.error
         }
@@ -82,8 +82,9 @@ val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
                 }
             } else if (props.prediction == null && props.enabled) {
                 Chip {
-                    label = ReactNode("Make a prediction")
+                    label = ReactNode("Not yet predicted")
                     variant = ChipVariant.outlined
+                    color = ChipColor.primary
                 }
             } else if (props.prediction != null) {
                 Chip {
@@ -112,6 +113,7 @@ external interface QuestionItemProps : Props {
 
 @Suppress("UNCHECKED_CAST_TO_EXTERNAL_INTERFACE", "UNCHECKED_CAST")
 val QuestionItem = FC<QuestionItemProps> { props ->
+    val stale = useContext(AppStateContext).stale
     val question = props.question
     val navigate = useNavigate()
 
@@ -168,7 +170,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     }
                 }
                 QuestionPredictionChip {
-                    this.enabled = question.enabled
+                    this.enabled = question.enabled && !stale
                     this.pending = pendingPrediction != null
                     this.prediction = props.prediction
                     this.state = pendingPredictionState
@@ -182,7 +184,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             }
             questionInput {
                 this.id = question.id
-                this.enabled = question.enabled
+                this.enabled = question.enabled && !stale
                 this.answerSpace = question.answerSpace
                 this.prediction = pendingPrediction ?: props.prediction
                 this.onPredict = {pendingPrediction = it; pendingPredictionState = PendingPredictionState.NONE}
@@ -214,7 +216,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 }
 
 val QuestionList = FC<Props> {
-    val appState = useContext(AppStateContext)
+    val clientAppState = useContext(AppStateContext)
+    val appState = clientAppState.state
     val questions = appState.questions.values.sortedBy { it.name }
     val visibleQuestions = questions.filter { it.visible }
 
@@ -237,13 +240,13 @@ val QuestionList = FC<Props> {
             this.key = question.id
             this.question = question
             this.prediction = appState.userPredictions[question.id]
-            this.editable = appState.isAdmin
+            this.editable = appState.isAdmin && !clientAppState.stale
             this.comments = appState.comments[question.id] ?: listOf()
             this.onEditDialog = ::editQuestionOpen
         }
     }
 
-    if (appState.isAdmin) {
+    if (appState.isAdmin && !clientAppState.stale) {
         Fab {
             css {
                 position = Position.absolute

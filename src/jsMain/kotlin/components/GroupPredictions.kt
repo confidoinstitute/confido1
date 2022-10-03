@@ -84,7 +84,7 @@ external interface GroupPredictionsProps : Props {
 }
 
 val GroupPredictions = FC<GroupPredictionsProps> { props ->
-    val appState = useContext(AppStateContext)
+    val appState = useContext(AppStateContext).state
     val questions = props.questions ?: appState.questions.values.filter { it.visible && it.predictionsVisible }.sortedBy { it.name }
     Grid {
         container = true

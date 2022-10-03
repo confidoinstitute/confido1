@@ -178,7 +178,7 @@ val BinaryQuestionInput = FC<QuestionInputProps<BinaryAnswerSpace>> { props ->
             if (madePrediction) {
                 when (estimate) {
                     0.0 -> {
-                        +"There is "
+                        +"You think there is "
                         ReactHTML.strong {
                             +"absolutely no chance"
                         }
@@ -186,7 +186,7 @@ val BinaryQuestionInput = FC<QuestionInputProps<BinaryAnswerSpace>> { props ->
                         certaintyExplanation()
                     }
                     100.0 -> {
-                        +"This is an "
+                        +"You think this is an "
                         ReactHTML.strong {
                             +"absolute certainty"
                         }
@@ -194,9 +194,9 @@ val BinaryQuestionInput = FC<QuestionInputProps<BinaryAnswerSpace>> { props ->
                         certaintyExplanation()
                     }
                     else -> {
-                        +"There is "
+                        +"You think there is a "
                         ReactHTML.strong {
-                            +"$estimate %"
+                            +"$estimate%"
                         }
                         +" chance."
                     }
