@@ -54,8 +54,8 @@ val DistributionPlot = FC<DistributionPlotProps> {props ->
             if (props.visible)
             yTicks.mapIndexed {index, yTick ->
                 beginPath()
-                moveTo(index.toDouble(), height)
-                lineTo(index.toDouble(), height - yTick.first * scale)
+                moveTo(index.toDouble() + 0.5, height)
+                lineTo(index.toDouble() + 0.5, height - yTick.first * scale)
                 strokeStyle = yTick.second.toString()
                 stroke()
             }
