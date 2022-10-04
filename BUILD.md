@@ -40,3 +40,10 @@ the frontend files. Backend requests are proxied to `http://localhost:8080/` so
 you have to also separately run the backend as shown above. IDEA allows running
 two run configurations at the same time, or you can run two gradle commands in two
 terminal windows.
+
+After running both backend and frontend, open `http://localhost:8081/` in your
+browser. Whenever you change a frontend source file, an automatic incremental
+recompilation is triggered (this is visible in the output of the `./gradlew
+jsBrowserDevelopmentRun` command) and then a reload of the page is automatically
+triggered. Usually it reloads twice (for some reason) and the change is visible
+after the second reload.
