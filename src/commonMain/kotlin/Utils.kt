@@ -14,4 +14,4 @@ val alnum = ('a'..'z').toList() + ('0'..'9').toList()
 fun randomString(length: Int) =
     (1..length).map {
         alnum.random()
-    }.joinToString()
+    }.joinToString("")

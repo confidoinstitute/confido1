@@ -21,6 +21,7 @@ import kotlin.math.floor
 external interface EditAnswerSpaceProps<T: AnswerSpace> : Props {
     var minValue: Double
     var maxValue: Double
+    var unit: String
     var disabled: Boolean
     var error: Boolean
     var onChange: ((T) -> Unit)?
@@ -29,9 +30,10 @@ external interface EditAnswerSpaceProps<T: AnswerSpace> : Props {
 val EditNumericAnswerSpace = FC<EditAnswerSpaceProps<NumericAnswerSpace>> {props ->
     var minValue by useState(props.minValue)
     var maxValue by useState(props.maxValue)
+    var unit by useState(props.unit)
 
     useEffect(minValue, maxValue) {
-        props.onChange?.invoke(NumericAnswerSpace(32, minValue, maxValue))
+        props.onChange?.invoke(NumericAnswerSpace(32, minValue, maxValue, unit = unit))
     }
 
     FormGroup {
@@ -57,6 +59,16 @@ val EditNumericAnswerSpace = FC<EditAnswerSpaceProps<NumericAnswerSpace>> {props
                 helperText = ReactNode("Inconsistent range.")
             onChange = {
                 maxValue = it.eventNumberValue()
+            }
+        }
+        TextField {
+            margin = FormControlMargin.dense
+            value = unit
+            label = ReactNode("Unit")
+            error = props.error
+            disabled = props.disabled
+            onChange = {
+                unit = it.eventValue()
             }
         }
     }
@@ -216,6 +228,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> {props ->
                 component {
                     minValue = numericAnswerSpace.min
                     maxValue = numericAnswerSpace.max
+                    unit = numericAnswerSpace.unit
                     disabled = !answerSpaceEditable
                     error = errorBadAnswerSpace
                     onChange = {

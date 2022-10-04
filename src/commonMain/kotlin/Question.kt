@@ -48,7 +48,8 @@ class NumericAnswerSpace(
     override val bins: Int,
     val min: Double,
     val max: Double,
-    val representsDays: Boolean = false
+    val representsDays: Boolean = false,
+    val unit: String = ""
 ) : AnswerSpace() {
     override fun verifyParams() = (!min.isNaN() && !max.isNaN() && min < max)
 

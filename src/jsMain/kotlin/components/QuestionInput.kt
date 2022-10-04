@@ -59,6 +59,8 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericAnswerSpace>> { props ->
     fun formatDate(value: Number): String = Date(value.toDouble() * 1000.0).toISOString().substring(0, 10)
     val formatUncertainty = {_: Number -> "Specify your uncertainty"}
 
+    fun addUnit(value: Any) = if (answerSpace.unit.isNotEmpty()) "$value ${answerSpace.unit}" else value.toString()
+
     Fragment {
         DistributionPlot {
             min = answerSpace.min
@@ -83,6 +85,8 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericAnswerSpace>> { props ->
             if (answerSpace.representsDays) {
                 this.valueLabelFormat = ::formatDate
                 this.widthToMarks = { width -> dateMarkSpacing(width, answerSpace.min, answerSpace.max) }
+            } else {
+                this.valueLabelFormat = ::addUnit
             }
 
             onFocus = { madePrediction = true }
@@ -122,7 +126,7 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericAnswerSpace>> { props ->
                             formatDate( confidenceInterval.second )
                         }"
                     else
-                        +" confident that the value lies between ${confidenceInterval.first.format(1)} and ${ confidenceInterval.second.format(1) }"
+                        +" confident that the value lies between ${addUnit(confidenceInterval.first.format(1))} and ${addUnit(confidenceInterval.second.format(1))}"
                 }
             }
         }

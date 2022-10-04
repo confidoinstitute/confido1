@@ -7,8 +7,6 @@ import io.ktor.http.*
 import kotlinx.browser.window
 import kotlin.math.ceil
 import kotlin.math.floor
-import kotlin.math.log10
-import kotlin.math.max
 import kotlinx.datetime.*
 import kotlin.js.Date
 
@@ -44,13 +42,13 @@ fun roundNumbers() = sequence {
     }
 }
 
-fun markSpacing(width: Double, start: Double, end: Double): List<Double> {
+fun markSpacing(width: Double, start: Double, end: Double, formatter: ((value: Number) -> String)?): List<Double> {
     val range = end - start
     val unitWidth = width / range
 
     if (width == 0.0) return emptyList()
 
-    fun strLength(x: Double) = x.toString().length
+    fun strLength(x: Double) = (formatter?:{it.toString()})(x).length
 
     val markBase = roundNumbers().takeWhile{it <= range}.find {step ->
         val lastMark = floor(end / step) * step
