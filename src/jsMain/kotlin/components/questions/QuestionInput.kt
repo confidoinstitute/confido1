@@ -1,5 +1,7 @@
-package components
+package components.questions
 
+import components.Explanation
+import components.MarkedSlider
 import csstype.Color
 import emotion.react.css
 import mui.material.Slider

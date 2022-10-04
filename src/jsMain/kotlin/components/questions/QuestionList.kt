@@ -1,5 +1,6 @@
-package components
+package components.questions
 
+import components.*
 import csstype.*
 import emotion.react.css
 import hooks.useDebounce
@@ -8,8 +9,6 @@ import icons.AddIcon
 import icons.EditIcon
 import icons.ExpandMore
 import io.ktor.client.plugins.*
-import io.ktor.client.request.*
-import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.js.timers.clearInterval
@@ -200,7 +199,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 this.enabled = question.enabled && !stale
                 this.answerSpace = question.answerSpace
                 this.prediction = pendingPrediction ?: props.prediction
-                this.onPredict = {pendingPrediction = it; pendingPredictionState = PendingPredictionState.NONE}
+                this.onPredict = {pendingPrediction = it; pendingPredictionState = PendingPredictionState.NONE }
             }
             if (question.predictionsVisible) {
                 Typography {

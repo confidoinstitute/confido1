@@ -1,20 +1,28 @@
-package components
+package components.questions
 
+import components.AppStateContext
 import csstype.Overflow
 import icons.CloseIcon
 import icons.CommentIcon
 import icons.DeleteIcon
+import io.ktor.client.plugins.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.js.timers.clearInterval
 import kotlinx.js.timers.setInterval
+import mui.lab.LoadingButton
+import mui.lab.LoadingPosition
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.sx
 import payloads.CreatedComment
 import react.*
+import react.dom.html.ButtonType
+import react.dom.html.ReactHTML.form
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.strong
 import react.dom.onChange
-import react.router.dom.useSearchParams
 import react.router.useLocation
 import react.router.useNavigate
 import react.router.useParams
@@ -24,6 +32,8 @@ import tools.confido.question.Question
 import utils.durationAgo
 import utils.eventValue
 import utils.now
+import utils.postJson
+import kotlin.coroutines.EmptyCoroutineContext
 
 external interface QuestionCommentsProps : Props {
     var question: Question
@@ -110,54 +120,73 @@ val CommentInput = FC<CommentInputProps> { props ->
     var content by useState("")
     var attachPrediction by useState(false)
     var pendingSend by useState(false)
+    var errorSend by useState(false)
 
-    DialogContent {
-        this.sx {
-            this.overflowY = Overflow.visible
-            this.flexGrow = 0.asDynamic()
+    form {
+        onSubmit = {
+            it.preventDefault()
+            CoroutineScope(EmptyCoroutineContext).launch {
+                errorSend = false
+                pendingSend = true
+                try {
+                    val createdComment = CreatedComment(now(), content, attachPrediction)
+                    Client.httpClient.postJson("/add_comment/${props.id}", createdComment) {
+                        expectSuccess = true
+                    }
+                    content = ""
+                    props.onSubmit?.invoke(createdComment)
+                } catch (e: Throwable) {
+                    errorSend = true
+                } finally {
+                    pendingSend = false
+                }
+            }
         }
-        TextField {
-            fullWidth = true
-            this.placeholder = "Comment..."
-            this.margin = FormControlMargin.none
-            this.value = content
-            this.onChange = { content = it.eventValue() }
-            this.disabled = stale
-        }
-        FormGroup {
-            FormControlLabel {
-                label = span.create {
-                    +"Attach prediction "
-                    props.prediction?.let {
-                        Typography {
-                            variant = TypographyVariant.body2
-                            +it.toString()
+        DialogContent {
+            this.sx {
+                this.overflowY = Overflow.visible
+                this.flexGrow = 0.asDynamic()
+            }
+            TextField {
+                fullWidth = true
+                this.placeholder = "Comment..."
+                this.margin = FormControlMargin.none
+                this.name = "content"
+                this.value = content
+                this.onChange = { content = it.eventValue() }
+                this.disabled = stale
+                if (errorSend) {
+                    this.error = true
+                    this.helperText = ReactNode("Comment failed to send. Try again later.")
+                }
+            }
+            FormGroup {
+                FormControlLabel {
+                    label = span.create {
+                        +"Attach prediction "
+                        props.prediction?.let {
+                            Typography {
+                                variant = TypographyVariant.body2
+                                +it.toString()
+                            }
                         }
                     }
-                }
-                control = Checkbox.create {
-                    this.checked = attachPrediction
-                    this.disabled = props.prediction == null || stale
-                    this.onChange = { _, value -> attachPrediction = value }
+                    control = Checkbox.create {
+                        this.name = "attach"
+                        this.checked = attachPrediction
+                        this.disabled = props.prediction == null || stale
+                        this.onChange = { _, value -> attachPrediction = value }
+                    }
                 }
             }
         }
-    }
-    DialogActions {
-        if (pendingSend)
-            CircularProgress {
-                size = 24
-            }
-        Button {
-            +"Send"
-            disabled = pendingSend || content.isEmpty() || stale
-            onClick = {
-                pendingSend = true
-                val createdComment = CreatedComment(now(), content, attachPrediction)
-                Client.postData("/add_comment/${props.id}", createdComment)
-                content = ""
-                pendingSend = false
-                props.onSubmit?.invoke(createdComment)
+        DialogActions {
+            LoadingButton {
+                +"Send"
+                disabled = pendingSend || content.isEmpty() || stale
+                type = ButtonType.submit
+                loading = pendingSend
+                loadingPosition = LoadingPosition.start
             }
         }
     }

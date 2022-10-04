@@ -10,12 +10,10 @@ Authentication and rooms: [SE]
 Frontend missing important functionality:
 - Group predictions do not work
   - How to show a graph? Modal?
-- Error handling for comment post
 - Resolutions do not exist
   - Requires to create a structure first [FŠ?]
 - Answer space cannot be edited even if no prediction yet exists
   - Allow it when no predictions are made, in case of a race condition do what?
-- Units for answer space
 - Number of bins for a new question
 
 Frontend features:

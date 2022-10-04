@@ -1,4 +1,4 @@
-package components
+package components.questions
 import hooks.useElementSize
 import org.w3c.dom.CanvasRenderingContext2D
 import org.w3c.dom.HTMLCanvasElement
@@ -25,7 +25,7 @@ external interface DistributionPlotProps : Props {
     var height: Double?
 }
 
-val DistributionPlot = FC<DistributionPlotProps> {props ->
+val DistributionPlot = FC<DistributionPlotProps> { props ->
     val elementSize = useElementSize<HTMLDivElement>()
     val bins = elementSize.width.toInt()
 

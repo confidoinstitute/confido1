@@ -1,5 +1,6 @@
 package components
 
+import components.questions.QuestionList
 import csstype.AlignItems
 import csstype.Display
 import csstype.px
@@ -21,8 +22,6 @@ import org.w3c.dom.CloseEvent
 import org.w3c.dom.WebSocket
 import react.*
 import react.dom.html.ReactHTML.div
-import react.dom.html.ReactHTML.h1
-import react.dom.html.ReactHTML.toString
 import react.dom.onChange
 import react.router.Route
 import react.router.Routes

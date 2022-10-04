@@ -1,4 +1,4 @@
-package components
+package components.questions
 
 import Client
 import mui.material.*
@@ -27,7 +27,7 @@ external interface EditAnswerSpaceProps<T: AnswerSpace> : Props {
     var onChange: ((T) -> Unit)?
 }
 
-val EditNumericAnswerSpace = FC<EditAnswerSpaceProps<NumericAnswerSpace>> {props ->
+val EditNumericAnswerSpace = FC<EditAnswerSpaceProps<NumericAnswerSpace>> { props ->
     var minValue by useState(props.minValue)
     var maxValue by useState(props.maxValue)
     var unit by useState(props.unit)
@@ -74,7 +74,7 @@ val EditNumericAnswerSpace = FC<EditAnswerSpaceProps<NumericAnswerSpace>> {props
     }
 }
 
-val EditDaysAnswerSpace = FC<EditAnswerSpaceProps<NumericAnswerSpace>> {props ->
+val EditDaysAnswerSpace = FC<EditAnswerSpaceProps<NumericAnswerSpace>> { props ->
     var minValue by useState(props.minValue.toISODay())
     var maxValue by useState(props.maxValue.toISODay())
 
@@ -116,7 +116,7 @@ external interface EditQuestionDialogProps : Props {
     var onClose: (() -> Unit)?
 }
 
-val EditQuestionDialog = FC<EditQuestionDialogProps> {props ->
+val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     val q = props.question
     var id by useState(q?.id ?: "")
     var name by useState(q?.name ?: "")
