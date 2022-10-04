@@ -23,6 +23,11 @@ to a different directory.
 
 After running, the app listens on `http://localhost:8080/`
 
+## Database
+
+The backend needs MongoDB to run. It should suffice to run a local MongoDB daemon,
+it will create a database automatically. To fill it with some example questions,
+send a GET request to `http://localhost:8080/init`.
 
 ## Frontend hot reload
 
