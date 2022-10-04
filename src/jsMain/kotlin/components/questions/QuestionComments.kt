@@ -203,7 +203,8 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
     val navigate = useNavigate()
 
     IconButton {
-        onClick = { navigate("/questions/${props.question.id}/comments"); it.stopPropagation() }
+        // TODO: Fix
+        onClick = { navigate("questions/${props.question.id}/comments"); it.stopPropagation() }
 
         Badge {
             this.badgeContent = if (count > 0) ReactNode(count.toString()) else null

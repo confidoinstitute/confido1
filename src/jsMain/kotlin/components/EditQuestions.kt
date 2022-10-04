@@ -6,8 +6,13 @@ import tools.confido.payloads.*
 import react.FC
 import react.Props
 import react.useContext
+import tools.confido.question.Question
 
-val EditQuestions = FC<Props> {
+external interface EditQuestionProps : Props {
+    var questions: List<Question>
+}
+
+val EditQuestions = FC<EditQuestionProps> { props ->
     val appState = useContext(AppStateContext)
     
     fun postEditQuestion(id: String, field: EditQuestionFieldType, value: Boolean) {
@@ -29,7 +34,7 @@ val EditQuestions = FC<Props> {
                 }
             }
             TableBody {
-                appState.state.questions.values.map {question ->
+                props.questions.map {question ->
                     TableRow {
                         TableCell { +question.name }
                         listOf(

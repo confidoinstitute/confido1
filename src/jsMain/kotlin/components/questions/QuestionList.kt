@@ -146,7 +146,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
     Accordion {
         expanded = props.expanded
-        onChange = {_, state -> if(state) {navigate("/questions/${question.id}")} else {navigate("/")} }
+        // TODO: Fix when clicking another question while one is already expanded.
+        onChange = {_, state -> if(state) {navigate("questions/${question.id}")} else {navigate("..")} }
         TransitionProps = jsObject { unmountOnExit = true }
         AccordionSummary {
             id = question.id
@@ -227,10 +228,14 @@ val QuestionItem = FC<QuestionItemProps> { props ->
     }
 }
 
-val QuestionList = FC<Props> {
+external interface QuestionListProps : Props {
+    var questions: List<Question>
+}
+
+val QuestionList = FC<QuestionListProps> { props ->
     val clientAppState = useContext(AppStateContext)
     val appState = clientAppState.state
-    val questions = appState.questions.values.sortedBy { it.name }
+    val questions = props.questions.sortedBy { it.name }
     val visibleQuestions = if (appState.isAdmin) questions else questions.filter { it.visible }
 
     var editQuestion by useState<Question?>(null)
