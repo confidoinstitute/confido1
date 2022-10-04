@@ -82,7 +82,7 @@ val App = FC<Props> {
     val webSocket = useRef<WebSocket>(null)
 
     fun startWebSocket() {
-        val ws = WebSocket(webSocketUrl("state"))
+        val ws = WebSocket(webSocketUrl("/state"))
         console.log("New websocket!")
         ws.apply {
             onmessage = {
@@ -165,19 +165,31 @@ val App = FC<Props> {
                     this.element = QuestionList.create()
                 }
                 Route {
-                    path = "/group_predictions"
+                    path = "questions"
+                    this.element = QuestionList.create()
+                }
+                Route {
+                    path = "questions/:questionID"
+                    this.element = QuestionList.create()
+                }
+                Route {
+                    path = "questions/:questionID/comments"
+                    this.element = QuestionList.create()
+                }
+                Route {
+                    path = "group_predictions"
 
                     this.element = GroupPredictions.create {
                         questions = null
                     }
                 }
                 Route {
-                    path = "/set_name"
+                    path = "set_name"
 
                     this.element = SetNameForm.create()
                 }
                 Route {
-                    path = "/edit_questions"
+                    path = "edit_questions"
 
                     this.element = EditQuestions.create()
                 }

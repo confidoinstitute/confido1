@@ -159,5 +159,5 @@ fun webSocketUrl(path: String): String {
         "https:" -> "wss:"
         else -> "ws:"
     }
-    return protocol + "//" + location.host + location.pathname + path
+    return protocol + "//" + location.host + path
 }

@@ -259,6 +259,13 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> {props ->
 
         }
         DialogActions {
+            if (q != null) {
+                Button {
+                    onClick = {props.onClose?.invoke()}
+                    color = ButtonColor.error
+                    +"Delete"
+                }
+            }
             Button {
                 onClick = {props.onClose?.invoke()}
                 +"Cancel"

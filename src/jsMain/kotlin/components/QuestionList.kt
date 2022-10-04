@@ -23,6 +23,7 @@ import react.*
 import react.dom.html.ReactHTML.small
 import react.dom.html.ReactHTML.span
 import react.router.useNavigate
+import react.router.useParams
 import tools.confido.question.*
 import utils.*
 import kotlin.coroutines.EmptyCoroutineContext
@@ -109,6 +110,7 @@ external interface QuestionItemProps : Props {
     var editable: Boolean
     var comments: List<Comment>
     var onEditDialog: ((Question) -> Unit)?
+    var expanded: Boolean
 }
 
 @Suppress("UNCHECKED_CAST_TO_EXTERNAL_INTERFACE", "UNCHECKED_CAST")
@@ -144,8 +146,9 @@ val QuestionItem = FC<QuestionItemProps> { props ->
     useOnUnmount(pendingPrediction) {Client.postData("/send_prediction/${props.question.id}", it) }
 
     Accordion {
+        expanded = props.expanded
+        onChange = {_, state -> if(state) {navigate("/questions/${question.id}")} else {navigate("/")} }
         TransitionProps = jsObject { unmountOnExit = true }
-        key = question.id
         AccordionSummary {
             id = question.id
             expandIcon = ExpandMore.create()
@@ -158,15 +161,25 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 }
                 Typography {
                     variant = TypographyVariant.h4
-                    +question.name
+                        +question.name
                     sx {
                         flexGrow = 1.asDynamic()
+                        if (!question.visible) {
+                            this.fontStyle = FontStyle.italic
+                        }
                     }
                 }
                 if (question.resolved) {
                     Chip {
                         label = ReactNode("Resolved")
                         variant = ChipVariant.outlined
+                    }
+                }
+                if (!question.visible) {
+                    Chip {
+                        label = ReactNode("Not visible")
+                        variant = ChipVariant.outlined
+                        color = ChipColor.warning
                     }
                 }
                 QuestionPredictionChip {
@@ -219,10 +232,12 @@ val QuestionList = FC<Props> {
     val clientAppState = useContext(AppStateContext)
     val appState = clientAppState.state
     val questions = appState.questions.values.sortedBy { it.name }
-    val visibleQuestions = questions.filter { it.visible }
+    val visibleQuestions = if (appState.isAdmin) questions else questions.filter { it.visible }
 
     var editQuestion by useState<Question?>(null)
     var editOpen by useState(false)
+
+    val expandedQuestion = useParams().get("questionID")
 
     if (editOpen) {
         EditQuestionDialog {
@@ -239,6 +254,7 @@ val QuestionList = FC<Props> {
         QuestionItem {
             this.key = question.id
             this.question = question
+            this.expanded = question.id == expandedQuestion
             this.prediction = appState.userPredictions[question.id]
             this.editable = appState.isAdmin && !clientAppState.stale
             this.comments = appState.comments[question.id] ?: listOf()
@@ -249,7 +265,7 @@ val QuestionList = FC<Props> {
     if (appState.isAdmin && !clientAppState.stale) {
         Fab {
             css {
-                position = Position.absolute
+                position = Position.fixed
                 right = 16.px
                 bottom = 16.px
             }

@@ -16,10 +16,10 @@ val locations = mapOf(
 val Navigation = FC<Props>
 {
     val location = useLocation()
-    console.log(location)
+    val locationValue = if(location.pathname.startsWith("/questions")) "/" else location.pathname
 
     Tabs {
-        value = location.pathname
+        value = locationValue
         locations.entries.map { (location, label) ->
             Tab {
                 value = location

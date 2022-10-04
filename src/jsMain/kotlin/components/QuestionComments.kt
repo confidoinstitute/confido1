@@ -14,6 +14,10 @@ import react.*
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.strong
 import react.dom.onChange
+import react.router.dom.useSearchParams
+import react.router.useLocation
+import react.router.useNavigate
+import react.router.useParams
 import tools.confido.question.Comment
 import tools.confido.question.Prediction
 import tools.confido.question.Question
@@ -160,12 +164,17 @@ val CommentInput = FC<CommentInputProps> { props ->
 }
 
 val QuestionComments = FC<QuestionCommentsProps> { props ->
-    var open by useState(false)
     var deleteMode by useState(false)
     val count = props.comments.count()
 
+    val location = useLocation().pathname
+    val questionID = useParams()["questionID"]
+    val open = location.endsWith("comments") && questionID == props.question.id
+
+    val navigate = useNavigate()
+
     IconButton {
-        onClick = { open = true; it.stopPropagation() }
+        onClick = { navigate("/questions/${props.question.id}/comments"); it.stopPropagation() }
 
         Badge {
             this.badgeContent = if (count > 0) ReactNode(count.toString()) else null
@@ -178,14 +187,14 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
         this.open = open
         this.scroll = DialogScroll.paper
         fullScreen = true
-        this.onClose = { _, _ -> open = false }
+        this.onClose = { _, _ -> navigate("/questions/${props.question.id}") }
 
         AppBar {
             this.position = AppBarPosition.relative
             Toolbar {
                 IconButton {
                     CloseIcon {}
-                    onClick = { open = false; it.stopPropagation() }
+                    onClick = { navigate("/questions/${props.question.id}") }
                 }
                 Typography {
                     sx {
