@@ -80,12 +80,12 @@ val PredictionPlot = FC<PredictionPlotProps> {props ->
 }
 
 external interface GroupPredictionsProps : Props {
-    var questions: List<Question>?
+    var questions: List<Question>
 }
 
 val GroupPredictions = FC<GroupPredictionsProps> { props ->
     val appState = useContext(AppStateContext).state
-    val questions = props.questions ?: appState.questions.values.filter { it.visible && it.predictionsVisible }.sortedBy { it.name }
+    val questions = props.questions
     Grid {
         container = true
         spacing = 2.asDynamic()

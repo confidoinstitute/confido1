@@ -47,7 +47,7 @@ fun editQuestion(routing: Routing) {
                 val qid = editQuestion.question.id.ifEmpty { randomString(20) }
                 val question = editQuestion.question.copy(id=qid)
 
-                ServerState.questions = ServerState.questions + mapOf(qid to question)
+                ServerState.questions[qid] = question
             }
         }
 

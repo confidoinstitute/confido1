@@ -109,6 +109,7 @@ external interface QuestionItemProps : Props {
     var editable: Boolean
     var comments: List<Comment>
     var onEditDialog: ((Question) -> Unit)?
+    var onChange: ((Boolean) -> Unit)?
     var expanded: Boolean
 }
 
@@ -146,7 +147,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
     Accordion {
         expanded = props.expanded
-        onChange = {_, state -> if(state) {navigate("/questions/${question.id}")} else {navigate("/")} }
+        // TODO: Fix when clicking another question while one is already expanded.
+        onChange = {_, state -> props.onChange?.invoke(state) }
         TransitionProps = jsObject { unmountOnExit = true }
         AccordionSummary {
             id = question.id
@@ -227,16 +229,20 @@ val QuestionItem = FC<QuestionItemProps> { props ->
     }
 }
 
-val QuestionList = FC<Props> {
+external interface QuestionListProps : Props {
+    var questions: List<Question>
+}
+
+val QuestionList = FC<QuestionListProps> { props ->
     val clientAppState = useContext(AppStateContext)
     val appState = clientAppState.state
-    val questions = appState.questions.values.sortedBy { it.name }
+    val questions = props.questions.sortedBy { it.name }
     val visibleQuestions = if (appState.isAdmin) questions else questions.filter { it.visible }
 
     var editQuestion by useState<Question?>(null)
     var editOpen by useState(false)
 
-    val expandedQuestion = useParams().get("questionID")
+    var expandedQuestion by useState<String?>(null)
 
     if (editOpen) {
         EditQuestionDialog {
@@ -249,6 +255,7 @@ val QuestionList = FC<Props> {
     fun editQuestionOpen(it: Question) {
         editQuestion = it; editOpen = true
     }
+
     visibleQuestions.map { question ->
         QuestionItem {
             this.key = question.id
@@ -258,6 +265,7 @@ val QuestionList = FC<Props> {
             this.editable = appState.isAdmin && !clientAppState.stale
             this.comments = appState.comments[question.id] ?: listOf()
             this.onEditDialog = ::editQuestionOpen
+            this.onChange = {state -> expandedQuestion = if (state) question.id else null}
         }
     }
 

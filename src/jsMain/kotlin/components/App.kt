@@ -1,17 +1,12 @@
 package components
 
-import components.questions.QuestionList
+import components.rooms.Room
+import components.rooms.RoomList
 import csstype.AlignItems
 import csstype.Display
 import csstype.px
 import emotion.react.css
-import io.ktor.client.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.request.*
-import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
 import kotlinx.browser.window
-import kotlinx.coroutines.*
 import kotlinx.js.timers.setTimeout
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -27,7 +22,6 @@ import react.router.Route
 import react.router.Routes
 import react.router.dom.BrowserRouter
 import tools.confido.payloads.SetName
-import tools.confido.question.*
 import tools.confido.state.AppState
 import utils.webSocketUrl
 
@@ -115,10 +109,17 @@ val App = FC<Props> {
         }
     }
 
+    var drawerOpen by useState(false)
+
     CssBaseline {}
     AppBar {
         position = AppBarPosition.static
         Toolbar {
+            IconButton {
+                color = IconButtonColor.inherit
+                onClick = {drawerOpen = true}
+                +"..."
+            }
             Typography {
                 sx {
                     flexGrow = 1.asDynamic()
@@ -156,31 +157,20 @@ val App = FC<Props> {
         }
 
         BrowserRouter {
-            Navigation {}
+            Sidebar {
+                isOpen = drawerOpen
+                onClose = {drawerOpen = false}
+            }
             Routes {
                 Route {
                     index = true
                     path = "/"
-                    this.element = QuestionList.create()
+                    // TODO: something here.
+                    this.element = Typography.create { +"Welcome to Confido!" }
                 }
                 Route {
-                    path = "questions"
-                    this.element = QuestionList.create()
-                }
-                Route {
-                    path = "questions/:questionID"
-                    this.element = QuestionList.create()
-                }
-                Route {
-                    path = "questions/:questionID/comments"
-                    this.element = QuestionList.create()
-                }
-                Route {
-                    path = "group_predictions"
-
-                    this.element = GroupPredictions.create {
-                        questions = null
-                    }
+                    path = "room/:roomID/*"
+                    this.element = Room.create()
                 }
                 Route {
                     path = "set_name"

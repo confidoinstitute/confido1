@@ -195,15 +195,12 @@ val CommentInput = FC<CommentInputProps> { props ->
 val QuestionComments = FC<QuestionCommentsProps> { props ->
     var deleteMode by useState(false)
     val count = props.comments.count()
+    var open by useState(false)
 
-    val location = useLocation().pathname
-    val questionID = useParams()["questionID"]
-    val open = location.endsWith("comments") && questionID == props.question.id
-
-    val navigate = useNavigate()
 
     IconButton {
-        onClick = { navigate("/questions/${props.question.id}/comments"); it.stopPropagation() }
+        // TODO: Fix
+        onClick = { open = true; it.stopPropagation() }
 
         Badge {
             this.badgeContent = if (count > 0) ReactNode(count.toString()) else null
@@ -216,14 +213,14 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
         this.open = open
         this.scroll = DialogScroll.paper
         fullScreen = true
-        this.onClose = { _, _ -> navigate("/questions/${props.question.id}") }
+        this.onClose = { _, _ -> open = false }
 
         AppBar {
             this.position = AppBarPosition.relative
             Toolbar {
                 IconButton {
                     CloseIcon {}
-                    onClick = { navigate("/questions/${props.question.id}") }
+                    onClick = { open = false }
                 }
                 Typography {
                     sx {

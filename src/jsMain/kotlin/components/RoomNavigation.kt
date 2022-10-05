@@ -7,16 +7,16 @@ import react.router.dom.NavLink
 import react.router.useLocation
 
 val locations = mapOf(
-    "/" to "Questions",
-    "/group_predictions" to "Group predictions",
-    "/edit_questions" to "Edit questions",
-    "/set_name" to "Change name",
+    "" to "Questions",
+    "group_predictions" to "Group predictions",
+    "edit_questions" to "Edit questions",
 )
 
-val Navigation = FC<Props>
+val RoomNavigation = FC<Props>
 {
     val location = useLocation()
-    val locationValue = if(location.pathname.startsWith("/questions")) "/" else location.pathname
+    val locationValue = location.pathname.split('/').getOrNull(3) ?: ""
+    // TODO: Fix if we are keeping this, see https://mui.com/material-ui/guides/routing/#tabs
 
     Tabs {
         value = locationValue

@@ -29,7 +29,6 @@ external interface QuestionInputProps<T : AnswerSpace> : Props {
 
 val NumericQuestionInput = FC<QuestionInputProps<NumericAnswerSpace>> { props ->
     val answerSpace = props.answerSpace
-    console.log(answerSpace)
     val prediction = props.prediction as? NumericPrediction ?: NumericPrediction(0.0, (answerSpace.min + answerSpace.max) / 2.0, (answerSpace.max - answerSpace.min) / 4)
     var madePrediction by useState(props.prediction != null)
     var madeUncertainty by useState(madePrediction)
