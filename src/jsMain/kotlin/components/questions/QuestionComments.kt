@@ -1,6 +1,7 @@
 package components.questions
 
 import components.AppStateContext
+import csstype.Length
 import csstype.Overflow
 import csstype.number
 import csstype.pct
@@ -70,6 +71,10 @@ val Comment = FC<CommentProps> { props ->
     }
 
     Card {
+        sx {
+            marginTop = 2.asDynamic()
+            marginBottom = 2.asDynamic()
+        }
         CardHeader {
             title = ReactNode(props.comment.user)
             subheader = ReactNode(textAgo)
@@ -108,7 +113,6 @@ val Comment = FC<CommentProps> { props ->
             }
         }
     }
-    Divider {}
 }
 
 external interface CommentInputProps : Props {

@@ -55,9 +55,10 @@ object ServerState {
         }
 
         // TODO: Persist rooms, for now we create one room that contains all questions and one "private" room with a new question
-        val pub = "testpub" to Room("testpub", "Testing room", RoomAccessibility.PUBLIC, questions.values.toList())
-        questions["qtestpriv"] = Question("qtestpriv", "Is this a private question?", BinaryAnswerSpace())
-        val priv = "testpriv" to Room("testpriv", "Private room", RoomAccessibility.PRIVATE, listOf(questions["qtestpriv"]!!))
+        val pub = "testpub" to Room("testpub", "Testing room", RoomAccessibility.PUBLIC, questions.values.toMutableList())
+        val qtestpriv = Question("qtestpriv", "Is this a private question?", BinaryAnswerSpace())
+        questions["qtestpriv"] = qtestpriv
+        val priv = "testpriv" to Room("testpriv", "Private room", RoomAccessibility.PRIVATE, mutableListOf(qtestpriv))
         rooms = mapOf(pub, priv)
 
         // TODO actually store comments!

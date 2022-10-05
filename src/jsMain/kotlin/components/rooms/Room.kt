@@ -2,14 +2,13 @@ package components.rooms
 
 import components.*
 import components.questions.QuestionList
-import react.FC
-import react.Props
-import react.create
+import react.*
 import react.router.Route
 import react.router.Routes
 import react.router.useParams
-import react.useContext
+import tools.confido.question.Room
 
+val RoomContext = createContext<Room>()
 
 val Room = FC<Props> {
     val clientAppState = useContext(AppStateContext)
@@ -17,26 +16,29 @@ val Room = FC<Props> {
     val roomId = useParams()["roomID"] ?: return@FC
     val room = state.getRoom(roomId) ?: return@FC
 
-    RoomNavigation {}
-    Routes {
-        Route {
-            index = true
-            this.element = QuestionList.create {
-                questions = room.questions
+    RoomContext.Provider {
+        value = room
+        RoomNavigation {}
+        Routes {
+            Route {
+                index = true
+                this.element = QuestionList.create {
+                    questions = room.questions
+                }
             }
-        }
-        Route {
-            path = "group_predictions"
+            Route {
+                path = "group_predictions"
 
-            this.element = GroupPredictions.create {
-                questions = room.questions
+                this.element = GroupPredictions.create {
+                    questions = room.questions.filter { it.predictionsVisible }
+                }
             }
-        }
-        Route {
-            path = "edit_questions"
+            Route {
+                path = "edit_questions"
 
-            this.element = EditQuestions.create {
-                questions = room.questions
+                this.element = EditQuestions.create {
+                    questions = room.questions
+                }
             }
         }
     }

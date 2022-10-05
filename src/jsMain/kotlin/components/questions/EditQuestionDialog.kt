@@ -1,6 +1,8 @@
 package components.questions
 
 import Client
+import components.rooms.RoomContext
+import kotlinx.datetime.LocalDate
 import mui.material.*
 import react.*
 import react.dom.html.InputType
@@ -79,7 +81,7 @@ val EditDaysAnswerSpace = FC<EditAnswerSpaceProps<NumericAnswerSpace>> { props -
     var maxValue by useState(props.maxValue.toISODay())
 
     useEffect(minValue, maxValue) {
-        props.onChange?.invoke(NumericAnswerSpace(32, minValue.toTimestamp(), maxValue.toTimestamp(), representsDays = true))
+        props.onChange?.invoke(NumericAnswerSpace.fromDates(LocalDate.parse(minValue), LocalDate.parse(maxValue)))
     }
 
     FormGroup {
@@ -118,6 +120,8 @@ external interface EditQuestionDialogProps : Props {
 
 val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     val q = props.question
+    val room = useContext(RoomContext)
+
     var id by useState(q?.id ?: "")
     var name by useState(q?.name ?: "")
     var answerSpace : AnswerSpace? by useState(q?.answerSpace)
@@ -150,7 +154,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         }
         if (error) return
         val question = Question(id, name, answerSpace!!, visible, enabled, predictionsVisible, resolved)
-        val editQuestion: EditQuestion = EditQuestionComplete(question)
+        val editQuestion: EditQuestion = EditQuestionComplete(question, room.id)
 
         // TODO Make better REST API, as it now requires ID to be sent in URL path
         Client.postData("/edit_question/edit", editQuestion)

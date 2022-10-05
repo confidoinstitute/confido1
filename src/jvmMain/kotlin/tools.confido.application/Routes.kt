@@ -46,8 +46,17 @@ fun editQuestion(routing: Routing) {
             is EditQuestionComplete -> {
                 val qid = editQuestion.question.id.ifEmpty { randomString(20) }
                 val question = editQuestion.question.copy(id=qid)
-
-                ServerState.questions[qid] = question
+                val room = editQuestion.room
+                ServerState.rooms[room]?.let {stateRoom ->
+                    stateRoom.getQuestion(qid)?.let {
+                        stateRoom.questions.remove(it)
+                    }
+                    stateRoom.questions.add(question)
+                    ServerState.questions[qid] = question
+                } ?: run {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
             }
         }
 
