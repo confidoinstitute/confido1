@@ -12,10 +12,10 @@ val locations = mapOf(
     "edit_questions" to "Edit questions",
 )
 
-val Navigation = FC<Props>
+val RoomNavigation = FC<Props>
 {
     val location = useLocation()
-    val locationValue = location.pathname
+    val locationValue = location.pathname.split('/').getOrNull(3) ?: ""
     // TODO: Fix if we are keeping this, see https://mui.com/material-ui/guides/routing/#tabs
 
     Tabs {

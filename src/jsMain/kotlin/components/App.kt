@@ -109,10 +109,17 @@ val App = FC<Props> {
         }
     }
 
+    var drawerOpen by useState(false)
+
     CssBaseline {}
     AppBar {
         position = AppBarPosition.static
         Toolbar {
+            IconButton {
+                color = IconButtonColor.inherit
+                onClick = {drawerOpen = true}
+                +"..."
+            }
             Typography {
                 sx {
                     flexGrow = 1.asDynamic()
@@ -150,8 +157,10 @@ val App = FC<Props> {
         }
 
         BrowserRouter {
-            // TODO: move into a drawer (side menu)
-            RoomList {}
+            Sidebar {
+                isOpen = drawerOpen
+                onClose = {drawerOpen = false}
+            }
             Routes {
                 Route {
                     index = true

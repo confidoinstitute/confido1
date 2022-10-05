@@ -17,30 +17,12 @@ val Room = FC<Props> {
     val roomId = useParams()["roomID"] ?: return@FC
     val room = state.getRoom(roomId) ?: return@FC
 
-    Navigation {}
+    RoomNavigation {}
     Routes {
         Route {
             index = true
             this.element = QuestionList.create {
                 questions = room.questions
-            }
-        }
-        Route {
-            path = "questions"
-            this.element = QuestionList.create {
-                questions = room.questions
-            }
-            Route {
-                path = ":questionID"
-                this.element = QuestionList.create {
-                    questions = room.questions
-                }
-                Route {
-                    path = "comments"
-                    this.element = QuestionList.create {
-                        questions = room.questions
-                    }
-                }
             }
         }
         Route {
