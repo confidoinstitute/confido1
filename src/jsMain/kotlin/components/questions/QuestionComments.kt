@@ -2,12 +2,13 @@ package components.questions
 
 import components.AppStateContext
 import csstype.Overflow
+import csstype.pct
 import icons.CloseIcon
 import icons.CommentIcon
 import icons.DeleteIcon
+import icons.SendIcon
 import io.ktor.client.plugins.*
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.js.timers.clearInterval
 import kotlinx.js.timers.setInterval
@@ -142,14 +143,10 @@ val CommentInput = FC<CommentInputProps> { props ->
                 }
             }
         }
-        DialogContent {
-            this.sx {
-                this.overflowY = Overflow.visible
-                this.flexGrow = 0.asDynamic()
-            }
+        DialogActions {
             TextField {
                 fullWidth = true
-                this.placeholder = "Comment..."
+                this.placeholder = "Write a comment..."
                 this.margin = FormControlMargin.none
                 this.name = "content"
                 this.value = content
@@ -160,7 +157,12 @@ val CommentInput = FC<CommentInputProps> { props ->
                     this.helperText = ReactNode("Comment failed to send. Try again later.")
                 }
             }
+        }
+        DialogActions {
             FormGroup {
+                sx {
+                    flexGrow = 1.asDynamic()
+                }
                 FormControlLabel {
                     label = span.create {
                         +"Attach prediction "
@@ -179,21 +181,20 @@ val CommentInput = FC<CommentInputProps> { props ->
                     }
                 }
             }
-        }
-        DialogActions {
             LoadingButton {
                 +"Send"
                 disabled = pendingSend || content.isEmpty() || stale
                 type = ButtonType.submit
                 loading = pendingSend
-                loadingPosition = LoadingPosition.start
+                loadingPosition = LoadingPosition.end
+                endIcon = SendIcon.create()
             }
         }
     }
 }
 
 val QuestionComments = FC<QuestionCommentsProps> { props ->
-    var deleteMode by useState(false)
+    //var deleteMode by useState(false)
     val count = props.comments.count()
     var open by useState(false)
 
@@ -212,9 +213,16 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
     Dialog {
         this.open = open
         this.scroll = DialogScroll.paper
-        fullScreen = true
+        this.fullWidth = true
+        this.maxWidth = "lg"
         this.onClose = { _, _ -> open = false }
+        sx {
+            ".MuiDialog-paper" {
+                minHeight = 50.pct
+            }
+        }
 
+        if (false)
         AppBar {
             this.position = AppBarPosition.relative
             Toolbar {
@@ -226,7 +234,7 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
                     sx {
                         flexGrow = 1.asDynamic()
                     }
-                    +"Comment"
+                    +props.question.name
                 }
                 // TODO deletion and edit mechanism
 //                Button {
@@ -238,9 +246,15 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
             }
         }
         DialogTitle {
-            +props.question.name
+            +"Comments"
+            Typography {
+                +props.question.name
+            }
         }
         DialogContent {
+            sx {
+                flexGrow = 1.asDynamic()
+            }
             this.dividers = true
             props.comments.sortedByDescending { it.timestamp }.map {
                 Comment {
