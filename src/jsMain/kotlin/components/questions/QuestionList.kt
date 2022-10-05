@@ -22,13 +22,14 @@ import react.*
 import react.dom.html.ReactHTML.small
 import react.dom.html.ReactHTML.span
 import react.router.useNavigate
-import react.router.useParams
 import tools.confido.question.*
 import utils.*
 import kotlin.coroutines.EmptyCoroutineContext
 
 enum class PendingPredictionState {
     NONE,
+    MAKING,
+    SENDING,
     ACCEPTED,
     ERROR,
 }
@@ -59,6 +60,19 @@ val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
     }
 
     when(props.state) {
+        PendingPredictionState.MAKING -> Chip {
+            label = ReactNode("Predicting...")
+            variant = ChipVariant.outlined
+        }
+        PendingPredictionState.SENDING -> Chip {
+            label = span.create {
+                CircularProgress {
+                    this.size = "0.8rem"
+                }
+                +"Sending prediction..."
+            }
+            variant = ChipVariant.outlined
+        }
         PendingPredictionState.ACCEPTED -> Chip {
             label = ReactNode("Prediction submitted!")
             variant = ChipVariant.outlined
@@ -70,17 +84,7 @@ val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
             color = ChipColor.error
         }
         PendingPredictionState.NONE ->
-            if (props.pending) {
-                Chip {
-                    label = span.create {
-                        CircularProgress {
-                            this.size = "0.8rem"
-                        }
-                        +"Sending prediction..."
-                    }
-                    variant = ChipVariant.outlined
-                }
-            } else if (props.prediction == null && props.enabled) {
+            if (props.prediction == null && props.enabled) {
                 Chip {
                     label = ReactNode("Not yet predicted")
                     variant = ChipVariant.outlined
@@ -98,6 +102,11 @@ val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
                             }
                         }
                     }
+                    variant = ChipVariant.outlined
+                }
+            } else {
+                Chip {
+                    label = ReactNode("Predictions closed")
                     variant = ChipVariant.outlined
                 }
             }
@@ -123,13 +132,14 @@ val QuestionItem = FC<QuestionItemProps> { props ->
     var pendingPredictionState by useState(PendingPredictionState.NONE)
 
     useDebounce(5000, pendingPredictionState) {
-        if (pendingPredictionState != PendingPredictionState.NONE)
+        if (pendingPredictionState in listOf(PendingPredictionState.ACCEPTED, PendingPredictionState.ERROR))
             pendingPredictionState = PendingPredictionState.NONE
     }
 
-    useDebounce(5000, pendingPrediction) {
+    useDebounce(1000, pendingPrediction) {
         pendingPrediction?.let {
             CoroutineScope(EmptyCoroutineContext).launch {
+                pendingPredictionState = PendingPredictionState.SENDING
                 try {
                     Client.httpClient.postJson("/send_prediction/${props.question.id}", it) {
                         expectSuccess = true
@@ -161,7 +171,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     flexGrow = 1.asDynamic()
                 }
                 Typography {
-                    variant = TypographyVariant.h4
+                    variant = TypographyVariant.h6
                         +question.name
                     sx {
                         flexGrow = 1.asDynamic()
@@ -201,7 +211,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 this.enabled = question.enabled && !stale
                 this.answerSpace = question.answerSpace
                 this.prediction = pendingPrediction ?: props.prediction
-                this.onPredict = {pendingPrediction = it; pendingPredictionState = PendingPredictionState.NONE }
+                this.onChange = { pendingPrediction = null; pendingPredictionState = PendingPredictionState.MAKING }
+                this.onPredict = { pendingPrediction = it }
             }
             if (question.predictionsVisible) {
                 Typography {
