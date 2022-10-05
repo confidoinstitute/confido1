@@ -48,23 +48,32 @@ val Sidebar = FC<SidebarProps> {props ->
         open = props.isOpen || props.permanent
         Toolbar {}
 
-        RoomList {
-            onNavigate = ::navigateClose
-        }
+        List {
+            sx {
+                width = 100.pct
+            }
+            dense = true
+            RoomList {
+                onNavigate = ::navigateClose
+            }
 
-        Divider {}
+            Divider {}
 
-        ListItem {
-            NavLink {
-                onClick = ::navigateClose
-                to = "/set_name"
-                css {
-                    textDecoration = None.none
-                    color = Color.currentcolor
-                }
-                ListItemButton {
-                    ListItemText {
-                        primary = ReactNode("Change name")
+            ListItem {
+                disablePadding = true
+                ListItemText {
+                    NavLink {
+                        onClick = ::navigateClose
+                        to = "/set_name"
+                        css {
+                            textDecoration = None.none
+                            color = Color.currentcolor
+                        }
+                        ListItemButton {
+                            ListItemText {
+                                primary = ReactNode("Change name")
+                            }
+                        }
                     }
                 }
             }
