@@ -12,6 +12,7 @@ import react.*
 import react.dom.html.ReactHTML.nav
 import react.router.dom.NavLink
 
+val sidebarWidth = 240.px
 external interface SidebarProps : Props {
     var permanent: Boolean
     var isOpen: Boolean
@@ -31,10 +32,10 @@ val Sidebar = FC<SidebarProps> {props ->
 
     Drawer {
         sx {
-            display = responsive(Breakpoint.xs to displayType(false), Breakpoint.sm to displayType(true))
+            display = responsive(Breakpoint.xs to displayType(false), permanentBreakpoint to displayType(true))
             "& .MuiDrawer-paper" {
                 boxSizing = BoxSizing.borderBox
-                width = 240.px
+                width = sidebarWidth
             }
         }
         if (props.permanent) {

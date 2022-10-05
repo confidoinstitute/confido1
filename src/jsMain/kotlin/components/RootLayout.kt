@@ -3,7 +3,6 @@ package components
 import components.rooms.Room
 import csstype.*
 import icons.MenuIcon
-import kotlinx.browser.window
 import mui.material.*
 import mui.system.*
 import react.*
@@ -23,13 +22,13 @@ val RootAppBar = FC<RootAppBarProps> {props ->
         position = AppBarPosition.fixed
         sx {
             if (props.hasDrawer)
-                paddingLeft = responsive(Breakpoint.sm to 240.px)
+                paddingLeft = responsive(permanentBreakpoint to sidebarWidth)
         }
         Toolbar {
             if (props.hasDrawer) {
                 IconButton {
                     sx {
-                        display = responsive(Breakpoint.sm to "none".asDynamic())
+                        display = responsive(permanentBreakpoint to "none".asDynamic())
                         marginRight = 2.asDynamic()
                     }
                     color = IconButtonColor.inherit
@@ -53,13 +52,17 @@ val RootAppBar = FC<RootAppBarProps> {props ->
     }
 }
 
-val RootLayout = FC<Props> {
-    val clientAppState = useContext(AppStateContext)
-    val appState = clientAppState.state
+val permanentBreakpoint = Breakpoint.md
 
+val RootLayout = FC<Props> {
     var drawerOpen by useState(false)
 
-    val window = window.document.body
+    val theme = mui.material.styles.useTheme<mui.material.styles.Theme>().breakpoints.up(permanentBreakpoint)
+    val mediaMatch = useMediaQuery(theme)
+    useEffect(mediaMatch) {
+        drawerOpen = false
+    }
+
 
     // Root element
     mui.system.Box {
@@ -78,14 +81,11 @@ val RootLayout = FC<Props> {
         mui.system.Box {
             component = nav
             sx {
-                width = responsive(Breakpoint.sm to 240.px)
-                flexShrink = responsive(Breakpoint.sm to number(0.0))
+                width = responsive(permanentBreakpoint to sidebarWidth)
+                flexShrink = responsive(permanentBreakpoint to number(0.0))
             }
             Sidebar {
-                permanent = true
-            }
-            Sidebar {
-                permanent = false
+                permanent = mediaMatch
                 isOpen = drawerOpen
                 onClose = { drawerOpen = false }
             }
