@@ -6,6 +6,7 @@ import csstype.AlignItems
 import csstype.Display
 import csstype.px
 import emotion.react.css
+import icons.MenuIcon
 import kotlinx.browser.window
 import kotlinx.js.timers.setTimeout
 import kotlinx.serialization.decodeFromString
@@ -118,7 +119,7 @@ val App = FC<Props> {
             IconButton {
                 color = IconButtonColor.inherit
                 onClick = {drawerOpen = true}
-                +"..."
+                MenuIcon()
             }
             Typography {
                 sx {
