@@ -14,11 +14,8 @@ import tools.confido.utils.randomString
 
 fun editQuestion(routing: Routing) {
     routing.post("/edit_question/{id}") {
-        println("Called edit_question")
         val id = call.parameters["id"] ?: ""
-        println(id)
         val editQuestion: EditQuestion = call.receive()
-        println(editQuestion)
 
         when (editQuestion) {
             is EditQuestionField -> {

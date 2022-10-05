@@ -282,7 +282,7 @@ val QuestionList = FC<QuestionListProps> { props ->
 
     if (appState.isAdmin && !clientAppState.stale) {
         Fab {
-            css {
+            sx {
                 position = Position.fixed
                 right = 16.px
                 bottom = 16.px

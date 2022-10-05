@@ -34,7 +34,7 @@ val EditNumericAnswerSpace = FC<EditAnswerSpaceProps<NumericAnswerSpace>> { prop
     var maxValue by useState(props.maxValue)
     var unit by useState(props.unit)
 
-    useEffect(minValue, maxValue) {
+    useEffect(minValue, maxValue, unit) {
         props.onChange?.invoke(NumericAnswerSpace(32, minValue, maxValue, unit = unit))
     }
 

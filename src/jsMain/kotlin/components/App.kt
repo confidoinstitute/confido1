@@ -109,32 +109,6 @@ val App = FC<Props> {
         }
     }
 
-    var drawerOpen by useState(false)
-
-    CssBaseline {}
-    AppBar {
-        position = AppBarPosition.static
-        Toolbar {
-            IconButton {
-                color = IconButtonColor.inherit
-                onClick = {drawerOpen = true}
-                MenuIcon()
-            }
-            Typography {
-                sx {
-                    flexGrow = number(1.0)
-                }
-                +"Confido"
-            }
-            if (stale) {
-                Chip {
-                    this.color = ChipColor.error
-                    this.label = ReactNode("Disconnected")
-                }
-            }
-        }
-    }
-
     if (appState == null) {
 //        Backdrop {
 //            this.open = true
@@ -148,6 +122,10 @@ val App = FC<Props> {
         value = ClientAppState(appState ?: error("No app state!"), stale)
 
         if (appState?.session?.name == null) {
+            RootAppBar {
+                hasDrawer = false
+            }
+            Toolbar {}
           Typography {
               variant = TypographyVariant.h1
               +"Please, set your name."
@@ -157,32 +135,7 @@ val App = FC<Props> {
         }
 
         BrowserRouter {
-            Sidebar {
-                isOpen = drawerOpen
-                onClose = {drawerOpen = false}
-            }
-            Routes {
-                Route {
-                    index = true
-                    path = "/"
-                    // TODO: something here.
-                    this.element = Typography.create { +"Welcome to Confido!" }
-                }
-                Route {
-                    path = "room/:roomID/*"
-                    this.element = Room.create()
-                }
-                Route {
-                    path = "set_name"
-
-                    this.element = SetNameForm.create()
-                }
-                Route {
-                    path = "edit_questions"
-
-                    this.element = EditQuestions.create()
-                }
-            }
+            RootLayout {}
         }
     }
 }

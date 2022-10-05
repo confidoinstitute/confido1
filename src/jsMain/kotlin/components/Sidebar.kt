@@ -1,16 +1,19 @@
 package components
 
 import components.rooms.RoomList
-import csstype.Color
-import csstype.None
+import csstype.*
 import emotion.react.css
 import mui.material.*
 import mui.system.Box
+import mui.system.Breakpoint
+import mui.system.responsive
+import mui.system.sx
 import react.*
 import react.dom.html.ReactHTML.nav
 import react.router.dom.NavLink
 
 external interface SidebarProps : Props {
+    var permanent: Boolean
     var isOpen: Boolean
     var onClose: (() -> Unit)?
 }
@@ -23,32 +26,44 @@ val Sidebar = FC<SidebarProps> {props ->
     fun navigateClose(a: Any) = navigateClose()
     fun navigateClose(a: Any, b: Any) = navigateClose()
 
-    Box {
-        component = nav
-        Drawer {
-            variant = DrawerVariant.temporary
-            anchor = DrawerAnchor.left
-            open = props.isOpen
-            onClose = ::navigateClose
+    fun displayType(sm: Boolean): Display =
+        if (props.permanent xor sm) "none".asDynamic() else Display.block
 
-            RoomList {
-                onNavigate = ::navigateClose
+    Drawer {
+        sx {
+            display = responsive(Breakpoint.xs to displayType(false), Breakpoint.sm to displayType(true))
+            "& .MuiDrawer-paper" {
+                boxSizing = BoxSizing.borderBox
+                width = 240.px
             }
+        }
+        if (props.permanent) {
+            variant = DrawerVariant.permanent
+        } else {
+            variant = DrawerVariant.temporary
+            onClose = ::navigateClose
+        }
+        anchor = DrawerAnchor.left
+        open = props.isOpen || props.permanent
+        Toolbar {}
 
-            Divider {}
+        RoomList {
+            onNavigate = ::navigateClose
+        }
 
-            ListItem {
-                NavLink {
-                    onClick = ::navigateClose
-                    to = "/set_name"
-                    css {
-                        textDecoration = None.none
-                        color = Color.currentcolor
-                    }
-                    ListItemButton {
-                        ListItemText {
-                            primary = ReactNode("Change name")
-                        }
+        Divider {}
+
+        ListItem {
+            NavLink {
+                onClick = ::navigateClose
+                to = "/set_name"
+                css {
+                    textDecoration = None.none
+                    color = Color.currentcolor
+                }
+                ListItemButton {
+                    ListItemText {
+                        primary = ReactNode("Change name")
                     }
                 }
             }
