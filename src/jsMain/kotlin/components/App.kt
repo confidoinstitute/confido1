@@ -2,9 +2,7 @@ package components
 
 import components.rooms.Room
 import components.rooms.RoomList
-import csstype.AlignItems
-import csstype.Display
-import csstype.px
+import csstype.*
 import emotion.react.css
 import icons.MenuIcon
 import kotlinx.browser.window
@@ -24,6 +22,7 @@ import react.router.Routes
 import react.router.dom.BrowserRouter
 import tools.confido.payloads.SetName
 import tools.confido.state.AppState
+import utils.eventValue
 import utils.webSocketUrl
 
 val AppStateContext = createContext<ClientAppState>()
@@ -54,7 +53,7 @@ val SetNameForm = FC<Props> {
                 value = name
                 disabled = appState.stale
                 onChange = {
-                    name = it.asDynamic().target.value as String
+                    name = it.eventValue()
                 }
             }
             Button {
@@ -123,7 +122,7 @@ val App = FC<Props> {
             }
             Typography {
                 sx {
-                    flexGrow = 1.asDynamic()
+                    flexGrow = number(1.0)
                 }
                 +"Confido"
             }

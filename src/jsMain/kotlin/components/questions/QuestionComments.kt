@@ -2,6 +2,7 @@ package components.questions
 
 import components.AppStateContext
 import csstype.Overflow
+import csstype.number
 import csstype.pct
 import icons.CloseIcon
 import icons.CommentIcon
@@ -90,7 +91,7 @@ val Comment = FC<CommentProps> { props ->
             CardContent {
                 Typography {
                     sx {
-                        lineHeight = 2.asDynamic()
+                        lineHeight = number(2.0)
                     }
                     strong {
                         +"Prediction: "
@@ -161,7 +162,7 @@ val CommentInput = FC<CommentInputProps> { props ->
         DialogActions {
             FormGroup {
                 sx {
-                    flexGrow = 1.asDynamic()
+                    flexGrow = number(1.0)
                 }
                 FormControlLabel {
                     label = span.create {
@@ -232,7 +233,7 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
                 }
                 Typography {
                     sx {
-                        flexGrow = 1.asDynamic()
+                        flexGrow = number(1.0)
                     }
                     +props.question.name
                 }
@@ -253,7 +254,7 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
         }
         DialogContent {
             sx {
-                flexGrow = 1.asDynamic()
+                flexGrow = number(1.0)
             }
             this.dividers = true
             props.comments.sortedByDescending { it.timestamp }.map {

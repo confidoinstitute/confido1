@@ -168,13 +168,13 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 this.spacing = responsive(1)
                 sx {
                     alignItems = AlignItems.center
-                    flexGrow = 1.asDynamic()
+                    flexGrow = number(1.0)
                 }
                 Typography {
                     variant = TypographyVariant.h6
                         +question.name
                     sx {
-                        flexGrow = 1.asDynamic()
+                        flexGrow = number(1.0)
                         if (!question.visible) {
                             this.fontStyle = FontStyle.italic
                         }
