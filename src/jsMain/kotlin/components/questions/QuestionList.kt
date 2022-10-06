@@ -25,6 +25,7 @@ import react.router.*
 import tools.confido.distributions.*
 import tools.confido.question.*
 import tools.confido.spaces.*
+import tools.confido.utils.*
 import utils.*
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -51,7 +52,7 @@ val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
         val timestamp = props.prediction!!.ts
 
         fun setText() {
-            predictionAgoText = durationAgo(now() - timestamp)
+            predictionAgoText = durationAgo(unixNow() - timestamp)
         }
         setText()
         val interval = setInterval(::setText,5000)

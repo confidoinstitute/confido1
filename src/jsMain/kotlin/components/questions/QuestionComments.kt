@@ -32,10 +32,8 @@ import react.router.useParams
 import tools.confido.question.Comment
 import tools.confido.question.Prediction
 import tools.confido.question.Question
-import utils.durationAgo
-import utils.eventValue
-import utils.now
-import utils.postJson
+import tools.confido.utils.unixNow
+import utils.*
 import kotlin.coroutines.EmptyCoroutineContext
 
 external interface QuestionCommentsProps : Props {
@@ -60,7 +58,7 @@ val Comment = FC<CommentProps> { props ->
     // TODO generalize and fix the "no text on mount" issue
     useEffect(props.comment.timestamp) {
         fun setText() {
-            textAgo = durationAgo(now() - props.comment.timestamp)
+            textAgo = durationAgo(unixNow() - props.comment.timestamp)
         }
         setText()
         val interval = setInterval(::setText,5000)
@@ -135,7 +133,7 @@ val CommentInput = FC<CommentInputProps> { props ->
                 errorSend = false
                 pendingSend = true
                 try {
-                    val createdComment = CreatedComment(now(), content, attachPrediction)
+                    val createdComment = CreatedComment(unixNow(), content, attachPrediction)
                     Client.httpClient.postJson("/add_comment/${props.id}", createdComment) {
                         expectSuccess = true
                     }

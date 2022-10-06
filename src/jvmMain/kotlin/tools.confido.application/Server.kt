@@ -1,6 +1,5 @@
 package tools.confido.application
 
-import confidoJSON
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -35,6 +34,7 @@ import tools.confido.state.UserSession
 import tools.confido.question.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.spaces.*
+import tools.confido.utils.*
 import java.io.File
 
 fun HTML.index() {
@@ -194,7 +194,7 @@ fun main() {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
                 }
-                val pred = Prediction(now())
+                val pred = Prediction(unixNow(), dist)
                 ServerState.userPredictions[userName]?.set(id, pred)
                 ServerState.calculateGroupDistribution(question)
 

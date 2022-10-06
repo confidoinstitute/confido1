@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class Comment(
     val user: String,
-    val timestamp: Double,
+    val timestamp: Int,
     val content: String,
     val prediction: Prediction?
 ) {

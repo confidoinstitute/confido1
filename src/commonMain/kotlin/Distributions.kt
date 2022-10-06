@@ -16,8 +16,7 @@ data class BinaryDistribution( // TODO: Make this a special case of a general Ch
     val yesProb: Double
 ) : ProbabilityDistribution {
     init { require(yesProb in 0.0..1.0) }
-    @Transient
-    override val space: BinarySpace = BinarySpace()
+    override val space: BinarySpace get() = BinarySpace
 
     val noProb get() = 1 - yesProb
 

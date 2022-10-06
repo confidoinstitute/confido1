@@ -16,13 +16,9 @@ inline fun jsObject(init: dynamic.() -> Unit): dynamic {
     return o
 }
 
-fun Double.format(digits: Int): String = asDynamic().toFixed(digits)
 
-fun Number.toISODay(): String = Date(this.toDouble() * 1000).toISOString().slice(0..9)
 fun Number.toDateTime(): String = Date(this.toDouble() * 1000).toLocaleString()
-fun String.toTimestamp(): Double = Date(this).getTime() / 1000
 
-fun now() = Date().getTime() / 1000
 
 fun linearSpace(first: Double, last: Double, step: Double) = sequence {
     var current = first
@@ -136,12 +132,14 @@ fun dateMarkSpacing(width: Double, start: Double, end: Double): List<Double> {
     return dates
 }
 
-fun durationAgo(difference: Double) = when(difference) {
-    in 0.0..10.0 -> "now"
-    in 10.0..120.0 -> "${floor(difference)} s"
-    in 120.0..7200.0 -> "${floor(difference / 60)} min"
-    in 7200.0..172800.0 -> "${floor(difference / 3600)} h"
-    else -> "${floor(difference / 86400)} days"
+fun durationAgo(difference: Number) = difference.toInt().let {
+    when(it) {
+        in 0..10 -> "now"
+        in 10..120 -> "$it s"
+        in 120..7200 -> "${it / 60} min"
+        in 7200..172800 -> "${it / 3600} h"
+        else -> "${it / 86400} days"
+    }
 }
 
 suspend inline fun <reified T> HttpClient.postJson(urlString: String, payload: T, block: HttpRequestBuilder.() -> Unit) =
