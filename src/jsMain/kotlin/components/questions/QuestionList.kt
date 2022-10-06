@@ -21,15 +21,16 @@ import mui.system.sx
 import react.*
 import react.dom.html.ReactHTML.small
 import react.dom.html.ReactHTML.span
-import react.router.useNavigate
-import react.router.useParams
-import tools.confido.distributions.ProbabilityDistribution
+import react.router.*
+import tools.confido.distributions.*
 import tools.confido.question.*
 import utils.*
 import kotlin.coroutines.EmptyCoroutineContext
 
 enum class PendingPredictionState {
     NONE,
+    MAKING,
+    SENDING,
     ACCEPTED,
     ERROR,
 }
@@ -60,6 +61,19 @@ val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
     }
 
     when(props.state) {
+        PendingPredictionState.MAKING -> Chip {
+            label = ReactNode("Predicting...")
+            variant = ChipVariant.outlined
+        }
+        PendingPredictionState.SENDING -> Chip {
+            label = span.create {
+                CircularProgress {
+                    this.size = "0.8rem"
+                }
+                +"Sending prediction..."
+            }
+            variant = ChipVariant.outlined
+        }
         PendingPredictionState.ACCEPTED -> Chip {
             label = ReactNode("Prediction submitted!")
             variant = ChipVariant.outlined
@@ -71,17 +85,7 @@ val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
             color = ChipColor.error
         }
         PendingPredictionState.NONE ->
-            if (props.pending) {
-                Chip {
-                    label = span.create {
-                        CircularProgress {
-                            this.size = "0.8rem"
-                        }
-                        +"Sending prediction..."
-                    }
-                    variant = ChipVariant.outlined
-                }
-            } else if (props.prediction == null && props.enabled) {
+            if (props.prediction == null && props.enabled) {
                 Chip {
                     label = ReactNode("Not yet predicted")
                     variant = ChipVariant.outlined
@@ -101,6 +105,11 @@ val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
                     }
                     variant = ChipVariant.outlined
                 }
+            } else {
+                Chip {
+                    label = ReactNode("Predictions closed")
+                    variant = ChipVariant.outlined
+                }
             }
     }
 }
@@ -110,6 +119,7 @@ external interface QuestionItemProps : Props {
     var editable: Boolean
     var comments: List<Comment>
     var onEditDialog: ((Question) -> Unit)?
+    var onChange: ((Boolean) -> Unit)?
     var expanded: Boolean
 }
 
@@ -123,13 +133,14 @@ val QuestionItem = FC<QuestionItemProps> { props ->
     var pendingPredictionState by useState(PendingPredictionState.NONE)
 
     useDebounce(5000, pendingPredictionState) {
-        if (pendingPredictionState != PendingPredictionState.NONE)
+        if (pendingPredictionState in listOf(PendingPredictionState.ACCEPTED, PendingPredictionState.ERROR))
             pendingPredictionState = PendingPredictionState.NONE
     }
 
-    useDebounce(5000, pendingPrediction) {
+    useDebounce(1000, pendingPrediction) {
         pendingPrediction?.let {
             CoroutineScope(EmptyCoroutineContext).launch {
+                pendingPredictionState = PendingPredictionState.SENDING
                 try {
                     Client.httpClient.postJson("/send_prediction/${props.question.id}", it) {
                         expectSuccess = true
@@ -147,7 +158,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
     Accordion {
         expanded = props.expanded
-        onChange = {_, state -> if(state) {navigate("/questions/${question.id}")} else {navigate("/")} }
+        // TODO: Fix when clicking another question while one is already expanded.
+        onChange = {_, state -> props.onChange?.invoke(state) }
         TransitionProps = jsObject { unmountOnExit = true }
         AccordionSummary {
             id = question.id
@@ -157,13 +169,13 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 this.spacing = responsive(1)
                 sx {
                     alignItems = AlignItems.center
-                    flexGrow = 1.asDynamic()
+                    flexGrow = number(1.0)
                 }
                 Typography {
-                    variant = TypographyVariant.h4
+                    variant = TypographyVariant.h6
                         +question.name
                     sx {
-                        flexGrow = 1.asDynamic()
+                        flexGrow = number(1.0)
                         if (!question.visible) {
                             this.fontStyle = FontStyle.italic
                         }
@@ -200,7 +212,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 this.enabled = question.enabled && !stale
                 this.answerSpace = question.answerSpace
                 this.prediction = pendingPrediction ?: props.prediction
-                this.onPredict = {pendingPrediction = it; pendingPredictionState = PendingPredictionState.NONE }
+                this.onChange = { pendingPrediction = null; pendingPredictionState = PendingPredictionState.MAKING }
+                this.onPredict = { pendingPrediction = it }
             }
             if (question.predictionsVisible) {
                 Typography {
@@ -228,16 +241,20 @@ val QuestionItem = FC<QuestionItemProps> { props ->
     }
 }
 
-val QuestionList = FC<Props> {
+external interface QuestionListProps : Props {
+    var questions: List<Question>
+}
+
+val QuestionList = FC<QuestionListProps> { props ->
     val clientAppState = useContext(AppStateContext)
     val appState = clientAppState.state
-    val questions = appState.questions.values.sortedBy { it.name }
+    val questions = props.questions.sortedBy { it.name }
     val visibleQuestions = if (appState.isAdmin) questions else questions.filter { it.visible }
 
     var editQuestion by useState<Question?>(null)
     var editOpen by useState(false)
 
-    val expandedQuestion = useParams().get("questionID")
+    var expandedQuestion by useState<String?>(null)
 
     if (editOpen) {
         EditQuestionDialog {
@@ -250,6 +267,7 @@ val QuestionList = FC<Props> {
     fun editQuestionOpen(it: Question) {
         editQuestion = it; editOpen = true
     }
+
     visibleQuestions.map { question ->
         QuestionItem {
             this.key = question.id
@@ -259,12 +277,13 @@ val QuestionList = FC<Props> {
             this.editable = appState.isAdmin && !clientAppState.stale
             this.comments = appState.comments[question.id] ?: listOf()
             this.onEditDialog = ::editQuestionOpen
+            this.onChange = {state -> expandedQuestion = if (state) question.id else null}
         }
     }
 
     if (appState.isAdmin && !clientAppState.stale) {
         Fab {
-            css {
+            sx {
                 position = Position.fixed
                 right = 16.px
                 bottom = 16.px

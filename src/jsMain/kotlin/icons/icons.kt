@@ -83,3 +83,19 @@ val DeleteIcon = createSvgIcon(
         }
     }
 )
+
+val SendIcon = createSvgIcon(
+    svg.create {
+        ReactSVG.path {
+            d = "M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"
+        }
+    }
+)
+
+val MenuIcon = createSvgIcon(
+    svg.create {
+        ReactSVG.path {
+            d = "M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"
+        }
+    }
+)

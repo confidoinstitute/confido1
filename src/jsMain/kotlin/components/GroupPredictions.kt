@@ -3,6 +3,7 @@ package components
 import csstype.px
 import emotion.react.css
 import mui.material.*
+import mui.system.responsive
 import react.*
 import space.kscience.plotly.layout
 import space.kscience.plotly.models.Bar
@@ -80,16 +81,16 @@ val PredictionPlot = FC<PredictionPlotProps> {props ->
 }
 
 external interface GroupPredictionsProps : Props {
-    var questions: List<Question>?
+    var questions: List<Question>
 }
 
 val GroupPredictions = FC<GroupPredictionsProps> { props ->
     val appState = useContext(AppStateContext).state
-    val questions = props.questions ?: appState.questions.values.filter { it.visible && it.predictionsVisible }.sortedBy { it.name }
+    val questions = props.questions
     Grid {
         container = true
-        spacing = 2.asDynamic()
-        columns = 2.asDynamic()
+        spacing = responsive(2)
+        columns = responsive(2)
 
         questions.map { question ->
             Grid {

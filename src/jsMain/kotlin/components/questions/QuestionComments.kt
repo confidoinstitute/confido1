@@ -1,13 +1,16 @@
 package components.questions
 
 import components.AppStateContext
+import csstype.Length
 import csstype.Overflow
+import csstype.number
+import csstype.pct
 import icons.CloseIcon
 import icons.CommentIcon
 import icons.DeleteIcon
+import icons.SendIcon
 import io.ktor.client.plugins.*
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.js.timers.clearInterval
 import kotlinx.js.timers.setInterval
@@ -68,6 +71,10 @@ val Comment = FC<CommentProps> { props ->
     }
 
     Card {
+        sx {
+            marginTop = 2.asDynamic()
+            marginBottom = 2.asDynamic()
+        }
         CardHeader {
             title = ReactNode(props.comment.user)
             subheader = ReactNode(textAgo)
@@ -89,7 +96,7 @@ val Comment = FC<CommentProps> { props ->
             CardContent {
                 Typography {
                     sx {
-                        lineHeight = 2.asDynamic()
+                        lineHeight = number(2.0)
                     }
                     strong {
                         +"Prediction: "
@@ -106,7 +113,6 @@ val Comment = FC<CommentProps> { props ->
             }
         }
     }
-    Divider {}
 }
 
 external interface CommentInputProps : Props {
@@ -142,14 +148,10 @@ val CommentInput = FC<CommentInputProps> { props ->
                 }
             }
         }
-        DialogContent {
-            this.sx {
-                this.overflowY = Overflow.visible
-                this.flexGrow = 0.asDynamic()
-            }
+        DialogActions {
             TextField {
                 fullWidth = true
-                this.placeholder = "Comment..."
+                this.placeholder = "Write a comment..."
                 this.margin = FormControlMargin.none
                 this.name = "content"
                 this.value = content
@@ -160,7 +162,12 @@ val CommentInput = FC<CommentInputProps> { props ->
                     this.helperText = ReactNode("Comment failed to send. Try again later.")
                 }
             }
+        }
+        DialogActions {
             FormGroup {
+                sx {
+                    flexGrow = number(1.0)
+                }
                 FormControlLabel {
                     label = span.create {
                         +"Attach prediction "
@@ -179,31 +186,27 @@ val CommentInput = FC<CommentInputProps> { props ->
                     }
                 }
             }
-        }
-        DialogActions {
             LoadingButton {
                 +"Send"
                 disabled = pendingSend || content.isEmpty() || stale
                 type = ButtonType.submit
                 loading = pendingSend
-                loadingPosition = LoadingPosition.start
+                loadingPosition = LoadingPosition.end
+                endIcon = SendIcon.create()
             }
         }
     }
 }
 
 val QuestionComments = FC<QuestionCommentsProps> { props ->
-    var deleteMode by useState(false)
+    //var deleteMode by useState(false)
     val count = props.comments.count()
+    var open by useState(false)
 
-    val location = useLocation().pathname
-    val questionID = useParams()["questionID"]
-    val open = location.endsWith("comments") && questionID == props.question.id
-
-    val navigate = useNavigate()
 
     IconButton {
-        onClick = { navigate("/questions/${props.question.id}/comments"); it.stopPropagation() }
+        // TODO: Fix
+        onClick = { open = true; it.stopPropagation() }
 
         Badge {
             this.badgeContent = if (count > 0) ReactNode(count.toString()) else null
@@ -215,21 +218,28 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
     Dialog {
         this.open = open
         this.scroll = DialogScroll.paper
-        fullScreen = true
-        this.onClose = { _, _ -> navigate("/questions/${props.question.id}") }
+        this.fullWidth = true
+        this.maxWidth = "lg"
+        this.onClose = { _, _ -> open = false }
+        sx {
+            ".MuiDialog-paper" {
+                minHeight = 50.pct
+            }
+        }
 
+        if (false)
         AppBar {
             this.position = AppBarPosition.relative
             Toolbar {
                 IconButton {
                     CloseIcon {}
-                    onClick = { navigate("/questions/${props.question.id}") }
+                    onClick = { open = false }
                 }
                 Typography {
                     sx {
-                        flexGrow = 1.asDynamic()
+                        flexGrow = number(1.0)
                     }
-                    +"Comment"
+                    +props.question.name
                 }
                 // TODO deletion and edit mechanism
 //                Button {
@@ -241,9 +251,15 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
             }
         }
         DialogTitle {
-            +props.question.name
+            +"Comments"
+            Typography {
+                +props.question.name
+            }
         }
         DialogContent {
+            sx {
+                flexGrow = number(1.0)
+            }
             this.dividers = true
             props.comments.sortedByDescending { it.timestamp }.map {
                 Comment {

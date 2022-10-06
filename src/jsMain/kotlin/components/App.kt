@@ -1,17 +1,11 @@
 package components
 
-import components.questions.QuestionList
-import csstype.AlignItems
-import csstype.Display
-import csstype.px
+import components.rooms.Room
+import components.rooms.RoomList
+import csstype.*
 import emotion.react.css
-import io.ktor.client.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.request.*
-import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
+import icons.MenuIcon
 import kotlinx.browser.window
-import kotlinx.coroutines.*
 import kotlinx.js.timers.setTimeout
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -27,8 +21,8 @@ import react.router.Route
 import react.router.Routes
 import react.router.dom.BrowserRouter
 import tools.confido.payloads.SetName
-import tools.confido.question.*
 import tools.confido.state.AppState
+import utils.eventValue
 import utils.webSocketUrl
 
 val AppStateContext = createContext<ClientAppState>()
@@ -59,7 +53,7 @@ val SetNameForm = FC<Props> {
                 value = name
                 disabled = appState.stale
                 onChange = {
-                    name = it.asDynamic().target.value as String
+                    name = it.eventValue()
                 }
             }
             Button {
@@ -115,25 +109,6 @@ val App = FC<Props> {
         }
     }
 
-    CssBaseline {}
-    AppBar {
-        position = AppBarPosition.static
-        Toolbar {
-            Typography {
-                sx {
-                    flexGrow = 1.asDynamic()
-                }
-                +"Confido"
-            }
-            if (stale) {
-                Chip {
-                    this.color = ChipColor.error
-                    this.label = ReactNode("Disconnected")
-                }
-            }
-        }
-    }
-
     if (appState == null) {
 //        Backdrop {
 //            this.open = true
@@ -147,6 +122,10 @@ val App = FC<Props> {
         value = ClientAppState(appState ?: error("No app state!"), stale)
 
         if (appState?.session?.name == null) {
+            RootAppBar {
+                hasDrawer = false
+            }
+            Toolbar {}
           Typography {
               variant = TypographyVariant.h1
               +"Please, set your name."
@@ -156,43 +135,7 @@ val App = FC<Props> {
         }
 
         BrowserRouter {
-            Navigation {}
-            Routes {
-                Route {
-                    index = true
-                    path = "/"
-                    this.element = QuestionList.create()
-                }
-                Route {
-                    path = "questions"
-                    this.element = QuestionList.create()
-                }
-                Route {
-                    path = "questions/:questionID"
-                    this.element = QuestionList.create()
-                }
-                Route {
-                    path = "questions/:questionID/comments"
-                    this.element = QuestionList.create()
-                }
-                Route {
-                    path = "group_predictions"
-
-                    this.element = GroupPredictions.create {
-                        questions = null
-                    }
-                }
-                Route {
-                    path = "set_name"
-
-                    this.element = SetNameForm.create()
-                }
-                Route {
-                    path = "edit_questions"
-
-                    this.element = EditQuestions.create()
-                }
-            }
+            RootLayout {}
         }
     }
 }

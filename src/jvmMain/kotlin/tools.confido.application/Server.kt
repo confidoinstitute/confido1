@@ -19,14 +19,12 @@ import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.datetime.LocalDate
 import kotlinx.html.*
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.litote.kmongo.coroutine.CoroutineCollection
 import org.litote.kmongo.coroutine.coroutine
 import org.litote.kmongo.reactivestreams.KMongo
 import payloads.CreatedComment
-import tools.confido.application.ServerState.questions
 import tools.confido.application.sessions.*
 import tools.confido.payloads.*
 import tools.confido.question.Question
@@ -45,19 +43,29 @@ fun HTML.index() {
 }
 
 object ServerState {
-    var questions: Map<String, Question> = emptyMap()
+    var rooms: Map<String, Room> = emptyMap()
+    var questions: MutableMap<String, Question> = mutableMapOf()
     val userPredictions: MutableMap<String, MutableMap<String, Prediction>> = mutableMapOf()
     var groupDistributions: MutableMap<String, List<Double>> = mutableMapOf()
     var comments: MutableMap<String, MutableList<Comment>> = mutableMapOf()
 
     fun loadQuestions(collection: CoroutineCollection<Question>) {
         questions = runBlocking {
-            collection.find().toList().associateBy { question -> question.id }
+            collection.find().toList().associateBy { question -> question.id }.toMutableMap()
         }
+
+        // TODO: Persist rooms, for now we create one room that contains all questions and one "private" room with a new question
+        val pub = "testpub" to Room("testpub", "Testing room", RoomAccessibility.PUBLIC, questions.values.toMutableList())
+        val qtestpriv = Question("qtestpriv", "Is this a private question?", BinaryAnswerSpace())
+        questions["qtestpriv"] = qtestpriv
+        val priv = "testpriv" to Room("testpriv", "Private room", RoomAccessibility.PRIVATE, mutableListOf(qtestpriv))
+        rooms = mapOf(pub, priv)
+
         // TODO actually store comments!
         comments = questions.mapValues { mutableListOf<Comment>() }.toMutableMap()
         calculateGroupDistribution()
     }
+
     fun calculateGroupDistribution(question: Question) {
         groupDistributions[question.id] = userPredictions.values.mapNotNull {
             it[question.id]?.let { prediction -> question.answerSpace.predictionToDistribution(prediction) }
@@ -68,14 +76,19 @@ object ServerState {
     fun calculateGroupDistribution() {
         questions.mapValues { (_, question) -> calculateGroupDistribution(question) }
     }
-    fun appState(sessionData: UserSession) =
-    AppState(
-        questions,
-        userPredictions[sessionData.name]?.toMap() ?: emptyMap(),
-        comments,
-        groupDistributions.toMap(),
-        sessionData,
-        sessionData.name == "Admin")
+
+    fun appState(sessionData: UserSession): AppState {
+        val isAdmin = sessionData.name == "Admin"
+        return AppState(
+            // TODO: Consider sending questions separately and only provide ids within rooms
+            rooms.values.filter { it.accessibility == RoomAccessibility.PUBLIC || isAdmin },
+            userPredictions [sessionData.name]?.toMap() ?: emptyMap(),
+            comments,
+            groupDistributions.toMap(),
+            sessionData,
+            isAdmin
+        )
+    }
 }
 
 fun main() {
@@ -124,7 +137,7 @@ fun main() {
                 if (session == null) {
                     call.respond(HttpStatusCode.Unauthorized)
                 } else {
-                    val setName: SetName = Json.decodeFromString(call.receiveText())
+                    val setName: SetName = call.receive()
                     call.userSession = session.copy(name = setName.name)
                     if (!ServerState.userPredictions.containsKey(setName.name))
                         ServerState.userPredictions[setName.name] = mutableMapOf()
@@ -139,7 +152,7 @@ fun main() {
                 val id = call.parameters["id"] ?: ""
                 val userName = call.userSession?.name
 
-                val question = questions[id]
+                val question = ServerState.questions[id]
                 if (question == null || userName == null) {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
@@ -167,7 +180,7 @@ fun main() {
                 val id = call.parameters["id"] ?: ""
                 val userName = call.userSession?.name
 
-                val question = questions[id]
+                val question = ServerState.questions[id]
                 if (question == null || userName == null) {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post

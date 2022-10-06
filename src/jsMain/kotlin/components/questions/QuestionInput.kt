@@ -26,6 +26,7 @@ external interface QuestionInputProps<S : Space, D: ProbabilityDistribution> : P
     var space: S
     var prediction: D?
     var onPredict: ((D) -> Unit)?
+    var onChange: (() -> Unit)?
 }
 
 val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabilityDistribution>> { props ->
@@ -63,49 +64,53 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
     fun addUnit(value: Any) = if (space.unit.isNotEmpty()) "$value ${space.unit}" else value.toString()
 
     Fragment {
-        SimpleContDistPlot {
-            this.dist = dist
-            this.confidences = confidences
-            this.outsideColor = if (props.enabled) Value.of("#000e47") else Value.of("#9c9c9c")
-            this.visible = madePrediction && madeUncertainty
-        }
-
-        MarkedSlider {
-            ariaLabel = "Mean Value"
-
-            disabled = !props.enabled
-            value = mean
-            min = space.min
-            max = space.max
-            this.step = step
-            this.madePrediction = madePrediction
-
-            valueLabelDisplay = if (madePrediction || !props.enabled) "auto" else "on"
-            if (space.representsDays) {
-                this.widthToMarks = { width -> dateMarkSpacing(width, space.min, space.max) }
+        Box {
+            sx {
+                padding = Padding(horizontal = 1.rem, vertical = 0.px)
             }
-            this.valueLabelFormat = { space.formatValue(it.toDouble()) }
+            SimpleContDistPlot {
+                this.dist = dist
+                this.confidences = confidences
+                this.outsideColor = if (props.enabled) Value.of("#000e47") else Value.of("#9c9c9c")
+                this.visible = madePrediction && madeUncertainty
+            }
 
-            onFocus = { madePrediction = true }
-            onChange = { _, value, _ -> mean = value }
-            onChangeCommitted = { _, _ -> if (madeUncertainty) sendPrediction() }
-        }
-        Slider {
-            ariaLabel = "Uncertainty"
+            MarkedSlider {
+                ariaLabel = "Mean Value"
 
-            disabled = !props.enabled || !madePrediction
-            value = stdev
-            min = 0.1
-            max = (space.max - space.min) / 2
-            this.step = 0.1
+                disabled = !props.enabled
+                value = mean
+                min = space.min
+                max = space.max
+                this.step = step
+                this.madePrediction = madePrediction
 
-            valueLabelDisplay = if (madeUncertainty || !madePrediction) "off" else "on"
-            if (!madeUncertainty)
-                valueLabelFormat = formatUncertainty
-            track = if (madeUncertainty) "normal" else false.asDynamic()
-            onFocus = { madePrediction = true; madeUncertainty = true }
-            onChange = { _, value, _ -> stdev = value }
-            onChangeCommitted = { _, _ -> sendPrediction() }
+                valueLabelDisplay = if (madePrediction || !props.enabled) "auto" else "on"
+                if (space.representsDays) {
+                    this.widthToMarks = { width -> dateMarkSpacing(width, space.min, space.max) }
+                }
+                this.valueLabelFormat = { space.formatValue(it.toDouble()) }
+
+                onFocus = { madePrediction = true }
+                onChange = { _, value, _ -> mean = value; props.onChange?.invoke() }
+            }
+            Slider {
+                ariaLabel = "Uncertainty"
+
+                disabled = !props.enabled || !madePrediction
+                value = stdev
+                min = 0.1
+                max = (space.max - space.min) / 2
+                this.step = 0.1
+
+                valueLabelDisplay = if (madeUncertainty || !madePrediction) "off" else "on"
+                if (!madeUncertainty)
+                    valueLabelFormat = formatUncertainty
+                track = if (madeUncertainty) "normal" else false.asDynamic()
+                onFocus = { madePrediction = true; madeUncertainty = true }
+                onChange = { _, value, _ -> stdDev = value; props.onChange?.invoke() }
+                onChangeCommitted = { _, _ -> sendPrediction() }
+            }
         }
         if (madePrediction && madeUncertainty) {
             confidences.map { confidence ->
@@ -142,22 +147,27 @@ val BinaryQuestionInput = FC<QuestionInputProps<BinarySpace, BinaryDistribution>
     }
 
     Fragment {
-        MarkedSlider {
-            ariaLabel = "Estimate"
+        Box {
+            sx {
+                padding = Padding(horizontal = 1.rem, vertical = 0.px)
+            }
+            MarkedSlider {
+                ariaLabel = "Certainty"
 
-            disabled = !props.enabled
-            value = estimate
-            min = 0
-            max = 1
+                disabled = !props.enabled
+                value = estimate
+                min = 0
+                max = 1
 
-            this.widthToMarks = ::getMarks
-            valueLabelDisplay = if (madePrediction || !props.enabled) "auto" else "on"
-            valueLabelFormat = { formatPercent(it) }
-            this.madePrediction = madePrediction
+                this.widthToMarks = ::getMarks
+                valueLabelDisplay = if (madePrediction || !props.enabled) "auto" else "on"
+                valueLabelFormat = { formatPercent(it) }
+                this.madePrediction = madePrediction
 
-            onFocus = { madePrediction = true }
-            onChange = { _, value, _ -> estimate = value }
-            onChangeCommitted = { _, _ -> sendPrediction() }
+                onFocus = { madePrediction = true }
+                onChange = { _, value, _ -> estimate = value; props.onChange?.invoke() }
+                onChangeCommitted = { _, _ -> sendPrediction() }
+            }
         }
         Typography {
             fun certaintyExplanation() {

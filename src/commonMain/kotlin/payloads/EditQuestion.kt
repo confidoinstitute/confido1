@@ -17,10 +17,11 @@ sealed class EditQuestion ()
 @Serializable
 data class EditQuestionField(
     val fieldType: EditQuestionFieldType,
-    val value: Boolean
-        ) : EditQuestion()
+    val value: Boolean,
+) : EditQuestion()
 
 @kotlinx.serialization.Serializable
 data class EditQuestionComplete(
-    val question: Question
+    val question: Question,
+    val room: String,
 ) : EditQuestion()
