@@ -3,9 +3,14 @@ package components.questions
 import components.Explanation
 import components.MarkedSlider
 import csstype.Color
+import csstype.Padding
+import csstype.px
+import csstype.rem
 import emotion.react.css
 import mui.material.Slider
 import mui.material.Typography
+import mui.system.Box
+import mui.system.sx
 import react.*
 import react.dom.aria.ariaLabel
 import react.dom.html.ReactHTML
@@ -108,7 +113,7 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
                     valueLabelFormat = formatUncertainty
                 track = if (madeUncertainty) "normal" else false.asDynamic()
                 onFocus = { madePrediction = true; madeUncertainty = true }
-                onChange = { _, value, _ -> stdDev = value; props.onChange?.invoke() }
+                onChange = { _, value, _ -> stdev = value; props.onChange?.invoke() }
                 onChangeCommitted = { _, _ -> sendPrediction() }
             }
         }

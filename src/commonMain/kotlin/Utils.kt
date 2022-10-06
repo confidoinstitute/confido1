@@ -17,3 +17,15 @@ fun randomString(length: Int) =
     }.joinToString("")
 
 fun formatPercent(value: Number, space: Boolean=true): String = "${(value.toDouble()*100).roundToInt()}${if (space) " " else ""}%"
+
+fun Double.clamp(range: ClosedRange<Double>): Double {
+    if (this < range.start) return range.start
+    if (this > range.endInclusive) return range.endInclusive
+    return this
+}
+
+fun Double.clamp01() = clamp(0.0..1.0)
+
+fun Number.toFixed(decimals: Int) {
+    "".format
+}

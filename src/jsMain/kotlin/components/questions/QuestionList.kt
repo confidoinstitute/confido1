@@ -24,6 +24,7 @@ import react.dom.html.ReactHTML.span
 import react.router.*
 import tools.confido.distributions.*
 import tools.confido.question.*
+import tools.confido.spaces.*
 import utils.*
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -47,7 +48,7 @@ val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
     useEffect(props.prediction) {
         if (props.prediction == null)
             return@useEffect
-        val timestamp = props.prediction!!.timestamp
+        val timestamp = props.prediction!!.ts
 
         fun setText() {
             predictionAgoText = durationAgo(now() - timestamp)
@@ -96,7 +97,7 @@ val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
                     label = span.create {
                         +"Last prediction: "
                         Tooltip {
-                            this.title = ReactNode(props.prediction!!.timestamp.toDateTime())
+                            this.title = ReactNode(props.prediction!!.ts.toDateTime())
                             this.placement = TooltipPlacement.left
                             small {
                                 +predictionAgoText
@@ -138,11 +139,11 @@ val QuestionItem = FC<QuestionItemProps> { props ->
     }
 
     useDebounce(1000, pendingPrediction) {
-        pendingPrediction?.let {
+        pendingPrediction?.let { dist ->
             CoroutineScope(EmptyCoroutineContext).launch {
                 pendingPredictionState = PendingPredictionState.SENDING
                 try {
-                    Client.httpClient.postJson("/send_prediction/${props.question.id}", it) {
+                    Client.httpClient.postJson("/send_prediction/${props.question.id}", dist) {
                         expectSuccess = true
                     }
                     pendingPredictionState = PendingPredictionState.ACCEPTED
@@ -203,15 +204,15 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             }
         }
         AccordionDetails {
-            val questionInput: FC<QuestionInputProps<AnswerSpace>> = when (question.answerSpace) {
-                is BinaryAnswerSpace -> BinaryQuestionInput as FC<QuestionInputProps<AnswerSpace>>
-                is NumericAnswerSpace -> NumericQuestionInput as FC<QuestionInputProps<AnswerSpace>>
+            val questionInput: FC<QuestionInputProps<Space, ProbabilityDistribution>> = when (question.answerSpace) {
+                is BinarySpace -> BinaryQuestionInput as FC<QuestionInputProps<Space, ProbabilityDistribution>>
+                is NumericSpace -> NumericQuestionInput as FC<QuestionInputProps<Space, ProbabilityDistribution>>
             }
             questionInput {
                 this.id = question.id
                 this.enabled = question.enabled && !stale
-                this.answerSpace = question.answerSpace
-                this.prediction = pendingPrediction ?: props.prediction
+                this.space = question.answerSpace
+                this.prediction = pendingPrediction ?: props.prediction?.dist
                 this.onChange = { pendingPrediction = null; pendingPredictionState = PendingPredictionState.MAKING }
                 this.onPredict = { pendingPrediction = it }
             }

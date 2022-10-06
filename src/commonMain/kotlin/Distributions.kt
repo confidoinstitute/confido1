@@ -2,6 +2,7 @@ package tools.confido.distributions
 import kotlinx.serialization.*
 import kotlinx.serialization.modules.*
 import tools.confido.spaces.*
+import tools.confido.utils.*
 import kotlin.math.*
 import kotlin.sequences.*
 
@@ -77,7 +78,10 @@ data class DiscretizedContinuousDistribution(
     val binner = Binner(space, binProbs.size)
 
     @Transient
-    val probBeforeBin by lazy { binProbs.runningFold(0.0, { acc, d ->  acc+d }) }
+    val probBeforeBin by lazy {
+        // force the last item to be exactly 1 to circumvent floating point roundoff errors
+        binProbs.runningFoldIndexed(0.0, { idx, acc, d ->  if (idx==bins-1) 1.0 else acc+d })
+    }
 
     @Transient
     val discretizedMean: Double by lazy {
@@ -114,8 +118,9 @@ data class DiscretizedContinuousDistribution(
             val insertionPoint = -(idx + 1)
             check(insertionPoint > 0)
             val bin = insertionPoint - 1
-            check(bin in 0 until binner.bins)
-            val remainingProb = p - probBeforeBin[bin]
+            check(bin in 0 .. binner.bins)
+            if (bin == binner.bins) return space.max
+            val remainingProb = (p - probBeforeBin[bin]).clamp01()
             check(remainingProb in 0.0..1.0)
             val off = binner.binSize / binProbs[bin] * remainingProb
             return binner.binRange(bin).start + off
@@ -157,6 +162,9 @@ object CanonicalNormalDistribution : ContinuousProbabilityDistribution {
      * http://web.archive.org/web/20151030215612/http://home.online.no/~pjacklam/notes/invnorm/
      */
     override fun icdf(p: Double): Double {
+        if (p >= 1) return space.max
+        if (p <= 0) return space.min
+
         val a0 = -3.969683028665376e+01
         val a1 = 2.209460984245205e+02
         val a2 = -2.759285104469687e+02
@@ -212,7 +220,11 @@ interface TransformedDistribution : ContinuousProbabilityDistribution {
 
     override fun pdf(x: Double) = dist.pdf(toOrig(x))
     override fun cdf(x: Double) = dist.cdf(toOrig(x))
-    override fun icdf(p: Double) = toOur(dist.icdf(p))
+    override fun icdf(p: Double) : Double {
+        if (p >= 1) return space.max
+        if (p <= 0) return space.min
+        return toOur(dist.icdf(p))
+    }
 
     override val mean: Double get() = toOur(dist.mean)
     override val stdev: Double get() = dist.stdev * scale

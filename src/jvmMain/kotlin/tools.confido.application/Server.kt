@@ -1,5 +1,6 @@
 package tools.confido.application
 
+import confidoJSON
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -17,6 +18,7 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.datetime.Clock.System.now
 import kotlinx.datetime.LocalDate
 import kotlinx.html.*
 import kotlinx.serialization.encodeToString
@@ -26,11 +28,13 @@ import org.litote.kmongo.coroutine.coroutine
 import org.litote.kmongo.reactivestreams.KMongo
 import payloads.CreatedComment
 import tools.confido.application.sessions.*
+import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.payloads.*
-import tools.confido.question.Question
 import tools.confido.state.AppState
 import tools.confido.state.UserSession
 import tools.confido.question.*
+import tools.confido.serialization.confidoJSON
+import tools.confido.spaces.*
 import java.io.File
 
 fun HTML.index() {
@@ -46,7 +50,7 @@ object ServerState {
     var rooms: Map<String, Room> = emptyMap()
     var questions: MutableMap<String, Question> = mutableMapOf()
     val userPredictions: MutableMap<String, MutableMap<String, Prediction>> = mutableMapOf()
-    var groupDistributions: MutableMap<String, List<Double>> = mutableMapOf()
+    var groupPredictions: MutableMap<String, List<Double>> = mutableMapOf()
     var comments: MutableMap<String, MutableList<Comment>> = mutableMapOf()
 
     fun loadQuestions(collection: CoroutineCollection<Question>) {
@@ -56,7 +60,7 @@ object ServerState {
 
         // TODO: Persist rooms, for now we create one room that contains all questions and one "private" room with a new question
         val pub = "testpub" to Room("testpub", "Testing room", RoomAccessibility.PUBLIC, questions.values.toMutableList())
-        val qtestpriv = Question("qtestpriv", "Is this a private question?", BinaryAnswerSpace())
+        val qtestpriv = Question("qtestpriv", "Is this a private question?", BinarySpace)
         questions["qtestpriv"] = qtestpriv
         val priv = "testpriv" to Room("testpriv", "Private room", RoomAccessibility.PRIVATE, mutableListOf(qtestpriv))
         rooms = mapOf(pub, priv)
@@ -102,18 +106,18 @@ fun main() {
         install(WebSockets)
         install(CallLogging)
         install(ContentNegotiation) {
-            this.json(Json)
+            this.json(confidoJSON)
         }
         install(Sessions)
         routing {
             get("/init") {
                 // TODO: Secure this or replace.
-                val commonAnswerSpace = NumericAnswerSpace(32, 0.0, 50.0)
+                val commonAnswerSpace = NumericSpace(0.0, 50.0)
                 val questions = listOf(
-                    Question("question1", "How are you?", enabled = false, answerSpace = NumericAnswerSpace(32, 0.0, 50.0)),
-                    Question("numeric_big", "What big number do you like", answerSpace = NumericAnswerSpace(32, 1.0, 7280.0)),
+                    Question("question1", "How are you?", enabled = false, answerSpace = NumericSpace(0.0, 50.0)),
+                    Question("numeric_big", "What big number do you like", answerSpace = NumericSpace(1.0, 7280.0)),
                     Question("numeric_date", "When will this happen?", predictionsVisible = true, resolved = true, answerSpace = NumericAnswerSpace.fromDates(LocalDate(2022,1,1), LocalDate(2022,12,31))),
-                    Question("question2", "Is this good?", predictionsVisible = true, answerSpace = BinaryAnswerSpace()),
+                    Question("question2", "Is this good?", predictionsVisible = true, answerSpace = BinarySpace),
                     Question(
                         "invisible_question",
                         "Can you not see this?",
@@ -176,7 +180,7 @@ fun main() {
                 }
             }
             post("/send_prediction/{id}") {
-                val prediction: Prediction = call.receive()
+                val dist: ProbabilityDistribution = call.receive()
                 val id = call.parameters["id"] ?: ""
                 val userName = call.userSession?.name
 
@@ -185,12 +189,13 @@ fun main() {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
                 }
-                if (!question.answerSpace.verifyPrediction(prediction)) {
+                if (question.answerSpace != dist.space) {
                     print("Prediction not compatible with answer space")
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
                 }
-                ServerState.userPredictions[userName]?.set(id, prediction)
+                val pred = Prediction(now())
+                ServerState.userPredictions[userName]?.set(id, pred)
                 ServerState.calculateGroupDistribution(question)
 
                 call.transientUserData?.refreshRunningWebsockets()
