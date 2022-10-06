@@ -53,19 +53,19 @@ interface ContinuousProbabilityDistribution : ProbabilityDistribution {
     fun discretize(binner: Binner) =
         DiscretizedContinuousDistribution(
             space,
-            binner.binRanges.map { probabilityBetween(it) }.toList().toTypedArray(),
+            binner.binRanges.map { probabilityBetween(it) }.toList(),
             origMean = this.mean, origStdev = this.stdev)
     fun discretize(bins: Int = space.bins) = discretize(Binner(space, bins))
 }
 
 interface DiscretizedProbabilityDistribution : ProbabilityDistribution {
-    val binProbs : Array<Double>
+    val binProbs : List<Double>
 }
 
 
-class DiscretizedContinuousDistribution(
+data class DiscretizedContinuousDistribution(
     override val space: NumericSpace,
-    override val binProbs: Array<Double>,
+    override val binProbs: List<Double>,
     val origMean: Double?,
     val origStdev: Double?,
 ) : DiscretizedProbabilityDistribution, ContinuousProbabilityDistribution {
@@ -188,6 +188,8 @@ object CanonicalNormalDistribution : ContinuousProbabilityDistribution {
         fun tail(q: Double) = (((((c0*q + c1)*q + c2)*q + c3)*q + c4)*q + c5) /
                                ((((d0*q + d1)*q + d2)*q + d3)*q + 1)
 
+        if(p == 0.0) return Double.NEGATIVE_INFINITY
+        if(p == 1.0) return Double.POSITIVE_INFINITY
         if (p < pL) return tail(sqrt(-ln(p) * 2))
         if (p > pH) return -tail(sqrt(-ln(1 - p) * 2))
 
@@ -213,7 +215,7 @@ interface TransformedDistribution : ContinuousProbabilityDistribution {
     override fun icdf(p: Double) = toOur(dist.icdf(p))
 
     override val mean: Double get() = toOur(dist.mean)
-    override val stdev: Double get() = stdev * scale
+    override val stdev: Double get() = dist.stdev * scale
 }
 
 data class NormalDistribution(override val mean: Double, override val stdev: Double) : TransformedDistribution {
@@ -228,9 +230,9 @@ sealed class TruncatedDistribution : ContinuousProbabilityDistribution {
     abstract  val dist : ContinuousProbabilityDistribution
 
     @Transient
-    val pIn = dist.probabilityBetween(space.min, space.max)
+    val pIn by lazy { dist.probabilityBetween(space.min, space.max) }
     @Transient
-    val pLT = dist.cdf(space.min)
+    val pLT by lazy { dist.cdf(space.min) }
 
     override fun pdf(x: Double): Double {
         if (pIn == 0.0) return 0.0
@@ -246,7 +248,11 @@ sealed class TruncatedDistribution : ContinuousProbabilityDistribution {
         return dist.probabilityBetween(space.min, x) / pIn
     }
 
-    override fun icdf(p: Double): Double = dist.icdf(p * pIn + pLT)
+    override fun icdf(p: Double): Double = when(p) {
+        0.0 -> space.min
+        1.0 -> space.max
+        else -> dist.icdf(p * pIn + pLT)
+    }
 }
 
 @Serializable
@@ -263,7 +269,7 @@ data class TruncatedCanonicalNormalDistribution(
     // https://github.com/toshas/torch_truncnorm/blob/890410b5dc22df3e1a5512ba3884e1edd8afb1e9/TruncatedNormal.py
     // https://people.sc.fsu.edu/~jburkardt/presentations/truncated_normal.pdf
     override val mean: Double
-        get() = (dist.pdf(b) - dist.pdf(a)) / pIn
+        get() = (dist.pdf(a) - dist.pdf(b)) / pIn
 
     override val stdev: Double
         get() = sqrt(1 - (b*dist.pdf(b) - a*dist.pdf(a)) / pIn - ((dist.pdf(b) - dist.pdf(a)) / pIn).pow(2))
