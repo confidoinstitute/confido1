@@ -28,7 +28,7 @@ val Sidebar = FC<SidebarProps> {props ->
     fun navigateClose(a: Any, b: Any) = navigateClose()
 
     fun displayType(sm: Boolean): Display =
-        if (props.permanent xor sm) "none".asDynamic() else Display.block
+        if (props.permanent xor sm) None.none else Display.block
 
     Drawer {
         sx {
