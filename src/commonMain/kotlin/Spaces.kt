@@ -84,7 +84,7 @@ class Binner(val space : NumericSpace, val bins: Int) {
 }
 
 @Serializable
-class NumericSpace(
+data class NumericSpace(
     val min: Double = Double.NEGATIVE_INFINITY,
     val max: Double = Double.POSITIVE_INFINITY,
     override val bins: Int = DEFAULT_BINS,
