@@ -1,17 +1,122 @@
 package tools.confido.distributions
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
+import tools.confido.spaces.*
+import tools.confido.utils.binRanges
 import kotlin.math.*
+import kotlin.sequences.*
 
 interface ProbabilityDistribution {
-    fun pdf(x: Double): Double
-    fun cdf(x: Double): Double
-    fun icdf(p: Double): Double
-
-    fun probabilityBetween(start: Double, end: Double) = cdf(end) - cdf(start)
-    fun densityBetween(start: Double, end: Double) = probabilityBetween(start, end) / (end - start)
-    fun confidenceInterval(p: Double): Pair<Double, Double>
+    abstract val space: Space
 }
 
-object CanonicalNormalDistribution : ProbabilityDistribution {
+
+
+interface ContinuousProbabilityDistribution : ProbabilityDistribution {
+    abstract override val space: NumericSpace
+
+    abstract fun pdf(x: Double): Double
+    abstract fun cdf(x: Double): Double
+    abstract fun icdf(p: Double): Double
+
+    fun probabilityBetween(start: Double, end: Double) = cdf(end) - cdf(start)
+    fun probabilityBetween(range: ClosedRange<Double>) = probabilityBetween(range.start, range.endInclusive)
+    fun probabilityBetween(range: OpenEndRange<Double>) = probabilityBetween(range.start, range.endExclusive)
+    fun densityBetween(start: Double, end: Double) = probabilityBetween(start, end) / (end - start)
+
+    val mean: Double
+    val stDev: Double
+    val preferredCICenter: Double
+        get() = mean
+    fun confidenceInterval(p: Double, preferredCenter: Double = preferredCICenter): ClosedRange<Double> {
+        val probRadius = p / 2
+        val centerCDF = cdf(preferredCenter)
+        val leftCDF = centerCDF - probRadius
+        val rightCDF = centerCDF + probRadius
+        if (leftCDF <= 0) return space.min .. icdf(p)
+        else if (rightCDF >= 1) return icdf(1-p) .. space.max
+        else return icdf(leftCDF)..icdf(rightCDF)
+    }
+
+    fun discretize(binner: Binner) =
+        DiscretizedContinuousDistribution(
+            space,
+            binner.binRanges.map { probabilityBetween(it) }.toList().toTypedArray(),
+            origMean = this.mean, origStDev = this.stDev)
+    fun discretize(bins: Int = space.bins) = discretize(Binner(space, bins))
+}
+
+abstract class DiscretizedProbabilityDistribution(
+) : ProbabilityDistribution {
+
+    abstract val binProbs : Array<Double>
+}
+
+
+class DiscretizedContinuousDistribution(
+    override val space: NumericSpace,
+    override val binProbs: Array<Double>,
+    val origMean: Double?,
+    val origStDev: Double?,
+) : DiscretizedProbabilityDistribution(), ContinuousProbabilityDistribution {
+
+    @Transient
+    val bins  = binProbs.size
+
+    @Transient
+    val binner = Binner(space, binProbs.size)
+
+    @Transient
+    val probBeforeBin by lazy { binProbs.runningFold(0.0, { acc, d ->  acc+d }) }
+
+    @Transient
+    val discretizedMean: Double by lazy {
+        binProbs.mapIndexed { bin, p -> p*binner.binMidpoint(bin) }.sum()
+    }
+
+    @Transient
+    val discretizedStDev: Double by lazy {
+        sqrt(binProbs.mapIndexed{ bin, p -> p * (binner.binMidpoint(bin) - discretizedMean).pow(2) }.sum())
+    }
+
+    override val mean: Double
+        get() = origMean ?: discretizedMean
+    override val stDev: Double
+        get() = origStDev ?: discretizedStDev
+
+    override fun pdf(x: Double): Double {
+        return binProbs[binner.value2bin(x) ?: return 0.0] / binner.binSize
+    }
+
+    override fun cdf(x: Double): Double {
+        if (x >= space.max) return 1.0
+        val bin = binner.value2bin(x) ?: return 0.0
+        return probBeforeBin[bin] + binProbs[bin] * (x - binner.binRange(bin).start) / binner.binSize
+    }
+
+    override fun icdf(p: Double): Double {
+        val idx = probBeforeBin.binarySearch(p)
+        if (idx >= 0) {
+            // we hit an exact bin boundary
+            if (idx >= binner.bins) return space.max
+            else return binner.binRange(idx).start
+        } else {
+            val insertionPoint = -(idx + 1)
+            check(insertionPoint > 0)
+            val bin = insertionPoint - 1
+            check(bin in 0 until binner.bins)
+            val remainingProb = p - probBeforeBin[bin]
+            check(remainingProb in 0.0..1.0)
+            val off = binner.binSize / binProbs[bin] * remainingProb
+            return binner.binRange(bin).start + off
+        }
+    }
+}
+
+object CanonicalNormalDistribution : ContinuousProbabilityDistribution {
+    override val mean = 0.0
+    override val stDev = 1.0
+    override val space = NumericSpace()
     override fun pdf(x: Double) = exp(-(ln(2 * PI) + x * x) * 0.5)
 
     /*
@@ -83,47 +188,52 @@ object CanonicalNormalDistribution : ProbabilityDistribution {
 
     }
 
-    override fun confidenceInterval(p: Double) = Pair(icdf(1-p)/2, icdf(1+p)/2)
 }
 
-data class NormalDistribution(val mean: Double, val stdDev: Double) : ProbabilityDistribution {
+@Serializable
+data class NormalDistribution(override val mean: Double, override val stDev: Double) : ContinuousProbabilityDistribution {
+    @Transient
     val dist = CanonicalNormalDistribution
+    @Transient
+    override val space = NumericSpace()
 
-    fun xform(x: Double) = (x - mean) / stdDev
-    fun xformInv(x: Double) = x * stdDev + mean
+    fun xform(x: Double) = (x - mean) / stDev
+    fun xformInv(x: Double) = x * stDev + mean
 
     override fun pdf(x: Double) = dist.pdf(xform(x))
     override fun cdf(x: Double) = dist.cdf(xform(x))
     override fun icdf(p: Double) = xformInv(dist.icdf(p))
-    override fun confidenceInterval(p: Double) = Pair(icdf((1-p)/2), icdf((1+p)/2))
 }
 
-data class TruncatedNormalDistribution(val mean: Double, val stdDev: Double, val min: Double, val max: Double) : ProbabilityDistribution {
-    val dist = NormalDistribution(mean, stdDev)
-    val pIn = dist.probabilityBetween(min, max)
-    val pLT = dist.cdf(min)
+sealed class TruncatedDistribution : ContinuousProbabilityDistribution {
+    abstract  val dist : ContinuousProbabilityDistribution
+
+    @Transient
+    val pIn = dist.probabilityBetween(space.min, space.max)
+    @Transient
+    val pLT = dist.cdf(space.min)
 
     override fun pdf(x: Double): Double {
         if (pIn == 0.0) return 0.0
-        if (x < min) return 0.0
-        if (x > max) return 0.0
+        if (x < space.min) return 0.0
+        if (x > space.max) return 0.0
         return dist.pdf(x) / pIn
     }
 
     override fun cdf(x: Double): Double {
         if (pIn == 0.0) return 0.0
-        if (x <= min) return 0.0
-        if (x >= max) return 1.0
-        return dist.probabilityBetween(min, x) / pIn
+        if (x <= space.min) return 0.0
+        if (x >= space.max) return 1.0
+        return dist.probabilityBetween(space.min, x) / pIn
     }
 
     override fun icdf(p: Double): Double = dist.icdf(p * pIn + pLT)
+}
 
-    override fun confidenceInterval(p: Double): Pair<Double, Double> {
-        val pGlobal = p * pIn
-        val (ciLower, ciUpper) = dist.confidenceInterval(pGlobal)
-        if (ciLower < min) return Pair(min, icdf(p))
-        if (ciUpper > max) return Pair(icdf(1-p), max)
-        return Pair(ciLower, ciUpper)
-    }
+@Serializable
+data class TruncatedNormalDistribution(override val space: NumericSpace, val pseudoMean: Double, val pseudoStdDev: Double) : TruncatedDistribution() {
+    override val preferredCICenter: Double
+        get() = pseudoMean
+    @Transient
+    override val dist = NormalDistribution(pseudoMean, pseudoStdDev)
 }

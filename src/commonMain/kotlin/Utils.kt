@@ -1,17 +1,16 @@
 package tools.confido.utils
 
-fun binRanges(min: Double, max: Double, bins: Int) : List<Pair<Double, Double>> {
-    val binSize = (max - min) / bins
-    return (0 until bins).map {min + it*binSize to min + (it+1)*binSize}
+operator fun Number.compareTo(b : Number): Int {
+    if ((this is Int || this is Short || this is Long || this is Byte || this is Float || this is Double)
+        && (b is Int || b    is Short || b    is Long || b    is Byte || b    is Float || b    is Double))
+            return this.compareTo(b)
+    else throw NotImplementedError()
 }
 
-fun binBorders(min: Double, max: Double, bins: Int) : List<Double> {
-    val binSize = (max - min) / bins
-    return (0..bins).map {min + it*binSize}
-}
 
 val alnum = ('a'..'z').toList() + ('0'..'9').toList()
 fun randomString(length: Int) =
     (1..length).map {
         alnum.random()
     }.joinToString("")
+

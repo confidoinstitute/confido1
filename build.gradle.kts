@@ -93,6 +93,13 @@ kotlin {
             }
         }
     }
+    sourceSets.all {
+        languageSettings.apply {
+            // needed (at least) for OpenEndRange support
+            languageVersion = "1.8"
+            optIn("kotlin.ExperimentalStdlibApi")
+        }
+    }
 }
 
 application {
@@ -123,3 +130,5 @@ tasks.named<JavaExec>("run") {
     dependsOn(tasks.named<Jar>("jvmJar"))
     classpath(tasks.named<Jar>("jvmJar"))
 }
+
+//tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> { kotlinOptions.languageVersion = "1.8" }
