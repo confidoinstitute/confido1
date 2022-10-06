@@ -7,43 +7,40 @@ import react.*
 import react.dom.html.ReactHTML.canvas
 import react.dom.html.ReactHTML.div
 import space.kscience.dataforge.values.Value
-import tools.confido.distributions.ProbabilityDistribution
-import tools.confido.utils.binRanges
+import tools.confido.distributions.ContinuousProbabilityDistribution
 
 data class ConfidenceColor(
     val p: Double,
     val color: Value,
 )
 
-external interface DistributionPlotProps : Props {
-    var distribution: ProbabilityDistribution
-    var min: Double
-    var max: Double
+external interface SimpleCondDistPlotProps : Props {
+    var dist: ContinuousProbabilityDistribution
     var confidences: List<ConfidenceColor>
     var outsideColor: Value?
     var visible: Boolean
     var height: Double?
 }
 
-val DistributionPlot = FC<DistributionPlotProps> { props ->
+// Simple non-interactive plot using canvas for live distribution preview above slider
+val SimpleContDistPlot = FC<SimpleCondDistPlotProps> { props ->
     val elementSize = useElementSize<HTMLDivElement>()
     val bins = elementSize.width.toInt()
 
     val height = props.height ?: 100.0
 
-    val ranges = useMemo(props.min, props.max, bins) {
-        binRanges(props.min, props.max, bins)
+    val discretized = useMemo(props.dist, bins) {
+        props.dist.discretize(bins)
     }
 
     val confidenceIntervals = props.confidences.map {
-        Pair(props.distribution.confidenceInterval(1 - it.p), it.color)
+        Pair(props.dist.confidenceInterval(it.p), it.color)
     }
     fun barColor(x: Double) = confidenceIntervals.find {
-            val (start, end) = it.first
-            (x in start..end)
+            x in it.first
         }?.second ?: props.outsideColor ?: Value.of("")
 
-    val yTicks = ranges.map { (a, b) -> props.distribution.probabilityBetween(a, b) to barColor((b + a) / 2) }
+    val yTicks = (0 until bins).map { bin -> discretized.binProbs[bin] to barColor(discretized.binner.binMidpoint(bin)) }
 
     val canvas = useRef<HTMLCanvasElement>()
     useEffect(yTicks, elementSize.width, elementSize.height, props.visible) {

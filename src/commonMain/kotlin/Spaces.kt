@@ -51,8 +51,11 @@ sealed class TypedSpace<T : Any> : Space() {
     }
 }
 
+// TODO: Allow customizing choices and change this into a dataclass
+// Allow either a few standard choice-sets (e.g. YES_NO, TRUE_FALSE, AGREE_DISAGREE...)
+// that will be autotranslated... or custom string pair
 @Serializable
-class BinarySpace() : TypedSpace<Boolean>() {
+object BinarySpace : TypedSpace<Boolean>() {
     override val bins: Int = 2
     override fun checkValue(value: Boolean) = true
 

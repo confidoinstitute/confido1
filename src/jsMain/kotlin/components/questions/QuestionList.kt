@@ -23,6 +23,7 @@ import react.dom.html.ReactHTML.small
 import react.dom.html.ReactHTML.span
 import react.router.useNavigate
 import react.router.useParams
+import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.*
 import utils.*
 import kotlin.coroutines.EmptyCoroutineContext
@@ -118,7 +119,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
     val question = props.question
     val navigate = useNavigate()
 
-    var pendingPrediction: Prediction? by useState(null)
+    var pendingPrediction: ProbabilityDistribution? by useState(null)
     var pendingPredictionState by useState(PendingPredictionState.NONE)
 
     useDebounce(5000, pendingPredictionState) {

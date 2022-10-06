@@ -1,12 +1,14 @@
 package tools.confido.question
 
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.minus
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import tools.confido.distributions.TruncatedNormalDistribution
+import kotlinx.serialization.*
+import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.spaces.*
-import tools.confido.utils.binRanges
+
+@Serializable
+data class Prediction(
+    val ts: Int,
+    val dist: ProbabilityDistribution,
+)
 
 @Serializable
 data class Question(

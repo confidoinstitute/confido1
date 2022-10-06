@@ -12,34 +12,34 @@ import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.em
 import space.kscience.dataforge.values.Value
 import space.kscience.dataforge.values.asValue
-import tools.confido.distributions.TruncatedNormalDistribution
+import tools.confido.distributions.*
 import tools.confido.question.*
-import utils.dateMarkSpacing
-import utils.format
-import utils.now
+import tools.confido.spaces.*
+import tools.confido.utils.formatPercent
+import utils.*
 import kotlin.js.Date
+import kotlin.math.roundToInt
 
-external interface QuestionInputProps<T : AnswerSpace> : Props {
+external interface QuestionInputProps<S : Space, D: ProbabilityDistribution> : Props {
     var id: String
     var enabled: Boolean
-    var answerSpace: T
-    var prediction: Prediction?
-    var onPredict: ((Prediction) -> Unit)?
+    var space: S
+    var prediction: D?
+    var onPredict: ((D) -> Unit)?
 }
 
-val NumericQuestionInput = FC<QuestionInputProps<NumericAnswerSpace>> { props ->
-    val answerSpace = props.answerSpace
-    console.log(answerSpace)
-    val prediction = props.prediction as? NumericPrediction ?: NumericPrediction(0.0, (answerSpace.min + answerSpace.max) / 2.0, (answerSpace.max - answerSpace.min) / 4)
+val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabilityDistribution>> { props ->
+    val space = props.space
+    val prediction = props.prediction as? TruncatedNormalDistribution ?: TruncatedNormalDistribution(props.space, (space.min + space.max) / 2.0, (space.max - space.min) / 4)
     var madePrediction by useState(props.prediction != null)
     var madeUncertainty by useState(madePrediction)
 
-    var mean by useState(prediction.mean)
-    var stdDev by useState(prediction.stdDev)
 
-    val dist = TruncatedNormalDistribution(mean, stdDev, answerSpace.min, answerSpace.max)
+    var mean by useState(prediction.pseudoMean)
+    var stdev by useState(prediction.pseudoStdev)
+    val dist = TruncatedNormalDistribution(space, mean, stdev)
 
-    val step = if (props.answerSpace.representsDays) 86400 else 0.1
+    val step = if (space.representsDays) 86400 else 0.1
 
     val confidences = useMemo(props.enabled) {
         if (props.enabled) listOf(
@@ -54,22 +54,19 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericAnswerSpace>> { props ->
     }
 
     fun sendPrediction() {
-        val pendingPrediction = NumericPrediction(now(), mean, stdDev)
-        props.onPredict?.invoke(pendingPrediction)
+        props.onPredict?.invoke(dist)
     }
 
     fun formatDate(value: Number): String = Date(value.toDouble() * 1000.0).toISOString().substring(0, 10)
     val formatUncertainty = {_: Number -> "Specify your uncertainty"}
 
-    fun addUnit(value: Any) = if (answerSpace.unit.isNotEmpty()) "$value ${answerSpace.unit}" else value.toString()
+    fun addUnit(value: Any) = if (space.unit.isNotEmpty()) "$value ${space.unit}" else value.toString()
 
     Fragment {
-        DistributionPlot {
-            min = answerSpace.min
-            max = answerSpace.max
-            distribution = dist
+        SimpleContDistPlot {
+            this.dist = dist
             this.confidences = confidences
-            outsideColor = if (props.enabled) Value.of("#000e47") else Value.of("#9c9c9c")
+            this.outsideColor = if (props.enabled) Value.of("#000e47") else Value.of("#9c9c9c")
             this.visible = madePrediction && madeUncertainty
         }
 
@@ -78,18 +75,16 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericAnswerSpace>> { props ->
 
             disabled = !props.enabled
             value = mean
-            min = answerSpace.min
-            max = answerSpace.max
+            min = space.min
+            max = space.max
             this.step = step
             this.madePrediction = madePrediction
 
             valueLabelDisplay = if (madePrediction || !props.enabled) "auto" else "on"
-            if (answerSpace.representsDays) {
-                this.valueLabelFormat = ::formatDate
-                this.widthToMarks = { width -> dateMarkSpacing(width, answerSpace.min, answerSpace.max) }
-            } else {
-                this.valueLabelFormat = ::addUnit
+            if (space.representsDays) {
+                this.widthToMarks = { width -> dateMarkSpacing(width, space.min, space.max) }
             }
+            this.valueLabelFormat = { space.formatValue(it.toDouble()) }
 
             onFocus = { madePrediction = true }
             onChange = { _, value, _ -> mean = value }
@@ -99,9 +94,9 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericAnswerSpace>> { props ->
             ariaLabel = "Uncertainty"
 
             disabled = !props.enabled || !madePrediction
-            value = stdDev
+            value = stdev
             min = 0.1
-            max = (answerSpace.max - answerSpace.min) / 2
+            max = (space.max - space.min) / 2
             this.step = 0.1
 
             valueLabelDisplay = if (madeUncertainty || !madePrediction) "off" else "on"
@@ -109,7 +104,7 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericAnswerSpace>> { props ->
                 valueLabelFormat = formatUncertainty
             track = if (madeUncertainty) "normal" else false.asDynamic()
             onFocus = { madePrediction = true; madeUncertainty = true }
-            onChange = { _, value, _ -> stdDev = value }
+            onChange = { _, value, _ -> stdev = value }
             onChangeCommitted = { _, _ -> sendPrediction() }
         }
         if (madePrediction && madeUncertainty) {
@@ -123,29 +118,21 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericAnswerSpace>> { props ->
                         }
                         +"${confidence.p * 100}%"
                     }
-                    if (props.answerSpace.representsDays)
-                        +" confident that the value lies between ${formatDate(confidenceInterval.first)} and ${
-                            formatDate( confidenceInterval.second )
-                        }"
-                    else
-                        +" confident that the value lies between ${addUnit(confidenceInterval.first.format(1))} and ${addUnit(confidenceInterval.second.format(1))}"
+                    +" confident that the value lies between ${space.formatValue(confidenceInterval.start)} and ${space.formatValue(confidenceInterval.endInclusive)}"
                 }
             }
         }
     }
 }
 
-val BinaryQuestionInput = FC<QuestionInputProps<BinaryAnswerSpace>> { props ->
-    val prediction = props.prediction as? BinaryPrediction ?: BinaryPrediction(0.0, 0.5)
-    var estimate by useState(prediction.estimate * 100)
+val BinaryQuestionInput = FC<QuestionInputProps<BinarySpace, BinaryDistribution>> { props ->
+    var estimate by useState(props.prediction?.yesProb ?: 0.5)
     var madePrediction by useState(props.prediction != null)
 
-    fun formatPercent(value: Number): String = "$value %"
 
 
     fun sendPrediction() {
-        val pendingPrediction = BinaryPrediction(now(), estimate / 100)
-        props.onPredict?.invoke(pendingPrediction)
+        props.onPredict?.invoke(BinaryDistribution(estimate))
     }
 
     fun getMarks(width: Double) = when(width) {
@@ -161,11 +148,11 @@ val BinaryQuestionInput = FC<QuestionInputProps<BinaryAnswerSpace>> { props ->
             disabled = !props.enabled
             value = estimate
             min = 0
-            max = 100
+            max = 1
 
             this.widthToMarks = ::getMarks
             valueLabelDisplay = if (madePrediction || !props.enabled) "auto" else "on"
-            valueLabelFormat = ::formatPercent
+            valueLabelFormat = { formatPercent(it) }
             this.madePrediction = madePrediction
 
             onFocus = { madePrediction = true }
@@ -191,7 +178,7 @@ val BinaryQuestionInput = FC<QuestionInputProps<BinaryAnswerSpace>> { props ->
                         +". (Are you sure?)"
                         certaintyExplanation()
                     }
-                    100.0 -> {
+                    1.0 -> {
                         +"You think this is an "
                         ReactHTML.strong {
                             +"absolute certainty"
@@ -202,7 +189,7 @@ val BinaryQuestionInput = FC<QuestionInputProps<BinaryAnswerSpace>> { props ->
                     else -> {
                         +"You think there is a "
                         ReactHTML.strong {
-                            +"$estimate%"
+                            +formatPercent(estimate, false)
                         }
                         +" chance."
                     }
