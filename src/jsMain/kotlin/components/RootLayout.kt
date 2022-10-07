@@ -25,8 +25,8 @@ val RootAppBar = FC<RootAppBarProps> {props ->
             if (props.hasDrawer) {
                 IconButton {
                     sx {
-                        display = responsive(permanentBreakpoint to "none".asDynamic())
-                        marginRight = 2.asDynamic()
+                        display = responsive(permanentBreakpoint to None.none)
+                        marginRight = 2.px
                     }
                     color = IconButtonColor.inherit
                     onClick = {props.onDrawerOpen?.invoke()}
@@ -92,7 +92,7 @@ val RootLayout = FC<Props> {
             sx {
                 flexGrow = number(1.0)
                 overflowX = Overflow.hidden
-                padding = 1.asDynamic()
+                padding = 1.px
             }
             Toolbar {}
             Routes {
