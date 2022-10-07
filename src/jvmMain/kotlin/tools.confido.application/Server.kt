@@ -71,11 +71,11 @@ object ServerState {
     }
 
     fun calculateGroupDistribution(question: Question) {
-        groupDistributions[question.id] = userPredictions.values.mapNotNull {
-            it[question.id]?.let { prediction -> question.answerSpace.predictionToDistribution(prediction) }
-        }.fold(List(question.answerSpace.bins) { 0.0 }) { acc, dist ->
-            dist.zip(acc) { a, b -> a + b }
-        }
+        //groupDistributions[question.id] = userPredictions.values.mapNotNull {
+        //    it[question.id]?.let { prediction -> question.answerSpace.predictionToDistribution(prediction) }
+        //}.fold(List(question.answerSpace.bins) { 0.0 }) { acc, dist ->
+        //    dist.zip(acc) { a, b -> a + b }
+        //}
     }
     fun calculateGroupDistribution() {
         questions.mapValues { (_, question) -> calculateGroupDistribution(question) }
@@ -88,7 +88,7 @@ object ServerState {
             rooms.values.filter { it.accessibility == RoomAccessibility.PUBLIC || isAdmin },
             userPredictions [sessionData.name]?.toMap() ?: emptyMap(),
             comments,
-            groupDistributions.toMap(),
+            emptyMap(),//groupDistributions.toMap(),
             sessionData,
             isAdmin
         )
@@ -116,7 +116,7 @@ fun main() {
                 val questions = listOf(
                     Question("question1", "How are you?", enabled = false, answerSpace = NumericSpace(0.0, 50.0)),
                     Question("numeric_big", "What big number do you like", answerSpace = NumericSpace(1.0, 7280.0)),
-                    Question("numeric_date", "When will this happen?", predictionsVisible = true, resolved = true, answerSpace = NumericAnswerSpace.fromDates(LocalDate(2022,1,1), LocalDate(2022,12,31))),
+                    Question("numeric_date", "When will this happen?", predictionsVisible = true, resolved = true, answerSpace = NumericSpace.fromDates(LocalDate(2022,1,1), LocalDate(2022,12,31))),
                     Question("question2", "Is this good?", predictionsVisible = true, answerSpace = BinarySpace),
                     Question(
                         "invisible_question",
