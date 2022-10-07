@@ -72,3 +72,4 @@ fun Number.toFixed(decimals: Int): String {
 fun unixNow(): Int = (Clock.System.now().toEpochMilliseconds()/1000).toInt()
 
 fun LocalDate.Companion.fromUnix(ts: Number) = Instant.fromEpochSeconds(ts.toLong()).toLocalDateTime(TimeZone.currentSystemDefault()).date
+fun LocalDate.Companion.utcFromUnix(ts: Number) = Instant.fromEpochSeconds(ts.toLong()).toLocalDateTime(TimeZone.UTC).date

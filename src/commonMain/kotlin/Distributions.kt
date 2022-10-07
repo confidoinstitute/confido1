@@ -4,7 +4,6 @@ import kotlinx.serialization.modules.*
 import tools.confido.spaces.*
 import tools.confido.utils.*
 import kotlin.math.*
-import kotlin.sequences.*
 
 interface ProbabilityDistribution {
     val space: Space
@@ -61,7 +60,7 @@ interface ContinuousProbabilityDistribution : ProbabilityDistribution {
     fun discretize(bins: Int = space.bins) = discretize(Binner(space, bins))
 
     // a one-line user-visible stringification
-    override val description get() = "${mean} ± ${stdev}"
+    override val description get() = "${space.formatValue(mean)} ± ${space.formatDifference(stdev)}"
 }
 
 interface DiscretizedProbabilityDistribution : ProbabilityDistribution {
@@ -307,7 +306,8 @@ data class TruncatedNormalDistribution(
     override val shift get() = pseudoMean
     override val scale get() = pseudoStdev
 
-    override val description get() = "${pseudoMean} ± ${pseudoStdev}"
+    override val preferredCICenter get() = pseudoMean
+    override val description get() = "${space.formatValue(pseudoMean)} ± ${space.formatDifference(pseudoStdev)}"
 }
 
 val distributionsSM = SerializersModule {

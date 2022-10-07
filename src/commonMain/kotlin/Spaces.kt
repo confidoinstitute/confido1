@@ -108,7 +108,16 @@ data class NumericSpace(
 
     override fun formatValue(value: Double): String {
         if (representsDays) {
-            return LocalDate.fromUnix(value.toInt()).toString()
+            return LocalDate.utcFromUnix(value.toInt()).toString()
+        }
+        var r = value.toFixed(decimals)
+        if (unit != "") r += " ${unit}"
+        return r
+    }
+
+    fun formatDifference(value: Double): String {
+        if (representsDays) {
+            return "${(value / 86400).toFixed(1)} days"
         }
         var r = value.toFixed(decimals)
         if (unit != "") r += " ${unit}"

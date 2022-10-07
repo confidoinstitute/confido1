@@ -75,7 +75,6 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
             }
             SimpleContDistPlot {
                 this.dist = dist
-                this.preferredCenter = mean
                 this.confidences = confidences
                 this.outsideColor = if (props.enabled) Value.of("#000e47") else Value.of("#9c9c9c")
                 this.visible = madePrediction && madeUncertainty
