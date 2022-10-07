@@ -9,8 +9,12 @@ import csstype.rem
 import emotion.react.css
 import mui.material.Slider
 import mui.material.Typography
+import mui.material.styles.Theme
+import mui.material.styles.useTheme
 import mui.system.Box
+import mui.system.Breakpoint
 import mui.system.sx
+import mui.system.useTheme
 import react.*
 import react.dom.aria.ariaLabel
 import react.dom.html.ReactHTML
@@ -146,10 +150,13 @@ val BinaryQuestionInput = FC<QuestionInputProps<BinarySpace, BinaryDistribution>
         props.onPredict?.invoke(BinaryDistribution(estimate))
     }
 
-    fun getMarks(width: Double) = when(width) {
-        in 0.0 .. 500.0 -> emptyList()
-        in 500.0 .. 960.0 -> listOf(0, 100)
-        else -> listOf(0, 50, 100)
+    val breakpoints = useTheme<Theme>().breakpoints.values
+    fun getBp(b: Breakpoint) = breakpoints[b]?.toDouble()!!
+    fun getMarks(width: Double): List<Number> = when(width) {
+        in 0.0 .. getBp(Breakpoint.xs) -> listOf(0, 1.0)
+        in getBp(Breakpoint.xs) .. getBp(Breakpoint.sm) -> listOf(0, 0.5, 1.0)
+        in getBp(Breakpoint.sm) .. getBp(Breakpoint.md) -> listOf(0, 0.25, 0.5, 0.75, 1.0)
+        else -> (0..10).map { it / 10.0 }
     }
 
     Fragment {
