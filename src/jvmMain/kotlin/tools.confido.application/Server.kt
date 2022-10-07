@@ -1,5 +1,6 @@
 package tools.confido.application
 
+import tools.confido.eqid.*
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -63,7 +64,7 @@ object ServerState {
         // TODO: Persist rooms, for now we create one room that contains all questions and one "private" room with a new question
         val pub = "testpub" to Room("testpub", "Testing room", RoomAccessibility.PUBLIC, questions.values.toMutableList())
         val qtestpriv = Question("qtestpriv", "Is this a private question?", BinarySpace)
-        questions["qtestpriv"] = qtestpriv
+        questions.insert(qtestpriv)
         val priv = "testpriv" to Room("testpriv", "Private room", RoomAccessibility.PRIVATE, mutableListOf(qtestpriv), description = "A private room.")
         rooms = mapOf(pub, priv)
 
@@ -157,10 +158,12 @@ fun main() {
             post("/add_comment/{id}") {
                 val createdComment: CreatedComment = call.receive()
                 val id = call.parameters["id"] ?: ""
-                val userName = call.userSession?.name
+                val userName = call.userSession?.name ?: run {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
 
-                val question = ServerState.questions[id]
-                if (question == null || userName == null) {
+                val question = ServerState.questions[id] ?: run {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
                 }
@@ -175,7 +178,7 @@ fun main() {
                 }
 
                 val comment = Comment(userName, createdComment.timestamp, createdComment.content, prediction)
-                if (ServerState.comments[id]?.add(comment) == true) {
+                if (ServerState.comments.get(question)?.add(comment) == true) {
                     call.transientUserData?.refreshRunningWebsockets()
                     call.respond(HttpStatusCode.OK)
                 } else {
@@ -185,13 +188,16 @@ fun main() {
             post("/send_prediction/{id}") {
                 val dist: ProbabilityDistribution = call.receive()
                 val id = call.parameters["id"] ?: ""
-                val userName = call.userSession?.name
+                val userName = call.userSession?.name ?: run {
+                    call.respond(HttpStatusCode.BadRequest)
+                   return@post
+                }
 
-                val question = ServerState.questions[id]
-                if (question == null || userName == null) {
+                val question = ServerState.questions[id] ?: run {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
                 }
+
                 if (question.answerSpace != dist.space) {
                     print("Prediction not compatible with answer space")
                     call.respond(HttpStatusCode.BadRequest)
