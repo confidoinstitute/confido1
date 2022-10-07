@@ -16,6 +16,7 @@ data class ConfidenceColor(
 
 external interface SimpleCondDistPlotProps : Props {
     var dist: ContinuousProbabilityDistribution
+    var preferredCenter: Double
     var confidences: List<ConfidenceColor>
     var outsideColor: Value?
     var visible: Boolean
@@ -34,7 +35,7 @@ val SimpleContDistPlot = FC<SimpleCondDistPlotProps> { props ->
     }
 
     val confidenceIntervals = props.confidences.map {
-        Pair(props.dist.confidenceInterval(it.p), it.color)
+        Pair(props.dist.confidenceInterval(it.p, props.preferredCenter), it.color)
     }
     fun barColor(x: Double) = confidenceIntervals.find {
             x in it.first

@@ -18,6 +18,7 @@ inline fun jsObject(init: dynamic.() -> Unit): dynamic {
 
 
 fun Number.toDateTime(): String = Date(this.toDouble() * 1000).toLocaleString()
+fun Number.toIsoDateTime(): String = Date(this.toDouble() * 1000).toISOString()
 
 
 fun linearSpace(first: Double, last: Double, step: Double) = sequence {

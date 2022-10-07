@@ -95,6 +95,7 @@ val RootLayout = FC<Props> {
             sx {
                 flexGrow = number(1.0)
                 overflowX = Overflow.hidden
+                padding = 1.asDynamic()
             }
             Toolbar {}
             Routes {

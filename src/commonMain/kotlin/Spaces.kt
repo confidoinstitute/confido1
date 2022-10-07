@@ -99,6 +99,9 @@ data class NumericSpace(
 ) : TypedSpace<Double>() {
 
     @Transient
+    val isInfinite = min.isInfinite() || max.isInfinite()
+
+    @Transient
     val binner = Binner(this, bins)
 
     override fun checkValue(value: Double) = value in min..max

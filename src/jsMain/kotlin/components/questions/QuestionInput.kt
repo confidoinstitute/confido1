@@ -49,13 +49,13 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
 
     val confidences = useMemo(props.enabled) {
         if (props.enabled) listOf(
-            ConfidenceColor(0.9, "#039be5".asValue()),
+            ConfidenceColor(0.5, "#039be5".asValue()),
             ConfidenceColor(0.7, "#1565c0".asValue()),
-            ConfidenceColor(0.5, "#311b92".asValue())
+            ConfidenceColor(0.9, "#311b92".asValue()),
         ) else listOf(
-            ConfidenceColor(0.9, "#bfbfbf".asValue()),
+            ConfidenceColor(0.5, "#bfbfbf".asValue()),
             ConfidenceColor(0.7, "#acacac".asValue()),
-            ConfidenceColor(0.5, "#a0a0a0".asValue())
+            ConfidenceColor(0.9, "#a0a0a0".asValue()),
         )
     }
 
@@ -75,6 +75,7 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
             }
             SimpleContDistPlot {
                 this.dist = dist
+                this.preferredCenter = mean
                 this.confidences = confidences
                 this.outsideColor = if (props.enabled) Value.of("#000e47") else Value.of("#9c9c9c")
                 this.visible = madePrediction && madeUncertainty
@@ -98,6 +99,7 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
 
                 onFocus = { madePrediction = true }
                 onChange = { _, value, _ -> mean = value; props.onChange?.invoke() }
+                onChangeCommitted = { _, _ -> sendPrediction() }
             }
             Slider {
                 ariaLabel = "Uncertainty"
@@ -163,6 +165,7 @@ val BinaryQuestionInput = FC<QuestionInputProps<BinarySpace, BinaryDistribution>
                 value = estimate
                 min = 0
                 max = 1
+                step = 0.01
 
                 this.widthToMarks = ::getMarks
                 valueLabelDisplay = if (madePrediction || !props.enabled) "auto" else "on"

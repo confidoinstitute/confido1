@@ -105,7 +105,7 @@ val Comment = FC<CommentProps> { props ->
                         size = Size.small
                         onClick = { predVisible = true }
                     }
-                    true -> +(props.comment.prediction?.toString() ?: "")
+                    true -> +(props.comment.prediction?.dist?.description ?: "")
                 }
             }
             }
@@ -172,7 +172,7 @@ val CommentInput = FC<CommentInputProps> { props ->
                         props.prediction?.let {
                             Typography {
                                 variant = TypographyVariant.body2
-                                +it.toString()
+                                +it.dist.description
                             }
                         }
                     }
