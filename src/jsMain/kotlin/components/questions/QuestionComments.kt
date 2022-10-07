@@ -1,6 +1,7 @@
 package components.questions
 
 import components.AppStateContext
+import components.DistributionSummary
 import csstype.Length
 import csstype.Overflow
 import csstype.number
@@ -48,7 +49,6 @@ external interface CommentProps : Props {
 }
 
 val Comment = FC<CommentProps> { props ->
-    var predVisible by useState(false)
     var textAgo by useState("")
 
     val appState = useContext(AppStateContext)
@@ -99,15 +99,12 @@ val Comment = FC<CommentProps> { props ->
                     strong {
                         +"Prediction: "
                     }
-                when(predVisible) {
-                    false -> Button {
-                        +"Show"
-                        size = Size.small
-                        onClick = { predVisible = true }
+                        DistributionSummary {
+                            spoiler = true
+                            allowPlotDialog = true
+                            distribution = props.comment.prediction?.dist
                     }
-                    true -> +(props.comment.prediction?.dist?.description ?: "")
                 }
-            }
             }
         }
     }

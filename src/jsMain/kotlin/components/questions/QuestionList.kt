@@ -21,6 +21,7 @@ import mui.system.sx
 import react.*
 import react.dom.html.ReactHTML.small
 import react.dom.html.ReactHTML.span
+import react.dom.html.ReactHTML.strong
 import react.router.*
 import tools.confido.distributions.*
 import tools.confido.question.*
@@ -219,10 +220,17 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             }
             if (question.predictionsVisible) {
                 Typography {
-                    +"Group predictions:"
-                    Button {
-                        onClick = { navigate("/group_predictions") }
-                        +"Go (TODO)"
+                    sx {
+                        margin = Margin(1.asDynamic(), 0.px)
+                        lineHeight = number(2.0)
+                    }
+                    strong {
+                        +"Group predictions: "
+                    }
+                    DistributionSummary {
+                        spoiler = true
+                        allowPlotDialog = true
+                        distribution = props.prediction?.dist
                     }
                 }
             }
