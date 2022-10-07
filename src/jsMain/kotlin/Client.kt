@@ -1,5 +1,6 @@
 import components.App
 import io.ktor.client.*
+import io.ktor.client.call.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.browser.document
@@ -21,7 +22,12 @@ object Client {
     inline fun <reified T> postData(url: String, payload: T) = CoroutineScope(EmptyCoroutineContext).launch {
         httpClient.postJson(url, payload) {}
     }
+
+    suspend inline fun <reified T, reified R> postDataAndReceive(url: String, payload: T): R {
+        return httpClient.postJson(url, payload) {}.body()
+    }
 }
+
 fun main() {
     val container = document.createElement("div")
     document.body!!.appendChild(container)

@@ -8,10 +8,10 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import tools.confido.application.sessions.transientUserData
-import tools.confido.payloads.EditQuestion
-import tools.confido.payloads.EditQuestionComplete
-import tools.confido.payloads.EditQuestionField
-import tools.confido.payloads.EditQuestionFieldType
+import payloads.requests.EditQuestion
+import payloads.requests.EditQuestionComplete
+import payloads.requests.EditQuestionField
+import payloads.requests.EditQuestionFieldType
 import tools.confido.utils.randomString
 
 fun editQuestion(routing: Routing) {

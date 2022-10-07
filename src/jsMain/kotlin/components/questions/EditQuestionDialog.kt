@@ -10,8 +10,8 @@ import mui.material.*
 import react.*
 import react.dom.html.InputType
 import react.dom.onChange
-import tools.confido.payloads.EditQuestion
-import tools.confido.payloads.EditQuestionComplete
+import payloads.requests.EditQuestion
+import payloads.requests.EditQuestionComplete
 import tools.confido.question.Question
 import tools.confido.spaces.*
 import tools.confido.utils.*

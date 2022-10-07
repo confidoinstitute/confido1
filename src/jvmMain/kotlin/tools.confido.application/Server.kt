@@ -1,7 +1,7 @@
 package tools.confido.application
 
 import tools.confido.eqid.*
-import io.ktor.http.HttpStatusCode
+import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.embeddedServer
@@ -22,15 +22,15 @@ import kotlinx.datetime.Clock.System.now
 import kotlinx.datetime.LocalDate
 import kotlinx.html.*
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.litote.kmongo.coroutine.CoroutineCollection
 import org.litote.kmongo.coroutine.coroutine
 import org.litote.kmongo.reactivestreams.KMongo
 import org.litote.kmongo.serialization.registerModule
-import payloads.CreatedComment
+import payloads.requests.*
+import payloads.responses.InviteStatus
+import rooms.*
 import tools.confido.application.sessions.*
 import tools.confido.distributions.ProbabilityDistribution
-import tools.confido.payloads.*
 import tools.confido.state.AppState
 import tools.confido.state.UserSession
 import tools.confido.question.*
@@ -38,6 +38,8 @@ import tools.confido.serialization.confidoJSON
 import tools.confido.serialization.confidoSM
 import tools.confido.spaces.*
 import tools.confido.utils.*
+import users.User
+import users.UserType
 import java.io.File
 
 fun HTML.index() {
@@ -50,22 +52,31 @@ fun HTML.index() {
 }
 
 object ServerState {
+    // TODO: These maps should be concurrent.
     var rooms: Map<String, Room> = emptyMap()
     var questions: MutableMap<String, Question> = mutableMapOf()
-    val userPredictions: MutableMap<String, MutableMap<String, Prediction>> = mutableMapOf()
+    val userPredictions: MutableMap<User, MutableMap<String, Prediction>> = mutableMapOf()
     var groupPredictions: MutableMap<String, List<Double>> = mutableMapOf()
     var comments: MutableMap<String, MutableList<Comment>> = mutableMapOf()
+    var users: MutableMap<String, User> = mutableMapOf()
 
     fun loadQuestions(collection: CoroutineCollection<Question>) {
         questions = runBlocking {
             collection.find().toList().associateBy { question -> question.id }.toMutableMap()
         }
 
+        // TODO: Remove this user.
+        val debugAdmin = User("debug", UserType.ADMIN, null, false, "debugadmin", "pass", now(), now())
+        users[debugAdmin.id] = debugAdmin
+
         // TODO: Persist rooms, for now we create one room that contains all questions and one "private" room with a new question
-        val pub = "testpub" to Room("testpub", "Testing room", RoomAccessibility.PUBLIC, questions.values.toMutableList())
+        val pub = "testpub" to Room("testpub", "Testing room", questions.values.toMutableList(), mutableListOf(), mutableListOf(), now())
         val qtestpriv = Question("qtestpriv", "Is this a private question?", BinarySpace)
-        questions.insert(qtestpriv)
-        val priv = "testpriv" to Room("testpriv", "Private room", RoomAccessibility.PRIVATE, mutableListOf(qtestpriv), description = "A private room.")
+        questions["qtestpriv"] = qtestpriv
+        val priv = "testpriv" to Room("testpriv", "Private room", mutableListOf(qtestpriv), mutableListOf(), mutableListOf(), now())
+        val testInvite = InviteLink("Testing invite link", Forecaster, debugAdmin, now())
+        priv.second.inviteLinks.add(testInvite)
+        println("Testing invite: ${testInvite.token}")
         rooms = mapOf(pub, priv)
 
         // TODO actually store comments!
@@ -80,20 +91,28 @@ object ServerState {
         //    dist.zip(acc) { a, b -> a + b }
         //}
     }
+
     fun calculateGroupDistribution() {
         questions.mapValues { (_, question) -> calculateGroupDistribution(question) }
     }
 
+    fun getUserPredictions(user: User): MutableMap<String, Prediction> {
+        return userPredictions.getOrPut(user) {mutableMapOf()}
+    }
+
     fun appState(sessionData: UserSession): AppState {
-        val isAdmin = sessionData.name == "Admin"
+        val predictions = when (val user = sessionData.user) {
+            null -> emptyMap()
+            else -> getUserPredictions(user)
+        }
+
         return AppState(
             // TODO: Consider sending questions separately and only provide ids within rooms
-            rooms.values.filter { it.accessibility == RoomAccessibility.PUBLIC || isAdmin },
-            userPredictions [sessionData.name]?.toMap() ?: emptyMap(),
+            rooms.values.filter { it.hasPermission(sessionData.user, RoomPermission.VIEW_QUESTIONS) },
+            predictions,
             comments,
             emptyMap(),//groupDistributions.toMap(),
             sessionData,
-            isAdmin
         )
     }
 }
@@ -135,20 +154,69 @@ fun main() {
             }
             get("/{...}") {
                 if (call.userSession == null) {
-                    call.userSession = UserSession(name = null, language = "en")
+                    call.userSession = UserSession(user = null, language = "en")
                 }
 
                 call.respondHtml(HttpStatusCode.OK, HTML::index)
             }
-            post("/setName") {
-                val session = call.userSession
-                if (session == null) {
+            post("/invite/check_status") {
+                val check: CheckInvite = call.receive()
+                val room = ServerState.rooms[check.roomId]
+                val invite = room?.inviteLinks?.find {it.token == check.inviteToken && it.canJoin}
+                if (room == null || invite == null) {
+                    call.respond(HttpStatusCode.OK, InviteStatus(false, null))
+                    return@post
+                }
+
+                call.respond(HttpStatusCode.OK, InviteStatus(true, room.name))
+            }
+            post("/invite/accept") {
+                val user = call.userSession?.user
+                if (user == null) {
                     call.respond(HttpStatusCode.Unauthorized)
                 } else {
-                    val setName: SetName = call.receive()
-                    call.userSession = session.copy(name = setName.name)
-                    if (!ServerState.userPredictions.containsKey(setName.name))
-                        ServerState.userPredictions[setName.name] = mutableMapOf()
+                    val accept: AcceptInvite = call.receive()
+                    val room = ServerState.rooms[accept.roomId] ?: return@post
+                    val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: return@post
+
+                    // TODO: Prevent user from accepting multiple times
+                    call.userSession = UserSession(user = user, language = "en")
+                    room.members.add(RoomMembership(user, invite.role, invite))
+
+                    call.transientUserData?.refreshRunningWebsockets()
+                    call.respond(HttpStatusCode.OK)
+                }
+            }
+            post("/invite/accept_newuser") {
+                val session = call.userSession
+                if (session == null || session.user != null) {
+                    call.respond(HttpStatusCode.Unauthorized)
+                } else {
+                    val accept: AcceptInviteAndCreateUser = call.receive()
+                    val room = ServerState.rooms[accept.roomId] ?: return@post
+                    val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: return@post
+
+                    val newUser = User(randomString(32), UserType.GUEST, accept.email, false, accept.userNick, null, now(), now())
+
+                    call.userSession = UserSession(user = newUser, language = "en")
+                    room.members.add(RoomMembership(newUser, invite.role, invite))
+                    ServerState.users[newUser.id] = newUser
+
+                    call.transientUserData?.refreshRunningWebsockets()
+                    call.respond(HttpStatusCode.OK)
+                }
+            }
+            post("/setName") {
+                val session = call.userSession
+                val user = session?.user
+                if (session == null || user == null) {
+                    call.respond(HttpStatusCode.Unauthorized)
+                } else {
+                    val setNick: SetNick = call.receive()
+
+                    val editedUser = user.copy(nick = setNick.name)
+                    call.userSession = session.copy(user = editedUser)
+                    ServerState.users[editedUser.id] = editedUser
 
                     call.transientUserData?.refreshRunningWebsockets()
                     call.respond(HttpStatusCode.OK)
@@ -156,9 +224,9 @@ fun main() {
             }
             editQuestion(this)
             post("/add_comment/{id}") {
-                val createdComment: CreatedComment = call.receive()
+                val createdComment: CreateComment = call.receive()
                 val id = call.parameters["id"] ?: ""
-                val userName = call.userSession?.name ?: run {
+                val user = call.userSession?.user ?: run {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
                 }
@@ -173,11 +241,11 @@ fun main() {
                     return@post
                 }
 
-                val prediction = ServerState.userPredictions[userName]?.get(id)?.takeIf {
+                val prediction = ServerState.getUserPredictions(user)[id]?.takeIf {
                     createdComment.attachPrediction
                 }
 
-                val comment = Comment(userName, createdComment.timestamp, createdComment.content, prediction)
+                val comment = Comment(user, createdComment.timestamp, createdComment.content, prediction)
                 if (ServerState.comments.get(question)?.add(comment) == true) {
                     call.transientUserData?.refreshRunningWebsockets()
                     call.respond(HttpStatusCode.OK)
@@ -188,7 +256,7 @@ fun main() {
             post("/send_prediction/{id}") {
                 val dist: ProbabilityDistribution = call.receive()
                 val id = call.parameters["id"] ?: ""
-                val userName = call.userSession?.name ?: run {
+                val user = call.userSession?.user ?: run {
                     call.respond(HttpStatusCode.BadRequest)
                    return@post
                 }
@@ -204,7 +272,7 @@ fun main() {
                     return@post
                 }
                 val pred = Prediction(unixNow(), dist)
-                ServerState.userPredictions[userName]?.set(id, pred)
+                ServerState.getUserPredictions(user)[id] = pred
                 ServerState.calculateGroupDistribution(question)
 
                 call.transientUserData?.refreshRunningWebsockets()

@@ -1,7 +1,7 @@
-package payloads
+package payloads.requests
 
 @kotlinx.serialization.Serializable
-data class CreatedComment(
+data class CreateComment(
     val timestamp: Int,
     val content: String,
     val attachPrediction: Boolean,

@@ -20,16 +20,13 @@ import mui.lab.LoadingPosition
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.sx
-import payloads.CreatedComment
+import payloads.requests.CreateComment
 import react.*
 import react.dom.html.ButtonType
 import react.dom.html.ReactHTML.form
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.strong
 import react.dom.onChange
-import react.router.useLocation
-import react.router.useNavigate
-import react.router.useParams
 import tools.confido.question.Comment
 import tools.confido.question.Prediction
 import tools.confido.question.Question
@@ -52,8 +49,9 @@ val Comment = FC<CommentProps> { props ->
     var textAgo by useState("")
 
     val appState = useContext(AppStateContext)
-    val currentUser = appState.state.session.name
-    val canDelete = (props.comment.user == currentUser || appState.state.isAdmin) && !appState.stale
+    val currentUser = appState.state.session.user
+    // TODO: Use permissions
+    val canDelete = (props.comment.user == currentUser || appState.state.isAdmin()) && !appState.stale
 
     // TODO generalize and fix the "no text on mount" issue
     useEffect(props.comment.timestamp) {
@@ -74,9 +72,12 @@ val Comment = FC<CommentProps> { props ->
             marginBottom = 2.asDynamic()
         }
         CardHeader {
-            title = ReactNode(props.comment.user)
+            // TODO: Handle nickless, email-only names(when appropriate)
+            val name = props.comment.user.nick ?: "Anonymous"
+            title = ReactNode(name)
             subheader = ReactNode(textAgo)
-            avatar = Avatar.create { +"${props.comment.user[0]}" }
+            val letter = name.getOrNull(0) ?: '?'
+            avatar = Avatar.create { +"$letter" }
             if (props.deleteMode) {
                 if (canDelete) {
                     action = IconButton.create {
@@ -113,7 +114,7 @@ val Comment = FC<CommentProps> { props ->
 external interface CommentInputProps : Props {
     var id: String
     var prediction: Prediction?
-    var onSubmit: ((CreatedComment) -> Unit)?
+    var onSubmit: ((CreateComment) -> Unit)?
 }
 
 val CommentInput = FC<CommentInputProps> { props ->
@@ -130,7 +131,7 @@ val CommentInput = FC<CommentInputProps> { props ->
                 errorSend = false
                 pendingSend = true
                 try {
-                    val createdComment = CreatedComment(unixNow(), content, attachPrediction)
+                    val createdComment = CreateComment(unixNow(), content, attachPrediction)
                     Client.httpClient.postJson("/add_comment/${props.id}", createdComment) {
                         expectSuccess = true
                     }

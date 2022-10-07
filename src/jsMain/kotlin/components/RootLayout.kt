@@ -1,5 +1,6 @@
 package components
 
+import components.profile.SetNickForm
 import components.rooms.NewRoom
 import components.rooms.Room
 import csstype.*
@@ -111,13 +112,7 @@ val RootLayout = FC<Props> {
                 }
                 Route {
                     path = "set_name"
-
-                    this.element = SetNameForm.create()
-                }
-                Route {
-                    path = "edit_questions"
-
-                    this.element = EditQuestions.create()
+                    this.element = SetNickForm.create()
                 }
             }
         }

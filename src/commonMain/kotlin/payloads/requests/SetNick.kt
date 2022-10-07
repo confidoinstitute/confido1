@@ -1,8 +1,8 @@
-package tools.confido.payloads
+package payloads.requests
 
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class SetName(
+data class SetNick(
     val name: String
 )

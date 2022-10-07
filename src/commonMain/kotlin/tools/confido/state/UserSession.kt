@@ -1,11 +1,11 @@
 package tools.confido.state
 
 import kotlinx.serialization.Serializable
+import users.User
 
 @Serializable
 data class UserSession(
-    var name: String?,
+    var user: User?,
     var language: String,
-    // Beware: This is sent to the client; if you want to store sensitive
-    // information in the session, you will need to create a separate class
+    // Beware: This is sent to the client
 )

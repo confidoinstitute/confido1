@@ -2,7 +2,6 @@ package components.questions
 
 import components.*
 import csstype.*
-import emotion.react.css
 import hooks.useDebounce
 import hooks.useOnUnmount
 import icons.AddIcon
@@ -253,13 +252,15 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
 external interface QuestionListProps : Props {
     var questions: List<Question>
+    var showHiddenQuestions: Boolean
+    var allowEditingQuestions: Boolean
 }
 
 val QuestionList = FC<QuestionListProps> { props ->
     val clientAppState = useContext(AppStateContext)
     val appState = clientAppState.state
     val questions = props.questions.sortedBy { it.name }
-    val visibleQuestions = if (appState.isAdmin) questions else questions.filter { it.visible }
+    val visibleQuestions = if (props.showHiddenQuestions) questions else questions.filter { it.visible }
 
     var editQuestion by useState<Question?>(null)
     var editQuestionKey by useState("")
@@ -288,14 +289,15 @@ val QuestionList = FC<QuestionListProps> { props ->
             this.question = question
             this.expanded = question.id == expandedQuestion
             this.prediction = appState.userPredictions[question.id]
-            this.editable = appState.isAdmin && !clientAppState.stale
+            this.editable = props.allowEditingQuestions && !clientAppState.stale
             this.comments = appState.comments[question.id] ?: listOf()
             this.onEditDialog = ::editQuestionOpen
             this.onChange = {state -> expandedQuestion = if (state) question.id else null}
         }
     }
 
-    if (appState.isAdmin && !clientAppState.stale) {
+    // TODO: Use permissions
+    if (appState.isAdmin() && !clientAppState.stale) {
         Fragment {
             Button {
                 this.key = "##add##"

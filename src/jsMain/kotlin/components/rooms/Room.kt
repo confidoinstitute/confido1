@@ -9,7 +9,8 @@ import react.*
 import react.router.Route
 import react.router.Routes
 import react.router.useParams
-import tools.confido.question.Room
+import rooms.Room
+import rooms.RoomPermission
 
 val RoomContext = createContext<Room>()
 
@@ -38,20 +39,24 @@ val Room = FC<Props> {
                 index = true
                 this.element = QuestionList.create {
                     questions = room.questions
+                    // TODO: This should be fully handled by the server.
+                    showHiddenQuestions = state.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
+                    allowEditingQuestions = state.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
                 }
             }
             Route {
                 path = "group_predictions"
 
                 this.element = GroupPredictions.create {
+                    // TODO: Apply permissions
                     questions = room.questions.filter { it.predictionsVisible }
                 }
             }
             Route {
                 path = "edit_questions"
-
                 this.element = EditQuestions.create {
                     questions = room.questions
+                    allowEditingQuestions = state.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
                 }
             }
         }

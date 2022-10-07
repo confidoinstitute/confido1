@@ -1,4 +1,4 @@
-package tools.confido.payloads
+package payloads.requests
 
 import kotlinx.serialization.Serializable
 import tools.confido.question.Question

@@ -2,7 +2,9 @@ package components
 
 import Client
 import mui.material.*
-import tools.confido.payloads.*
+import payloads.requests.EditQuestion
+import payloads.requests.EditQuestionField
+import payloads.requests.EditQuestionFieldType
 import react.FC
 import react.Props
 import react.useContext
@@ -10,6 +12,7 @@ import tools.confido.question.Question
 
 external interface EditQuestionProps : Props {
     var questions: List<Question>
+    var allowEditingQuestions: Boolean
 }
 
 val EditQuestions = FC<EditQuestionProps> { props ->
@@ -45,7 +48,7 @@ val EditQuestions = FC<EditQuestionProps> { props ->
                         ).map {(current, field) ->
                             TableCell {
                                 Checkbox {
-                                    disabled = !appState.state.isAdmin || appState.stale
+                                    disabled = !props.allowEditingQuestions || appState.stale
                                     checked = current
                                     onChange = { _, checked -> postEditQuestion(question.id, field, checked) }
                                 }
