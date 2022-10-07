@@ -11,8 +11,6 @@ import space.kscience.plotly.models.Pie
 import tools.confido.question.*
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.NumericSpace
-import tools.confido.utils.binBorders
-import tools.confido.utils.binRanges
 import utils.jsObject
 import kotlin.js.Date
 
@@ -55,7 +53,7 @@ val PredictionPlot = FC<PredictionPlotProps> {props ->
                 is NumericSpace -> ReactPlotly {
                     traces = listOf(
                         Bar {
-                            val xBins = binRanges(answerSpace.min, answerSpace.max, answerSpace.bins).map { (it.second + it.first) / 2 }
+                            val xBins = answerSpace.binner.binMidpoints
                             if (answerSpace.representsDays) {
                                 x.set(xBins.map { Date(it * 1000).toISOString() })
                             } else {

@@ -11,6 +11,36 @@ operator fun Number.compareTo(b : Number): Int {
     else throw NotImplementedError()
 }
 
+class GeneratedList<T>(override val size: Int, val gen: (Int) -> T) : List<T> {
+    class GeneratedListIterator<T>(val lst: GeneratedList<T>, var pos: Int = 0): ListIterator<T> {
+        override fun hasNext() = pos < lst.size
+        override fun next(): T = if (hasNext()) lst[pos++] else throw NoSuchElementException()
+        override fun hasPrevious() = pos > 0
+        override fun previous() = if (hasPrevious()) lst[--pos] else throw NoSuchElementException()
+        override fun nextIndex() = pos + 1
+        override fun previousIndex() = pos - 1
+    }
+    override fun isEmpty() = size==0
+    override fun containsAll(elements: Collection<T>): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun get(index: Int) = gen(index)
+    override fun indexOf(element: T) = asSequence().indexOf(element)
+
+    override fun contains(element: T) = asSequence().contains(element)
+
+    override fun listIterator(index: Int) = GeneratedListIterator<T>(this, index)
+    override fun subList(fromIndex: Int, toIndex: Int): List<T> {
+        if (fromIndex < 0 || toIndex > size || fromIndex > toIndex) throw IndexOutOfBoundsException()
+        return GeneratedList<T>(toIndex-fromIndex, { gen(fromIndex+it)})
+    }
+
+    override fun listIterator() = GeneratedListIterator<T>(this)
+    override fun iterator() = listIterator()
+    override fun lastIndexOf(element: T) = (0 until size).reversed().first { gen(it) == element }
+
+}
 
 val alnum = ('a'..'z').toList() + ('0'..'9').toList()
 fun randomString(length: Int) =

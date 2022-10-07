@@ -23,6 +23,7 @@ sealed class TypedSpace<T : Any> : Space() {
     abstract fun checkValue(value : T): Boolean
     override final fun  checkValue(value: Any): Boolean {
         try {
+            @Suppress("UNCHECKED_CAST")
             return checkValue(value as T)
         } catch (e: ClassCastException) {
             return false
@@ -36,6 +37,7 @@ sealed class TypedSpace<T : Any> : Space() {
     override final fun  formatValue(value: Any): String {
         if (!checkValue(value)) return "(invalid)"
         try {
+            @Suppress("UNCHECKED_CAST")
             return formatValue(value as T)
         } catch (e: ClassCastException) {
             return "(invalid)"
@@ -47,6 +49,7 @@ sealed class TypedSpace<T : Any> : Space() {
     abstract fun value2bin(value : T): Int?
     override final fun  value2bin(value: Any): Int? {
         if (!checkValue(value)) return null
+        @Suppress("UNCHECKED_CAST")
         return value2bin(value as T)
     }
 }
@@ -69,16 +72,15 @@ object BinarySpace : TypedSpace<Boolean>() {
 class Binner(val space : NumericSpace, val bins: Int) {
     val binSize =  (space.max - space.min) / bins
 
-    fun binRange(bin: Int) : OpenEndRange<Double> {
-        val start = space.min + binSize * bin
-        return (start ..< start+binSize)
-    }
-
-    val binRanges : Sequence<OpenEndRange<Double>>
-        get() = (0 until bins).asSequence().map { binRange(it) }
-
-    fun binMidpoint(bin: Int) =
-        binRange(bin).let { (it.start + it.endExclusive) / 2 }
+    val binRanges
+        get() = GeneratedList<OpenEndRange<Double>>(bins) {
+            val start = space.min + binSize * it
+            (start ..< start+binSize)
+        }
+    val binBorders
+        get() = GeneratedList<Double>(bins+1) {space.min + it*binSize}
+    val binMidpoints
+        get() = GeneratedList<Double>(bins) { space.min + it*binSize + binSize / 2 }
 
     fun value2bin(value: Double): Int? {
         if (value < space.min || value > space.max) return null

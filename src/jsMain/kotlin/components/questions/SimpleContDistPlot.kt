@@ -40,7 +40,7 @@ val SimpleContDistPlot = FC<SimpleCondDistPlotProps> { props ->
             x in it.first
         }?.second ?: props.outsideColor ?: Value.of("")
 
-    val yTicks = (0 until bins).map { bin -> discretized.binProbs[bin] to barColor(discretized.binner.binMidpoint(bin)) }
+    val yTicks = (0 until bins).map { bin -> discretized.binProbs[bin] to barColor(discretized.binner.binMidpoints[bin]) }
 
     val canvas = useRef<HTMLCanvasElement>()
     useEffect(yTicks, elementSize.width, elementSize.height, props.visible) {

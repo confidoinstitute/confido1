@@ -84,12 +84,12 @@ data class DiscretizedContinuousDistribution(
 
     @Transient
     val discretizedMean: Double by lazy {
-        binProbs.mapIndexed { bin, p -> p*binner.binMidpoint(bin) }.sum()
+        binProbs.zip(binner.binMidpoints) { p, midp -> p*midp }.sum()
     }
 
     @Transient
     val discretizedStdev: Double by lazy {
-        sqrt(binProbs.mapIndexed{ bin, p -> p * (binner.binMidpoint(bin) - discretizedMean).pow(2) }.sum())
+        sqrt(binProbs.zip(binner.binMidpoints) { p, midp -> p * (midp - discretizedMean).pow(2) }.sum())
     }
 
     override val mean: Double
@@ -104,7 +104,7 @@ data class DiscretizedContinuousDistribution(
     override fun cdf(x: Double): Double {
         if (x >= space.max) return 1.0
         val bin = binner.value2bin(x) ?: return 0.0
-        return probBeforeBin[bin] + binProbs[bin] * (x - binner.binRange(bin).start) / binner.binSize
+        return probBeforeBin[bin] + binProbs[bin] * (x - binner.binRanges[bin].start) / binner.binSize
     }
 
     override fun icdf(p: Double): Double {
@@ -112,7 +112,7 @@ data class DiscretizedContinuousDistribution(
         if (idx >= 0) {
             // we hit an exact bin boundary
             if (idx >= binner.bins) return space.max
-            else return binner.binRange(idx).start
+            else return binner.binRanges[idx].start
         } else {
             val insertionPoint = -(idx + 1)
             check(insertionPoint > 0)
@@ -122,7 +122,7 @@ data class DiscretizedContinuousDistribution(
             val remainingProb = (p - probBeforeBin[bin]).clamp01()
             check(remainingProb in 0.0..1.0)
             val off = binner.binSize / binProbs[bin] * remainingProb
-            return binner.binRange(bin).start + off
+            return binner.binRanges[bin].start + off
         }
     }
 }
