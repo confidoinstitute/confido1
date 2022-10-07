@@ -94,7 +94,8 @@ data class NumericSpace(
     val max: Double = Double.POSITIVE_INFINITY,
     override val bins: Int = DEFAULT_BINS,
     val representsDays: Boolean = false,
-    val unit: String = ""
+    val unit: String = "",
+    var decimals: Int = 1
 ) : TypedSpace<Double>() {
 
     @Transient
@@ -103,7 +104,12 @@ data class NumericSpace(
     override fun checkValue(value: Double) = value in min..max
 
     override fun formatValue(value: Double): String {
-        TODO("Not yet implemented")
+        if (representsDays) {
+            return LocalDate.fromUnix(value.toInt()).toString()
+        }
+        var r = value.toFixed(decimals)
+        if (unit != "") r += " ${unit}"
+        return r
     }
 
     override fun value2bin(value: Double) = value2bin(value, this.binner)
