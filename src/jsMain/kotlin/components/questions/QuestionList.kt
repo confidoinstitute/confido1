@@ -254,16 +254,20 @@ val QuestionList = FC<QuestionListProps> { props ->
     val visibleQuestions = if (appState.isAdmin) questions else questions.filter { it.visible }
 
     var editQuestion by useState<Question?>(null)
+    var editQuestionKey by useState("")
     var editOpen by useState(false)
+    useLayoutEffect(editOpen) {
+        if (editOpen)
+            editQuestionKey = randomString(20)
+    }
 
     var expandedQuestion by useState<String?>(null)
 
-    if (editOpen) {
-        EditQuestionDialog {
-            question = editQuestion
-            open = editOpen
-            onClose = { editOpen = false }
-        }
+    EditQuestionDialog {
+        key = "##editDialog##$editQuestionKey"
+        question = editQuestion
+        open = editOpen
+        onClose = { editOpen = false }
     }
 
     fun editQuestionOpen(it: Question) {
@@ -284,15 +288,14 @@ val QuestionList = FC<QuestionListProps> { props ->
     }
 
     if (appState.isAdmin && !clientAppState.stale) {
-        Fab {
-            sx {
-                position = Position.fixed
-                right = 16.px
-                bottom = 16.px
+        Fragment {
+            Button {
+                this.key = "##add##"
+                this.startIcon = AddIcon.create()
+                this.color = ButtonColor.primary
+                onClick = { editQuestion = null; editOpen = true }
+                +"Add question…"
             }
-            onClick = { editQuestion = null; editOpen = true }
-            this.size = Size.small
-            AddIcon {}
         }
     }
 }

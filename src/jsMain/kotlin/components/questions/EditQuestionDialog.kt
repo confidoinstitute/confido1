@@ -14,8 +14,6 @@ import tools.confido.spaces.*
 import tools.confido.utils.*
 import utils.eventNumberValue
 import utils.eventValue
-import kotlin.js.Date
-import kotlin.math.floor
 
 external interface EditAnswerSpaceProps<S: Space> : Props {
     var space : S
@@ -28,6 +26,9 @@ val EditNumericSpace = FC<EditAnswerSpaceProps<NumericSpace>> { props ->
     var maxValue by useState(props.space.max)
     var unit by useState(props.space.unit)
 
+    var strMinValue by useState(minValue.toString())
+    var strMaxValue by useState(maxValue.toString())
+
     useEffect(minValue, maxValue, unit) {
         if (minValue.isNaN() || maxValue.isNaN() || maxValue <= minValue)
             props.onChange?.invoke(null)
@@ -39,24 +40,26 @@ val EditNumericSpace = FC<EditAnswerSpaceProps<NumericSpace>> { props ->
         TextField {
             margin = FormControlMargin.dense
             type = InputType.number
-            value = minValue
+            value = strMinValue
             label = ReactNode("Min")
             error = minValue.isNaN()
             disabled = props.disabled
             onChange = {
+                strMinValue = it.eventValue()
                 minValue = it.eventNumberValue()
             }
         }
         TextField {
             margin = FormControlMargin.dense
             type = InputType.number
-            value = maxValue
+            value = strMaxValue
             label = ReactNode("Max")
             error = maxValue.isNaN() || (maxValue <= minValue)
             disabled = props.disabled
             if (maxValue <= minValue)
                 helperText = ReactNode("Inconsistent range.")
             onChange = {
+                strMaxValue = it.eventValue()
                 maxValue = it.eventNumberValue()
             }
         }
@@ -123,6 +126,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     val q = props.question
     val room = useContext(RoomContext)
 
+    // Question values
     var id by useState(q?.id ?: "")
     var name by useState(q?.name ?: "")
     var answerSpace : Space? by useState(q?.answerSpace)
@@ -130,10 +134,11 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     var enabled by useState(q?.enabled ?: true)
     var predictionsVisible by useState(q?.predictionsVisible ?: false)
     var resolved by useState(q?.resolved ?: false)
-    val htmlId = useId()
 
+    val htmlId = useId()
     val answerSpaceEditable = (q == null)
 
+    // Errors
     var errorEmptyName by useState(false)
     var errorEmptyAnswerSpace by useState(false)
     var errorBadAnswerSpace by useState(false)
@@ -158,11 +163,14 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         props.onClose?.invoke()
     }
 
-    val answerSpaceType = when(answerSpace) {
-        is BinarySpace -> "binary"
+    val answerSpaceType = when(val space = answerSpace) {
+        BinarySpace -> "binary"
         is NumericSpace ->
-            if ((answerSpace as NumericSpace).representsDays) "day" else "numeric"
+            if (space.representsDays) "day" else "numeric"
         else -> ""
+    }
+    useEffect(answerSpaceType) {
+        errorEmptyAnswerSpace = false
     }
 
     Dialog {
@@ -207,16 +215,13 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                             "numeric" ->
                                 if (answerSpace.let { it !is NumericSpace || it.representsDays }) {
                                     answerSpace = NumericSpace(0.0, 1.0)
-                                    errorBadAnswerSpace = false
                                 }
                             "day" ->
                                 if (answerSpace.let {  it !is NumericSpace || !it.representsDays } ){
-                                    val today = ((unixNow() / 86400).toInt() * 86400).toDouble()
-                                    answerSpace = NumericSpace( today, today+30, representsDays = true)
-                                    errorBadAnswerSpace = false
+                                    val today = ((unixNow() / 86400) * 86400).toDouble()
+                                    answerSpace = NumericSpace( today, today+86400, representsDays = true)
                                 }
                         }
-                        errorEmptyAnswerSpace = answerSpace == null
                     }
                     mapOf("" to "Choose...", "binary" to "Binary", "numeric" to "Numeric", "day" to "Day").map { (value, label) ->
                         MenuItem {
@@ -233,11 +238,15 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 val numericAnswerSpace = answerSpace as NumericSpace
                 val component = if (numericAnswerSpace.representsDays) EditDaysAnswerSpace else EditNumericSpace
                 component {
-                    this.space = space
+                    this.space = numericAnswerSpace
                     disabled = !answerSpaceEditable
-                    onChange = {
-                        answerSpace = it
-                        errorBadAnswerSpace = false
+                    onChange = {numericSpace ->
+                        numericSpace?.let {
+                            answerSpace = it
+                            errorBadAnswerSpace = false
+                        } ?: run {
+                            errorBadAnswerSpace = true
+                        }
                     }
                 }
             }

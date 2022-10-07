@@ -1,4 +1,4 @@
-package components
+package components.rooms
 
 import mui.material.Tab
 import mui.material.Tabs
