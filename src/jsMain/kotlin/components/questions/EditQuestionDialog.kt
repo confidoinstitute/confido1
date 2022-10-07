@@ -76,7 +76,7 @@ val EditDaysAnswerSpace = FC<EditAnswerSpaceProps<NumericSpace>> { props ->
     var minValue by useState(LocalDate.fromUnix(props.space.min).toString())
     var maxValue by useState(LocalDate.fromUnix(props.space.max).toString())
     val minDate = try { LocalDate.parse(minValue) } catch  (e: Exception) { null }
-    val maxDate = try { LocalDate.parse(minValue) } catch  (e: Exception) { null }
+    val maxDate = try { LocalDate.parse(maxValue) } catch  (e: Exception) { null }
 
     useEffect(minValue, maxValue) {
         if (maxDate != null && minDate != null && maxDate > minDate)

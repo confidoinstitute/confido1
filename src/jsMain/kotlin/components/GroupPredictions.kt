@@ -9,6 +9,8 @@ import space.kscience.plotly.layout
 import space.kscience.plotly.models.Bar
 import space.kscience.plotly.models.Pie
 import tools.confido.question.*
+import tools.confido.spaces.BinarySpace
+import tools.confido.spaces.NumericSpace
 import tools.confido.utils.binBorders
 import tools.confido.utils.binRanges
 import utils.jsObject
@@ -38,7 +40,7 @@ val PredictionPlot = FC<PredictionPlotProps> {props ->
                 minWidth = 500.px
             }
             when(val answerSpace = props.question.answerSpace) {
-                is BinaryAnswerSpace -> ReactPlotly {
+                is BinarySpace -> ReactPlotly {
                     if (histogram.size != 2)
                         error("This is not a correct size")
                     traces = listOf(
@@ -50,7 +52,7 @@ val PredictionPlot = FC<PredictionPlotProps> {props ->
                     )
                     this.config = config
                 }
-                is NumericAnswerSpace -> ReactPlotly {
+                is NumericSpace -> ReactPlotly {
                     traces = listOf(
                         Bar {
                             val xBins = binRanges(answerSpace.min, answerSpace.max, answerSpace.bins).map { (it.second + it.first) / 2 }
