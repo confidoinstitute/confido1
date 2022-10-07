@@ -8,6 +8,7 @@ import kotlin.sequences.*
 
 interface ProbabilityDistribution {
     val space: Space
+    val description: String
 }
 
 
@@ -21,6 +22,8 @@ data class BinaryDistribution( // TODO: Make this a special case of a general Ch
     val noProb get() = 1 - yesProb
 
     fun probabilityOf(v: Boolean) = if (v) yesProb else noProb
+
+    override val description get() = formatPercent(yesProb)
 }
 
 interface ContinuousProbabilityDistribution : ProbabilityDistribution {
@@ -56,6 +59,9 @@ interface ContinuousProbabilityDistribution : ProbabilityDistribution {
             binner.binRanges.map { probabilityBetween(it) }.toList(),
             origMean = this.mean, origStdev = this.stdev)
     fun discretize(bins: Int = space.bins) = discretize(Binner(space, bins))
+
+    // a one-line user-visible stringification
+    override val description get() = "${mean} ± ${stdev}"
 }
 
 interface DiscretizedProbabilityDistribution : ProbabilityDistribution {
@@ -267,6 +273,7 @@ sealed class TruncatedDistribution : ContinuousProbabilityDistribution {
         1.0 -> space.max
         else -> dist.icdf(p * pIn + pLT)
     }
+
 }
 
 @Serializable
@@ -300,6 +307,7 @@ data class TruncatedNormalDistribution(
     override val shift get() = pseudoMean
     override val scale get() = pseudoStdev
 
+    override val description get() = "${pseudoMean} ± ${pseudoStdev}"
 }
 
 val distributionsSM = SerializersModule {
