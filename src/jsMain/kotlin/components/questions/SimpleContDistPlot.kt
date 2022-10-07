@@ -44,7 +44,7 @@ val SimpleContDistPlot = FC<SimpleCondDistPlotProps> { props ->
     val yTicks = (0 until bins).map { bin -> discretized.binProbs[bin] to barColor(discretized.binner.binMidpoints[bin]) }
 
     val canvas = useRef<HTMLCanvasElement>()
-    useEffect(yTicks, elementSize.width, elementSize.height, props.visible) {
+    useLayoutEffect(yTicks, elementSize.width, elementSize.height, props.visible) {
         val context = canvas.current?.getContext("2d") as? CanvasRenderingContext2D
         val scale = height / (yTicks.maxByOrNull { (value, _) -> value }?.first ?: 1.0)
         context?.apply {
