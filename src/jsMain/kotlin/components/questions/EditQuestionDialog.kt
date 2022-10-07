@@ -2,6 +2,9 @@ package components.questions
 
 import Client
 import components.rooms.RoomContext
+import io.ktor.client.request.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import mui.material.*
 import react.*
@@ -14,6 +17,47 @@ import tools.confido.spaces.*
 import tools.confido.utils.*
 import utils.eventNumberValue
 import utils.eventValue
+import kotlin.coroutines.EmptyCoroutineContext
+
+external interface DeleteQuestionConfirmationProps : Props {
+    var confirmDelete: Boolean
+    var hasPrediction: Boolean
+    var onDelete: (() -> Unit)?
+}
+
+val DeleteQuestionConfirmation = FC<DeleteQuestionConfirmationProps> { props ->
+    var open by useState(false)
+    Button {
+        onClick = {if (props.confirmDelete) open = true else {props.onDelete?.invoke()} }
+        color = ButtonColor.error
+        +"Delete"
+    }
+
+    Dialog {
+        this.open = open
+        onClose = { _, _ -> open = false }
+        DialogTitle {
+            +"Delete question"
+        }
+        DialogContent {
+            DialogContentText {
+                +"This action is irreversible. Are you sure?"
+                if (props.hasPrediction) +" Deleting this question will also forget all its received predictions."
+            }
+        }
+        DialogActions {
+            Button {
+                onClick = {props.onDelete?.invoke(); open = false}
+                color = ButtonColor.error
+                +"Delete"
+            }
+            Button {
+                onClick = {open = false}
+                +"Cancel"
+            }
+        }
+    }
+}
 
 external interface EditAnswerSpaceProps<S: Space> : Props {
     var space : S
@@ -163,6 +207,12 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         props.onClose?.invoke()
     }
 
+    fun deleteQuestion() {
+        CoroutineScope(EmptyCoroutineContext).launch {
+            Client.httpClient.delete("/delete_question/$id")
+        }
+    }
+
     val answerSpaceType = when(val space = answerSpace) {
         BinarySpace -> "binary"
         is NumericSpace ->
@@ -286,10 +336,11 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         }
         DialogActions {
             if (q != null) {
-                Button {
-                    onClick = {props.onClose?.invoke()}
-                    color = ButtonColor.error
-                    +"Delete"
+                DeleteQuestionConfirmation {
+                    this.onDelete = { deleteQuestion() ; props.onClose?.invoke()}
+                    this.confirmDelete = q.visible
+                    // TODO add real logic
+                    this.hasPrediction = q.enabled
                 }
             }
             Button {

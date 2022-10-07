@@ -13,6 +13,26 @@ import tools.confido.payloads.EditQuestionFieldType
 import tools.confido.utils.randomString
 
 fun editQuestion(routing: Routing) {
+    routing.delete("/delete_question/{id}") {
+        val id = call.parameters["id"] ?: ""
+
+        ServerState.questions[id]?.let {question ->
+            ServerState.questions.remove(id)
+            ServerState.rooms.values.map {room ->
+                room.questions.remove(question)
+            }
+            ServerState.userPredictions.values.map {userPrediction ->
+                userPrediction.remove(id)
+            }
+            ServerState.groupPredictions.remove(id)
+
+            call.transientUserData?.refreshRunningWebsockets()
+            call.respond(HttpStatusCode.OK)
+        } ?: run {
+            call.respond(HttpStatusCode.BadRequest)
+        }
+    }
+
     routing.post("/edit_question/{id}") {
         val id = call.parameters["id"] ?: ""
         val editQuestion: EditQuestion = call.receive()
