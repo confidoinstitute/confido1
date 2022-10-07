@@ -63,6 +63,7 @@ interface DiscretizedProbabilityDistribution : ProbabilityDistribution {
 }
 
 
+@Serializable
 data class DiscretizedContinuousDistribution(
     override val space: NumericSpace,
     override val binProbs: List<Double>,
@@ -127,6 +128,7 @@ data class DiscretizedContinuousDistribution(
     }
 }
 
+@Serializable
 object CanonicalNormalDistribution : ContinuousProbabilityDistribution {
     override val mean = 0.0
     override val stdev = 1.0
@@ -229,6 +231,7 @@ interface TransformedDistribution : ContinuousProbabilityDistribution {
     override val stdev: Double get() = dist.stdev * scale
 }
 
+@Serializable
 data class NormalDistribution(override val mean: Double, override val stdev: Double) : TransformedDistribution {
     @Transient
     override val space = NumericSpace()

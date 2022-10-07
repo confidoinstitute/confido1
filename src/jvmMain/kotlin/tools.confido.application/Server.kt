@@ -25,6 +25,7 @@ import kotlinx.serialization.json.Json
 import org.litote.kmongo.coroutine.CoroutineCollection
 import org.litote.kmongo.coroutine.coroutine
 import org.litote.kmongo.reactivestreams.KMongo
+import org.litote.kmongo.serialization.registerModule
 import payloads.CreatedComment
 import tools.confido.application.sessions.*
 import tools.confido.distributions.ProbabilityDistribution
@@ -33,6 +34,7 @@ import tools.confido.state.AppState
 import tools.confido.state.UserSession
 import tools.confido.question.*
 import tools.confido.serialization.confidoJSON
+import tools.confido.serialization.confidoSM
 import tools.confido.spaces.*
 import tools.confido.utils.*
 import java.io.File
@@ -96,8 +98,9 @@ object ServerState {
 }
 
 fun main() {
+    registerModule(confidoSM)
     val client = KMongo.createClient().coroutine
-    val database = client.getDatabase("confido1")
+    val database = client.getDatabase(System.getenv("CONFIDO_DB_NAME") ?: "confido1")
     val questionCollection = database.getCollection<Question>("question")
 
     ServerState.loadQuestions(questionCollection)
