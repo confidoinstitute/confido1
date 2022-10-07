@@ -15,7 +15,8 @@ class Room(
     val id: String,
     val name: String,
     val accessibility: RoomAccessibility,
-    val questions: MutableList<Question> = mutableListOf()
+    val questions: MutableList<Question> = mutableListOf(),
+    val description: String = "",
 ) {
     fun getQuestion(id: String): Question? {
         return questions.find { it.id == id }

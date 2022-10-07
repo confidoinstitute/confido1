@@ -4,6 +4,7 @@ import components.*
 import components.questions.QuestionList
 import mui.material.Typography
 import mui.material.styles.TypographyVariant
+import mui.system.sx
 import react.*
 import react.router.Route
 import react.router.Routes
@@ -23,6 +24,12 @@ val Room = FC<Props> {
         Typography {
             variant = TypographyVariant.h1
             +room.name
+        }
+        Typography {
+            sx {
+                marginBottom = 2.asDynamic()
+            }
+            +room.description
         }
 
         RoomNavigation {}

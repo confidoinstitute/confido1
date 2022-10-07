@@ -64,7 +64,7 @@ object ServerState {
         val pub = "testpub" to Room("testpub", "Testing room", RoomAccessibility.PUBLIC, questions.values.toMutableList())
         val qtestpriv = Question("qtestpriv", "Is this a private question?", BinarySpace)
         questions["qtestpriv"] = qtestpriv
-        val priv = "testpriv" to Room("testpriv", "Private room", RoomAccessibility.PRIVATE, mutableListOf(qtestpriv))
+        val priv = "testpriv" to Room("testpriv", "Private room", RoomAccessibility.PRIVATE, mutableListOf(qtestpriv), description = "A private room.")
         rooms = mapOf(pub, priv)
 
         // TODO actually store comments!
