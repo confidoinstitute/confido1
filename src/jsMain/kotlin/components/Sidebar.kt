@@ -36,6 +36,7 @@ val Sidebar = FC<SidebarProps> {props ->
             "& .MuiDrawer-paper" {
                 boxSizing = BoxSizing.borderBox
                 width = sidebarWidth
+                zIndex = responsive(permanentBreakpoint to number(0.0))
             }
         }
         if (props.permanent) {
@@ -48,33 +49,19 @@ val Sidebar = FC<SidebarProps> {props ->
         open = props.isOpen || props.permanent
         Toolbar {}
 
+        RoomList {
+            onNavigate = ::navigateClose
+        }
+
+        Divider {}
+
         List {
-            sx {
-                width = 100.pct
-            }
             dense = true
-            RoomList {
-                onNavigate = ::navigateClose
-            }
-
-            Divider {}
-
-            ListItem {
-                disablePadding = true
+            ListItemNavigation {
+                to = "/set_name"
+                this.onNavigate = ::navigateClose
                 ListItemText {
-                    NavLink {
-                        onClick = ::navigateClose
-                        to = "/set_name"
-                        css {
-                            textDecoration = None.none
-                            color = Color.currentcolor
-                        }
-                        ListItemButton {
-                            ListItemText {
-                                primary = ReactNode("Change name")
-                            }
-                        }
-                    }
+                    primary = ReactNode("Change name")
                 }
             }
         }

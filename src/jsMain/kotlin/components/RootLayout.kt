@@ -1,5 +1,6 @@
 package components
 
+import components.rooms.NewRoom
 import components.rooms.Room
 import csstype.*
 import icons.MenuIcon
@@ -20,10 +21,6 @@ val RootAppBar = FC<RootAppBarProps> {props ->
 
     AppBar {
         position = AppBarPosition.fixed
-        sx {
-            if (props.hasDrawer)
-                paddingLeft = responsive(permanentBreakpoint to sidebarWidth)
-        }
         Toolbar {
             if (props.hasDrawer) {
                 IconButton {
@@ -107,6 +104,10 @@ val RootLayout = FC<Props> {
                 Route {
                     path = "room/:roomID/*"
                     this.element = Room.create()
+                }
+                Route {
+                    path = "new_room"
+                    this.element = NewRoom.create()
                 }
                 Route {
                     path = "set_name"

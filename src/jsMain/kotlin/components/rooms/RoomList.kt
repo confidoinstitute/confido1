@@ -1,43 +1,49 @@
 package components.rooms
 
 import components.AppStateContext
+import components.ListItemNavigation
 import csstype.Color
 import csstype.None.none
 import emotion.react.css
+import icons.AddIcon
 import mui.material.*
 import react.*
 import react.router.dom.NavLink
 
 external interface RoomListProps : Props {
-    var onNavigate: (() -> Unit)?
+    var onNavigate: ((String) -> Unit)?
 }
 
-val RoomList = FC<RoomListProps> {props ->
+val RoomList = FC<RoomListProps> { props ->
     val clientAppState = useContext(AppStateContext)
     val state = clientAppState.state
 
-    ListSubheader {
-        +"Rooms"
-    }
-    for (room in state.rooms) {
-        ListItem {
-            disablePadding = true
-            this.key = room.id
+    List {
+        dense = true
+        ListSubheader {
+            +"Rooms"
+        }
+        for (room in state.rooms) {
+            ListItemNavigation {
+                this.key = room.id
+                to = "/room/${room.id}"
+                onNavigate = props.onNavigate
 
-            ListItemText {
-                NavLink {
-                    onClick = { props.onNavigate?.invoke() }
-                    to = "/room/${room.id}"
-                    css {
-                        textDecoration = none
-                        color = Color.currentcolor
-                    }
-                    ListItemButton {
-                        ListItemText {
-                            primary = ReactNode(room.name)
-                        }
-                    }
+                ListItemText {
+                    primary = ReactNode(room.name)
                 }
+            }
+        }
+        ListItemNavigation {
+            this.key = "#create"
+            to = "/new_room"
+            onNavigate = props.onNavigate
+
+            ListItemIcon {
+                AddIcon {}
+            }
+            ListItemText {
+                primary = ReactNode("New room...")
             }
         }
     }

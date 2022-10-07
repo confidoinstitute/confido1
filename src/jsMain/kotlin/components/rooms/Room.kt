@@ -2,6 +2,8 @@ package components.rooms
 
 import components.*
 import components.questions.QuestionList
+import mui.material.Typography
+import mui.material.styles.TypographyVariant
 import react.*
 import react.router.Route
 import react.router.Routes
@@ -18,6 +20,11 @@ val Room = FC<Props> {
 
     RoomContext.Provider {
         value = room
+        Typography {
+            variant = TypographyVariant.h1
+            +room.name
+        }
+
         RoomNavigation {}
         Routes {
             Route {
