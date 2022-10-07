@@ -231,7 +231,7 @@ fun main() {
                     }
 
                     val state = ServerState.appState(sessionData)
-                    send(Frame.Text(Json.encodeToString(state)))
+                    send(Frame.Text(confidoJSON.encodeToString(state)))
                 }
             }
             val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "./build/distributions/").canonicalFile
