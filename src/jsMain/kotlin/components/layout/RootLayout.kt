@@ -1,10 +1,8 @@
 package components.layout
 
-import components.layout.Sidebar
 import components.profile.SetNickForm
 import components.rooms.NewRoom
 import components.rooms.Room
-import components.layout.sidebarWidth
 import csstype.*
 import mui.material.*
 import mui.system.*

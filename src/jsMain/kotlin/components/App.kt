@@ -1,5 +1,6 @@
 package components
 
+import components.layout.NoStateLayout
 import components.layout.NoUserLayout
 import components.layout.PresenterLayout
 import components.layout.RootLayout
@@ -64,13 +65,10 @@ val App = FC<Props> {
         }
     }
 
-    Backdrop {
-        this.open = (appState == null)
-        CircularProgress {
-            color = CircularProgressColor.inherit
-        }
+    if (appState == null) {
+        NoStateLayout {}
+        return@FC
     }
-    appState ?: return@FC
 
     AppStateContext.Provider {
         value = ClientAppState(appState ?: error("No app state!"), stale)

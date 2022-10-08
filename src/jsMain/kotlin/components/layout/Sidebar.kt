@@ -1,7 +1,6 @@
 package components.layout
 
 import components.ListItemNavigation
-import components.layout.permanentBreakpoint
 import components.rooms.RoomList
 import csstype.*
 import mui.material.*
