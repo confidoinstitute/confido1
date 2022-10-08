@@ -73,10 +73,10 @@ object ServerState {
         users[debugAdmin.id] = debugAdmin
 
         // TODO: Persist rooms, for now we create one room that contains all questions and one "private" room with a new question
-        val pub = "testpub" to Room("testpub", "Testing room", questions.values.toMutableList(), mutableListOf(), mutableListOf(), now())
+        val pub = "testpub" to Room("testpub", "Testing room", now(), questions = questions.values.toMutableList())
         val qtestpriv = Question("qtestpriv", "Is this a private question?", BinarySpace)
         questions["qtestpriv"] = qtestpriv
-        val priv = "testpriv" to Room("testpriv", "Private room", mutableListOf(qtestpriv), mutableListOf(), mutableListOf(), now())
+        val priv = "testpriv" to Room("testpriv", "Private room", now(), description = "A private room.", questions = mutableListOf(qtestpriv))
         val testInvite = InviteLink("Testing invite link", Forecaster, debugAdmin, now())
         priv.second.inviteLinks.add(testInvite)
         println("Testing invite: ${testInvite.token}")
