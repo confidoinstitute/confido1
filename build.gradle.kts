@@ -73,6 +73,7 @@ kotlin {
                 implementation("org.slf4j:slf4j-simple:2.0.0")
                 implementation("org.litote.kmongo:kmongo-coroutine:$kmongoVersion")
                 implementation("org.litote.kmongo:kmongo-coroutine-serialization:$kmongoVersion")
+                implementation("com.password4j:password4j:1.6.1")
             }
         }
         val jsMain by getting {

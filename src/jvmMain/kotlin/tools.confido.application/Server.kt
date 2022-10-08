@@ -1,5 +1,6 @@
 package tools.confido.application
 
+import com.password4j.Password
 import tools.confido.eqid.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -38,6 +39,7 @@ import tools.confido.serialization.confidoJSON
 import tools.confido.serialization.confidoSM
 import tools.confido.spaces.*
 import tools.confido.utils.*
+import users.DebugAdmin
 import users.User
 import users.UserType
 import java.io.File
@@ -65,8 +67,9 @@ object ServerState {
             collection.find().toList().associateBy { question -> question.id }.toMutableMap()
         }
 
-        // TODO: Remove this user.
-        val debugAdmin = User("debug", UserType.ADMIN, null, false, "debugadmin", "pass", now(), now())
+        // TODO: Remove this user (and the DebugAdmin object + all usages).
+        val passwordHash = Password.hash(DebugAdmin.password).addRandomSalt().withArgon2().result
+        val debugAdmin = User("debug", UserType.ADMIN, DebugAdmin.email, true, "debugadmin", passwordHash, now(), now())
         users[debugAdmin.id] = debugAdmin
 
         // TODO: Persist rooms, for now we create one room that contains all questions and one "private" room with a new question
@@ -159,6 +162,39 @@ fun main() {
 
                 call.respondHtml(HttpStatusCode.OK, HTML::index)
             }
+            post("/login") {
+                val session = call.userSession
+                if (session == null) {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val login: Login = call.receive()
+                val user = ServerState.users.values.find {
+                    it.email == login.email && it.password != null
+                            && Password.check(login.password, it.password).withArgon2()
+                }
+
+                if (user == null) {
+                    call.respond(HttpStatusCode.Unauthorized)
+                    return@post
+                }
+
+                session.user = user
+                call.transientUserData?.refreshRunningWebsockets()
+                call.respond(HttpStatusCode.OK)
+            }
+            post("/logout") {
+                val session = call.userSession
+                if (session?.user == null) {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                session.user = null
+                call.transientUserData?.refreshRunningWebsockets()
+                call.respond(HttpStatusCode.OK)
+            }
             post("/invite/check_status") {
                 val check: CheckInvite = call.receive()
                 val room = ServerState.rooms[check.roomId]
@@ -173,7 +209,7 @@ fun main() {
             post("/invite/accept") {
                 val user = call.userSession?.user
                 if (user == null) {
-                    call.respond(HttpStatusCode.Unauthorized)
+                    call.respond(HttpStatusCode.BadRequest)
                 } else {
                     val accept: AcceptInvite = call.receive()
                     val room = ServerState.rooms[accept.roomId] ?: return@post
@@ -190,7 +226,7 @@ fun main() {
             post("/invite/accept_newuser") {
                 val session = call.userSession
                 if (session == null || session.user != null) {
-                    call.respond(HttpStatusCode.Unauthorized)
+                    call.respond(HttpStatusCode.BadRequest)
                 } else {
                     val accept: AcceptInviteAndCreateUser = call.receive()
                     val room = ServerState.rooms[accept.roomId] ?: return@post

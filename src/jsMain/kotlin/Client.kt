@@ -2,6 +2,7 @@ import components.App
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.browser.document
 import kotlinx.coroutines.CoroutineScope
@@ -17,6 +18,10 @@ object Client {
         install(ContentNegotiation) {
             json(confidoJSON)
         }
+    }
+
+    fun post(url: String) = CoroutineScope(EmptyCoroutineContext).launch {
+        httpClient.post(url) {}
     }
 
     inline fun <reified T> postData(url: String, payload: T) = CoroutineScope(EmptyCoroutineContext).launch {

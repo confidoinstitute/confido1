@@ -84,9 +84,7 @@ val App = FC<Props> {
                     Route {
                         index = true
                         path = "/"
-                        // TODO: Landing page.
-                        // TODO: Login form.
-                        this.element = Typography.create { +"Welcome to Confido!" }
+                        this.element = LandingPage.create()
                     }
                     Route {
                         path = "room/:roomID/invite/:inviteToken"

@@ -11,6 +11,7 @@ import mui.system.sx
 import react.*
 import react.dom.html.ReactHTML.nav
 import react.router.dom.NavLink
+import react.router.useNavigate
 
 val sidebarWidth = 240.px
 external interface SidebarProps : Props {
@@ -20,6 +21,7 @@ external interface SidebarProps : Props {
 }
 
 val Sidebar = FC<SidebarProps> {props ->
+    val navigate = useNavigate()
 
     fun navigateClose() {
         props.onClose?.invoke()
@@ -62,6 +64,20 @@ val Sidebar = FC<SidebarProps> {props ->
                 this.onNavigate = ::navigateClose
                 ListItemText {
                     primary = ReactNode("Change name")
+                }
+            }
+            ListItem {
+                disablePadding = true
+                ListItemText {
+                    ListItemButton {
+                        ListItemText {
+                            primary = ReactNode("Log out")
+                            onClick = {
+                                Client.post("/logout")
+                                navigate("/")
+                            }
+                        }
+                    }
                 }
             }
         }
