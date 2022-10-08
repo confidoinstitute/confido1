@@ -12,7 +12,7 @@ import users.User
 import users.UserType
 
 @Serializable
-class Room(
+data class Room(
     @SerialName("_id")
     override val id: String,
     val name: String,

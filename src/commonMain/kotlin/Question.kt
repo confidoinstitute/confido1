@@ -3,6 +3,7 @@ package tools.confido.question
 import tools.confido.refs.Entity
 import kotlinx.serialization.*
 import tools.confido.distributions.ProbabilityDistribution
+import tools.confido.refs.ImmediateDerefEntity
 import tools.confido.spaces.*
 
 @Serializable
@@ -21,5 +22,5 @@ data class Question(
     var enabled: Boolean = true,
     var predictionsVisible: Boolean = false,
     var resolved: Boolean = false,
-) : Entity
+) : ImmediateDerefEntity
 

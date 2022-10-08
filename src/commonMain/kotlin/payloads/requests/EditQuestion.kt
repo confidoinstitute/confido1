@@ -20,8 +20,7 @@ data class EditQuestionField(
     val value: Boolean,
 ) : EditQuestion()
 
-@kotlinx.serialization.Serializable
+@Serializable
 data class EditQuestionComplete(
     val question: Question,
-    val room: String,
 ) : EditQuestion()

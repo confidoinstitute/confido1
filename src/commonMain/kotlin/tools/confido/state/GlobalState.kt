@@ -18,7 +18,7 @@ abstract class GlobalState {
     // This is an internal function, most code should use the
     // Ref<T>.{deref,maybeDeref,derefLazy} extensions methods
     // from tools.confido.refs.
-    @RefInternalAPI
+    @DelicateRefAPI
     open fun  derefNonBlocking(collectionId: String, id: String): Entity? =
         when (collectionId) {
             "Question" -> questions[id]
@@ -32,7 +32,7 @@ abstract class GlobalState {
     // This is an internal function, most code should use the
     // Ref<T>.{deref,maybeDeref,derefLazy} extensions methods
     // from tools.confido.refs.
-    @RefInternalAPI
+    @DelicateRefAPI
     open suspend fun  derefBlocking(collectionId: String, id: String): Entity? =
         derefNonBlocking(collectionId, id)
 }

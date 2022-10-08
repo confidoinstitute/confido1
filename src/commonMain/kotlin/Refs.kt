@@ -1,7 +1,11 @@
 package tools.confido.refs
 
 import kotlinx.serialization.Serializable
+import rooms.Room
+import tools.confido.question.Question
 import tools.confido.state.globalState
+import tools.confido.utils.generateId
+import users.User
 import kotlin.jvm.JvmInline
 
 
@@ -10,15 +14,15 @@ interface Entity {
     val id: String
 }
 inline fun <reified T: ImmediateDerefEntity> Ref<T>.deref(): T? {
-    @OptIn(RefInternalAPI::class)
+    @OptIn(DelicateRefAPI::class)
     return globalState.derefNonBlocking(T::class.simpleName!!, id) as T?
 }
 inline suspend fun <reified T: Entity> Ref<T>.derefBlocking(): T? {
-    @OptIn(RefInternalAPI::class)
+    @OptIn(DelicateRefAPI::class)
     return globalState.derefBlocking(T::class.simpleName!!, id) as T?
 }
 inline fun <reified T: Entity> Ref<T>.derefNonBlocking(): T? {
-    @OptIn(RefInternalAPI::class)
+    @OptIn(DelicateRefAPI::class)
     return globalState.derefNonBlocking(T::class.simpleName!!, id) as T?
 }
 
@@ -33,17 +37,17 @@ interface ImmediateDerefEntity : ClientImmediateDerefEntity, ServerImmediateDere
 @RequiresOptIn(message = "Ref internal API.")
 @Retention(AnnotationRetention.BINARY)
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION, AnnotationTarget.CONSTRUCTOR)
-annotation class RefInternalAPI
+annotation class DelicateRefAPI
 
 @Serializable
 @JvmInline
 // using optin instead of making constructor private because private members
 // cannot be called from public inline functions
-value class Ref<T: Entity> @RefInternalAPI  constructor(val id: String) {
+value class Ref<T: Entity> @DelicateRefAPI  constructor(val id: String) {
 }
 
 inline val <reified  T: Entity> T.ref: Ref<T> get() {
-    @OptIn(RefInternalAPI::class)
+    @OptIn(DelicateRefAPI::class)
     return Ref<T>(this.id)
 }
 
@@ -81,3 +85,16 @@ fun <T: Entity> MutableList<T>.removeById(what: T) = this.removeAll { it eqid wh
 fun <T: Entity, V> Map<String, V>.get(what: T) = this[what.id]
 fun <T: Entity> MutableMap<String, T>.insert(what: T) = this.set(what.id, what)
 fun <T: Entity> MutableMap<String, T>.remove(what: T) = this.remove(what.id)
+
+// HACK: we cannot call copy() on T:Entity because compiler does not know it is a data class
+inline fun <reified  T: Entity> T.withId(id: String): T =
+    when (this) {
+        is Question -> copy(id = id) as T
+        is Room -> copy(id = id) as T
+        is User -> copy(id = id) as T
+        else -> throw NotImplementedError()
+    }
+
+inline fun <reified  T: Entity> T.assignId() = withId(generateId())
+
+inline fun <reified T: Entity> T.assignIdIfNeeded() = if (id.isEmpty()) assignId() else this

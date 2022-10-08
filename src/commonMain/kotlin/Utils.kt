@@ -50,6 +50,8 @@ fun randomString(length: Int) =
         alnum.random()
     }.joinToString("")
 
+fun generateId() = randomString(32)
+
 fun formatPercent(value: Number, space: Boolean=true): String = "${(value.toDouble()*100).roundToInt()}${if (space) " " else ""}%"
 
 fun Double.clamp(range: ClosedRange<Double>): Double {

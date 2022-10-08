@@ -12,6 +12,10 @@ import payloads.requests.EditQuestion
 import payloads.requests.EditQuestionComplete
 import payloads.requests.EditQuestionField
 import payloads.requests.EditQuestionFieldType
+import rooms.Room
+import tools.confido.question.Question
+import tools.confido.state.serverState
+import tools.confido.utils.generateId
 import tools.confido.utils.randomString
 
 fun editQuestion(routing: Routing) {
@@ -35,48 +39,44 @@ fun editQuestion(routing: Routing) {
         }
     }
 
-    routing.post("/edit_question/{id}") {
-        val id = call.parameters["id"] ?: ""
+    routing.post("/rooms/{id}/questions/add") {
+        // TODO check permissions
+        @OptIn(DelicateRefAPI::class)
+        val roomRef = Ref<Room>(call.parameters["id"] ?: "")
+        roomRef.deref() ?: return@post call.respond(HttpStatusCode.NotFound)
+        val q: Question = call.receive()
+        serverState.insertEntity(q)
+    }
+    routing.post("/questions/{id}/edit") {
+        @OptIn(DelicateRefAPI::class)
+        val origRef = Ref<Question>(call.parameters["id"] ?: "")
+        origRef.deref() ?: return@post call.respond(HttpStatusCode.NotFound)
         val editQuestion: EditQuestion = call.receive()
 
         when (editQuestion) {
             is EditQuestionField -> {
-                println(editQuestion)
-                val question = ServerState.questions[id]
-                if (question == null) {
-                    call.respond(HttpStatusCode.BadRequest)
-                    return@post
-                }
+                serverState.modifyEntity(origRef) {
+                    when (editQuestion.fieldType) {
+                        EditQuestionFieldType.VISIBLE ->
+                            it.copy(visible = editQuestion.value, enabled = it.enabled && editQuestion.value)
 
-                when (editQuestion.fieldType) {
-                    EditQuestionFieldType.VISIBLE -> {
-                        question.visible = editQuestion.value
-                        question.enabled = question.enabled && editQuestion.value
-                    }
-                    EditQuestionFieldType.ENABLED -> question.enabled = editQuestion.value
-                    EditQuestionFieldType.PREDICTIONS_VISIBLE -> question.predictionsVisible =
-                        editQuestion.value
-                    EditQuestionFieldType.RESOLVED -> {
-                        question.resolved = editQuestion.value
-                        question.enabled = question.enabled && !editQuestion.value
+                        EditQuestionFieldType.ENABLED ->
+                            it.copy(enabled = editQuestion.value)
+
+                        EditQuestionFieldType.PREDICTIONS_VISIBLE ->
+                            it.copy(predictionsVisible = editQuestion.value)
+
+                        EditQuestionFieldType.RESOLVED -> {
+                            it.copy(resolved = editQuestion.value, enabled = it.enabled && !editQuestion.value)
+                        }
                     }
                 }
             }
-            is EditQuestionComplete -> {
-                val qid = editQuestion.question.id.ifEmpty { randomString(20) }
-                val question = editQuestion.question.copy(id=qid)
-                val room = editQuestion.room
-                ServerState.rooms[room]?.let {stateRoom ->
-                    stateRoom.questions.add(question.ref)
-                    ServerState.questions.insert(question)
-                } ?: run {
-                    call.respond(HttpStatusCode.BadRequest)
-                    return@post
-                }
-            }
+            is EditQuestionComplete ->
+                serverState.updateEntity(editQuestion.question.withId(origRef.id))
         }
 
-        // TODO store the edited question to database!
+
         call.transientUserData?.refreshRunningWebsockets()
         call.respond(HttpStatusCode.OK)
     }
