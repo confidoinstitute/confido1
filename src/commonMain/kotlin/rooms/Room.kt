@@ -35,7 +35,7 @@ class Room(
 
         // Note that one user could have multiple memberships here.
         return members.find {
-            it.user.id == user.id && it.invitedVia?.canAccess ?: true && it.role.hasPermission(permission)
+            it.user.eqid(user) && it.invitedVia?.canAccess ?: true && it.role.hasPermission(permission)
         } != null
     }
 }

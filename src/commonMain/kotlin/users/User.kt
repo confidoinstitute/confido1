@@ -2,10 +2,11 @@ package users
 
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
+import tools.confido.eqid.IdentifiedById
 
 @Serializable
 data class User(
-    val id: String,
+    override val id: String,
     val type: UserType,
     // TODO(privacy): make sure it does not get sent to the client for other users
     val email: String?,
@@ -15,4 +16,4 @@ data class User(
     val password: String?,
     val createdAt: Instant,
     val lastLoginAt: Instant,
-)
+) : IdentifiedById<String>
