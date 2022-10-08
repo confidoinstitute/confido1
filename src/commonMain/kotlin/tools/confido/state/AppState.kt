@@ -7,6 +7,7 @@ import rooms.Room
 import rooms.RoomPermission
 import users.UserType
 
+
 @Serializable
 data class AppState(
     val rooms: List<Room>,

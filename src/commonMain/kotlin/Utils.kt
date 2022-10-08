@@ -1,6 +1,8 @@
 package tools.confido.utils
 
 import kotlinx.datetime.*
+import kotlin.js.JsName
+import kotlin.jvm.JvmName
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
@@ -73,3 +75,27 @@ fun unixNow(): Int = (Clock.System.now().toEpochMilliseconds()/1000).toInt()
 
 fun LocalDate.Companion.fromUnix(ts: Number) = Instant.fromEpochSeconds(ts.toLong()).toLocalDateTime(TimeZone.currentSystemDefault()).date
 fun LocalDate.Companion.utcFromUnix(ts: Number) = Instant.fromEpochSeconds(ts.toLong()).toLocalDateTime(TimeZone.UTC).date
+
+// VECTOR OPERATIONS - inspired by Raku
+@JsName("Zplus")
+@JvmName("Zplus")
+infix fun List<Double>.`Z+`(other: List<Double>) = zip(other) { x,y -> x+y }
+@JsName("Zminus")
+@JvmName("Zminus")
+infix fun List<Double>.`Z-`(other: List<Double>) = zip(other) { x,y -> x-y }
+@JsName("Ztimes1")
+@JvmName("Ztimes1")
+infix fun Number.`Z*`(other: List<Double>) = other.map { this.toDouble() * it }
+@JsName("Ztimes2")
+@JvmName("Ztimes2")
+infix fun List<Double>.`Z*`(other: Number) = this.map { other.toDouble() * it }
+// Aparently, `Z/` is not a valid identifier.
+infix fun Number.Zdiv(other: List<Double>) = other.map { this.toDouble() / it }
+infix fun List<Double>.Zdiv(other: Number) = this.map { other.toDouble() / it }
+
+// normalize list so that sum is 1
+fun List<Double>.normalize(): List<Double> {
+    val s = this.sum()
+    if (s == 0.0) return this
+    return this Zdiv s
+}
