@@ -2,7 +2,7 @@ package users
 
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
-import tools.confido.eqid.IdentifiedById
+import tools.confido.eqid.Entity
 
 @Serializable
 data class User(
@@ -16,4 +16,4 @@ data class User(
     val password: String?,
     val createdAt: Instant,
     val lastLoginAt: Instant,
-) : IdentifiedById<String>
+) : Entity

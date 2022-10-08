@@ -3,7 +3,7 @@ package rooms
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import tools.confido.eqid.IdentifiedById
+import tools.confido.eqid.Entity
 import tools.confido.question.Question
 import users.User
 import users.UserType
@@ -18,7 +18,7 @@ class Room(
     val questions: MutableList<Question> = mutableListOf(),
     val members: MutableList<RoomMembership> = mutableListOf(),
     val inviteLinks: MutableList<InviteLink> = mutableListOf(),
-) : IdentifiedById<String> {
+) : Entity<String> {
     fun getQuestion(id: String): Question? {
         return questions.find { it.id == id }
     }

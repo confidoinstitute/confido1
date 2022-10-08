@@ -1,6 +1,6 @@
 package tools.confido.question
 
-import tools.confido.eqid.IdentifiedById
+import tools.confido.eqid.Entity
 import kotlinx.serialization.*
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.spaces.*
@@ -21,5 +21,5 @@ data class Question(
     var enabled: Boolean = true,
     var predictionsVisible: Boolean = false,
     var resolved: Boolean = false,
-) : IdentifiedById<String>
+) : Entity
 
