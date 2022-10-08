@@ -6,8 +6,8 @@ import users.User
 
 @Serializable
 data class UserSession(
-    var userRef: Ref<User>?,
-    var language: String,
+    var userRef: Ref<User>? = null,
+    var language: String = "en",
     // Beware: This is sent to the client
 ) {
     // this is done often enough to warrant a shortcut

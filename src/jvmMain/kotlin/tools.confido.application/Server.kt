@@ -137,7 +137,7 @@ fun main() {
         routing {
             get("/{...}") {
                 if (call.userSession == null) {
-                    call.userSession = UserSession(user = null, language = "en")
+                    call.userSession = UserSession()
                 }
 
                 call.respondHtml(HttpStatusCode.OK, HTML::index)

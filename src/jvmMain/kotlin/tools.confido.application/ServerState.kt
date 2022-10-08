@@ -31,7 +31,13 @@ class ServerGlobalState : GlobalState() {
     }
 
     fun export(session: UserSession): SentState {
-
+        // TODO censor
+        return SentState(
+            rooms = rooms,
+            questions = questions,
+            users = users,
+            session = session
+        )
     }
 
 }

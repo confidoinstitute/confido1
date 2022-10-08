@@ -43,10 +43,12 @@ expect val globalState: GlobalState
 // State representation sent using websocket
 @Serializable
 data class SentState(
-    val rooms: Map<Ref<Room>, Room>,
-    val myPredictions: Map<Ref<Question>, Prediction>,
-    val comments: Map<String, List<Comment>>,
-    val groupDistributions: Map<String, List<Double>>,
+    val rooms: Map<String, Room> = emptyMap(),
+    val questions: Map<String, Question> = emptyMap(),
+    val users: Map<String, User> = emptyMap(),
+    val myPredictions: Map<String, Prediction> = emptyMap(),
+    val comments: Map<String, List<Comment>> = emptyMap(),
+    val groupDistributions: Map<String, List<Double>> = emptyMap(),
     val session: UserSession,
 ) {
 
