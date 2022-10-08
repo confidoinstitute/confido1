@@ -4,29 +4,37 @@ import kotlinx.serialization.Serializable
 import tools.confido.question.Comment
 import tools.confido.question.Prediction
 import rooms.Room
-import rooms.RoomPermission
 import tools.confido.refs.*
 import tools.confido.question.Question
 import users.User
-import users.UserType
 
 abstract class GlobalState {
-    val rooms:  MutableMap<String, Room> = mutableMapOf()
-    val questions:  MutableMap<String, Question> = mutableMapOf()
-    val users:  MutableMap<String, User> = mutableMapOf()
+    abstract val rooms:  Map<String, Room>
+    abstract val questions:  Map<String, Question>
+    abstract val users:  Map<String, User>
 
-    // this has to be suspend because it can potentially fetch target entity
-    // on demand from database (on server) or network (on client)
+    // This function should dereference the entity if it is possible to do so
+    // without suspending, return null otherwise.
+    // This is an internal function, most code should use the
+    // Ref<T>.{deref,maybeDeref,derefLazy} extensions methods
+    // from tools.confido.refs.
     @RefInternalAPI
-    open fun <T: Entity> maybeDeref(collectionId: String, ref: Ref<T>): T? =
+    open fun  derefNonBlocking(collectionId: String, id: String): Entity? =
         when (collectionId) {
-            "Question" -> questions[ref.id] as T?
-            "User" -> users[ref.id] as T?
-            "Room" -> rooms[ref.id] as T?
+            "Question" -> questions[id]
+            "User" -> users[id]
+            "Room" -> rooms[id]
             else -> null
         }
+    // This function should dereference the entity, even if it involves blocking
+    // (e.g. loading it from database or network). It may fail with all kinds
+    // of exceptions.
+    // This is an internal function, most code should use the
+    // Ref<T>.{deref,maybeDeref,derefLazy} extensions methods
+    // from tools.confido.refs.
     @RefInternalAPI
-    open suspend fun <T: Entity> derefLazy(collectionId: String, ref: Ref<T>): T? = maybeDeref(collectionId, ref)
+    open suspend fun  derefBlocking(collectionId: String, id: String): Entity? =
+        derefNonBlocking(collectionId, id)
 }
 
 // Client or server will provide concrete implementation
@@ -42,11 +50,4 @@ data class SentState(
     val session: UserSession,
 ) {
 
-    fun isAdmin(): Boolean {
-        return session.user?.deref()?.type == UserType.ADMIN
-    }
-
-    fun hasPermission(room: Room, permission: RoomPermission): Boolean {
-        return room.hasPermission(session.user?.deref(), permission)
-    }
 }

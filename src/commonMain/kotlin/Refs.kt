@@ -11,15 +11,15 @@ interface Entity {
 }
 inline fun <reified T: ImmediateDerefEntity> Ref<T>.deref(): T? {
     @OptIn(RefInternalAPI::class)
-    return globalState.maybeDeref(T::class.simpleName!!, this)
+    return globalState.derefNonBlocking(T::class.simpleName!!, id) as T?
 }
-inline suspend fun <reified T: Entity> Ref<T>.derefLazy(): T? {
+inline suspend fun <reified T: Entity> Ref<T>.derefBlocking(): T? {
     @OptIn(RefInternalAPI::class)
-    return globalState.derefLazy(T::class.simpleName!!, this)
+    return globalState.derefBlocking(T::class.simpleName!!, id) as T?
 }
-inline fun <reified T: Entity> Ref<T>.maybeDeref(): T? {
+inline fun <reified T: Entity> Ref<T>.derefNonBlocking(): T? {
     @OptIn(RefInternalAPI::class)
-    return globalState.maybeDeref(T::class.simpleName!!, this)
+    return globalState.derefNonBlocking(T::class.simpleName!!, id) as T?
 }
 
 // Used to mark entities that can always be dereferenced without suspending...

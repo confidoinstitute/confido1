@@ -7,6 +7,7 @@ import tools.confido.refs.Entity
 import tools.confido.refs.Ref
 import tools.confido.refs.eqid
 import tools.confido.question.Question
+import tools.confido.refs.ImmediateDerefEntity
 import users.User
 import users.UserType
 
@@ -20,7 +21,7 @@ class Room(
     val questions: MutableList<Ref<Question>> = mutableListOf(),
     val members: MutableList<RoomMembership> = mutableListOf(),
     val inviteLinks: MutableList<InviteLink> = mutableListOf(),
-) : Entity {
+) : ImmediateDerefEntity {
 
     fun hasPermission(user: User?, permission: RoomPermission): Boolean {
         if (user == null) {

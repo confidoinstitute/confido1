@@ -38,6 +38,7 @@ import tools.confido.question.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.serialization.confidoSM
 import tools.confido.spaces.*
+import tools.confido.state.serverState
 import tools.confido.utils.*
 import users.DebugAdmin
 import users.User
@@ -53,80 +54,78 @@ fun HTML.index() {
     }
 }
 
-object ServerState {
-    // TODO: These maps should be concurrent.
-    var rooms: Map<String, Room> = emptyMap()
-    var questions: MutableMap<String, Question> = mutableMapOf()
-    val userPredictions: MutableMap<User, MutableMap<String, Prediction>> = mutableMapOf()
-    var groupPredictions: MutableMap<String, List<Double>> = mutableMapOf()
-    var comments: MutableMap<String, MutableList<Comment>> = mutableMapOf()
-    var users: MutableMap<String, User> = mutableMapOf()
-
-    fun loadQuestions(collection: CoroutineCollection<Question>) {
-        questions = runBlocking {
-            collection.find().toList().associateBy { question -> question.id }.toMutableMap()
-        }
-
-        // TODO: Remove this user (and the DebugAdmin object + all usages).
-        val passwordHash = Password.hash(DebugAdmin.password).addRandomSalt().withArgon2().result
-        val debugAdmin = User("debug", UserType.ADMIN, DebugAdmin.email, true, "debugadmin", passwordHash, now(), now())
-        users[debugAdmin.id] = debugAdmin
-
-        // TODO: Persist rooms, for now we create one room that contains all questions and one "private" room with a new question
-        val pub = "testpub" to Room("testpub", "Testing room", now(), questions = questions.values.map {it.ref}.toMutableList())
-        val qtestpriv = Question("qtestpriv", "Is this a private question?", BinarySpace)
-        questions["qtestpriv"] = qtestpriv
-        val priv = "testpriv" to Room("testpriv", "Private room", now(), description = "A private room.", questions = mutableListOf(qtestpriv.ref))
-        val testInvite = InviteLink("Testing invite link", Forecaster, debugAdmin, now())
-        priv.second.inviteLinks.add(testInvite)
-        println("Testing invite: ${testInvite.token}")
-        rooms = mapOf(pub, priv)
-
-        // TODO actually store comments!
-        comments = questions.mapValues { mutableListOf<Comment>() }.toMutableMap()
-        calculateGroupDistribution()
-    }
-
-    fun calculateGroupDistribution(question: Question) {
-        //groupDistributions[question.id] = userPredictions.values.mapNotNull {
-        //    it[question.id]?.let { prediction -> question.answerSpace.predictionToDistribution(prediction) }
-        //}.fold(List(question.answerSpace.bins) { 0.0 }) { acc, dist ->
-        //    dist.zip(acc) { a, b -> a + b }
-        //}
-    }
-
-    fun calculateGroupDistribution() {
-        questions.mapValues { (_, question) -> calculateGroupDistribution(question) }
-    }
-
-    fun getUserPredictions(user: User): MutableMap<String, Prediction> {
-        return userPredictions.getOrPut(user) {mutableMapOf()}
-    }
-
-    fun appState(sessionData: UserSession): SentState {
-        val predictions = when (val user = sessionData.user) {
-            null -> emptyMap()
-            else -> getUserPredictions(user)
-        }
-
-        return SentState(
-            // TODO: Consider sending questions separately and only provide ids within rooms
-            rooms.values.filter { it.hasPermission(sessionData.user, RoomPermission.VIEW_QUESTIONS) },
-            predictions,
-            comments,
-            emptyMap(),//groupDistributions.toMap(),
-            sessionData,
-        )
-    }
-}
+// object ServerState {
+//     // TODO: These maps should be concurrent.
+//     var rooms: Map<String, Room> = emptyMap()
+//     var questions: MutableMap<String, Question> = mutableMapOf()
+//     val userPredictions: MutableMap<User, MutableMap<String, Prediction>> = mutableMapOf()
+//     var groupPredictions: MutableMap<String, List<Double>> = mutableMapOf()
+//     var comments: MutableMap<String, MutableList<Comment>> = mutableMapOf()
+//     var users: MutableMap<String, User> = mutableMapOf()
+//
+//     fun loadQuestions(collection: CoroutineCollection<Question>) {
+//         questions = runBlocking {
+//             collection.find().toList().associateBy { question -> question.id }.toMutableMap()
+//         }
+//
+//         // TODO: Remove this user (and the DebugAdmin object + all usages).
+//         val passwordHash = Password.hash(DebugAdmin.password).addRandomSalt().withArgon2().result
+//         val debugAdmin = User("debug", UserType.ADMIN, DebugAdmin.email, true, "debugadmin", passwordHash, now(), now())
+//         users[debugAdmin.id] = debugAdmin
+//
+//         // TODO: Persist rooms, for now we create one room that contains all questions and one "private" room with a new question
+//         val pub = "testpub" to Room("testpub", "Testing room", now(), questions = questions.values.map {it.ref}.toMutableList())
+//         val qtestpriv = Question("qtestpriv", "Is this a private question?", BinarySpace)
+//         questions["qtestpriv"] = qtestpriv
+//         val priv = "testpriv" to Room("testpriv", "Private room", now(), description = "A private room.", questions = mutableListOf(qtestpriv.ref))
+//         val testInvite = InviteLink("Testing invite link", Forecaster, debugAdmin, now())
+//         priv.second.inviteLinks.add(testInvite)
+//         println("Testing invite: ${testInvite.token}")
+//         rooms = mapOf(pub, priv)
+//
+//         // TODO actually store comments!
+//         comments = questions.mapValues { mutableListOf<Comment>() }.toMutableMap()
+//         calculateGroupDistribution()
+//     }
+//
+//     fun calculateGroupDistribution(question: Question) {
+//         //groupDistributions[question.id] = userPredictions.values.mapNotNull {
+//         //    it[question.id]?.let { prediction -> question.answerSpace.predictionToDistribution(prediction) }
+//         //}.fold(List(question.answerSpace.bins) { 0.0 }) { acc, dist ->
+//         //    dist.zip(acc) { a, b -> a + b }
+//         //}
+//     }
+//
+//     fun calculateGroupDistribution() {
+//         questions.mapValues { (_, question) -> calculateGroupDistribution(question) }
+//     }
+//
+//     fun getUserPredictions(user: User): MutableMap<String, Prediction> {
+//         return userPredictions.getOrPut(user) {mutableMapOf()}
+//     }
+//
+//     fun appState(sessionData: UserSession): SentState {
+//         val predictions = when (val user = sessionData.user) {
+//             null -> emptyMap()
+//             else -> getUserPredictions(user)
+//         }
+//
+//         return SentState(
+//             // TODO: Consider sending questions separately and only provide ids within rooms
+//             rooms.values.filter { it.hasPermission(sessionData.user, RoomPermission.VIEW_QUESTIONS) },
+//             predictions,
+//             comments,
+//             emptyMap(),//groupDistributions.toMap(),
+//             sessionData,
+//         )
+//     }
+// }
 
 fun main() {
     registerModule(confidoSM)
-    val client = KMongo.createClient().coroutine
-    val database = client.getDatabase(System.getenv("CONFIDO_DB_NAME") ?: "confido1")
-    val questionCollection = database.getCollection<Question>("question")
 
-    ServerState.loadQuestions(questionCollection)
+
+    runBlocking { serverState.load() }
 
     embeddedServer(CIO, port = 8080, host = "127.0.0.1") {
         install(WebSockets)
@@ -136,25 +135,6 @@ fun main() {
         }
         install(Sessions)
         routing {
-            get("/init") {
-                // TODO: Secure this or replace.
-                val commonAnswerSpace = NumericSpace(0.0, 50.0)
-                val questions = listOf(
-                    Question("question1", "How are you?", enabled = false, answerSpace = NumericSpace(0.0, 50.0)),
-                    Question("numeric_big", "What big number do you like", answerSpace = NumericSpace(1.0, 7280.0)),
-                    Question("numeric_date", "When will this happen?", predictionsVisible = true, resolved = true, answerSpace = NumericSpace.fromDates(LocalDate(2022,1,1), LocalDate(2022,12,31))),
-                    Question("question2", "Is this good?", predictionsVisible = true, answerSpace = BinarySpace),
-                    Question(
-                        "invisible_question",
-                        "Can you not see this?",
-                        visible = false,
-                        answerSpace = commonAnswerSpace
-                    ),
-                )
-                questionCollection.drop()
-                questionCollection.insertMany(questions)
-                ServerState.loadQuestions(questionCollection)
-            }
             get("/{...}") {
                 if (call.userSession == null) {
                     call.userSession = UserSession(user = null, language = "en")
@@ -170,7 +150,7 @@ fun main() {
                 }
 
                 val login: Login = call.receive()
-                val user = ServerState.users.values.find {
+                val user = serverState.users.values.find {
                     it.email == login.email && it.password != null
                             && Password.check(login.password, it.password).withArgon2()
                 }
@@ -180,7 +160,7 @@ fun main() {
                     return@post
                 }
 
-                session.user = user
+                session.userRef = user.ref
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
             }
@@ -191,13 +171,13 @@ fun main() {
                     return@post
                 }
 
-                session.user = null
+                session.userRef = null
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
             }
             post("/invite/check_status") {
                 val check: CheckInvite = call.receive()
-                val room = ServerState.rooms[check.roomId]
+                val room = serverState.rooms[check.roomId]
                 val invite = room?.inviteLinks?.find {it.token == check.inviteToken && it.canJoin}
                 if (room == null || invite == null) {
                     call.respond(HttpStatusCode.OK, InviteStatus(false, null))
@@ -212,11 +192,11 @@ fun main() {
                     call.respond(HttpStatusCode.BadRequest)
                 } else {
                     val accept: AcceptInvite = call.receive()
-                    val room = ServerState.rooms[accept.roomId] ?: return@post
+                    val room = serverState.rooms[accept.roomId] ?: return@post
                     val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: return@post
 
                     // TODO: Prevent user from accepting multiple times
-                    call.userSession = UserSession(user = user, language = "en")
+                    call.userSession = UserSession(userRef = user.ref, language = "en")
                     room.members.add(RoomMembership(user, invite.role, invite))
 
                     call.transientUserData?.refreshRunningWebsockets()
@@ -229,14 +209,14 @@ fun main() {
                     call.respond(HttpStatusCode.BadRequest)
                 } else {
                     val accept: AcceptInviteAndCreateUser = call.receive()
-                    val room = ServerState.rooms[accept.roomId] ?: return@post
+                    val room = serverState.rooms[accept.roomId] ?: return@post
                     val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: return@post
 
                     val newUser = User(randomString(32), UserType.GUEST, accept.email, false, accept.userNick, null, now(), now())
 
-                    call.userSession = UserSession(user = newUser, language = "en")
+                    call.userSession = UserSession(userRef = newUser.ref, language = "en")
                     room.members.add(RoomMembership(newUser, invite.role, invite))
-                    ServerState.users[newUser.id] = newUser
+                    serverState.users.insert(newUser)
 
                     call.transientUserData?.refreshRunningWebsockets()
                     call.respond(HttpStatusCode.OK)
@@ -251,8 +231,7 @@ fun main() {
                     val setNick: SetNick = call.receive()
 
                     val editedUser = user.copy(nick = setNick.name)
-                    call.userSession = session.copy(user = editedUser)
-                    ServerState.users[editedUser.id] = editedUser
+                    serverState.users[editedUser.id] = editedUser
 
                     call.transientUserData?.refreshRunningWebsockets()
                     call.respond(HttpStatusCode.OK)
@@ -267,7 +246,7 @@ fun main() {
                     return@post
                 }
 
-                val question = ServerState.questions[id] ?: run {
+                val question = serverState.questions[id] ?: run {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
                 }
@@ -277,12 +256,12 @@ fun main() {
                     return@post
                 }
 
-                val prediction = ServerState.getUserPredictions(user)[id]?.takeIf {
+                val prediction = serverState.getUserPredictions(user)[id]?.takeIf {
                     createdComment.attachPrediction
                 }
 
                 val comment = Comment(user, createdComment.timestamp, createdComment.content, prediction)
-                if (ServerState.comments.get(question)?.add(comment) == true) {
+                if (serverState.comments.get(question)?.add(comment) == true) {
                     call.transientUserData?.refreshRunningWebsockets()
                     call.respond(HttpStatusCode.OK)
                 } else {
@@ -297,7 +276,7 @@ fun main() {
                    return@post
                 }
 
-                val question = ServerState.questions[id] ?: run {
+                val question = serverState.questions[id] ?: run {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
                 }
@@ -308,8 +287,7 @@ fun main() {
                     return@post
                 }
                 val pred = Prediction(unixNow(), dist)
-                ServerState.getUserPredictions(user)[id] = pred
-                ServerState.calculateGroupDistribution(question)
+                serverState.addPrediction(question, pred)
 
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
@@ -340,7 +318,7 @@ fun main() {
                         return@runRefreshable
                     }
 
-                    val state = ServerState.appState(sessionData)
+                    val state = serverState.export(sessionData)
                     send(Frame.Text(confidoJSON.encodeToString(state)))
                 }
             }
