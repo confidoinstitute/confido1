@@ -11,6 +11,7 @@ import react.*
 import react.dom.html.ReactHTML.main
 import react.dom.html.ReactHTML.nav
 import react.router.*
+import utils.themed
 
 external interface RootAppBarProps : Props {
     var hasDrawer: Boolean
@@ -27,7 +28,7 @@ val RootAppBar = FC<RootAppBarProps> {props ->
                 IconButton {
                     sx {
                         display = responsive(permanentBreakpoint to None.none)
-                        marginRight = 2.px
+                        marginRight = themed(2)
                     }
                     color = IconButtonColor.inherit
                     onClick = {props.onDrawerOpen?.invoke()}
@@ -93,7 +94,7 @@ val RootLayout = FC<Props> {
             sx {
                 flexGrow = number(1.0)
                 overflowX = Overflow.hidden
-                padding = 1.px
+                padding = themed(1)
             }
             Toolbar {}
             Routes {

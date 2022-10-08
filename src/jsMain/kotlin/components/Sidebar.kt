@@ -66,17 +66,12 @@ val Sidebar = FC<SidebarProps> {props ->
                     primary = ReactNode("Change name")
                 }
             }
-            ListItem {
-                disablePadding = true
+            ListItemButton {
                 ListItemText {
-                    ListItemButton {
-                        ListItemText {
-                            primary = ReactNode("Log out")
-                            onClick = {
-                                Client.post("/logout")
-                                navigate("/")
-                            }
-                        }
+                    primary = ReactNode("Log out")
+                    onClick = {
+                        Client.post("/logout")
+                        navigate("/")
                     }
                 }
             }

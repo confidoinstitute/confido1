@@ -1,5 +1,6 @@
 package utils
 
+import csstype.*
 import org.w3c.dom.HTMLDivElement
 import org.w3c.dom.HTMLInputElement
 import react.dom.events.ChangeEvent
@@ -10,4 +11,8 @@ fun FormEvent<HTMLDivElement>.eventValue(): String = this.asDynamic().target.val
 fun FormEvent<HTMLDivElement>.eventNumberValue(): Double {
     val event = (this as ChangeEvent<HTMLInputElement>)
     return event.target.valueAsNumber
+}
+
+fun themed(value: Int): LengthType {
+    return value.asDynamic()
 }

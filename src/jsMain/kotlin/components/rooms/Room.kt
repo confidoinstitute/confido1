@@ -11,6 +11,7 @@ import react.router.Routes
 import react.router.useParams
 import rooms.Room
 import rooms.RoomPermission
+import utils.themed
 
 val RoomContext = createContext<Room>()
 
@@ -28,7 +29,7 @@ val Room = FC<Props> {
         }
         Typography {
             sx {
-                marginBottom = 2.asDynamic()
+                marginBottom = themed(2)
             }
             +room.description
         }

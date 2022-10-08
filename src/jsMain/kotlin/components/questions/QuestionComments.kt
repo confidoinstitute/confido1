@@ -68,8 +68,8 @@ val Comment = FC<CommentProps> { props ->
 
     Card {
         sx {
-            marginTop = 2.asDynamic()
-            marginBottom = 2.asDynamic()
+            marginTop = themed(2)
+            marginBottom = themed(2)
         }
         CardHeader {
             // TODO: Handle nickless, email-only names(when appropriate)

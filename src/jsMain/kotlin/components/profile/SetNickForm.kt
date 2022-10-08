@@ -11,6 +11,7 @@ import react.dom.html.ReactHTML.div
 import react.dom.onChange
 import payloads.requests.SetNick
 import utils.eventValue
+import utils.themed
 
 val SetNickForm = FC<Props> {
     val appState = useContext(AppStateContext)
@@ -19,8 +20,8 @@ val SetNickForm = FC<Props> {
     val user = appState.state.session.user ?: return@FC
     Paper {
         sx {
-            marginTop = 10.px
-            padding = 10.px
+            marginTop = themed(2)
+            padding = themed(2)
         }
         Typography {
             variant = TypographyVariant.body1
@@ -28,7 +29,7 @@ val SetNickForm = FC<Props> {
         }
         div {
             css {
-                marginTop = 5.px
+                marginTop = themed(1)
                 display = Display.flex
                 alignItems = AlignItems.flexEnd
             }

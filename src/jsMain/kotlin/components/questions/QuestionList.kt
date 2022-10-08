@@ -220,7 +220,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             if (question.predictionsVisible) {
                 Typography {
                     sx {
-                        margin = Margin(1.asDynamic(), 0.px)
+                        margin = Margin(themed(1), themed(0))
                         lineHeight = number(2.0)
                     }
                     strong {

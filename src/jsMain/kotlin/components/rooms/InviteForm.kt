@@ -16,6 +16,7 @@ import payloads.requests.AcceptInviteAndCreateUser
 import payloads.requests.CheckInvite
 import payloads.responses.InviteStatus
 import utils.eventValue
+import utils.themed
 import kotlin.coroutines.EmptyCoroutineContext
 
 val InviteNewUserForm = FC<Props> {
@@ -42,8 +43,8 @@ val InviteNewUserForm = FC<Props> {
     if (inviteStatus != null) {
         Paper {
             sx {
-                marginTop = 10.px
-                padding = 10.px
+                marginTop = themed(2)
+                padding = themed(2)
             }
             Typography {
                 variant = TypographyVariant.body1
