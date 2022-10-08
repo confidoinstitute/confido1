@@ -14,6 +14,7 @@ val Explanation = FC<ExplanationProps> {props ->
     var explanationOpen by useState(false)
 
     Link {
+        href = "#"
         onClick = {explanationOpen = true}
        sup {
            +"[?]"

@@ -20,8 +20,9 @@ object Client {
         }
     }
 
-    fun post(url: String) = CoroutineScope(EmptyCoroutineContext).launch {
+    fun post(url: String, block: (() -> Unit)? = null) = CoroutineScope(EmptyCoroutineContext).launch {
         httpClient.post(url) {}
+        block?.invoke()
     }
 
     inline fun <reified T> postData(url: String, payload: T) = CoroutineScope(EmptyCoroutineContext).launch {

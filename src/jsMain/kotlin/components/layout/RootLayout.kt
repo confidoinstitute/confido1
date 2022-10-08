@@ -1,54 +1,16 @@
-package components
+package components.layout
 
 import components.profile.SetNickForm
 import components.rooms.NewRoom
 import components.rooms.Room
 import csstype.*
-import icons.MenuIcon
 import mui.material.*
 import mui.system.*
 import react.*
 import react.dom.html.ReactHTML.main
 import react.dom.html.ReactHTML.nav
 import react.router.*
-
-external interface RootAppBarProps : Props {
-    var hasDrawer: Boolean
-    var onDrawerOpen: (() -> Unit)?
-}
-
-val RootAppBar = FC<RootAppBarProps> {props ->
-    val stale = useContext(AppStateContext).stale
-
-    AppBar {
-        position = AppBarPosition.fixed
-        Toolbar {
-            if (props.hasDrawer) {
-                IconButton {
-                    sx {
-                        display = responsive(permanentBreakpoint to None.none)
-                        marginRight = 2.px
-                    }
-                    color = IconButtonColor.inherit
-                    onClick = {props.onDrawerOpen?.invoke()}
-                    MenuIcon()
-                }
-            }
-            Typography {
-                sx {
-                    flexGrow = number(1.0)
-                }
-                +"Confido"
-            }
-            if (stale) {
-                Chip {
-                    this.color = ChipColor.error
-                    this.label = ReactNode("Disconnected")
-                }
-            }
-        }
-    }
-}
+import utils.themed
 
 val permanentBreakpoint = Breakpoint.md
 
@@ -93,7 +55,7 @@ val RootLayout = FC<Props> {
             sx {
                 flexGrow = number(1.0)
                 overflowX = Overflow.hidden
-                padding = 1.px
+                padding = themed(1)
             }
             Toolbar {}
             Routes {

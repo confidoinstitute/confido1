@@ -8,6 +8,8 @@ import users.User
 data class UserSession(
     var userRef: Ref<User>? = null,
     var language: String = "en",
+    var presenterActive: Int = 0,
+    var presenterView: PresenterView? = null,
     // Beware: This is sent to the client
 ) {
     // this is done often enough to warrant a shortcut

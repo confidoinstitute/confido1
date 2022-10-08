@@ -44,6 +44,7 @@ import users.DebugAdmin
 import users.User
 import users.UserType
 import java.io.File
+import java.time.Duration
 
 fun HTML.index() {
     head {
@@ -328,6 +329,28 @@ fun main() {
                 staticRootFolder = staticDir
                 preCompressed(CompressedFileType.BROTLI, CompressedFileType.GZIP) {
                     files(".")
+                }
+            }
+            webSocket("/state_presenter") {
+                val session = call.userSession
+
+                if (session == null) {
+                    // Code 3000 is registered with IANA as "Unauthorized".
+                    close(CloseReason(3000, "Missing session"))
+                    return@webSocket
+                }
+
+                session.presenterActive += 1
+                timeout = Duration.ofSeconds(15)
+                println("Opened presenter socket for $session")
+                send("Connection acquired")
+                try {
+                    for (message in incoming) {
+                        println("Presenter socket pong")
+                    }
+                } finally {
+                    session.presenterActive -= 1
+                    println("Closed presenter socket for $session")
                 }
             }
         }

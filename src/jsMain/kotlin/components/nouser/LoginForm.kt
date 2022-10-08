@@ -1,6 +1,6 @@
-package components
+package components.nouser
 
-import csstype.*
+import components.AppStateContext
 import emotion.react.css
 import mui.material.*
 import mui.system.sx
@@ -10,6 +10,7 @@ import react.dom.html.ReactHTML.div
 import react.dom.onChange
 import react.dom.html.InputType
 import utils.eventValue
+import utils.themed
 
 val LoginForm = FC<Props> {
     val appState = useContext(AppStateContext)
@@ -18,8 +19,8 @@ val LoginForm = FC<Props> {
 
     Paper {
         sx {
-            marginTop = 10.px
-            padding = 10.px
+            marginTop = themed(2)
+            padding = themed(2)
         }
         div {
             div {
@@ -49,7 +50,7 @@ val LoginForm = FC<Props> {
             }
             div {
                 css {
-                    marginTop = 5.px
+                    marginTop = themed(1)
                 }
                 Button {
                     onClick = {
