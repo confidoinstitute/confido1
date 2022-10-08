@@ -6,7 +6,6 @@ import kotlinx.browser.window
 import kotlinx.js.timers.setTimeout
 import kotlinx.serialization.decodeFromString
 import mui.material.*
-import mui.material.styles.TypographyVariant
 import org.w3c.dom.CloseEvent
 import org.w3c.dom.WebSocket
 import react.*
@@ -14,16 +13,16 @@ import react.router.Route
 import react.router.Routes
 import react.router.dom.BrowserRouter
 import tools.confido.serialization.confidoJSON
-import tools.confido.state.AppState
+import tools.confido.state.SentState
 import utils.webSocketUrl
 
 val AppStateContext = createContext<ClientAppState>()
 
 
-data class ClientAppState(val state: AppState, val stale: Boolean = false)
+data class ClientAppState(val state: SentState, val stale: Boolean = false)
 
 val App = FC<Props> {
-    var appState by useState<AppState?>(null)
+    var appState by useState<SentState?>(null)
     var stale by useState(false)
     val webSocket = useRef<WebSocket>(null)
 

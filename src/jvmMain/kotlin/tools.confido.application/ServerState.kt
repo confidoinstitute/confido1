@@ -1,8 +1,14 @@
 package tools.confido.state
 
+import tools.confido.refs.*
+
 
 class ServerGlobalState : GlobalState() {
-
 }
 
-actual val globalState: GlobalState = ServerGlobalState()
+inline fun <reified T: ServerImmediateDerefEntity> Ref<T>.deref() =
+    @OptIn(RefInternalAPI::class)
+    serverState.maybeDeref(T::class.simpleName!!, this)
+
+val serverState = ServerGlobalState()
+actual val globalState: GlobalState = serverState

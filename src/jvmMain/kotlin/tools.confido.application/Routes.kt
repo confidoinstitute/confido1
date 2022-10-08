@@ -1,6 +1,6 @@
 package tools.confido.application
 
-import tools.confido.eqid.*
+import tools.confido.refs.*
 import tools.confido.*
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -21,7 +21,7 @@ fun editQuestion(routing: Routing) {
         ServerState.questions[id]?.let {question ->
             ServerState.questions.remove(question)
             ServerState.rooms.values.map {room ->
-                room.questions.removeById(question)
+                room.questions.remove(question.ref)
             }
             ServerState.userPredictions.values.map {userPrediction ->
                 userPrediction.remove(id)
@@ -67,7 +67,7 @@ fun editQuestion(routing: Routing) {
                 val question = editQuestion.question.copy(id=qid)
                 val room = editQuestion.room
                 ServerState.rooms[room]?.let {stateRoom ->
-                    stateRoom.questions.insertById(question)
+                    stateRoom.questions.add(question.ref)
                     ServerState.questions.insert(question)
                 } ?: run {
                     call.respond(HttpStatusCode.BadRequest)

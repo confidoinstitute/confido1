@@ -1,6 +1,6 @@
 package tools.confido.question
 
-import tools.confido.eqid.Entity
+import tools.confido.refs.Entity
 import kotlinx.serialization.*
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.spaces.*

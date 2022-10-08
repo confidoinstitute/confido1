@@ -3,7 +3,9 @@ package rooms
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import tools.confido.eqid.Entity
+import tools.confido.refs.Entity
+import tools.confido.refs.Ref
+import tools.confido.refs.eqid
 import tools.confido.question.Question
 import users.User
 import users.UserType
@@ -15,13 +17,10 @@ class Room(
     val name: String,
     val createdAt: Instant,
     val description: String = "",
-    val questions: MutableList<Question> = mutableListOf(),
+    val questions: MutableList<Ref<Question>> = mutableListOf(),
     val members: MutableList<RoomMembership> = mutableListOf(),
     val inviteLinks: MutableList<InviteLink> = mutableListOf(),
-) : Entity<String> {
-    fun getQuestion(id: String): Question? {
-        return questions.find { it.id == id }
-    }
+) : Entity {
 
     fun hasPermission(user: User?, permission: RoomPermission): Boolean {
         if (user == null) {
@@ -35,7 +34,7 @@ class Room(
 
         // Note that one user could have multiple memberships here.
         return members.find {
-            it.user.eqid(user) && it.invitedVia?.canAccess ?: true && it.role.hasPermission(permission)
+            it.user eqid user && it.invitedVia?.canAccess ?: true && it.role.hasPermission(permission)
         } != null
     }
 }

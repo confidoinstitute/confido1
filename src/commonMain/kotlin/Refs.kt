@@ -1,4 +1,4 @@
-package tools.confido.eqid
+package tools.confido.refs
 
 import kotlinx.serialization.Serializable
 import tools.confido.state.globalState
@@ -9,6 +9,26 @@ import kotlin.jvm.JvmInline
 interface Entity {
     val id: String
 }
+inline fun <reified T: ImmediateDerefEntity> Ref<T>.deref(): T? {
+    @OptIn(RefInternalAPI::class)
+    return globalState.maybeDeref(T::class.simpleName!!, this)
+}
+inline suspend fun <reified T: Entity> Ref<T>.derefLazy(): T? {
+    @OptIn(RefInternalAPI::class)
+    return globalState.derefLazy(T::class.simpleName!!, this)
+}
+inline fun <reified T: Entity> Ref<T>.maybeDeref(): T? {
+    @OptIn(RefInternalAPI::class)
+    return globalState.maybeDeref(T::class.simpleName!!, this)
+}
+
+// Used to mark entities that can always be dereferenced without suspending...
+// .. on client
+interface ClientImmediateDerefEntity : Entity {}
+// .. on server
+interface ServerImmediateDerefEntity : Entity {}
+// .. on both
+interface ImmediateDerefEntity : ClientImmediateDerefEntity, ServerImmediateDerefEntity {}
 
 @RequiresOptIn(message = "Ref internal API.")
 @Retention(AnnotationRetention.BINARY)
@@ -20,17 +40,11 @@ annotation class RefInternalAPI
 // using optin instead of making constructor private because private members
 // cannot be called from public inline functions
 value class Ref<T: Entity> @RefInternalAPI  constructor(val id: String) {
-    // this has to be suspend because it can potentially fetch target entity
-    // on demand from database (on server) or network (on client)
-    inline suspend fun <reified T: Entity> Ref<T>.deref(): T? {
-        return globalState.deref(this)
-    }
+}
 
-    inline val <reified  T: Entity> T.ref: Ref<T> get() {
-        @OptIn(RefInternalAPI::class)
-        return Ref<T>(this.id)
-    }
-
+inline val <reified  T: Entity> T.ref: Ref<T> get() {
+    @OptIn(RefInternalAPI::class)
+    return Ref<T>(this.id)
 }
 
 // COMPARING BY ID - `eqid` infix operator; can take entities, refs and string ids

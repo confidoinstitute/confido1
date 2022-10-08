@@ -2,7 +2,8 @@ package users
 
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
-import tools.confido.eqid.Entity
+import tools.confido.refs.Entity
+import tools.confido.refs.ImmediateDerefEntity
 
 @Serializable
 data class User(
@@ -16,4 +17,4 @@ data class User(
     val password: String?,
     val createdAt: Instant,
     val lastLoginAt: Instant,
-) : Entity
+) : ImmediateDerefEntity

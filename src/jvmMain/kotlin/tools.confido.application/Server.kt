@@ -1,7 +1,7 @@
 package tools.confido.application
 
 import com.password4j.Password
-import tools.confido.eqid.*
+import tools.confido.refs.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -32,7 +32,7 @@ import payloads.responses.InviteStatus
 import rooms.*
 import tools.confido.application.sessions.*
 import tools.confido.distributions.ProbabilityDistribution
-import tools.confido.state.AppState
+import tools.confido.state.SentState
 import tools.confido.state.UserSession
 import tools.confido.question.*
 import tools.confido.serialization.confidoJSON
@@ -73,10 +73,10 @@ object ServerState {
         users[debugAdmin.id] = debugAdmin
 
         // TODO: Persist rooms, for now we create one room that contains all questions and one "private" room with a new question
-        val pub = "testpub" to Room("testpub", "Testing room", now(), questions = questions.values.toMutableList())
+        val pub = "testpub" to Room("testpub", "Testing room", now(), questions = questions.values.map {it.ref}.toMutableList())
         val qtestpriv = Question("qtestpriv", "Is this a private question?", BinarySpace)
         questions["qtestpriv"] = qtestpriv
-        val priv = "testpriv" to Room("testpriv", "Private room", now(), description = "A private room.", questions = mutableListOf(qtestpriv))
+        val priv = "testpriv" to Room("testpriv", "Private room", now(), description = "A private room.", questions = mutableListOf(qtestpriv.ref))
         val testInvite = InviteLink("Testing invite link", Forecaster, debugAdmin, now())
         priv.second.inviteLinks.add(testInvite)
         println("Testing invite: ${testInvite.token}")
@@ -103,13 +103,13 @@ object ServerState {
         return userPredictions.getOrPut(user) {mutableMapOf()}
     }
 
-    fun appState(sessionData: UserSession): AppState {
+    fun appState(sessionData: UserSession): SentState {
         val predictions = when (val user = sessionData.user) {
             null -> emptyMap()
             else -> getUserPredictions(user)
         }
 
-        return AppState(
+        return SentState(
             // TODO: Consider sending questions separately and only provide ids within rooms
             rooms.values.filter { it.hasPermission(sessionData.user, RoomPermission.VIEW_QUESTIONS) },
             predictions,
