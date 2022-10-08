@@ -1,8 +1,7 @@
 package tools.confido.state
 
-import tools.confido.state.GlobalState
 
-class ServerGlobalState : GlobalState {
+class ServerGlobalState : GlobalState() {
 
 }
 

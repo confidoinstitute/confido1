@@ -15,13 +15,15 @@ open class GlobalState {
     val rooms:  MutableMap<String, Room> = mutableMapOf()
     val questions:  MutableMap<String, Question> = mutableMapOf()
 
-    inline fun <reified T: Entity> deref(ref: Ref<T>): T? {
+    inline suspend fun <reified T: Entity> deref(ref: Ref<T>): T? {
         val collectionId = T::class.simpleName!!
         @OptIn(RefInternalAPI::class)
         return deref(collectionId, ref)
     }
+    // this has to be suspend because it can potentially fetch target entity
+    // on demand from database (on server) or network (on client)
     @RefInternalAPI
-    fun <T: Entity> deref(collectionId: String, ref: Ref<T>): T? =
+    suspend fun <T: Entity> deref(collectionId: String, ref: Ref<T>): T? =
         when (collectionId) {
             "Question" -> questions[ref.id] as T?
             "Room" -> rooms[ref.id] as T?

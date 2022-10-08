@@ -20,8 +20,10 @@ annotation class RefInternalAPI
 // using optin instead of making constructor private because private members
 // cannot be called from public inline functions
 value class Ref<T: Entity> @RefInternalAPI  constructor(val id: String) {
-    inline val <reified T: Entity> Ref<T>.deref: T? get() {
-        globalState.deref(this)
+    // this has to be suspend because it can potentially fetch target entity
+    // on demand from database (on server) or network (on client)
+    inline suspend fun <reified T: Entity> Ref<T>.deref(): T? {
+        return globalState.deref(this)
     }
 
     inline val <reified  T: Entity> T.ref: Ref<T> get() {
