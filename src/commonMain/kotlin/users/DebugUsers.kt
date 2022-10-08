@@ -8,3 +8,8 @@ object DebugAdmin {
     const val email = "admin@confido"
     const val password = "pass"
 }
+
+object DebugMember {
+    const val email = "member@confido"
+    const val password = "pass"
+}

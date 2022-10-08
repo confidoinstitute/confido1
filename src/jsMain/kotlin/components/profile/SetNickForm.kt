@@ -10,6 +10,7 @@ import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.onChange
 import payloads.requests.SetNick
+import react.dom.html.ReactHTML.br
 import utils.eventValue
 import utils.themed
 
@@ -26,6 +27,8 @@ val SetNickForm = FC<Props> {
         Typography {
             variant = TypographyVariant.body1
             +"From state: your name is ${user.nick ?: "not set"} and language is ${appState.state.session.language}."
+            br {}
+            +"Your type is ${user.type}."
         }
         div {
             css {

@@ -40,6 +40,7 @@ import tools.confido.serialization.confidoSM
 import tools.confido.spaces.*
 import tools.confido.utils.*
 import users.DebugAdmin
+import users.DebugMember
 import users.User
 import users.UserType
 import java.io.File
@@ -72,6 +73,9 @@ object ServerState {
         val passwordHash = Password.hash(DebugAdmin.password).addRandomSalt().withArgon2().result
         val debugAdmin = User("debug", UserType.ADMIN, DebugAdmin.email, true, "debugadmin", passwordHash, now(), now())
         users[debugAdmin.id] = debugAdmin
+        val userPassword = Password.hash(DebugMember.password).addRandomSalt().withArgon2().result
+        val debugUser = User("debugmember", UserType.MEMBER, DebugMember.email, true, "debugmember", userPassword, now(), now())
+        users[debugUser.id] = debugUser
 
         // TODO: Persist rooms, for now we create one room that contains all questions and one "private" room with a new question
         val pub = "testpub" to Room("testpub", "Testing room", now(), questions = questions.values.toMutableList())
