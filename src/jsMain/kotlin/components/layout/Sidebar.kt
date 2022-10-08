@@ -69,10 +69,10 @@ val Sidebar = FC<SidebarProps> { props ->
             ListItemButton {
                 ListItemText {
                     primary = ReactNode("Log out")
-                    onClick = {
-                        Client.post("/logout")
-                        navigate("/")
-                    }
+                }
+                onClick = {
+                    Client.post("/logout")
+                    navigate("/")
                 }
             }
         }
