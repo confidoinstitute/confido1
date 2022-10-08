@@ -24,7 +24,7 @@ val Room = FC<Props> {
     RoomContext.Provider {
         value = room
         Typography {
-            variant = TypographyVariant.h1
+            variant = TypographyVariant.h2
             +room.name
         }
         Typography {

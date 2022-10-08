@@ -1,16 +1,18 @@
 package components
 
-import components.rooms.InviteNewUserForm
+import components.layout.NoUserLayout
+import components.layout.PresenterLayout
+import components.layout.RootLayout
 import csstype.*
 import kotlinx.browser.window
 import kotlinx.js.timers.setTimeout
 import kotlinx.serialization.decodeFromString
 import mui.material.*
-import mui.material.styles.TypographyVariant
 import org.w3c.dom.CloseEvent
 import org.w3c.dom.WebSocket
 import react.*
 import react.router.Route
+import react.router.Router
 import react.router.Routes
 import react.router.dom.BrowserRouter
 import tools.confido.serialization.confidoJSON
@@ -62,39 +64,34 @@ val App = FC<Props> {
         }
     }
 
-    if (appState == null) {
-//        Backdrop {
-//            this.open = true
-//            this.sx { this.zIndex = 42.asDynamic() }
-//            CircularProgress {}
-//        }
-        return@FC
+    Backdrop {
+        this.open = (appState == null)
+        CircularProgress {
+            color = CircularProgressColor.inherit
+        }
     }
+    appState ?: return@FC
 
     AppStateContext.Provider {
         value = ClientAppState(appState ?: error("No app state!"), stale)
 
-        if (appState?.session?.user == null) {
-            RootAppBar {
-                hasDrawer = false
-            }
-            Toolbar {}
-            BrowserRouter {
-                Routes {
-                    Route {
-                        index = true
-                        path = "/"
-                        this.element = LandingPage.create()
-                    }
-                    Route {
-                        path = "room/:roomID/invite/:inviteToken"
-                        this.element = InviteNewUserForm.create()
-                    }
-                }
-            }
+        val layout = if (appState?.session?.user == null) {
+            NoUserLayout
         } else {
-            BrowserRouter {
-                RootLayout {}
+            RootLayout
+        }
+
+        BrowserRouter {
+            Routes {
+                Route {
+                    path = "/*"
+                    index = true
+                    element = layout.create()
+                }
+                Route {
+                    path = "presenter"
+                    element = PresenterLayout.create()
+                }
             }
         }
     }

@@ -1,17 +1,16 @@
-package components
+package components.layout
 
+import components.ListItemNavigation
+import components.layout.permanentBreakpoint
 import components.rooms.RoomList
 import csstype.*
-import emotion.react.css
 import mui.material.*
-import mui.system.Box
 import mui.system.Breakpoint
 import mui.system.responsive
 import mui.system.sx
 import react.*
-import react.dom.html.ReactHTML.nav
-import react.router.dom.NavLink
 import react.router.useNavigate
+import utils.themed
 
 val sidebarWidth = 240.px
 external interface SidebarProps : Props {
@@ -20,7 +19,7 @@ external interface SidebarProps : Props {
     var onClose: (() -> Unit)?
 }
 
-val Sidebar = FC<SidebarProps> {props ->
+val Sidebar = FC<SidebarProps> { props ->
     val navigate = useNavigate()
 
     fun navigateClose() {
@@ -39,6 +38,7 @@ val Sidebar = FC<SidebarProps> {props ->
                 boxSizing = BoxSizing.borderBox
                 width = sidebarWidth
                 zIndex = responsive(permanentBreakpoint to number(0.0))
+                boxShadow = responsive(permanentBreakpoint to themed(4))
             }
         }
         if (props.permanent) {

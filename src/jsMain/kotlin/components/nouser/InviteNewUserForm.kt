@@ -1,4 +1,4 @@
-package components.rooms
+package components.nouser
 
 import components.AppStateContext
 import csstype.*

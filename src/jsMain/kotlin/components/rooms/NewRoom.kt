@@ -6,6 +6,7 @@ import mui.material.styles.TypographyVariant
 import mui.system.sx
 import react.*
 import react.dom.onChange
+import utils.byTheme
 import utils.eventValue
 
 val NewRoom = FC<Props> {
@@ -17,11 +18,15 @@ val NewRoom = FC<Props> {
         name = inputName.ifEmpty { "New room…" }
     }
 
-    Typography {
-        variant = TypographyVariant.h1
-        +name
-    }
     TextField {
+        sx {
+            ".MuiInput-input,.MuiInputLabel-root" {
+                asDynamic().typography = byTheme("h2")
+            }
+            ".MuiInputLabel-shrink" {
+                asDynamic().typography = byTheme("body1")
+            }
+        }
         variant = FormControlVariant.standard
         fullWidth = true
         value = inputName

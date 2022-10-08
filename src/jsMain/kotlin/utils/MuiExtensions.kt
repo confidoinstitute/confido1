@@ -13,6 +13,10 @@ fun FormEvent<HTMLDivElement>.eventNumberValue(): Double {
     return event.target.valueAsNumber
 }
 
-fun themed(value: Int): LengthType {
-    return value.asDynamic()
+fun <T> themed(value: Int): T {
+    return value.asDynamic() as T
+}
+
+fun <T> byTheme(key: String): T {
+    return key.asDynamic() as T
 }

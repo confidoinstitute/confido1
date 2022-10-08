@@ -1,10 +1,11 @@
-package components
+package components.layout
 
+import components.layout.Sidebar
 import components.profile.SetNickForm
 import components.rooms.NewRoom
 import components.rooms.Room
+import components.layout.sidebarWidth
 import csstype.*
-import icons.MenuIcon
 import mui.material.*
 import mui.system.*
 import react.*
@@ -12,44 +13,6 @@ import react.dom.html.ReactHTML.main
 import react.dom.html.ReactHTML.nav
 import react.router.*
 import utils.themed
-
-external interface RootAppBarProps : Props {
-    var hasDrawer: Boolean
-    var onDrawerOpen: (() -> Unit)?
-}
-
-val RootAppBar = FC<RootAppBarProps> {props ->
-    val stale = useContext(AppStateContext).stale
-
-    AppBar {
-        position = AppBarPosition.fixed
-        Toolbar {
-            if (props.hasDrawer) {
-                IconButton {
-                    sx {
-                        display = responsive(permanentBreakpoint to None.none)
-                        marginRight = themed(2)
-                    }
-                    color = IconButtonColor.inherit
-                    onClick = {props.onDrawerOpen?.invoke()}
-                    MenuIcon()
-                }
-            }
-            Typography {
-                sx {
-                    flexGrow = number(1.0)
-                }
-                +"Confido"
-            }
-            if (stale) {
-                Chip {
-                    this.color = ChipColor.error
-                    this.label = ReactNode("Disconnected")
-                }
-            }
-        }
-    }
-}
 
 val permanentBreakpoint = Breakpoint.md
 
