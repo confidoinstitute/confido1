@@ -60,8 +60,9 @@ class ServerGlobalState : GlobalState() {
     }
 
     suspend inline fun <reified T: ServerImmediateDerefEntity>
-    updateEntity(new: T, compare: T? = null,  merge: (T,T)->T = { orig, new -> new },
-                upsert: Boolean = false) : T{
+    updateEntity(new: T, compare: T? = null,
+                upsert: Boolean = false,
+                merge: (T,T)->T = { orig, new -> new }, ) : T{
         if (upsert && compare != null) throw IllegalArgumentException()
         val map = getMap<T>()
         val coll = getCollection<T>()
