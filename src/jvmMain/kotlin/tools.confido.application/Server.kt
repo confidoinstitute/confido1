@@ -220,8 +220,12 @@ fun main() {
                     val room = ServerState.rooms[accept.roomId] ?: return@post
                     val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: return@post
 
-                    // TODO: Prevent user from accepting multiple times
-                    call.userSession = UserSession(user = user, language = "en")
+                    // Prevent user from accepting multiple times
+                    if (room.members.any {it.user.eqid(user) && it.invitedVia == invite}) {
+                        call.respond(HttpStatusCode.BadRequest, "This has already been accepted")
+                        return@post
+                    }
+
                     room.members.add(RoomMembership(user, invite.role, invite))
 
                     call.transientUserData?.refreshRunningWebsockets()

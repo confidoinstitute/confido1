@@ -1,4 +1,4 @@
-package components.nouser
+package components.rooms
 
 import components.AppStateContext
 import csstype.*
@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.sx
+import payloads.requests.AcceptInvite
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.onChange
@@ -15,15 +16,24 @@ import react.router.useParams
 import payloads.requests.AcceptInviteAndCreateUser
 import payloads.requests.CheckInvite
 import payloads.responses.InviteStatus
+import react.router.useNavigate
 import utils.eventValue
 import utils.themed
 import kotlin.coroutines.EmptyCoroutineContext
 
-val InviteNewUserForm = FC<Props> {
+val RoomInviteForm = FC<Props> {
     val appState = useContext(AppStateContext)
     var name by useState("")
-    val roomId = useParams()["roomID"] ?: return@FC
-    val inviteToken = useParams()["inviteToken"] ?: return@FC
+    val roomId = useParams()["roomID"] ?: run {
+        console.error("Missing room id")
+        return@FC
+    }
+    val inviteToken = useParams()["inviteToken"] ?: run {
+        console.error("Missing invite token")
+        return@FC
+    }
+
+    val navigate = useNavigate()
 
     var inviteStatus by useState<InviteStatus?>(null)
 
@@ -40,6 +50,7 @@ val InviteNewUserForm = FC<Props> {
         this.sx { this.zIndex = integer(42) }
         CircularProgress {}
     }
+
     if (inviteStatus != null) {
         Paper {
             sx {
@@ -57,26 +68,40 @@ val InviteNewUserForm = FC<Props> {
                         display = Display.flex
                         alignItems = AlignItems.flexEnd
                     }
-                    TextField {
-                        variant = FormControlVariant.standard
-                        id = "name-field"
-                        label = ReactNode("Name")
-                        value = name
-                        disabled = appState.stale
-                        onChange = {
-                            name = it.eventValue()
+                    if (appState.state.session.user == null) {
+                        TextField {
+                            variant = FormControlVariant.standard
+                            id = "name-field"
+                            label = ReactNode("Name")
+                            value = name
+                            disabled = appState.stale
+                            onChange = {
+                                name = it.eventValue()
+                            }
                         }
-                    }
-                    Button {
-                        onClick = {
-                            // For now, we leave email empty.
-                            Client.postData(
-                                "/invite/accept_newuser",
-                                AcceptInviteAndCreateUser(roomId, inviteToken, name, null)
-                            )
+                        Button {
+                            onClick = {
+                                // For now, we leave email empty.
+                                Client.postData(
+                                    "/invite/accept_newuser",
+                                    AcceptInviteAndCreateUser(roomId, inviteToken, name, null)
+                                ).invokeOnCompletion {
+                                    navigate("/room/${roomId}")
+                                }
+                            }
+                            disabled = appState.stale
+                            +"Set name"
                         }
-                        disabled = appState.stale
-                        +"Set name"
+                    } else {
+                        Button {
+                            onClick = {
+                                Client.postData("/invite/accept", AcceptInvite(roomId, inviteToken)).invokeOnCompletion {
+                                    navigate("/room/${roomId}")
+                                }
+                            }
+                            disabled = appState.stale
+                            +"Accept invite"
+                        }
                     }
                 }
             } else {

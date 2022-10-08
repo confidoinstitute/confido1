@@ -1,7 +1,7 @@
 package components.layout
 
 import components.nouser.LandingPage
-import components.nouser.InviteNewUserForm
+import components.rooms.RoomInviteForm
 import mui.material.Toolbar
 import react.*
 import react.router.Route
@@ -20,7 +20,7 @@ val NoUserLayout = FC<Props> {
         }
         Route {
             path = "room/:roomID/invite/:inviteToken"
-            this.element = InviteNewUserForm.create()
+            this.element = RoomInviteForm.create()
         }
     }
 }

@@ -1,6 +1,7 @@
 package components.layout
 
 import components.profile.SetNickForm
+import components.rooms.RoomInviteForm
 import components.rooms.NewRoom
 import components.rooms.Room
 import csstype.*
@@ -67,6 +68,10 @@ val RootLayout = FC<Props> {
                 Route {
                     path = "room/:roomID/*"
                     this.element = Room.create()
+                }
+                Route {
+                    path = "room/:roomID/invite/:inviteToken"
+                    this.element = RoomInviteForm.create()
                 }
                 Route {
                     path = "new_room"
