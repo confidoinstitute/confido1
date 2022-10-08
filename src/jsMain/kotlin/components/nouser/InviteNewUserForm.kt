@@ -46,36 +46,43 @@ val InviteNewUserForm = FC<Props> {
                 marginTop = themed(2)
                 padding = themed(2)
             }
-            Typography {
-                variant = TypographyVariant.body1
-                +"You have been invited to room ${inviteStatus?.roomName}"
-            }
-            div {
-                css {
-                    marginTop = 5.px
-                    display = Display.flex
-                    alignItems = AlignItems.flexEnd
+            if (inviteStatus?.valid == true) {
+                Typography {
+                    variant = TypographyVariant.body1
+                    +"You have been invited to room ${inviteStatus?.roomName}"
                 }
-                TextField {
-                    variant = FormControlVariant.standard
-                    id = "name-field"
-                    label = ReactNode("Name")
-                    value = name
-                    disabled = appState.stale
-                    onChange = {
-                        name = it.eventValue()
+                div {
+                    css {
+                        marginTop = 5.px
+                        display = Display.flex
+                        alignItems = AlignItems.flexEnd
+                    }
+                    TextField {
+                        variant = FormControlVariant.standard
+                        id = "name-field"
+                        label = ReactNode("Name")
+                        value = name
+                        disabled = appState.stale
+                        onChange = {
+                            name = it.eventValue()
+                        }
+                    }
+                    Button {
+                        onClick = {
+                            // For now, we leave email empty.
+                            Client.postData(
+                                "/invite/accept_newuser",
+                                AcceptInviteAndCreateUser(roomId, inviteToken, name, null)
+                            )
+                        }
+                        disabled = appState.stale
+                        +"Set name"
                     }
                 }
-                Button {
-                    onClick = {
-                        // For now, we leave email empty.
-                        Client.postData(
-                            "/invite/accept_newuser",
-                            AcceptInviteAndCreateUser(roomId, inviteToken, name, null)
-                        )
-                    }
-                    disabled = appState.stale
-                    +"Set name"
+            } else {
+                Typography {
+                    variant = TypographyVariant.body1
+                    +"This invite is not valid. It may have been disabled or it has expired."
                 }
             }
         }
