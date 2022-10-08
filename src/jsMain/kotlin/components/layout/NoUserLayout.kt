@@ -15,7 +15,7 @@ val NoUserLayout = FC<Props> {
     Routes {
         Route {
             index = true
-            path = "/"
+            path = "/*"
             this.element = LandingPage.create()
         }
         Route {

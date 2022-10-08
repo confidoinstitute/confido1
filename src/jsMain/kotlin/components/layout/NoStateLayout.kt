@@ -1,13 +1,25 @@
 package components.layout
 
 import csstype.*
+import mui.material.Alert
+import mui.material.AlertColor
 import mui.material.CircularProgress
 import mui.material.CircularProgressColor
 import mui.system.*
 import react.*
 import utils.themed
 
-val NoStateLayout = FC<Props> {
+external interface NoStateLayoutProps : Props {
+    var stale: Boolean
+}
+
+val NoStateLayout = FC<NoStateLayoutProps> {props ->
+    if (props.stale) {
+        Alert {
+            severity = AlertColor.error
+            +"The server cannot be reached. If this persists, please contact the administrators."
+        }
+    }
     Box {
         sx {
             position = Position.absolute

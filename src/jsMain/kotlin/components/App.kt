@@ -32,7 +32,6 @@ val App = FC<Props> {
 
     fun startWebSocket() {
         val ws = WebSocket(webSocketUrl("/state"))
-        console.log("New websocket!")
         ws.apply {
             onmessage = {
                 appState = confidoJSON.decodeFromString(it.data.toString())
@@ -66,7 +65,9 @@ val App = FC<Props> {
     }
 
     if (appState == null) {
-        NoStateLayout {}
+        NoStateLayout {
+            this.stale = stale
+        }
         return@FC
     }
 
