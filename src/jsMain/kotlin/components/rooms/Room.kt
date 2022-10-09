@@ -56,21 +56,13 @@ val Room = FC<Props> {
                 // TODO permissions to edit a room
                 IconButton {
                     onClick = {editMode = true}
-                    size = Size.small
                     EditIcon { }
                 }
 
                 AvatarGroup {
                     room.members.map {membership ->
-                        val user = membership.user
-                        Avatar {
-                            sx {
-                                backgroundColor = stringToColor(user.id)
-                            }
-                            alt = user.nick
-                            user.nick?.let {
-                                +(it[0].toString())
-                            }
+                        UserAvatar {
+                            user = membership.user
                         }
                     }
                 }
@@ -113,8 +105,8 @@ val Room = FC<Props> {
                 }
             }
             Route {
-                path = "invites"
-                this.element = NewInvite.create()
+                path = "members"
+                this.element = RoomMembers.create()
             }
         }
     }

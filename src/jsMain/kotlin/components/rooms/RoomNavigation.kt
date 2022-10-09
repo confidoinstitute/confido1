@@ -10,7 +10,7 @@ val locations = mapOf(
     "" to "Questions",
     "group_predictions" to "Group predictions",
     "edit_questions" to "Edit questions",
-    "invites" to "Invite",
+    "members" to "Members"
 )
 
 val RoomNavigation = FC<Props>
