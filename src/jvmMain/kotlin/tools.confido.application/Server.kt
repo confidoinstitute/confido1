@@ -229,8 +229,9 @@ fun main() {
                     val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: return@postST
 
                     // TODO: Prevent user from accepting multiple times
-                    call.userSession = UserSession(userRef = user.ref, language = "en")
-                    room.members.add(RoomMembership(user, invite.role, invite))
+                    serverState.modifyEntity(room.ref) {
+                        it.copy(members = it.members + listOf(RoomMembership(user, invite.role, invite)))
+                    }
 
                     call.transientUserData?.refreshRunningWebsockets()
                     call.respond(HttpStatusCode.OK)
@@ -248,7 +249,9 @@ fun main() {
                     val newUser = User(randomString(32), UserType.GUEST, accept.email, false, accept.userNick, null, now(), now())
 
                     call.userSession = UserSession(userRef = newUser.ref, language = "en")
-                    room.members.add(RoomMembership(newUser, invite.role, invite))
+                    serverState.modifyEntity(room.ref) {
+                        it.copy(members = it.members + listOf(RoomMembership(newUser, invite.role, invite)))
+                    }
                     serverState.users.insert(newUser)
 
                     call.transientUserData?.refreshRunningWebsockets()
