@@ -124,8 +124,18 @@ fun HTML.index() {
 //     }
 // }
 
-// val singleThreadContext = IO.limitedParallelism(1)
+// Kotlin coroutines run in a single-threaded mode by default, which is great, because you cannot
+// hit accidental race conditions (no concurrent access can occur between suspension points of
+// a coroutine).
+// Unfortunately, ktor overrides this to use a multi-threaded dispatcher and it is not configurable.
+// So all our request handlers must manually enforce a single-threaded dispatcher to ensure safety
+// guarantees. To make this a little bit easier, we have created wrapper extension methods for routing
+// (getST, postST, webSocketST) that work like get/post/webSocket but automatically enforce
+// single-threaded dispatch of their bodies. Except for special cases, we should always use these methods
+// instead of the original ones.
+// See https://git.confido.institute/confido/confido1/commit/d251e84a9f4e987d379087d8b5e7ac1e0c77e967
 val singleThreadContext = newSingleThreadContext("confido_server")
+// val singleThreadContext = IO.limitedParallelism(1) // alternative solution
 
 
 fun Route.getST(path: String, body: PipelineInterceptor<Unit, ApplicationCall>): Route =
