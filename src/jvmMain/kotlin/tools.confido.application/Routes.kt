@@ -39,18 +39,18 @@ fun editQuestion(routing: Routing) {
         }
     }
 
-    routing.post("/rooms/{id}/questions/add") {
+    routing.postST("/rooms/{id}/questions/add") {
         // TODO check permissions
         @OptIn(DelicateRefAPI::class)
         val roomRef = Ref<Room>(call.parameters["id"] ?: "")
-        roomRef.deref() ?: return@post call.respond(HttpStatusCode.NotFound)
+        roomRef.deref() ?: return@postST call.respond(HttpStatusCode.NotFound)
         val q: Question = call.receive()
         serverState.insertEntity(q)
     }
-    routing.post("/questions/{id}/edit") {
+    routing.postST("/questions/{id}/edit") {
         @OptIn(DelicateRefAPI::class)
         val origRef = Ref<Question>(call.parameters["id"] ?: "")
-        origRef.deref() ?: return@post call.respond(HttpStatusCode.NotFound)
+        origRef.deref() ?: return@postST call.respond(HttpStatusCode.NotFound)
         val editQuestion: EditQuestion = call.receive()
 
         when (editQuestion) {

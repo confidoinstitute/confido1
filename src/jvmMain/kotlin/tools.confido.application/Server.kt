@@ -15,8 +15,10 @@ import io.ktor.server.response.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
+import io.ktor.util.pipeline.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.datetime.Clock.System.now
@@ -122,11 +124,27 @@ fun HTML.index() {
 //     }
 // }
 
+// val singleThreadContext = IO.limitedParallelism(1)
+val singleThreadContext = newSingleThreadContext("confido_server")
+
+
+fun Route.getST(path: String, body: PipelineInterceptor<Unit, ApplicationCall>): Route =
+    get(path) { arg-> withContext(singleThreadContext) { body(this@get, arg) } }
+fun Route.postST(path: String, body: PipelineInterceptor<Unit, ApplicationCall>): Route =
+    post(path) { arg-> withContext(singleThreadContext) { body(this@post, arg) } }
+
+fun Route.webSocketST(
+    path: String,
+    protocol: String? = null,
+    handler: suspend DefaultWebSocketServerSession.() -> Unit
+) = webSocket(path, protocol) {  handler(this) }
+
 fun main() {
     registerModule(confidoSM)
 
 
-    runBlocking { serverState.load() }
+    runBlocking { withContext(singleThreadContext) { serverState.load() } }
+
 
     embeddedServer(CIO, port = 8080, host = "127.0.0.1") {
         install(WebSockets)
@@ -136,18 +154,18 @@ fun main() {
         }
         install(Sessions)
         routing {
-            get("/{...}") {
+            getST("/{...}") {
                 if (call.userSession == null) {
                     call.userSession = UserSession()
                 }
 
                 call.respondHtml(HttpStatusCode.OK, HTML::index)
             }
-            post("/login") {
+            postST("/login") {
                 val session = call.userSession
                 if (session == null) {
                     call.respond(HttpStatusCode.BadRequest)
-                    return@post
+                    return@postST
                 }
 
                 val login: Login = call.receive()
@@ -158,43 +176,43 @@ fun main() {
 
                 if (user == null) {
                     call.respond(HttpStatusCode.Unauthorized)
-                    return@post
+                    return@postST
                 }
 
                 session.userRef = user.ref
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
             }
-            post("/logout") {
+            postST("/logout") {
                 val session = call.userSession
                 if (session?.user == null) {
                     call.respond(HttpStatusCode.BadRequest)
-                    return@post
+                    return@postST
                 }
 
                 session.userRef = null
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
             }
-            post("/invite/check_status") {
+            postST("/invite/check_status") {
                 val check: CheckInvite = call.receive()
                 val room = serverState.rooms[check.roomId]
                 val invite = room?.inviteLinks?.find {it.token == check.inviteToken && it.canJoin}
                 if (room == null || invite == null) {
                     call.respond(HttpStatusCode.OK, InviteStatus(false, null))
-                    return@post
+                    return@postST
                 }
 
                 call.respond(HttpStatusCode.OK, InviteStatus(true, room.name))
             }
-            post("/invite/accept") {
+            postST("/invite/accept") {
                 val user = call.userSession?.user
                 if (user == null) {
                     call.respond(HttpStatusCode.BadRequest)
                 } else {
                     val accept: AcceptInvite = call.receive()
-                    val room = serverState.rooms[accept.roomId] ?: return@post
-                    val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: return@post
+                    val room = serverState.rooms[accept.roomId] ?: return@postST
+                    val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: return@postST
 
                     // TODO: Prevent user from accepting multiple times
                     call.userSession = UserSession(userRef = user.ref, language = "en")
@@ -204,14 +222,14 @@ fun main() {
                     call.respond(HttpStatusCode.OK)
                 }
             }
-            post("/invite/accept_newuser") {
+            postST("/invite/accept_newuser") {
                 val session = call.userSession
                 if (session == null || session.user != null) {
                     call.respond(HttpStatusCode.BadRequest)
                 } else {
                     val accept: AcceptInviteAndCreateUser = call.receive()
-                    val room = serverState.rooms[accept.roomId] ?: return@post
-                    val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: return@post
+                    val room = serverState.rooms[accept.roomId] ?: return@postST
+                    val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: return@postST
 
                     val newUser = User(randomString(32), UserType.GUEST, accept.email, false, accept.userNick, null, now(), now())
 
@@ -223,7 +241,7 @@ fun main() {
                     call.respond(HttpStatusCode.OK)
                 }
             }
-            post("/setName") {
+            postST("/setName") {
                 val session = call.userSession
                 val user = session?.user
                 if (session == null || user == null) {
@@ -239,22 +257,22 @@ fun main() {
                 }
             }
             editQuestion(this)
-            post("/add_comment/{id}") {
+            postST("/add_comment/{id}") {
                 val createdComment: CreateComment = call.receive()
                 val id = call.parameters["id"] ?: ""
                 val user = call.userSession?.user ?: run {
                     call.respond(HttpStatusCode.BadRequest)
-                    return@post
+                    return@postST
                 }
 
                 val question = serverState.questions[id] ?: run {
                     call.respond(HttpStatusCode.BadRequest)
-                    return@post
+                    return@postST
                 }
 
                 if (createdComment.content.isEmpty()) {
                     call.respond(HttpStatusCode.BadRequest)
-                    return@post
+                    return@postST
                 }
 
                 val prediction = serverState.getUserPredictions(user)[id]?.takeIf {
@@ -269,23 +287,23 @@ fun main() {
                     call.respond(HttpStatusCode.BadRequest)
                 }
             }
-            post("/send_prediction/{id}") {
+            postST("/send_prediction/{id}") {
                 val dist: ProbabilityDistribution = call.receive()
                 val id = call.parameters["id"] ?: ""
                 val user = call.userSession?.user ?: run {
                     call.respond(HttpStatusCode.BadRequest)
-                   return@post
+                   return@postST
                 }
 
                 val question = serverState.questions[id] ?: run {
                     call.respond(HttpStatusCode.BadRequest)
-                    return@post
+                    return@postST
                 }
 
                 if (question.answerSpace != dist.space) {
                     print("Prediction not compatible with answer space")
                     call.respond(HttpStatusCode.BadRequest)
-                    return@post
+                    return@postST
                 }
                 val pred = Prediction(unixNow(), dist)
                 serverState.addPrediction(question, pred)
@@ -293,7 +311,7 @@ fun main() {
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
             }
-            webSocket("/state") {
+            webSocketST("/state") {
                 // Require a session to already be initialized; it is not possible
                 // to edit session cookies within websockets.
                 val session = call.userSession
@@ -301,7 +319,7 @@ fun main() {
                 if (session == null) {
                     // Code 3000 is registered with IANA as "Unauthorized".
                     close(CloseReason(3000, "Missing session"))
-                    return@webSocket
+                    return@webSocketST
                 }
 
                 val closeNotifier = MutableStateFlow(false)
@@ -331,13 +349,13 @@ fun main() {
                     files(".")
                 }
             }
-            webSocket("/state_presenter") {
+            webSocketST("/state_presenter") {
                 val session = call.userSession
 
                 if (session == null) {
                     // Code 3000 is registered with IANA as "Unauthorized".
                     close(CloseReason(3000, "Missing session"))
-                    return@webSocket
+                    return@webSocketST
                 }
 
                 session.presenterActive += 1
