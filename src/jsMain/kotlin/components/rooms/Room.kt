@@ -60,6 +60,10 @@ val Room = FC<Props> {
                     allowEditingQuestions = state.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
                 }
             }
+            Route {
+                path = "invites"
+                this.element = NewInvite.create()
+            }
         }
     }
 }

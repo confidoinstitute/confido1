@@ -82,9 +82,6 @@ object ServerState {
         val qtestpriv = Question("qtestpriv", "Is this a private question?", BinarySpace)
         questions["qtestpriv"] = qtestpriv
         val priv = "testpriv" to Room("testpriv", "Private room", now(), description = "A private room.", questions = mutableListOf(qtestpriv))
-        val testInvite = InviteLink("Testing invite link", Forecaster, debugAdmin, now())
-        priv.second.inviteLinks.add(testInvite)
-        println("Testing invite: ${testInvite.token}")
         rooms = mapOf(pub, priv)
 
         // TODO actually store comments!
@@ -210,6 +207,28 @@ fun main() {
                 }
 
                 call.respond(HttpStatusCode.OK, InviteStatus(true, room.name))
+            }
+            post("/invite/create") {
+                val user = call.userSession?.user ?: run {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val create: CreateNewInvite = call.receive()
+                val room = ServerState.rooms[create.roomId] ?: run {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                if (!room.hasPermission(user, RoomPermission.MANAGE_MEMBERS)) {
+                    call.respond(HttpStatusCode.Unauthorized)
+                    return@post
+                }
+
+                val inviteLink = InviteLink(create.description ?: "", create.role, user, now())
+                room.inviteLinks.add(inviteLink)
+
+                call.respond(HttpStatusCode.OK, inviteLink)
             }
             post("/invite/accept") {
                 val user = call.userSession?.user

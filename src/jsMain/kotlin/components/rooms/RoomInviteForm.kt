@@ -8,12 +8,11 @@ import kotlinx.coroutines.launch
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.sx
-import payloads.requests.AcceptInvite
+import payloads.requests.*
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.onChange
 import react.router.useParams
-import payloads.requests.AcceptInviteAndCreateUser
 import payloads.requests.CheckInvite
 import payloads.responses.InviteStatus
 import react.router.useNavigate
