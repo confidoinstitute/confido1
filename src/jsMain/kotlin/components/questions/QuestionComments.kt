@@ -76,8 +76,14 @@ val Comment = FC<CommentProps> { props ->
             val name = props.comment.user.nick ?: "Anonymous"
             title = ReactNode(name)
             subheader = ReactNode(textAgo)
-            val letter = name.getOrNull(0) ?: '?'
-            avatar = Avatar.create { +"$letter" }
+            avatar = Avatar.create {
+                sx {
+                    backgroundColor = stringToColor(props.comment.user.id)
+                }
+                props.comment.user.nick?.let {
+                    +it[0].toString()
+                }
+            }
             if (props.deleteMode) {
                 if (canDelete) {
                     action = IconButton.create {
