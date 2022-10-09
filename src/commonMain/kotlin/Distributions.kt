@@ -72,8 +72,8 @@ interface DiscretizedProbabilityDistribution : ProbabilityDistribution {
 data class DiscretizedContinuousDistribution(
     override val space: NumericSpace,
     override val binProbs: List<Double>,
-    val origMean: Double?,
-    val origStdev: Double?,
+    val origMean: Double? = null,
+    val origStdev: Double? = null,
 ) : DiscretizedProbabilityDistribution, ContinuousProbabilityDistribution {
 
     @Transient

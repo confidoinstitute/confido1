@@ -4,11 +4,19 @@ import tools.confido.refs.Entity
 import kotlinx.serialization.*
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.refs.ImmediateDerefEntity
+import tools.confido.refs.Ref
 import tools.confido.spaces.*
+import tools.confido.utils.generateId
+import tools.confido.utils.randomString
+import users.User
 
 @Serializable
 data class Prediction(
+    @SerialName("_id")
+    val id: String = "",
     val ts: Int,
+    val question: Ref<Question>,
+    val user: Ref<User>?,
     val dist: ProbabilityDistribution,
 )
 

@@ -78,6 +78,8 @@ fun unixNow(): Int = (Clock.System.now().toEpochMilliseconds()/1000).toInt()
 fun LocalDate.Companion.fromUnix(ts: Number) = Instant.fromEpochSeconds(ts.toLong()).toLocalDateTime(TimeZone.currentSystemDefault()).date
 fun LocalDate.Companion.utcFromUnix(ts: Number) = Instant.fromEpochSeconds(ts.toLong()).toLocalDateTime(TimeZone.UTC).date
 
+fun zeros(size: Int) = List(size) { _ -> 0.0 }
+
 // VECTOR OPERATIONS - inspired by Raku
 @JsName("Zplus")
 @JvmName("Zplus")

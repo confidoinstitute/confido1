@@ -9,10 +9,11 @@ import users.User
 import kotlin.jvm.JvmInline
 
 
-
-interface Entity {
+interface HasId {
     val id: String
-    companion object {}
+}
+
+interface Entity: HasId {
 }
 inline fun <reified T: ImmediateDerefEntity> Ref<T>.deref(): T? {
     @OptIn(DelicateRefAPI::class)

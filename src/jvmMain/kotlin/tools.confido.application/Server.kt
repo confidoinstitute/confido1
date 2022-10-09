@@ -151,6 +151,9 @@ fun Route.webSocketST(
     handler: suspend DefaultWebSocketServerSession.() -> Unit
 ) = webSocket(path, protocol) {  handler(this) }
 
+suspend inline fun PipelineContext<Unit, ApplicationCall>.badRequest(msg: String = "") =
+    call.respond(HttpStatusCode.BadRequest, msg)
+
 fun main() {
     registerModule(confidoSM)
 
@@ -174,11 +177,7 @@ fun main() {
                 call.respondHtml(HttpStatusCode.OK, HTML::index)
             }
             postST("/login") {
-                val session = call.userSession
-                if (session == null) {
-                    call.respond(HttpStatusCode.BadRequest)
-                    return@postST
-                }
+                val session = call.userSession ?: return@postST badRequest("missing session")
 
                 val login: Login = call.receive()
                 val user = serverState.users.values.find {
@@ -197,10 +196,7 @@ fun main() {
             }
             postST("/logout") {
                 val session = call.userSession
-                if (session?.user == null) {
-                    call.respond(HttpStatusCode.BadRequest)
-                    return@postST
-                }
+                session?.user ?: return@postST badRequest("not logged in") // FIXME: should this just be a NOP?
 
                 session.userRef = null
                 call.transientUserData?.refreshRunningWebsockets()
@@ -244,13 +240,13 @@ fun main() {
                 } else {
                     val accept: AcceptInvite = call.receive()
                     val room = serverState.get<Room>(accept.roomId) ?:
-                        return@postST call.respond(HttpStatusCode.BadRequest, "The room does not exist.")
+                        return@postST badRequest("The room does not exist.")
                     val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?:
-                        return@postST call.respond(HttpStatusCode.BadRequest, "The invite does not exist or is current not active.")
+                        return@postST badRequest("The invite does not exist or is current not active.")
 
                     // Prevent user from accepting multiple times
                     if (room.members.any {it.user.eqid(user) && it.invitedVia == invite}) {
-                        return@postST call.respond(HttpStatusCode.BadRequest, "This invite has already been accepted")
+                        return@postST badRequest("This invite has already been accepted")
                     }
 
                     // TODO: Prevent user from accepting multiple times
@@ -332,10 +328,7 @@ fun main() {
             postST("/send_prediction/{id}") {
                 val dist: ProbabilityDistribution = call.receive()
                 val id = call.parameters["id"] ?: ""
-                val user = call.userSession?.user ?: run {
-                    call.respond(HttpStatusCode.BadRequest)
-                   return@postST
-                }
+                val user = call.userSession?.user ?: return@postST call.respond(HttpStatusCode.BadRequest)
 
                 val question = serverState.questions[id] ?: run {
                     call.respond(HttpStatusCode.BadRequest)
@@ -347,7 +340,7 @@ fun main() {
                     call.respond(HttpStatusCode.BadRequest)
                     return@postST
                 }
-                val pred = Prediction(unixNow(), dist)
+                val pred = Prediction(ts=unixNow(), dist = dist, question = question.ref, user = user.ref)
                 serverState.addPrediction(question, pred)
 
                 call.transientUserData?.refreshRunningWebsockets()

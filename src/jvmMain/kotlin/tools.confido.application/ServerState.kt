@@ -1,6 +1,5 @@
 package tools.confido.state
 
-import com.mongodb.DuplicateKeyException
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.reactivestreams.client.ClientSession
 import kotlinx.coroutines.sync.Mutex
@@ -9,13 +8,14 @@ import kotlinx.coroutines.withContext
 import org.litote.kmongo.coroutine.*
 import org.litote.kmongo.reactivestreams.KMongo
 import rooms.Room
+import tools.confido.distributions.*
+import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.refs.*
+import tools.confido.spaces.*
+import tools.confido.utils.*
 import users.User
 import java.lang.RuntimeException
-import kotlin.contracts.ExperimentalContracts
-import kotlin.contracts.InvocationKind
-import kotlin.contracts.contract
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
@@ -30,10 +30,14 @@ class TransactionContextElement(val sess: ClientSession) : AbstractCoroutineCont
     companion object Key : CoroutineContext.Key<TransactionContextElement>
 }
 
+
 class ServerGlobalState : GlobalState() {
     override val rooms:  MutableMap<String, Room> = mutableMapOf()
     override val questions:  MutableMap<String, Question> = mutableMapOf()
     override val users:  MutableMap<String, User> = mutableMapOf()
+
+    val userPred : MutableMap<Ref<Question>, MutableMap<Ref<User>, Prediction>> = mutableMapOf()
+    override val groupPred : MutableMap<Ref<Question>, Prediction?> = mutableMapOf()
 
     // Now, for simplicity, serialize all mutations
     val mutationMutex = Mutex()
@@ -43,15 +47,53 @@ class ServerGlobalState : GlobalState() {
     val questionsColl = database.getCollection<Question>("questions")
     val usersColl = database.getCollection<User>("users")
     val roomsColl = database.getCollection<Room>("rooms")
+    val userPredColl = database.getCollection<Prediction>("userPred")
 
-    suspend fun <T: Entity> loadEntityMap(coll: CoroutineCollection<T>) : Map<String, T> =
-        coll.find().toList().associateBy { question -> question.id }.toMap()
+    suspend fun <T: HasId> loadEntityMap(coll: CoroutineCollection<T>) : Map<String, T> =
+        coll.find().toList().associateBy { entity -> entity.id }.toMap()
 
     // initial load from database
     suspend fun load() {
         questions.putAll(loadEntityMap(questionsColl))
         rooms.putAll(loadEntityMap(roomsColl))
         users.putAll(loadEntityMap(usersColl))
+        userPredColl.find().toFlow().collect {
+            userPred.getOrPut(it.question) {mutableMapOf()}[it.user ?: return@collect] = it
+        }
+        recalcGroupPred()
+    }
+
+    fun calculateGroupDist(space: Space, dists: Collection<ProbabilityDistribution>): ProbabilityDistribution =
+        when (space) {
+            is NumericSpace -> {
+                val probs = dists.mapNotNull { (it as? ContinuousProbabilityDistribution)?.discretize()?.binProbs }
+                    .fold(zeros(space.bins)) { a,b -> a `Z+` b }.normalize()
+                DiscretizedContinuousDistribution(space, probs)
+            }
+            is BinarySpace -> {
+                val prob = dists.mapNotNull { (it as? BinaryDistribution)?.yesProb  }.average().clamp01()
+                BinaryDistribution(prob)
+            }
+        }
+
+    fun calculateGroupPred(question: Question, preds: Collection<Prediction>): Prediction? =
+        when (preds.size) {
+            0 -> null
+            1 -> preds.first().copy(user = null)
+            else -> {
+                Prediction(user = null, ts = preds.map{it.ts}.max(), question = question.ref,
+                            dist = calculateGroupDist(question.answerSpace, preds.map{it.dist}))
+            }
+        }
+
+    fun recalcGroupPred(question: Question) {
+        val gp = calculateGroupPred(question, userPred[question.ref]?.values ?: emptyList())
+        groupPred[question.ref] = gp
+    }
+    fun recalcGroupPred() {
+        questions.values.forEach {
+            recalcGroupPred(it)
+        }
     }
 
     fun export(session: UserSession): SentState {
@@ -149,7 +191,7 @@ class ServerGlobalState : GlobalState() {
             val map = getMap<T>()
             val coll = getCollection<T>()
             val orig = map.remove(ref.id)
-            map[ref.id] ?: if (ignoreNonexistent) return null else throw NoSuchElementException()
+            map[ref.id] ?: if (ignoreNonexistent) return@withMutationLock null else throw NoSuchElementException()
             coll.deleteOneById(ref.id)
             return@withMutationLock orig
         }
@@ -172,7 +214,7 @@ class ServerGlobalState : GlobalState() {
         return withMutationLock{
             client.startSession().use { clientSession ->
                 clientSession.startTransaction()
-                lateinit var ret: R
+                var ret: R
                 withContext(TransactionContextElement(clientSession)) {
                     ret = body()
                 }

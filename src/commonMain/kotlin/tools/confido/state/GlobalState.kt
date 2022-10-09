@@ -12,6 +12,7 @@ abstract class GlobalState {
     abstract val rooms:  Map<String, Room>
     abstract val questions:  Map<String, Question>
     abstract val users:  Map<String, User>
+    abstract val groupPred : Map<Ref<Question>, Prediction?>
 
     // This function should dereference the entity if it is possible to do so
     // without suspending, return null otherwise.
