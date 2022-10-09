@@ -2,18 +2,33 @@ package tools.confido.state
 
 import com.mongodb.DuplicateKeyException
 import com.mongodb.client.model.ReplaceOptions
+import com.mongodb.reactivestreams.client.ClientSession
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import org.litote.kmongo.coroutine.*
 import org.litote.kmongo.reactivestreams.KMongo
 import rooms.Room
 import tools.confido.question.Question
 import tools.confido.refs.*
 import users.User
+import java.lang.RuntimeException
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.coroutineContext
 
 
 class DuplicateIdException : Exception() {}
+object MutationLockedContextElement : AbstractCoroutineContextElement(Key) {
+    object Key : CoroutineContext.Key<MutationLockedContextElement>
 
+}
+class TransactionContextElement(val sess: ClientSession) : AbstractCoroutineContextElement(Key) {
+    companion object Key : CoroutineContext.Key<TransactionContextElement>
+}
 
 class ServerGlobalState : GlobalState() {
     override val rooms:  MutableMap<String, Room> = mutableMapOf()
@@ -67,7 +82,7 @@ class ServerGlobalState : GlobalState() {
     suspend inline fun <reified T: ServerImmediateDerefEntity>
     updateEntity(new: T, compare: T? = null,
                 upsert: Boolean = false,
-                merge: (orig: T, new: T)->T = { _, new -> new }, ) : T{
+                crossinline merge: (orig: T, new: T)->T = { _, new -> new }, ) : T{
         mutationMutex.withLock {
             if (upsert && compare != null) throw IllegalArgumentException()
             val map = getMap<T>()
@@ -91,9 +106,20 @@ class ServerGlobalState : GlobalState() {
         }
     }
 
+    suspend inline fun <R> withMutationLock(crossinline body: suspend ServerGlobalState.()->R): R =
+        if (coroutineContext[MutationLockedContextElement.Key] != null) { // parent has already locked
+            body()
+        } else {
+            mutationMutex.withLock {
+                withContext(MutationLockedContextElement) {
+                    body()
+                }
+            }
+        }
+
     suspend inline fun <reified T: ServerImmediateDerefEntity>
-    modifyEntity(ref: Ref<T>, modify: (T)->T): T {
-        mutationMutex.withLock {
+    modifyEntity(ref: Ref<T>, crossinline modify: (T)->T): T =
+        withMutationLock {
             val map = getMap<T>()
             val coll = getCollection<T>()
             val orig = map[ref.id] ?: throw NoSuchElementException()
@@ -101,13 +127,12 @@ class ServerGlobalState : GlobalState() {
             val new = modify(orig)
             map[ref.id] = new
             coll.replaceOne(new, ReplaceOptions())
-            return new
+            return@withMutationLock new
         }
-    }
 
     suspend inline fun <reified T: ServerImmediateDerefEntity>
-    insertEntity(entity: T, forceId: Boolean = false) : T {
-        mutationMutex.withLock {
+    insertEntity(entity: T, forceId: Boolean = false) : T =
+        withMutationLock {
             if (!entity.id.isEmpty() && !forceId) throw IllegalArgumentException()
             val new = entity.assignIdIfNeeded()
             val map = getMap<T>()
@@ -115,11 +140,47 @@ class ServerGlobalState : GlobalState() {
             if (map.containsKey(new.id)) throw DuplicateIdException()
             map[entity.id] = new
             coll.insertOne(new)
-            return new
+            return@withMutationLock new
+        }
+
+    suspend inline fun <reified T: ServerImmediateDerefEntity>
+            deleteEntity(ref: Ref<T>, ignoreNonexistent: Boolean = false) : T? =
+        withMutationLock {
+            val map = getMap<T>()
+            val coll = getCollection<T>()
+            val orig = map.remove(ref.id)
+            map[ref.id] ?: if (ignoreNonexistent) return null else throw NoSuchElementException()
+            coll.deleteOneById(ref.id)
+            return@withMutationLock orig
+        }
+    suspend inline fun <reified T: ServerImmediateDerefEntity>
+            deleteEntity(entity: T, ignoreNonexistent: Boolean = false) : T? {
+        mutationMutex.withLock {
+            val map = getMap<T>()
+            val coll = getCollection<T>()
+            val orig = map[entity.id] ?: if (ignoreNonexistent) return null else throw NoSuchElementException()
+            if (orig != entity) throw ConcurrentModificationException()
+            map.remove(entity.id)
+            coll.deleteOneById(entity.id)
+            return orig
         }
     }
 
-
+    suspend inline fun <R> withTransaction(crossinline body: suspend ServerGlobalState.()->R): R {
+        if (coroutineContext[TransactionContextElement.Key] != null)
+            throw RuntimeException("Nested transactions are not supported")
+        return withMutationLock{
+            client.startSession().use { clientSession ->
+                clientSession.startTransaction()
+                lateinit var ret: R
+                withContext(TransactionContextElement(clientSession)) {
+                    ret = body()
+                }
+                clientSession.commitTransactionAndAwait()
+                return@use ret
+            }
+        }
+    }
 }
 
 
