@@ -78,7 +78,11 @@ object ServerState {
         users[debugUser.id] = debugUser
 
         // TODO: Persist rooms, for now we create one room that contains all questions and one "private" room with a new question
-        val pub = "testpub" to Room("testpub", "Testing room", now(), questions = questions.values.toMutableList())
+        val pub = "testpub" to Room("testpub", "Testing room", now(), questions = questions.values.toMutableList(), members = mutableListOf(
+            RoomMembership(debugAdmin, Moderator, null),
+            RoomMembership(debugUser, Forecaster, null),
+        )
+        )
         val qtestpriv = Question("qtestpriv", "Is this a private question?", BinarySpace)
         questions["qtestpriv"] = qtestpriv
         val priv = "testpriv" to Room("testpriv", "Private room", now(), description = "A private room.", questions = mutableListOf(qtestpriv))
@@ -228,6 +232,7 @@ fun main() {
                 val inviteLink = InviteLink(create.description ?: "", create.role, user, now())
                 room.inviteLinks.add(inviteLink)
 
+                call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK, inviteLink)
             }
             post("/invite/accept") {

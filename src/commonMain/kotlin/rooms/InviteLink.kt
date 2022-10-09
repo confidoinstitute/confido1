@@ -6,6 +6,13 @@ import tools.confido.utils.randomString
 import users.User
 
 @Serializable
+enum class InviteLinkState {
+    ENABLED,
+    DISABLED_JOIN,
+    DISABLED_FULL,
+}
+
+@Serializable
 data class InviteLink(
     val description: String,
     /**
