@@ -20,7 +20,7 @@ val EditQuestions = FC<EditQuestionProps> { props ->
     
     fun postEditQuestion(id: String, field: EditQuestionFieldType, value: Boolean) {
         val editQuestion: EditQuestion = EditQuestionField(field, value)
-        Client.postData("/edit_question/$id", editQuestion)
+        Client.postData("/questions/$id/edit", editQuestion)
     }
 
     TableContainer {

@@ -213,7 +213,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
 
     fun deleteQuestion() {
         CoroutineScope(EmptyCoroutineContext).launch {
-            Client.httpClient.delete("/delete_question/$id")
+            Client.httpClient.delete("/questions/$id")
         }
     }
 
