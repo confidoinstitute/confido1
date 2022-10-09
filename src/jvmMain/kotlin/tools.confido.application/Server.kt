@@ -217,12 +217,20 @@ fun main() {
                     call.respond(HttpStatusCode.BadRequest)
                 } else {
                     val accept: AcceptInvite = call.receive()
-                    val room = ServerState.rooms[accept.roomId] ?: return@post
-                    val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: return@post
+
+                    val room = ServerState.rooms[accept.roomId] ?: run {
+                        call.respond(HttpStatusCode.BadRequest, "The room does not exist.")
+                        return@post
+                    }
+
+                    val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: run {
+                        call.respond(HttpStatusCode.BadRequest, "The invite does not exist or is current not active.")
+                        return@post
+                    }
 
                     // Prevent user from accepting multiple times
                     if (room.members.any {it.user.eqid(user) && it.invitedVia == invite}) {
-                        call.respond(HttpStatusCode.BadRequest, "This has already been accepted")
+                        call.respond(HttpStatusCode.BadRequest, "This invite has already been accepted")
                         return@post
                     }
 
@@ -238,8 +246,16 @@ fun main() {
                     call.respond(HttpStatusCode.BadRequest)
                 } else {
                     val accept: AcceptInviteAndCreateUser = call.receive()
-                    val room = ServerState.rooms[accept.roomId] ?: return@post
-                    val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: return@post
+
+                    val room = ServerState.rooms[accept.roomId] ?: run {
+                        call.respond(HttpStatusCode.BadRequest, "The room does not exist.")
+                        return@post
+                    }
+
+                    val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: run {
+                        call.respond(HttpStatusCode.BadRequest, "The invite does not exist or is currently not active.")
+                        return@post
+                    }
 
                     val newUser = User(randomString(32), UserType.GUEST, accept.email, false, accept.userNick, null, now(), now())
 
