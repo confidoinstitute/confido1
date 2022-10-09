@@ -43,7 +43,7 @@ annotation class DelicateRefAPI
 @JvmInline
 // using optin instead of making constructor private because private members
 // cannot be called from public inline functions
-value class Ref<T: Entity> @DelicateRefAPI  constructor(val id: String) {
+value class Ref<T: Entity> (val id: String) {
 }
 
 inline val <reified  T: Entity> T.ref: Ref<T> get() {

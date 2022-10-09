@@ -142,6 +142,10 @@ fun Route.getST(path: String, body: PipelineInterceptor<Unit, ApplicationCall>):
     get(path) { arg-> withContext(singleThreadContext) { body(this@get, arg) } }
 fun Route.postST(path: String, body: PipelineInterceptor<Unit, ApplicationCall>): Route =
     post(path) { arg-> withContext(singleThreadContext) { body(this@post, arg) } }
+fun Route.putST(path: String, body: PipelineInterceptor<Unit, ApplicationCall>): Route =
+    put(path) { arg-> withContext(singleThreadContext) { body(this@put, arg) } }
+fun Route.deleteST(path: String, body: PipelineInterceptor<Unit, ApplicationCall>): Route =
+    delete(path) { arg-> withContext(singleThreadContext) { body(this@delete, arg) } }
 
 fun Route.webSocketST(
     path: String,
@@ -267,7 +271,7 @@ fun main() {
                 }
             }
             editQuestion(this)
-            postST("/add_comment/{id}") {
+            postST("/questions/{id}/comments/add") {
                 val createdComment: CreateComment = call.receive()
                 val id = call.parameters["id"] ?: ""
                 val user = call.userSession?.user ?: run {

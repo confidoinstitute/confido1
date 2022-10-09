@@ -19,24 +19,18 @@ import tools.confido.utils.generateId
 import tools.confido.utils.randomString
 
 fun editQuestion(routing: Routing) {
-    routing.delete("/delete_question/{id}") {
-        val id = call.parameters["id"] ?: ""
-
-        ServerState.questions[id]?.let {question ->
-            ServerState.questions.remove(question)
-            ServerState.rooms.values.map {room ->
-                room.questions.remove(question.ref)
+    routing.deleteST("/delete_question/{id}") {
+        val id = call.parameters["id"] ?: return@delete call.respond(HttpStatusCode.BadRequest)
+        val ref = Ref<Question>(id)
+        serverState.withTransaction {
+            deleteEntity(ref)
+            rooms.values.toList().forEach() { room ->
+                if (room.questions.contains(ref)) {
+                    serverState.updateEntity(room.copy(questions = room.questions.filter { it != ref }.toList()))
+                }
             }
-            ServerState.userPredictions.values.map {userPrediction ->
-                userPrediction.remove(id)
-            }
-            ServerState.groupPredictions.remove(id)
-
-            call.transientUserData?.refreshRunningWebsockets()
-            call.respond(HttpStatusCode.OK)
-        } ?: run {
-            call.respond(HttpStatusCode.BadRequest)
         }
+        call.respond(HttpStatusCode.OK)
     }
 
     routing.postST("/rooms/{id}/questions/add") {

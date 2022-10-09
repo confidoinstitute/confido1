@@ -18,9 +18,9 @@ data class Room(
     val name: String,
     val createdAt: Instant,
     val description: String = "",
-    val questions: MutableList<Ref<Question>> = mutableListOf(),
-    val members: MutableList<RoomMembership> = mutableListOf(),
-    val inviteLinks: MutableList<InviteLink> = mutableListOf(),
+    val questions: List<Ref<Question>> = emptyList(),
+    val members: List<RoomMembership> = emptyList(),
+    val inviteLinks: List<InviteLink> = emptyList(),
 ) : ImmediateDerefEntity {
 
     fun hasPermission(user: User?, permission: RoomPermission): Boolean {
