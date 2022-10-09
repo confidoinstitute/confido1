@@ -2,6 +2,7 @@ package components.questions
 
 import components.AppStateContext
 import components.DistributionSummary
+import components.UserAvatar
 import csstype.Length
 import csstype.Overflow
 import csstype.number
@@ -76,8 +77,9 @@ val Comment = FC<CommentProps> { props ->
             val name = props.comment.user.nick ?: "Anonymous"
             title = ReactNode(name)
             subheader = ReactNode(textAgo)
-            val letter = name.getOrNull(0) ?: '?'
-            avatar = Avatar.create { +"$letter" }
+            avatar = UserAvatar.create {
+                user = props.comment.user
+            }
             if (props.deleteMode) {
                 if (canDelete) {
                     action = IconButton.create {

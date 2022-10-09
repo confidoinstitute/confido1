@@ -1,16 +1,25 @@
 package rooms
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 @Serializable
 sealed class RoomRole(val permissions: Set<RoomPermission>) {
+    @Transient
+    abstract val id: String
+    @Transient
+    abstract val name: String
+
     fun hasPermission(permission: RoomPermission): Boolean {
         return permissions.contains(permission)
     }
 }
 
 @Serializable
-object Forecaster : RoomRole(setOf(RoomPermission.VIEW_QUESTIONS, RoomPermission.SUBMIT_PREDICTION))
+object Forecaster : RoomRole(setOf(RoomPermission.VIEW_QUESTIONS, RoomPermission.SUBMIT_PREDICTION)) {
+    override val id = "forecaster"
+    override val name = "Forecaster"
+}
 
 @Serializable
 object Moderator : RoomRole(
@@ -24,5 +33,7 @@ object Moderator : RoomRole(
         RoomPermission.MANAGE_QUESTIONS,
         RoomPermission.MANAGE_MEMBERS
     )
-)
-
+) {
+    override val id = "moderator"
+    override val name = "Moderator"
+}

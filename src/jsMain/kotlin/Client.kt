@@ -29,8 +29,8 @@ object Client {
         httpClient.postJson(url, payload) {}
     }
 
-    suspend inline fun <reified T, reified R> postDataAndReceive(url: String, payload: T): R {
-        return httpClient.postJson(url, payload) {}.body()
+    suspend inline fun <reified T, reified R> postDataAndReceive(url: String, payload: T, block: (HttpRequestBuilder.() -> Unit) = {}): R {
+        return httpClient.postJson(url, payload, block).body()
     }
 }
 

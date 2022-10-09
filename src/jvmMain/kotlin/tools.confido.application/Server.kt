@@ -43,6 +43,7 @@ import tools.confido.spaces.*
 import tools.confido.state.serverState
 import tools.confido.utils.*
 import users.DebugAdmin
+import users.DebugMember
 import users.User
 import users.UserType
 import java.io.File
@@ -219,14 +220,41 @@ fun main() {
 
                 call.respond(HttpStatusCode.OK, InviteStatus(true, room.name))
             }
+            postST("/invite/create") {
+                val user = call.userSession?.user ?:
+                    return@postST call.respond(HttpStatusCode.BadRequest)
+
+                val create: CreateNewInvite = call.receive()
+                val room = Ref<Room>(create.roomId).deref() ?:
+                    return@postST call.respond(HttpStatusCode.BadRequest)
+
+                if (!room.hasPermission(user, RoomPermission.MANAGE_MEMBERS)) {
+                    call.respond(HttpStatusCode.Unauthorized)
+                    return@postST
+                }
+
+                val inviteLink = InviteLink(create.description ?: "", create.role, user, now())
+                serverState.modifyEntity(room.ref) {
+                    it.copy(inviteLinks=it.inviteLinks + listOf(inviteLink))
+                }
+
+                call.respond(HttpStatusCode.OK, inviteLink)
+            }
             postST("/invite/accept") {
                 val user = call.userSession?.user
                 if (user == null) {
                     call.respond(HttpStatusCode.BadRequest)
                 } else {
                     val accept: AcceptInvite = call.receive()
-                    val room = serverState.rooms[accept.roomId] ?: return@postST
-                    val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: return@postST
+                    val room = serverState.rooms[accept.roomId] ?:
+                        return@postST call.respond(HttpStatusCode.BadRequest, "The room does not exist.")
+                    val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?:
+                        return@postST call.respond(HttpStatusCode.BadRequest, "The invite does not exist or is current not active.")
+
+                    // Prevent user from accepting multiple times
+                    if (room.members.any {it.user.eqid(user) && it.invitedVia == invite}) {
+                        return@postST call.respond(HttpStatusCode.BadRequest, "This invite has already been accepted")
+                    }
 
                     // TODO: Prevent user from accepting multiple times
                     serverState.modifyEntity(room.ref) {
@@ -243,8 +271,8 @@ fun main() {
                     call.respond(HttpStatusCode.BadRequest)
                 } else {
                     val accept: AcceptInviteAndCreateUser = call.receive()
-                    val room = serverState.rooms[accept.roomId] ?: return@postST
-                    val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: return@postST
+                    val room = serverState.rooms[accept.roomId] ?: return@postST call.respond(HttpStatusCode.BadRequest, "The room does not exist.")
+                    val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: return@postST call.respond(HttpStatusCode.BadRequest, "The invite does not exist or is currently not active.")
 
                     val newUser = User(randomString(32), UserType.GUEST, accept.email, false, accept.userNick, null, now(), now())
 
