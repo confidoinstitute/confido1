@@ -64,10 +64,11 @@ val NewInvite = FC<Props> {
                 padding = themed(2)
             }
             variant = TypographyVariant.body1
-            val url = "${window.location.origin}/room/${room.id}/invite/${lastInvite!!.token}"
+            val invitePath = "/room/${room.id}/invite/${lastInvite!!.token}"
+            val url = "${window.location.origin}$invitePath"
             +"Created new invite, link: "
-            Link {
-                variant = TypographyVariant.body1
+            react.router.dom.Link {
+                to = invitePath
                 href = url
                 +url
             }

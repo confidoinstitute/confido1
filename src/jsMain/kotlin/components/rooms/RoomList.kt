@@ -17,6 +17,7 @@ external interface RoomListProps : Props {
 val RoomList = FC<RoomListProps> { props ->
     val clientAppState = useContext(AppStateContext)
     val state = clientAppState.state
+    val stale = clientAppState.stale
 
     List {
         dense = true
@@ -38,6 +39,7 @@ val RoomList = FC<RoomListProps> { props ->
             this.key = "#create"
             to = "/new_room"
             onNavigate = props.onNavigate
+            disabled = stale
 
             ListItemIcon {
                 AddIcon {}

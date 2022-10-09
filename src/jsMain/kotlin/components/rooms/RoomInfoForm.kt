@@ -1,5 +1,7 @@
 package components.rooms
 
+import components.AppStateContext
+import components.ClientAppState
 import csstype.AlignItems
 import csstype.JustifyContent
 import csstype.Margin
@@ -7,13 +9,10 @@ import mui.material.*
 import mui.system.responsive
 import mui.system.sx
 import payloads.requests.BaseRoomInformation
-import react.FC
-import react.Props
-import react.ReactNode
+import react.*
 import react.dom.html.ButtonType
 import react.dom.html.ReactHTML.form
 import react.dom.onChange
-import react.useState
 import rooms.Room
 import utils.byTheme
 import utils.eventValue
@@ -27,6 +26,7 @@ external interface RoomInfoFormProps : Props {
 }
 
 val RoomInfoForm = FC<RoomInfoFormProps> { props ->
+    val stale = useContext(AppStateContext).stale
 
     val roomName = props.room?.name ?: "New room…"
     val editMode = props.room != null
@@ -91,12 +91,12 @@ val RoomInfoForm = FC<RoomInfoFormProps> { props ->
                 }
                 Button {
                     onClick = { props.onCancel?.invoke() }
-                    disabled = props.disabled
+                    disabled = props.disabled || stale
                     +"Cancel"
                 }
                 Button {
                     type = ButtonType.submit
-                    disabled = props.disabled
+                    disabled = props.disabled || stale
                     +"Confirm"
                 }
             }
@@ -106,7 +106,7 @@ val RoomInfoForm = FC<RoomInfoFormProps> { props ->
                     type = ButtonType.submit
                     color = ButtonColor.primary
                     variant = ButtonVariant.contained
-                    disabled = props.disabled
+                    disabled = props.disabled || stale
                     +"Create"
                 }
             }

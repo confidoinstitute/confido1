@@ -45,6 +45,7 @@ external interface QuestionPredictionChipProps : Props {
 }
 
 val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
+    val stale = useContext(AppStateContext).stale
     var predictionAgoText by useState("")
     useEffect(props.prediction) {
         if (props.prediction == null)
@@ -107,7 +108,7 @@ val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
                     }
                     variant = ChipVariant.outlined
                 }
-            } else {
+            } else if (!stale) {
                 Chip {
                     label = ReactNode("Predictions closed")
                     variant = ChipVariant.outlined

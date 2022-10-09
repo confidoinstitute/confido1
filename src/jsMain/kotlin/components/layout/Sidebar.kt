@@ -1,5 +1,6 @@
 package components.layout
 
+import components.AppStateContext
 import components.ListItemNavigation
 import components.rooms.RoomList
 import csstype.*
@@ -19,6 +20,7 @@ external interface SidebarProps : Props {
 }
 
 val Sidebar = FC<SidebarProps> { props ->
+    val stale = useContext(AppStateContext).stale
     val navigate = useNavigate()
 
     fun navigateClose() {
@@ -66,6 +68,7 @@ val Sidebar = FC<SidebarProps> { props ->
                 }
             }
             ListItemButton {
+                disabled = stale
                 ListItemText {
                     primary = ReactNode("Log out")
                 }
