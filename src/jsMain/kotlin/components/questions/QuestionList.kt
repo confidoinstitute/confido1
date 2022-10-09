@@ -130,7 +130,6 @@ external interface QuestionItemProps : Props {
 val QuestionItem = FC<QuestionItemProps> { props ->
     val stale = useContext(AppStateContext).stale
     val question = props.question
-    val navigate = useNavigate()
 
     var pendingPrediction: ProbabilityDistribution? by useState(null)
     var pendingPredictionState by useState(PendingPredictionState.NONE)
@@ -260,6 +259,7 @@ external interface QuestionListProps : Props {
 val QuestionList = FC<QuestionListProps> { props ->
     val clientAppState = useContext(AppStateContext)
     val appState = clientAppState.state
+    val stale = clientAppState.stale
     val questions = props.questions.sortedBy { it.name }
     val visibleQuestions = if (props.showHiddenQuestions) questions else questions.filter { it.visible }
 
@@ -304,6 +304,7 @@ val QuestionList = FC<QuestionListProps> { props ->
                 this.key = "##add##"
                 this.startIcon = AddIcon.create()
                 this.color = ButtonColor.primary
+                this.disabled = stale
                 onClick = { editQuestion = null; editOpen = true }
                 +"Add question…"
             }

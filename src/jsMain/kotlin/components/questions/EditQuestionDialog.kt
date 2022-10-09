@@ -1,6 +1,7 @@
 package components.questions
 
 import Client
+import components.AppStateContext
 import components.rooms.RoomContext
 import io.ktor.client.request.*
 import kotlinx.coroutines.CoroutineScope
@@ -169,6 +170,7 @@ external interface EditQuestionDialogProps : Props {
 val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     val q = props.question
     val room = useContext(RoomContext)
+    val stale = useContext(AppStateContext).stale
 
     // Question values
     var id by useState(q?.id ?: "")
@@ -349,6 +351,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
             }
             Button {
                 onClick = {submitQuestion()}
+                disabled = stale
                 if (q != null) +"Edit" else +"Add"
             }
         }

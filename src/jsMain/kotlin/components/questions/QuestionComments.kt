@@ -154,7 +154,6 @@ val CommentInput = FC<CommentInputProps> { props ->
                 this.name = "content"
                 this.value = content
                 this.onChange = { content = it.eventValue() }
-                this.disabled = stale
                 if (errorSend) {
                     this.error = true
                     this.helperText = ReactNode("Comment failed to send. Try again later.")
@@ -179,7 +178,7 @@ val CommentInput = FC<CommentInputProps> { props ->
                     control = Checkbox.create {
                         this.name = "attach"
                         this.checked = attachPrediction
-                        this.disabled = props.prediction == null || stale
+                        this.disabled = props.prediction == null
                         this.onChange = { _, value -> attachPrediction = value }
                     }
                 }

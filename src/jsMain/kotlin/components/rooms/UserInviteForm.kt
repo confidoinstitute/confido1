@@ -1,5 +1,6 @@
 package components.rooms
 
+import components.AppStateContext
 import components.UserAvatar
 import csstype.rem
 import kotlinx.browser.window
@@ -92,6 +93,7 @@ internal val users: Array<ExistingUser> = listOf(
 
 val UserInviteForm = FC<Props> {
     var chosenUser by useState<UserAutocomplete?>(null)
+    val stale = useContext(AppStateContext).stale
 
     Stack {
         this.direction = responsive(StackDirection.row)
@@ -118,7 +120,7 @@ val UserInviteForm = FC<Props> {
             sx {
                 width = 7.rem
             }
-            disabled = chosenUser == null
+            disabled = chosenUser == null || stale
             when(chosenUser) {
                 is NewUser -> {
                     endIcon = icons.SendIcon.create()

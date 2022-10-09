@@ -32,6 +32,7 @@ val Room = FC<Props> {
     RoomContext.Provider {
         value = room
 
+        // TODO properly make edit mode
         if (editMode) {
             RoomInfoForm {
                 this.room = room

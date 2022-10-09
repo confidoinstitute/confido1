@@ -1,6 +1,7 @@
 package components.rooms
 
 import Client
+import components.AppStateContext
 import io.ktor.client.request.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -30,6 +31,7 @@ external interface EditInviteDialogProps : Props {
 val EditInviteDialog = FC<EditInviteDialogProps> { props ->
     val i = props.invite
     val room = useContext(RoomContext)
+    val stale = useContext(AppStateContext).stale
 
     // Invitation link values
     var description by useState(i?.description ?: "Shared Invite Link")
@@ -151,6 +153,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
             }
             Button {
                 onClick = {submitInviteLink()}
+                disabled = stale
                 if (i != null) +"Edit" else +"Add"
             }
         }

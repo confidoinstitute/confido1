@@ -4,6 +4,8 @@ import components.AppStateContext
 import components.ListItemNavigation
 import components.rooms.RoomList
 import csstype.*
+import icons.LogoutIcon
+import icons.SettingsIcon
 import mui.material.*
 import mui.system.Breakpoint
 import mui.system.responsive
@@ -61,6 +63,9 @@ val Sidebar = FC<SidebarProps> { props ->
         List {
             dense = true
             ListItemNavigation {
+                ListItemIcon {
+                    SettingsIcon {}
+                }
                 to = "/set_name"
                 this.onNavigate = ::navigateClose
                 ListItemText {
@@ -69,6 +74,9 @@ val Sidebar = FC<SidebarProps> { props ->
             }
             ListItemButton {
                 disabled = stale
+                ListItemIcon {
+                    LogoutIcon {}
+                }
                 ListItemText {
                     primary = ReactNode("Log out")
                 }

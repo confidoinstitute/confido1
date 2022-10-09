@@ -3,9 +3,13 @@ package components.rooms
 import components.AppStateContext
 import components.UserAvatar
 import components.questions.EditQuestionDialog
+import hooks.useDebounce
 import icons.*
 import kotlinx.browser.window
 import kotlinx.js.Object
+import kotlinx.js.timers.Timeout
+import kotlinx.js.timers.clearTimeout
+import kotlinx.js.timers.setTimeout
 import react.*
 import mui.material.*
 import mui.system.sx
@@ -23,6 +27,7 @@ import utils.themed
 val RoomMembers = FC<Props> {
     val clientAppState = useContext(AppStateContext)
     val state = clientAppState.state
+    val stale = clientAppState.stale
     val room = useContext(RoomContext)
     val canManage = state.hasPermission(room, RoomPermission.MANAGE_MEMBERS)
 
@@ -93,6 +98,7 @@ val RoomMembers = FC<Props> {
                 this.key = "##add##"
                 this.startIcon = AddIcon.create()
                 this.color = ButtonColor.primary
+                this.disabled = stale
                 onClick = { editInviteLink = null; editInviteLinkOpen = true }
                 +"Add invitation link…"
             }
@@ -111,6 +117,12 @@ val InvitationMembers = FC<InvitationMembersProps> {props ->
     val stale = useContext(AppStateContext).stale
     val room = useContext(RoomContext)
 
+    var copyShown by useState(false)
+    useDebounce(3000, copyShown) {
+        if (copyShown)
+            copyShown = false
+    }
+
     val active = props.invitation.canJoin && props.invitation.canAccess
 
     ListItem {
@@ -125,13 +137,22 @@ val InvitationMembers = FC<InvitationMembersProps> {props ->
             }
             secondary = ReactNode("${props.members?.size ?: 0} members")
         }
-        IconButton {
-            ContentCopyIcon {}
-            disabled = !active
-            onClick = {
-                val invitePath = "/room/${room.id}/invite/${props.invitation.token}"
-                val url = "${window.location.origin}/$invitePath"
-                window.navigator.clipboard.writeText(url)
+        Tooltip {
+            open = copyShown
+            title = ReactNode("Link copied!")
+            arrow = true
+            IconButton {
+                ContentCopyIcon {}
+                disabled = !active
+                onClick = {
+                    val invitePath = "/room/${room.id}/invite/${props.invitation.token}"
+                    val url = "${window.location.origin}/$invitePath"
+                    window.navigator.clipboard.writeText(url)
+                    copyShown = true
+                }
+                onMouseOut = {
+                    copyShown = false
+                }
             }
         }
         IconButton {
