@@ -2,6 +2,8 @@ package tools.confido.state
 
 import com.mongodb.DuplicateKeyException
 import com.mongodb.client.model.ReplaceOptions
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.litote.kmongo.coroutine.*
 import org.litote.kmongo.reactivestreams.KMongo
 import rooms.Room
@@ -17,6 +19,9 @@ class ServerGlobalState : GlobalState() {
     override val rooms:  MutableMap<String, Room> = mutableMapOf()
     override val questions:  MutableMap<String, Question> = mutableMapOf()
     override val users:  MutableMap<String, User> = mutableMapOf()
+
+    // Now, for simplicity, serialize all mutations
+    val mutationMutex = Mutex()
 
     val client = KMongo.createClient().coroutine
     val database = client.getDatabase(System.getenv("CONFIDO_DB_NAME") ?: "confido1")
@@ -62,50 +67,56 @@ class ServerGlobalState : GlobalState() {
     suspend inline fun <reified T: ServerImmediateDerefEntity>
     updateEntity(new: T, compare: T? = null,
                 upsert: Boolean = false,
-                merge: (T,T)->T = { orig, new -> new }, ) : T{
-        if (upsert && compare != null) throw IllegalArgumentException()
-        val map = getMap<T>()
-        val coll = getCollection<T>()
-        val orig = map[new.id]
-        if (orig == null) {
-            if (upsert) {
-                return insertEntity(new)
-            } else {
-                throw NoSuchElementException()
+                merge: (orig: T, new: T)->T = { _, new -> new }, ) : T{
+        mutationMutex.withLock {
+            if (upsert && compare != null) throw IllegalArgumentException()
+            val map = getMap<T>()
+            val coll = getCollection<T>()
+            val orig = map[new.id]
+            if (orig == null) {
+                if (upsert) {
+                    return insertEntity(new)
+                } else {
+                    throw NoSuchElementException()
+                }
             }
+            compare?.let {
+                if (compare.id != new.id) throw IllegalArgumentException()
+                if (orig != compare) throw ConcurrentModificationException()
+            }
+            val merged = merge(orig, new)
+            map[new.id] = merged
+            coll.replaceOne(merged, ReplaceOptions())
+            return merged
         }
-        compare?.let {
-            if (compare.id != new.id) throw IllegalArgumentException()
-            if (orig != compare) throw ConcurrentModificationException()
-        }
-        val merged = merge(orig, new)
-        map[new.id] = merged
-        coll.replaceOne(merged, ReplaceOptions())
-        return merged
     }
 
     suspend inline fun <reified T: ServerImmediateDerefEntity>
     modifyEntity(ref: Ref<T>, modify: (T)->T): T {
-        val map = getMap<T>()
-        val coll = getCollection<T>()
-        val orig = map[ref.id] ?: throw NoSuchElementException()
-        check(orig.id == ref.id)
-        val new = modify(orig)
-        map[ref.id] = new
-        coll.replaceOne(new, ReplaceOptions())
-        return new
+        mutationMutex.withLock {
+            val map = getMap<T>()
+            val coll = getCollection<T>()
+            val orig = map[ref.id] ?: throw NoSuchElementException()
+            check(orig.id == ref.id)
+            val new = modify(orig)
+            map[ref.id] = new
+            coll.replaceOne(new, ReplaceOptions())
+            return new
+        }
     }
 
     suspend inline fun <reified T: ServerImmediateDerefEntity>
     insertEntity(entity: T, forceId: Boolean = false) : T {
-        if (!entity.id.isEmpty() && !forceId) throw IllegalArgumentException()
-        val new = entity.assignIdIfNeeded()
-        val map = getMap<T>()
-        val coll = getCollection<T>()
-        if (map.containsKey(new.id)) throw DuplicateIdException()
-        map[entity.id] = new
-        coll.insertOne(new)
-        return new
+        mutationMutex.withLock {
+            if (!entity.id.isEmpty() && !forceId) throw IllegalArgumentException()
+            val new = entity.assignIdIfNeeded()
+            val map = getMap<T>()
+            val coll = getCollection<T>()
+            if (map.containsKey(new.id)) throw DuplicateIdException()
+            map[entity.id] = new
+            coll.insertOne(new)
+            return new
+        }
     }
 
 
