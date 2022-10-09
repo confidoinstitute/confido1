@@ -12,6 +12,7 @@ import kotlin.jvm.JvmInline
 
 interface Entity {
     val id: String
+    companion object {}
 }
 inline fun <reified T: ImmediateDerefEntity> Ref<T>.deref(): T? {
     @OptIn(DelicateRefAPI::class)

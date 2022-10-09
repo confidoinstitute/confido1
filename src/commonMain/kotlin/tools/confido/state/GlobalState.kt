@@ -35,6 +35,13 @@ abstract class GlobalState {
     @DelicateRefAPI
     open suspend fun  derefBlocking(collectionId: String, id: String): Entity? =
         derefNonBlocking(collectionId, id)
+
+    inline fun <reified T: ImmediateDerefEntity> get(id: String) = Ref<T>(id).deref()
+    inline fun <reified T: ImmediateDerefEntity> getRef(id: String): Ref<T>? {
+        val ref = Ref<T>(id)
+        ref.deref() ?: return null
+        return ref
+    }
 }
 
 // Client or server will provide concrete implementation

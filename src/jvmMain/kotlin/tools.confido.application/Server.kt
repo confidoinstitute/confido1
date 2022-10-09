@@ -1,53 +1,50 @@
 package tools.confido.application
 
 import com.password4j.Password
-import tools.confido.refs.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
-import io.ktor.server.engine.embeddedServer
+import io.ktor.server.cio.*
+import io.ktor.server.engine.*
 import io.ktor.server.html.*
 import io.ktor.server.http.content.*
-import io.ktor.server.cio.*
 import io.ktor.server.plugins.callloging.*
+import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
-import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.util.pipeline.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.datetime.Clock.System.now
-import kotlinx.datetime.LocalDate
 import kotlinx.html.*
 import kotlinx.serialization.encodeToString
-import org.litote.kmongo.coroutine.CoroutineCollection
-import org.litote.kmongo.coroutine.coroutine
-import org.litote.kmongo.reactivestreams.KMongo
 import org.litote.kmongo.serialization.registerModule
 import payloads.requests.*
 import payloads.responses.InviteStatus
 import rooms.*
 import tools.confido.application.sessions.*
 import tools.confido.distributions.ProbabilityDistribution
-import tools.confido.state.SentState
-import tools.confido.state.UserSession
 import tools.confido.question.*
+import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.serialization.confidoSM
 import tools.confido.spaces.*
+import tools.confido.state.UserSession
 import tools.confido.state.serverState
 import tools.confido.utils.*
-import users.DebugAdmin
-import users.DebugMember
 import users.User
 import users.UserType
 import java.io.File
 import java.time.Duration
+import kotlin.collections.any
+import kotlin.collections.find
+import kotlin.collections.listOf
+import kotlin.collections.plus
+import kotlin.collections.set
 
 fun HTML.index() {
     head {
@@ -211,7 +208,7 @@ fun main() {
             }
             postST("/invite/check_status") {
                 val check: CheckInvite = call.receive()
-                val room = serverState.rooms[check.roomId]
+                val room = serverState.get<Room>(check.roomId)
                 val invite = room?.inviteLinks?.find {it.token == check.inviteToken && it.canJoin}
                 if (room == null || invite == null) {
                     call.respond(HttpStatusCode.OK, InviteStatus(false, null))
@@ -225,7 +222,7 @@ fun main() {
                     return@postST call.respond(HttpStatusCode.BadRequest)
 
                 val create: CreateNewInvite = call.receive()
-                val room = Ref<Room>(create.roomId).deref() ?:
+                val room = serverState.get<Room>(create.roomId) ?:
                     return@postST call.respond(HttpStatusCode.BadRequest)
 
                 if (!room.hasPermission(user, RoomPermission.MANAGE_MEMBERS)) {
@@ -246,7 +243,7 @@ fun main() {
                     call.respond(HttpStatusCode.BadRequest)
                 } else {
                     val accept: AcceptInvite = call.receive()
-                    val room = serverState.rooms[accept.roomId] ?:
+                    val room = serverState.get<Room>(accept.roomId) ?:
                         return@postST call.respond(HttpStatusCode.BadRequest, "The room does not exist.")
                     val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?:
                         return@postST call.respond(HttpStatusCode.BadRequest, "The invite does not exist or is current not active.")
@@ -271,7 +268,7 @@ fun main() {
                     call.respond(HttpStatusCode.BadRequest)
                 } else {
                     val accept: AcceptInviteAndCreateUser = call.receive()
-                    val room = serverState.rooms[accept.roomId] ?: return@postST call.respond(HttpStatusCode.BadRequest, "The room does not exist.")
+                    val room = serverState.get<Room>(accept.roomId) ?: return@postST call.respond(HttpStatusCode.BadRequest, "The room does not exist.")
                     val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: return@postST call.respond(HttpStatusCode.BadRequest, "The invite does not exist or is currently not active.")
 
                     val newUser = User(randomString(32), UserType.GUEST, accept.email, false, accept.userNick, null, now(), now())
