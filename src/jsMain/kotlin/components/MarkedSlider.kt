@@ -63,6 +63,7 @@ val MarkedSlider = FC<MarkedSliderProps> { props ->
         direction = responsive(StackDirection.row)
         sx {
             alignItems = AlignItems.start
+            if (props.madePrediction)
             marginRight = -32.px
         }
         Slider {
@@ -77,6 +78,7 @@ val MarkedSlider = FC<MarkedSliderProps> { props ->
             ref = sliderSize.ref
             this.marks = marks
         }
+        if (props.madePrediction)
         IconButton {
             sx {
                 marginLeft = 4.px
