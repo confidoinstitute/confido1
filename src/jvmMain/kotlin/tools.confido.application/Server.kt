@@ -158,7 +158,10 @@ fun main() {
     registerModule(confidoSM)
 
 
-    runBlocking { withContext(singleThreadContext) { serverState.load() } }
+    runBlocking { // this is single-threaded by default
+        serverState.initialize()
+        serverState.load()
+    }
 
 
     embeddedServer(CIO, port = 8080, host = "127.0.0.1") {
