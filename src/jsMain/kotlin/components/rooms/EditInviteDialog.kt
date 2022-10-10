@@ -33,7 +33,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
     // Invitation link values
     var description by useState(i?.description ?: "Shared Invite Link")
     var role by useState(i?.role ?: Forecaster)
-    var anonymous by useState(false)
+    var anonymous by useState(i?.anonymous ?: false)
     var linkState by useState(InviteLinkState.ENABLED)
 
     val htmlId = useId()
