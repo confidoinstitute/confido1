@@ -25,11 +25,9 @@ import utils.jsObject
 import utils.themed
 
 val RoomMembers = FC<Props> {
-    val clientAppState = useContext(AppStateContext)
-    val state = clientAppState.state
-    val stale = clientAppState.stale
+    val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
-    val canManage = state.hasPermission(room, RoomPermission.MANAGE_MEMBERS)
+    val canManage = appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS)
 
     var editInviteLink by useState<InviteLink?>(null)
     var editInviteLinkKey by useState("")
@@ -92,7 +90,7 @@ val RoomMembers = FC<Props> {
     }
 
 
-    if (state.hasPermission(room, RoomPermission.MANAGE_MEMBERS)) {
+    if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS)) {
         Fragment {
             Button {
                 this.key = "##add##"
@@ -197,8 +195,7 @@ external interface RoomMemberProps : Props {
 }
 
 val RoomMember = FC<RoomMemberProps> {props ->
-    val clientAppState = useContext(AppStateContext)
-    val stale = clientAppState.stale
+    val (_, stale) = useContext(AppStateContext)
 
     val membership = props.membership
 

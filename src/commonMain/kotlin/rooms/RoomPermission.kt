@@ -12,5 +12,6 @@ enum class RoomPermission {
     VIEW_ALL_PREDICTIONS,
     MANAGE_QUESTIONS,
     MANAGE_MEMBERS,
+    MANAGE_COMMENTS,
     ROOM_OWNER,
 }

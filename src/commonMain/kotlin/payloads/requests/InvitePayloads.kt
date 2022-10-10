@@ -22,4 +22,5 @@ data class CreateNewInvite(
     val roomId: String,
     val description: String?,
     val role: RoomRole,
+    val anonymous: Boolean,
 )

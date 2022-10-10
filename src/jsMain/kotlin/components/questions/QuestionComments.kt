@@ -3,11 +3,9 @@ package components.questions
 import components.AppStateContext
 import components.DistributionSummary
 import components.UserAvatar
-import csstype.Length
-import csstype.Overflow
+import components.rooms.RoomContext
 import csstype.number
 import csstype.pct
-import icons.CloseIcon
 import icons.CommentIcon
 import icons.DeleteIcon
 import icons.SendIcon
@@ -28,6 +26,7 @@ import react.dom.html.ReactHTML.form
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.strong
 import react.dom.onChange
+import rooms.RoomPermission
 import tools.confido.question.Comment
 import tools.confido.question.Prediction
 import tools.confido.question.Question
@@ -43,16 +42,15 @@ external interface QuestionCommentsProps : Props {
 
 external interface CommentProps : Props {
     var comment: Comment
-    var deleteMode: Boolean
 }
 
 val Comment = FC<CommentProps> { props ->
-    var textAgo by useState("")
+    val (appState, stale) = useContext(AppStateContext)
+    val room = useContext(RoomContext)
+    val currentUser = appState.session.user
 
-    val appState = useContext(AppStateContext)
-    val currentUser = appState.state.session.user
-    // TODO: Use permissions
-    val canDelete = (props.comment.user == currentUser || appState.state.isAdmin()) && !appState.stale
+    var textAgo by useState("")
+    val canDelete = (props.comment.user == currentUser || appState.hasPermission(room, RoomPermission.MANAGE_COMMENTS)) && !stale
 
     // TODO generalize and fix the "no text on mount" issue
     useEffect(props.comment.timestamp) {
@@ -80,12 +78,11 @@ val Comment = FC<CommentProps> { props ->
             avatar = UserAvatar.create {
                 user = props.comment.user
             }
-            if (props.deleteMode) {
-                if (canDelete) {
-                    action = IconButton.create {
-                        onClick = { console.log("Would delete") }
-                        DeleteIcon {}
-                    }
+            if (canDelete) {
+                action = IconButton.create {
+                    // TODO delete API
+                    onClick = { console.log("Would delete") }
+                    DeleteIcon {}
                 }
             }
         }
@@ -196,13 +193,11 @@ val CommentInput = FC<CommentInputProps> { props ->
 }
 
 val QuestionComments = FC<QuestionCommentsProps> { props ->
-    //var deleteMode by useState(false)
     val count = props.comments.count()
     var open by useState(false)
 
 
     IconButton {
-        // TODO: Fix
         onClick = { open = true; it.stopPropagation() }
 
         Badge {
@@ -224,29 +219,6 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
             }
         }
 
-        if (false)
-        AppBar {
-            this.position = AppBarPosition.relative
-            Toolbar {
-                IconButton {
-                    CloseIcon {}
-                    onClick = { open = false }
-                }
-                Typography {
-                    sx {
-                        flexGrow = number(1.0)
-                    }
-                    +props.question.name
-                }
-                // TODO deletion and edit mechanism
-//                Button {
-//                    color = ButtonColor.inherit
-//                    onClick = { deleteMode = !deleteMode }
-//
-//                    + if(deleteMode) "Done" else "Delete"
-//                }
-            }
-        }
         DialogTitle {
             +"Comments"
             Typography {
@@ -262,7 +234,6 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
                 Comment {
                     key = it.key()
                     comment = it
-                    this.deleteMode = deleteMode
                 }
             }
         }

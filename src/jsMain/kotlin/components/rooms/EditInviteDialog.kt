@@ -33,14 +33,13 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
     // Invitation link values
     var description by useState(i?.description ?: "Shared Invite Link")
     var role by useState(i?.role ?: Forecaster)
-    // TODO add to the invitation link definition
     var anonymous by useState(false)
     var linkState by useState(InviteLinkState.ENABLED)
 
     val htmlId = useId()
 
     fun submitInviteLink() {
-        val invite = CreateNewInvite(room.id, description, role!!)
+        val invite = CreateNewInvite(room.id, description, role!!, anonymous)
         Client.postData("/invite/create", invite)
         props.onClose?.invoke()
     }

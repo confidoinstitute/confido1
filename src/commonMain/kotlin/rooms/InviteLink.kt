@@ -28,6 +28,10 @@ data class InviteLink(
      */
     val createdAt: Instant,
     /**
+     * Indicates whether guests are anonymous.
+     */
+    val anonymous: Boolean,
+    /**
      * Indicates whether this link can be used by new users.
      */
     val canJoin: Boolean = true,

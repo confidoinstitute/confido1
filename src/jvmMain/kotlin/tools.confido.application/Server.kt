@@ -229,7 +229,7 @@ fun main() {
                     return@post
                 }
 
-                val inviteLink = InviteLink(create.description ?: "", create.role, user, now())
+                val inviteLink = InviteLink(create.description ?: "", create.role, user, now(), create.anonymous)
                 room.inviteLinks.add(inviteLink)
 
                 call.transientUserData?.refreshRunningWebsockets()

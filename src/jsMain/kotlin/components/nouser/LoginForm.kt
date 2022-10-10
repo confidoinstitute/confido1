@@ -13,7 +13,7 @@ import utils.eventValue
 import utils.themed
 
 val LoginForm = FC<Props> {
-    val appState = useContext(AppStateContext)
+    val (_, stale) = useContext(AppStateContext)
     var email by useState<String>("")
     var password by useState<String>("")
 
@@ -29,7 +29,7 @@ val LoginForm = FC<Props> {
                     id = "email-field"
                     label = ReactNode("Email")
                     value = email
-                    disabled = appState.stale
+                    disabled = stale
                     onChange = {
                         email = it.eventValue()
                     }
@@ -42,7 +42,7 @@ val LoginForm = FC<Props> {
                     type = InputType.password
                     label = ReactNode("Password")
                     value = password
-                    disabled = appState.stale
+                    disabled = stale
                     onChange = {
                         password = it.eventValue()
                     }
@@ -57,7 +57,7 @@ val LoginForm = FC<Props> {
                         // TODO: Handle failure
                         Client.postData("/login", Login(email, password))
                     }
-                    disabled = appState.stale
+                    disabled = stale
                     +"Log in"
                 }
             }

@@ -8,7 +8,7 @@ import users.DebugAdmin
 import users.DebugMember
 
 val LandingPage = FC<Props> {
-    val appState = useContext(AppStateContext)
+    val (_, stale) = useContext(AppStateContext)
 
     Typography { +"Welcome to Confido!" }
 
@@ -18,14 +18,14 @@ val LandingPage = FC<Props> {
         onClick = {
             Client.postData("/login", Login(DebugAdmin.email, DebugAdmin.password))
         }
-        disabled = appState.stale
+        disabled = stale
         +"Log in as debug admin"
     }
     Button {
         onClick = {
             Client.postData("/login", Login(DebugMember.email, DebugMember.password))
         }
-        disabled = appState.stale
+        disabled = stale
         +"Log in as debug member"
     }
     // TODO: Landing page.
