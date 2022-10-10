@@ -52,15 +52,16 @@ val Room = FC<Props> {
                     }
                     variant = TypographyVariant.h2
                     +room.name
-                }
 
-                // TODO permissions to edit a room
-                IconButton {
-                    onClick = {editMode = true}
-                    EditIcon { }
+                    // TODO permissions to edit a room
+                    IconButton {
+                        onClick = {editMode = true}
+                        EditIcon { }
+                    }
                 }
 
                 AvatarGroup {
+                    max = 4
                     room.members.map {membership ->
                         UserAvatar {
                             user = membership.user

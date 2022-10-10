@@ -174,9 +174,9 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     flexGrow = number(1.0)
                 }
                 Typography {
-                    variant = TypographyVariant.h6
                         +question.name
                     sx {
+                        fontSize = 1.25.rem
                         flexGrow = number(1.0)
                         if (!question.visible) {
                             this.fontStyle = FontStyle.italic
