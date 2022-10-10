@@ -1,9 +1,6 @@
 package components.questions
 
-import components.Explanation
-import components.MarkedSlider
-import components.PreciseInputNumber
-import components.PreciseInputPercent
+import components.*
 import csstype.Color
 import csstype.Padding
 import csstype.px
@@ -92,7 +89,8 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
                 max = space.max
                 this.step = step
                 this.madePrediction = madePrediction
-                preciseInputForm = PreciseInputNumber
+                this.unit = space.unit
+                preciseInputForm = if (space.representsDays) PreciseInputDate else PreciseInputNumber
 
                 valueLabelDisplay = if (madePrediction || !props.enabled) "auto" else "on"
                 if (space.representsDays) {

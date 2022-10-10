@@ -8,6 +8,7 @@ import kotlinx.js.Object
 import kotlinx.js.delete
 import mui.material.*
 import mui.system.sx
+import org.w3c.dom.HTMLElement
 import org.w3c.dom.HTMLFormElement
 import org.w3c.dom.HTMLSpanElement
 import org.w3c.xhr.FormData
@@ -50,27 +51,10 @@ val MarkedSlider = FC<MarkedSliderProps> { props ->
 
     var preciseEditOpen by useState(false)
     fun setTemporaryValue(value: Double) {
+        preciseEditOpen = false
+        if (value == props.value) return
         props.onChange?.invoke(null.asDynamic(), value, 0)
         props.onChangeCommitted?.invoke(null.asDynamic(), value)
-        preciseEditOpen = false
-    }
-
-    Dialog {
-        open = preciseEditOpen
-        onClose = {_, _ -> preciseEditOpen = false}
-        DialogTitle {
-            +"Exact prediction"
-        }
-
-        props.preciseInputForm {
-            this.min = props.min
-            this.max = props.max
-            this.step = props.step
-            this.value = props.value
-            this.unit = props.unit
-            this.onCancel = {preciseEditOpen = false}
-            this.onSubmit = ::setTemporaryValue
-        }
     }
 
     Slider {
@@ -91,6 +75,7 @@ val MarkedSlider = FC<MarkedSliderProps> { props ->
             right = 0.px
             marginRight = 2.px
         }
+        disabled = props.disabled
         size = Size.small
         onClick = {preciseEditOpen = true}
         EditIcon {
@@ -98,6 +83,24 @@ val MarkedSlider = FC<MarkedSliderProps> { props ->
                 width = 18.px
                 height = 18.px
             }
+        }
+    }
+    Dialog {
+        open = preciseEditOpen
+        onClose = {_, _ -> preciseEditOpen = false}
+        DialogTitle {
+            +"Exact prediction"
+        }
+
+        props.preciseInputForm {
+            this.min = props.min
+            this.max = props.max
+            this.step = props.step
+            this.value = props.value
+            this.unit = props.unit
+            this.disabled = props.disabled
+            this.onCancel = {preciseEditOpen = false}
+            this.onSubmit = ::setTemporaryValue
         }
     }
 }
