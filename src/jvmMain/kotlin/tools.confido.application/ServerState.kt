@@ -43,6 +43,7 @@ class ServerGlobalState : GlobalState() {
     val userPred : MutableMap<Ref<Question>, MutableMap<Ref<User>, Prediction>> = mutableMapOf()
     override val groupPred : MutableMap<Ref<Question>, Prediction?> = mutableMapOf()
     val questionComments : MutableMap<Ref<Question>, MutableMap<String, QuestionComment>> = mutableMapOf()
+    val roomComments : MutableMap<Ref<Room>, MutableMap<String, RoomComment>> = mutableMapOf()
 
     // Now, for simplicity, serialize all mutations
     val mutationMutex = Mutex()
@@ -76,6 +77,12 @@ class ServerGlobalState : GlobalState() {
         users.putAll(loadEntityMap(usersColl))
         userPredColl.find().toFlow().collect {
             userPred.getOrPut(it.question) {mutableMapOf()}[it.user ?: return@collect] = it
+        }
+        questionCommentsColl.find().toFlow().collect {
+            questionComments.getOrPut(it.question) {mutableMapOf()}[it.id] = it
+        }
+        roomCommentsColl.find().toFlow().collect {
+            roomComments.getOrPut(it.room) {mutableMapOf()}[it.id] = it
         }
         recalcGroupPred()
     }
