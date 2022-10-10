@@ -313,17 +313,17 @@ fun main() {
                     return@postST
                 }
 
-                val prediction = serverState.getUserPredictions(user)[id]?.takeIf {
-                    createdComment.attachPrediction
+                val prediction = if (createdComment.attachPrediction) {
+                    serverState.userPred[question.ref]?.get(user.ref)
+                } else {
+                    null
                 }
 
-                val comment = Comment(user, createdComment.timestamp, createdComment.content, prediction)
-                if (serverState.comments.get(question)?.add(comment) == true) {
-                    call.transientUserData?.refreshRunningWebsockets()
-                    call.respond(HttpStatusCode.OK)
-                } else {
-                    call.respond(HttpStatusCode.BadRequest)
-                }
+                val comment = QuestionComment(question = question.ref, user = user.ref, timestamp = unixNow(),
+                                                content = createdComment.content, prediction = prediction)
+                serverState.addQuestionComment(comment)
+                call.transientUserData?.refreshRunningWebsockets()
+                call.respond(HttpStatusCode.OK)
             }
             postST("/send_prediction/{id}") {
                 val dist: ProbabilityDistribution = call.receive()
@@ -341,7 +341,7 @@ fun main() {
                     return@postST
                 }
                 val pred = Prediction(ts=unixNow(), dist = dist, question = question.ref, user = user.ref)
-                serverState.addPrediction(question, pred)
+                serverState.addPrediction(pred)
 
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)

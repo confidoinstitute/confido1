@@ -1,16 +1,20 @@
 package tools.confido.state
 
+import com.mongodb.client.model.Filters.and
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.reactivestreams.client.ClientSession
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.litote.kmongo.coroutine.*
+import org.litote.kmongo.eq
 import org.litote.kmongo.reactivestreams.KMongo
 import rooms.Room
 import tools.confido.distributions.*
 import tools.confido.question.Prediction
 import tools.confido.question.Question
+import tools.confido.question.QuestionComment
+import tools.confido.question.RoomComment
 import tools.confido.refs.*
 import tools.confido.spaces.*
 import tools.confido.utils.*
@@ -38,6 +42,7 @@ class ServerGlobalState : GlobalState() {
 
     val userPred : MutableMap<Ref<Question>, MutableMap<Ref<User>, Prediction>> = mutableMapOf()
     override val groupPred : MutableMap<Ref<Question>, Prediction?> = mutableMapOf()
+    val questionComments : MutableMap<Ref<Question>, MutableMap<String, QuestionComment>> = mutableMapOf()
 
     // Now, for simplicity, serialize all mutations
     val mutationMutex = Mutex()
@@ -48,10 +53,22 @@ class ServerGlobalState : GlobalState() {
     val usersColl = database.getCollection<User>("users")
     val roomsColl = database.getCollection<Room>("rooms")
     val userPredColl = database.getCollection<Prediction>("userPred")
+    val questionCommentsColl = database.getCollection<QuestionComment>("questionComments")
+    val roomCommentsColl = database.getCollection<RoomComment>("questionComments")
+
 
     suspend fun <T: HasId> loadEntityMap(coll: CoroutineCollection<T>) : Map<String, T> =
         coll.find().toList().associateBy { entity -> entity.id }.toMap()
 
+    suspend fun initialize() {
+        userPredColl.ensureUniqueIndex(Prediction::question, Prediction::user)
+        userPredColl.ensureIndex(Prediction::question)
+        userPredColl.ensureIndex(Prediction::user)
+        questionCommentsColl.ensureIndex(QuestionComment::question, QuestionComment::timestamp)
+        questionCommentsColl.ensureIndex(QuestionComment::user, QuestionComment::timestamp)
+        roomCommentsColl.ensureIndex(RoomComment::room)
+        roomCommentsColl.ensureIndex(RoomComment::user)
+    }
     // initial load from database
     suspend fun load() {
         questions.putAll(loadEntityMap(questionsColl))
@@ -86,7 +103,8 @@ class ServerGlobalState : GlobalState() {
             }
         }
 
-    fun recalcGroupPred(question: Question) {
+    fun recalcGroupPred(question: Question?) {
+        question ?: return
         val gp = calculateGroupPred(question, userPred[question.ref]?.values ?: emptyList())
         groupPred[question.ref] = gp
     }
@@ -121,6 +139,9 @@ class ServerGlobalState : GlobalState() {
         else -> throw IllegalArgumentException()
     }
 
+    fun CoroutineContext.getSession() =
+        this[TransactionContextElement]?.sess
+
     suspend inline fun <reified T: ServerImmediateDerefEntity>
     updateEntity(new: T, compare: T? = null,
                 upsert: Boolean = false,
@@ -142,8 +163,12 @@ class ServerGlobalState : GlobalState() {
                 if (orig != compare) throw ConcurrentModificationException()
             }
             val merged = merge(orig, new)
+            check(merged.id == new.id)
             map[new.id] = merged
-            coll.replaceOne(merged, ReplaceOptions())
+            when (val sess = coroutineContext.getSession()) {
+                null -> coll.replaceOne(merged, ReplaceOptions())
+                else -> coll.replaceOneById(sess, merged.id, merged, ReplaceOptions())
+            }
             return merged
         }
     }
@@ -168,7 +193,10 @@ class ServerGlobalState : GlobalState() {
             check(orig.id == ref.id)
             val new = modify(orig)
             map[ref.id] = new
-            coll.replaceOne(new, ReplaceOptions())
+            when (val sess = coroutineContext.getSession()) {
+                null -> coll.replaceOne(new, ReplaceOptions())
+                else -> coll.replaceOneById(sess, new.id, new, ReplaceOptions())
+            }
             return@withMutationLock new
         }
 
@@ -181,7 +209,10 @@ class ServerGlobalState : GlobalState() {
             val coll = getCollection<T>()
             if (map.containsKey(new.id)) throw DuplicateIdException()
             map[entity.id] = new
-            coll.insertOne(new)
+            when (val sess = coroutineContext.getSession()) {
+                null -> coll.insertOne(new)
+                else -> coll.insertOne(sess, new)
+            }
             return@withMutationLock new
         }
 
@@ -192,7 +223,11 @@ class ServerGlobalState : GlobalState() {
             val coll = getCollection<T>()
             val orig = map.remove(ref.id)
             map[ref.id] ?: if (ignoreNonexistent) return@withMutationLock null else throw NoSuchElementException()
-            coll.deleteOneById(ref.id)
+            when (val sess = coroutineContext.getSession()) {
+                null -> coll.deleteOneById(ref.id)
+                else -> coll.deleteOneById(sess, ref.id)
+            }
+            map.remove(ref.id)
             return@withMutationLock orig
         }
     suspend inline fun <reified T: ServerImmediateDerefEntity>
@@ -203,7 +238,10 @@ class ServerGlobalState : GlobalState() {
             val orig = map[entity.id] ?: if (ignoreNonexistent) return null else throw NoSuchElementException()
             if (orig != entity) throw ConcurrentModificationException()
             map.remove(entity.id)
-            coll.deleteOneById(entity.id)
+            when (val sess = coroutineContext.getSession()) {
+                null -> coll.deleteOneById(entity.id)
+                else -> coll.deleteOneById(sess, entity.id)
+            }
             return orig
         }
     }
@@ -220,6 +258,44 @@ class ServerGlobalState : GlobalState() {
                 }
                 clientSession.commitTransactionAndAwait()
                 return@use ret
+            }
+        }
+    }
+
+    suspend fun addPrediction( pred: Prediction) {
+        val pred = pred.copy(id = generateId())
+        require(pred.user != null)
+        require(pred.user.deref() != null)
+        require(pred.question.deref() != null)
+        withMutationLock {
+            userPred.getOrPut(pred.question){mutableMapOf()}[pred.user] = pred
+            when (val sess = coroutineContext.getSession()) {
+                null -> userPredColl.replaceOne( and(Prediction::user eq pred.user, Prediction::question eq pred.question), pred)
+                else -> userPredColl.replaceOne(sess, and(Prediction::user eq pred.user, Prediction::question eq pred.question), pred)
+            }
+        }
+        recalcGroupPred(pred.question.deref())
+    }
+
+    suspend fun addQuestionComment(comment: QuestionComment) {
+        require(comment.question.deref() != null)
+        require(comment.user.deref() != null)
+        withMutationLock {
+            questionComments.getOrPut(comment.question){mutableMapOf()}[comment.id] = comment
+            when (val sess = coroutineContext.getSession()) {
+                null -> questionCommentsColl.insertOne(comment)
+                else -> questionCommentsColl.insertOne(sess, comment)
+            }
+        }
+    }
+    suspend fun addRoomComment(comment: QuestionComment) {
+        require(comment.question.deref() != null)
+        require(comment.user.deref() != null)
+        withMutationLock {
+            questionComments.getOrPut(comment.question){mutableMapOf()}[comment.id] = comment
+            when (val sess = coroutineContext.getSession()) {
+                null -> questionCommentsColl.insertOne(comment)
+                else -> questionCommentsColl.insertOne(sess, comment)
             }
         }
     }
