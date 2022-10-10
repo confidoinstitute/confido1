@@ -10,10 +10,7 @@ import mui.system.sx
 import payloads.requests.CreateNewInvite
 import react.*
 import react.dom.onChange
-import rooms.Forecaster
-import rooms.InviteLink
-import rooms.InviteLinkState
-import rooms.RoomRole
+import rooms.*
 import tools.confido.question.Question
 import tools.confido.spaces.*
 import tools.confido.utils.*
@@ -76,15 +73,16 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                 select {
                     this.id = htmlId + "role"
                     labelId = htmlId + "role_label"
-                    value = role?.id ?: ""
+                    value = role.id
                     label = ReactNode("Member role")
                     onChange = { event, _ ->
                         role = when(event.target.value) {
+                            "viewer" -> Viewer
                             "forecaster" -> Forecaster
                             else -> error("This should not happen!")
                         }
                     }
-                    mapOf("forecaster" to "Forecaster").map { (value, label) ->
+                    mapOf("viewer" to "Viewer", "forecaster" to "Forecaster").map { (value, label) ->
                         MenuItem {
                             this.value = value
                             +label

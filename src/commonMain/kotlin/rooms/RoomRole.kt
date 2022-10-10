@@ -16,6 +16,14 @@ sealed class RoomRole(val permissions: Set<RoomPermission>) {
 }
 
 @Serializable
+object Viewer : RoomRole(
+    setOf(RoomPermission.VIEW_QUESTIONS)
+) {
+    override val id = "viewer"
+    override val name = "Viewer"
+}
+
+@Serializable
 object Forecaster : RoomRole(setOf(RoomPermission.VIEW_QUESTIONS, RoomPermission.SUBMIT_PREDICTION)) {
     override val id = "forecaster"
     override val name = "Forecaster"

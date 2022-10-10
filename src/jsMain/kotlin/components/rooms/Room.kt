@@ -22,10 +22,9 @@ import utils.themed
 val RoomContext = createContext<Room>()
 
 val Room = FC<Props> {
-    val clientAppState = useContext(AppStateContext)
-    val state = clientAppState.state
+    val (appState, stale) = useContext(AppStateContext)
     val roomId = useParams()["roomID"] ?: return@FC
-    val room = state.getRoom(roomId) ?: return@FC
+    val room = appState.getRoom(roomId) ?: return@FC
 
     var editMode by useState(false)
 
@@ -53,19 +52,23 @@ val Room = FC<Props> {
                     variant = TypographyVariant.h2
                     +room.name
 
-                    // TODO permissions to edit a room
+                    if (appState.hasPermission(room, RoomPermission.ROOM_OWNER))
                     IconButton {
                         onClick = {editMode = true}
                         EditIcon { }
                     }
                 }
 
+                val seesUsers = appState.session.user?.type?.isProper() ?: false
                 AvatarGroup {
                     max = 4
                     room.members.map {membership ->
-                        UserAvatar {
-                            user = membership.user
-                        }
+                        if (seesUsers)
+                            UserAvatar {
+                                user = membership.user
+                            }
+                        else
+                            Avatar {}
                     }
                 }
             }
@@ -82,30 +85,25 @@ val Room = FC<Props> {
         }
         Routes {
             key = "room_routes"
+            if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
             Route {
                 index = true
                 this.element = QuestionList.create {
                     questions = room.questions
                     // TODO: This should be fully handled by the server.
-                    showHiddenQuestions = state.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
-                    allowEditingQuestions = state.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
+                    showHiddenQuestions = appState.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
+                    allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
                 }
             }
-            Route {
-                path = "group_predictions"
-
-                this.element = GroupPredictions.create {
-                    // TODO: Apply permissions
-                    questions = room.questions.filter { it.predictionsVisible }
-                }
-            }
+            if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
             Route {
                 path = "edit_questions"
                 this.element = EditQuestions.create {
                     questions = room.questions
-                    allowEditingQuestions = state.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
+                    allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
                 }
             }
+            if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
             Route {
                 path = "members"
                 this.element = RoomMembers.create()

@@ -169,8 +169,8 @@ external interface EditQuestionDialogProps : Props {
 
 val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     val q = props.question
+    val (_, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
-    val stale = useContext(AppStateContext).stale
 
     // Question values
     var id by useState(q?.id ?: "")

@@ -1,5 +1,6 @@
 package components.layout
 
+import components.AppStateContext
 import components.profile.SetNickForm
 import components.rooms.RoomInviteForm
 import components.rooms.NewRoom
@@ -11,11 +12,13 @@ import react.*
 import react.dom.html.ReactHTML.main
 import react.dom.html.ReactHTML.nav
 import react.router.*
+import utils.byTheme
 import utils.themed
 
 val permanentBreakpoint = Breakpoint.md
 
 val RootLayout = FC<Props> {
+    val (appState, _) = useContext(AppStateContext)
     var drawerOpen by useState(false)
 
     val theme = mui.material.styles.useTheme<mui.material.styles.Theme>().breakpoints.up(permanentBreakpoint)
@@ -59,27 +62,35 @@ val RootLayout = FC<Props> {
                 padding = themed(1)
             }
             Toolbar {}
-            Routes {
-                Route {
-                    index = true
-                    path = "/"
-                    this.element = Typography.create { +"Welcome to Confido!" }
+            mui.system.Box {
+                sx {
+                    margin = byTheme("auto")
+                    maxWidth = byTheme("lg")
                 }
-                Route {
-                    path = "room/:roomID/*"
-                    this.element = Room.create()
-                }
-                Route {
-                    path = "room/:roomID/invite/:inviteToken"
-                    this.element = RoomInviteForm.create()
-                }
-                Route {
-                    path = "new_room"
-                    this.element = NewRoom.create()
-                }
-                Route {
-                    path = "set_name"
-                    this.element = SetNickForm.create()
+                Routes {
+                    Route {
+                        index = true
+                        path = "/"
+                        this.element = Typography.create { +"Welcome to Confido!" }
+                    }
+                    Route {
+                        path = "room/:roomID/*"
+                        this.element = Room.create()
+                    }
+                    Route {
+                        path = "room/:roomID/invite/:inviteToken"
+                        this.element = RoomInviteForm.create()
+                    }
+                    if (appState.session.user?.type?.isProper() == true) {
+                        Route {
+                            path = "new_room"
+                            this.element = NewRoom.create()
+                        }
+                        Route {
+                            path = "set_name"
+                            this.element = SetNickForm.create()
+                        }
+                    }
                 }
             }
         }

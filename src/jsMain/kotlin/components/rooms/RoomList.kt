@@ -11,6 +11,7 @@ import react.*
 import react.router.dom.NavLink
 
 external interface RoomListProps : Props {
+    var newRoomEnabled: Boolean
     var onNavigate: ((String) -> Unit)?
 }
 
@@ -35,6 +36,7 @@ val RoomList = FC<RoomListProps> { props ->
                 }
             }
         }
+        if (props.newRoomEnabled)
         ListItemNavigation {
             this.key = "#create"
             to = "/new_room"

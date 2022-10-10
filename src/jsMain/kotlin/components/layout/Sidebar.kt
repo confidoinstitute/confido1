@@ -22,8 +22,10 @@ external interface SidebarProps : Props {
 }
 
 val Sidebar = FC<SidebarProps> { props ->
-    val stale = useContext(AppStateContext).stale
+    val (appState, stale) = useContext(AppStateContext)
     val navigate = useNavigate()
+
+    val fullUser = appState.session.user?.type?.isProper() ?: false
 
     fun navigateClose() {
         props.onClose?.invoke()
@@ -55,6 +57,7 @@ val Sidebar = FC<SidebarProps> { props ->
         Toolbar {}
 
         RoomList {
+            newRoomEnabled = fullUser
             onNavigate = ::navigateClose
         }
 
@@ -62,14 +65,16 @@ val Sidebar = FC<SidebarProps> { props ->
 
         List {
             dense = true
-            ListItemNavigation {
-                ListItemIcon {
-                    SettingsIcon {}
-                }
-                to = "/set_name"
-                this.onNavigate = ::navigateClose
-                ListItemText {
-                    primary = ReactNode("Change name")
+            if (fullUser) {
+                ListItemNavigation {
+                    ListItemIcon {
+                        SettingsIcon {}
+                    }
+                    to = "/set_name"
+                    this.onNavigate = ::navigateClose
+                    ListItemText {
+                        primary = ReactNode("Change name")
+                    }
                 }
             }
             ListItemButton {

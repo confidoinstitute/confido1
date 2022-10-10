@@ -223,10 +223,12 @@ val RoomMember = FC<RoomMemberProps> {props ->
                     value = membership.role.id
                     disabled = stale
                     onChange = { event, _ ->
+                        // TODO send request to change it
                         window.alert("${membership.user} permission to ${event.target.value}")
                     }
                     // TODO a global list, preferably near room membership definition?
                     listOf(
+                        "viewer" to "Viewer",
                         "forecaster" to "Forecaster",
                         "moderator" to "Moderator"
                     ).map { (id, name) ->

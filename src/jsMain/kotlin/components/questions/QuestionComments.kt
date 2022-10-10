@@ -120,7 +120,7 @@ external interface CommentInputProps : Props {
 }
 
 val CommentInput = FC<CommentInputProps> { props ->
-    val stale = useContext(AppStateContext).stale
+    val (_, stale) = useContext(AppStateContext)
     var content by useState("")
     var attachPrediction by useState(false)
     var pendingSend by useState(false)

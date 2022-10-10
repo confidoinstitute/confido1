@@ -19,7 +19,7 @@ external interface RootAppBarProps : Props {
 }
 
 val RootAppBar = FC<RootAppBarProps> { props ->
-    val stale = useContext(AppStateContext).stale
+    val (_, stale) = useContext(AppStateContext)
 
     AppBar {
         position = AppBarPosition.fixed
