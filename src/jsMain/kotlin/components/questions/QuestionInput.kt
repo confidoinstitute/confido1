@@ -60,7 +60,8 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
     }
 
     fun sendPrediction() {
-        props.onPredict?.invoke(dist)
+        if (madeUncertainty)
+            props.onPredict?.invoke(dist)
     }
 
     fun formatDate(value: Number): String = Date(value.toDouble() * 1000.0).toISOString().substring(0, 10)
@@ -99,7 +100,7 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
                 this.valueLabelFormat = { space.formatValue(it.toDouble()) }
 
                 onFocus = { madePrediction = true }
-                onChange = { _, value, _ -> mean = value; props.onChange?.invoke() }
+                onChange = { _, value, _ -> mean = value; if(madeUncertainty) props.onChange?.invoke() }
                 onChangeCommitted = { _, _ -> sendPrediction() }
             }
             Slider {
