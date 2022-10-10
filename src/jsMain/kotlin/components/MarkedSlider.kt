@@ -1,12 +1,13 @@
 package components
 
-import csstype.Position
-import csstype.px
+import csstype.*
 import hooks.useElementSize
 import icons.EditIcon
 import kotlinx.js.Object
 import kotlinx.js.delete
 import mui.material.*
+import mui.material.Size
+import mui.system.responsive
 import mui.system.sx
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.HTMLFormElement
@@ -15,6 +16,7 @@ import org.w3c.xhr.FormData
 import react.*
 import react.dom.html.ButtonType
 import react.dom.html.InputType
+import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.form
 import utils.jsObject
 
@@ -57,31 +59,36 @@ val MarkedSlider = FC<MarkedSliderProps> { props ->
         props.onChangeCommitted?.invoke(null.asDynamic(), value)
     }
 
-    Slider {
-        Object.assign(this, props)
-        delete(this.asDynamic().widthToMarks)
-        delete(this.asDynamic().madePrediction)
-        delete(this.asDynamic().unit)
-        delete(this.asDynamic().preciseInputForm)
-        this.valueLabelFormat = valueLabelFormat
-        this.track = if (props.madePrediction) "normal" else false.asDynamic()
-
-        ref = sliderSize.ref
-        this.marks = marks
-    }
-    IconButton {
+    Stack {
+        direction = responsive(StackDirection.row)
         sx {
-            position = Position.absolute
-            right = 0.px
-            marginRight = 2.px
+            alignItems = AlignItems.start
+            marginRight = -32.px
         }
-        disabled = props.disabled
-        size = Size.small
-        onClick = {preciseEditOpen = true}
-        EditIcon {
+        Slider {
+            Object.assign(this, props)
+            delete(this.asDynamic().widthToMarks)
+            delete(this.asDynamic().madePrediction)
+            delete(this.asDynamic().unit)
+            delete(this.asDynamic().preciseInputForm)
+            this.valueLabelFormat = valueLabelFormat
+            this.track = if (props.madePrediction) "normal" else false.asDynamic()
+
+            ref = sliderSize.ref
+            this.marks = marks
+        }
+        IconButton {
             sx {
-                width = 18.px
-                height = 18.px
+                marginLeft = 4.px
+            }
+            disabled = props.disabled
+            size = Size.small
+            onClick = { preciseEditOpen = true }
+            EditIcon {
+                sx {
+                    width = 18.px
+                    height = 18.px
+                }
             }
         }
     }

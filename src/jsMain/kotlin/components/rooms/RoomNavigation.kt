@@ -3,6 +3,8 @@ package components.rooms
 import components.AppStateContext
 import mui.material.Tab
 import mui.material.Tabs
+import mui.material.Typography
+import mui.material.styles.TypographyVariant
 import mui.system.sx
 import react.*
 import react.router.dom.NavLink
@@ -25,8 +27,16 @@ val RoomNavigation = FC<Props>
     val locationValue = location.pathname.split('/').getOrNull(3) ?: ""
     // TODO: Fix if we are keeping this, see https://mui.com/material-ui/guides/routing/#tabs
 
-    if (!(state.hasPermission(room, RoomPermission.MANAGE_MEMBERS) || state.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)))
+    if (!(state.hasPermission(room, RoomPermission.MANAGE_MEMBERS) || state.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))) {
+        Typography {
+            sx {
+                paddingBottom = themed(2)
+            }
+            variant = TypographyVariant.button
+            +"Questions"
+        }
         return@FC
+    }
 
     Tabs {
         value = locationValue
