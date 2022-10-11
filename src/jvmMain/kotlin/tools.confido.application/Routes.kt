@@ -50,6 +50,17 @@ fun editQuestion(routing: Routing) {
         call.transientUserData?.refreshRunningWebsockets()
         call.respond(HttpStatusCode.OK, room.id)
     }
+    routing.postST("/rooms/{id}/members/add") {
+        val roomRef = Ref<Room>(call.parameters["id"] ?: "")
+        roomRef.deref() ?: return@postST badRequest("Room does not exist")
+        val c: AddMember = call.receive()
+        serverState.roomManager.modifyEntity(roomRef) {
+            it.copy(members = it.members + listOf(RoomMembership(c.user, c.role, null)))
+        }
+
+        call.transientUserData?.refreshRunningWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
 
     routing.postST("/rooms/{id}/questions/add") {
         // TODO check permissions

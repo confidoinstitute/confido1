@@ -2,6 +2,8 @@ package payloads.requests
 
 import kotlinx.serialization.Serializable
 import rooms.RoomRole
+import tools.confido.refs.Ref
+import users.User
 
 @Serializable
 data class AcceptInvite(
@@ -23,4 +25,10 @@ data class CreateNewInvite(
     val description: String?,
     val role: RoomRole,
     val anonymous: Boolean,
+)
+
+@Serializable
+data class AddMember(
+    val user: Ref<User>,
+    var role: RoomRole,
 )

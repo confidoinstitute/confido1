@@ -12,13 +12,6 @@ import react.router.useLocation
 import rooms.RoomPermission
 import utils.themed
 
-val locations = mapOf(
-    "" to "Questions",
-    "group_predictions" to "Group predictions",
-    "edit_questions" to "Edit questions",
-    "members" to "Members"
-)
-
 val RoomNavigation = FC<Props>
 {
     val state = useContext(AppStateContext).state
@@ -50,7 +43,7 @@ val RoomNavigation = FC<Props>
         tab("discussion", "Discussion")
 
         if (state.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
-        tab("edit_question", "Question management")
+        tab("manage_questions", "Question management")
 
         if (state.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
         tab("members", "Room members")

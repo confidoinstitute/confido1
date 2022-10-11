@@ -241,7 +241,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     DistributionSummary {
                         spoiler = true
                         allowPlotDialog = true
-                        distribution = props.prediction?.dist
+                        distribution = appState.groupPred[question.ref]?.dist
                     }
                 }
             }

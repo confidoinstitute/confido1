@@ -112,7 +112,7 @@ val Room = FC<Props> {
             }
             if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
             Route {
-                path = "edit_questions"
+                path = "manage_questions"
                 this.element = EditQuestions.create {
                     questions = room.questions.mapNotNull { it.deref() }
                     allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)

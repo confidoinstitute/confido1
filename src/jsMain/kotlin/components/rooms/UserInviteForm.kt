@@ -13,8 +13,12 @@ import mui.material.*
 import mui.system.responsive
 import mui.system.sx
 import org.w3c.dom.HTMLLIElement
+import payloads.requests.AddMember
 import react.*
 import react.dom.html.HTMLAttributes
+import rooms.Forecaster
+import rooms.RoomRole
+import tools.confido.refs.ref
 import users.User
 import users.UserType
 
@@ -86,9 +90,13 @@ internal fun filterOptions(
 
 val UserInviteForm = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
+    val room = useContext(RoomContext)
     var chosenUser by useState<UserAutocomplete?>(null)
+    var role by useState<RoomRole>(Forecaster)
+
+    val members = room.members.map {it.user.id}.toSet()
     val users = appState.users.values.mapNotNull {
-        if (it.email != null) ExistingUser(it) else null
+        if (it.email != null && it.id !in members) ExistingUser(it) else null
     }.toTypedArray()
 
     Stack {
@@ -115,6 +123,12 @@ val UserInviteForm = FC<Props> {
             fullWidth = true
         }
 
+        MemberRoleSelect {
+            value = role
+            disabled = stale
+            onChange = { role = it }
+        }
+
         Button {
             sx {
                 width = 7.rem
@@ -132,8 +146,17 @@ val UserInviteForm = FC<Props> {
             }
 
             onClick = {
-                // TODO handle actual invitation
-                window.alert(chosenUser.toString())
+                when(val who = chosenUser) {
+                    is ExistingUser -> {
+                        Client.postData("/rooms/${room.id}/members/add", AddMember(who.user.ref, role))
+                        chosenUser = null
+                        role = Forecaster
+                    }
+                    is NewUser -> {
+                        // TODO handle actual invitation
+                        window.alert(chosenUser.toString())
+                    }
+                }
             }
         }
     }

@@ -2,27 +2,16 @@ package components.rooms
 
 import components.AppStateContext
 import components.UserAvatar
-import components.questions.EditQuestionDialog
+import csstype.px
 import hooks.useDebounce
 import icons.*
 import kotlinx.browser.window
-import kotlinx.js.Object
-import kotlinx.js.timers.Timeout
-import kotlinx.js.timers.clearTimeout
-import kotlinx.js.timers.setTimeout
 import react.*
 import mui.material.*
 import mui.system.sx
-import react.dom.html.ReactHTML.li
-import rooms.InviteLink
-import rooms.RoomMembership
-import rooms.RoomPermission
-import tools.confido.question.Question
+import rooms.*
 import tools.confido.refs.deref
 import tools.confido.utils.randomString
-import users.User
-import users.UserType
-import utils.jsObject
 import utils.themed
 
 val RoomMembers = FC<Props> {
@@ -191,6 +180,48 @@ val InvitationMembers = FC<InvitationMembersProps> {props ->
     }
 }
 
+external interface MemberRoleSelectProps : Props {
+    var value: RoomRole
+    var disabled: Boolean
+    var onChange: ((RoomRole) -> Unit)?
+}
+
+val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
+    var role by useState(props.value)
+
+    FormControl {
+        sx {
+            width = 125.px
+        }
+        val select: FC<SelectProps<String>> = Select
+        select {
+            this.size = Size.small
+            value = role.id
+            disabled = props.disabled
+            onChange = { event, _ ->
+                val changedRole = when(event.target.value) {
+                    "viewer" -> Viewer
+                    "forecaster" -> Forecaster
+                    "moderator" -> Moderator
+                    else -> error("This role does not exist")
+                }
+                props.onChange?.invoke(changedRole)
+            }
+            // TODO a global list, preferably near room membership definition?
+            listOf(
+                "viewer" to "Viewer",
+                "forecaster" to "Forecaster",
+                "moderator" to "Moderator"
+            ).map { (id, name) ->
+                MenuItem {
+                    value = id
+                    +name
+                }
+            }
+        }
+    }
+}
+
 external interface RoomMemberProps : Props {
     var disabled: Boolean
     var membership: RoomMembership
@@ -217,28 +248,9 @@ val RoomMember = FC<RoomMemberProps> {props ->
             }
         }
         if (props.canManage && !props.disabled) {
-            FormControl {
-                val select: FC<SelectProps<String>> = Select
-                select {
-                    this.size = Size.small
-                    value = membership.role.id
-                    disabled = stale
-                    onChange = { event, _ ->
-                        // TODO send request to change it
-                        window.alert("${membership.user} permission to ${event.target.value}")
-                    }
-                    // TODO a global list, preferably near room membership definition?
-                    listOf(
-                        "viewer" to "Viewer",
-                        "forecaster" to "Forecaster",
-                        "moderator" to "Moderator"
-                    ).map { (id, name) ->
-                        MenuItem {
-                            value = id
-                            +name
-                        }
-                    }
-                }
+            MemberRoleSelect {
+                value = membership.role
+                disabled = stale
             }
         } else {
             Typography {
