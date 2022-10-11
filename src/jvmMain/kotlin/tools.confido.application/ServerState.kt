@@ -251,7 +251,7 @@ object serverState : GlobalState() {
         }
 
         override suspend fun doLoad() {
-            super.doLoad()
+            mongoCollection.find().toFlow().collect { notifyEntityAdded(it) }
             recalcGroupPred()
         }
 
@@ -270,6 +270,7 @@ object serverState : GlobalState() {
             }
 
             if (orig == null) notifyEntityAdded(pred)
+            else notifyEntityUpdated(orig, pred)
         }
         init {
             onEntityAddedOrUpdated {  pred ->
