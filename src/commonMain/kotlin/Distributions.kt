@@ -12,6 +12,7 @@ interface ProbabilityDistribution {
 
 
 @Serializable
+@SerialName("binary")
 data class BinaryDistribution( // TODO: Make this a special case of a general ChoiceDistribution
     val yesProb: Double
 ) : ProbabilityDistribution {
@@ -69,6 +70,7 @@ interface DiscretizedProbabilityDistribution : ProbabilityDistribution {
 
 
 @Serializable
+@SerialName("discretizedContinuous")
 data class DiscretizedContinuousDistribution(
     override val space: NumericSpace,
     override val binProbs: List<Double>,
@@ -134,6 +136,7 @@ data class DiscretizedContinuousDistribution(
 }
 
 @Serializable
+@SerialName("canonicalNormal")
 object CanonicalNormalDistribution : ContinuousProbabilityDistribution {
     override val mean = 0.0
     override val stdev = 1.0
@@ -237,6 +240,7 @@ interface TransformedDistribution : ContinuousProbabilityDistribution {
 }
 
 @Serializable
+@SerialName("normal")
 data class NormalDistribution(override val mean: Double, override val stdev: Double) : TransformedDistribution {
     @Transient
     override val space = NumericSpace()
@@ -244,6 +248,7 @@ data class NormalDistribution(override val mean: Double, override val stdev: Dou
     override val shift get() = mean
     override val scale get() = stdev
 }
+
 
 sealed class TruncatedDistribution : ContinuousProbabilityDistribution {
     abstract  val dist : ContinuousProbabilityDistribution
@@ -276,6 +281,7 @@ sealed class TruncatedDistribution : ContinuousProbabilityDistribution {
 }
 
 @Serializable
+@SerialName("truncatedCanonicalNormal")
 data class TruncatedCanonicalNormalDistribution(
     override val space: NumericSpace,
 ) : TruncatedDistribution() {
@@ -296,6 +302,7 @@ data class TruncatedCanonicalNormalDistribution(
 }
 
 @Serializable
+@SerialName("truncatedNormal")
 data class TruncatedNormalDistribution(
     override val space: NumericSpace,
     val pseudoMean: Double,
