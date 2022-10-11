@@ -409,6 +409,18 @@ object serverState : GlobalState() {
         }
     }
 
+    @DelicateRefAPI
+    override fun derefNonBlocking(entityType: KClass<*>, id: String): Entity? {
+        managers[entityType]?.let { manager ->
+            when (manager) {
+                is InMemoryEntityManager ->
+                    return manager.entityMap[id] as Entity?
+                else -> {}
+            }
+        }
+        return super.derefNonBlocking(entityType, id)
+    }
+
 }
 suspend inline fun <reified  E: Entity> serverState.IdBasedEntityManager<E>.insertEntity(entity: E, forceId: Boolean = false) =
     insertWithId(entity.assignIdIfNeeded())

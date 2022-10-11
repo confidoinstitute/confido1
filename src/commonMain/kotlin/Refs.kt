@@ -17,15 +17,15 @@ interface Entity: HasId {
 }
 inline fun <reified T: ImmediateDerefEntity> Ref<T>.deref(): T? {
     @OptIn(DelicateRefAPI::class)
-    return globalState.derefNonBlocking(T::class.simpleName!!, id) as T?
+    return globalState.derefNonBlocking(T::class, id) as T?
 }
 inline suspend fun <reified T: Entity> Ref<T>.derefBlocking(): T? {
     @OptIn(DelicateRefAPI::class)
-    return globalState.derefBlocking(T::class.simpleName!!, id) as T?
+    return globalState.derefBlocking(T::class, id) as T?
 }
 inline fun <reified T: Entity> Ref<T>.derefNonBlocking(): T? {
     @OptIn(DelicateRefAPI::class)
-    return globalState.derefNonBlocking(T::class.simpleName!!, id) as T?
+    return globalState.derefNonBlocking(T::class, id) as T?
 }
 
 // Used to mark entities that can always be dereferenced without suspending...

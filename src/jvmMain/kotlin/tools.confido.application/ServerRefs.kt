@@ -4,4 +4,4 @@ import tools.confido.state.serverState
 
 inline fun <reified T: ServerImmediateDerefEntity> Ref<T>.deref() =
     @OptIn(DelicateRefAPI::class)
-    serverState.derefNonBlocking(T::class.simpleName!!, id) as T?
+    serverState.derefNonBlocking(T::class, id) as T?

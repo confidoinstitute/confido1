@@ -7,6 +7,7 @@ import tools.confido.question.*
 import tools.confido.refs.*
 import users.User
 import users.UserType
+import kotlin.reflect.KClass
 
 interface BaseState {
     val rooms:  Map<String, Room>
@@ -25,11 +26,11 @@ abstract class GlobalState : BaseState {
     // Ref<T>.{deref,maybeDeref,derefLazy} extensions methods
     // from tools.confido.refs.
     @DelicateRefAPI
-    open fun  derefNonBlocking(collectionId: String, id: String): Entity? =
-        when (collectionId) {
-            "Question" -> questions[id]
-            "User" -> users[id]
-            "Room" -> rooms[id]
+    open fun  derefNonBlocking(entityType: KClass<*>, id: String): Entity? =
+        when (entityType) {
+            Question::class -> questions[id]
+            User::class -> users[id]
+            Room::class -> rooms[id]
             else -> null
         }
     // This function should dereference the entity, even if it involves blocking
@@ -39,8 +40,8 @@ abstract class GlobalState : BaseState {
     // Ref<T>.{deref,maybeDeref,derefLazy} extensions methods
     // from tools.confido.refs.
     @DelicateRefAPI
-    open suspend fun  derefBlocking(collectionId: String, id: String): Entity? =
-        derefNonBlocking(collectionId, id)
+    open suspend fun  derefBlocking(entityType: KClass<*>, id: String): Entity? =
+        derefNonBlocking(entityType, id)
 
     inline fun <reified T: ImmediateDerefEntity> get(id: String) = Ref<T>(id).deref()
     inline fun <reified T: ImmediateDerefEntity> getRef(id: String): Ref<T>? {
