@@ -5,7 +5,6 @@ import components.UserAvatar
 import csstype.AlignItems
 import csstype.rem
 import kotlinx.browser.window
-import kotlinx.datetime.Instant
 import kotlinx.js.Object
 import kotlinx.js.ReadonlyArray
 import mui.base.FilterOptionsState
@@ -17,10 +16,10 @@ import payloads.requests.AddMember
 import react.*
 import react.dom.html.HTMLAttributes
 import rooms.Forecaster
+import rooms.RoomPermission
 import rooms.RoomRole
 import tools.confido.refs.ref
 import users.User
-import users.UserType
 
 internal external interface UserAutocomplete
 internal data class ExistingUser(val user: User) : UserAutocomplete
@@ -126,6 +125,7 @@ val UserInviteForm = FC<Props> {
         MemberRoleSelect {
             value = role
             disabled = stale
+            ownerSelectable = appState.hasPermission(room, RoomPermission.ROOM_OWNER)
             onChange = { role = it }
         }
 

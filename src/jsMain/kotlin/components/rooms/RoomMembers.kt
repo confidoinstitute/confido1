@@ -102,7 +102,7 @@ external interface InvitationMembersProps : Props {
 }
 
 val InvitationMembers = FC<InvitationMembersProps> {props ->
-    val stale = useContext(AppStateContext).stale
+    val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
 
     var copyShown by useState(false)
@@ -171,6 +171,7 @@ val InvitationMembers = FC<InvitationMembersProps> {props ->
             justMembers.map { membership ->
                 RoomMember {
                     key = membership.user.id
+                    this.ownerSelectable = true || appState.hasPermission(room, RoomPermission.ROOM_OWNER)
                     this.membership = membership
                     this.canManage = props.canManage
                     this.disabled = !props.invitation.canAccess
@@ -182,13 +183,12 @@ val InvitationMembers = FC<InvitationMembersProps> {props ->
 
 external interface MemberRoleSelectProps : Props {
     var value: RoomRole
+    var ownerSelectable: Boolean
     var disabled: Boolean
     var onChange: ((RoomRole) -> Unit)?
 }
 
 val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
-    var role by useState(props.value)
-
     FormControl {
         sx {
             width = 125.px
@@ -196,13 +196,14 @@ val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
         val select: FC<SelectProps<String>> = Select
         select {
             this.size = Size.small
-            value = role.id
+            value = props.value.id
             disabled = props.disabled
             onChange = { event, _ ->
                 val changedRole = when(event.target.value) {
                     "viewer" -> Viewer
                     "forecaster" -> Forecaster
                     "moderator" -> Moderator
+                    "owner" -> if (props.ownerSelectable) Owner else error("You cannot do this!")
                     else -> error("This role does not exist")
                 }
                 props.onChange?.invoke(changedRole)
@@ -211,8 +212,9 @@ val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
             listOf(
                 "viewer" to "Viewer",
                 "forecaster" to "Forecaster",
-                "moderator" to "Moderator"
+                "moderator" to "Moderator",
             ).map { (id, name) ->
+                if (id == "owner" && !props.ownerSelectable) return@map
                 MenuItem {
                     value = id
                     +name
@@ -226,6 +228,7 @@ external interface RoomMemberProps : Props {
     var disabled: Boolean
     var membership: RoomMembership
     var canManage: Boolean
+    var ownerSelectable: Boolean
 }
 
 val RoomMember = FC<RoomMemberProps> {props ->
@@ -247,8 +250,9 @@ val RoomMember = FC<RoomMemberProps> {props ->
                 secondary = ReactNode(it)
             }
         }
-        if (props.canManage && !props.disabled) {
+        if ((props.canManage && !props.disabled) && (membership.role != Owner || props.ownerSelectable)) {
             MemberRoleSelect {
+                ownerSelectable = props.ownerSelectable
                 value = membership.role
                 disabled = stale
             }

@@ -30,6 +30,9 @@ val Room = FC<Props> {
     val room = appState.rooms[roomId] ?: return@FC
 
     var editMode by useState(false)
+    useEffect(roomId) {
+        editMode = false
+    }
 
 
     RoomContext.Provider {
@@ -90,10 +93,8 @@ val Room = FC<Props> {
         }
 
         RoomNavigation {
-            key = "room_navigation"
         }
         Routes {
-            key = "room_routes"
             if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
             Route {
                 index = true

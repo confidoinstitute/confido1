@@ -10,7 +10,7 @@ import io.ktor.server.routing.*
 import kotlinx.datetime.Clock
 import payloads.requests.*
 import tools.confido.application.sessions.transientUserData
-import rooms.Moderator
+import rooms.Owner
 import rooms.Room
 import rooms.RoomMembership
 import tools.confido.application.sessions.userSession
@@ -40,7 +40,7 @@ fun editQuestion(routing: Routing) {
         if (!user.type.isProper()) return@postST badRequest("Guests cannot do this")
         val information: BaseRoomInformation = call.receive()
 
-        val myMembership = RoomMembership(user.ref, Moderator, null)
+        val myMembership = RoomMembership(user.ref, Owner, null)
         val room = serverState.roomManager.insertEntity(
             Room(id = "", name = information.name, description = information.description,
             createdAt = Clock.System.now(), questions = emptyList(),

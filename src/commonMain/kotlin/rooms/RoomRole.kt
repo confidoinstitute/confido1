@@ -55,3 +55,11 @@ object Moderator : RoomRole(
     override val id = "moderator"
     override val name = "Moderator"
 }
+
+@Serializable
+object Owner : RoomRole(
+    RoomPermission.values().toSet()
+) {
+    override val id = "owner"
+    override val name = "Owner"
+}
