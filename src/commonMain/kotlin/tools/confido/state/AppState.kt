@@ -19,9 +19,8 @@ data class AppState(
         return rooms.find { it.id == id }
     }
 
-    fun isAdmin(): Boolean {
-        return session.user?.type == UserType.ADMIN
-    }
+    val isAdmin = session.user?.type == UserType.ADMIN
+    val isFullUser = session.user?.type?.isProper() ?: false
 
     fun hasPermission(room: Room, permission: RoomPermission): Boolean {
         return room.hasPermission(session.user, permission)

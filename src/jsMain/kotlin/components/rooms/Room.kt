@@ -23,10 +23,12 @@ val RoomContext = createContext<Room>()
 
 val Room = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
+    val currentUser = appState.session.user ?: return@FC
     val roomId = useParams()["roomID"] ?: return@FC
     val room = appState.getRoom(roomId) ?: return@FC
 
     var editMode by useState(false)
+
 
     RoomContext.Provider {
         value = room
@@ -59,12 +61,16 @@ val Room = FC<Props> {
                     }
                 }
 
-                val seesUsers = appState.session.user?.type?.isProper() ?: false
+                val seesUsers = appState.isFullUser
                 AvatarGroup {
                     max = 4
-                    room.members.map {membership ->
-                        if (seesUsers)
+                    room.members.sortedBy {
+                        // Force yourself to be the first shown member
+                        if (it.user eqid currentUser) null else it.user.id
+                    }.map {membership ->
+                        if (seesUsers || membership.user eqid currentUser)
                             UserAvatar {
+                                key = membership.user.id
                                 user = membership.user
                             }
                         else
@@ -94,6 +100,12 @@ val Room = FC<Props> {
                     showHiddenQuestions = appState.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
                     allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
                 }
+            }
+            // TODO view comments permission
+            if (true)
+            Route {
+                path = "discussion"
+                this.element = RoomComments.create {}
             }
             if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
             Route {

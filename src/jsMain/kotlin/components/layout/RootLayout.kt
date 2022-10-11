@@ -15,11 +15,10 @@ import react.router.*
 import utils.byTheme
 import utils.themed
 
-val permanentBreakpoint = Breakpoint.md
-
 val RootLayout = FC<Props> {
     val (appState, _) = useContext(AppStateContext)
     var drawerOpen by useState(false)
+    console.log("Root layout is being rerendered")
 
     val theme = mui.material.styles.useTheme<mui.material.styles.Theme>().breakpoints.up(permanentBreakpoint)
     val mediaMatch = useMediaQuery(theme)
@@ -30,6 +29,7 @@ val RootLayout = FC<Props> {
 
     // Root element
     mui.system.Box {
+        key = "rootBox"
         sx {
             display = Display.flex
             height = 100.vh
@@ -38,23 +38,20 @@ val RootLayout = FC<Props> {
         CssBaseline {}
 
         RootAppBar {
-            hasDrawer = true
-            onDrawerOpen = {drawerOpen = true}
+            key = "appbar"
+            if (appState.isFullUser)
+                hasDrawer = true
+            onDrawerOpen = { drawerOpen = true }
         }
 
-        mui.system.Box {
-            component = nav
-            sx {
-                width = responsive(permanentBreakpoint to sidebarWidth)
-                flexShrink = responsive(permanentBreakpoint to number(0.0))
-            }
-            Sidebar {
-                permanent = mediaMatch
-                isOpen = drawerOpen
-                onClose = { drawerOpen = false }
-            }
+        Sidebar {
+            key = "sidebar"
+            permanent = mediaMatch
+            isOpen = drawerOpen
+            onClose = { drawerOpen = false }
         }
         mui.system.Box {
+            key = "main"
             component = main
             sx {
                 flexGrow = number(1.0)

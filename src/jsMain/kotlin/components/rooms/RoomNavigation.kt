@@ -27,44 +27,32 @@ val RoomNavigation = FC<Props>
     val locationValue = location.pathname.split('/').getOrNull(3) ?: ""
     // TODO: Fix if we are keeping this, see https://mui.com/material-ui/guides/routing/#tabs
 
-    if (!(state.hasPermission(room, RoomPermission.MANAGE_MEMBERS) || state.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))) {
-        Typography {
-            sx {
-                paddingBottom = themed(2)
-            }
-            variant = TypographyVariant.button
-            +"Questions"
-        }
-        return@FC
-    }
-
     Tabs {
         value = locationValue
         sx {
             marginBottom = themed(2)
         }
 
-        Tab {
-            value = ""
-            this.label = ReactNode("Questions")
-            this.asDynamic().component = NavLink
-            this.asDynamic().to = ""
+        fun tab(to: String, label: String) {
+            Tab {
+                key = to
+                value = to
+                this.label = ReactNode(label)
+                this.asDynamic().component = NavLink
+                this.asDynamic().to = to
+            }
         }
+
+        if (state.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
+        tab("", "Questions")
+
+        // TODO Permission
+        tab("discussion", "Discussion")
 
         if (state.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
-        Tab {
-            value = "edit_questions"
-            this.label = ReactNode("Question management")
-            this.asDynamic().component = NavLink
-            this.asDynamic().to = "edit_questions"
-        }
+        tab("edit_question", "Question management")
 
         if (state.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
-            Tab {
-                value = "members"
-                this.label = ReactNode("Room members")
-                this.asDynamic().component = NavLink
-                this.asDynamic().to = "members"
-            }
+        tab("members", "Room members")
     }
 }

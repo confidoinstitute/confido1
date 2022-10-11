@@ -2,6 +2,7 @@ package components.rooms
 
 import components.AppStateContext
 import components.UserAvatar
+import csstype.AlignItems
 import csstype.rem
 import kotlinx.browser.window
 import kotlinx.datetime.Instant
@@ -98,6 +99,9 @@ val UserInviteForm = FC<Props> {
     Stack {
         this.direction = responsive(StackDirection.row)
         this.spacing = responsive(1)
+        sx {
+            alignItems = AlignItems.center
+        }
 
         val autocomplete: FC<AutocompleteProps<UserAutocomplete>> = Autocomplete
         autocomplete {

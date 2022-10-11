@@ -85,7 +85,9 @@ val App = FC<Props> {
                 Route {
                     path = "/*"
                     index = true
-                    element = layout.create()
+                    element = layout.create {
+                        key = "layout"
+                    }
                 }
                 Route {
                     path = "presenter"
