@@ -1,10 +1,8 @@
 package tools.confido.state
 
-import com.mongodb.MongoNamespace
 import com.mongodb.client.model.Filters.and
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.reactivestreams.client.ClientSession
-import com.mongodb.reactivestreams.client.MongoCollection
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -19,7 +17,6 @@ import tools.confido.question.QuestionComment
 import tools.confido.question.RoomComment
 import tools.confido.refs.*
 import tools.confido.spaces.*
-import tools.confido.state.ServerGlobalState.register
 import tools.confido.utils.*
 import users.User
 import java.lang.RuntimeException
@@ -39,7 +36,7 @@ class TransactionContextElement(val sess: ClientSession) : AbstractCoroutineCont
 }
 
 
-object ServerGlobalState : GlobalState() {
+object serverState : GlobalState() {
     override val groupPred : MutableMap<Ref<Question>, Prediction?> = mutableMapOf()
 
     // Now, for simplicity, serialize all mutations
@@ -364,7 +361,7 @@ object ServerGlobalState : GlobalState() {
         this[TransactionContextElement]?.sess
 
 
-    suspend inline fun <R> withMutationLock(crossinline body: suspend ServerGlobalState.()->R): R =
+    suspend inline fun <R> withMutationLock(crossinline body: suspend serverState.()->R): R =
         if (coroutineContext[MutationLockedContextElement.Key] != null) { // parent has already locked
             body()
         } else {
@@ -377,7 +374,7 @@ object ServerGlobalState : GlobalState() {
 
 
 
-    suspend inline fun <R> withTransaction(crossinline body: suspend ServerGlobalState.()->R): R {
+    suspend inline fun <R> withTransaction(crossinline body: suspend serverState.()->R): R {
         if (coroutineContext[TransactionContextElement.Key] != null)
             throw RuntimeException("Nested transactions are not supported")
         return withMutationLock{
@@ -394,13 +391,12 @@ object ServerGlobalState : GlobalState() {
     }
 
 }
-suspend inline fun <reified  E: Entity> ServerGlobalState.IdBasedEntityManager<E>.insertEntity(entity: E, forceId: Boolean = false) =
+suspend inline fun <reified  E: Entity> serverState.IdBasedEntityManager<E>.insertEntity(entity: E, forceId: Boolean = false) =
     insertWithId(entity.assignIdIfNeeded())
-suspend fun <E: Entity> ServerGlobalState.IdBasedEntityManager<E>.deleteEntity(ref: Ref<E>, ignoreNonexistent: Boolean = false) =
+suspend fun <E: Entity> serverState.IdBasedEntityManager<E>.deleteEntity(ref: Ref<E>, ignoreNonexistent: Boolean = false) =
     deleteEntity(ref.id, ignoreNonexistent)
-suspend fun <E: Entity> ServerGlobalState.IdBasedEntityManager<E>.modifyEntity(ref: Ref<E>, modify: (E) -> E) =
+suspend fun <E: Entity> serverState.IdBasedEntityManager<E>.modifyEntity(ref: Ref<E>, modify: (E) -> E) =
     modifyEntity(ref.id, modify)
 
 
-val serverState = ServerGlobalState
 actual val globalState: GlobalState = serverState

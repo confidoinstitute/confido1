@@ -32,7 +32,6 @@ import tools.confido.question.*
 import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.serialization.confidoSM
-import tools.confido.spaces.*
 import tools.confido.state.*
 import tools.confido.utils.*
 import users.User
@@ -230,7 +229,7 @@ fun main() {
 
                 val inviteLink = InviteLink(description = create.description ?: "", role = create.role,
                                             createdBy=user.ref, createdAt = now())
-                ServerGlobalState.roomManager.modifyEntity(room.id) {
+                serverState.roomManager.modifyEntity(room.id) {
                     it.copy(inviteLinks=it.inviteLinks + listOf(inviteLink))
                 }
 
@@ -253,7 +252,7 @@ fun main() {
                     }
 
                     // TODO: Prevent user from accepting multiple times
-                    ServerGlobalState.roomManager.modifyEntity(room.ref) {
+                    serverState.roomManager.modifyEntity(room.ref) {
                         it.copy(members = it.members + listOf(RoomMembership(user.ref, invite.role, invite.id)))
                     }
 
@@ -273,7 +272,7 @@ fun main() {
                     val newUser = User(randomString(32), UserType.GUEST, accept.email, false, accept.userNick, null, now(), now())
 
                     call.userSession = UserSession(userRef = newUser.ref, language = "en")
-                    ServerGlobalState.roomManager.modifyEntity(room.ref) {
+                    serverState.roomManager.modifyEntity(room.ref) {
                         it.copy(members = it.members + listOf(RoomMembership(newUser.ref, invite.role, invite.id)))
                     }
                     serverState.users.insert(newUser)
@@ -324,7 +323,7 @@ fun main() {
 
                 val comment = QuestionComment(question = question.ref, user = user.ref, timestamp = unixNow(),
                                                 content = createdComment.content, prediction = prediction)
-                ServerGlobalState.questionCommentManager.insertEntity(comment)
+                serverState.questionCommentManager.insertEntity(comment)
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
             }
@@ -344,7 +343,7 @@ fun main() {
                     return@postST
                 }
                 val pred = Prediction(ts=unixNow(), dist = dist, question = question.ref, user = user.ref)
-                ServerGlobalState.userPredManager.save(pred)
+                serverState.userPredManager.save(pred)
 
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
