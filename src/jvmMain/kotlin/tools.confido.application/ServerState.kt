@@ -101,7 +101,7 @@ object serverState : GlobalState() {
 
         suspend fun modifyEntity(id: String, modify: (E)->E): E =
             withMutationLock {
-                val orig: E = get(id) ?: throw NoSuchElementException()
+                val orig = this.get(id) ?: throw NoSuchElementException()
                 check(orig.id == id)
                 val new = modify(orig)
                 when (val sess = coroutineContext.getSession()) {
@@ -380,7 +380,7 @@ object serverState : GlobalState() {
         this[TransactionContextElement]?.sess
 
 
-    suspend inline fun <R> withMutationLock(crossinline body: suspend serverState.()->R): R =
+    suspend inline fun <R> withMutationLock(crossinline body: suspend ()->R): R =
         if (coroutineContext[MutationLockedContextElement.Key] != null) { // parent has already locked
             body()
         } else {
