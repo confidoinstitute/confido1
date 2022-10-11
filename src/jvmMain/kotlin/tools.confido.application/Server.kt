@@ -23,10 +23,12 @@ import kotlinx.datetime.Clock.System.now
 import kotlinx.html.*
 import kotlinx.serialization.encodeToString
 import org.litote.kmongo.serialization.registerModule
+import org.litote.kmongo.serialization.registerSerializer
 import payloads.requests.*
 import payloads.responses.InviteStatus
 import rooms.*
 import tools.confido.application.sessions.*
+import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.*
 import tools.confido.refs.*
@@ -154,7 +156,11 @@ suspend inline fun PipelineContext<Unit, ApplicationCall>.badRequest(msg: String
 
 fun main() {
     registerModule(confidoSM)
-
+    // XXX kotlinx.serialization can serialize value classes out of the box. But KMongo uses
+    // some low level magic and tries to manage its own serializer repository, and cannot
+    // serialize Ref by default. So we must create a custom serializer and also register it
+    // with KMongo.
+    registerSerializer(RefAsStringSerializer)
 
     runBlocking { // this is single-threaded by default
         serverState.initialize()

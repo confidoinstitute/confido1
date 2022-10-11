@@ -1,6 +1,12 @@
 package tools.confido.refs
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import rooms.Room
 import tools.confido.question.Question
 import tools.confido.state.globalState
@@ -41,10 +47,22 @@ interface ImmediateDerefEntity : ClientImmediateDerefEntity, ServerImmediateDere
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION, AnnotationTarget.CONSTRUCTOR)
 annotation class DelicateRefAPI
 
-@Serializable
+
+object RefAsStringSerializer : KSerializer<Ref<*>> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("Ref", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: Ref<*>) {
+        encoder.encodeString(value.id)
+    }
+
+    override fun deserialize(decoder: Decoder): Ref<*> {
+        val string = decoder.decodeString()
+        return Ref<Entity>(string)
+    }
+}
+
+@Serializable(with = RefAsStringSerializer::class)
 @JvmInline
-// using optin instead of making constructor private because private members
-// cannot be called from public inline functions
 value class Ref<T: Entity> (val id: String) {
 }
 
