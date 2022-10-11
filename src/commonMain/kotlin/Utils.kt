@@ -103,3 +103,9 @@ fun List<Double>.normalize(): List<Double> {
     if (s == 0.0) return this
     return this Zdiv s
 }
+
+fun <K,V,R> Map<K,V>.mapValuesNotNull(f: (Map.Entry<K,V>) -> R?) = mapNotNull {
+    val mapped = f(it)
+    if (mapped == null) null
+    else it.key to mapped
+}.toMap()

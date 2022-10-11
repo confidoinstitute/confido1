@@ -2,11 +2,18 @@ package rooms
 
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
+import tools.confido.refs.HasId
+import tools.confido.refs.Ref
+import tools.confido.utils.generateId
 import tools.confido.utils.randomString
 import users.User
 
 @Serializable
 data class InviteLink(
+    override val id: String = generateId(),
+
+    val token: String = generateId(),
+
     val description: String,
     /**
      * Role granted by the invite link.
@@ -15,7 +22,7 @@ data class InviteLink(
     /**
      * User who created the invite link.
      */
-    val createdBy: User,
+    val createdBy: Ref<User>,
     /**
      * Time of creation of the invite link.
      */
@@ -28,7 +35,5 @@ data class InviteLink(
      * Indicates whether users invited by this link can access the room.
      */
     val canAccess: Boolean = true,
-) {
-    // TODO: this is likely not secure
-    val token = randomString(32)
+) : HasId {
 }

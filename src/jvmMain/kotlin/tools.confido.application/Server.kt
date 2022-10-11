@@ -33,8 +33,7 @@ import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.serialization.confidoSM
 import tools.confido.spaces.*
-import tools.confido.state.UserSession
-import tools.confido.state.serverState
+import tools.confido.state.*
 import tools.confido.utils.*
 import users.User
 import users.UserType
@@ -229,8 +228,9 @@ fun main() {
                     return@postST
                 }
 
-                val inviteLink = InviteLink(create.description ?: "", create.role, user, now())
-                serverState.modifyEntity(room.ref) {
+                val inviteLink = InviteLink(description = create.description ?: "", role = create.role,
+                                            createdBy=user.ref, createdAt = now())
+                ServerGlobalState.roomManager.modifyEntity(room.id) {
                     it.copy(inviteLinks=it.inviteLinks + listOf(inviteLink))
                 }
 
@@ -248,13 +248,13 @@ fun main() {
                         return@postST badRequest("The invite does not exist or is current not active.")
 
                     // Prevent user from accepting multiple times
-                    if (room.members.any {it.user.eqid(user) && it.invitedVia == invite}) {
+                    if (room.members.any {it.user eqid user && it.invitedVia == invite.id}) {
                         return@postST badRequest("This invite has already been accepted")
                     }
 
                     // TODO: Prevent user from accepting multiple times
-                    serverState.modifyEntity(room.ref) {
-                        it.copy(members = it.members + listOf(RoomMembership(user, invite.role, invite)))
+                    ServerGlobalState.roomManager.modifyEntity(room.ref) {
+                        it.copy(members = it.members + listOf(RoomMembership(user.ref, invite.role, invite.id)))
                     }
 
                     call.transientUserData?.refreshRunningWebsockets()
@@ -273,8 +273,8 @@ fun main() {
                     val newUser = User(randomString(32), UserType.GUEST, accept.email, false, accept.userNick, null, now(), now())
 
                     call.userSession = UserSession(userRef = newUser.ref, language = "en")
-                    serverState.modifyEntity(room.ref) {
-                        it.copy(members = it.members + listOf(RoomMembership(newUser, invite.role, invite)))
+                    ServerGlobalState.roomManager.modifyEntity(room.ref) {
+                        it.copy(members = it.members + listOf(RoomMembership(newUser.ref, invite.role, invite.id)))
                     }
                     serverState.users.insert(newUser)
 
@@ -324,7 +324,7 @@ fun main() {
 
                 val comment = QuestionComment(question = question.ref, user = user.ref, timestamp = unixNow(),
                                                 content = createdComment.content, prediction = prediction)
-                serverState.addQuestionComment(comment)
+                ServerGlobalState.questionCommentManager.insertEntity(comment)
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
             }
@@ -344,7 +344,7 @@ fun main() {
                     return@postST
                 }
                 val pred = Prediction(ts=unixNow(), dist = dist, question = question.ref, user = user.ref)
-                serverState.addPrediction(pred)
+                ServerGlobalState.userPredManager.save(pred)
 
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
@@ -375,7 +375,7 @@ fun main() {
                         return@runRefreshable
                     }
 
-                    val state = serverState.export(sessionData)
+                    val state = StateCensor(sessionData).censor()
                     send(Frame.Text(confidoJSON.encodeToString(state)))
                 }
             }

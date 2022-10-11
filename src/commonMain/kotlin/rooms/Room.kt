@@ -23,6 +23,12 @@ data class Room(
     val inviteLinks: List<InviteLink> = emptyList(),
 ) : ImmediateDerefEntity {
 
+    fun findLink(id: String?): InviteLink? {
+        if (id == null || id == "") {
+            return null
+        }
+        return inviteLinks.firstOrNull { it.id == id }
+    }
     fun hasPermission(user: User?, permission: RoomPermission): Boolean {
         if (user == null) {
             // Public rooms can be added here.
@@ -35,7 +41,7 @@ data class Room(
 
         // Note that one user could have multiple memberships here.
         return members.find {
-            it.user eqid user && it.invitedVia?.canAccess ?: true && it.role.hasPermission(permission)
+            it.user eqid user && findLink(it.invitedVia)?.canAccess ?: true && it.role.hasPermission(permission)
         } != null
     }
 }

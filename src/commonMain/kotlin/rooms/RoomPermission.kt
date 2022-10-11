@@ -2,14 +2,19 @@ package rooms
 
 enum class RoomPermission {
     VIEW_QUESTIONS,
+    VIEW_QUESTION_COMMENTS,
+    VIEW_ROOM_COMMENTS,
+    POST_QUESTION_COMMENT,
+    POST_ROOM_COMMENT,
     SUBMIT_PREDICTION,
     ADD_QUESTION,
     SUGGEST_QUESTION,
     VIEW_HIDDEN_QUESTIONS,
     /**
-     * See all group and individual predictions regardless of question setting.
+     * See all group predictions regardless of question setting.
      */
-    VIEW_ALL_PREDICTIONS,
+    VIEW_ALL_GROUP_PREDICTIONS,
+    VIEW_INDIVIDUAL_PREDICTIONS,
     MANAGE_QUESTIONS,
     MANAGE_MEMBERS,
 }

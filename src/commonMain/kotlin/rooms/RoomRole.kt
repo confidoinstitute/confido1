@@ -16,22 +16,27 @@ sealed class RoomRole(val permissions: Set<RoomPermission>) {
 }
 
 @Serializable
-object Forecaster : RoomRole(setOf(RoomPermission.VIEW_QUESTIONS, RoomPermission.SUBMIT_PREDICTION)) {
+object Forecaster : RoomRole(setOf(
+        RoomPermission.VIEW_QUESTIONS,
+        RoomPermission.SUBMIT_PREDICTION,
+        RoomPermission.VIEW_QUESTION_COMMENTS,
+        RoomPermission.VIEW_ROOM_COMMENTS,
+        RoomPermission.POST_ROOM_COMMENT,
+        RoomPermission.POST_QUESTION_COMMENT,
+)) {
     override val id = "forecaster"
     override val name = "Forecaster"
 }
 
 @Serializable
 object Moderator : RoomRole(
-    setOf(
-        RoomPermission.VIEW_QUESTIONS,
-        RoomPermission.SUBMIT_PREDICTION,
+    Forecaster.permissions + setOf(
         RoomPermission.ADD_QUESTION,
-        RoomPermission.SUGGEST_QUESTION,
         RoomPermission.VIEW_HIDDEN_QUESTIONS,
-        RoomPermission.VIEW_ALL_PREDICTIONS,
+        RoomPermission.VIEW_ALL_GROUP_PREDICTIONS,
+        RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS,
         RoomPermission.MANAGE_QUESTIONS,
-        RoomPermission.MANAGE_MEMBERS
+        RoomPermission.MANAGE_MEMBERS,
     )
 ) {
     override val id = "moderator"

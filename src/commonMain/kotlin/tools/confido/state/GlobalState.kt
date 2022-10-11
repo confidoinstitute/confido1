@@ -1,18 +1,21 @@
 package tools.confido.state
 
 import kotlinx.serialization.Serializable
-import tools.confido.question.Comment
-import tools.confido.question.Prediction
 import rooms.Room
+import tools.confido.question.*
 import tools.confido.refs.*
-import tools.confido.question.Question
 import users.User
 
-abstract class GlobalState {
-    abstract val rooms:  Map<String, Room>
-    abstract val questions:  Map<String, Question>
-    abstract val users:  Map<String, User>
-    abstract val groupPred : Map<Ref<Question>, Prediction?>
+interface BaseState {
+    val rooms:  Map<String, Room>
+    val questions:  Map<String, Question>
+    val questionComments:  Map<Ref<Question>, Map<String, QuestionComment>>
+    val roomComments:  Map<Ref<Room>, Map<String, RoomComment>>
+    val users:  Map<String, User>
+    val groupPred : Map<Ref<Question>, Prediction?>
+}
+
+abstract class GlobalState : BaseState {
 
     // This function should dereference the entity if it is possible to do so
     // without suspending, return null otherwise.
@@ -51,13 +54,12 @@ expect val globalState: GlobalState
 // State representation sent using websocket
 @Serializable
 data class SentState(
-    val rooms: Map<String, Room> = emptyMap(),
-    val questions: Map<String, Question> = emptyMap(),
-    val users: Map<String, User> = emptyMap(),
-    val myPredictions: Map<String, Prediction> = emptyMap(),
-    val comments: Map<String, List<Comment>> = emptyMap(),
-    val groupDistributions: Map<String, List<Double>> = emptyMap(),
+    override val rooms: Map<String, Room> = emptyMap(),
+    override val questions: Map<String, Question> = emptyMap(),
+    override val users: Map<String, User> = emptyMap(),
+    val myPredictions: Map<Ref<Question>, Prediction> = emptyMap(),
+    override val questionComments: Map<Ref<Question>, Map<String, QuestionComment>> = emptyMap(),
+    override val roomComments: Map<Ref<Room>, Map<String, RoomComment>> = emptyMap(),
+    override val groupPred: Map<Ref<Question>, Prediction?>,
     val session: UserSession,
-) {
-
-}
+) : BaseState

@@ -54,22 +54,22 @@ inline val <reified  T: Entity> T.ref: Ref<T> get() {
 }
 
 // COMPARING BY ID - `eqid` infix operator; can take entities, refs and string ids
-inline infix fun <T: Entity> T.eqid(other: T) =
-    this.id == other.id
-inline infix fun <T: Entity> T.eqid(other: Ref<T>) =
-    this.id == other.id
-inline infix fun Entity.eqid(other: String) =
-    this.id == other
-inline infix fun String.eqid(other: Entity) =
-    this == other.id
-inline infix fun <T: Entity> Ref<T>.eqid(other: T) =
-    this.id == other.id
-inline infix fun <T: Entity> Ref<T>.eqid(other: Ref<T>) =
-    this.id == other.id
-inline infix fun <T: Entity> Ref<T>.eqid(other: String) =
-    this.id == other
+inline infix fun <T: HasId?> T.eqid(other: T) =
+    (this?.id ?: "") == (other?.id ?: "")
+inline infix fun <T: Entity> T?.eqid(other: Ref<T>?) =
+    (this?.id ?: "") == (other?.id ?: "")
+inline infix fun HasId?.eqid(other: String) =
+    (this?.id ?: "") == other
+inline infix fun String.eqid(other: HasId?) =
+    this == (other?.id ?: "")
+inline infix fun <T: Entity> Ref<T>?.eqid(other: T?) =
+    (this?.id ?: "") == (other?.id ?: "")
+inline infix fun <T: Entity> Ref<T>?.eqid(other: Ref<T>?) =
+    (this?.id ?: "") == (other?.id ?: "")
+inline infix fun <T: Entity> Ref<T>?.eqid(other: String) =
+    (this?.id ?: "") == other
 inline infix fun <T: Entity> String.eqid(other: Ref<T>) =
-    this == other.id
+    this == (other.id ?: "")
 
 fun <T: Entity> List<T>.indexOfById(what: T) = this.indexOfFirst { it eqid what }
 fun <T: Entity> List<T>.findById(what: T) = this.find { it eqid what }

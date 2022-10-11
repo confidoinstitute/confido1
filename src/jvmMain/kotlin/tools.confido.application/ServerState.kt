@@ -1,8 +1,10 @@
 package tools.confido.state
 
+import com.mongodb.MongoNamespace
 import com.mongodb.client.model.Filters.and
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.reactivestreams.client.ClientSession
+import com.mongodb.reactivestreams.client.MongoCollection
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -17,12 +19,14 @@ import tools.confido.question.QuestionComment
 import tools.confido.question.RoomComment
 import tools.confido.refs.*
 import tools.confido.spaces.*
+import tools.confido.state.ServerGlobalState.register
 import tools.confido.utils.*
 import users.User
 import java.lang.RuntimeException
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
+import kotlin.reflect.KClass
 
 
 class DuplicateIdException : Exception() {}
@@ -35,55 +39,290 @@ class TransactionContextElement(val sess: ClientSession) : AbstractCoroutineCont
 }
 
 
-class ServerGlobalState : GlobalState() {
-    override val rooms:  MutableMap<String, Room> = mutableMapOf()
-    override val questions:  MutableMap<String, Question> = mutableMapOf()
-    override val users:  MutableMap<String, User> = mutableMapOf()
-
-    val userPred : MutableMap<Ref<Question>, MutableMap<Ref<User>, Prediction>> = mutableMapOf()
+object ServerGlobalState : GlobalState() {
     override val groupPred : MutableMap<Ref<Question>, Prediction?> = mutableMapOf()
-    val questionComments : MutableMap<Ref<Question>, MutableMap<String, QuestionComment>> = mutableMapOf()
-    val roomComments : MutableMap<Ref<Room>, MutableMap<String, RoomComment>> = mutableMapOf()
 
     // Now, for simplicity, serialize all mutations
     val mutationMutex = Mutex()
 
     val client = KMongo.createClient().coroutine
     val database = client.getDatabase(System.getenv("CONFIDO_DB_NAME") ?: "confido1")
-    val questionsColl = database.getCollection<Question>("questions")
-    val usersColl = database.getCollection<User>("users")
-    val roomsColl = database.getCollection<Room>("rooms")
-    val userPredColl = database.getCollection<Prediction>("userPred")
-    val questionCommentsColl = database.getCollection<QuestionComment>("questionComments")
-    val roomCommentsColl = database.getCollection<RoomComment>("questionComments")
 
 
-    suspend fun <T: HasId> loadEntityMap(coll: CoroutineCollection<T>) : Map<String, T> =
-        coll.find().toList().associateBy { entity -> entity.id }.toMap()
+    abstract class EntityManager<E: HasId>(val mongoCollection: CoroutineCollection<E>) {
+        var isLoading = false
+        val updateCallbacks: MutableList<EntityManager<E>.(E, E) -> Unit> = mutableListOf()
+        val addCallbacks: MutableList<EntityManager<E>.(E) -> Unit> = mutableListOf()
+        val deleteCallbacks: MutableList<EntityManager<E>.(E) -> Unit> = mutableListOf()
+        fun onEntityUpdated(cb: EntityManager<E>.(E, E) -> Unit) {
+            updateCallbacks.add(cb)
+        }
+
+        fun onEntityAdded(cb: EntityManager<E>.(E) -> Unit) {
+            addCallbacks.add(cb)
+        }
+
+        fun onEntityAddedOrUpdated(cb: EntityManager<E>.(E) -> Unit) {
+            onEntityAdded(cb)
+            onEntityUpdated({ old, new -> cb(new) })
+        }
+
+        fun onEntityDeleted(cb: EntityManager<E>.(E) -> Unit) {
+            deleteCallbacks.add(cb)
+        }
+
+        fun notifyEntityAdded(entity: E) {
+            addCallbacks.forEach { it(entity) }
+        }
+
+        fun notifyEntityUpdated(old: E, new: E) {
+            updateCallbacks.forEach { it(old, new) }
+        }
+
+        fun notifyEntityDeleted(entity: E) {
+            deleteCallbacks.forEach { it(entity) }
+        }
+
+        open suspend fun initialize() {}
+        open suspend fun doLoad() {}
+        suspend fun load() {
+            isLoading = true
+            try {
+                doLoad()
+            } finally {
+                isLoading = false
+            }
+        }
+
+    }
+    open class IdBasedEntityManager<E: HasId>(mongoCollection: CoroutineCollection<E>) : EntityManager<E>(mongoCollection) {
+        open suspend fun get(id: String): E? {
+            return mongoCollection.findOneById(id)
+        }
+
+        suspend fun modifyEntity(id: String, modify: (E)->E): E =
+            withMutationLock {
+                val orig: E = get(id) ?: throw NoSuchElementException()
+                check(orig.id == id)
+                val new = modify(orig)
+                when (val sess = coroutineContext.getSession()) {
+                    null -> mongoCollection.replaceOneById(new.id, new, ReplaceOptions())
+                    else -> mongoCollection.replaceOneById(sess, new.id, new, ReplaceOptions())
+                }
+                notifyEntityUpdated(orig, new)
+                return@withMutationLock new
+            }
+        suspend fun replaceEntity(new: E, compare: E? = null,
+                             upsert: Boolean = false,
+                             merge: (orig: E, new: E)->E = { _, new -> new }, ) : E =
+            withMutationLock {
+                if (upsert && compare != null) throw IllegalArgumentException()
+                val orig: E? = get(new.id)
+                if (orig == null) {
+                    if (upsert) {
+                        return@withMutationLock insertWithId(new)
+                    } else {
+                        throw NoSuchElementException()
+                    }
+                }
+                compare?.let {
+                    if (compare.id != new.id) throw IllegalArgumentException()
+                    if (orig != compare) throw ConcurrentModificationException()
+                }
+                val merged = merge(orig, new)
+                check(merged.id == new.id)
+                when (val sess = coroutineContext.getSession()) {
+                    null -> mongoCollection.replaceOneById(merged.id, merged, ReplaceOptions())
+                    else -> mongoCollection.replaceOneById(sess, merged.id, merged, ReplaceOptions())
+                }
+                notifyEntityUpdated(orig, merged)
+                return@withMutationLock merged
+            }
+
+
+        suspend fun deleteEntity(id: String, ignoreNonexistent: Boolean = false) : E? =
+            withMutationLock {
+                val orig: E = get(id) ?: if (ignoreNonexistent) return@withMutationLock null else throw NoSuchElementException()
+                when (val sess = coroutineContext.getSession()) {
+                    null -> mongoCollection.deleteOneById(id)
+                    else -> mongoCollection.deleteOneById(sess, id)
+                }
+                notifyEntityDeleted(orig)
+                return@withMutationLock orig
+            }
+        suspend fun deleteEntity(entity: E, ignoreNonexistent: Boolean = false,
+                                    check: (E,E)->Boolean = { found, expected -> found == expected }) : E? {
+            mutationMutex.withLock {
+                val orig = get(entity.id) ?: if (ignoreNonexistent) return null else throw NoSuchElementException()
+                if (orig != entity) throw ConcurrentModificationException()
+                when (val sess = coroutineContext.getSession()) {
+                    null -> mongoCollection.deleteOneById(entity.id)
+                    else -> mongoCollection.deleteOneById(sess, entity.id)
+                }
+                notifyEntityDeleted(orig)
+                return orig
+            }
+        }
+        suspend fun insertWithId(entity: E) =
+            withMutationLock {
+                require(!entity.id.isEmpty())
+                val old: E? = get(entity.id)
+                if (old != null) throw DuplicateIdException()
+                when (val sess = coroutineContext.getSession()) {
+                    null -> mongoCollection.insertOne(entity)
+                    else -> mongoCollection.insertOne(sess, entity)
+                }
+                notifyEntityAdded(entity)
+                return@withMutationLock entity
+            }
+
+    }
+
+    open class InMemoryEntityManager<E: Entity>(mongoCollection: CoroutineCollection<E>)
+            : IdBasedEntityManager<E>(mongoCollection) {
+        val entityMap: MutableMap<String, E> = mutableMapOf()
+        override suspend fun doLoad() {
+            mongoCollection.find().toFlow().collect { notifyEntityAdded(it) }
+        }
+
+        override suspend fun get(id: String): E? = entityMap[id]
+        init {
+            onEntityAddedOrUpdated { entityMap[it.id] = it }
+            onEntityDeleted { entityMap.remove(it.id) }
+        }
+        // FIXME move general parts to EntityManager to handle case when all entities are not cached in memory
+    }
+
+    val managers : MutableMap<KClass<*>, EntityManager<*>> = mutableMapOf()
+    val additionalManagers : MutableList<EntityManager<*>> = mutableListOf()
+    @Suppress("UNCHECKED_CAST")
+    inline fun <reified  E: Entity> getManager() =
+        managers[E::class] as EntityManager<E>
+
+    inline fun getManager(entity: Entity) =
+        managers[entity::class]
+    inline fun <reified  E: Entity> EntityManager<E>.register() {
+        managers[E::class] = this
+    }
+    @JvmName("register2")
+    inline fun <reified  E: HasId> EntityManager<E>.register() {
+        additionalManagers.add(this)
+    }
+    val questionRoom: MutableMap<Ref<Question>, Ref<Room>> = mutableMapOf()
+    object roomManager : InMemoryEntityManager<Room>(database.getCollection<Room>("rooms")) {
+        init {
+            onEntityAdded { room->
+                room.questions.forEach { questionRoom[it] = room.ref }
+            }
+            onEntityUpdated { old, new->
+                val addedQuestions = new.questions.toSet() - old.questions.toSet()
+                val removedQuestions = old.questions.toSet() - new.questions.toSet()
+                addedQuestions.forEach { questionRoom[it] = new.ref }
+                removedQuestions.forEach { if (questionRoom[it] == new.ref) questionRoom.remove(it) }
+            }
+            onEntityDeleted { room ->
+                room.questions.forEach { if (questionRoom[it] == room.ref) questionRoom.remove(it) }
+            }
+        }
+    }
+    override val rooms by roomManager::entityMap
+    object questionManager : InMemoryEntityManager<Question>(database.getCollection("questions")) {
+    }
+    override val questions by questionManager::entityMap
+
+    object userManager : InMemoryEntityManager<User>(database.getCollection("users")) {
+    }
+    override val users by userManager::entityMap
+
+    object userPredManager : EntityManager<Prediction>(database.getCollection("userPred")) {
+        val userPred : MutableMap<Ref<Question>, MutableMap<Ref<User>, Prediction>> = mutableMapOf()
+        override suspend fun initialize() {
+            mongoCollection.ensureUniqueIndex(Prediction::question, Prediction::user)
+            mongoCollection.ensureIndex(Prediction::question)
+            mongoCollection.ensureIndex(Prediction::user)
+        }
+
+        override suspend fun doLoad() {
+            super.doLoad()
+            recalcGroupPred()
+        }
+
+        fun get(question: Ref<Question>, user: Ref<User>) =
+            userPred[question]?.get(user)
+
+        suspend fun save(pred: Prediction)  = withMutationLock {
+            val pred = if (pred.id != "") pred else pred.copy(id=generateId())
+            require(pred.user != null)
+            val orig = get(pred.question, pred.user)
+            val filter = and(Prediction::question eq pred.question, Prediction::user eq pred.user)
+
+            when (val sess = coroutineContext.getSession()) {
+                null -> mongoCollection.replaceOne(filter, pred, ReplaceOptions().upsert(true))
+                else -> mongoCollection.replaceOne(sess, filter, pred, ReplaceOptions().upsert(true))
+            }
+
+            if (orig == null) notifyEntityAdded(pred)
+        }
+        init {
+            onEntityAddedOrUpdated {  pred ->
+                userPred.getOrPut(pred.question){ mutableMapOf() }[pred.user ?: return@onEntityAddedOrUpdated] = pred
+                if (!isLoading) recalcGroupPred(questions[pred.question.id])
+            }
+            onEntityDeleted { pred->
+                val qp = userPred[pred.question] ?: return@onEntityDeleted
+                val userRef = pred.user ?: return@onEntityDeleted
+                if (qp[userRef] eqid pred) qp.remove(userRef)
+                if (!isLoading) recalcGroupPred(questions[pred.question.id])
+            }
+        }
+    }
+    val userPred by userPredManager::userPred
+
+    object questionCommentManager: InMemoryEntityManager<QuestionComment>(database.getCollection("questionComments")) {
+        val questionComments : MutableMap<Ref<Question>, MutableMap<String, QuestionComment>> = mutableMapOf()
+        init {
+            onEntityAddedOrUpdated { comment ->
+                questionComments.getOrPut(comment.question){ mutableMapOf() }[comment.id] = comment
+            }
+            onEntityDeleted {comment ->
+                (questionComments[comment.question] ?: return@onEntityDeleted).remove(comment.id)
+            }
+        }
+    }
+    override val questionComments: MutableMap<Ref<Question>, MutableMap<String, QuestionComment>> by questionCommentManager::questionComments
+    object roomCommentManager: InMemoryEntityManager<RoomComment>(database.getCollection("roomComments")) {
+        val roomComments : MutableMap<Ref<Room>, MutableMap<String, RoomComment>> = mutableMapOf()
+        init {
+            onEntityAddedOrUpdated { comment ->
+                roomComments.getOrPut(comment.room){ mutableMapOf() }[comment.id] = comment
+            }
+            onEntityDeleted {comment ->
+                (roomComments[comment.room] ?: return@onEntityDeleted).remove(comment.id)
+            }
+        }
+    }
+    override val roomComments by roomCommentManager::roomComments
+
+    init {
+        roomManager.register()
+        questionManager.register()
+        userManager.register()
+        userPredManager.register()
+        questionCommentManager.register()
+        roomCommentManager.register()
+    }
+
+
+
 
     suspend fun initialize() {
-        userPredColl.ensureUniqueIndex(Prediction::question, Prediction::user)
-        userPredColl.ensureIndex(Prediction::question)
-        userPredColl.ensureIndex(Prediction::user)
-        questionCommentsColl.ensureIndex(QuestionComment::question, QuestionComment::timestamp)
-        questionCommentsColl.ensureIndex(QuestionComment::user, QuestionComment::timestamp)
-        roomCommentsColl.ensureIndex(RoomComment::room)
-        roomCommentsColl.ensureIndex(RoomComment::user)
+        managers.values.forEach { it.initialize() }
+        additionalManagers.forEach { it.initialize() }
     }
     // initial load from database
     suspend fun load() {
-        questions.putAll(loadEntityMap(questionsColl))
-        rooms.putAll(loadEntityMap(roomsColl))
-        users.putAll(loadEntityMap(usersColl))
-        userPredColl.find().toFlow().collect {
-            userPred.getOrPut(it.question) {mutableMapOf()}[it.user ?: return@collect] = it
-        }
-        questionCommentsColl.find().toFlow().collect {
-            questionComments.getOrPut(it.question) {mutableMapOf()}[it.id] = it
-        }
-        roomCommentsColl.find().toFlow().collect {
-            roomComments.getOrPut(it.room) {mutableMapOf()}[it.id] = it
-        }
+        managers.values.forEach { it.load() }
+        additionalManagers.forEach { it.load() }
         recalcGroupPred()
     }
 
@@ -121,64 +360,9 @@ class ServerGlobalState : GlobalState() {
         }
     }
 
-    fun export(session: UserSession): SentState {
-        // TODO censor
-        return SentState(
-            rooms = rooms,
-            questions = questions,
-            users = users,
-            session = session
-        )
-    }
-
-    companion object {
-        fun <T : Entity> defaultMerge(): (T, T) -> T = { orig, new -> new }
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    inline fun <reified T: Entity> getCollection(): CoroutineCollection<T> = when (T::class) {
-        Question::class -> questionsColl as CoroutineCollection<T>
-        else -> throw IllegalArgumentException()
-    }
-    @Suppress("UNCHECKED_CAST")
-    inline fun <reified T: Entity> getMap(): MutableMap<String, T> = when (T::class) {
-        Question::class -> questions as MutableMap<String, T>
-        else -> throw IllegalArgumentException()
-    }
-
     fun CoroutineContext.getSession() =
         this[TransactionContextElement]?.sess
 
-    suspend inline fun <reified T: ServerImmediateDerefEntity>
-    updateEntity(new: T, compare: T? = null,
-                upsert: Boolean = false,
-                crossinline merge: (orig: T, new: T)->T = { _, new -> new }, ) : T{
-        mutationMutex.withLock {
-            if (upsert && compare != null) throw IllegalArgumentException()
-            val map = getMap<T>()
-            val coll = getCollection<T>()
-            val orig = map[new.id]
-            if (orig == null) {
-                if (upsert) {
-                    return insertEntity(new)
-                } else {
-                    throw NoSuchElementException()
-                }
-            }
-            compare?.let {
-                if (compare.id != new.id) throw IllegalArgumentException()
-                if (orig != compare) throw ConcurrentModificationException()
-            }
-            val merged = merge(orig, new)
-            check(merged.id == new.id)
-            map[new.id] = merged
-            when (val sess = coroutineContext.getSession()) {
-                null -> coll.replaceOne(merged, ReplaceOptions())
-                else -> coll.replaceOneById(sess, merged.id, merged, ReplaceOptions())
-            }
-            return merged
-        }
-    }
 
     suspend inline fun <R> withMutationLock(crossinline body: suspend ServerGlobalState.()->R): R =
         if (coroutineContext[MutationLockedContextElement.Key] != null) { // parent has already locked
@@ -191,67 +375,7 @@ class ServerGlobalState : GlobalState() {
             }
         }
 
-    suspend inline fun <reified T: ServerImmediateDerefEntity>
-    modifyEntity(ref: Ref<T>, crossinline modify: (T)->T): T =
-        withMutationLock {
-            val map = getMap<T>()
-            val coll = getCollection<T>()
-            val orig = map[ref.id] ?: throw NoSuchElementException()
-            check(orig.id == ref.id)
-            val new = modify(orig)
-            map[ref.id] = new
-            when (val sess = coroutineContext.getSession()) {
-                null -> coll.replaceOne(new, ReplaceOptions())
-                else -> coll.replaceOneById(sess, new.id, new, ReplaceOptions())
-            }
-            return@withMutationLock new
-        }
 
-    suspend inline fun <reified T: ServerImmediateDerefEntity>
-    insertEntity(entity: T, forceId: Boolean = false) : T =
-        withMutationLock {
-            if (!entity.id.isEmpty() && !forceId) throw IllegalArgumentException()
-            val new = entity.assignIdIfNeeded()
-            val map = getMap<T>()
-            val coll = getCollection<T>()
-            if (map.containsKey(new.id)) throw DuplicateIdException()
-            map[entity.id] = new
-            when (val sess = coroutineContext.getSession()) {
-                null -> coll.insertOne(new)
-                else -> coll.insertOne(sess, new)
-            }
-            return@withMutationLock new
-        }
-
-    suspend inline fun <reified T: ServerImmediateDerefEntity>
-            deleteEntity(ref: Ref<T>, ignoreNonexistent: Boolean = false) : T? =
-        withMutationLock {
-            val map = getMap<T>()
-            val coll = getCollection<T>()
-            val orig = map.remove(ref.id)
-            map[ref.id] ?: if (ignoreNonexistent) return@withMutationLock null else throw NoSuchElementException()
-            when (val sess = coroutineContext.getSession()) {
-                null -> coll.deleteOneById(ref.id)
-                else -> coll.deleteOneById(sess, ref.id)
-            }
-            map.remove(ref.id)
-            return@withMutationLock orig
-        }
-    suspend inline fun <reified T: ServerImmediateDerefEntity>
-            deleteEntity(entity: T, ignoreNonexistent: Boolean = false) : T? {
-        mutationMutex.withLock {
-            val map = getMap<T>()
-            val coll = getCollection<T>()
-            val orig = map[entity.id] ?: if (ignoreNonexistent) return null else throw NoSuchElementException()
-            if (orig != entity) throw ConcurrentModificationException()
-            map.remove(entity.id)
-            when (val sess = coroutineContext.getSession()) {
-                null -> coll.deleteOneById(entity.id)
-                else -> coll.deleteOneById(sess, entity.id)
-            }
-            return orig
-        }
-    }
 
     suspend inline fun <R> withTransaction(crossinline body: suspend ServerGlobalState.()->R): R {
         if (coroutineContext[TransactionContextElement.Key] != null)
@@ -269,45 +393,14 @@ class ServerGlobalState : GlobalState() {
         }
     }
 
-    suspend fun addPrediction( pred: Prediction) {
-        val pred = pred.copy(id = generateId())
-        require(pred.user != null)
-        require(pred.user.deref() != null)
-        require(pred.question.deref() != null)
-        withMutationLock {
-            userPred.getOrPut(pred.question){mutableMapOf()}[pred.user] = pred
-            when (val sess = coroutineContext.getSession()) {
-                null -> userPredColl.replaceOne( and(Prediction::user eq pred.user, Prediction::question eq pred.question), pred)
-                else -> userPredColl.replaceOne(sess, and(Prediction::user eq pred.user, Prediction::question eq pred.question), pred)
-            }
-        }
-        recalcGroupPred(pred.question.deref())
-    }
-
-    suspend fun addQuestionComment(comment: QuestionComment) {
-        require(comment.question.deref() != null)
-        require(comment.user.deref() != null)
-        withMutationLock {
-            questionComments.getOrPut(comment.question){mutableMapOf()}[comment.id] = comment
-            when (val sess = coroutineContext.getSession()) {
-                null -> questionCommentsColl.insertOne(comment)
-                else -> questionCommentsColl.insertOne(sess, comment)
-            }
-        }
-    }
-    suspend fun addRoomComment(comment: QuestionComment) {
-        require(comment.question.deref() != null)
-        require(comment.user.deref() != null)
-        withMutationLock {
-            questionComments.getOrPut(comment.question){mutableMapOf()}[comment.id] = comment
-            when (val sess = coroutineContext.getSession()) {
-                null -> questionCommentsColl.insertOne(comment)
-                else -> questionCommentsColl.insertOne(sess, comment)
-            }
-        }
-    }
 }
+suspend inline fun <reified  E: Entity> ServerGlobalState.IdBasedEntityManager<E>.insertEntity(entity: E, forceId: Boolean = false) =
+    insertWithId(entity.assignIdIfNeeded())
+suspend fun <E: Entity> ServerGlobalState.IdBasedEntityManager<E>.deleteEntity(ref: Ref<E>, ignoreNonexistent: Boolean = false) =
+    deleteEntity(ref.id, ignoreNonexistent)
+suspend fun <E: Entity> ServerGlobalState.IdBasedEntityManager<E>.modifyEntity(ref: Ref<E>, modify: (E) -> E) =
+    modifyEntity(ref.id, modify)
 
 
-val serverState = ServerGlobalState()
+val serverState = ServerGlobalState
 actual val globalState: GlobalState = serverState
