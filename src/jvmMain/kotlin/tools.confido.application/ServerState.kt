@@ -149,7 +149,7 @@ object serverState : GlobalState() {
                 return@withMutationLock orig
             }
         suspend fun deleteEntity(entity: E, ignoreNonexistent: Boolean = false,
-                                    check: (E,E)->Boolean = { found, expected -> found == expected }) : E? {
+                                    check: (E,E)->Boolean = { found, expected -> found == expected }) : E? =
             withMutationLock {
                 val orig: E = get(entity.id) ?: if (ignoreNonexistent) return@withMutationLock null else throw NoSuchElementException()
                 if (orig != entity) throw ConcurrentModificationException()
@@ -160,7 +160,6 @@ object serverState : GlobalState() {
                 notifyEntityDeleted(orig)
                 return@withMutationLock orig
             }
-        }
         suspend fun insertWithId(entity: E) =
             withMutationLock {
                 require(!entity.id.isEmpty())
