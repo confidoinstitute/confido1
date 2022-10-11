@@ -1,5 +1,6 @@
 package tools.confido.state
 
+import com.mongodb.ConnectionString
 import com.mongodb.client.model.Filters.and
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.reactivestreams.client.ClientSession
@@ -42,7 +43,7 @@ object serverState : GlobalState() {
     // Now, for simplicity, serialize all mutations
     val mutationMutex = Mutex()
 
-    val client = KMongo.createClient().coroutine
+    val client = KMongo.createClient(ConnectionString(System.getenv("CONFIDO_MONGODB_URL") ?: "mongodb://localhost")).coroutine
     val database = client.getDatabase(System.getenv("CONFIDO_DB_NAME") ?: "confido1")
 
 
