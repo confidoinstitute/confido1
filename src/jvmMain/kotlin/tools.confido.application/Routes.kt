@@ -55,7 +55,15 @@ fun editQuestion(routing: Routing) {
         val roomRef = Ref<Room>(call.parameters["id"] ?: "")
         roomRef.deref() ?: return@postST badRequest("Room does not exist")
         val q: Question = call.receive()
-        serverState.questionManager.insertEntity(q)
+        serverState.withTransaction {
+            val question = serverState.questionManager.insertEntity(q)
+            serverState.roomManager.modifyEntity(roomRef) {
+                it.copy(questions = it.questions + listOf(question.ref))
+            }
+        }
+
+        call.transientUserData?.refreshRunningWebsockets()
+        call.respond(HttpStatusCode.OK)
     }
     routing.postST("/questions/{id}/edit") {
         @OptIn(DelicateRefAPI::class)
