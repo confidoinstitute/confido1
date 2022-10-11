@@ -180,6 +180,16 @@ fun main() {
 
                 call.respondHtml(HttpStatusCode.OK, HTML::index)
             }
+            getST("/init/") {
+                val userPasswordHash = Password.hash(DebugAdmin.password).addRandomSalt().withArgon2().result
+                serverState.userManager.insertEntity(
+                    User("debugadmin", UserType.ADMIN, DebugAdmin.email, true, "debugadmin", userPasswordHash, now(), now())
+                )
+                val memberPasswordHash = Password.hash(DebugMember.password).addRandomSalt().withArgon2().result
+                serverState.userManager.insertEntity(
+                    User("debugmember", UserType.MEMBER, DebugMember.email, true, "debugmember", memberPasswordHash, now(), now())
+                )
+            }
             postST("/login") {
                 // TODO: Rate limiting.
                 val session = call.userSession ?: return@postST badRequest("missing session")

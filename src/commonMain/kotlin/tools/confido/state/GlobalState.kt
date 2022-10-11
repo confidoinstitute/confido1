@@ -6,6 +6,7 @@ import rooms.RoomPermission
 import tools.confido.question.*
 import tools.confido.refs.*
 import users.User
+import users.UserType
 
 interface BaseState {
     val rooms:  Map<String, Room>
@@ -61,9 +62,12 @@ data class SentState(
     val myPredictions: Map<Ref<Question>, Prediction> = emptyMap(),
     override val questionComments: Map<Ref<Question>, Map<String, QuestionComment>> = emptyMap(),
     override val roomComments: Map<Ref<Room>, Map<String, RoomComment>> = emptyMap(),
-    override val groupPred: Map<Ref<Question>, Prediction?>,
-    val session: UserSession,
+    override val groupPred: Map<Ref<Question>, Prediction?> = emptyMap(),
+    val session: UserSession = UserSession(),
 ) : BaseState {
+    fun isAdmin(): Boolean {
+        return session.user?.type == UserType.ADMIN
+    }
     fun hasPermission(room: Room, permission: RoomPermission): Boolean {
         return room.hasPermission(session.user, permission)
     }

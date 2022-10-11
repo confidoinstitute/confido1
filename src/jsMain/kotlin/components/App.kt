@@ -17,7 +17,9 @@ import react.router.Router
 import react.router.Routes
 import react.router.dom.BrowserRouter
 import tools.confido.serialization.confidoJSON
+import tools.confido.state.ClientState
 import tools.confido.state.SentState
+import tools.confido.state.clientState
 import utils.webSocketUrl
 
 val AppStateContext = createContext<ClientAppState>()
@@ -34,7 +36,9 @@ val App = FC<Props> {
         val ws = WebSocket(webSocketUrl("/state"))
         ws.apply {
             onmessage = {
-                appState = confidoJSON.decodeFromString(it.data.toString())
+                val decodedState = confidoJSON.decodeFromString<SentState>(it.data.toString())
+                clientState = ClientState(decodedState)
+                appState = decodedState
                 stale = false
                 @Suppress("RedundantUnitExpression")
                 Unit // This is not redundant, because assignment fails some weird type checks
