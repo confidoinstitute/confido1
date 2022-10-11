@@ -21,7 +21,9 @@ class StateCensor(val sess: UserSession) {
     val referencedUsers: MutableSet<Ref<User>> = mutableSetOf()
 
     fun censorMembership(room: Room, membership: RoomMembership) =
-        membership
+        membership.takeIf{user?.type in setOf(UserType.ADMIN, UserType.MEMBER) ||
+                            membership.user eqid user}
+
 
     fun censorInviteLink(room: Room, inviteLink: InviteLink) =
         if (room.hasPermission(user, RoomPermission.VIEW_ALL_INVITE_TOKENS) || inviteLink.createdBy == user?.ref)
@@ -36,7 +38,7 @@ class StateCensor(val sess: UserSession) {
                 (it.deref() ?: return@filter false).visible || room.hasPermission(user, RoomPermission.VIEW_HIDDEN_QUESTIONS)
             },
             // guests cannot see member list
-            members = if (user?.type in setOf(UserType.ADMIN, UserType.MEMBER)) room.members.mapNotNull { censorMembership(room, it) } else emptyList(),
+            members = room.members.mapNotNull { censorMembership(room, it) },
             inviteLinks = if (user?.type in setOf(UserType.ADMIN, UserType.MEMBER)) room.inviteLinks.mapNotNull { censorInviteLink(room, it) } else emptyList(),
         )
     }
