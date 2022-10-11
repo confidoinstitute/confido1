@@ -27,6 +27,7 @@ import rooms.RoomPermission
 import tools.confido.question.Comment
 import tools.confido.question.Prediction
 import tools.confido.question.QuestionComment
+import tools.confido.refs.deref
 import tools.confido.refs.eqid
 import tools.confido.utils.unixNow
 import utils.durationAgo
@@ -44,7 +45,7 @@ val Comment = FC<CommentProps> { props ->
     val room = useContext(RoomContext)
     val currentUser = appState.session.user
     val comment = props.comment
-    val user = appState.users[comment.user.id] ?: return@FC
+    val user = comment.user.deref() ?: return@FC
 
     var textAgo by useState("")
     val canDelete =

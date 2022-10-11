@@ -207,6 +207,7 @@ fun main() {
 
                 session.userRef = user.ref
                 call.transientUserData?.refreshRunningWebsockets()
+                println(session)
                 call.respond(HttpStatusCode.OK)
             }
             postST("/login_email/create") {
@@ -404,6 +405,7 @@ fun main() {
                 // Require a session to already be initialized; it is not possible
                 // to edit session cookies within websockets.
                 val session = call.userSession
+                println(session)
 
                 if (session == null) {
                     // Code 3000 is registered with IANA as "Unauthorized".

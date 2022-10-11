@@ -73,7 +73,7 @@ val Room = FC<Props> {
                         if (seesUsers || membership.user eqid currentUser)
                             UserAvatar {
                                 key = membership.user.id
-                                user = appState.users[membership.user.id]!!
+                                user = membership.user.deref()!!
                             }
                         else
                             Avatar {}
@@ -97,7 +97,7 @@ val Room = FC<Props> {
             Route {
                 index = true
                 this.element = QuestionList.create {
-                    questions = room.questions.mapNotNull { appState.questions[it.id] }
+                    questions = room.questions.mapNotNull { it.deref() }
                     // TODO: This should be fully handled by the server.
                     showHiddenQuestions = appState.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
                     allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
@@ -113,7 +113,7 @@ val Room = FC<Props> {
             Route {
                 path = "edit_questions"
                 this.element = EditQuestions.create {
-                    questions = room.questions.mapNotNull { appState.questions[it.id] }
+                    questions = room.questions.mapNotNull { it.deref() }
                     allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
                 }
             }

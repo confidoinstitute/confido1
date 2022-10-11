@@ -23,7 +23,7 @@ val NewRoom = FC<Props> {
         CoroutineScope(EmptyCoroutineContext).launch {
             creating = true
             try {
-                val roomId: String = Client.postDataAndReceive("/room_create", information) {
+                val roomId: String = Client.postDataAndReceive("/rooms/add", information) {
                     expectSuccess = true
                 }
                 navigate("/room/$roomId")

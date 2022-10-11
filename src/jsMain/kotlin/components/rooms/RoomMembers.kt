@@ -18,6 +18,7 @@ import rooms.InviteLink
 import rooms.RoomMembership
 import rooms.RoomPermission
 import tools.confido.question.Question
+import tools.confido.refs.deref
 import tools.confido.utils.randomString
 import users.User
 import users.UserType
@@ -200,7 +201,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
     val (appState, stale) = useContext(AppStateContext)
 
     val membership = props.membership
-    val user = appState.users[membership.user.id] ?: return@FC
+    val user = membership.user.deref() ?: return@FC
 
     ListItem {
         disabled = props.disabled

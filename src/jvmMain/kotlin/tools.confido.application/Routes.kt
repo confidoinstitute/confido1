@@ -7,12 +7,13 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.datetime.Clock
+import payloads.requests.*
 import tools.confido.application.sessions.transientUserData
-import payloads.requests.EditQuestion
-import payloads.requests.EditQuestionComplete
-import payloads.requests.EditQuestionField
-import payloads.requests.EditQuestionFieldType
+import rooms.Moderator
 import rooms.Room
+import rooms.RoomMembership
+import tools.confido.application.sessions.userSession
 import tools.confido.question.Question
 import tools.confido.state.*
 
@@ -32,12 +33,27 @@ fun editQuestion(routing: Routing) {
         }
         call.respond(HttpStatusCode.OK)
     }
+    routing.postST("/rooms/add") {
+        val user = call.userSession?.user ?: return@postST badRequest("Not logged in")
+        if (!user.type.isProper()) return@postST badRequest("Guests cannot do this")
+        val information: BaseRoomInformation = call.receive()
+
+        val myMembership = RoomMembership(user.ref, Moderator, null)
+        val room = serverState.roomManager.insertEntity(
+            Room(id = "", name = information.name, description = information.description,
+            createdAt = Clock.System.now(), questions = emptyList(),
+            members = listOf(myMembership), inviteLinks = emptyList())
+        )
+
+        call.transientUserData?.refreshRunningWebsockets()
+        call.respond(HttpStatusCode.OK, room.id)
+    }
 
     routing.postST("/rooms/{id}/questions/add") {
         // TODO check permissions
         @OptIn(DelicateRefAPI::class)
         val roomRef = Ref<Room>(call.parameters["id"] ?: "")
-        roomRef.deref() ?: return@postST call.respond(HttpStatusCode.NotFound)
+        roomRef.deref() ?: return@postST badRequest("Room does not exist")
         val q: Question = call.receive()
         serverState.questionManager.insertEntity(q)
     }

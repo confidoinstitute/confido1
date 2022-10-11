@@ -205,7 +205,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
 
         // TODO Make better REST API, as it now requires ID to be sent in URL path
         if (props.question == null) {
-            Client.postData("/questions/add", question)
+            Client.postData("/rooms/${room.id}/questions/add", question)
         } else {
             val editQuestion: EditQuestion = EditQuestionComplete(question)
             Client.postData("/questions/${id}/edit", editQuestion)
