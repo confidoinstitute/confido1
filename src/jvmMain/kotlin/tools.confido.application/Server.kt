@@ -403,6 +403,21 @@ fun main() {
                     call.respond(HttpStatusCode.OK)
                 }
             }
+            postST("/rooms/{id}/comments/add") {
+                val createdComment: CreateComment = call.receive()
+                val id = call.parameters["id"] ?: ""
+                val user = call.userSession?.user ?: return@postST badRequest("No user")
+
+                val room = serverState.rooms[id] ?: return@postST badRequest("No room")
+
+                if (createdComment.content.isEmpty()) return@postST badRequest("No comment content")
+
+                val comment = RoomComment(id = "", room = room.ref, user = user.ref, timestamp = unixNow(),
+                    content = createdComment.content, isAnnotation = false)
+                serverState.roomCommentManager.insertEntity(comment)
+                call.transientUserData?.refreshRunningWebsockets()
+                call.respond(HttpStatusCode.OK)
+            }
             deleteST("/rooms/{rID}/comments/{id}") {
                 val rID = call.parameters["rID"] ?: return@deleteST badRequest("No ID")
                 val id = call.parameters["id"] ?: return@deleteST badRequest("No ID")

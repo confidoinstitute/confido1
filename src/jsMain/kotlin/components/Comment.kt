@@ -148,7 +148,7 @@ val CommentInput = FC<CommentInputProps> { props ->
                     val createdComment = CreateComment(unixNow(), content, attachPrediction)
                     val url = when(props.variant) {
                         CommentInputVariant.QUESTION -> "/questions/${props.id}/comments/add"
-                        CommentInputVariant.ROOM -> "/add_room_comment/${props.id}"
+                        CommentInputVariant.ROOM -> "/rooms/${props.id}/comments/add"
                     }
                     Client.httpClient.postJson(url, createdComment) {
                         expectSuccess = true
