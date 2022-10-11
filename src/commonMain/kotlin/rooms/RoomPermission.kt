@@ -10,6 +10,8 @@ enum class RoomPermission {
     ADD_QUESTION,
     SUGGEST_QUESTION,
     VIEW_HIDDEN_QUESTIONS,
+    VIEW_ALL_INVITE_TOKENS,
+    CREATE_INVITE_LINK,
     /**
      * See all group predictions regardless of question setting.
      */

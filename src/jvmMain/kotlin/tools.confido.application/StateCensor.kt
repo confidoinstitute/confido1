@@ -1,6 +1,8 @@
 package tools.confido.application
 
+import rooms.InviteLink
 import rooms.Room
+import rooms.RoomMembership
 import rooms.RoomPermission
 import tools.confido.question.Question
 import tools.confido.question.RoomComment
@@ -18,6 +20,15 @@ class StateCensor(val sess: UserSession) {
     val state = serverState
     val referencedUsers: MutableSet<Ref<User>> = mutableSetOf()
 
+    fun censorMembership(room: Room, membership: RoomMembership) =
+        membership
+
+    fun censorInviteLink(room: Room, inviteLink: InviteLink) =
+        if (room.hasPermission(user, RoomPermission.VIEW_ALL_INVITE_TOKENS) || inviteLink.createdBy == user?.ref)
+            inviteLink
+        else
+            inviteLink.copy(token = "")
+
     fun censorRoom(room: Room): Room? {
         if (!room.hasPermission(user, RoomPermission.VIEW_QUESTIONS)) return null
         return room.copy(
@@ -25,7 +36,8 @@ class StateCensor(val sess: UserSession) {
                 (it.deref() ?: return@filter false).visible || room.hasPermission(user, RoomPermission.VIEW_HIDDEN_QUESTIONS)
             },
             // guests cannot see member list
-            members = if (user?.type in setOf(UserType.ADMIN, UserType.MEMBER)) room.members else emptyList(),
+            members = if (user?.type in setOf(UserType.ADMIN, UserType.MEMBER)) room.members.mapNotNull { censorMembership(room, it) } else emptyList(),
+            inviteLinks = if (user?.type in setOf(UserType.ADMIN, UserType.MEMBER)) room.inviteLinks.mapNotNull { censorInviteLink(room, it) } else emptyList(),
         )
     }
 

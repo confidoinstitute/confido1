@@ -48,6 +48,8 @@ object Moderator : RoomRole(
         RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS,
         RoomPermission.MANAGE_QUESTIONS,
         RoomPermission.MANAGE_MEMBERS,
+        RoomPermission.CREATE_INVITE_LINK,
+        RoomPermission.VIEW_ALL_INVITE_TOKENS,
     )
 ) {
     override val id = "moderator"
