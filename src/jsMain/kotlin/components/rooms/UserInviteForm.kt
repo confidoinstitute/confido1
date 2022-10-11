@@ -31,7 +31,7 @@ internal fun renderInput(params: AutocompleteRenderInputParams) =
 
 internal fun getOptionLabel(option: UserAutocomplete) =
     when (option) {
-        is ExistingUser -> option.user.email ?: ""
+        is ExistingUser -> option.user.nick ?: "<unknown user>"
         is NewUser -> option.email
         else -> option.toString()
     }
@@ -67,7 +67,6 @@ internal fun filterOptions(
     state: FilterOptionsState<UserAutocomplete>
 ): ReadonlyArray<UserAutocomplete> {
     val value = state.inputValue
-    console.log(state)
 
     val filtered = users.filter {
         val user = (it as ExistingUser).user
@@ -85,16 +84,12 @@ internal fun filterOptions(
     }
 }
 
-internal val users: Array<ExistingUser> = listOf(
-    User("kocka", UserType.MEMBER, "cat@example.com", true, "Kočka", null, Instant.fromEpochSeconds(0), Instant.fromEpochSeconds(0)),
-    User("pes", UserType.MEMBER, "dog@example.com", true, "Pes", null, Instant.fromEpochSeconds(0), Instant.fromEpochSeconds(0)),
-    User("liska", UserType.MEMBER, "fox@example.com", true, "Liška", null, Instant.fromEpochSeconds(0), Instant.fromEpochSeconds(0)),
-    User("hroch", UserType.MEMBER, "hippo@example.com", true, "Hroch", null, Instant.fromEpochSeconds(0), Instant.fromEpochSeconds(0)),
-).map { ExistingUser(it) }.toTypedArray()
-
 val UserInviteForm = FC<Props> {
+    val (appState, stale) = useContext(AppStateContext)
     var chosenUser by useState<UserAutocomplete?>(null)
-    val stale = useContext(AppStateContext).stale
+    val users = appState.users.values.mapNotNull {
+        if (it.email != null) ExistingUser(it) else null
+    }.toTypedArray()
 
     Stack {
         this.direction = responsive(StackDirection.row)

@@ -6,6 +6,7 @@ import csstype.number
 import icons.DeleteIcon
 import icons.SendIcon
 import io.ktor.client.plugins.*
+import io.ktor.client.request.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.js.timers.clearInterval
@@ -27,6 +28,7 @@ import rooms.RoomPermission
 import tools.confido.question.Comment
 import tools.confido.question.Prediction
 import tools.confido.question.QuestionComment
+import tools.confido.question.RoomComment
 import tools.confido.refs.deref
 import tools.confido.refs.eqid
 import tools.confido.utils.unixNow
@@ -80,7 +82,15 @@ val Comment = FC<CommentProps> { props ->
             if (canDelete) {
                 action = IconButton.create {
                     // TODO delete API
-                    onClick = { console.log("Would delete") }
+                    onClick = {
+                        val url = when(val comment = props.comment) {
+                            is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}"
+                            is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}"
+                        }
+                        CoroutineScope(EmptyCoroutineContext).launch {
+                            Client.httpClient.delete(url) {}
+                        }
+                    }
                     DeleteIcon {}
                 }
             }
@@ -137,7 +147,7 @@ val CommentInput = FC<CommentInputProps> { props ->
                 try {
                     val createdComment = CreateComment(unixNow(), content, attachPrediction)
                     val url = when(props.variant) {
-                        CommentInputVariant.QUESTION -> "/add_comment/${props.id}"
+                        CommentInputVariant.QUESTION -> "/questions/${props.id}/comments/add"
                         CommentInputVariant.ROOM -> "/add_room_comment/${props.id}"
                     }
                     Client.httpClient.postJson(url, createdComment) {

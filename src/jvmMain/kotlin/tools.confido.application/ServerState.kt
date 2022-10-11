@@ -44,7 +44,7 @@ object serverState : GlobalState() {
     // Now, for simplicity, serialize all mutations
     val mutationMutex = Mutex()
 
-    val client = KMongo.createClient(ConnectionString(System.getenv("CONFIDO_MONGODB_URL") ?: "mongodb://localhost")).coroutine
+    val client = KMongo.createClient(ConnectionString(System.getenv("CONFIDO_MONGODB_URL") ?: "mongodb://localhost/?replicaSet=rs01")).coroutine
     val database = client.getDatabase(System.getenv("CONFIDO_DB_NAME") ?: "confido1")
 
 

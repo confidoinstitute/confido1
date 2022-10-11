@@ -19,6 +19,7 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System.now
 import kotlinx.html.*
 import kotlinx.serialization.encodeToString
@@ -197,6 +198,9 @@ fun main() {
                 serverState.userManager.insertEntity(
                     User("debugmember", UserType.MEMBER, DebugMember.email, true, "debugmember", memberPasswordHash, now(), now())
                 )
+                serverState.roomManager.insertEntity(
+                    Room("testroom", "Testing room", Clock.System.now(), "This is a testing room.")
+                )
             }
             postST("/login") {
                 // TODO: Rate limiting.
@@ -333,10 +337,12 @@ fun main() {
                     val newUser = User(randomString(32), UserType.GUEST, accept.email, false, accept.userNick, null, now(), now())
 
                     call.userSession = UserSession(userRef = newUser.ref, language = "en")
-                    serverState.roomManager.modifyEntity(room.ref) {
-                        it.copy(members = it.members + listOf(RoomMembership(newUser.ref, invite.role, invite.id)))
+                    serverState.withTransaction {
+                        serverState.roomManager.modifyEntity(room.ref) {
+                            it.copy(members = it.members + listOf(RoomMembership(newUser.ref, invite.role, invite.id)))
+                        }
+                        serverState.userManager.insertEntity(newUser)
                     }
-                    serverState.users.insert(newUser)
 
                     call.transientUserData?.refreshRunningWebsockets()
                     call.respond(HttpStatusCode.OK)
@@ -361,20 +367,11 @@ fun main() {
             postST("/questions/{id}/comments/add") {
                 val createdComment: CreateComment = call.receive()
                 val id = call.parameters["id"] ?: ""
-                val user = call.userSession?.user ?: run {
-                    call.respond(HttpStatusCode.BadRequest)
-                    return@postST
-                }
+                val user = call.userSession?.user ?: return@postST badRequest("No user")
 
-                val question = serverState.questions[id] ?: run {
-                    call.respond(HttpStatusCode.BadRequest)
-                    return@postST
-                }
+                val question = serverState.questions[id] ?: return@postST badRequest("No question")
 
-                if (createdComment.content.isEmpty()) {
-                    call.respond(HttpStatusCode.BadRequest)
-                    return@postST
-                }
+                if (createdComment.content.isEmpty()) return@postST badRequest("No comment content")
 
                 val prediction = if (createdComment.attachPrediction) {
                     serverState.userPred[question.ref]?.get(user.ref)
@@ -387,6 +384,41 @@ fun main() {
                 serverState.questionCommentManager.insertEntity(comment)
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
+            }
+            deleteST("/questions/{qID}/comments/{id}") {
+                val qID = call.parameters["qID"] ?: return@deleteST badRequest("No ID")
+                val id = call.parameters["id"] ?: return@deleteST badRequest("No ID")
+                val user = call.userSession?.user ?: return@deleteST badRequest("No user")
+
+                serverState.withMutationLock {
+                    val question = serverState.questions[qID] ?: return@withMutationLock badRequest("No question")
+                    val room = serverState.questionRoom[question.ref]?.deref() ?: return@withMutationLock badRequest("No room???")
+                    val comment = serverState.questionComments[question.ref]?.get(id) ?: return@withMutationLock badRequest("No comment?????")
+
+                    if (!room.hasPermission(user, RoomPermission.MANAGE_COMMENTS) && !(comment.user eqid user)) return@withMutationLock badRequest("No rights.")
+
+                    serverState.questionCommentManager.deleteEntity(comment, true)
+
+                    call.transientUserData?.refreshRunningWebsockets()
+                    call.respond(HttpStatusCode.OK)
+                }
+            }
+            deleteST("/rooms/{rID}/comments/{id}") {
+                val rID = call.parameters["rID"] ?: return@deleteST badRequest("No ID")
+                val id = call.parameters["id"] ?: return@deleteST badRequest("No ID")
+                val user = call.userSession?.user ?: return@deleteST badRequest("No user")
+
+                serverState.withMutationLock {
+                    val room = serverState.rooms[rID] ?: return@withMutationLock badRequest("No room???")
+                    val comment = serverState.roomComments[room.ref]?.get(id) ?: return@withMutationLock badRequest("No comment?????")
+
+                    if (!room.hasPermission(user, RoomPermission.MANAGE_COMMENTS) && !(comment.user eqid user)) return@withMutationLock badRequest("No rights.")
+
+                    serverState.roomCommentManager.deleteEntity(comment, true)
+
+                    call.transientUserData?.refreshRunningWebsockets()
+                    call.respond(HttpStatusCode.OK)
+                }
             }
             postST("/send_prediction/{id}") {
                 val dist: ProbabilityDistribution = call.receive()

@@ -31,6 +31,8 @@ fun editQuestion(routing: Routing) {
                 }
             }
         }
+
+        call.transientUserData?.refreshRunningWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     routing.postST("/rooms/add") {

@@ -9,6 +9,8 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import rooms.Room
 import tools.confido.question.Question
+import tools.confido.question.QuestionComment
+import tools.confido.question.RoomComment
 import tools.confido.state.globalState
 import tools.confido.utils.generateId
 import users.User
@@ -110,9 +112,11 @@ fun <T: Entity> MutableMap<String, T>.remove(what: T) = this.remove(what.id)
 inline fun <reified  T: Entity> T.withId(id: String): T =
     when (this) {
         is Question -> copy(id = id) as T
+        is QuestionComment -> copy(id = id) as T
+        is RoomComment -> copy(id = id) as T
         is Room -> copy(id = id) as T
         is User -> copy(id = id) as T
-        else -> throw NotImplementedError()
+        else -> throw NotImplementedError("withID for ${T::class}")
     }
 
 inline fun <reified  T: Entity> T.assignId() = withId(generateId())

@@ -66,11 +66,12 @@ val Room = FC<Props> {
                 val seesUsers = appState.isFullUser
                 AvatarGroup {
                     max = 4
+                    console.log(room.members)
                     room.members.sortedBy {
                         // Force yourself to be the first shown member
                         if (it.user eqid currentUser) null else it.user.id
                     }.map {membership ->
-                        if (seesUsers || membership.user eqid currentUser)
+                        if ((seesUsers || membership.user eqid currentUser) && membership.user.deref() != null )
                             UserAvatar {
                                 key = membership.user.id
                                 user = membership.user.deref()!!
