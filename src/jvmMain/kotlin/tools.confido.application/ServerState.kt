@@ -150,15 +150,15 @@ object serverState : GlobalState() {
             }
         suspend fun deleteEntity(entity: E, ignoreNonexistent: Boolean = false,
                                     check: (E,E)->Boolean = { found, expected -> found == expected }) : E? {
-            mutationMutex.withLock {
-                val orig = get(entity.id) ?: if (ignoreNonexistent) return null else throw NoSuchElementException()
+            withMutationLock {
+                val orig: E = get(entity.id) ?: if (ignoreNonexistent) return@withMutationLock null else throw NoSuchElementException()
                 if (orig != entity) throw ConcurrentModificationException()
                 when (val sess = coroutineContext.getSession()) {
                     null -> mongoCollection.deleteOneById(entity.id)
                     else -> mongoCollection.deleteOneById(sess, entity.id)
                 }
                 notifyEntityDeleted(orig)
-                return orig
+                return@withMutationLock orig
             }
         }
         suspend fun insertWithId(entity: E) =
