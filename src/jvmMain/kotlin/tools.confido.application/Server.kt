@@ -207,7 +207,7 @@ fun main() {
                 if (user != null) {
                     val expiration = 30.minutes
                     val expiresAt = now().plus(expiration)
-                    val link = LoginLink(user, expiresAt, mail.url)
+                    val link = LoginLink(user, expiresAt)
                     ServerState.loginLinks.add(link)
                     // TODO: Origin and whatnot
                     call.mailer.sendLoginMail(mail.email, link, expiration)
@@ -235,7 +235,7 @@ fun main() {
 
                 session.user = loginLink.user
                 call.transientUserData?.refreshRunningWebsockets()
-                call.respond(HttpStatusCode.OK, loginLink.url)
+                call.respond(HttpStatusCode.OK)
             }
             post("/logout") {
                 val session = call.userSession

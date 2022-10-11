@@ -99,7 +99,7 @@ val LoginForm = FC<Props> {
                 Button {
                     onClick = {
                         // TODO: Handle failure
-                        Client.postData("/login_email/create", SendMailLink(email, "/"))
+                        Client.postData("/login_email/create", SendMailLink(email))
                     }
                     disabled = stale
                     +"Send magic link"

@@ -3,6 +3,7 @@ package components.nouser
 import csstype.*
 import io.ktor.client.call.*
 import io.ktor.http.*
+import kotlinx.browser.window
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import mui.material.*
@@ -32,9 +33,7 @@ val EmailLogin = FC<Props> {
             if (response.status == HttpStatusCode.Unauthorized) {
                 failed = true
             } else {
-                val url: String = response.body()
-                // TODO: Maybe close tab instead?
-                navigate(url)
+                window.close()
             }
         }
     }

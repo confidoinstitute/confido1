@@ -24,7 +24,6 @@ data class User(
 data class LoginLink (
     val user: User,
     val expiryTime: Instant,
-    val url: String = "/",
 ) {
     // TODO: Make this cryptographically secure
     val token = randomString(32)
