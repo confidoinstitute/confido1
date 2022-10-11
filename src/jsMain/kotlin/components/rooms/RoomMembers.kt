@@ -124,7 +124,7 @@ val InvitationMembers = FC<InvitationMembersProps> {props ->
     val active = props.invitation.canJoin && props.invitation.canAccess
 
     ListItem {
-        key = props.invitation.token
+        key = props.invitation.id
         ListItemIcon {
             (if (active) LinkIcon else LinkOffIcon) {}
         }
@@ -135,28 +135,30 @@ val InvitationMembers = FC<InvitationMembersProps> {props ->
             }
             secondary = ReactNode("${props.members?.size ?: 0} members")
         }
-        Tooltip {
-            open = copyShown
-            title = ReactNode("Link copied!")
-            arrow = true
-            IconButton {
-                ContentCopyIcon {}
-                disabled = !active
-                onClick = {
-                    val invitePath = "room/${room.id}/invite/${props.invitation.token}"
-                    val url = "${window.location.origin}/$invitePath"
-                    window.navigator.clipboard.writeText(url)
-                    copyShown = true
-                }
-                onMouseOut = {
-                    copyShown = false
+        if (!props.invitation.token.isEmpty()) {
+            Tooltip {
+                open = copyShown
+                title = ReactNode("Link copied!")
+                arrow = true
+                IconButton {
+                    ContentCopyIcon {}
+                    disabled = !active
+                    onClick = {
+                        val invitePath = "room/${room.id}/invite/${props.invitation.token}"
+                        val url = "${window.location.origin}/$invitePath"
+                        window.navigator.clipboard.writeText(url)
+                        copyShown = true
+                    }
+                    onMouseOut = {
+                        copyShown = false
+                    }
                 }
             }
-        }
-        IconButton {
-            disabled = stale
-            disabled = !active
-            QrCode {}
+            IconButton {
+                disabled = stale
+                disabled = !active
+                QrCode {}
+            }
         }
         if (props.canManage) {
             IconButton {
