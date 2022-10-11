@@ -10,6 +10,7 @@ import mui.system.Box
 import mui.system.sx
 import react.*
 import react.dom.html.ReactHTML.span
+import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ProbabilityDistribution
 
 external interface DistributionSummaryProps : Props {
@@ -40,7 +41,7 @@ val DistributionSummary = FC<DistributionSummaryProps> {props ->
         } ?: +"(no prediction)"
     }
 
-    if (props.allowPlotDialog && props.distribution != null) {
+    if (props.allowPlotDialog && props.distribution != null && props.distribution !is BinaryDistribution) {
         Dialog {
             this.open = open
             this.onClose = {_, _ -> open = false}
