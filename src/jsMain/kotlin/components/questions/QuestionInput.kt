@@ -1,7 +1,6 @@
 package components.questions
 
-import components.Explanation
-import components.MarkedSlider
+import components.*
 import csstype.Color
 import csstype.Padding
 import csstype.px
@@ -14,7 +13,6 @@ import mui.material.styles.useTheme
 import mui.system.Box
 import mui.system.Breakpoint
 import mui.system.sx
-import mui.system.useTheme
 import react.*
 import react.dom.aria.ariaLabel
 import react.dom.html.ReactHTML
@@ -22,12 +20,10 @@ import react.dom.html.ReactHTML.em
 import space.kscience.dataforge.values.Value
 import space.kscience.dataforge.values.asValue
 import tools.confido.distributions.*
-import tools.confido.question.*
 import tools.confido.spaces.*
 import tools.confido.utils.formatPercent
 import utils.*
 import kotlin.js.Date
-import kotlin.math.roundToInt
 
 external interface QuestionInputProps<S : Space, D: ProbabilityDistribution> : Props {
     var id: String
@@ -64,7 +60,8 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
     }
 
     fun sendPrediction() {
-        props.onPredict?.invoke(dist)
+        if (madeUncertainty)
+            props.onPredict?.invoke(dist)
     }
 
     fun formatDate(value: Number): String = Date(value.toDouble() * 1000.0).toISOString().substring(0, 10)
@@ -75,7 +72,7 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
     Fragment {
         Box {
             sx {
-                padding = Padding(horizontal = 1.rem, vertical = 0.px)
+                padding = Padding(horizontal = 1.2.rem, vertical = 0.px)
             }
             SimpleContDistPlot {
                 this.dist = dist
@@ -93,6 +90,8 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
                 max = space.max
                 this.step = step
                 this.madePrediction = madePrediction
+                this.unit = space.unit
+                preciseInputForm = if (space.representsDays) PreciseInputDate else PreciseInputNumber
 
                 valueLabelDisplay = if (madePrediction || !props.enabled) "auto" else "on"
                 if (space.representsDays) {
@@ -101,7 +100,7 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
                 this.valueLabelFormat = { space.formatValue(it.toDouble()) }
 
                 onFocus = { madePrediction = true }
-                onChange = { _, value, _ -> mean = value; props.onChange?.invoke() }
+                onChange = { _, value, _ -> mean = value; if(madeUncertainty) props.onChange?.invoke() }
                 onChangeCommitted = { _, _ -> sendPrediction() }
             }
             Slider {
@@ -162,7 +161,7 @@ val BinaryQuestionInput = FC<QuestionInputProps<BinarySpace, BinaryDistribution>
     Fragment {
         Box {
             sx {
-                padding = Padding(horizontal = 1.rem, vertical = 0.px)
+                padding = Padding(horizontal = 1.2.rem, vertical = 0.px)
             }
             MarkedSlider {
                 ariaLabel = "Certainty"
@@ -172,6 +171,8 @@ val BinaryQuestionInput = FC<QuestionInputProps<BinarySpace, BinaryDistribution>
                 min = 0
                 max = 1
                 step = 0.01
+                unit = "%"
+                preciseInputForm = PreciseInputPercent
 
                 this.widthToMarks = ::getMarks
                 valueLabelDisplay = if (madePrediction || !props.enabled) "auto" else "on"

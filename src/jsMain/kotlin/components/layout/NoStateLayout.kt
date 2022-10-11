@@ -1,11 +1,9 @@
 package components.layout
 
 import csstype.*
-import mui.material.Alert
-import mui.material.AlertColor
-import mui.material.CircularProgress
-import mui.material.CircularProgressColor
+import mui.material.*
 import mui.system.*
+import mui.system.Box
 import react.*
 import utils.themed
 
@@ -14,7 +12,8 @@ external interface NoStateLayoutProps : Props {
 }
 
 val NoStateLayout = FC<NoStateLayoutProps> {props ->
-    if (props.stale) {
+    Collapse {
+        this.`in` = props.stale
         Alert {
             severity = AlertColor.error
             +"The server cannot be reached. If this persists, please contact the administrators."

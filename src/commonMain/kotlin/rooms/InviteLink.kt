@@ -9,6 +9,13 @@ import tools.confido.utils.randomString
 import users.User
 
 @Serializable
+enum class InviteLinkState {
+    ENABLED,
+    DISABLED_JOIN,
+    DISABLED_FULL,
+}
+
+@Serializable
 data class InviteLink(
     override val id: String = generateId(),
 
@@ -27,6 +34,10 @@ data class InviteLink(
      * Time of creation of the invite link.
      */
     val createdAt: Instant,
+    /**
+     * Indicates whether guests are anonymous.
+     */
+    val anonymous: Boolean,
     /**
      * Indicates whether this link can be used by new users.
      */

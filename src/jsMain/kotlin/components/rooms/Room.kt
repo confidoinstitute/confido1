@@ -22,16 +22,18 @@ import utils.themed
 val RoomContext = createContext<Room>()
 
 val Room = FC<Props> {
-    val clientAppState = useContext(AppStateContext)
-    val state = clientAppState.state
+    val (appState, stale) = useContext(AppStateContext)
+    val currentUser = appState.session.user ?: return@FC
     val roomId = useParams()["roomID"] ?: return@FC
-    val room = state.getRoom(roomId) ?: return@FC
+    val room = appState.getRoom(roomId) ?: return@FC
 
     var editMode by useState(false)
+
 
     RoomContext.Provider {
         value = room
 
+        // TODO properly make edit mode
         if (editMode) {
             RoomInfoForm {
                 this.room = room
@@ -51,19 +53,28 @@ val Room = FC<Props> {
                     }
                     variant = TypographyVariant.h2
                     +room.name
+
+                    if (appState.hasPermission(room, RoomPermission.ROOM_OWNER))
+                    IconButton {
+                        onClick = {editMode = true}
+                        EditIcon { }
+                    }
                 }
 
-                // TODO permissions to edit a room
-                IconButton {
-                    onClick = {editMode = true}
-                    EditIcon { }
-                }
-
+                val seesUsers = appState.isFullUser
                 AvatarGroup {
-                    room.members.map {membership ->
-                        UserAvatar {
-                            user = membership.user
-                        }
+                    max = 4
+                    room.members.sortedBy {
+                        // Force yourself to be the first shown member
+                        if (it.user eqid currentUser) null else it.user.id
+                    }.map {membership ->
+                        if (seesUsers || membership.user eqid currentUser)
+                            UserAvatar {
+                                key = membership.user.id
+                                user = membership.user
+                            }
+                        else
+                            Avatar {}
                     }
                 }
             }
@@ -80,30 +91,31 @@ val Room = FC<Props> {
         }
         Routes {
             key = "room_routes"
+            if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
             Route {
                 index = true
                 this.element = QuestionList.create {
                     questions = room.questions
                     // TODO: This should be fully handled by the server.
-                    showHiddenQuestions = state.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
-                    allowEditingQuestions = state.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
+                    showHiddenQuestions = appState.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
+                    allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
                 }
             }
+            // TODO view comments permission
+            if (true)
             Route {
-                path = "group_predictions"
-
-                this.element = GroupPredictions.create {
-                    // TODO: Apply permissions
-                    questions = room.questions.filter { it.predictionsVisible }
-                }
+                path = "discussion"
+                this.element = RoomComments.create {}
             }
+            if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
             Route {
                 path = "edit_questions"
                 this.element = EditQuestions.create {
                     questions = room.questions
-                    allowEditingQuestions = state.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
+                    allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
                 }
             }
+            if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
             Route {
                 path = "members"
                 this.element = RoomMembers.create()

@@ -1,6 +1,7 @@
 package components.questions
 
 import components.*
+import components.rooms.RoomContext
 import csstype.*
 import hooks.useDebounce
 import hooks.useOnUnmount
@@ -22,6 +23,7 @@ import react.dom.html.ReactHTML.small
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.strong
 import react.router.*
+import rooms.RoomPermission
 import tools.confido.distributions.*
 import tools.confido.question.*
 import tools.confido.spaces.*
@@ -45,7 +47,7 @@ external interface QuestionPredictionChipProps : Props {
 }
 
 val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
-    val stale = useContext(AppStateContext).stale
+    val (_, stale) = useContext(AppStateContext)
     var predictionAgoText by useState("")
     useEffect(props.prediction) {
         if (props.prediction == null)
@@ -119,6 +121,7 @@ val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
 external interface QuestionItemProps : Props {
     var question: Question
     var prediction: Prediction?
+    var canPredict: Boolean
     var editable: Boolean
     var comments: List<Comment>
     var onEditDialog: ((Question) -> Unit)?
@@ -128,9 +131,9 @@ external interface QuestionItemProps : Props {
 
 @Suppress("UNCHECKED_CAST_TO_EXTERNAL_INTERFACE", "UNCHECKED_CAST")
 val QuestionItem = FC<QuestionItemProps> { props ->
-    val stale = useContext(AppStateContext).stale
+    val (appState, stale) = useContext(AppStateContext)
+    val room = useContext(RoomContext)
     val question = props.question
-    val navigate = useNavigate()
 
     var pendingPrediction: ProbabilityDistribution? by useState(null)
     var pendingPredictionState by useState(PendingPredictionState.NONE)
@@ -161,7 +164,6 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
     Accordion {
         expanded = props.expanded
-        // TODO: Fix when clicking another question while one is already expanded.
         onChange = {_, state -> props.onChange?.invoke(state) }
         TransitionProps = jsObject { unmountOnExit = true }
         AccordionSummary {
@@ -175,9 +177,9 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     flexGrow = number(1.0)
                 }
                 Typography {
-                    variant = TypographyVariant.h6
                         +question.name
                     sx {
+                        fontSize = 1.25.rem
                         flexGrow = number(1.0)
                         if (!question.visible) {
                             this.fontStyle = FontStyle.italic
@@ -197,6 +199,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                         color = ChipColor.warning
                     }
                 }
+                if (props.canPredict)
                 QuestionPredictionChip {
                     this.enabled = question.enabled && !stale
                     this.pending = pendingPrediction != null
@@ -206,19 +209,26 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             }
         }
         AccordionDetails {
-            val questionInput: FC<QuestionInputProps<Space, ProbabilityDistribution>> = when (question.answerSpace) {
-                is BinarySpace -> BinaryQuestionInput as FC<QuestionInputProps<Space, ProbabilityDistribution>>
-                is NumericSpace -> NumericQuestionInput as FC<QuestionInputProps<Space, ProbabilityDistribution>>
+            Typography {
+                // TODO question description
             }
-            questionInput {
-                this.id = question.id
-                this.enabled = question.enabled && !stale
-                this.space = question.answerSpace
-                this.prediction = pendingPrediction ?: props.prediction?.dist
-                this.onChange = { pendingPrediction = null; pendingPredictionState = PendingPredictionState.MAKING }
-                this.onPredict = { pendingPrediction = it }
+            if (props.canPredict) {
+                val questionInput: FC<QuestionInputProps<Space, ProbabilityDistribution>> =
+                    when (question.answerSpace) {
+                        is BinarySpace -> BinaryQuestionInput as FC<QuestionInputProps<Space, ProbabilityDistribution>>
+                        is NumericSpace -> NumericQuestionInput as FC<QuestionInputProps<Space, ProbabilityDistribution>>
+                    }
+                questionInput {
+                    this.id = question.id
+                    this.enabled =
+                        question.enabled && appState.hasPermission(room, RoomPermission.SUBMIT_PREDICTION) && !stale
+                    this.space = question.answerSpace
+                    this.prediction = pendingPrediction ?: props.prediction?.dist
+                    this.onChange = { pendingPrediction = null; pendingPredictionState = PendingPredictionState.MAKING }
+                    this.onPredict = { pendingPrediction = it }
+                }
             }
-            if (question.predictionsVisible) {
+            if (question.predictionsVisible || appState.hasPermission(room, RoomPermission.VIEW_ALL_PREDICTIONS)) {
                 Typography {
                     sx {
                         margin = Margin(themed(1), themed(0))
@@ -258,8 +268,8 @@ external interface QuestionListProps : Props {
 }
 
 val QuestionList = FC<QuestionListProps> { props ->
-    val clientAppState = useContext(AppStateContext)
-    val appState = clientAppState.state
+    val (appState, stale) = useContext(AppStateContext)
+    val room = useContext(RoomContext)
     val questions = props.questions.sortedBy { it.name }
     val visibleQuestions = if (props.showHiddenQuestions) questions else questions.filter { it.visible }
 
@@ -284,26 +294,28 @@ val QuestionList = FC<QuestionListProps> { props ->
         editQuestion = it; editOpen = true
     }
 
+    val canPredict = appState.hasPermission(room, RoomPermission.SUBMIT_PREDICTION)
     visibleQuestions.map { question ->
         QuestionItem {
             this.key = question.id
             this.question = question
             this.expanded = question.id == expandedQuestion
             this.prediction = appState.userPredictions[question.id]
-            this.editable = props.allowEditingQuestions && !clientAppState.stale
+            this.editable = props.allowEditingQuestions && !stale
+            this.canPredict = canPredict
             this.comments = appState.comments[question.id] ?: listOf()
             this.onEditDialog = ::editQuestionOpen
             this.onChange = {state -> expandedQuestion = if (state) question.id else null}
         }
     }
 
-    // TODO: Use permissions
-    if (appState.isAdmin() && !clientAppState.stale) {
+    if (appState.hasPermission(room, RoomPermission.ADD_QUESTION)) {
         Fragment {
             Button {
                 this.key = "##add##"
                 this.startIcon = AddIcon.create()
                 this.color = ButtonColor.primary
+                this.disabled = stale
                 onClick = { editQuestion = null; editOpen = true }
                 +"Add question…"
             }

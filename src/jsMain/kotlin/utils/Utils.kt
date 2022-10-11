@@ -1,8 +1,6 @@
 package utils
 
 import csstype.Color
-import csstype.rgb
-import csstype.rgba
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -19,6 +17,8 @@ inline fun jsObject(init: dynamic.() -> Unit): dynamic {
     return o
 }
 
+inline fun <T: Any> buildObject(init: T.() -> Unit): T =
+    jsObject(init).unsafeCast<T>()
 
 fun Number.toDateTime(): String = Date(this.toDouble() * 1000).toLocaleString()
 fun Number.toIsoDateTime(): String = Date(this.toDouble() * 1000).toISOString()

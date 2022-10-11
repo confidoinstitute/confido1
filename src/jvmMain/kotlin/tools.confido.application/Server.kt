@@ -35,10 +35,10 @@ import tools.confido.serialization.confidoSM
 import tools.confido.spaces.*
 import tools.confido.state.*
 import tools.confido.utils.*
-import users.User
-import users.UserType
+import users.*
 import java.io.File
 import java.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import kotlin.collections.any
 import kotlin.collections.find
 import kotlin.collections.listOf
@@ -170,6 +170,9 @@ fun main() {
             this.json(confidoJSON)
         }
         install(Sessions)
+        install(Mailing) {
+            urlOrigin = "http://localhost:8081" // TODO: Set appropriately!
+        }
         routing {
             getST("/{...}") {
                 if (call.userSession == null) {
@@ -179,6 +182,7 @@ fun main() {
                 call.respondHtml(HttpStatusCode.OK, HTML::index)
             }
             postST("/login") {
+                // TODO: Rate limiting.
                 val session = call.userSession ?: return@postST badRequest("missing session")
 
                 val login: Login = call.receive()
@@ -193,6 +197,49 @@ fun main() {
                 }
 
                 session.userRef = user.ref
+                call.transientUserData?.refreshRunningWebsockets()
+                call.respond(HttpStatusCode.OK)
+            }
+            postST("/login_email/create") {
+                // TODO: Rate limiting.
+                call.userSession ?: run {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val mail: SendMailLink = call.receive()
+                val user = ServerState.users.values.find { it.email == mail.email }
+
+                if (user != null) {
+                    val expiration = 30.minutes
+                    val expiresAt = now().plus(expiration)
+                    val link = LoginLink(user, expiresAt)
+                    ServerState.loginLinks.add(link)
+                    // TODO: Origin and whatnot
+                    call.mailer.sendLoginMail(mail.email, link, expiration)
+                } else {
+                    // Do not disclose the email does not exist.
+                }
+
+                call.respond(HttpStatusCode.OK)
+            }
+            postST("/login_email") {
+                val session = call.userSession ?: run {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val login: EmailLogin = call.receive()
+                val loginLink = ServerState.loginLinks.find { it.token == login.token && !it.isExpired() }
+                if (loginLink == null) {
+                    call.respond(HttpStatusCode.Unauthorized)
+                    return@post
+                }
+
+                // Login links are single-use
+                ServerState.loginLinks.remove(loginLink)
+
+                session.user = loginLink.user
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
             }
@@ -229,11 +276,12 @@ fun main() {
                 }
 
                 val inviteLink = InviteLink(description = create.description ?: "", role = create.role,
-                                            createdBy=user.ref, createdAt = now())
+                                            createdBy=user.ref, createdAt = now(), anonymous = create.anonymous)
                 ServerGlobalState.roomManager.modifyEntity(room.id) {
                     it.copy(inviteLinks=it.inviteLinks + listOf(inviteLink))
                 }
 
+                call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK, inviteLink)
             }
             postST("/invite/accept") {

@@ -91,7 +91,7 @@ val RoomInfoForm = FC<RoomInfoFormProps> { props ->
                 }
                 Button {
                     onClick = { props.onCancel?.invoke() }
-                    disabled = props.disabled || stale
+                    disabled = props.disabled
                     +"Cancel"
                 }
                 Button {

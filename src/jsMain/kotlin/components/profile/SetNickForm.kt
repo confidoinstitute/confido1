@@ -15,10 +15,10 @@ import utils.eventValue
 import utils.themed
 
 val SetNickForm = FC<Props> {
-    val appState = useContext(AppStateContext)
-    var name by useState<String>("")
+    val (appState, stale) = useContext(AppStateContext)
+    var name by useState("")
 
-    val user = appState.state.session.user ?: return@FC
+    val user = appState.session.user ?: return@FC
     Paper {
         sx {
             marginTop = themed(2)
@@ -26,7 +26,7 @@ val SetNickForm = FC<Props> {
         }
         Typography {
             variant = TypographyVariant.body1
-            +"From state: your name is ${user.nick ?: "not set"} and language is ${appState.state.session.language}."
+            +"From state: your name is ${user.nick ?: "not set"} and language is ${appState.session.language}."
             br {}
             +"Your type is ${user.type}."
         }
@@ -41,7 +41,7 @@ val SetNickForm = FC<Props> {
                 id = "name-field"
                 label = ReactNode("Name")
                 value = name
-                disabled = appState.stale
+                disabled = stale
                 onChange = {
                     name = it.eventValue()
                 }
@@ -50,7 +50,7 @@ val SetNickForm = FC<Props> {
                 onClick = {
                     Client.postData("/setName", SetNick(name))
                 }
-                disabled = appState.stale
+                disabled = stale
                 +"Set name"
             }
         }

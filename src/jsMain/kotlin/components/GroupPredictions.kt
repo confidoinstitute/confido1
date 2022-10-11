@@ -65,7 +65,6 @@ external interface GroupPredictionsProps : Props {
 }
 
 val GroupPredictions = FC<GroupPredictionsProps> { props ->
-    val appState = useContext(AppStateContext).state
     val questions = props.questions
     Grid {
         container = true

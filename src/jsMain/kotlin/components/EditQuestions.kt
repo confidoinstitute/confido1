@@ -16,7 +16,7 @@ external interface EditQuestionProps : Props {
 }
 
 val EditQuestions = FC<EditQuestionProps> { props ->
-    val appState = useContext(AppStateContext)
+    val (_, stale) = useContext(AppStateContext)
     
     fun postEditQuestion(id: String, field: EditQuestionFieldType, value: Boolean) {
         val editQuestion: EditQuestion = EditQuestionField(field, value)
@@ -48,7 +48,7 @@ val EditQuestions = FC<EditQuestionProps> { props ->
                         ).map {(current, field) ->
                             TableCell {
                                 Checkbox {
-                                    disabled = !props.allowEditingQuestions || appState.stale
+                                    disabled = !props.allowEditingQuestions || stale
                                     checked = current
                                     onChange = { _, checked -> postEditQuestion(question.id, field, checked) }
                                 }

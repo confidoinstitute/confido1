@@ -1,5 +1,6 @@
 package components.rooms
 
+import components.AppStateContext
 import io.ktor.client.plugins.*
 import kotlinx.coroutines.*
 import mui.material.Alert
@@ -14,6 +15,7 @@ import kotlin.coroutines.EmptyCoroutineContext
 val NewRoom = FC<Props> {
     var creating by useState(false)
     var error by useState(false)
+    val stale = useContext(AppStateContext).stale
 
     val navigate = useNavigate()
 

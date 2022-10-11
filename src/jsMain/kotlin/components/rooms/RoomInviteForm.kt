@@ -21,7 +21,7 @@ import utils.themed
 import kotlin.coroutines.EmptyCoroutineContext
 
 val RoomInviteForm = FC<Props> {
-    val appState = useContext(AppStateContext)
+    val (appState, stale) = useContext(AppStateContext)
     var name by useState("")
     val roomId = useParams()["roomID"] ?: run {
         console.error("Missing room id")
@@ -67,13 +67,13 @@ val RoomInviteForm = FC<Props> {
                         display = Display.flex
                         alignItems = AlignItems.flexEnd
                     }
-                    if (appState.state.session.user == null) {
+                    if (appState.session.user == null) {
                         TextField {
                             variant = FormControlVariant.standard
                             id = "name-field"
                             label = ReactNode("Name")
                             value = name
-                            disabled = appState.stale
+                            disabled = stale
                             onChange = {
                                 name = it.eventValue()
                             }
@@ -88,7 +88,7 @@ val RoomInviteForm = FC<Props> {
                                     navigate("/room/${roomId}")
                                 }
                             }
-                            disabled = appState.stale
+                            disabled = stale
                             +"Set name"
                         }
                     } else {
@@ -98,7 +98,7 @@ val RoomInviteForm = FC<Props> {
                                     navigate("/room/${roomId}")
                                 }
                             }
-                            disabled = appState.stale
+                            disabled = stale
                             +"Accept invite"
                         }
                     }
