@@ -151,8 +151,10 @@ fun Route.webSocketST(
     handler: suspend DefaultWebSocketServerSession.() -> Unit
 ) = webSocket(path, protocol) {  handler(this) }
 
-suspend inline fun PipelineContext<Unit, ApplicationCall>.badRequest(msg: String = "") =
+suspend inline fun PipelineContext<Unit, ApplicationCall>.badRequest(msg: String = "") {
+    System.err.println("bad request: ${msg}")
     call.respond(HttpStatusCode.BadRequest, msg)
+}
 
 fun main() {
     registerModule(confidoSM)

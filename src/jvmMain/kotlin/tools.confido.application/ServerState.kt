@@ -259,9 +259,9 @@ object serverState : GlobalState() {
             userPred[question]?.get(user)
 
         suspend fun save(pred: Prediction)  = withMutationLock {
-            val pred = if (pred.id != "") pred else pred.copy(id=generateId())
             require(pred.user != null)
-            val orig = get(pred.question, pred.user)
+            val pred = pred.copy(id = "${pred.question.id}:${pred.user.id}")
+            val orig = get(pred.question, pred.user!!)
             val filter = and(Prediction::question eq pred.question, Prediction::user eq pred.user)
 
             when (val sess = coroutineContext.getSession()) {
