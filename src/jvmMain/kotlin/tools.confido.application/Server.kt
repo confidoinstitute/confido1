@@ -39,12 +39,10 @@ import tools.confido.serialization.confidoJSON
 import tools.confido.serialization.confidoSM
 import tools.confido.spaces.*
 import tools.confido.utils.*
-import users.DebugAdmin
-import users.DebugMember
-import users.User
-import users.UserType
+import users.*
 import java.io.File
 import java.time.Duration
+import kotlin.time.Duration.Companion.minutes
 
 fun HTML.index() {
     head {
@@ -63,6 +61,8 @@ object ServerState {
     var groupPredictions: MutableMap<String, List<Double>> = mutableMapOf()
     var comments: MutableMap<String, MutableList<Comment>> = mutableMapOf()
     var users: MutableMap<String, User> = mutableMapOf()
+    // TODO: This probably doesn't have to be persistent, and we need a method to prune expired login links
+    val loginLinks: MutableList<LoginLink> = mutableListOf()
 
     fun loadQuestions(collection: CoroutineCollection<Question>) {
         questions = runBlocking {
@@ -141,6 +141,9 @@ fun main() {
             this.json(confidoJSON)
         }
         install(Sessions)
+        install(Mailing) {
+            urlOrigin = "http://localhost:8081" // TODO: Set appropriately!
+        }
         routing {
             get("/init") {
                 // TODO: Secure this or replace.
@@ -169,13 +172,14 @@ fun main() {
                 call.respondHtml(HttpStatusCode.OK, HTML::index)
             }
             post("/login") {
+                // TODO: Rate limiting.
                 val session = call.userSession
                 if (session == null) {
                     call.respond(HttpStatusCode.BadRequest)
                     return@post
                 }
 
-                val login: Login = call.receive()
+                val login: PasswordLogin = call.receive()
                 val user = ServerState.users.values.find {
                     it.email == login.email && it.password != null
                             && Password.check(login.password, it.password).withArgon2()
@@ -189,6 +193,49 @@ fun main() {
                 session.user = user
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
+            }
+            post("/login_email/create") {
+                // TODO: Rate limiting.
+                call.userSession ?: run {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val mail: SendMailLink = call.receive()
+                val user = ServerState.users.values.find { it.email == mail.email }
+
+                if (user != null) {
+                    val expiration = 30.minutes
+                    val expiresAt = now().plus(expiration)
+                    val link = LoginLink(user, expiresAt, mail.url)
+                    ServerState.loginLinks.add(link)
+                    // TODO: Origin and whatnot
+                    call.mailer.sendLoginMail(mail.email, link, expiration)
+                } else {
+                    // Do not disclose the email does not exist.
+                }
+
+                call.respond(HttpStatusCode.OK)
+            }
+            post("/login_email") {
+                val session = call.userSession ?: run {
+                    call.respond(HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val login: EmailLogin = call.receive()
+                val loginLink = ServerState.loginLinks.find { it.token == login.token && !it.isExpired() }
+                if (loginLink == null) {
+                    call.respond(HttpStatusCode.Unauthorized)
+                    return@post
+                }
+
+                // Login links are single-use
+                ServerState.loginLinks.remove(loginLink)
+
+                session.user = loginLink.user
+                call.transientUserData?.refreshRunningWebsockets()
+                call.respond(HttpStatusCode.OK, loginLink.url)
             }
             post("/logout") {
                 val session = call.userSession

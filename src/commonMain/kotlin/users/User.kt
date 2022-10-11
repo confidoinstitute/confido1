@@ -1,8 +1,10 @@
 package users
 
+import kotlinx.datetime.Clock.System.now
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import tools.confido.eqid.IdentifiedById
+import tools.confido.utils.randomString
 
 @Serializable
 data class User(
@@ -17,3 +19,17 @@ data class User(
     val createdAt: Instant,
     val lastLoginAt: Instant,
 ) : IdentifiedById<String>
+
+@Serializable
+data class LoginLink (
+    val user: User,
+    val expiryTime: Instant,
+    val url: String = "/",
+) {
+    // TODO: Make this cryptographically secure
+    val token = randomString(32)
+
+    fun isExpired() = now() > expiryTime
+
+    fun link(origin: String) = "$origin/email_login?t=$token"
+}

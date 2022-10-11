@@ -1,5 +1,6 @@
 package components.layout
 
+import components.nouser.EmailLogin
 import components.nouser.LandingPage
 import components.rooms.RoomInviteForm
 import mui.material.Toolbar
@@ -24,6 +25,11 @@ val NoUserLayout = FC<Props> {
                 index = true
                 path = "/*"
                 this.element = LandingPage.create()
+            }
+            Route {
+                index = true
+                path = "/email_login"
+                this.element = EmailLogin.create()
             }
             Route {
                 path = "room/:roomID/invite/:inviteToken"
