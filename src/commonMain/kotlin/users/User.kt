@@ -5,6 +5,9 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import tools.confido.refs.Entity
 import tools.confido.refs.ImmediateDerefEntity
+import tools.confido.refs.Ref
+import tools.confido.utils.generateId
+import tools.confido.utils.generateToken
 import tools.confido.utils.randomString
 
 @Serializable
@@ -23,11 +26,12 @@ data class User(
 
 @Serializable
 data class LoginLink (
-    val user: User,
+    override val id: String = "", // generated on insert
+    val token: String = generateToken(),
+    val user: Ref<User>,
     val expiryTime: Instant,
-) {
+) : ImmediateDerefEntity {
     // TODO: Make this cryptographically secure
-    val token = randomString(32)
 
     fun isExpired() = now() > expiryTime
 

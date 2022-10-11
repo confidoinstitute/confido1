@@ -19,6 +19,7 @@ import tools.confido.question.RoomComment
 import tools.confido.refs.*
 import tools.confido.spaces.*
 import tools.confido.utils.*
+import users.LoginLink
 import users.User
 import java.lang.RuntimeException
 import kotlin.coroutines.AbstractCoroutineContextElement
@@ -228,6 +229,16 @@ object serverState : GlobalState() {
     override val questions by questionManager::entityMap
 
     object userManager : InMemoryEntityManager<User>(database.getCollection("users")) {
+        override suspend fun initialize() {
+            super.initialize()
+            mongoCollection.ensureUniqueIndex(User::email)
+        }
+        val byEmail: MutableMap<String, User> = mutableMapOf()
+        init {
+            onEntityAddedOrUpdated { it.email?.let{ email-> byEmail[email] = it } }
+            onEntityDeleted { it.email?.let{ email -> byEmail.remove(email) } }
+        }
+
     }
     override val users by userManager::entityMap
 
@@ -299,6 +310,14 @@ object serverState : GlobalState() {
         }
     }
     override val roomComments by roomCommentManager::roomComments
+
+    object loginLinkManager : InMemoryEntityManager<LoginLink>(database.getCollection("loginLinks")) {
+        val byToken: MutableMap<String, LoginLink> = mutableMapOf()
+        init {
+            onEntityAddedOrUpdated { byToken[it.token] = it }
+            onEntityDeleted { byToken.remove(it.token) }
+        }
+    }
 
     init {
         roomManager.register()

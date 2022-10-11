@@ -184,7 +184,7 @@ fun main() {
                 // TODO: Rate limiting.
                 val session = call.userSession ?: return@postST badRequest("missing session")
 
-                val login: Login = call.receive()
+                val login: PasswordLogin = call.receive()
                 val user = serverState.users.values.find {
                     it.email == login.email && it.password != null
                             && Password.check(login.password, it.password).withArgon2()
@@ -203,17 +203,17 @@ fun main() {
                 // TODO: Rate limiting.
                 call.userSession ?: run {
                     call.respond(HttpStatusCode.BadRequest)
-                    return@post
+                    return@postST
                 }
 
                 val mail: SendMailLink = call.receive()
-                val user = ServerState.users.values.find { it.email == mail.email }
+                val user = serverState.userManager.byEmail[mail.email]
 
                 if (user != null) {
                     val expiration = 30.minutes
                     val expiresAt = now().plus(expiration)
-                    val link = LoginLink(user, expiresAt)
-                    ServerState.loginLinks.add(link)
+                    val link = LoginLink(user = user.ref, expiryTime = expiresAt)
+                    serverState.loginLinkManager.insertEntity(link)
                     // TODO: Origin and whatnot
                     call.mailer.sendLoginMail(mail.email, link, expiration)
                 } else {
@@ -223,22 +223,16 @@ fun main() {
                 call.respond(HttpStatusCode.OK)
             }
             postST("/login_email") {
-                val session = call.userSession ?: run {
-                    call.respond(HttpStatusCode.BadRequest)
-                    return@post
-                }
+                val session = call.userSession ?: return@postST badRequest("no session")
 
                 val login: EmailLogin = call.receive()
-                val loginLink = ServerState.loginLinks.find { it.token == login.token && !it.isExpired() }
-                if (loginLink == null) {
-                    call.respond(HttpStatusCode.Unauthorized)
-                    return@post
-                }
+                val loginLink = serverState.loginLinkManager.byToken[login.token]?.takeIf { !it.isExpired() }
+                loginLink ?: return@postST call.respond(HttpStatusCode.Unauthorized)
 
                 // Login links are single-use
-                ServerState.loginLinks.remove(loginLink)
+                serverState.loginLinkManager.deleteEntity(loginLink.ref)
 
-                session.user = loginLink.user
+                session.userRef = loginLink.user
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
             }
@@ -276,7 +270,7 @@ fun main() {
 
                 val inviteLink = InviteLink(description = create.description ?: "", role = create.role,
                                             createdBy=user.ref, createdAt = now(), anonymous = create.anonymous)
-                ServerGlobalState.roomManager.modifyEntity(room.id) {
+                serverState.roomManager.modifyEntity(room.id) {
                     it.copy(inviteLinks=it.inviteLinks + listOf(inviteLink))
                 }
 
