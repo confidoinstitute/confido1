@@ -74,6 +74,7 @@ kotlin {
                 implementation("org.litote.kmongo:kmongo-coroutine:$kmongoVersion")
                 implementation("org.litote.kmongo:kmongo-coroutine-serialization:$kmongoVersion")
                 implementation("com.password4j:password4j:1.6.1")
+                implementation("com.github.jnr:jnr-unixsocket:0.38.17") // for mongodb unix socket connection (faster)
             }
         }
         val jsMain by getting {

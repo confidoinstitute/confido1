@@ -15,8 +15,6 @@ import payloads.requests.EditQuestionFieldType
 import rooms.Room
 import tools.confido.question.Question
 import tools.confido.state.*
-import tools.confido.utils.generateId
-import tools.confido.utils.randomString
 
 fun editQuestion(routing: Routing) {
     routing.deleteST("/questions/{id}") {
@@ -24,10 +22,10 @@ fun editQuestion(routing: Routing) {
         val ref = Ref<Question>(id)
         ref.deref() ?: return@deleteST call.respond(HttpStatusCode.NotFound)
         serverState.withTransaction {
-            ServerGlobalState.questionManager.deleteEntity(ref);
+            serverState.questionManager.deleteEntity(ref);
             rooms.values.toList().forEach { room ->
                 if (room.questions.contains(ref)) {
-                    ServerGlobalState.roomManager.modifyEntity(room.id){
+                    serverState.roomManager.modifyEntity(room.id){
                         it.copy(questions = it.questions.filter { it != ref }.toList()) }
                 }
             }
@@ -41,7 +39,7 @@ fun editQuestion(routing: Routing) {
         val roomRef = Ref<Room>(call.parameters["id"] ?: "")
         roomRef.deref() ?: return@postST call.respond(HttpStatusCode.NotFound)
         val q: Question = call.receive()
-        ServerGlobalState.questionManager.insertEntity(q)
+        serverState.questionManager.insertEntity(q)
     }
     routing.postST("/questions/{id}/edit") {
         @OptIn(DelicateRefAPI::class)
@@ -51,7 +49,7 @@ fun editQuestion(routing: Routing) {
 
         when (editQuestion) {
             is EditQuestionField -> {
-                ServerGlobalState.questionManager.modifyEntity(origRef.id) {
+                serverState.questionManager.modifyEntity(origRef.id) {
                     when (editQuestion.fieldType) {
                         EditQuestionFieldType.VISIBLE ->
                             it.copy(visible = editQuestion.value, enabled = it.enabled && editQuestion.value)
@@ -69,7 +67,7 @@ fun editQuestion(routing: Routing) {
                 }
             }
             is EditQuestionComplete ->
-                ServerGlobalState.questionManager.replaceEntity(editQuestion.question.withId(origRef.id))
+                serverState.questionManager.replaceEntity(editQuestion.question.withId(origRef.id))
         }
 
 
