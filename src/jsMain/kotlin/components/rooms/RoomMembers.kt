@@ -53,7 +53,7 @@ val RoomMembers = FC<Props> {
     val groupedMembership = room.members.groupBy {
         it.invitedVia
     }
-    val invitations = room.inviteLinks.associateWith { groupedMembership[it] }
+    val invitations = room.inviteLinks.associateWith { groupedMembership[it.id] }
 
     List {
         groupedMembership[null]?.let {
@@ -195,20 +195,21 @@ external interface RoomMemberProps : Props {
 }
 
 val RoomMember = FC<RoomMemberProps> {props ->
-    val (_, stale) = useContext(AppStateContext)
+    val (appState, stale) = useContext(AppStateContext)
 
     val membership = props.membership
+    val user = appState.users[membership.user.id] ?: return@FC
 
     ListItem {
         disabled = props.disabled
         ListItemAvatar {
             UserAvatar {
-                user = membership.user
+                this.user = user
             }
         }
         ListItemText {
-            primary = ReactNode(membership.user.nick ?: "Anonymous")
-            membership.user.email?.let {
+            primary = ReactNode(user.nick ?: "Anonymous")
+            user.email?.let {
                 secondary = ReactNode(it)
             }
         }

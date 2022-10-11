@@ -16,7 +16,7 @@ import tools.confido.question.Question
 external interface QuestionCommentsProps : Props {
     var question: Question
     var prediction: Prediction?
-    var comments: List<Comment>
+    var comments: Map<String, Comment>
 }
 
 val QuestionComments = FC<QuestionCommentsProps> { props ->
@@ -57,10 +57,10 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
                 flexGrow = number(1.0)
             }
             this.dividers = true
-            props.comments.sortedByDescending { it.timestamp }.map {
+            props.comments.entries.sortedByDescending { it.value.timestamp }.map {
                 Comment {
-                    key = it.key()
-                    comment = it
+                    key = it.key
+                    comment = it.value
                 }
             }
         }

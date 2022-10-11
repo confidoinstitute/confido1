@@ -16,6 +16,8 @@ import react.router.Routes
 import react.router.useParams
 import rooms.Room
 import rooms.RoomPermission
+import tools.confido.refs.deref
+import tools.confido.refs.eqid
 import utils.stringToColor
 import utils.themed
 
@@ -25,7 +27,7 @@ val Room = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
     val currentUser = appState.session.user ?: return@FC
     val roomId = useParams()["roomID"] ?: return@FC
-    val room = appState.getRoom(roomId) ?: return@FC
+    val room = appState.rooms[roomId] ?: return@FC
 
     var editMode by useState(false)
 
@@ -71,7 +73,7 @@ val Room = FC<Props> {
                         if (seesUsers || membership.user eqid currentUser)
                             UserAvatar {
                                 key = membership.user.id
-                                user = membership.user
+                                user = appState.users[membership.user.id]!!
                             }
                         else
                             Avatar {}
@@ -95,7 +97,7 @@ val Room = FC<Props> {
             Route {
                 index = true
                 this.element = QuestionList.create {
-                    questions = room.questions
+                    questions = room.questions.mapNotNull { appState.questions[it.id] }
                     // TODO: This should be fully handled by the server.
                     showHiddenQuestions = appState.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
                     allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
@@ -111,7 +113,7 @@ val Room = FC<Props> {
             Route {
                 path = "edit_questions"
                 this.element = EditQuestions.create {
-                    questions = room.questions
+                    questions = room.questions.mapNotNull { appState.questions[it.id] }
                     allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
                 }
             }

@@ -24,14 +24,14 @@ val RoomList = FC<RoomListProps> { props ->
         ListSubheader {
             +"Rooms"
         }
-        for (room in appState.rooms) {
+        for (room in appState.rooms.entries) {
             ListItemNavigation {
-                this.key = room.id
-                to = "/room/${room.id}"
+                this.key = room.key
+                to = "/room/${room.key}"
                 onNavigate = props.onNavigate
 
                 ListItemText {
-                    primary = ReactNode(room.name)
+                    primary = ReactNode(room.value.name)
                 }
             }
         }

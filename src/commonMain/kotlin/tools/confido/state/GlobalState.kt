@@ -2,6 +2,7 @@ package tools.confido.state
 
 import kotlinx.serialization.Serializable
 import rooms.Room
+import rooms.RoomPermission
 import tools.confido.question.*
 import tools.confido.refs.*
 import users.User
@@ -62,4 +63,9 @@ data class SentState(
     override val roomComments: Map<Ref<Room>, Map<String, RoomComment>> = emptyMap(),
     override val groupPred: Map<Ref<Question>, Prediction?>,
     val session: UserSession,
-) : BaseState
+) : BaseState {
+    fun hasPermission(room: Room, permission: RoomPermission): Boolean {
+        return room.hasPermission(session.user, permission)
+    }
+    val isFullUser get() = session.user?.type?.isProper() ?: false
+}

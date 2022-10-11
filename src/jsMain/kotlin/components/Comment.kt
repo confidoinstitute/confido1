@@ -26,6 +26,8 @@ import react.dom.onChange
 import rooms.RoomPermission
 import tools.confido.question.Comment
 import tools.confido.question.Prediction
+import tools.confido.question.QuestionComment
+import tools.confido.refs.eqid
 import tools.confido.utils.unixNow
 import utils.durationAgo
 import utils.eventValue
@@ -41,15 +43,17 @@ val Comment = FC<CommentProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
     val currentUser = appState.session.user
+    val comment = props.comment
+    val user = appState.users[comment.user.id] ?: return@FC
 
     var textAgo by useState("")
     val canDelete =
-        (props.comment.user == currentUser || appState.hasPermission(room, RoomPermission.MANAGE_COMMENTS)) && !stale
+        (user eqid currentUser || appState.hasPermission(room, RoomPermission.MANAGE_COMMENTS)) && !stale
 
     // TODO generalize and fix the "no text on mount" issue
-    useEffect(props.comment.timestamp) {
+    useEffect(comment.timestamp) {
         fun setText() {
-            textAgo = durationAgo(unixNow() - props.comment.timestamp)
+            textAgo = durationAgo(unixNow() - comment.timestamp)
         }
         setText()
         val interval = setInterval(::setText, 5000)
@@ -66,11 +70,11 @@ val Comment = FC<CommentProps> { props ->
         }
         CardHeader {
             // TODO: Handle nickless, email-only names(when appropriate)
-            val name = props.comment.user.nick ?: "Anonymous"
+            val name = user.nick ?: "Anonymous"
             title = ReactNode(name)
             subheader = ReactNode(textAgo)
             avatar = UserAvatar.create {
-                user = props.comment.user
+                this.user = user
             }
             if (canDelete) {
                 action = IconButton.create {
@@ -81,9 +85,9 @@ val Comment = FC<CommentProps> { props ->
             }
         }
         CardContent {
-            +props.comment.content
+            +comment.content
         }
-        if (props.comment.prediction != null) {
+        if (comment is QuestionComment && comment.prediction != null) {
             Divider {}
             CardContent {
                 Typography {
@@ -96,7 +100,7 @@ val Comment = FC<CommentProps> { props ->
                     DistributionSummary {
                         spoiler = true
                         allowPlotDialog = true
-                        distribution = props.comment.prediction?.dist
+                        distribution = comment.prediction?.dist
                     }
                 }
             }

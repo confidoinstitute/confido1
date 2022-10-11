@@ -26,6 +26,7 @@ import react.router.*
 import rooms.RoomPermission
 import tools.confido.distributions.*
 import tools.confido.question.*
+import tools.confido.refs.ref
 import tools.confido.spaces.*
 import tools.confido.utils.*
 import utils.*
@@ -123,7 +124,7 @@ external interface QuestionItemProps : Props {
     var prediction: Prediction?
     var canPredict: Boolean
     var editable: Boolean
-    var comments: List<Comment>
+    var comments: Map<String, Comment>
     var onEditDialog: ((Question) -> Unit)?
     var onChange: ((Boolean) -> Unit)?
     var expanded: Boolean
@@ -228,7 +229,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     this.onPredict = { pendingPrediction = it }
                 }
             }
-            if (question.predictionsVisible || appState.hasPermission(room, RoomPermission.VIEW_ALL_PREDICTIONS)) {
+            if (question.predictionsVisible || appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)) {
                 Typography {
                     sx {
                         margin = Margin(themed(1), themed(0))
@@ -300,10 +301,10 @@ val QuestionList = FC<QuestionListProps> { props ->
             this.key = question.id
             this.question = question
             this.expanded = question.id == expandedQuestion
-            this.prediction = appState.userPredictions[question.id]
+            this.prediction = appState.myPredictions[question.ref]
             this.editable = props.allowEditingQuestions && !stale
             this.canPredict = canPredict
-            this.comments = appState.comments[question.id] ?: listOf()
+            this.comments = appState.questionComments[question.ref] ?: emptyMap()
             this.onEditDialog = ::editQuestionOpen
             this.onChange = {state -> expandedQuestion = if (state) question.id else null}
         }
