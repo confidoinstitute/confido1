@@ -20,6 +20,7 @@ import utils.themed
 
 external interface RoomInfoFormProps : Props {
     var room: Room?
+    var editMode: Boolean
     var disabled: Boolean
     var onSubmit: ((BaseRoomInformation) -> Unit)?
     var onCancel: (() -> Unit)?
@@ -57,7 +58,8 @@ val RoomInfoForm = FC<RoomInfoFormProps> { props ->
             variant = FormControlVariant.standard
             fullWidth = true
             value = inputName
-            label = ReactNode("Room name")
+            if (props.room == null)
+                label = ReactNode("Room name")
             placeholder = roomName
             disabled = props.disabled
             error = errorName

@@ -1,14 +1,11 @@
 package tools.confido.question
 
-import tools.confido.refs.Entity
 import kotlinx.serialization.*
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.refs.HasId
 import tools.confido.refs.ImmediateDerefEntity
 import tools.confido.refs.Ref
 import tools.confido.spaces.*
-import tools.confido.utils.generateId
-import tools.confido.utils.randomString
 import users.User
 
 @Serializable
@@ -27,10 +24,11 @@ data class Question(
     override val id: String,
     val name: String,
     val answerSpace: Space,
-    var visible: Boolean = true,
-    var enabled: Boolean = true,
-    var predictionsVisible: Boolean = false,
-    var resolutionVisible: Boolean = false,
-    var resolved: Boolean = false,
+    val description: String = "",
+    val visible: Boolean = true,
+    val enabled: Boolean = true,
+    val predictionsVisible: Boolean = false,
+    val resolutionVisible: Boolean = false,
+    val resolved: Boolean = false,
 ) : ImmediateDerefEntity
 

@@ -111,7 +111,7 @@ val EditNumericSpace = FC<EditAnswerSpaceProps<NumericSpace>> { props ->
         TextField {
             margin = FormControlMargin.dense
             value = unit
-            label = ReactNode("Unit")
+            label = ReactNode("Unit (optional)")
             disabled = props.disabled
             onChange = {
                 unit = it.eventValue()
@@ -175,6 +175,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     // Question values
     var id by useState(q?.id ?: "")
     var name by useState(q?.name ?: "")
+    var description by useState(q?.description ?: "")
     var answerSpace : Space? by useState(q?.answerSpace)
     var visible by useState(q?.visible ?: true)
     var enabled by useState(q?.enabled ?: true)
@@ -189,7 +190,6 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     var errorEmptyAnswerSpace by useState(false)
     var errorBadAnswerSpace by useState(false)
 
-    // TODO better error handling?
     fun submitQuestion() {
         var error = false
         if (answerSpace == null) {
@@ -201,9 +201,17 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
             error = true
         }
         if (error) return
-        val question = Question(id, name, answerSpace!!, visible, enabled, predictionsVisible, resolved)
+        val question = Question(
+            id = id,
+            name = name,
+            description = description,
+            answerSpace = answerSpace!!,
+            visible = visible,
+            enabled = enabled,
+            predictionsVisible = predictionsVisible,
+            resolutionVisible = resolved
+        )
 
-        // TODO Make better REST API, as it now requires ID to be sent in URL path
         if (props.question == null) {
             Client.postData("/rooms/${room.id}/questions/add", question)
         } else {
@@ -237,17 +245,27 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         }
         DialogContent {
             DialogContentText {
-                +"Try and make your question specific and resolvable - so that after the event, everyone will agree on what the outcome is."
+                    +"Try and make your question specific and resolvable - so that after the event, everyone will agree on what the outcome is."
             }
             TextField {
                 value = name
-                label = ReactNode("Question")
-                multiline = true
-                maxRows = 4
+                label = ReactNode("Title")
                 fullWidth = true
                 onChange = { name = it.eventValue(); errorEmptyName = false }
                 margin = FormControlMargin.normal
                 error = errorEmptyName
+            }
+            DialogContentText {
+                    +"The question title should cover the main topic, while the description can explain the more detailed information."
+            }
+            TextField {
+                value = description
+                label = ReactNode("Description (optional)")
+                multiline = true
+                rows = 2
+                fullWidth = true
+                margin = FormControlMargin.normal
+                onChange = { description = it.eventValue() }
             }
             FormControl {
                 this.fullWidth = true

@@ -13,6 +13,7 @@ import tools.confido.application.sessions.transientUserData
 import rooms.Owner
 import rooms.Room
 import rooms.RoomMembership
+import rooms.RoomPermission
 import tools.confido.application.sessions.userSession
 import tools.confido.question.Question
 import tools.confido.state.*
@@ -49,6 +50,22 @@ fun editQuestion(routing: Routing) {
 
         call.transientUserData?.refreshRunningWebsockets()
         call.respond(HttpStatusCode.OK, room.id)
+    }
+    routing.postST("/rooms/{id}/edit") {
+        val roomRef = Ref<Room>(call.parameters["id"] ?: "")
+        val user = call.userSession?.user ?: return@postST badRequest("Not logged in")
+        val room = roomRef.deref() ?: return@postST badRequest("Room does not exist")
+        val information: BaseRoomInformation = call.receive()
+
+        if (!room.hasPermission(user, RoomPermission.ROOM_OWNER)) return@postST badRequest("You cannot do this")
+        val roomName = information.name.ifEmpty {room.name}
+
+        serverState.roomManager.modifyEntity(roomRef) {
+            it.copy(name = roomName, description = information.description)
+        }
+
+        call.transientUserData?.refreshRunningWebsockets()
+        call.respond(HttpStatusCode.OK)
     }
     routing.postST("/rooms/{id}/members/add") {
         val roomRef = Ref<Room>(call.parameters["id"] ?: "")

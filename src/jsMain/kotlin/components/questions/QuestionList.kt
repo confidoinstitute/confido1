@@ -14,15 +14,12 @@ import kotlinx.coroutines.launch
 import kotlinx.js.timers.clearInterval
 import kotlinx.js.timers.setInterval
 import mui.material.*
-import mui.material.Size
-import mui.material.styles.TypographyVariant
 import mui.system.responsive
 import mui.system.sx
 import react.*
 import react.dom.html.ReactHTML.small
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.strong
-import react.router.*
 import rooms.RoomPermission
 import tools.confido.distributions.*
 import tools.confido.question.*
@@ -211,7 +208,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         }
         AccordionDetails {
             Typography {
-                // TODO question description
+                +question.description
             }
             if (props.canPredict) {
                 val questionInput: FC<QuestionInputProps<Space, ProbabilityDistribution>> =

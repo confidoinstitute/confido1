@@ -33,7 +33,6 @@ val NewRoom = FC<Props> {
                 creating = false
             }
         }
-
     }
 
     Collapse {
@@ -45,7 +44,7 @@ val NewRoom = FC<Props> {
     }
 
     RoomInfoForm {
-        disabled = creating
+        disabled = creating || stale
         onSubmit = ::createRoom
     }
 }

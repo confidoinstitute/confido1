@@ -6,6 +6,7 @@ import csstype.px
 import hooks.useDebounce
 import icons.*
 import kotlinx.browser.window
+import kotlinx.js.timers.setTimeout
 import react.*
 import mui.material.*
 import mui.system.sx
@@ -125,10 +126,10 @@ val InvitationMembers = FC<InvitationMembersProps> {props ->
             }
             secondary = ReactNode("${props.members?.size ?: 0} members")
         }
-        if (!props.invitation.token.isEmpty()) {
+        if (props.invitation.token.isNotEmpty()) {
             Tooltip {
-                open = copyShown
-                title = ReactNode("Link copied!")
+                title = ReactNode(if (copyShown) "Link copied!" else "Copy invitation link")
+                onOpen = {copyShown = false}
                 arrow = true
                 IconButton {
                     ContentCopyIcon {}
@@ -138,11 +139,9 @@ val InvitationMembers = FC<InvitationMembersProps> {props ->
                         window.navigator.clipboard.writeText(url)
                         copyShown = true
                     }
-                    onMouseOut = {
-                        copyShown = false
-                    }
                 }
             }
+            // TODO QR code
             IconButton {
                 disabled = stale
                 disabled = !active
