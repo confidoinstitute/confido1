@@ -3,6 +3,8 @@ package tools.confido.application.sessions
 import io.ktor.server.application.*
 import io.ktor.util.*
 import tools.confido.state.UserSession
+import tools.confido.state.serverState
+import users.User
 
 internal val SessionTrackerKey = AttributeKey<SessionTracker>("SessionTrackerKey")
 
@@ -54,20 +56,26 @@ fun ApplicationCall.getSessionIdOrCreateNew(): String {
  *
  * In case a session does not exist, setting a value will create a new session.
  */
-var ApplicationCall.userSession: UserSession?
-    get() {
-        val id = sessionId ?: return null
-        val storage = application.attributes[SessionStorageUserSession]
-        return storage.load(id)
-    }
-    set(value) {
+val ApplicationCall.userSession: UserSession?
+    get() =
+        sessionId?.let { serverState.userSessionManager.entityMap[sessionId] }
+
+suspend fun ApplicationCall.setUserSession(value: UserSession) {
         val id = getSessionIdOrCreateNew()
-        val storage = application.attributes[SessionStorageUserSession]
         if (value == null) {
-            storage.clear(id)
+            serverState.userSessionManager.deleteEntity(id, ignoreNonexistent = true)
         } else {
-            storage.store(id, value)
+            System.err.println("Saving session: ${value.copy(id=id)}")
+            serverState.userSessionManager.replaceEntity(value.copy(id = id), upsert = true)
         }
+    }
+suspend fun ApplicationCall.modifyUserSession(modify: (UserSession)->UserSession) =
+    serverState.withMutationLock {
+        val id = getSessionIdOrCreateNew()
+        val oldSession = userSession ?: UserSession(id = id)
+        val newSession = modify(oldSession)
+        setUserSession(newSession)
+        newSession
     }
 
 /**
@@ -82,15 +90,15 @@ var ApplicationCall.transientUserData: TransientData?
     get() {
         val id = sessionId ?: return null
         val storage = application.attributes[SessionStorageTransient]
-        return storage.loadOrStore(id) { TransientData() }
+        return storage.getOrPut(id) { TransientData() }
     }
     set(value) {
         val id = getSessionIdOrCreateNew()
         val storage = application.attributes[SessionStorageTransient]
         if (value == null) {
-            storage.clear(id)
+            storage.remove(id)
         } else {
-            storage.store(id, value)
+            storage[id] = value
         }
     }
 

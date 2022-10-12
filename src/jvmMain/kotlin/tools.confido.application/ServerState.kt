@@ -329,6 +329,9 @@ object serverState : GlobalState() {
         }
     }
 
+    object userSessionManager : InMemoryEntityManager<UserSession>(database.getCollection("userSessions")) {
+        // TODO automatic cleanup of expired sessions
+    }
     init {
         roomManager.register()
         questionManager.register()
@@ -338,6 +341,7 @@ object serverState : GlobalState() {
         roomCommentManager.register()
         loginLinkManager.register()
         verificationLinkManager.register()
+        userSessionManager.register()
     }
 
 

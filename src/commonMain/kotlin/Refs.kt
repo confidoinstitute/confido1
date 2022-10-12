@@ -11,6 +11,7 @@ import rooms.Room
 import tools.confido.question.Question
 import tools.confido.question.QuestionComment
 import tools.confido.question.RoomComment
+import tools.confido.state.UserSession
 import tools.confido.state.globalState
 import tools.confido.utils.generateId
 import users.EmailVerificationLink
@@ -120,7 +121,8 @@ inline fun <reified  T: Entity> T.withId(id: String): T =
         is User -> copy(id = id) as T
         is LoginLink -> copy(id = id) as T
         is EmailVerificationLink -> copy(id = id) as T
-        else -> throw NotImplementedError("withID for ${T::class}")
+        is UserSession -> copy(id = id) as T
+        else -> throw NotImplementedError("withId for ${T::class} in Refs.kt")
     }
 
 inline fun <reified  T: Entity> T.assignId() = withId(generateId())

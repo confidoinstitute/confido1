@@ -192,7 +192,7 @@ fun main() {
         routing {
             getST("/{...}") {
                 if (call.userSession == null) {
-                    call.userSession = UserSession()
+                    call.setUserSession(UserSession())
                 }
 
                 call.respondHtml(HttpStatusCode.OK, HTML::index)
@@ -229,7 +229,7 @@ fun main() {
                     it.copy(lastLoginAt = now())
                 }
 
-                session.userRef = user.ref
+                call.modifyUserSession{ it.copy(userRef = user.ref) }
                 call.transientUserData?.refreshRunningWebsockets()
                 println(session)
                 call.respond(HttpStatusCode.OK)
@@ -269,7 +269,7 @@ fun main() {
                     serverState.loginLinkManager.deleteEntity(loginLink.ref)
                 }
 
-                session.userRef = loginLink.user
+                call.modifyUserSession {  it.copy(userRef = loginLink.user) }
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK, loginLink.url)
             }
@@ -314,7 +314,7 @@ fun main() {
                 val session = call.userSession
                 session?.user ?: return@postST badRequest("not logged in") // FIXME: should this just be a NOP?
 
-                session.userRef = null
+                call.modifyUserSession {it.copy(userRef = null) }
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
             }
@@ -435,7 +435,7 @@ fun main() {
                         createdAt = now()
                     )
 
-                    call.userSession = UserSession(userRef = newUser.ref, language = "en")
+                    call.modifyUserSession{ it.copy(userRef = newUser.ref) }
                     serverState.withTransaction {
                         serverState.roomManager.modifyEntity(room.ref) {
                             it.copy(members = it.members + listOf(RoomMembership(newUser.ref, invite.role, invite.id)))
