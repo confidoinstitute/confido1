@@ -71,7 +71,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                 val members = it.members.map { membership ->
                     if (membership.user eqid user) {
                         existing = true
-                        membership.copy(role = role)
+                        membership.copy(role = role, invitedVia = null)
                     } else membership
                 } + if(existing) emptyList() else
                     listOf((RoomMembership(user, role, null)))

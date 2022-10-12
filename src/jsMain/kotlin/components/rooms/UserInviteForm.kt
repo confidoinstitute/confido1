@@ -32,9 +32,14 @@ internal fun renderInput(params: AutocompleteRenderInputParams) =
         label = ReactNode("Add a member")
     }
 
+internal fun groupBy(u: UserAutocomplete) = when(u) {
+    is ExistingUser -> if (u.user.type.isProper()) "Organization users" else "Guests"
+    is NewUser -> "Invite as guest"
+}
+
 internal fun getOptionLabel(option: UserAutocomplete) =
     when (option) {
-        is ExistingUser -> option.user.nick ?: "(Anonymous)"
+        is ExistingUser -> option.user.nick ?: option.user.email ?: ""
         is NewUser -> option.email
         else -> option.toString()
     }
@@ -49,8 +54,12 @@ internal fun renderOption(attributes: HTMLAttributes<HTMLLIElement>, option: Use
                     }
                 }
                 ListItemText {
-                    primary = react.ReactNode(option.user.nick ?: "(Anonymous)")
-                    secondary = react.ReactNode(option.user.email ?: "")
+                    option.user.nick?.let {
+                        primary = react.ReactNode(option.user.nick)
+                        secondary = react.ReactNode(option.user.email ?: "")
+                    } ?: run {
+                        primary = react.ReactNode(option.user.email ?: "")
+                    }
                 }
             }
             is NewUser -> {
@@ -58,34 +67,12 @@ internal fun renderOption(attributes: HTMLAttributes<HTMLLIElement>, option: Use
                     Avatar {}
                 }
                 ListItemText {
-                    primary = react.ReactNode("New user…")
-                    secondary = react.ReactNode(option.email)
+                    primary = react.ReactNode(option.email)
                 }
             }
         }
     }
 
-internal fun filterOptions(
-    users: ReadonlyArray<UserAutocomplete>,
-    state: FilterOptionsState<UserAutocomplete>
-): ReadonlyArray<UserAutocomplete> {
-    val value = state.inputValue
-
-    val filtered = users.filter {
-        val user = (it as ExistingUser).user
-        val inNick = user.nick?.contains(value, true) ?: false
-        val inEmail = user.email?.contains(value, true) ?: false
-        inNick || inEmail
-    }
-
-    return when {
-        (filtered.size == 1 && state.inputValue == (filtered[0] as ExistingUser).user.email) ->
-            filtered.toTypedArray()
-        (state.inputValue.contains("@")) ->
-            (filtered + listOf(NewUser(value))).toTypedArray()
-        else -> filtered.toTypedArray()
-    }
-}
 
 val UserInviteForm = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
@@ -93,10 +80,35 @@ val UserInviteForm = FC<Props> {
     var chosenUser by useState<UserAutocomplete?>(null)
     var role by useState<RoomRole>(Forecaster)
 
-    val members = room.members.map {it.user.id}.toSet()
-    val users = appState.users.values.mapNotNull {
-        if (it.email != null && it.id !in members) ExistingUser(it) else null
-    }.toTypedArray()
+    val members = room.members.filter {it.invitedVia == null}.map {it.user.id}.toSet()
+    val emails = useMemo(appState.users) { appState.users.values.mapNotNull {it.email}.toSet() }
+    val users = useMemo(appState.users) {
+        appState.users.values.sortedWith(
+            compareBy({ it.type }, { (it.nick ?: it.email ?: "") })
+        ).mapNotNull {
+            if (!it.isAnonymous() && it.id !in members) ExistingUser(it) else null
+        }.toTypedArray()
+    }
+
+    val filterOptions: (ReadonlyArray<UserAutocomplete>, FilterOptionsState<UserAutocomplete>) -> ReadonlyArray<UserAutocomplete> = useMemo(emails) {{
+        users, state ->
+        val value = state.inputValue
+
+        val filtered = users.filter {
+            val user = (it as ExistingUser).user
+            val inNick = user.nick?.contains(value, true) ?: false
+            val inEmail = user.email?.contains(value, true) ?: false
+            inNick || inEmail
+        }
+
+        when {
+            (filtered.size == 1 && value == (filtered[0] as ExistingUser).user.email) ->
+                filtered.toTypedArray()
+            (value.contains("@") && !emails.contains(value)) ->
+                (filtered + listOf(NewUser(value))).toTypedArray()
+            else -> filtered.toTypedArray()
+        }
+    }}
 
     Stack {
         this.direction = responsive(StackDirection.row)
@@ -112,12 +124,13 @@ val UserInviteForm = FC<Props> {
             renderOption = ::renderOption
             autoComplete = true
             getOptionLabel = ::getOptionLabel
+            groupBy = ::groupBy
             ListboxComponent = List
             ListboxProps = utils.jsObject {
                 dense = true
             }.unsafeCast<ListProps>()
             onChange = { _, value: UserAutocomplete, _, _ -> chosenUser = value }
-            filterOptions = ::filterOptions
+            this.filterOptions = filterOptions
             freeSolo = true
             fullWidth = true
         }
