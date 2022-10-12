@@ -374,7 +374,7 @@ object serverState : GlobalState() {
     fun calculateGroupPred(question: Question, preds: Collection<Prediction>): Prediction? =
         when (preds.size) {
             0 -> null
-            1 -> preds.first().copy(user = null)
+            1 -> preds.first().copy(user = null, id = "") // id contains uid of predicting user; don't want to leak
             else -> {
                 Prediction(user = null, ts = preds.map{it.ts}.max(), question = question.ref,
                             dist = calculateGroupDist(question.answerSpace, preds.map{it.dist}))

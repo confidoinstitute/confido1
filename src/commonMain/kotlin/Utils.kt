@@ -97,7 +97,7 @@ infix fun Number.`Z*`(other: List<Double>) = other.map { this.toDouble() * it }
 infix fun List<Double>.`Z*`(other: Number) = this.map { other.toDouble() * it }
 // Aparently, `Z/` is not a valid identifier.
 infix fun Number.Zdiv(other: List<Double>) = other.map { this.toDouble() / it }
-infix fun List<Double>.Zdiv(other: Number) = this.map { other.toDouble() / it }
+infix fun List<Double>.Zdiv(other: Number) = this.map { it / other.toDouble() }
 
 // normalize list so that sum is 1
 fun List<Double>.normalize(): List<Double> {
