@@ -25,7 +25,7 @@ class Mailer(
         }
     }
 
-    fun sendDirectInviteMail(address: String, room: Room, login: LoginLink) {
+    fun sendDirectInviteMail(address: String, room: Room, login: LoginLink, invitingUserAddress: String?) {
         // TODO: Improve subject
         // Subject ideas:
         // You have been invited to a Confido room
@@ -70,6 +70,7 @@ class Mailer(
         val mail = EmailBuilder.startingBlank()
             .from(senderAddress)
             .to(address)
+            .withReplyTo(invitingUserAddress)
             .withSubject(subject)
             .withPlainText(body)
             //.withHTMLText(sb.toString())

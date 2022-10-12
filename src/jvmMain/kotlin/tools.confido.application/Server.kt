@@ -330,11 +330,11 @@ fun main() {
                 call.respond(HttpStatusCode.OK, InviteStatus(true, room.name))
             }
             postST("/invite/create_email") {
-                val user = call.userSession?.user ?: return@postST badRequest("Not logged in")
+                val invitingUser = call.userSession?.user ?: return@postST badRequest("Not logged in")
                 val invite: InviteByEmail = call.receive()
                 val room = serverState.get<Room>(invite.roomId) ?: return@postST badRequest("Invalid room")
 
-                if (!room.hasPermission(user, RoomPermission.MANAGE_MEMBERS)) {
+                if (!room.hasPermission(invitingUser, RoomPermission.MANAGE_MEMBERS)) {
                     call.respond(HttpStatusCode.Unauthorized)
                     return@postST
                 }
@@ -365,7 +365,7 @@ fun main() {
                     link
                 }
 
-                call.mailer.sendDirectInviteMail(invite.email, room, loginLink)
+                call.mailer.sendDirectInviteMail(invite.email, room, loginLink, invitingUser.email)
 
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
