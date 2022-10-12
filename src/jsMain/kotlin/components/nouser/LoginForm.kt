@@ -2,7 +2,6 @@ package components.nouser
 
 import components.AppStateContext
 import csstype.*
-import emotion.react.css
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.sx
@@ -143,13 +142,13 @@ val LoginForm = FC<Props> {
             +"Log in"
         }
 
-        if (mode == LoginMode.MagicLink) {
-            if (!emailSent) {
-                Box {
-                    sx {
-                        marginTop = themed(1)
-                        textAlign = TextAlign.center
-                    }
+        Box {
+            sx {
+                marginTop = themed(1)
+                textAlign = TextAlign.center
+            }
+            if (mode == LoginMode.MagicLink) {
+                if (!emailSent) {
                     Link {
                         href = "#"
                         variant = TypographyVariant.body2
@@ -158,13 +157,7 @@ val LoginForm = FC<Props> {
                         }
                         +"Log in with a password"
                     }
-                }
-            } else {
-                Box {
-                    sx {
-                        marginTop = themed(1)
-                        textAlign = TextAlign.center
-                    }
+                } else {
                     Link {
                         href = "#"
                         variant = TypographyVariant.body2
@@ -175,6 +168,15 @@ val LoginForm = FC<Props> {
                         }
                         +"Retry"
                     }
+                }
+            } else {
+                Link {
+                    href = "#"
+                    variant = TypographyVariant.body2
+                    onClick = {
+                        mode = LoginMode.MagicLink
+                    }
+                    +"Log in with email only"
                 }
             }
         }
