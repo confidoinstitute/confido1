@@ -20,7 +20,6 @@ val RoomComments = FC<Props> {
         id = room.id
     }
 
-    // TODO connect with real comments
     appState.roomComments[room.ref]?.entries?.sortedBy { it.value.timestamp }?.map {
         Comment {
             this.key = it.key

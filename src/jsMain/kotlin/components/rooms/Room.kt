@@ -145,8 +145,7 @@ val Room = FC<Props> {
                     allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
                 }
             }
-            // TODO view comments permission
-            if (true)
+            if (appState.hasPermission(room, RoomPermission.VIEW_ROOM_COMMENTS))
             Route {
                 path = "discussion"
                 this.element = RoomComments.create {}

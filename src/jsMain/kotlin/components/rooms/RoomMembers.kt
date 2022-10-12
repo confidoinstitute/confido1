@@ -148,6 +148,7 @@ val InvitationMembers = FC<InvitationMembersProps> {props ->
                 }
             }
             // TODO QR code
+            if(false)
             IconButton {
                 disabled = stale
                 disabled = !active
@@ -216,7 +217,6 @@ val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
                 if (canChangeRole(appState, room, changedRole))
                     props.onChange?.invoke(changedRole)
             }
-            // TODO a global list, preferably near room membership definition?
             listOf(Viewer, Forecaster, Moderator, Owner).map { role ->
                 if (canChangeRole(appState, room, role))
                     MenuItem {

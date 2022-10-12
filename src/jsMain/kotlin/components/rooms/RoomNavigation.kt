@@ -39,7 +39,7 @@ val RoomNavigation = FC<Props>
         if (state.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
         tab("", "Questions")
 
-        // TODO Permission
+        if (state.hasPermission(room, RoomPermission.VIEW_ROOM_COMMENTS))
         tab("discussion", "Discussion")
 
         if (state.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
