@@ -14,6 +14,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
+import io.ktor.util.*
 import io.ktor.util.pipeline.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
@@ -61,6 +62,7 @@ fun HTML.index() {
         title("Confido")
     }
     body {
+        script(type="text/javascript") { +"bundleVer= '${jsHash}'" }
         script(src = "/static/confido1.js?${jsHash}") {}
     }
 }
@@ -527,6 +529,22 @@ fun main() {
                 call.respond(HttpStatusCode.OK)
             }
             webSocketST("/state") {
+                print(call.request.headers["user-agent"])
+                print(call.request.headers.toMap())
+                val clientVer = call.request.queryParameters["bundleVer"] ?: ""
+                if (clientVer.isNotEmpty() && clientVer != jsHash && (call.request.headers["x-webpack-dev"] ?: "").isEmpty()) {
+                    System.err.println("Forcing reload - clientVer: $clientVer jsHash: $jsHash")
+                    // If someone has the website open and an old frontend loaded and server then gets
+                    // updated, we have to force reload of the page, otherwise, likely state deserialization
+                    // would fail anyway.
+                    // Later, if we add offline clients / mobile apps, we may have more relaxed version rules
+                    // and explicit backward compatibility guarantees / protocol versioning / etc.
+                    // Check is skipped when using webpack development proxy, because then hash of the final
+                    // bundle is meaningless as the proxy serves its own javascript. (The header is added
+                    // in webpack-config/config.js, it is not a standard webpack feature.)
+                    close(CloseReason(4001, "Incompatible frontend version"))
+                    return@webSocketST
+                }
                 // Require a session to already be initialized; it is not possible
                 // to edit session cookies within websockets.
                 val session = call.userSession
