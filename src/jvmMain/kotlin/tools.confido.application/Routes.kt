@@ -94,7 +94,7 @@ fun editQuestion(routing: Routing) {
         val room = roomRef.deref() ?: return@deleteST badRequest("Room does not exist")
         if (!room.hasPermission(user, RoomPermission.MANAGE_MEMBERS)) return@deleteST badRequest("Cannot manage members")
         val membership = room.members.find { it.user eqid id } ?: return@deleteST badRequest("No such member")
-        if (canChangeRole(room.userRole(user), membership.role)) return@deleteST badRequest("You cannot do this")
+        if (!canChangeRole(room.userRole(user), membership.role)) return@deleteST badRequest("You cannot do this")
 
         serverState.roomManager.modifyEntity(roomRef) {
             it.copy(members = it.members.filterNot { m -> m.user eqid id })

@@ -1,9 +1,9 @@
-Authentication and rooms: [SE]
-
 Frontend missing important functionality:
 - Resolutions do not exist
 - Answer space cannot be edited even if no prediction yet exists
+  - Send number of predictors
   - Allow it when no predictions are made, in case of a race condition do what?
+- Feedback
 
 Frontend features:
 - Navigation and user preferences
