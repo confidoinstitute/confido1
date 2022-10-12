@@ -1,6 +1,7 @@
 package tools.confido.state
 
 import kotlinx.serialization.Serializable
+import rooms.Owner
 import rooms.Room
 import rooms.RoomPermission
 import tools.confido.question.*

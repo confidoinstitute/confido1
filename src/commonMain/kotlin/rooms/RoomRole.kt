@@ -2,6 +2,7 @@ package rooms
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import tools.confido.state.SentState
 
 @Serializable
 sealed class RoomRole(val permissions: Set<RoomPermission>) {
@@ -12,6 +13,18 @@ sealed class RoomRole(val permissions: Set<RoomPermission>) {
 
     fun hasPermission(permission: RoomPermission): Boolean {
         return permissions.contains(permission)
+    }
+}
+
+fun canChangeRole(myRole: RoomRole?, otherRole: RoomRole): Boolean {
+    if (myRole == null) return false
+    val owner = (myRole is Owner)
+    val moderator = (owner || myRole is Moderator)
+    return when(otherRole) {
+        is Viewer -> moderator
+        is Forecaster -> moderator
+        is Moderator -> owner
+        is Owner -> owner
     }
 }
 

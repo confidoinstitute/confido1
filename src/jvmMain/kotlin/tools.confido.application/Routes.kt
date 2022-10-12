@@ -9,11 +9,8 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.datetime.Clock
 import payloads.requests.*
+import rooms.*
 import tools.confido.application.sessions.transientUserData
-import rooms.Owner
-import rooms.Room
-import rooms.RoomMembership
-import rooms.RoomPermission
 import tools.confido.application.sessions.userSession
 import tools.confido.question.Question
 import tools.confido.state.*
@@ -69,16 +66,27 @@ fun editQuestion(routing: Routing) {
     }
     routing.postST("/rooms/{id}/members/add") {
         val roomRef = Ref<Room>(call.parameters["id"] ?: "")
-        roomRef.deref() ?: return@postST badRequest("Room does not exist")
+        val user = call.userSession?.user ?: return@postST badRequest("Not logged in")
+        val room = roomRef.deref() ?: return@postST badRequest("Room does not exist")
+        if (!room.hasPermission(user, RoomPermission.MANAGE_MEMBERS)) return@postST badRequest("Cannot manage members")
+
         val c: AddMember = call.receive()
+        if (!canChangeRole(room.userRole(user), c.role)) return@postST badRequest("This role cannot be changed")
+
         serverState.roomManager.modifyEntity(roomRef) {
-            it.copy(members = it.members + listOf(RoomMembership(c.user, c.role, null)))
+            var existing = false
+            val members = it.members.map {membership ->
+                if (membership.user eqid c.user) {
+                    existing = true
+                    membership.copy(role = c.role)
+                } else membership
+            }
+            it.copy(members = members + if(existing) emptyList() else listOf(RoomMembership(c.user, c.role, null)))
         }
 
         call.transientUserData?.refreshRunningWebsockets()
         call.respond(HttpStatusCode.OK)
     }
-
     routing.postST("/rooms/{id}/questions/add") {
         // TODO check permissions
         @OptIn(DelicateRefAPI::class)

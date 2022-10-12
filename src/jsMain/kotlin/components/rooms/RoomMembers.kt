@@ -10,8 +10,11 @@ import kotlinx.js.timers.setTimeout
 import react.*
 import mui.material.*
 import mui.system.sx
+import payloads.requests.AddMember
 import rooms.*
 import tools.confido.refs.deref
+import tools.confido.refs.eqid
+import tools.confido.state.SentState
 import tools.confido.utils.randomString
 import utils.themed
 
@@ -56,7 +59,6 @@ val RoomMembers = FC<Props> {
                 RoomMember {
                     key = "permanent__user__${membership.user.id}"
                     this.membership = membership
-                    this.canManage = canManage
                     this.disabled = false
                 }
             }
@@ -169,15 +171,16 @@ val InvitationMembers = FC<InvitationMembersProps> {props ->
             justMembers.map { membership ->
                 RoomMember {
                     key = membership.user.id
-                    this.ownerSelectable = true || appState.hasPermission(room, RoomPermission.ROOM_OWNER)
                     this.membership = membership
-                    this.canManage = props.canManage
                     this.disabled = !props.invitation.canAccess
                 }
             }
         }
     }
 }
+
+fun canChangeRole(appState: SentState, room: Room, role: RoomRole) =
+    canChangeRole(room.userRole(appState.session.user), role)
 
 external interface MemberRoleSelectProps : Props {
     var value: RoomRole
@@ -187,6 +190,8 @@ external interface MemberRoleSelectProps : Props {
 }
 
 val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
+    val (appState, stale) = useContext(AppStateContext)
+    val room = useContext(RoomContext)
     FormControl {
         sx {
             width = 125.px
@@ -201,22 +206,19 @@ val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
                     "viewer" -> Viewer
                     "forecaster" -> Forecaster
                     "moderator" -> Moderator
-                    "owner" -> if (props.ownerSelectable) Owner else error("You cannot do this!")
+                    "owner" -> Owner
                     else -> error("This role does not exist")
                 }
-                props.onChange?.invoke(changedRole)
+                if (canChangeRole(appState, room, changedRole))
+                    props.onChange?.invoke(changedRole)
             }
             // TODO a global list, preferably near room membership definition?
-            listOf(
-                "viewer" to "Viewer",
-                "forecaster" to "Forecaster",
-                "moderator" to "Moderator",
-            ).map { (id, name) ->
-                if (id == "owner" && !props.ownerSelectable) return@map
-                MenuItem {
-                    value = id
-                    +name
-                }
+            listOf(Viewer, Forecaster, Moderator, Owner).map { role ->
+                if (canChangeRole(appState, room, role))
+                    MenuItem {
+                        value = role.id
+                        +role.name
+                    }
             }
         }
     }
@@ -225,15 +227,21 @@ val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
 external interface RoomMemberProps : Props {
     var disabled: Boolean
     var membership: RoomMembership
-    var canManage: Boolean
-    var ownerSelectable: Boolean
 }
 
 val RoomMember = FC<RoomMemberProps> {props ->
     val (appState, stale) = useContext(AppStateContext)
+    val room = useContext(RoomContext)
 
     val membership = props.membership
     val user = membership.user.deref() ?: return@FC
+
+    fun canChangeSelf() =
+        (!(user eqid appState.session.user) || appState.isAdmin())
+
+    fun memberRoleChange(role: RoomRole) {
+        Client.postData("/rooms/${room.id}/members/add", AddMember(membership.user, role))
+    }
 
     ListItem {
         disabled = props.disabled
@@ -248,11 +256,11 @@ val RoomMember = FC<RoomMemberProps> {props ->
                 secondary = ReactNode(it)
             }
         }
-        if ((props.canManage && !props.disabled) && (membership.role != Owner || props.ownerSelectable)) {
+        if (canChangeRole(appState, room, membership.role) && canChangeSelf()) {
             MemberRoleSelect {
-                ownerSelectable = props.ownerSelectable
                 value = membership.role
-                disabled = stale
+                onChange = ::memberRoleChange
+                disabled = stale || props.disabled
             }
         } else {
             Typography {

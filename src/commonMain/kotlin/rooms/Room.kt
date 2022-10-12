@@ -30,6 +30,12 @@ data class Room(
         return inviteLinks.firstOrNull { it.id == id }
     }
 
+    fun userRole(user: User?): RoomRole? {
+        if (user == null) return null
+        if (user.type == UserType.ADMIN) return Owner
+        return members.find { user eqid it.user }?.role
+    }
+
     fun hasPermission(user: User?, permission: RoomPermission): Boolean {
         if (user == null) {
             // Public rooms can be added here.
