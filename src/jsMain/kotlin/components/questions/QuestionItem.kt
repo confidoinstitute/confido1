@@ -151,7 +151,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             CoroutineScope(EmptyCoroutineContext).launch {
                 pendingPredictionState = PendingPredictionState.SENDING
                 try {
-                    Client.httpClient.postJson("/send_prediction/${props.question.id}", dist) {
+                    Client.httpClient.postJson("/questions/${props.question.id}/predict", dist) {
                         expectSuccess = true
                     }
                     pendingPredictionState = PendingPredictionState.ACCEPTED
@@ -163,7 +163,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             }
         }
     }
-    useOnUnmount(pendingPrediction) { Client.postData("/send_prediction/${props.question.id}", it) }
+    useOnUnmount(pendingPrediction) { Client.postData("/questions/${props.question.id}/predict", it) }
 
     Accordion {
         expanded = props.expanded

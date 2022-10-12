@@ -86,7 +86,7 @@ val UserSettings = FC<Props> {
             }
             Button {
                 onClick = {
-                    Client.postData("/setName", SetNick(name))
+                    Client.postData("/profile/nick", SetNick(name))
                 }
                 val changed = user.nick != name
                 disabled = stale || !changed

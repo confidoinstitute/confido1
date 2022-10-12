@@ -7,13 +7,11 @@ import users.User
 
 @Serializable
 data class AcceptInvite(
-    val roomId: String,
     val inviteToken: String,
 )
 
 @Serializable
 data class AcceptInviteAndCreateUser(
-    val roomId: String,
     val inviteToken: String,
     val userNick: String?,
     val email: String?,
@@ -21,21 +19,29 @@ data class AcceptInviteAndCreateUser(
 
 @Serializable
 data class CreateNewInvite(
-    val roomId: String,
     val description: String?,
     val role: RoomRole,
     val anonymous: Boolean,
 )
 
 @Serializable
-data class InviteByEmail(
-    val roomId: String,
-    val role: RoomRole,
-    val email: String,
+data class CheckInvite(
+    val inviteToken: String,
 )
 
 @Serializable
-data class AddMember(
+sealed class AddedMember {
+    abstract val role: RoomRole
+}
+
+@Serializable
+data class AddedNewMember(
+    val email: String,
+    override val role: RoomRole,
+) : AddedMember()
+
+@Serializable
+data class AddedExistingMember(
     val user: Ref<User>,
-    var role: RoomRole,
-)
+    override val role: RoomRole,
+) : AddedMember()

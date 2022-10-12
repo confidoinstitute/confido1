@@ -40,8 +40,8 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
 
     fun submitInviteLink() {
         if (i == null) {
-            val invite = CreateNewInvite(room.id, description, role!!, anonymous)
-            Client.postData("/invite/create", invite)
+            val invite = CreateNewInvite(description, role!!, anonymous)
+            Client.postData("/rooms/${room.id}/invites/create", invite)
         } else {
             val invite = i.copy(
                 description = description,

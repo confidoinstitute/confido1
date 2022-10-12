@@ -13,7 +13,7 @@ import kotlinx.js.timers.setTimeout
 import react.*
 import mui.material.*
 import mui.system.sx
-import payloads.requests.AddMember
+import payloads.requests.AddedExistingMember
 import rooms.*
 import tools.confido.refs.deref
 import tools.confido.refs.eqid
@@ -244,7 +244,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
         (!(user eqid appState.session.user) || appState.isAdmin())
 
     fun memberRoleChange(role: RoomRole) {
-        Client.postData("/rooms/${room.id}/members/add", AddMember(membership.user, role))
+        Client.postData("/rooms/${room.id}/members/add", AddedExistingMember(membership.user, role))
     }
 
     ListItem {

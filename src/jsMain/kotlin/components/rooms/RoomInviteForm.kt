@@ -38,9 +38,9 @@ val RoomInviteForm = FC<Props> {
     var inviteStatus by useState<InviteStatus?>(null)
 
     useEffectOnce {
-        val check = CheckInvite(roomId, inviteToken)
+        val check = CheckInvite(inviteToken)
         CoroutineScope(EmptyCoroutineContext).launch {
-            val result: InviteStatus = Client.postDataAndReceive("/invite/check_status", check)
+            val result: InviteStatus = Client.postDataAndReceive("/rooms/${roomId}/invite/check", check)
             inviteStatus = result
         }
     }
@@ -113,8 +113,8 @@ val RoomInviteForm = FC<Props> {
                             }
                             // For now, we leave email empty.
                             Client.postData(
-                                "/invite/accept_newuser",
-                                AcceptInviteAndCreateUser(roomId, inviteToken, name, userMail)
+                                "/rooms/$roomId/invite/accept_newuser",
+                                AcceptInviteAndCreateUser(inviteToken, name, userMail)
                             ).invokeOnCompletion {
                                 navigate("/room/${roomId}")
                             }
@@ -129,7 +129,7 @@ val RoomInviteForm = FC<Props> {
                             marginTop = themed(2)
                         }
                         onClick = {
-                            Client.postData("/invite/accept", AcceptInvite(roomId, inviteToken)).invokeOnCompletion {
+                            Client.postData("/rooms/$roomId/invite/accept", AcceptInvite(inviteToken)).invokeOnCompletion {
                                 navigate("/room/${roomId}")
                             }
                         }

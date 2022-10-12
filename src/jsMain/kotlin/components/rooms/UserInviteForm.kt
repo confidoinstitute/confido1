@@ -11,8 +11,8 @@ import mui.material.*
 import mui.system.responsive
 import mui.system.sx
 import org.w3c.dom.HTMLLIElement
-import payloads.requests.AddMember
-import payloads.requests.InviteByEmail
+import payloads.requests.AddedExistingMember
+import payloads.requests.AddedNewMember
 import react.*
 import react.dom.html.HTMLAttributes
 import rooms.Forecaster
@@ -21,7 +21,7 @@ import rooms.RoomRole
 import tools.confido.refs.ref
 import users.User
 
-internal external interface UserAutocomplete
+internal sealed external interface UserAutocomplete
 internal data class ExistingUser(val user: User) : UserAutocomplete
 internal data class NewUser(val email: String): UserAutocomplete
 
@@ -34,7 +34,7 @@ internal fun renderInput(params: AutocompleteRenderInputParams) =
 
 internal fun getOptionLabel(option: UserAutocomplete) =
     when (option) {
-        is ExistingUser -> option.user.nick ?: "<unknown user>"
+        is ExistingUser -> option.user.nick ?: "(Anonymous)"
         is NewUser -> option.email
         else -> option.toString()
     }
@@ -49,7 +49,7 @@ internal fun renderOption(attributes: HTMLAttributes<HTMLLIElement>, option: Use
                     }
                 }
                 ListItemText {
-                    primary = react.ReactNode(option.user.nick ?: "Anonymous")
+                    primary = react.ReactNode(option.user.nick ?: "(Anonymous)")
                     secondary = react.ReactNode(option.user.email ?: "")
                 }
             }
@@ -147,16 +147,16 @@ val UserInviteForm = FC<Props> {
 
             onClick = {
                 when(val who = chosenUser) {
-                    is ExistingUser -> {
-                        Client.postData("/rooms/${room.id}/members/add", AddMember(who.user.ref, role))
-                        chosenUser = null
-                        role = Forecaster
-                    }
+                    is ExistingUser ->
+                        AddedExistingMember(who.user.ref, role)
                     is NewUser -> {
-                        Client.postData("/invite/create_email", InviteByEmail(room.id, role, who.email))
-                        chosenUser = null
-                        role = Forecaster
+                        AddedNewMember(who.email, role)
                     }
+                    null -> null
+                }?.let {addedMember ->
+                    Client.postData("/rooms/${room.id}/members/add", addedMember)
+                    chosenUser = null
+                    role = Forecaster
                 }
             }
         }
