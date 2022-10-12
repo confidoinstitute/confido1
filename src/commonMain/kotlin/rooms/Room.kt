@@ -29,6 +29,7 @@ data class Room(
         }
         return inviteLinks.firstOrNull { it.id == id }
     }
+
     fun hasPermission(user: User?, permission: RoomPermission): Boolean {
         if (user == null) {
             // Public rooms can be added here.
@@ -40,8 +41,8 @@ data class Room(
         }
 
         // Note that one user could have multiple memberships here.
-        return members.find {
+        return members.any {
             it.user eqid user && findLink(it.invitedVia)?.canAccess ?: true && it.role.hasPermission(permission)
-        } != null
+        }
     }
 }

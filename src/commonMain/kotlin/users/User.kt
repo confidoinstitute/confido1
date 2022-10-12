@@ -25,14 +25,12 @@ data class User(
 ) : ImmediateDerefEntity
 
 @Serializable
-data class LoginLink (
+data class LoginLink(
     override val id: String = "", // generated on insert
     val token: String = generateToken(),
     val user: Ref<User>,
     val expiryTime: Instant,
 ) : ImmediateDerefEntity {
-    // TODO: Make this cryptographically secure
-
     fun isExpired() = now() > expiryTime
 
     fun link(origin: String) = "$origin/email_login?t=$token"

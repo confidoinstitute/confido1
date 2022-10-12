@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 import tools.confido.refs.HasId
 import tools.confido.refs.Ref
 import tools.confido.utils.generateId
+import tools.confido.utils.generateToken
 import tools.confido.utils.randomString
 import users.User
 
@@ -19,7 +20,7 @@ enum class InviteLinkState {
 data class InviteLink(
     override val id: String = generateId(),
 
-    val token: String = generateId(),
+    val token: String = generateToken(),
 
     val description: String,
     /**

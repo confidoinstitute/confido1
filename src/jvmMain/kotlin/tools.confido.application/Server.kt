@@ -25,11 +25,11 @@ import kotlinx.html.*
 import kotlinx.serialization.encodeToString
 import org.litote.kmongo.serialization.registerModule
 import org.litote.kmongo.serialization.registerSerializer
+import org.simplejavamail.mailer.MailerBuilder
 import payloads.requests.*
 import payloads.responses.InviteStatus
 import rooms.*
 import tools.confido.application.sessions.*
-import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.*
 import tools.confido.refs.*
@@ -179,7 +179,14 @@ fun main() {
         }
         install(Sessions)
         install(Mailing) {
-            urlOrigin = "http://localhost:8081" // TODO: Set appropriately!
+            // TODO(deploy): Set appropriately (*all* options listed here!) and test that emails arrive
+            // This is the URL of the hosted frontend used in mailed links (no trailing /)
+            urlOrigin = "http://localhost:8081"
+            debugMode = false
+            senderAddress = "noreply@confido.tools"
+            mailer = MailerBuilder
+                .withSMTPServer("localhost", 2525)
+                .buildMailer()
         }
         routing {
             getST("/{...}") {
@@ -233,11 +240,10 @@ fun main() {
                 val user = serverState.userManager.byEmail[mail.email]
 
                 if (user != null) {
-                    val expiration = 30.minutes
+                    val expiration = 15.minutes
                     val expiresAt = now().plus(expiration)
                     val link = LoginLink(user = user.ref, expiryTime = expiresAt)
                     serverState.loginLinkManager.insertEntity(link)
-                    // TODO: Origin and whatnot
                     call.mailer.sendLoginMail(mail.email, link, expiration)
                 } else {
                     // Do not disclose the email does not exist.
@@ -309,7 +315,7 @@ fun main() {
                     val room = serverState.get<Room>(accept.roomId) ?:
                         return@postST badRequest("The room does not exist.")
                     val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?:
-                        return@postST badRequest("The invite does not exist or is current not active.")
+                        return@postST badRequest("The invite does not exist or is currently not active.")
 
                     // Prevent user from accepting multiple times
                     if (room.members.any {it.user eqid user && it.invitedVia == invite.id}) {
