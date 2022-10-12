@@ -3,7 +3,7 @@ package tools.confido.application
 import io.ktor.server.application.*
 import io.ktor.util.*
 import kotlinx.html.*
-import kotlinx.html.dom.createHTMLDocument
+import kotlinx.html.stream.appendHTML
 import org.simplejavamail.api.email.Email
 import org.simplejavamail.email.EmailBuilder
 import rooms.*
@@ -25,7 +25,7 @@ class Mailer(
         }
     }
 
-    fun sendInviteMail(address: String, room: Room, invite: InviteLink) {
+    fun sendDirectInviteMail(address: String, room: Room, login: LoginLink) {
         // TODO: Improve subject
         // Subject ideas:
         // You have been invited to a Confido room
@@ -33,7 +33,7 @@ class Mailer(
         // {name} invited you to a Confido room       (when we have a username)
         // [Confido] {name} invited you to {roomName} (when we have a username)
         val subject = "You have been invited to a Confido room"
-        val url = invite.link(origin, room)
+        val url = login.link(origin)
 
         // TODO: Add some blurb about what Confido is
 
@@ -44,7 +44,8 @@ class Mailer(
             $url
             """.trimIndent()
 
-        val document = createHTMLDocument().html {
+        val sb = StringBuilder()
+        with(sb.appendHTML()) {
             body {
                 h1 {
                     +"You have been invited to "
@@ -71,6 +72,7 @@ class Mailer(
             .to(address)
             .withSubject(subject)
             .withPlainText(body)
+            //.withHTMLText(sb.toString())
             .buildEmail()
 
         sendMail(mail)
@@ -114,36 +116,40 @@ class Mailer(
             If you did not make this request, please ignore this email.
             """.trimIndent()
 
-        val document = createHTMLDocument().html {
-            body {
-                div {
-                    p {
-                        +"""
-                            Confirm that you want to log into Confido. This link will expire in 30 minutes.
-                            Open the following link to log in:
+        // TODO: Send multipart with HTML version.
+        val sb = StringBuilder()
+        with(sb.appendHTML()) {
+            html {
+                body {
+                    div {
+                        p {
+                            +"""
+                            Confirm that you want to log into Confido. This link will expire in ${expiration.inWholeMinutes} minutes.
+                            Click the following button to log in:
                         """.trimIndent()
+                        }
                     }
-                }
-                div {
-                    +"Log in: "
                     a {
                         href = url
                         +url
+                        div {
+                            +"Log in"
+                        }
                     }
-                }
-                i {
-                    hr {}
-                    +"If you did not make this request, please ignore this email."
+                    i {
+                        hr {}
+                        +"If you did not make this request, please ignore this email."
+                    }
                 }
             }
         }
-        // TODO: Send multipart with HTML version.
 
         val mail = EmailBuilder.startingBlank()
             .from(senderAddress)
             .to(address)
             .withSubject(subject)
             .withPlainText(body)
+            //.withHTMLText(sb.toString())
             .buildEmail()
 
         sendMail(mail)

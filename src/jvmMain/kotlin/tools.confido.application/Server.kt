@@ -41,6 +41,7 @@ import users.*
 import java.io.File
 import java.time.Duration
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.days
 import kotlin.collections.any
 import kotlin.collections.find
 import kotlin.collections.listOf
@@ -330,27 +331,44 @@ fun main() {
             }
             postST("/invite/create_email") {
                 val user = call.userSession?.user ?: return@postST badRequest("Not logged in")
-                val create: CreateNewEmailInvite = call.receive()
-                val room = serverState.get<Room>(create.roomId) ?: return@postST badRequest("Invalid room")
+                val invite: InviteByEmail = call.receive()
+                val room = serverState.get<Room>(invite.roomId) ?: return@postST badRequest("Invalid room")
 
                 if (!room.hasPermission(user, RoomPermission.MANAGE_MEMBERS)) {
                     call.respond(HttpStatusCode.Unauthorized)
                     return@postST
                 }
 
-                // TODO: does anonymous make sense?
-                // TODO: store required email in invite link to avoid someone else accepting the invite.
-                val inviteLink = InviteLink(description = "Direct invite: ${create.email}", role = create.role,
-                    createdBy=user.ref, createdAt = now(), anonymous = false)
+                // Instantly create a user, add it to the group and send a login link
+                val loginLink = serverState.withTransaction {
+                    val user = serverState.userManager.byEmail[invite.email] ?: run {
+                        val newUser = User(
+                            randomString(32),
+                            UserType.MEMBER,
+                            invite.email,
+                            emailVerified = false,
+                            nick = null,
+                            password = null,
+                            createdAt = now()
+                        )
+                        serverState.userManager.insertEntity(newUser)
+                        newUser
+                    }
+                    serverState.roomManager.modifyEntity(room.ref) {
+                        it.copy(members = it.members + listOf(RoomMembership(user.ref, invite.role, null)))
+                    }
 
-                serverState.roomManager.modifyEntity(room.id) {
-                    it.copy(inviteLinks=it.inviteLinks + listOf(inviteLink))
+                    val expiration = 14.days
+                    val expiresAt = now().plus(expiration)
+                    val link = LoginLink(user = user.ref, expiryTime = expiresAt, url = "/room/${room.id}")
+                    serverState.loginLinkManager.insertEntity(link)
+                    link
                 }
 
-                call.mailer.sendInviteMail(create.email, room, inviteLink)
+                call.mailer.sendDirectInviteMail(invite.email, room, loginLink)
 
                 call.transientUserData?.refreshRunningWebsockets()
-                call.respond(HttpStatusCode.OK, inviteLink)
+                call.respond(HttpStatusCode.OK)
             }
             postST("/invite/create") {
                 val user = call.userSession?.user ?: return@postST badRequest("Not logged in")

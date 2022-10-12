@@ -28,7 +28,7 @@ data class CreateNewInvite(
 )
 
 @Serializable
-data class CreateNewEmailInvite(
+data class InviteByEmail(
     val roomId: String,
     val role: RoomRole,
     val email: String,

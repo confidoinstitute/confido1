@@ -4,7 +4,6 @@ import components.AppStateContext
 import components.UserAvatar
 import csstype.AlignItems
 import csstype.rem
-import kotlinx.browser.window
 import kotlinx.js.Object
 import kotlinx.js.ReadonlyArray
 import mui.base.FilterOptionsState
@@ -13,7 +12,7 @@ import mui.system.responsive
 import mui.system.sx
 import org.w3c.dom.HTMLLIElement
 import payloads.requests.AddMember
-import payloads.requests.CreateNewEmailInvite
+import payloads.requests.InviteByEmail
 import react.*
 import react.dom.html.HTMLAttributes
 import rooms.Forecaster
@@ -154,7 +153,7 @@ val UserInviteForm = FC<Props> {
                         role = Forecaster
                     }
                     is NewUser -> {
-                        Client.postData("/invite/create_email", CreateNewEmailInvite(room.id, role, who.email))
+                        Client.postData("/invite/create_email", InviteByEmail(room.id, role, who.email))
                         chosenUser = null
                         role = Forecaster
                     }
