@@ -2,7 +2,7 @@ package components.layout
 
 import components.AppStateContext
 import components.nouser.EmailLoginAlreadyLoggedIn
-import components.profile.ProfileSettings
+import components.profile.UserSettings
 import components.profile.VerifyEmail
 import components.rooms.RoomInviteForm
 import components.rooms.NewRoom
@@ -94,7 +94,7 @@ val RootLayout = FC<Props> {
                         }
                         Route {
                             path = "profile"
-                            this.element = ProfileSettings.create()
+                            this.element = UserSettings.create()
                         }
                     }
                 }

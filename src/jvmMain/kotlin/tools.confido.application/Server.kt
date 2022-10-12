@@ -278,7 +278,7 @@ fun main() {
 
                 val mail: StartEmailVerification = call.receive()
 
-                if (user.emailVerified) {
+                if (user.emailVerified && user.email == mail.email) {
                     return@postST badRequest("email is already verified")
                 }
 

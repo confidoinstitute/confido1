@@ -13,7 +13,7 @@ import react.dom.html.ReactHTML.br
 import utils.eventValue
 import utils.themed
 
-val ProfileSettings = FC<Props> {
+val UserSettings = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
     val user = appState.session.user ?: run {
         console.error("No user")
@@ -22,6 +22,8 @@ val ProfileSettings = FC<Props> {
 
     var name by useState(user.nick ?: "")
     var email by useState(user.email ?: "")
+
+    var pendingEmailChange by useState<String?>(null)
 
     Paper {
         sx {
@@ -34,13 +36,17 @@ val ProfileSettings = FC<Props> {
             +"User settings"
         }
 
-        if (!user.emailVerified) {
+        if (!user.emailVerified || pendingEmailChange != null) {
             Alert {
                 AlertTitle {
                     +"Your email is not verified!"
                 }
                 severity = AlertColor.warning
-                +"To resolve this, we need to send you a verification email."
+                if (pendingEmailChange != null) {
+                    +"We have sent you a verification email, please check your inbox."
+                } else {
+                    +"To resolve this, we need to send you a verification email."
+                }
                 br{}
                 Box {
                     sx {
@@ -51,8 +57,12 @@ val ProfileSettings = FC<Props> {
                             Client.postData("/profile/email/start_verification", StartEmailVerification(email))
                         }
                         disabled = stale
-                        //variant = ButtonVariant.contained
-                        +"Send verification email"
+
+                        if (pendingEmailChange != null) {
+                            +"Resend verification email"
+                        } else {
+                            +"Send verification email"
+                        }
                     }
                 }
             }
@@ -101,13 +111,13 @@ val ProfileSettings = FC<Props> {
                 }
             }
 
-
             Button {
                 onClick = {
                     Client.postData("/profile/email/start_verification", StartEmailVerification(email))
+                    pendingEmailChange = email
                 }
                 val changed = user.email != email
-                disabled = stale || !changed
+                disabled = stale || !changed || pendingEmailChange != null
                 +"Change email"
             }
         }
