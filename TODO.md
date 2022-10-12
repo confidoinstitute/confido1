@@ -1,5 +1,7 @@
 Bugs:
 - Invitation link creates duplicate memberships
+- Possibly duplicate e-mails
+  - If the e-mail already has user, prompt login instead
 
 Frontend missing important functionality:
 - Resolutions do not exist
