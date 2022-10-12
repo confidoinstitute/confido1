@@ -23,6 +23,8 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System.now
 import kotlinx.html.*
 import kotlinx.serialization.encodeToString
+import org.apache.commons.codec.digest.DigestUtils
+import org.apache.commons.codec.digest.MessageDigestAlgorithms.SHA_224
 import org.litote.kmongo.serialization.registerModule
 import org.litote.kmongo.serialization.registerSerializer
 import org.simplejavamail.mailer.MailerBuilder
@@ -39,6 +41,8 @@ import tools.confido.state.*
 import tools.confido.utils.*
 import users.*
 import java.io.File
+import java.nio.ByteBuffer
+import java.security.MessageDigest
 import java.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.days
@@ -48,12 +52,16 @@ import kotlin.collections.listOf
 import kotlin.collections.plus
 import kotlin.collections.set
 
+val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "./build/distributions/").canonicalFile
+val jsBundle = staticDir.resolve("confido1.js")
+val jsHash = DigestUtils(SHA_224).digestAsHex(jsBundle)
+
 fun HTML.index() {
     head {
         title("Confido")
     }
     body {
-        script(src = "/static/confido1.js") {}
+        script(src = "/static/confido1.js?${jsHash}") {}
     }
 }
 
@@ -586,7 +594,6 @@ fun main() {
                     send(Frame.Text(confidoJSON.encodeToString(state)))
                 }
             }
-            val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "./build/distributions/").canonicalFile
             println("static dir: $staticDir")
             static("/static") {
                 staticRootFolder = staticDir

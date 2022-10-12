@@ -39,6 +39,7 @@ val App = FC<Props> {
                 val decodedState = confidoJSON.decodeFromString<SentState>(it.data.toString())
                 clientState = ClientState(decodedState)
                 appState = decodedState
+                window.asDynamic().curState = appState // for easy inspection in devtools
                 stale = false
                 @Suppress("RedundantUnitExpression")
                 Unit // This is not redundant, because assignment fails some weird type checks

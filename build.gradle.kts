@@ -76,6 +76,7 @@ kotlin {
                 implementation("com.password4j:password4j:1.6.1")
                 implementation("org.simplejavamail:simple-java-mail:7.5.0")
                 implementation("com.github.jnr:jnr-unixsocket:0.38.17") // for mongodb unix socket connection (faster)
+                implementation("commons-codec:commons-codec:1.15")
             }
         }
         val jsMain by getting {
