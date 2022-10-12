@@ -32,7 +32,7 @@ val LoginForm = FC<Props> {
     fun attemptLogin() {
         when (mode) {
             LoginMode.MagicLink -> {
-                Client.postData("/login_email/create", SendMailLink(email))
+                Client.postData("/login_email/create", SendMailLink(email, "/"))
                 emailSent = true
             }
 

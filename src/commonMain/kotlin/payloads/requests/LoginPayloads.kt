@@ -16,4 +16,5 @@ data class EmailLogin(
 @Serializable
 data class SendMailLink(
     val email: String,
+    val url: String,
 )

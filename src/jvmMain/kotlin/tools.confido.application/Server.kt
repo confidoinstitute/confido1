@@ -243,7 +243,7 @@ fun main() {
                 if (user != null) {
                     val expiration = 15.minutes
                     val expiresAt = now().plus(expiration)
-                    val link = LoginLink(user = user.ref, expiryTime = expiresAt)
+                    val link = LoginLink(user = user.ref, expiryTime = expiresAt, url = mail.url)
                     serverState.loginLinkManager.insertEntity(link)
                     call.mailer.sendLoginMail(mail.email, link, expiration)
                 } else {
@@ -270,7 +270,7 @@ fun main() {
 
                 session.userRef = loginLink.user
                 call.transientUserData?.refreshRunningWebsockets()
-                call.respond(HttpStatusCode.OK)
+                call.respond(HttpStatusCode.OK, loginLink.url)
             }
             postST("/profile/email/start_verification") {
                 // TODO: Rate limiting
