@@ -327,6 +327,7 @@ object serverState : GlobalState() {
         userPredManager.register()
         questionCommentManager.register()
         roomCommentManager.register()
+        loginLinkManager.register()
     }
 
 
