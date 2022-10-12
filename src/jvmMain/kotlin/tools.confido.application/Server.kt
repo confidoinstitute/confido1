@@ -224,6 +224,10 @@ fun main() {
                     return@postST
                 }
 
+                serverState.userManager.modifyEntity(user.ref) {
+                    it.copy(lastLoginAt = now())
+                }
+
                 session.userRef = user.ref
                 call.transientUserData?.refreshRunningWebsockets()
                 println(session)
@@ -255,8 +259,14 @@ fun main() {
                 val loginLink = serverState.loginLinkManager.byToken[login.token]?.takeIf { !it.isExpired() }
                 loginLink ?: return@postST call.respond(HttpStatusCode.Unauthorized)
 
-                // Login links are single-use
-                serverState.loginLinkManager.deleteEntity(loginLink.ref)
+                serverState.withTransaction {
+                    serverState.userManager.modifyEntity(loginLink.user) {
+                        it.copy(lastLoginAt = now())
+                    }
+
+                    // Login links are single-use
+                    serverState.loginLinkManager.deleteEntity(loginLink.ref)
+                }
 
                 session.userRef = loginLink.user
                 call.transientUserData?.refreshRunningWebsockets()
