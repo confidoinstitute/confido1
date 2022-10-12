@@ -18,7 +18,7 @@ data class User(
     // TODO(security): make sure it does not get sent to the client
     val password: String?,
     val createdAt: Instant,
-    val lastLoginAt: Instant,
+    val lastLoginAt: Instant? = null,
 ) : ImmediateDerefEntity {
     fun isAnonymous(): Boolean {
         return email == null

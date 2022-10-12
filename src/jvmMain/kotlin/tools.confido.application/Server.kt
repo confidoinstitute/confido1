@@ -407,7 +407,15 @@ fun main() {
                     val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?:
                         return@postST badRequest("The invite does not exist or is currently not active.")
 
-                    val newUser = User(randomString(32), UserType.GUEST, accept.email, false, accept.userNick, null, now(), now())
+                    val newUser = User(
+                        randomString(32),
+                        UserType.GUEST,
+                        accept.email,
+                        emailVerified = false,
+                        accept.userNick,
+                        password = null,
+                        createdAt = now()
+                    )
 
                     call.userSession = UserSession(userRef = newUser.ref, language = "en")
                     serverState.withTransaction {
