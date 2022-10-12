@@ -34,13 +34,23 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
     var description by useState(i?.description ?: "Shared Invite Link")
     var role by useState(i?.role ?: Forecaster)
     var anonymous by useState(i?.anonymous ?: false)
-    var linkState by useState(InviteLinkState.ENABLED)
+    var linkState by useState(i?.state ?: InviteLinkState.ENABLED)
 
     val htmlId = useId()
 
     fun submitInviteLink() {
-        val invite = CreateNewInvite(room.id, description, role!!, anonymous)
-        Client.postData("/invite/create", invite)
+        if (i == null) {
+            val invite = CreateNewInvite(room.id, description, role!!, anonymous)
+            Client.postData("/invite/create", invite)
+        } else {
+            val invite = i.copy(
+                description = description,
+                role = role,
+                anonymous = anonymous,
+                state = linkState,
+            )
+            Client.postData("/rooms/${room.id}/invites/edit", invite)
+        }
         props.onClose?.invoke()
     }
 

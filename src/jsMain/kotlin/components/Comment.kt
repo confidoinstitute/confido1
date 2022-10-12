@@ -22,6 +22,7 @@ import react.*
 import react.dom.html.ButtonType
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.form
+import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.strong
 import react.dom.onChange
 import rooms.RoomPermission
@@ -32,10 +33,7 @@ import tools.confido.question.RoomComment
 import tools.confido.refs.deref
 import tools.confido.refs.eqid
 import tools.confido.utils.unixNow
-import utils.durationAgo
-import utils.eventValue
-import utils.postJson
-import utils.themed
+import utils.*
 import kotlin.coroutines.EmptyCoroutineContext
 
 external interface CommentProps : Props {
@@ -53,7 +51,6 @@ val Comment = FC<CommentProps> { props ->
     val canDelete =
         (user eqid currentUser || appState.hasPermission(room, RoomPermission.MANAGE_COMMENTS)) && !stale
 
-    // TODO generalize and fix the "no text on mount" issue
     useEffect(comment.timestamp) {
         fun setText() {
             textAgo = durationAgo(unixNow() - comment.timestamp)
@@ -72,16 +69,20 @@ val Comment = FC<CommentProps> { props ->
             marginBottom = themed(2)
         }
         CardHeader {
-            // TODO: Handle nickless, email-only names(when appropriate)
             val name = user.nick ?: "Anonymous"
             title = ReactNode(name)
-            subheader = ReactNode(textAgo)
+            subheader =
+            Tooltip.create {
+                this.title = ReactNode(props.comment.timestamp.toDateTime())
+                span {
+                    +textAgo
+                }
+            }
             avatar = UserAvatar.create {
                 this.user = user
             }
             if (canDelete) {
                 action = IconButton.create {
-                    // TODO delete API
                     onClick = {
                         val url = when(val comment = props.comment) {
                             is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}"

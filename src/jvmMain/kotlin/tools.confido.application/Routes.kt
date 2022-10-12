@@ -87,6 +87,22 @@ fun editQuestion(routing: Routing) {
         call.transientUserData?.refreshRunningWebsockets()
         call.respond(HttpStatusCode.OK)
     }
+    routing.deleteST("/rooms/{rID}/members/{id}") {
+        val roomRef = Ref<Room>(call.parameters["rID"] ?: "")
+        val id = call.parameters["id"] ?: ""
+        val user = call.userSession?.user ?: return@deleteST badRequest("Not logged in")
+        val room = roomRef.deref() ?: return@deleteST badRequest("Room does not exist")
+        if (!room.hasPermission(user, RoomPermission.MANAGE_MEMBERS)) return@deleteST badRequest("Cannot manage members")
+        val membership = room.members.find { it.user eqid id } ?: return@deleteST badRequest("No such member")
+        if (canChangeRole(room.userRole(user), membership.role)) return@deleteST badRequest("You cannot do this")
+
+        serverState.roomManager.modifyEntity(roomRef) {
+            it.copy(members = it.members.filterNot { m -> m.user eqid id })
+        }
+
+        call.transientUserData?.refreshRunningWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
     routing.postST("/rooms/{id}/questions/add") {
         // TODO check permissions
         @OptIn(DelicateRefAPI::class)

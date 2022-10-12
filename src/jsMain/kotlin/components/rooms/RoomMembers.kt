@@ -5,7 +5,10 @@ import components.UserAvatar
 import csstype.px
 import hooks.useDebounce
 import icons.*
+import io.ktor.client.request.*
 import kotlinx.browser.window
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.js.timers.setTimeout
 import react.*
 import mui.material.*
@@ -17,6 +20,7 @@ import tools.confido.refs.eqid
 import tools.confido.state.SentState
 import tools.confido.utils.randomString
 import utils.themed
+import kotlin.coroutines.EmptyCoroutineContext
 
 val RoomMembers = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
@@ -261,6 +265,15 @@ val RoomMember = FC<RoomMemberProps> {props ->
                 value = membership.role
                 onChange = ::memberRoleChange
                 disabled = stale || props.disabled
+            }
+            IconButton {
+                onClick = {
+                    CoroutineScope(EmptyCoroutineContext).launch {
+                        Client.httpClient.delete("/rooms/${room.id}/members/${membership.user.id}")
+                    }
+                }
+                disabled = stale || props.disabled
+                RemovePersonIcon {}
             }
         } else {
             Typography {

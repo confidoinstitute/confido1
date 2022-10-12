@@ -76,7 +76,6 @@ val GroupPredictions = FC<GroupPredictionsProps> { props ->
                 item = true
                 xs = true
                 PredictionPlot {
-                    // TODO connect with real group distributions
                     this.distribution = null
                     this.question = question
                     key = question.id

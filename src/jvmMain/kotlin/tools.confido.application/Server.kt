@@ -323,14 +323,43 @@ fun main() {
                     return@postST
                 }
 
-                val inviteLink = InviteLink(description = create.description ?: "", role = create.role,
-                                            createdBy=user.ref, createdAt = now(), anonymous = create.anonymous)
+                val inviteLink = InviteLink(
+                    description = create.description ?: "", role = create.role,
+                    createdBy=user.ref, createdAt = now(), anonymous = create.anonymous, state = InviteLinkState.ENABLED
+                )
                 serverState.roomManager.modifyEntity(room.id) {
                     it.copy(inviteLinks=it.inviteLinks + listOf(inviteLink))
                 }
 
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK, inviteLink)
+            }
+            postST("/rooms/{id}/invites/edit") {
+                val user = call.userSession?.user ?: return@postST badRequest("Not logged in")
+                val roomRef = Ref<Room>(call.parameters["id"] ?: "")
+                val room = roomRef.deref() ?: return@postST badRequest("Room does not exist")
+
+                val invite: InviteLink = call.receive()
+
+                if (!room.hasPermission(user, RoomPermission.MANAGE_MEMBERS))
+                    return@postST call.respond(HttpStatusCode.Unauthorized)
+
+                serverState.roomManager.modifyEntity(room.id) { r ->
+                    val inviteLinks = r.inviteLinks.map { it ->
+                        if (invite.id == it.id)
+                            it.copy(
+                                description = invite.description,
+                                role = invite.role,
+                                anonymous = invite.anonymous,
+                                state = invite.state
+                            )
+                        else it
+                    }
+                    r.copy(inviteLinks=inviteLinks)
+                }
+
+                call.transientUserData?.refreshRunningWebsockets()
+                call.respond(HttpStatusCode.OK)
             }
             postST("/invite/accept") {
                 val user = call.userSession?.user

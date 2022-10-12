@@ -79,20 +79,25 @@ val MarkedSlider = FC<MarkedSliderProps> { props ->
             this.marks = marks
         }
         if (props.madePrediction)
-        IconButton {
-            sx {
-                marginLeft = 4.px
-            }
-            disabled = props.disabled
-            size = Size.small
-            onClick = { preciseEditOpen = true }
-            EditIcon {
-                sx {
-                    width = 18.px
-                    height = 18.px
+            Tooltip {
+                title = ReactNode("Input precise value")
+                placement = TooltipPlacement.left
+                arrow = true
+                IconButton {
+                    sx {
+                        marginLeft = 4.px
+                    }
+                    disabled = props.disabled
+                    size = Size.small
+                    onClick = { preciseEditOpen = true }
+                    EditIcon {
+                        sx {
+                            width = 18.px
+                            height = 18.px
+                        }
+                    }
                 }
             }
-        }
     }
     Dialog {
         open = preciseEditOpen

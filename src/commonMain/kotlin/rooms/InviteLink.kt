@@ -6,7 +6,6 @@ import tools.confido.refs.HasId
 import tools.confido.refs.Ref
 import tools.confido.utils.generateId
 import tools.confido.utils.generateToken
-import tools.confido.utils.randomString
 import users.User
 
 @Serializable
@@ -30,9 +29,10 @@ data class InviteLink(
     /* Indicates whether guests are anonymous. */
     val anonymous: Boolean,
     /* Indicates whether this link can be used by new users. */
-    val canJoin: Boolean = true,
-    /**Indicates whether users invited by this link can access the room. */
-    val canAccess: Boolean = true,
+    val state: InviteLinkState = InviteLinkState.ENABLED
 ) : HasId {
     fun link(origin: String, room: Room) = "$origin/room/${room.id}/invite/$token"
+
+    val canJoin get() = state == InviteLinkState.ENABLED
+    val canAccess get() = state != InviteLinkState.DISABLED_FULL
 }
