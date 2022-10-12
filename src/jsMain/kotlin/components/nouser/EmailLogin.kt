@@ -27,9 +27,8 @@ val EmailLogin = FC<Props> {
     var failed by useState(false)
 
     useEffectOnce {
-        val login = EmailLogin(loginToken)
         CoroutineScope(EmptyCoroutineContext).launch {
-            val response = Client.httpClient.postJson("/login_email", login) {}
+            val response = Client.httpClient.postJson("/login_email", EmailLogin(loginToken)) {}
             if (response.status == HttpStatusCode.Unauthorized) {
                 failed = true
             } else {
@@ -72,5 +71,13 @@ val EmailLogin = FC<Props> {
                 }
             }
         }
+    }
+}
+
+val EmailLoginAlreadyLoggedIn = FC<Props> {
+    val navigate = useNavigate()
+
+    useEffect {
+        navigate("/")
     }
 }

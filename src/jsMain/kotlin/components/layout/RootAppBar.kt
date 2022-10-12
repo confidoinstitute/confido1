@@ -95,7 +95,7 @@ val ProfileMenu = FC<Props> {
         if (appState.isFullUser) {
             MenuItemNavigation {
                 key = "user_settings"
-                to = "/set_name"
+                to = "/profile"
                 this.onNavigate = closeMenu
 
                 ListItemIcon {

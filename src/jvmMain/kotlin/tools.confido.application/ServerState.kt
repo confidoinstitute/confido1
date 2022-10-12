@@ -19,6 +19,7 @@ import tools.confido.question.RoomComment
 import tools.confido.refs.*
 import tools.confido.spaces.*
 import tools.confido.utils.*
+import users.EmailVerificationLink
 import users.LoginLink
 import users.User
 import java.lang.RuntimeException
@@ -320,6 +321,14 @@ object serverState : GlobalState() {
         }
     }
 
+    object verificationLinkManager : InMemoryEntityManager<EmailVerificationLink>(database.getCollection("mailVerificationLinks")) {
+        val byToken: MutableMap<String, EmailVerificationLink> = mutableMapOf()
+        init {
+            onEntityAddedOrUpdated { byToken[it.token] = it }
+            onEntityDeleted { byToken.remove(it.token) }
+        }
+    }
+
     init {
         roomManager.register()
         questionManager.register()
@@ -328,6 +337,7 @@ object serverState : GlobalState() {
         questionCommentManager.register()
         roomCommentManager.register()
         loginLinkManager.register()
+        verificationLinkManager.register()
     }
 
 

@@ -272,6 +272,43 @@ fun main() {
                 call.transientUserData?.refreshRunningWebsockets()
                 call.respond(HttpStatusCode.OK)
             }
+            postST("/profile/email/start_verification") {
+                // TODO: Rate limiting
+                val user = call.userSession?.user ?: return@postST badRequest("not logged in")
+
+                val mail: StartEmailVerification = call.receive()
+
+                if (user.emailVerified) {
+                    return@postST badRequest("email is already verified")
+                }
+
+                val expiration = 15.minutes
+                val expiresAt = now().plus(expiration)
+                val link = EmailVerificationLink(user = user.ref, expiryTime = expiresAt, email = mail.email)
+                serverState.verificationLinkManager.insertEntity(link)
+                call.mailer.sendVerificationMail(mail.email, link, expiration)
+
+                call.respond(HttpStatusCode.OK)
+            }
+            postST("/profile/email/verify") {
+                val session = call.userSession ?: return@postST badRequest("no session")
+
+                val validation: EmailVerification = call.receive()
+                val verificationLink = serverState.verificationLinkManager.byToken[validation.token]?.takeIf { !it.isExpired() }
+                verificationLink ?: return@postST call.respond(HttpStatusCode.Unauthorized)
+
+                serverState.withTransaction {
+                    serverState.userManager.modifyEntity(verificationLink.user) {
+                        it.copy(email = verificationLink.email, emailVerified = true)
+                    }
+
+                    // Verification links are single-use
+                    serverState.verificationLinkManager.deleteEntity(verificationLink.ref)
+                }
+
+                call.transientUserData?.refreshRunningWebsockets()
+                call.respond(HttpStatusCode.OK)
+            }
             postST("/logout") {
                 val session = call.userSession
                 session?.user ?: return@postST badRequest("not logged in") // FIXME: should this just be a NOP?
@@ -292,12 +329,10 @@ fun main() {
                 call.respond(HttpStatusCode.OK, InviteStatus(true, room.name))
             }
             postST("/invite/create") {
-                val user = call.userSession?.user ?:
-                    return@postST call.respond(HttpStatusCode.BadRequest)
+                val user = call.userSession?.user ?: return@postST badRequest("Not logged in")
 
                 val create: CreateNewInvite = call.receive()
-                val room = serverState.get<Room>(create.roomId) ?:
-                    return@postST call.respond(HttpStatusCode.BadRequest)
+                val room = serverState.get<Room>(create.roomId) ?: return@postST badRequest("Invalid room")
 
                 if (!room.hasPermission(user, RoomPermission.MANAGE_MEMBERS)) {
                     call.respond(HttpStatusCode.Unauthorized)

@@ -75,6 +75,31 @@ class Mailer(
         sendMail(mail)
     }
 
+    fun sendVerificationMail(address: String, verification: EmailVerificationLink, expiration: Duration) {
+        val subject = "Verify your email address"
+        val url = verification.link(origin)
+
+        val body = """
+            Open the following link to verify your email address:
+            $url
+            
+            This link will expire in ${expiration.inWholeMinutes} minutes.
+            
+            If you did not make this request, please ignore this email.
+            """.trimIndent()
+
+        // TODO: Send multipart with HTML version.
+
+        val mail = EmailBuilder.startingBlank()
+            .from(senderAddress)
+            .to(address)
+            .withSubject(subject)
+            .withPlainText(body)
+            .buildEmail()
+
+        sendMail(mail)
+    }
+
     fun sendLoginMail(address: String, login: LoginLink, expiration: Duration) {
         val subject = "Log in to Confido"
         val url = login.link(origin)

@@ -1,7 +1,8 @@
 package components.layout
 
 import components.AppStateContext
-import components.profile.SetNickForm
+import components.profile.ProfileSettings
+import components.profile.VerifyEmail
 import components.rooms.RoomInviteForm
 import components.rooms.NewRoom
 import components.rooms.Room
@@ -10,7 +11,6 @@ import mui.material.*
 import mui.system.*
 import react.*
 import react.dom.html.ReactHTML.main
-import react.dom.html.ReactHTML.nav
 import react.router.*
 import utils.byTheme
 import utils.themed
@@ -78,14 +78,18 @@ val RootLayout = FC<Props> {
                         path = "room/:roomID/invite/:inviteToken"
                         this.element = RoomInviteForm.create()
                     }
+                    Route {
+                        path = "email_verify"
+                        this.element = VerifyEmail.create()
+                    }
                     if (appState.session.user?.type?.isProper() == true) {
                         Route {
                             path = "new_room"
                             this.element = NewRoom.create()
                         }
                         Route {
-                            path = "set_name"
-                            this.element = SetNickForm.create()
+                            path = "profile"
+                            this.element = ProfileSettings.create()
                         }
                     }
                 }
