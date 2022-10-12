@@ -1,6 +1,7 @@
 package components.layout
 
 import components.AppStateContext
+import components.nouser.EmailLoginAlreadyLoggedIn
 import components.profile.ProfileSettings
 import components.profile.VerifyEmail
 import components.rooms.RoomInviteForm
@@ -81,6 +82,10 @@ val RootLayout = FC<Props> {
                     Route {
                         path = "email_verify"
                         this.element = VerifyEmail.create()
+                    }
+                    Route {
+                        path = "email_login"
+                        this.element = EmailLoginAlreadyLoggedIn.create()
                     }
                     if (appState.session.user?.type?.isProper() == true) {
                         Route {
