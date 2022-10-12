@@ -2,7 +2,6 @@ package components.rooms
 
 import components.AppStateContext
 import csstype.*
-import emotion.react.css
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import mui.material.*
@@ -10,12 +9,13 @@ import mui.material.styles.TypographyVariant
 import mui.system.sx
 import payloads.requests.*
 import react.*
-import react.dom.html.ReactHTML.div
 import react.dom.onChange
 import react.router.useParams
 import payloads.requests.CheckInvite
 import payloads.responses.InviteStatus
+import react.dom.html.ReactHTML.em
 import react.router.useNavigate
+import utils.byTheme
 import utils.eventValue
 import utils.themed
 import kotlin.coroutines.EmptyCoroutineContext
@@ -23,6 +23,7 @@ import kotlin.coroutines.EmptyCoroutineContext
 val RoomInviteForm = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
     var name by useState("")
+    var email by useState("")
     val roomId = useParams()["roomID"] ?: run {
         console.error("Missing room id")
         return@FC
@@ -51,61 +52,97 @@ val RoomInviteForm = FC<Props> {
     }
 
     if (inviteStatus != null) {
-        Paper {
+        Container {
+            maxWidth = byTheme("xs")
             sx {
-                marginTop = themed(2)
+                marginTop = themed(4)
                 padding = themed(2)
+                display = Display.flex
+                flexDirection = FlexDirection.column
+                alignItems = AlignItems.center
             }
             if (inviteStatus?.valid == true) {
                 Typography {
                     variant = TypographyVariant.body1
-                    +"You have been invited to room ${inviteStatus?.roomName}"
-                }
-                div {
-                    css {
-                        marginTop = 5.px
-                        display = Display.flex
-                        alignItems = AlignItems.flexEnd
+                    +"You have been invited to room "
+                    em {
+                        +"${inviteStatus?.roomName}"
                     }
-                    if (appState.session.user == null) {
-                        TextField {
-                            variant = FormControlVariant.standard
-                            id = "name-field"
-                            label = ReactNode("Name")
-                            value = name
-                            disabled = stale
-                            onChange = {
-                                name = it.eventValue()
+                }
+                if (appState.session.user == null) {
+                    TextField {
+                        sx {
+                            marginTop = themed(2)
+                        }
+                        margin = FormControlMargin.normal
+                        variant = FormControlVariant.outlined
+                        fullWidth = true
+                        id = "email-field"
+                        label = ReactNode("Email (optional)")
+                        value = email
+                        disabled = stale
+                        onChange = {
+                            email = it.eventValue()
+                        }
+                    }
+
+                    TextField {
+                        margin = FormControlMargin.normal
+                        variant = FormControlVariant.outlined
+                        fullWidth = true
+                        id = "name-field"
+                        label = ReactNode("Name (optional)")
+                        value = name
+                        disabled = stale
+                        onChange = {
+                            name = it.eventValue()
+                        }
+                    }
+
+                    Button {
+                        sx {
+                            marginTop = themed(1)
+                        }
+                        variant = ButtonVariant.contained
+                        fullWidth = true
+                        onClick = {
+                            val userMail = if (email.isNotBlank()) {
+                                email.trim()
+                            } else {
+                                null
+                            }
+                            // For now, we leave email empty.
+                            Client.postData(
+                                "/invite/accept_newuser",
+                                AcceptInviteAndCreateUser(roomId, inviteToken, name, userMail)
+                            ).invokeOnCompletion {
+                                navigate("/room/${roomId}")
                             }
                         }
-                        Button {
-                            onClick = {
-                                // For now, we leave email empty.
-                                Client.postData(
-                                    "/invite/accept_newuser",
-                                    AcceptInviteAndCreateUser(roomId, inviteToken, name, null)
-                                ).invokeOnCompletion {
-                                    navigate("/room/${roomId}")
-                                }
-                            }
-                            disabled = stale
-                            +"Set name"
+                        disabled = stale
+                        +"Start forecasting"
+                    }
+                } else {
+                    // TODO: Consider accepting automatically and navigating away in this case.
+                    Button {
+                        sx {
+                            marginTop = themed(2)
                         }
-                    } else {
-                        Button {
-                            onClick = {
-                                Client.postData("/invite/accept", AcceptInvite(roomId, inviteToken)).invokeOnCompletion {
-                                    navigate("/room/${roomId}")
-                                }
+                        onClick = {
+                            Client.postData("/invite/accept", AcceptInvite(roomId, inviteToken)).invokeOnCompletion {
+                                navigate("/room/${roomId}")
                             }
-                            disabled = stale
-                            +"Accept invite"
                         }
+                        disabled = stale
+                        +"Accept invite"
                     }
                 }
             } else {
-                Typography {
-                    variant = TypographyVariant.body1
+                Alert {
+                    severity = AlertColor.error
+                    AlertTitle {
+                        +"Invalid invite"
+                    }
                     +"This invite is not valid. It may have been disabled or it has expired."
                 }
             }
