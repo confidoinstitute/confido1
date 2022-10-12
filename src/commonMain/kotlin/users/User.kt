@@ -19,7 +19,11 @@ data class User(
     val password: String?,
     val createdAt: Instant,
     val lastLoginAt: Instant,
-) : ImmediateDerefEntity
+) : ImmediateDerefEntity {
+    fun isAnonymous(): Boolean {
+        return email == null
+    }
+}
 
 @Serializable
 data class LoginLink(

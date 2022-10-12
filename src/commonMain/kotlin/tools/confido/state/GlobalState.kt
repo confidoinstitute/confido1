@@ -72,5 +72,6 @@ data class SentState(
     fun hasPermission(room: Room, permission: RoomPermission): Boolean {
         return room.hasPermission(session.user, permission)
     }
+    val isAnonymous get() = session.user?.isAnonymous() ?: true
     val isFullUser get() = session.user?.type?.isProper() ?: false
 }

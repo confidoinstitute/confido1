@@ -6,8 +6,7 @@ import kotlinx.serialization.Serializable
 enum class UserType {
     ADMIN,
     MEMBER,
-    GUEST,
-    ANON_GUEST;
+    GUEST;
 
     fun isProper() =
         when(this) {
