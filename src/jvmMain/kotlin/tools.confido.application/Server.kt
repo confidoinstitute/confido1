@@ -328,6 +328,30 @@ fun main() {
 
                 call.respond(HttpStatusCode.OK, InviteStatus(true, room.name))
             }
+            postST("/invite/create_email") {
+                val user = call.userSession?.user ?: return@postST badRequest("Not logged in")
+                val create: CreateNewEmailInvite = call.receive()
+                val room = serverState.get<Room>(create.roomId) ?: return@postST badRequest("Invalid room")
+
+                if (!room.hasPermission(user, RoomPermission.MANAGE_MEMBERS)) {
+                    call.respond(HttpStatusCode.Unauthorized)
+                    return@postST
+                }
+
+                // TODO: does anonymous make sense?
+                // TODO: store required email in invite link to avoid someone else accepting the invite.
+                val inviteLink = InviteLink(description = "Direct invite: ${create.email}", role = create.role,
+                    createdBy=user.ref, createdAt = now(), anonymous = false)
+
+                serverState.roomManager.modifyEntity(room.id) {
+                    it.copy(inviteLinks=it.inviteLinks + listOf(inviteLink))
+                }
+
+                call.mailer.sendInviteMail(create.email, room, inviteLink)
+
+                call.transientUserData?.refreshRunningWebsockets()
+                call.respond(HttpStatusCode.OK, inviteLink)
+            }
             postST("/invite/create") {
                 val user = call.userSession?.user ?: return@postST badRequest("Not logged in")
 
@@ -364,7 +388,6 @@ fun main() {
                         return@postST badRequest("This invite has already been accepted")
                     }
 
-                    // TODO: Prevent user from accepting multiple times
                     serverState.roomManager.modifyEntity(room.ref) {
                         it.copy(members = it.members + listOf(RoomMembership(user.ref, invite.role, invite.id)))
                     }

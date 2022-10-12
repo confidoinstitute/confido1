@@ -28,6 +28,13 @@ data class CreateNewInvite(
 )
 
 @Serializable
+data class CreateNewEmailInvite(
+    val roomId: String,
+    val role: RoomRole,
+    val email: String,
+)
+
+@Serializable
 data class AddMember(
     val user: Ref<User>,
     var role: RoomRole,

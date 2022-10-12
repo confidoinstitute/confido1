@@ -13,6 +13,7 @@ import mui.system.responsive
 import mui.system.sx
 import org.w3c.dom.HTMLLIElement
 import payloads.requests.AddMember
+import payloads.requests.CreateNewEmailInvite
 import react.*
 import react.dom.html.HTMLAttributes
 import rooms.Forecaster
@@ -153,8 +154,9 @@ val UserInviteForm = FC<Props> {
                         role = Forecaster
                     }
                     is NewUser -> {
-                        // TODO handle actual invitation
-                        window.alert(chosenUser.toString())
+                        Client.postData("/invite/create_email", CreateNewEmailInvite(room.id, role, who.email))
+                        chosenUser = null
+                        role = Forecaster
                     }
                 }
             }

@@ -33,14 +33,15 @@ class Mailer(
         // {name} invited you to a Confido room       (when we have a username)
         // [Confido] {name} invited you to {roomName} (when we have a username)
         val subject = "You have been invited to a Confido room"
-        val url = "TODO" // TODO !!
+        val url = invite.link(origin, room)
 
         // TODO: Add some blurb about what Confido is
 
         val body = """
             You have been invited to ${room.name}.
             
-            Visit $url to accept this invitation.
+            Visit the following link to accept this invitation:
+            $url
             """.trimIndent()
 
         val document = createHTMLDocument().html {

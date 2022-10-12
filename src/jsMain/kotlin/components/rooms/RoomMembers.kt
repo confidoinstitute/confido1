@@ -134,8 +134,7 @@ val InvitationMembers = FC<InvitationMembersProps> {props ->
                     ContentCopyIcon {}
                     disabled = !active
                     onClick = {
-                        val invitePath = "room/${room.id}/invite/${props.invitation.token}"
-                        val url = "${window.location.origin}/$invitePath"
+                        val url = props.invitation.link(window.location.origin, room)
                         window.navigator.clipboard.writeText(url)
                         copyShown = true
                     }
