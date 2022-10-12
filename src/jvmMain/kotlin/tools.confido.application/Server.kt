@@ -231,10 +231,7 @@ fun main() {
             }
             postST("/login_email/create") {
                 // TODO: Rate limiting.
-                call.userSession ?: run {
-                    call.respond(HttpStatusCode.BadRequest)
-                    return@postST
-                }
+                call.userSession ?: return@postST badRequest("missing session")
 
                 val mail: SendMailLink = call.receive()
                 val user = serverState.userManager.byEmail[mail.email]
@@ -337,8 +334,10 @@ fun main() {
                     call.respond(HttpStatusCode.BadRequest)
                 } else {
                     val accept: AcceptInviteAndCreateUser = call.receive()
-                    val room = serverState.get<Room>(accept.roomId) ?: return@postST call.respond(HttpStatusCode.BadRequest, "The room does not exist.")
-                    val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?: return@postST call.respond(HttpStatusCode.BadRequest, "The invite does not exist or is currently not active.")
+                    val room = serverState.get<Room>(accept.roomId) ?:
+                        return@postST badRequest("The room does not exist.")
+                    val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?:
+                        return@postST badRequest("The invite does not exist or is currently not active.")
 
                     val newUser = User(randomString(32), UserType.GUEST, accept.email, false, accept.userNick, null, now(), now())
 
