@@ -101,7 +101,7 @@ val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
             } else if (props.prediction != null) {
                 Chip {
                     label = ReactHTML.span.create {
-                        +"Last prediction: "
+                        +"Your last prediction: "
                         Tooltip {
                             this.title = ReactNode(props.prediction!!.ts.toDateTime())
                             this.placement = TooltipPlacement.left
@@ -204,7 +204,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 }
                 if (props.canPredict)
                     QuestionPredictionChip {
-                        this.enabled = question.enabled && !stale
+                        this.enabled = question.open && !stale
                         this.pending = pendingPrediction != null
                         this.prediction = props.prediction
                         this.state = pendingPredictionState
@@ -224,14 +224,14 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 questionInput {
                     this.id = question.id
                     this.enabled =
-                        question.enabled && appState.hasPermission(room, RoomPermission.SUBMIT_PREDICTION) && !stale
+                        question.open && appState.hasPermission(room, RoomPermission.SUBMIT_PREDICTION) && !stale
                     this.space = question.answerSpace
                     this.prediction = pendingPrediction ?: props.prediction?.dist
                     this.onChange = { pendingPrediction = null; pendingPredictionState = PendingPredictionState.MAKING }
                     this.onPredict = { pendingPrediction = it }
                 }
             }
-            if (question.predictionsVisible || appState.hasPermission(
+            if (question.groupPredVisible || appState.hasPermission(
                     room,
                     RoomPermission.VIEW_ALL_GROUP_PREDICTIONS
                 )

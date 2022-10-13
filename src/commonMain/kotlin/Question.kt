@@ -26,9 +26,17 @@ data class Question(
     val answerSpace: Space,
     val description: String = "",
     val visible: Boolean = true,
-    val enabled: Boolean = true,
-    val predictionsVisible: Boolean = false,
+    val open: Boolean = true, // submitting predictions allowed
+    val groupPredVisible: Boolean = false,
     val resolutionVisible: Boolean = false,
-    val resolved: Boolean = false,
-) : ImmediateDerefEntity
+    val resolution: Value? = null,
+) : ImmediateDerefEntity {
+    init {
+        if (resolution != null) {
+            require(resolution.space == answerSpace)
+        }
+    }
+
+    val resolved : Boolean get() = resolution != null
+}
 

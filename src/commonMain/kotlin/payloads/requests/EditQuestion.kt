@@ -2,23 +2,28 @@ package payloads.requests
 
 import kotlinx.serialization.Serializable
 import tools.confido.question.Question
+import tools.confido.spaces.Value
 
 @Serializable
 enum class EditQuestionFieldType {
     VISIBLE,
-    ENABLED,
-    PREDICTIONS_VISIBLE,
-    RESOLVED,
+    OPEN,
+    GROUP_PRED_VISIBLE,
 }
 
 @Serializable
 sealed class EditQuestion ()
 
 @Serializable
-data class EditQuestionField(
+data class EditQuestionFlag(
     val fieldType: EditQuestionFieldType,
     val value: Boolean,
 ) : EditQuestion()
+
+@Serializable
+data class EditQuestionResolution(
+    val resolution: Value,
+)
 
 @Serializable
 data class EditQuestionComplete(

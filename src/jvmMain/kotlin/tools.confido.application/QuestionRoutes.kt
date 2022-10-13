@@ -52,23 +52,20 @@ fun questionRoutes(routing: Routing) = routing.apply {
             return@postST unauthorized("You cannot edit this question.")
 
         when (editQuestion) {
-            is EditQuestionField -> {
+            is EditQuestionFlag -> {
                 serverState.questionManager.modifyEntity(origRef.id) {
                     when (editQuestion.fieldType) {
                         EditQuestionFieldType.VISIBLE ->
-                            it.copy(visible = editQuestion.value, enabled = it.enabled && editQuestion.value)
-                        EditQuestionFieldType.ENABLED ->
-                            it.copy(enabled = editQuestion.value)
-                        EditQuestionFieldType.PREDICTIONS_VISIBLE ->
-                            it.copy(predictionsVisible = editQuestion.value)
-                        EditQuestionFieldType.RESOLVED -> {
-                            it.copy(resolved = editQuestion.value, enabled = it.enabled && !editQuestion.value)
-                        }
+                            it.copy(visible = editQuestion.value, open = it.open && editQuestion.value)
+                        EditQuestionFieldType.OPEN ->
+                            it.copy(open = editQuestion.value)
+                        EditQuestionFieldType.GROUP_PRED_VISIBLE ->
+                            it.copy(groupPredVisible = editQuestion.value)
                     }
                 }
             }
             is EditQuestionComplete ->
-                serverState.questionManager.replaceEntity(editQuestion.question.withId(origRef.id))
+                serverState.questionManager.replaceEntity(editQuestion.question.copy(id=origRef.id))
         }
         call.transientUserData?.refreshRunningWebsockets()
         call.respond(HttpStatusCode.OK)

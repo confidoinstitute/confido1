@@ -2,12 +2,15 @@ package components.questions
 
 import Client
 import components.AppStateContext
+import components.ValueEntry
 import components.rooms.RoomContext
+import csstype.px
 import io.ktor.client.request.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import mui.material.*
+import mui.system.sx
 import react.*
 import react.dom.html.InputType
 import react.dom.onChange
@@ -18,6 +21,7 @@ import tools.confido.spaces.*
 import tools.confido.utils.*
 import utils.eventNumberValue
 import utils.eventValue
+import utils.themed
 import kotlin.coroutines.EmptyCoroutineContext
 
 external interface DeleteQuestionConfirmationProps : Props {
@@ -178,9 +182,11 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     var description by useState(q?.description ?: "")
     var answerSpace : Space? by useState(q?.answerSpace)
     var visible by useState(q?.visible ?: true)
-    var enabled by useState(q?.enabled ?: true)
-    var predictionsVisible by useState(q?.predictionsVisible ?: false)
-    var resolved by useState(q?.resolved ?: false)
+    var enabled by useState(q?.open ?: true)
+    var groupPredVisible by useState(q?.groupPredVisible ?: false)
+    var resolved by useState(q?.resolution != null)
+    var resolutionVisible by useState((q?.resolutionVisible ?: false) && (q?.resolution != null))
+    var resolution by useState(q?.resolution)
 
     val htmlId = useId()
     val answerSpaceEditable = (q == null)
@@ -189,6 +195,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     var errorEmptyName by useState(false)
     var errorEmptyAnswerSpace by useState(false)
     var errorBadAnswerSpace by useState(false)
+    var errorInvalidResolution by useState(false)
 
     fun submitQuestion() {
         var error = false
@@ -200,6 +207,11 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
             errorEmptyName = true
             error = true
         }
+        if (resolved && resolution == null) {
+            errorInvalidResolution = true
+            error = true
+        }
+        console.log("resolved: $resolved resolution: $resolution")
         if (error) return
         val question = Question(
             id = id,
@@ -207,9 +219,10 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
             description = description,
             answerSpace = answerSpace!!,
             visible = visible,
-            enabled = enabled,
-            predictionsVisible = predictionsVisible,
-            resolutionVisible = resolved
+            open = enabled,
+            groupPredVisible = groupPredVisible,
+            resolutionVisible = resolved && resolutionVisible,
+            resolution = if (resolved) resolution else null,
         )
 
         if (props.question == null) {
@@ -245,9 +258,11 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         }
         DialogContent {
             DialogContentText {
+                key = "resolutionHint"
                     +"Try and make your question specific and resolvable - so that after the event, everyone will agree on what the outcome is."
             }
             TextField {
+                key = "questionText"
                 value = name
                 label = ReactNode("Title")
                 fullWidth = true
@@ -256,9 +271,11 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 error = errorEmptyName
             }
             DialogContentText {
+                key = "titleDetailHint"
                     +"The question title should cover the main topic, while the description can explain the more detailed information."
             }
             TextField {
+                key = "description"
                 value = description
                 label = ReactNode("Description (optional)")
                 multiline = true
@@ -268,6 +285,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 onChange = { description = it.eventValue() }
             }
             FormControl {
+                key = "answerSpaceType"
                 this.fullWidth = true
                 InputLabel {
                     this.id = htmlId +"edit_question_label"
@@ -312,6 +330,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 val numericAnswerSpace = answerSpace as NumericSpace
                 val component = if (numericAnswerSpace.representsDays) EditDaysAnswerSpace else EditNumericSpace
                 component {
+                    key = "numericAnswerSpaceEdit"
                     this.space = numericAnswerSpace
                     disabled = !answerSpaceEditable
                     onChange = {numericSpace ->
@@ -325,8 +344,10 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 }
             }
 
+
             // TODO is there a way to create a function that allows assignment to its parameter?
             FormGroup {
+                key = "flagsGroup"
                 FormControlLabel {
                     label = ReactNode("Visible to participants")
                     control = Checkbox.create {
@@ -344,27 +365,58 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 FormControlLabel {
                     label = ReactNode("Group predictions visible")
                     control = Checkbox.create {
-                        checked = predictionsVisible
+                        checked = groupPredVisible
                     }
-                    onChange = {_, value -> predictionsVisible = value}
+                    onChange = {_, value -> groupPredVisible = value}
                 }
-                FormControlLabel {
-                    label = ReactNode("Resolution visible")
-                    control = Checkbox.create {
-                        checked = resolved
+                if (answerSpace != null) {
+                    FormControlLabel {
+                        key = "resolvedCheckbox"
+                        label = ReactNode("Resolved (outcome/correct answer is known)")
+                        control = Checkbox.create {
+                            checked = resolved
+                        }
+                        onChange = { _, value -> resolved = value }
                     }
-                    onChange = {_, value -> resolved = value}
                 }
             }
 
+            answerSpace?.let {answerSpace ->
+                if (resolved) {
+                    Box {
+                        key = "resolvedBox"
+                        sx {
+                            marginTop = themed(1)
+                            marginLeft = 42.px
+                        }
+                        ValueEntry  {
+                            this.key = "resolvedValueEntry"
+                            this.label = "Resolution"
+                            this.space = answerSpace
+                            this.value = resolution
+                            this.onChange = { value -> resolution = value  }
+                        }
+                        FormGroup {
+                            FormControlLabel {
+                                label = ReactNode("Resolution visible to forecasters")
+                                control = Checkbox.create {
+                                    checked = resolutionVisible
+                                }
+                                onChange = {_, value -> resolutionVisible = value}
+                            }
+                        }
+                    }
+                }
+            }
         }
+
         DialogActions {
             if (q != null) {
                 DeleteQuestionConfirmation {
                     this.onDelete = { deleteQuestion() ; props.onClose?.invoke()}
                     this.confirmDelete = q.visible
                     // TODO add real logic
-                    this.hasPrediction = q.enabled
+                    this.hasPrediction = q.open
                 }
             }
             Button {

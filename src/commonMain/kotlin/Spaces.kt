@@ -106,6 +106,8 @@ data class NumericSpace(
     @Transient
     val binner = Binner(this, bins)
 
+    val size get() = max - min
+
     override fun checkValue(value: Double) = value in min..max
 
     override fun formatValue(value: Double): String {
@@ -140,3 +142,46 @@ data class NumericSpace(
         }
     }
 }
+
+@Serializable
+sealed class Value {
+    abstract val space: Space
+    abstract val value: Any
+    override fun toString() = space.formatValue(value)
+}
+
+sealed class TypedValue<V: Any, S: TypedSpace<V>> : Value() {
+    override abstract val space: S
+    override abstract val value: V
+    // this calls the typed version (TypedSpace<T>.formatValue) directly
+    override fun toString() = space.formatValue(value)
+
+    /**
+     * This should be called from all subclass constructors. Unfortunately we
+     * cannot do this in our constructor because ̈́'space' and 'value' are
+     * initialized after it is called.
+     */
+    protected fun check() {
+        require(space.checkValue(value))
+    }
+}
+
+@Serializable
+@SerialName("numeric")
+data class NumericValue(
+    override val space: NumericSpace,
+    override val value: Double
+) : TypedValue<Double, NumericSpace>() {
+    init { check() }
+}
+
+@Serializable
+@SerialName("binary")
+data class BinaryValue(
+    override val value: Boolean
+) : TypedValue<Boolean, BinarySpace>() {
+    @Transient
+    override val space = BinarySpace
+    init { check() }
+}
+

@@ -74,7 +74,7 @@ class StateCensor(val sess: UserSession) {
             val q = qref.deref() ?: return@filterKeys false
             val room = state.questionRoom[q.ref]?.deref() ?: return@filterKeys false
             (
-                    (room.hasPermission(user, RoomPermission.VIEW_QUESTIONS) && q.predictionsVisible)
+                    (room.hasPermission(user, RoomPermission.VIEW_QUESTIONS) && q.groupPredVisible)
                             || room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
             )
         }
