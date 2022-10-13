@@ -242,6 +242,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         serverState.withMutationLock {
             // Add the user as a member only if they are not yet in
             // XXX: Should we lift the permissions if invitation link has higher permission than the current status?
+            // Beware: this is copy-pasted in invite/accept_newuser
             if (room.members.none {it.user eqid user}) {
                 serverState.roomManager.modifyEntity(room.ref) {
                     it.copy(members = it.members + listOf(RoomMembership(user.ref, invite.role, invite.id)))
@@ -265,12 +266,17 @@ fun inviteRoutes(routing: Routing) = routing.apply {
 
         serverState.userManager.byEmail[accept.email]?.let {user ->
             if (room.members.none {it.user eqid user}) {
+                // Beware: this is copy-pasted in invite/accept
                 serverState.roomManager.modifyEntity(room.ref) {
                     it.copy(members = it.members + listOf(RoomMembership(user.ref, invite.role, invite.id)))
                 }
                 call.respond(HttpStatusCode.OK, true)
             }
         } ?: run {
+            if (!invite.allowAnonymous && accept.email == null) {
+                return@postST badRequest("An email is required.")
+            }
+
             val newUser = User(
                 randomString(32),
                 UserType.GUEST,

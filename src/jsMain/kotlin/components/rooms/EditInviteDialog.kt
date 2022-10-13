@@ -115,7 +115,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                         }
                     }
                     FormControlLabel {
-                        label = ReactNode("Anonymous (using a nickname)")
+                        label = ReactNode("Allow anonymous access (using only a nickname)")
                         value = "true"
                         control = Radio.create {}
                     }
