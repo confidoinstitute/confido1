@@ -13,6 +13,7 @@ import react.dom.onChange
 import react.router.useParams
 import payloads.requests.CheckInvite
 import payloads.responses.InviteStatus
+import react.dom.html.InputType
 import react.dom.html.ReactHTML.em
 import react.router.useNavigate
 import utils.byTheme
@@ -24,6 +25,7 @@ val RoomInviteForm = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
     var name by useState("")
     var email by useState("")
+    var emailError by useState<String?>(null)
     val roomId = useParams()["roomID"] ?: run {
         console.error("Missing room id")
         return@FC
@@ -70,6 +72,8 @@ val RoomInviteForm = FC<Props> {
                     }
                 }
                 if (appState.session.user == null) {
+                    val emailRequired = !inviteStatus!!.allowAnonymous
+
                     TextField {
                         sx {
                             marginTop = themed(2)
@@ -77,12 +81,25 @@ val RoomInviteForm = FC<Props> {
                         margin = FormControlMargin.normal
                         variant = FormControlVariant.outlined
                         fullWidth = true
+                        type = InputType.email
                         id = "email-field"
-                        label = ReactNode("Email (optional)")
+                        required = emailRequired
+                        label = if (emailRequired) {
+                            ReactNode("Email")
+                        } else {
+                            ReactNode("Email (optional)")
+                        }
+                        error = emailError != null
+                        helperText = if (emailError != null) {
+                            ReactNode(emailError!!)
+                        } else {
+                            ReactNode("You can log in with this email to return to your forecasts later.")
+                        }
                         value = email
                         disabled = stale
                         onChange = {
                             email = it.eventValue()
+                            emailError = null
                         }
                     }
 
@@ -106,17 +123,22 @@ val RoomInviteForm = FC<Props> {
                         variant = ButtonVariant.contained
                         fullWidth = true
                         onClick = {
-                            val userMail = if (email.isNotBlank()) {
-                                email.trim()
+                            val userMail = email.trim().ifEmpty { null }
+                            val emailValid = userMail?.contains(Regex(".+@.+")) ?: false
+
+                            if (userMail != null && !emailValid) {
+                                emailError = "This email address is not valid."
                             } else {
-                                null
-                            }
-                            // For now, we leave email empty.
-                            Client.postData(
-                                "/rooms/$roomId/invite/accept_newuser",
-                                AcceptInviteAndCreateUser(inviteToken, name.ifEmpty { null }, userMail)
-                            ).invokeOnCompletion {
-                                navigate("/room/${roomId}")
+                                if (emailRequired) {
+                                    emailError = "An email address is required."
+                                } else {
+                                    Client.postData(
+                                        "/rooms/$roomId/invite/accept_newuser",
+                                        AcceptInviteAndCreateUser(inviteToken, name.trim().ifEmpty { null }, userMail)
+                                    ).invokeOnCompletion {
+                                        navigate("/room/${roomId}")
+                                    }
+                                }
                             }
                         }
                         disabled = stale
