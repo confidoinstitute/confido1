@@ -178,13 +178,14 @@ val RoomInviteForm = FC<Props> {
                         sx {
                             marginTop = themed(2)
                         }
+                        variant = ButtonVariant.contained
                         onClick = {
                             Client.postData("/rooms/$roomId/invite/accept", AcceptInvite(inviteToken)).invokeOnCompletion {
                                 navigate("/room/${roomId}")
                             }
                         }
                         disabled = stale
-                        +"Accept invite"
+                        +"Start forecasting"
                     }
                 }
             } else {
