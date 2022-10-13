@@ -167,11 +167,14 @@ fun inviteRoutes(routing: Routing) = routing.apply {
     // Verify that this invitation is still valid
     postST("/rooms/{id}/invite/check") {
         val roomRef = Ref<Room>(call.parameters["id"] ?: "")
-        val room = roomRef.deref() ?: return@postST notFound("Room does not exist")
+        val room = roomRef.deref() ?: run {
+            call.respond(HttpStatusCode.OK, InviteStatus(false, null, false))
+            return@postST
+        }
 
         val check: CheckInvite = call.receive()
-        val invite = room?.inviteLinks?.find {it.token == check.inviteToken && it.canJoin}
-        if (room == null || invite == null) {
+        val invite = room.inviteLinks.find {it.token == check.inviteToken && it.canJoin}
+        if (invite == null) {
             call.respond(HttpStatusCode.OK, InviteStatus(false, null, false))
             return@postST
         }
