@@ -6,10 +6,7 @@ import components.MenuItemNavigation
 import components.UserAvatar
 import csstype.None
 import csstype.number
-import icons.Feedback
-import icons.LogoutIcon
-import icons.MenuIcon
-import icons.SettingsIcon
+import icons.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -172,8 +169,10 @@ val RootAppBar = FC<RootAppBarProps> { props ->
                     MenuIcon()
                 }
             }
+            smallLogo {}
             Typography {
                 sx {
+                    marginLeft = themed(1)
                     flexGrow = number(1.0)
                 }
                 +"Confido"

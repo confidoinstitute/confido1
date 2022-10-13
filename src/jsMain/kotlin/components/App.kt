@@ -9,6 +9,10 @@ import kotlinx.browser.window
 import kotlinx.js.timers.setTimeout
 import kotlinx.serialization.decodeFromString
 import mui.material.*
+import mui.material.styles.PaletteColor
+import mui.material.styles.createPalette
+import mui.material.styles.createTheme
+import mui.system.ThemeProvider
 import org.w3c.dom.CloseEvent
 import org.w3c.dom.WebSocket
 import react.*
@@ -20,6 +24,7 @@ import tools.confido.serialization.confidoJSON
 import tools.confido.state.ClientState
 import tools.confido.state.SentState
 import tools.confido.state.clientState
+import utils.buildObject
 import utils.webSocketUrl
 
 val AppStateContext = createContext<ClientAppState>()
@@ -27,7 +32,21 @@ val AppStateContext = createContext<ClientAppState>()
 
 data class ClientAppState(val state: SentState, val stale: Boolean = false)
 
+val globalTheme = createTheme(
+    buildObject {
+        this.palette = buildObject {
+            this.primary = buildObject<PaletteColor> {
+                main = Color("#675491")
+                light = Color("#9681c2")
+                dark = Color("3a2b63")
+                contrastText = Color("#ffffff")
+            }
+        }
+    }
+)
+
 val App = FC<Props> {
+    console.log(globalTheme)
     var appState by useState<SentState?>(null)
     var stale by useState(false)
     val webSocket = useRef<WebSocket>(null)
@@ -48,7 +67,7 @@ val App = FC<Props> {
                 console.log("Closed websocket")
                 stale = true
                 webSocket.current = null
-                (it as? CloseEvent)?.let {event ->
+                (it as? CloseEvent)?.let { event ->
                     if (event.code == 3000.toShort() || (event.code == 4001.toShort()))
                         window.location.reload()
                 }
@@ -85,18 +104,21 @@ val App = FC<Props> {
             RootLayout
         }
 
-        BrowserRouter {
-            Routes {
-                Route {
-                    path = "/*"
-                    index = true
-                    element = layout.create {
-                        key = "layout"
+        ThemeProvider {
+            this.theme = globalTheme
+            BrowserRouter {
+                Routes {
+                    Route {
+                        path = "/*"
+                        index = true
+                        element = layout.create {
+                            key = "layout"
+                        }
                     }
-                }
-                Route {
-                    path = "presenter"
-                    element = PresenterLayout.create()
+                    Route {
+                        path = "presenter"
+                        element = PresenterLayout.create()
+                    }
                 }
             }
         }
