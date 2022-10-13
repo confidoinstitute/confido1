@@ -243,7 +243,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                         lineHeight = number(2.0)
                     }
                     strong {
-                        +"Group predictions: "
+                        +"Group prediction: "
                     }
                     SpoilerButton {
                         DistributionSummary {
