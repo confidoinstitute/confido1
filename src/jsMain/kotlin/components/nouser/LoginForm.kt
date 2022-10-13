@@ -13,10 +13,7 @@ import react.*
 import react.dom.onChange
 import react.dom.html.InputType
 import react.dom.html.ReactHTML.h1
-import utils.byTheme
-import utils.eventValue
-import utils.postJson
-import utils.themed
+import utils.*
 import kotlin.coroutines.EmptyCoroutineContext
 
 enum class LoginMode {
@@ -35,21 +32,29 @@ val LoginForm = FC<LoginFormProps> { props ->
 
     var mode by useState(LoginMode.MagicLink)
     var emailSent by useState(false)
-    var wrongPassword by useState(false)
+    var emailError by useState<String?>(null)
+    var passwordError by useState<String?>(null)
 
     fun attemptLogin() {
+        val trimmedEmail = email.trim()
+        val valid = isEmailValid(trimmedEmail)
+        if (!valid) {
+            emailError = "This email address is not valid."
+            return
+        }
+
         when (mode) {
             LoginMode.MagicLink -> {
-                Client.postData("/login_email/create", SendMailLink(email, "/"))
+                Client.postData("/login_email/create", SendMailLink(trimmedEmail, "/"))
                 emailSent = true
             }
 
             LoginMode.Password -> {
                 CoroutineScope(EmptyCoroutineContext).launch {
-                    val response = Client.httpClient.postJson("/login", PasswordLogin(email, password)) {}
+                    val response = Client.httpClient.postJson("/login", PasswordLogin(trimmedEmail, password)) {}
                     console.log(response)
                     if (response.status == HttpStatusCode.Unauthorized) {
-                        wrongPassword = true
+                        passwordError = "Wrong password or email, please try again."
                         password = ""
                     }
                 }
@@ -83,10 +88,15 @@ val LoginForm = FC<LoginFormProps> { props ->
                 fullWidth = true
                 id = "email-field"
                 label = ReactNode("Email")
-                helperText = when (mode) {
-                    LoginMode.MagicLink -> ReactNode("We will send a login link to you.")
-                    LoginMode.Password -> ReactNode("")
+                helperText = if (emailError != null) {
+                    ReactNode(emailError!!)
+                } else {
+                    when (mode) {
+                        LoginMode.MagicLink -> ReactNode("We will send a login link to you.")
+                        LoginMode.Password -> ReactNode("")
+                    }
                 }
+                error = emailError != null
                 value = email
                 disabled = stale
                 onChange = {
@@ -109,12 +119,12 @@ val LoginForm = FC<LoginFormProps> { props ->
                     label = ReactNode("Password")
                     value = password
                     disabled = stale
-                    helperText = if (wrongPassword) {
-                        ReactNode("Wrong password or email, please try again.")
+                    helperText = if (passwordError != null) {
+                        ReactNode(passwordError!!)
                     } else {
                         null
                     }
-                    error = wrongPassword
+                    error = passwordError != null
                     onChange = {
                         password = it.eventValue()
                     }
@@ -178,6 +188,7 @@ val LoginForm = FC<LoginFormProps> { props ->
                         variant = TypographyVariant.body2
                         onClick = {
                             mode = LoginMode.Password
+                            emailError = null
                         }
                         +"Log in with a password"
                     }
@@ -189,6 +200,8 @@ val LoginForm = FC<LoginFormProps> { props ->
                             emailSent = false
                             password = ""
                             email = ""
+                            emailError = null
+                            passwordError = null
                         }
                         +"Retry"
                     }
@@ -200,7 +213,8 @@ val LoginForm = FC<LoginFormProps> { props ->
                     onClick = {
                         mode = LoginMode.MagicLink
                         password = ""
-                        wrongPassword = false
+                        passwordError = null
+                        emailError = null
                     }
                     +"Log in with email only"
                 }

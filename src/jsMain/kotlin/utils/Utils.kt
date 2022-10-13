@@ -168,3 +168,9 @@ fun stringToColor(str: String): csstype.Color {
     }
     return Color("#${base.toString(16).padStart(6,'0')}")
 }
+
+/** A very simple check for ruling out most common mistakes. */
+fun isEmailValid(mail: String): Boolean {
+    val regex = Regex(".+@.+\\..+")
+    return regex.matches(mail)
+}

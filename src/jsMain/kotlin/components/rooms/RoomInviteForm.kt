@@ -19,6 +19,7 @@ import react.dom.html.ReactHTML.em
 import react.router.useNavigate
 import utils.byTheme
 import utils.eventValue
+import utils.isEmailValid
 import utils.themed
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -127,7 +128,7 @@ val RoomInviteForm = FC<Props> {
                             fullWidth = true
                             onClick = {
                                 val userMail = email.trim().ifEmpty { null }
-                                val emailValid = userMail?.contains(Regex(".+@.+")) ?: false
+                                val emailValid = userMail?.let { isEmailValid(it) } ?: false
 
                                 if (userMail != null && !emailValid) {
                                     emailError = "This email address is not valid."
