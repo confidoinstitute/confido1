@@ -264,14 +264,15 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             return@postST unauthorized("The invite does not exist or is currently not active.")
 
 
+        var userAlreadyExists = false
         serverState.userManager.byEmail[accept.email]?.let {user ->
             if (room.members.none {it.user eqid user}) {
                 // Beware: this is copy-pasted in invite/accept
                 serverState.roomManager.modifyEntity(room.ref) {
                     it.copy(members = it.members + listOf(RoomMembership(user.ref, invite.role, invite.id)))
                 }
-                call.respond(HttpStatusCode.OK, true)
             }
+            userAlreadyExists = true
         } ?: run {
             if (!invite.allowAnonymous && accept.email == null) {
                 return@postST badRequest("An email is required.")
@@ -294,10 +295,9 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                 }
             }
             call.modifyUserSession { it.copy(userRef = newUser.ref) }
-            call.respond(HttpStatusCode.OK, false)
         }
 
         TransientData.refreshAllWebsockets()
-        call.respond(HttpStatusCode.OK)
+        call.respond(HttpStatusCode.OK, userAlreadyExists)
     }
 }

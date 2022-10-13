@@ -1,6 +1,7 @@
 package components.rooms
 
 import components.AppStateContext
+import components.nouser.LoginForm
 import csstype.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -37,6 +38,7 @@ val RoomInviteForm = FC<Props> {
 
     val navigate = useNavigate()
 
+    var loginRequired by useState(false)
     var inviteStatus by useState<InviteStatus?>(null)
 
     useEffectOnce {
@@ -74,75 +76,92 @@ val RoomInviteForm = FC<Props> {
                 if (appState.session.user == null) {
                     val emailRequired = !inviteStatus!!.allowAnonymous
 
-                    TextField {
-                        sx {
-                            marginTop = themed(2)
-                        }
-                        margin = FormControlMargin.normal
-                        variant = FormControlVariant.outlined
-                        fullWidth = true
-                        type = InputType.email
-                        id = "email-field"
-                        required = emailRequired
-                        label = if (emailRequired) {
-                            ReactNode("Email")
-                        } else {
-                            ReactNode("Email (optional)")
-                        }
-                        error = emailError != null
-                        helperText = if (emailError != null) {
-                            ReactNode(emailError!!)
-                        } else {
-                            ReactNode("You can log in with this email to return to your forecasts later.")
-                        }
-                        value = email
-                        disabled = stale
-                        onChange = {
-                            email = it.eventValue()
-                            emailError = null
-                        }
-                    }
-
-                    TextField {
-                        margin = FormControlMargin.normal
-                        variant = FormControlVariant.outlined
-                        fullWidth = true
-                        id = "name-field"
-                        label = ReactNode("Name (optional)")
-                        value = name
-                        disabled = stale
-                        onChange = {
-                            name = it.eventValue()
-                        }
-                    }
-
-                    Button {
-                        sx {
-                            marginTop = themed(1)
-                        }
-                        variant = ButtonVariant.contained
-                        fullWidth = true
-                        onClick = {
-                            val userMail = email.trim().ifEmpty { null }
-                            val emailValid = userMail?.contains(Regex(".+@.+")) ?: false
-
-                            if (userMail != null && !emailValid) {
-                                emailError = "This email address is not valid."
+                    if (!loginRequired) {
+                        TextField {
+                            sx {
+                                marginTop = themed(2)
+                            }
+                            margin = FormControlMargin.normal
+                            variant = FormControlVariant.outlined
+                            fullWidth = true
+                            type = InputType.email
+                            id = "email-field"
+                            required = emailRequired
+                            label = if (emailRequired) {
+                                ReactNode("Email")
                             } else {
-                                if (emailRequired) {
-                                    emailError = "An email address is required."
+                                ReactNode("Email (optional)")
+                            }
+                            error = emailError != null
+                            helperText = if (emailError != null) {
+                                ReactNode(emailError!!)
+                            } else {
+                                ReactNode("You can log in with this email to return to your forecasts later.")
+                            }
+                            value = email
+                            disabled = stale
+                            onChange = {
+                                email = it.eventValue()
+                                emailError = null
+                            }
+                        }
+
+                        TextField {
+                            margin = FormControlMargin.normal
+                            variant = FormControlVariant.outlined
+                            fullWidth = true
+                            id = "name-field"
+                            label = ReactNode("Name (optional)")
+                            value = name
+                            disabled = stale
+                            onChange = {
+                                name = it.eventValue()
+                            }
+                        }
+
+                        Button {
+                            sx {
+                                marginTop = themed(1)
+                            }
+                            variant = ButtonVariant.contained
+                            fullWidth = true
+                            onClick = {
+                                val userMail = email.trim().ifEmpty { null }
+                                val emailValid = userMail?.contains(Regex(".+@.+")) ?: false
+
+                                if (userMail != null && !emailValid) {
+                                    emailError = "This email address is not valid."
                                 } else {
-                                    Client.postData(
-                                        "/rooms/$roomId/invite/accept_newuser",
-                                        AcceptInviteAndCreateUser(inviteToken, name.trim().ifEmpty { null }, userMail)
-                                    ).invokeOnCompletion {
-                                        navigate("/room/${roomId}")
+                                    if (emailRequired && userMail == null) {
+                                        emailError = "An email address is required."
+                                    } else {
+                                        CoroutineScope(EmptyCoroutineContext).launch {
+                                            val userAlreadyExists: Boolean = Client.postDataAndReceive(
+                                                "/rooms/$roomId/invite/accept_newuser",
+                                                AcceptInviteAndCreateUser(
+                                                    inviteToken,
+                                                    name.trim().ifEmpty { null },
+                                                    userMail
+                                                )
+                                            )
+
+                                            if (userAlreadyExists) {
+                                                // We need to log in.
+                                                loginRequired = true
+                                            } else {
+                                                navigate("/room/${roomId}")
+                                            }
+                                        }
                                     }
                                 }
                             }
+                            disabled = stale
+                            +"Start forecasting"
                         }
-                        disabled = stale
-                        +"Start forecasting"
+                    } else {
+                        LoginForm {
+                            prefilledEmail = email
+                        }
                     }
                 } else {
                     // TODO: Consider accepting automatically and navigating away in this case.
