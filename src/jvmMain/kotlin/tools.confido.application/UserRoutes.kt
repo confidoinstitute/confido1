@@ -86,7 +86,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
 
         serverState.withTransaction {
             serverState.userManager.modifyEntity(loginLink.user) {
-                it.copy(lastLoginAt = Clock.System.now())
+                it.copy(lastLoginAt = Clock.System.now(), emailVerified = true)
             }
             // Login links are single-use
             serverState.loginLinkManager.deleteEntity(loginLink.ref)
