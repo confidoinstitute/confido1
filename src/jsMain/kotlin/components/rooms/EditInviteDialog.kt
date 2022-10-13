@@ -2,21 +2,14 @@ package components.rooms
 
 import Client
 import components.AppStateContext
-import io.ktor.client.request.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import mui.material.*
 import mui.system.sx
 import payloads.requests.CreateNewInvite
 import react.*
 import react.dom.onChange
 import rooms.*
-import tools.confido.question.Question
-import tools.confido.spaces.*
-import tools.confido.utils.*
 import utils.eventValue
 import utils.themed
-import kotlin.coroutines.EmptyCoroutineContext
 
 
 external interface EditInviteDialogProps : Props {
@@ -33,7 +26,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
     // Invitation link values
     var description by useState(i?.description ?: "Shared Invite Link")
     var role by useState(i?.role ?: Forecaster)
-    var anonymous by useState(i?.anonymous ?: false)
+    var anonymous by useState(i?.allowAnonymous ?: false)
     var linkState by useState(i?.state ?: InviteLinkState.ENABLED)
 
     val htmlId = useId()
@@ -46,7 +39,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
             val invite = i.copy(
                 description = description,
                 role = role,
-                anonymous = anonymous,
+                allowAnonymous = anonymous,
                 state = linkState,
             )
             Client.postData("/rooms/${room.id}/invites/edit", invite)
@@ -62,7 +55,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
         }
         DialogContent {
             DialogContentText {
-                +"New members can join via this invitation link. TODO better explanation"
+                +"One invitation link can be shared with multiple people. Anyone who has the link will be able to join this room."
             }
             TextField {
                 value = description
@@ -110,7 +103,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                 }
                 // TODO better names
                 FormLabel {
-                    +"Unregistered users"
+                    +"User identification"
                 }
                 RadioGroup {
                     value = anonymous.toString()
@@ -122,7 +115,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                         }
                     }
                     FormControlLabel {
-                        label = ReactNode("Nickname is enough")
+                        label = ReactNode("Anonymous (using a nickname)")
                         value = "true"
                         control = Radio.create {}
                     }

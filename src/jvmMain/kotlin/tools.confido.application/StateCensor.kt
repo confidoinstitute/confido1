@@ -104,6 +104,7 @@ class StateCensor(val sess: UserSession) {
             users = censorUsers(), // MUST be AFTER roomComments and questionComments in order to fill referencedUsers
             myPredictions = getMyPredictions(),
             session = sess,
+            devMode = devMode,
         )
     }
 }

@@ -172,11 +172,11 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         val check: CheckInvite = call.receive()
         val invite = room?.inviteLinks?.find {it.token == check.inviteToken && it.canJoin}
         if (room == null || invite == null) {
-            call.respond(HttpStatusCode.OK, InviteStatus(false, null))
+            call.respond(HttpStatusCode.OK, InviteStatus(false, null, false))
             return@postST
         }
 
-        call.respond(HttpStatusCode.OK, InviteStatus(true, room.name))
+        call.respond(HttpStatusCode.OK, InviteStatus(true, room.name, invite.allowAnonymous))
     }
     // Create an invitation link
     postST("/rooms/{id}/invites/create") {
@@ -190,7 +190,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
 
         val inviteLink = InviteLink(
             description = invited.description ?: "", role = invited.role,
-            createdBy=user.ref, createdAt = Clock.System.now(), anonymous = invited.anonymous, state = InviteLinkState.ENABLED
+            createdBy=user.ref, createdAt = Clock.System.now(), allowAnonymous = invited.anonymous, state = InviteLinkState.ENABLED
         )
         serverState.roomManager.modifyEntity(room.id) {
             it.copy(inviteLinks=it.inviteLinks + listOf(inviteLink))
@@ -216,7 +216,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                     it.copy(
                         description = invite.description,
                         role = invite.role,
-                        anonymous = invite.anonymous,
+                        allowAnonymous = invite.allowAnonymous,
                         state = invite.state
                     )
                 else it

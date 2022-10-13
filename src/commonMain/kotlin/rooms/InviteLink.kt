@@ -27,7 +27,7 @@ data class InviteLink(
     /* Time of creation of the invite link. */
     val createdAt: Instant,
     /* Indicates whether guests are anonymous. */
-    val anonymous: Boolean,
+    val allowAnonymous: Boolean = false,
     /* Indicates whether this link can be used by new users. */
     val state: InviteLinkState = InviteLinkState.ENABLED
 ) : HasId {

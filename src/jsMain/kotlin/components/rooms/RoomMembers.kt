@@ -14,6 +14,7 @@ import react.*
 import mui.material.*
 import mui.system.sx
 import payloads.requests.AddedExistingMember
+import payloads.requests.AddedMember
 import rooms.*
 import tools.confido.refs.deref
 import tools.confido.refs.eqid
@@ -49,19 +50,32 @@ val RoomMembers = FC<Props> {
         }
 
     val groupedMembership = room.members.groupBy {
-        it.invitedVia
+        it.invitedVia ?: if (it.user.deref()?.type?.isProper()?:false) "internal" else "guest"
     }
     val invitations = room.inviteLinks.associateWith { groupedMembership[it.id] }
 
     List {
-        groupedMembership[null]?.let {
+        groupedMembership["internal"]?.let {
             ListSubheader {
-                key = "permanent__label"
-                +"Full members"
+                key = "internal__label"
+                +"Users from this organization"
             }
             it.map {membership ->
                 RoomMember {
-                    key = "permanent__user__${membership.user.id}"
+                    key = "internal__user__${membership.user.id}"
+                    this.membership = membership
+                    this.disabled = false
+                }
+            }
+        }
+        groupedMembership["guest"]?.let {
+            ListSubheader {
+                key = "guest__label"
+                +"Guests"
+            }
+            it.map {membership ->
+                RoomMember {
+                    key = "guest__user__${membership.user.id}"
                     this.membership = membership
                     this.disabled = false
                 }
@@ -244,7 +258,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
         (!(user eqid appState.session.user) || appState.isAdmin())
 
     fun memberRoleChange(role: RoomRole) {
-        Client.postData("/rooms/${room.id}/members/add", AddedExistingMember(membership.user, role))
+        Client.postData("/rooms/${room.id}/members/add", AddedExistingMember(membership.user, role) as AddedMember)
     }
 
     ListItem {

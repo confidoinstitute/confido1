@@ -56,6 +56,7 @@ import kotlin.collections.set
 val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "./build/distributions/").canonicalFile
 val jsBundle = staticDir.resolve("confido1.js")
 val jsHash = DigestUtils(SHA_224).digestAsHex(jsBundle)
+val devMode = System.getenv("CONFIDO_DEVMODE") == "1"
 
 fun HTML.index() {
     head {
@@ -134,11 +135,12 @@ fun main() {
         install(Mailing) {
             // TODO(deploy): Set appropriately (*all* options listed here!) and test that emails arrive
             // This is the URL of the hosted frontend used in mailed links (no trailing /)
-            urlOrigin = "http://localhost:8081"
-            debugMode = false
-            senderAddress = "noreply@confido.tools"
+            urlOrigin = (System.getenv("CONFIDO_BASE_URL") ?: "http://localhost:8081").trimEnd('/')
+            debugMode = System.getenv("CONFIDO_MAIL_DEBUG") == "1"
+            senderAddress = System.getenv("CONFIDO_MAIL_SENDER") ?: "noreply@confido.tools"
             mailer = MailerBuilder
-                .withSMTPServer("localhost", 2525)
+                .withSMTPServer(System.getenv("CONFIDO_SMTP_HOST")?:"localhost",
+                              System.getenv("CONFIDO_SMTP_PORT")?.toIntOrNull()?:25)
                 .buildMailer()
         }
         routing {
@@ -149,18 +151,38 @@ fun main() {
 
                 call.respondHtml(HttpStatusCode.OK, HTML::index)
             }
-            getST("/init/") {
-                val userPasswordHash = Password.hash(DebugAdmin.password).addRandomSalt().withArgon2().result
-                serverState.userManager.insertEntity(
-                    User("debugadmin", UserType.ADMIN, DebugAdmin.email, true, "debugadmin", userPasswordHash, now(), now())
-                )
-                val memberPasswordHash = Password.hash(DebugMember.password).addRandomSalt().withArgon2().result
-                serverState.userManager.insertEntity(
-                    User("debugmember", UserType.MEMBER, DebugMember.email, true, "debugmember", memberPasswordHash, now(), now())
-                )
-                serverState.roomManager.insertEntity(
-                    Room("testroom", "Testing room", Clock.System.now(), "This is a testing room.")
-                )
+            if (devMode) {
+                getST("/init/") {
+                    val userPasswordHash = Password.hash(DebugAdmin.password).addRandomSalt().withArgon2().result
+                    serverState.userManager.insertEntity(
+                        User(
+                            "debugadmin",
+                            UserType.ADMIN,
+                            DebugAdmin.email,
+                            true,
+                            "debugadmin",
+                            userPasswordHash,
+                            now(),
+                            now()
+                        )
+                    )
+                    val memberPasswordHash = Password.hash(DebugMember.password).addRandomSalt().withArgon2().result
+                    serverState.userManager.insertEntity(
+                        User(
+                            "debugmember",
+                            UserType.MEMBER,
+                            DebugMember.email,
+                            true,
+                            "debugmember",
+                            memberPasswordHash,
+                            now(),
+                            now()
+                        )
+                    )
+                    serverState.roomManager.insertEntity(
+                        Room("testroom", "Testing room", Clock.System.now(), "This is a testing room.")
+                    )
+                }
             }
             loginRoutes(this)
             profileRoutes(this)

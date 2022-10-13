@@ -6,4 +6,5 @@ import kotlinx.serialization.Serializable
 data class InviteStatus(
     val valid: Boolean,
     val roomName: String?,
+    val allowAnonymous: Boolean,
 )

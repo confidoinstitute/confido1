@@ -66,6 +66,7 @@ data class SentState(
     override val roomComments: Map<Ref<Room>, Map<String, RoomComment>> = emptyMap(),
     override val groupPred: Map<Ref<Question>, Prediction?> = emptyMap(),
     val session: UserSession = UserSession(),
+    val devMode: Boolean = false,
 ) : BaseState {
     fun isAdmin(): Boolean {
         return session.user?.type == UserType.ADMIN

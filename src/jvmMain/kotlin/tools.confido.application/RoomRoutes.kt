@@ -64,7 +64,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
         if (!room.hasPermission(user, RoomPermission.MANAGE_MEMBERS)) return@postST unauthorized("Cannot manage members")
 
         val member: AddedMember = call.receive()
-        if (!canChangeRole(room.userRole(user), member.role)) return@postST unauthorized("This role cannot be changed")
+        if (!(user.type == UserType.ADMIN || canChangeRole(room.userRole(user), member.role))) return@postST unauthorized("This role cannot be changed")
 
         suspend fun addExistingMember(user: Ref<User>, role: RoomRole) =
             serverState.roomManager.modifyEntity(roomRef) {
@@ -82,7 +82,6 @@ fun roomRoutes(routing: Routing) = routing.apply {
         when(member) {
             is AddedExistingMember -> {
                 addExistingMember(member.user, member.role)
-                TransientData.refreshAllWebsockets()
             }
             is AddedNewMember -> {
                 serverState.userManager.byEmail[member.email]?.let {
@@ -91,7 +90,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                 } ?: run {
                     val newUser = User(
                         randomString(32),
-                        UserType.MEMBER,
+                        UserType.GUEST,
                         member.email,
                         emailVerified = false,
                         nick = null,
@@ -105,13 +104,14 @@ fun roomRoutes(routing: Routing) = routing.apply {
                     try {
                         call.mailer.sendDirectInviteMail(member.email, room, link, user.email)
                     } catch (e: MailException) {
+                        e.printStackTrace()
                         return@postST call.respond(HttpStatusCode.ServiceUnavailable, "Could not send an invitation e-mail.")
                     }
 
                     serverState.withTransaction {
                         serverState.userManager.insertEntity(newUser)
                         serverState.roomManager.modifyEntity(room.ref) {
-                            it.copy(members = it.members + listOf(RoomMembership(user.ref, member.role, null)))
+                            it.copy(members = it.members + listOf(RoomMembership(newUser.ref, member.role, null)))
                         }
                         serverState.loginLinkManager.insertEntity(link)
                     }
@@ -119,6 +119,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
             }
         }
 
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Remove a room's member
@@ -167,9 +168,8 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
             if (!room.hasPermission(user, RoomPermission.MANAGE_COMMENTS) && !(comment.user eqid user)) return@withMutationLock unauthorized("You cannot do this.")
 
             serverState.roomCommentManager.deleteEntity(comment, true)
-
-            TransientData.refreshAllWebsockets()
-            call.respond(HttpStatusCode.OK)
         }
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK)
     }
 }
