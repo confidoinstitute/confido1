@@ -124,7 +124,7 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
         if (madePrediction && madeUncertainty) {
             confidences.map { confidence ->
                 Typography {
-                    val confidenceInterval = dist.confidenceInterval(1 - confidence.p)
+                    val confidenceInterval = dist.confidenceInterval(confidence.p)
                     +"You are "
                     ReactHTML.strong {
                         css {
