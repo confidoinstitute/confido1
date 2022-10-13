@@ -2,6 +2,7 @@ package components.questions
 
 import components.AppStateContext
 import components.DistributionSummary
+import components.SpoilerButton
 import components.rooms.RoomContext
 import csstype.*
 import hooks.useDebounce
@@ -244,10 +245,31 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     strong {
                         +"Group predictions: "
                     }
-                    DistributionSummary {
-                        spoiler = true
-                        allowPlotDialog = true
-                        distribution = appState.groupPred[question.ref]?.dist
+                    SpoilerButton {
+                        DistributionSummary {
+                            allowPlotDialog = true
+                            distribution = appState.groupPred[question.ref]?.dist
+                        }
+                    }
+                }
+            }
+            question.resolution?.let { resolution->
+                if (question.resolutionVisible || appState.hasPermission(
+                        room,
+                        RoomPermission.VIEW_ALL_RESOLUTIONS
+                    )
+                ) {
+                    Typography {
+                        sx {
+                            margin = Margin(themed(1), themed(0))
+                            lineHeight = number(2.0)
+                        }
+                        strong {
+                            +"Resolution: "
+                        }
+                        SpoilerButton {
+                            +(resolution.format())
+                        }
                     }
                 }
             }

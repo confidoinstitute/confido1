@@ -14,32 +14,23 @@ import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ProbabilityDistribution
 
 external interface DistributionSummaryProps : Props {
-    var spoiler: Boolean
     var distribution: ProbabilityDistribution?
     var allowPlotDialog: Boolean
 }
 
 val DistributionSummary = FC<DistributionSummaryProps> {props ->
-    var shown by useState(!props.spoiler)
     var open by useState(false)
 
-    when(shown) {
-        false -> Button {
-            +"Show"
-            size = Size.small
-            onClick = { shown = true }
-        }
-        true -> props.distribution?.let {
-            +props.distribution!!.description
-            if (props.allowPlotDialog) {
-                IconButton {
-                    size = Size.small
-                    onClick = {open = true}
-                    BarChart {}
-                }
+     props.distribution?.let {
+        +props.distribution!!.description
+        if (props.allowPlotDialog && props.distribution != null && props.distribution !is BinaryDistribution) {
+            IconButton {
+                size = Size.small
+                onClick = {open = true}
+                BarChart {}
             }
-        } ?: +"(no prediction)"
-    }
+        }
+    } ?: +"(no prediction)"
 
     if (props.allowPlotDialog && props.distribution != null && props.distribution !is BinaryDistribution) {
         Dialog {

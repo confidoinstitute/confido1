@@ -109,10 +109,11 @@ val Comment = FC<CommentProps> { props ->
                     strong {
                         +"Prediction: "
                     }
-                    DistributionSummary {
-                        spoiler = true
-                        allowPlotDialog = true
-                        distribution = comment.prediction?.dist
+                    SpoilerButton {
+                        DistributionSummary {
+                            allowPlotDialog = true
+                            distribution = comment.prediction?.dist
+                        }
                     }
                 }
             }

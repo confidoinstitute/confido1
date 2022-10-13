@@ -58,6 +58,7 @@ object Moderator : RoomRole(
         RoomPermission.ADD_QUESTION,
         RoomPermission.VIEW_HIDDEN_QUESTIONS,
         RoomPermission.VIEW_ALL_GROUP_PREDICTIONS,
+        RoomPermission.VIEW_ALL_RESOLUTIONS,
         RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS,
         RoomPermission.MANAGE_QUESTIONS,
         RoomPermission.MANAGE_MEMBERS,

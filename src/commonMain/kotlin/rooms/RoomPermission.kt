@@ -16,6 +16,7 @@ enum class RoomPermission {
      * See all group predictions regardless of question setting.
      */
     VIEW_ALL_GROUP_PREDICTIONS,
+    VIEW_ALL_RESOLUTIONS,
     VIEW_INDIVIDUAL_PREDICTIONS,
     MANAGE_QUESTIONS,
     MANAGE_MEMBERS,

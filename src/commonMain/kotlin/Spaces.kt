@@ -147,14 +147,14 @@ data class NumericSpace(
 sealed class Value {
     abstract val space: Space
     abstract val value: Any
-    override fun toString() = space.formatValue(value)
+    open fun format() = space.formatValue(value)
 }
 
 sealed class TypedValue<V: Any, S: TypedSpace<V>> : Value() {
     override abstract val space: S
     override abstract val value: V
     // this calls the typed version (TypedSpace<T>.formatValue) directly
-    override fun toString() = space.formatValue(value)
+    override fun format() = space.formatValue(value)
 
     /**
      * This should be called from all subclass constructors. Unfortunately we
