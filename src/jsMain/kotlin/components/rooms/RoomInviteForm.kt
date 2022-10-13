@@ -17,6 +17,7 @@ import payloads.responses.InviteStatus
 import react.dom.html.InputType
 import react.dom.html.ReactHTML.em
 import react.router.useNavigate
+import tools.confido.refs.eqid
 import utils.byTheme
 import utils.eventValue
 import utils.isEmailValid
@@ -165,7 +166,14 @@ val RoomInviteForm = FC<Props> {
                         }
                     }
                 } else {
-                    // TODO: Consider accepting automatically and navigating away in this case.
+                    val alreadyAccepted = appState.rooms[roomId]?.let { room ->
+                        room.members.any { membership -> membership.user eqid appState.session.user }
+                    } ?: false
+
+                    if (alreadyAccepted) {
+                        navigate("/room/${roomId}")
+                    }
+
                     Button {
                         sx {
                             marginTop = themed(2)
