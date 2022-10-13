@@ -140,7 +140,6 @@ val Room = FC<Props> {
                 index = true
                 this.element = QuestionList.create {
                     questions = room.questions.mapNotNull { it.deref() }
-                    // TODO: This should be fully handled by the server.
                     showHiddenQuestions = appState.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
                     allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
                 }

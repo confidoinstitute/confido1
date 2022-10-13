@@ -32,7 +32,6 @@ val EmailLogin = FC<Props> {
                 failed = true
             } else {
                 val url: String = response.body()
-                // TODO: Maybe close tab instead?
                 navigate(url)
             }
         }
