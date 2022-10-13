@@ -1,5 +1,4 @@
 - Refresh all websockets on serverState change
-- Save prediction history
 - When you use an invite link and enter email of existing user, it should redirect
   you to login with prefilled email or similar
 - Prepare deploy
@@ -18,6 +17,7 @@ Source code cleanup:
 - Rename roots (frontend, backend, common)
 - Unify directory structure
 - Module split?
+- Assign entity IDs in constructor, not during insert
 
 Perhaps:
 - Presenter mode

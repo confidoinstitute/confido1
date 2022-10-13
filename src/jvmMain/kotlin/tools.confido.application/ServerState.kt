@@ -4,9 +4,11 @@ import com.mongodb.ConnectionString
 import com.mongodb.client.model.Filters.and
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.reactivestreams.client.ClientSession
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import org.litote.kmongo.ascending
 import org.litote.kmongo.coroutine.*
 import org.litote.kmongo.eq
 import org.litote.kmongo.reactivestreams.KMongo
@@ -288,6 +290,25 @@ object serverState : GlobalState() {
     }
     val userPred by userPredManager::userPred
 
+    object userPredHistManager : IdBasedEntityManager<Prediction>(database.getCollection("userPredHist")) {
+        override suspend fun initialize() {
+            mongoCollection.ensureIndex(Prediction::question, Prediction::user, Prediction::ts)
+        }
+        suspend fun query(question: Ref<Question>, user: Ref<User>) {
+            mongoCollection.find(and(Prediction::question eq question, Prediction::user eq user))
+                .sort(ascending(Prediction::ts)).toList()
+        }
+    }
+    object groupPredHistManager : IdBasedEntityManager<Prediction>(database.getCollection("groupPredHist")) {
+        override suspend fun initialize() {
+            mongoCollection.ensureIndex(Prediction::question, Prediction::ts)
+        }
+        suspend fun query(question: Ref<Question>) {
+            mongoCollection.find(and(Prediction::question eq question))
+                .sort(ascending(Prediction::ts)).toList()
+        }
+    }
+
     object questionCommentManager: InMemoryEntityManager<QuestionComment>(database.getCollection("questionComments")) {
         val questionComments : MutableMap<Ref<Question>, MutableMap<String, QuestionComment>> = mutableMapOf()
         init {
@@ -381,10 +402,11 @@ object serverState : GlobalState() {
             }
         }
 
-    fun recalcGroupPred(question: Question?) {
-        question ?: return
+    fun recalcGroupPred(question: Question?): Prediction? {
+        question ?: return null
         val gp = calculateGroupPred(question, userPred[question.ref]?.values ?: emptyList())
         groupPred[question.ref] = gp
+        return gp
     }
     fun recalcGroupPred() {
         questions.values.forEach {
@@ -437,8 +459,23 @@ object serverState : GlobalState() {
         return super.derefNonBlocking(entityType, id)
     }
 
+    suspend fun addPrediction(pred: Prediction) {
+        require(pred.question != null)
+        val q = pred.question.deref()
+        require(q != null)
+        withTransaction {
+            userPredManager.save(pred)
+            userPredHistManager.insertEntity(pred.copy(id=""))
+            val gp = recalcGroupPred(q)
+            gp?.let {
+                check(gp.user==null)
+                groupPredHistManager.insertEntity(gp.copy(id = ""))
+            }
+        }
+    }
+
 }
-suspend inline fun <reified  E: Entity> serverState.IdBasedEntityManager<E>.insertEntity(entity: E, forceId: Boolean = false) =
+suspend inline fun <reified  E: HasId> serverState.IdBasedEntityManager<E>.insertEntity(entity: E, forceId: Boolean = false) =
     insertWithId(entity.assignIdIfNeeded())
 suspend fun <E: Entity> serverState.IdBasedEntityManager<E>.deleteEntity(ref: Ref<E>, ignoreNonexistent: Boolean = false) =
     deleteEntity(ref.id, ignoreNonexistent)

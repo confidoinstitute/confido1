@@ -8,6 +8,7 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import rooms.Room
+import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.question.QuestionComment
 import tools.confido.question.RoomComment
@@ -112,7 +113,7 @@ fun <T: Entity> MutableMap<String, T>.insert(what: T) = this.set(what.id, what)
 fun <T: Entity> MutableMap<String, T>.remove(what: T) = this.remove(what.id)
 
 // HACK: we cannot call copy() on T:Entity because compiler does not know it is a data class
-inline fun <reified  T: Entity> T.withId(id: String): T =
+inline fun <reified  T: HasId> T.withId(id: String): T =
     when (this) {
         is Question -> copy(id = id) as T
         is QuestionComment -> copy(id = id) as T
@@ -122,9 +123,10 @@ inline fun <reified  T: Entity> T.withId(id: String): T =
         is LoginLink -> copy(id = id) as T
         is EmailVerificationLink -> copy(id = id) as T
         is UserSession -> copy(id = id) as T
+        is Prediction -> copy(id = id) as T
         else -> throw NotImplementedError("withId for ${T::class} in Refs.kt")
     }
 
-inline fun <reified  T: Entity> T.assignId() = withId(generateId())
+inline fun <reified  T: HasId> T.assignId() = withId(generateId())
 
-inline fun <reified T: Entity> T.assignIdIfNeeded() = if (id.isEmpty()) assignId() else this
+inline fun <reified T: HasId> T.assignIdIfNeeded() = if (id.isEmpty()) assignId() else this

@@ -106,7 +106,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
         if (question.answerSpace != dist.space) return@postST badRequest("The answer space is not compatible.")
 
         val pred = Prediction(ts=unixNow(), dist = dist, question = question.ref, user = user.ref)
-        serverState.userPredManager.save(pred)
+        serverState.addPrediction(pred)
 
         call.transientUserData?.refreshRunningWebsockets()
         call.respond(HttpStatusCode.OK)
