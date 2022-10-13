@@ -10,18 +10,29 @@ import icons.Feedback
 import icons.LogoutIcon
 import icons.MenuIcon
 import icons.SettingsIcon
+import io.ktor.client.request.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import mui.material.*
 import mui.system.responsive
 import mui.system.sx
 import org.w3c.dom.HTMLElement
 import react.*
+import react.dom.html.ButtonType
+import react.dom.onChange
+import react.dom.html.ReactHTML.form
+import react.router.useLocation
 import react.router.useNavigate
+import utils.eventValue
 import utils.themed
+import kotlin.coroutines.EmptyCoroutineContext
 
 val FeedbackForm = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
+    val location = useLocation()
 
     var formOpen by useState(false)
+    var feedback by useState("")
 
     Dialog {
         open = formOpen
@@ -29,21 +40,36 @@ val FeedbackForm = FC<Props> {
         DialogTitle {
             +"Send feedback"
         }
-        DialogContent {
-            DialogContentText {
-                +"Have you found a bug? Do you think something can be improved? Please, let us know."
+        form {
+            onSubmit = {
+                it.preventDefault()
+                CoroutineScope(EmptyCoroutineContext).launch {
+                    Client.httpClient.post("/feedback") {
+                        this.parameter("url", location.pathname)
+                        setBody(feedback)
+                    }
+                    formOpen = false
+                }
             }
+            DialogContent {
+                DialogContentText {
+                    +"Have you found a bug? Do you think something can be improved? Please, let us know."
+                }
 
-            TextField {
-                fullWidth = true
-                multiline = true
-                rows = 10
+                TextField {
+                    fullWidth = true
+                    multiline = true
+                    value = feedback
+                    onChange = {feedback = it.eventValue()}
+                    rows = 10
+                }
             }
-        }
-        DialogActions {
-            Button {
-                disabled = stale
-                +"Send"
+            DialogActions {
+                Button {
+                    type = ButtonType.submit
+                    disabled = stale
+                    +"Send"
+                }
             }
         }
     }

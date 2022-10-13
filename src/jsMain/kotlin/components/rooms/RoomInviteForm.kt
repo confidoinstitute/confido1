@@ -114,7 +114,7 @@ val RoomInviteForm = FC<Props> {
                             // For now, we leave email empty.
                             Client.postData(
                                 "/rooms/$roomId/invite/accept_newuser",
-                                AcceptInviteAndCreateUser(inviteToken, name, userMail)
+                                AcceptInviteAndCreateUser(inviteToken, name.ifEmpty { null }, userMail)
                             ).invokeOnCompletion {
                                 navigate("/room/${roomId}")
                             }

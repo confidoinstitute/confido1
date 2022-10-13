@@ -169,6 +169,8 @@ fun main() {
             roomCommentsRoutes(this)
             questionRoutes(this)
             questionCommentsRoutes(this)
+            genericRoutes(this)
+
             webSocketST("/state") {
                 print(call.request.headers["user-agent"])
                 print(call.request.headers.toMap())
