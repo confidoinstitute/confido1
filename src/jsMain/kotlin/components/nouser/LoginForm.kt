@@ -2,6 +2,8 @@ package components.nouser
 
 import components.AppStateContext
 import csstype.*
+import io.ktor.http.*
+import kotlinx.coroutines.*
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.sx
@@ -13,7 +15,9 @@ import react.dom.html.InputType
 import react.dom.html.ReactHTML.h1
 import utils.byTheme
 import utils.eventValue
+import utils.postJson
 import utils.themed
+import kotlin.coroutines.EmptyCoroutineContext
 
 enum class LoginMode {
     MagicLink,
@@ -27,6 +31,7 @@ val LoginForm = FC<Props> {
 
     var mode by useState(LoginMode.MagicLink)
     var emailSent by useState(false)
+    var wrongPassword by useState(false)
 
     fun attemptLogin() {
         when (mode) {
@@ -35,7 +40,16 @@ val LoginForm = FC<Props> {
                 emailSent = true
             }
 
-            LoginMode.Password -> Client.postData("/login", PasswordLogin(email, password))
+            LoginMode.Password -> {
+                CoroutineScope(EmptyCoroutineContext).launch {
+                    val response = Client.httpClient.postJson("/login", PasswordLogin(email, password)) {}
+                    console.log(response)
+                    if (response.status == HttpStatusCode.Unauthorized) {
+                        wrongPassword = true
+                        password = ""
+                    }
+                }
+            }
         }
     }
 
@@ -91,6 +105,12 @@ val LoginForm = FC<Props> {
                     label = ReactNode("Password")
                     value = password
                     disabled = stale
+                    helperText = if (wrongPassword) {
+                        ReactNode("Wrong password or email, please try again.")
+                    } else {
+                        null
+                    }
+                    error = wrongPassword
                     onChange = {
                         password = it.eventValue()
                     }
@@ -175,6 +195,8 @@ val LoginForm = FC<Props> {
                     variant = TypographyVariant.body2
                     onClick = {
                         mode = LoginMode.MagicLink
+                        password = ""
+                        wrongPassword = false
                     }
                     +"Log in with email only"
                 }
