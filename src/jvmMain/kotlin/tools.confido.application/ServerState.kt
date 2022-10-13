@@ -234,7 +234,7 @@ object serverState : GlobalState() {
     object userManager : InMemoryEntityManager<User>(database.getCollection("users")) {
         override suspend fun initialize() {
             super.initialize()
-            mongoCollection.ensureUniqueIndex(User::email)
+            mongoCollection.ensureIndex(User::email)
         }
         val byEmail: MutableMap<String, User> = mutableMapOf()
         init {
