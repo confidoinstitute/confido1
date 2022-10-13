@@ -15,6 +15,8 @@ def generate_id():
 
 dbname = sys.argv[1]
 email  = sys.argv[2]
+try: name = sys.argv[3]
+except IndexError: name = None
 
 
 client = MongoClient()
@@ -26,7 +28,7 @@ pw = generate_id()
 print("Password:",pw)
 pwh = argon2.hash(pw)
 users.insert_one(
-         dict(id=generate_id(), type='ADMIN', email=email, emailVerified=True, nick="", password=pwh, createdAt=now(), lastLoginAt=now()),
+         dict(id=generate_id(), type='ADMIN', email=email, emailVerified=True, nick=name, password=pwh, createdAt=now(), lastLoginAt=now()),
     )
 
 
