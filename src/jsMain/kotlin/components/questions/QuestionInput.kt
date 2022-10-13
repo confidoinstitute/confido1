@@ -49,9 +49,9 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
 
     val confidences = useMemo(props.enabled) {
         if (props.enabled) listOf(
-            ConfidenceColor(0.5, "#039be5".asValue()),
-            ConfidenceColor(0.7, "#1565c0".asValue()),
-            ConfidenceColor(0.9, "#311b92".asValue()),
+            ConfidenceColor(0.5, "#88d4e7".asValue()),
+            ConfidenceColor(0.7, "#55a3b5".asValue()),
+            ConfidenceColor(0.9, "#675491".asValue()),
         ) else listOf(
             ConfidenceColor(0.5, "#bfbfbf".asValue()),
             ConfidenceColor(0.7, "#acacac".asValue()),
@@ -77,7 +77,7 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
             SimpleContDistPlot {
                 this.dist = dist
                 this.confidences = confidences
-                this.outsideColor = if (props.enabled) Value.of("#000e47") else Value.of("#9c9c9c")
+                this.outsideColor = if (props.enabled) Value.of("#3a2b63") else Value.of("#9c9c9c")
                 this.visible = madePrediction && madeUncertainty
             }
 

@@ -38,7 +38,13 @@ val globalTheme = createTheme(
             this.primary = buildObject<PaletteColor> {
                 main = Color("#675491")
                 light = Color("#9681c2")
-                dark = Color("3a2b63")
+                dark = Color("#3a2b63")
+                contrastText = Color("#ffffff")
+            }
+            this.secondary = buildObject<PaletteColor> {
+                main = Color("#55a3b5")
+                light = Color("#88d4e7")
+                dark = Color("#1c7485")
                 contrastText = Color("#ffffff")
             }
         }
