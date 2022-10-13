@@ -125,7 +125,7 @@ fun main() {
     }
 
 
-    embeddedServer(CIO, port = 8080, host = "127.0.0.1") {
+    embeddedServer(CIO, port = System.getenv("CONFIDO_HTTP_PORT")?.toIntOrNull() ?: 8080, host = "127.0.0.1") {
         install(WebSockets)
         install(CallLogging)
         install(ContentNegotiation) {
