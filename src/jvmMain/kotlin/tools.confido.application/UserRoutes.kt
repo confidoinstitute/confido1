@@ -10,6 +10,7 @@ import kotlinx.datetime.Clock
 import payloads.requests.*
 import payloads.responses.InviteStatus
 import rooms.*
+import tools.confido.application.sessions.TransientData
 import tools.confido.application.sessions.modifyUserSession
 import tools.confido.application.sessions.transientUserData
 import tools.confido.application.sessions.userSession
@@ -26,7 +27,6 @@ import users.EmailVerificationLink
 import users.LoginLink
 import users.User
 import users.UserType
-import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
 fun loginRoutes(routing: Routing) = routing.apply {
@@ -46,7 +46,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
         }
 
         call.modifyUserSession { it.copy(userRef = user.ref) }
-        call.transientUserData?.refreshRunningWebsockets()
+        TransientData.refreshAllWebsockets()
         println(session)
         call.respond(HttpStatusCode.OK)
     }
@@ -93,7 +93,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
         }
 
         call.modifyUserSession { it.copy(userRef = loginLink.user) }
-        call.transientUserData?.refreshRunningWebsockets()
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK, loginLink.url)
     }
     // Log out
@@ -103,7 +103,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
         session?.user ?: return@postST
 
         call.modifyUserSession { it.copy(userRef = null) }
-        call.transientUserData?.refreshRunningWebsockets()
+        call.transientUserData?.refreshSessionWebsockets()
     }
 }
 
@@ -147,7 +147,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
             serverState.verificationLinkManager.deleteEntity(verificationLink.ref)
         }
 
-        call.transientUserData?.refreshRunningWebsockets()
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Change nick
@@ -158,7 +158,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
         val editedUser = user.copy(nick = setNick.name)
         serverState.users[editedUser.id] = editedUser
 
-        call.transientUserData?.refreshRunningWebsockets()
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
 }
@@ -196,7 +196,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             it.copy(inviteLinks=it.inviteLinks + listOf(inviteLink))
         }
 
-        call.transientUserData?.refreshRunningWebsockets()
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK, inviteLink)
     }
     // Edit an invitation link
@@ -224,7 +224,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             r.copy(inviteLinks=inviteLinks)
         }
 
-        call.transientUserData?.refreshRunningWebsockets()
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     postST("/rooms/{id}/invite/accept") {
@@ -246,7 +246,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             }
         }
 
-        call.transientUserData?.refreshRunningWebsockets()
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     postST("/rooms/{id}/invite/accept_newuser") {
@@ -288,7 +288,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             call.respond(HttpStatusCode.OK, false)
         }
 
-        call.transientUserData?.refreshRunningWebsockets()
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
 }

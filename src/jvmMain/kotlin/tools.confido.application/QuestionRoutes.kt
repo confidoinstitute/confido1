@@ -8,6 +8,7 @@ import io.ktor.server.routing.*
 import payloads.requests.*
 import rooms.Room
 import rooms.RoomPermission
+import tools.confido.application.sessions.TransientData
 import tools.confido.application.sessions.transientUserData
 import tools.confido.application.sessions.userSession
 import tools.confido.distributions.ProbabilityDistribution
@@ -37,7 +38,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
             }
         }
 
-        call.transientUserData?.refreshRunningWebsockets()
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Edit a question
@@ -67,7 +68,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
             is EditQuestionComplete ->
                 serverState.questionManager.replaceEntity(editQuestion.question.copy(id=origRef.id))
         }
-        call.transientUserData?.refreshRunningWebsockets()
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Delete question
@@ -90,7 +91,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
             }
         }
 
-        call.transientUserData?.refreshRunningWebsockets()
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
 
@@ -108,7 +109,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
         val pred = Prediction(ts=unixNow(), dist = dist, question = question.ref, user = user.ref)
         serverState.addPrediction(pred)
 
-        call.transientUserData?.refreshRunningWebsockets()
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
 
@@ -133,7 +134,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
             content = createdComment.content, prediction = prediction)
         serverState.questionCommentManager.insertEntity(comment)
 
-        call.transientUserData?.refreshRunningWebsockets()
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
 
@@ -151,7 +152,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
 
             serverState.questionCommentManager.deleteEntity(comment, true)
 
-            call.transientUserData?.refreshRunningWebsockets()
+            TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
     }

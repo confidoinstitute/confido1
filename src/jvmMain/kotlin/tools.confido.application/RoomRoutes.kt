@@ -9,6 +9,7 @@ import kotlinx.datetime.Clock
 import org.simplejavamail.MailException
 import payloads.requests.*
 import rooms.*
+import tools.confido.application.sessions.TransientData
 import tools.confido.application.sessions.transientUserData
 import tools.confido.application.sessions.userSession
 import tools.confido.question.RoomComment
@@ -35,7 +36,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                 members = listOf(myMembership), inviteLinks = emptyList())
         )
 
-        call.transientUserData?.refreshRunningWebsockets()
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK, room.id)
     }
     // Edit a room's details
@@ -52,7 +53,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
             it.copy(name = roomName, description = information.description)
         }
 
-        call.transientUserData?.refreshRunningWebsockets()
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Add a new member, either an existing user directly or a new user by e-mail
@@ -81,7 +82,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
         when(member) {
             is AddedExistingMember -> {
                 addExistingMember(member.user, member.role)
-                call.transientUserData?.refreshRunningWebsockets()
+                TransientData.refreshAllWebsockets()
             }
             is AddedNewMember -> {
                 serverState.userManager.byEmail[member.email]?.let {
@@ -134,7 +135,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
             it.copy(members = it.members.filterNot { m -> m.user eqid id })
         }
 
-        call.transientUserData?.refreshRunningWebsockets()
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
 }
@@ -151,7 +152,7 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
         val comment = RoomComment(id = "", room = room.ref, user = user.ref, timestamp = unixNow(),
             content = createdComment.content, isAnnotation = false)
         serverState.roomCommentManager.insertEntity(comment)
-        call.transientUserData?.refreshRunningWebsockets()
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     deleteST("/rooms/{rID}/comments/{id}") {
@@ -167,7 +168,7 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
 
             serverState.roomCommentManager.deleteEntity(comment, true)
 
-            call.transientUserData?.refreshRunningWebsockets()
+            TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
     }

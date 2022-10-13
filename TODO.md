@@ -1,4 +1,3 @@
-- Refresh all websockets on serverState change
 - When you use an invite link and enter email of existing user, it should redirect
   you to login with prefilled email or similar
 - Prepare deploy
