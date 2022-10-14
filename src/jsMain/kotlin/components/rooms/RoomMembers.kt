@@ -2,6 +2,7 @@ package components.rooms
 
 import components.AppStateContext
 import components.UserAvatar
+import components.userListItemText
 import csstype.px
 import hooks.useDebounce
 import icons.*
@@ -268,12 +269,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
                 this.user = user
             }
         }
-        ListItemText {
-            primary = ReactNode(user.nick ?: "Anonymous")
-            user.email?.let {
-                secondary = ReactNode(it)
-            }
-        }
+        +userListItemText(user)
         if (canChangeRole(appState, room, membership.role) && canChangeSelf()) {
             MemberRoleSelect {
                 value = membership.role

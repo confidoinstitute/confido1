@@ -2,6 +2,7 @@ package components.rooms
 
 import components.AppStateContext
 import components.UserAvatar
+import components.userListItemText
 import csstype.AlignItems
 import csstype.rem
 import kotlinx.js.Object
@@ -53,14 +54,7 @@ internal fun renderOption(attributes: HTMLAttributes<HTMLLIElement>, option: Use
                         user = option.user
                     }
                 }
-                ListItemText {
-                    option.user.nick?.let {
-                        primary = react.ReactNode(option.user.nick)
-                        secondary = react.ReactNode(option.user.email ?: "")
-                    } ?: run {
-                        primary = react.ReactNode(option.user.email ?: "")
-                    }
-                }
+                +userListItemText(option.user)
             }
             is NewUser -> {
                 ListItemAvatar {

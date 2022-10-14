@@ -21,3 +21,19 @@ val UserAvatar = FC<UserAvatarProps> {props ->
         }
     }
 }
+
+fun userListItemText(user: User) = ListItemText.create {
+    val nick = user.nick
+    val email = user.email
+    if (nick != null && email != null) {
+        primary = ReactNode(nick)
+        secondary = ReactNode(email)
+    } else if (nick != null) {
+        primary = ReactNode(nick)
+        secondary = ReactNode("Temporary guest")
+    } else if (email != null) {
+        primary = ReactNode(email)
+    } else {
+        primary = ReactNode("Temporary guest")
+    }
+}

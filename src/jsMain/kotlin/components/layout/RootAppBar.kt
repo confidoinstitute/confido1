@@ -1,9 +1,6 @@
 package components.layout
 
-import components.AppStateContext
-import components.ListItemNavigation
-import components.MenuItemNavigation
-import components.UserAvatar
+import components.*
 import csstype.None
 import csstype.number
 import icons.*
@@ -103,10 +100,7 @@ val ProfileMenu = FC<Props> {
 
         ListItem {
             ListItemAvatar {
-                ListItemText {
-                    primary = ReactNode(user.nick ?: "Anonymous")
-                    secondary = ReactNode(user.email ?: "Temporary guest")
-                }
+                +userListItemText(user)
             }
         }
 
