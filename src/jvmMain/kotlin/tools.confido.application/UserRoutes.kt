@@ -152,11 +152,15 @@ fun profileRoutes(routing: Routing) = routing.apply {
     }
     // Change nick
     postST("/profile/nick") {
-        val user = call.userSession?.user ?: return@postST unauthorized("Not logged in.")
+        val userRef = call.userSession?.userRef ?: return@postST unauthorized("Not logged in.")
         val setNick: SetNick = call.receive()
+        val newNick = if (setNick.name == "") null else setNick.name
 
-        val editedUser = user.copy(nick = setNick.name)
-        serverState.users[editedUser.id] = editedUser
+        System.err.println("Setting nick $userRef $newNick")
+
+        serverState.userManager.modifyEntity(userRef) {
+            it.copy(nick = newNick)
+        }
 
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)

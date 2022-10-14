@@ -2,6 +2,7 @@ package users
 
 import kotlinx.datetime.Clock.System.now
 import kotlinx.datetime.Instant
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import tools.confido.refs.ImmediateDerefEntity
 import tools.confido.refs.Ref
@@ -9,6 +10,7 @@ import tools.confido.utils.generateToken
 
 @Serializable
 data class User(
+    @SerialName("_id")
     override val id: String,
     val type: UserType,
     // TODO(privacy): make sure it does not get sent to the client for other users
@@ -27,6 +29,7 @@ data class User(
 
 @Serializable
 data class LoginLink(
+    @SerialName("_id")
     override val id: String = "", // generated on insert
     val token: String = generateToken(),
     val user: Ref<User>,
@@ -40,6 +43,7 @@ data class LoginLink(
 
 @Serializable
 data class EmailVerificationLink(
+    @SerialName("_id")
     override val id: String = "", // generated on insert
     val token: String = generateToken(),
     val user: Ref<User>,

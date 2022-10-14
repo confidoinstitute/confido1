@@ -1,6 +1,7 @@
 package rooms
 
 import kotlinx.datetime.Instant
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import tools.confido.refs.HasId
 import tools.confido.refs.Ref
@@ -17,6 +18,7 @@ enum class InviteLinkState {
 
 @Serializable
 data class InviteLink(
+    @SerialName("_id")
     override val id: String = generateId(),
     val token: String = generateToken(),
     val description: String,
