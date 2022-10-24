@@ -17,6 +17,8 @@ interface BaseState {
     val roomComments:  Map<Ref<Room>, Map<String, RoomComment>>
     val users:  Map<String, User>
     val groupPred : Map<Ref<Question>, Prediction?>
+    val predictorCount : Map<Ref<Question>, Int>
+    val predictionCount : Map<Ref<Question>, Int>
 }
 
 abstract class GlobalState : BaseState {
@@ -67,6 +69,8 @@ data class SentState(
     override val groupPred: Map<Ref<Question>, Prediction?> = emptyMap(),
     val session: UserSession = UserSession(),
     val devMode: Boolean = false,
+    override val predictionCount: Map<Ref<Question>, Int> = emptyMap(),
+    override val predictorCount: Map<Ref<Question>, Int> = emptyMap(),
 ) : BaseState {
     fun isAdmin(): Boolean {
         return session.user?.type == UserType.ADMIN

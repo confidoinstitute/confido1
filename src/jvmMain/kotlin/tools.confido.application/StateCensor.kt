@@ -88,6 +88,9 @@ class StateCensor(val sess: UserSession) {
     fun censorQuestions() = state.questions.mapValuesNotNull{ censorQuestion(it.value) }
     fun censorRooms() = state.rooms.mapValuesNotNull{ censorRoom(it.value) }
 
+    fun <T> censorQuestionInfo(what: Map<Ref<Question>, T>) =
+        what.filterKeys { k -> k.deref()?.let{ q -> censorQuestion(q) } != null }
+
     fun censorUsers() =
         state.users.mapValuesNotNull { censorUser(it.value) }
 
@@ -98,6 +101,8 @@ class StateCensor(val sess: UserSession) {
         return SentState(
             rooms = censorRooms(),
             questions = censorQuestions(),
+            predictorCount = censorQuestionInfo(state.predictorCount),
+            predictionCount = censorQuestionInfo(state.predictionCount),
             roomComments = censorRoomComments(),
             questionComments = censorQuestionComments(),
             groupPred = censorGroupPred(),

@@ -44,6 +44,7 @@ class TransactionContextElement(val sess: ClientSession) : AbstractCoroutineCont
 
 object serverState : GlobalState() {
     override val groupPred : MutableMap<Ref<Question>, Prediction?> = mutableMapOf()
+    override val predictorCount: MutableMap<Ref<Question>, Int> = mutableMapOf()
 
     // Now, for simplicity, serialize all mutations
     val mutationMutex = Mutex()
@@ -315,6 +316,8 @@ object serverState : GlobalState() {
             }
         }
     }
+
+    override val predictionCount: Map<Ref<Question>, Int> by userPredHistManager::totalPredictions
     object groupPredHistManager : IdBasedEntityManager<Prediction>(database.getCollection("groupPredHist")) {
         override suspend fun initialize() {
             mongoCollection.ensureIndex(Prediction::question, Prediction::ts)
@@ -425,6 +428,7 @@ object serverState : GlobalState() {
         question ?: return null
         val gp = calculateGroupPred(question, userPred[question.ref]?.values ?: emptyList())
         groupPred[question.ref] = gp
+        predictorCount[question.ref] = userPred[question.ref]?.size ?: 0
         return gp
     }
     fun recalcGroupPred() {
