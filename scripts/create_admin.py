@@ -26,9 +26,9 @@ users = db['users']
 
 pw = generate_id()
 print("Password:",pw)
-pwh = argon2.hash(pw)
+pwh = argon2.using(parallelism=1).hash(pw)
 users.insert_one(
-         dict(id=generate_id(), type='ADMIN', email=email, emailVerified=True, nick=name, password=pwh, createdAt=now(), lastLoginAt=now()),
+         dict(_id=generate_id(), type='ADMIN', email=email, emailVerified=True, nick=name, password=pwh, createdAt=now(), lastLoginAt=now()),
     )
 
 
