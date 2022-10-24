@@ -1,6 +1,7 @@
 package components.questions
 
 import components.AppStateContext
+import components.DistributionButton
 import components.DistributionSummary
 import components.SpoilerButton
 import components.rooms.RoomContext
@@ -9,6 +10,7 @@ import hooks.useDebounce
 import hooks.useOnUnmount
 import icons.EditIcon
 import icons.ExpandMore
+import icons.GroupsIcon
 import io.ktor.client.plugins.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -237,6 +239,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     RoomPermission.VIEW_ALL_GROUP_PREDICTIONS
                 )
             ) {
+                // Disable this as we now have button for group predictions
+                if (false)
                 Typography {
                     sx {
                         margin = Margin(themed(1), themed(0))
@@ -275,6 +279,12 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             }
         }
         AccordionActions {
+            DistributionButton {
+                this.distribution = appState.groupPred[question.ref]?.dist
+                this.disabled =
+                    !(question.groupPredVisible || appState.hasPermission( room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS ))
+                this.count = props.question.numPredictors
+            }
             QuestionComments {
                 this.question = props.question
                 this.comments = props.comments
@@ -282,6 +292,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             }
             if (props.editable) {
                 IconButton {
+                    disabled = stale
                     onClick = { props.onEditDialog?.invoke(question); it.stopPropagation() }
                     EditIcon {}
                 }

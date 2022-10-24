@@ -29,7 +29,7 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
 
         Badge {
             this.badgeContent = if (count > 0) ReactNode(count.toString()) else null
-            this.color = BadgeColor.primary
+            this.color = BadgeColor.secondary
             CommentIcon {}
         }
     }

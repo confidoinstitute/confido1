@@ -50,7 +50,7 @@ val QuestionList = FC<QuestionListProps> { props ->
             this.question = question
             this.expanded = question.id == expandedQuestion
             this.prediction = appState.myPredictions[question.ref]
-            this.editable = props.allowEditingQuestions && !stale
+            this.editable = props.allowEditingQuestions
             this.canPredict = canPredict
             this.comments = appState.questionComments[question.ref] ?: emptyMap()
             this.onEditDialog = ::editQuestionOpen
