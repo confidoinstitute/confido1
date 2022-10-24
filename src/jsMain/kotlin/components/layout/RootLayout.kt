@@ -2,6 +2,7 @@ package components.layout
 
 import components.AppStateContext
 import components.nouser.EmailLoginAlreadyLoggedIn
+import components.profile.AdminView
 import components.profile.UserSettings
 import components.profile.VerifyEmail
 import components.rooms.RoomInviteForm
@@ -95,6 +96,12 @@ val RootLayout = FC<Props> {
                         Route {
                             path = "profile"
                             this.element = UserSettings.create()
+                        }
+                    }
+                    if (appState.isAdmin()) {
+                        Route {
+                            path = "admin/users"
+                            this.element = AdminView.create()
                         }
                     }
                 }

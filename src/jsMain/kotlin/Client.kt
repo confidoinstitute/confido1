@@ -25,8 +25,9 @@ object Client {
         block?.invoke()
     }
 
-    inline fun <reified T> postData(url: String, payload: T) = CoroutineScope(EmptyCoroutineContext).launch {
-        httpClient.postJson(url, payload) {}
+    inline fun <reified T> postData(url: String, payload: T, crossinline block: (HttpRequestBuilder.() -> Unit) = {})
+    = CoroutineScope(EmptyCoroutineContext).launch {
+        httpClient.postJson(url, payload, block)
     }
 
     suspend inline fun <reified T, reified R> postDataAndReceive(url: String, payload: T, block: (HttpRequestBuilder.() -> Unit) = {}): R {

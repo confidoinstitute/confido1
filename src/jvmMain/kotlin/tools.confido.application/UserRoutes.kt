@@ -305,3 +305,50 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK, userAlreadyExists)
     }
 }
+
+fun adminUserRoutes(routing: Routing) = routing.apply {
+    postST("/users/edit") {
+        val user = call.userSession?.user ?: return@postST unauthorized("Not logged in")
+        if (user.type != UserType.ADMIN) return@postST unauthorized("Cannot manage users")
+
+        val editedUser: User = call.receive()
+        if (editedUser.email == null && editedUser.type != UserType.GUEST) return@postST badRequest("Only guest can not have e-mail")
+        val isSelf = editedUser eqid user
+
+        serverState.userManager.modifyEntity(editedUser.id) {
+           it.copy(
+               nick = editedUser.nick?.ifEmpty { null },
+               email = editedUser.email?.ifEmpty { null },
+               emailVerified = true,
+               type = if (isSelf) UserType.ADMIN else editedUser.type,
+               active = if (isSelf) true else editedUser.active,
+           )
+        }
+
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
+    postST("/users/add") {
+        val user = call.userSession?.user ?: return@postST unauthorized("Not logged in")
+        if (user.type != UserType.ADMIN) return@postST unauthorized("Cannot manage users")
+
+        val sendInvitationEmail = (call.parameters["invite"] != null)
+
+        val addedUser: User = call.receive()
+        if (addedUser.email == null && addedUser.type != UserType.GUEST) return@postST badRequest("Only guest can not have e-mail")
+
+        serverState.userManager.insertEntity(addedUser)
+        TransientData.refreshAllWebsockets()
+
+        if (sendInvitationEmail && addedUser.email != null) {
+            try {
+                call.mailer.sendUserInviteMail(addedUser.email)
+            } catch(e: org.simplejavamail.MailException) {
+                // Possible side channel!!!
+                return@postST call.respond(HttpStatusCode.ServiceUnavailable, "There was a failure in sending the e-mail.")
+            }
+        }
+
+        call.respond(HttpStatusCode.OK)
+    }
+}

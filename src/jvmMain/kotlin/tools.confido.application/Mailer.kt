@@ -25,7 +25,26 @@ class Mailer(
         }
     }
 
-    fun sendDirectInviteMail(address: String, room: Room, login: LoginLink, invitingUserAddress: String?) {
+    fun sendUserInviteMail(address: String) {
+        val subject = "You have been invited to Confido"
+
+        val body = """
+            You have been invited to Confido at address:
+            $origin
+            """.trimIndent()
+
+        val mail = EmailBuilder.startingBlank()
+            .from(senderAddress)
+            .to(address)
+            .withSubject(subject)
+            .withPlainText(body)
+            //.withHTMLText(sb.toString())
+            .buildEmail()
+
+        sendMail(mail)
+    }
+
+    fun sendRoomInviteMail(address: String, room: Room, login: LoginLink, invitingUserAddress: String?) {
         // TODO: Improve subject
         // Subject ideas:
         // You have been invited to a Confido room

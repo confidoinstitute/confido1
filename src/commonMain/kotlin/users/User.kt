@@ -21,6 +21,7 @@ data class User(
     val password: String?,
     val createdAt: Instant,
     val lastLoginAt: Instant? = null,
+    val active: Boolean = true
 ) : ImmediateDerefEntity {
     fun isAnonymous(): Boolean {
         return email == null

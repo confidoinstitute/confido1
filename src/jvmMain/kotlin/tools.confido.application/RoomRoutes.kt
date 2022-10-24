@@ -10,7 +10,6 @@ import org.simplejavamail.MailException
 import payloads.requests.*
 import rooms.*
 import tools.confido.application.sessions.TransientData
-import tools.confido.application.sessions.transientUserData
 import tools.confido.application.sessions.userSession
 import tools.confido.question.RoomComment
 import tools.confido.refs.*
@@ -102,7 +101,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                     val expiresAt = Clock.System.now().plus(expiration)
                     val link = LoginLink(user = newUser.ref, expiryTime = expiresAt, url = "/room/${room.id}")
                     try {
-                        call.mailer.sendDirectInviteMail(member.email, room, link, user.email)
+                        call.mailer.sendRoomInviteMail(member.email, room, link, user.email)
                     } catch (e: MailException) {
                         e.printStackTrace()
                         return@postST call.respond(HttpStatusCode.ServiceUnavailable, "Could not send an invitation e-mail.")

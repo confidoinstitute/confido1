@@ -104,6 +104,21 @@ val ProfileMenu = FC<Props> {
             }
         }
 
+        if (appState.isAdmin()) {
+            ListSubheader {
+                key = "admin_subheader"
+                +"Administration"
+            }
+            MenuItemNavigation {
+                key = "admin_user_view"
+                to = "/admin/users"
+                this.onNavigate = closeMenu
+                ListItemText {
+                    primary = ReactNode("User overview")
+                }
+            }
+        }
+
         Divider {}
 
         open = menuOpen
