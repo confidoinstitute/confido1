@@ -189,7 +189,11 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     var resolution by useState(q?.resolution)
 
     val htmlId = useId()
-    val answerSpaceEditable = (q == null)
+    val answerSpaceEditable = q == null || q.numPredictions == 0
+    useLayoutEffect(answerSpaceEditable) {
+        if (!answerSpaceEditable)
+            answerSpace = q?.answerSpace
+    }
 
     // Errors
     var errorEmptyName by useState(false)
@@ -415,8 +419,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 DeleteQuestionConfirmation {
                     this.onDelete = { deleteQuestion() ; props.onClose?.invoke()}
                     this.confirmDelete = q.visible
-                    // TODO add real logic
-                    this.hasPrediction = q.open
+                    this.hasPrediction = q.numPredictions > 0
                 }
             }
             Button {

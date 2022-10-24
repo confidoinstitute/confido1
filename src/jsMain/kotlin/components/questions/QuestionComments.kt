@@ -9,6 +9,7 @@ import icons.CommentIcon
 import mui.material.*
 import mui.system.sx
 import react.*
+import react.dom.html.ReactHTML.span
 import tools.confido.question.Comment
 import tools.confido.question.Prediction
 import tools.confido.question.Question
@@ -24,13 +25,19 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
     var open by useState(false)
 
 
-    IconButton {
-        onClick = { open = true; it.stopPropagation() }
+    Tooltip {
+        title = ReactNode("Question comments")
+        arrow = true
+        span {
+            IconButton {
+                onClick = { open = true; it.stopPropagation() }
 
-        Badge {
-            this.badgeContent = if (count > 0) ReactNode(count.toString()) else null
-            this.color = BadgeColor.secondary
-            CommentIcon {}
+                Badge {
+                    this.badgeContent = if (count > 0) ReactNode(count.toString()) else null
+                    this.color = BadgeColor.secondary
+                    CommentIcon {}
+                }
+            }
         }
     }
 

@@ -11,6 +11,7 @@ import hooks.useOnUnmount
 import icons.EditIcon
 import icons.ExpandMore
 import icons.GroupsIcon
+import icons.TimelineIcon
 import io.ktor.client.plugins.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -22,6 +23,7 @@ import mui.system.sx
 import react.*
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.small
+import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.strong
 import rooms.RoomPermission
 import tools.confido.distributions.ProbabilityDistribution
@@ -279,6 +281,25 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             }
         }
         AccordionActions {
+            // TODO turn it into a component
+            Tooltip {
+                val count = props.question.numPredictions
+                title = if (count > 0)
+                    ReactNode("Total predictions" + if(false) " (show history)" else "")
+                else
+                    ReactNode("Nobody predicted yet")
+                arrow = true
+                span {
+                    IconButton {
+                        disabled = true
+                        Badge {
+                            badgeContent = if (count > 0) ReactNode(count.toString()) else null
+                            color = BadgeColor.secondary
+                            TimelineIcon {}
+                        }
+                    }
+                }
+            }
             DistributionButton {
                 this.distribution = appState.groupPred[question.ref]?.dist
                 this.disabled =
@@ -291,10 +312,13 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 this.prediction = props.prediction
             }
             if (props.editable) {
-                IconButton {
-                    disabled = stale
-                    onClick = { props.onEditDialog?.invoke(question); it.stopPropagation() }
-                    EditIcon {}
+                // XXX: CSS expects all elements to be of same type
+                span {
+                    IconButton {
+                        disabled = stale
+                        onClick = { props.onEditDialog?.invoke(question); it.stopPropagation() }
+                        EditIcon {}
+                    }
                 }
             }
         }

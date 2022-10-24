@@ -57,20 +57,20 @@ external interface DistributionButtonProps : Props {
 val DistributionButton = FC<DistributionButtonProps> {props ->
     var open by useState(false)
 
-    IconButton {
-        disabled = props.disabled || props.distribution == null
-        onClick = {open = true}
-        Tooltip {
-            title = if (props.count > 0)
-                ReactNode("Number of predictors" + if(!props.disabled) " (show group prediction)" else "")
-            else
-                ReactNode("Nobody predicted yet")
-            arrow = true
-            Badge {
-                badgeContent = if(props.count > 0) ReactNode(props.count.toString()) else null
-                color = BadgeColor.secondary
-                GroupsIcon {
-                    color = SvgIconColor.action
+    Tooltip {
+        title = if (props.count > 0)
+            ReactNode("Number of predictors" + if(!props.disabled) " (show group prediction)" else "")
+        else
+            ReactNode("Nobody predicted yet")
+        arrow = true
+        span {
+            IconButton {
+                disabled = props.disabled || props.distribution == null
+                onClick = { open = true }
+                Badge {
+                    badgeContent = if (props.count > 0) ReactNode(props.count.toString()) else null
+                    color = BadgeColor.secondary
+                    GroupsIcon {}
                 }
             }
         }
