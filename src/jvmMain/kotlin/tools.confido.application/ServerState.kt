@@ -5,12 +5,13 @@ import com.mongodb.client.model.Filters.and
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.reactivestreams.client.ClientSession
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.forEach
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import org.litote.kmongo.ascending
+import kotlinx.serialization.Serializable
+import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.*
-import org.litote.kmongo.eq
 import org.litote.kmongo.reactivestreams.KMongo
 import rooms.Room
 import tools.confido.distributions.*
@@ -291,12 +292,27 @@ object serverState : GlobalState() {
     val userPred by userPredManager::userPred
 
     object userPredHistManager : IdBasedEntityManager<Prediction>(database.getCollection("userPredHist")) {
+        val totalPredictions: MutableMap<Ref<Question>, Int> = mutableMapOf()
         override suspend fun initialize() {
             mongoCollection.ensureIndex(Prediction::question, Prediction::user, Prediction::ts)
+        }
+
+        override suspend fun doLoad() {
+            @Serializable
+            data class Result(val question: Ref<Question>, val cnt: Int)
+            mongoCollection.aggregate<Result>(
+                group(Prediction::question, Result::question first Prediction::question, Result::cnt.count)
+            ).toFlow().collect { totalPredictions[it.question] = it.cnt }
+            //println("STATS!!! $totalPredictions")
         }
         suspend fun query(question: Ref<Question>, user: Ref<User>) {
             mongoCollection.find(and(Prediction::question eq question, Prediction::user eq user))
                 .sort(ascending(Prediction::ts)).toList()
+        }
+        init {
+            onEntityAdded {
+                totalPredictions.compute(it.question, {q, cnt -> (cnt?:0) + 1})
+            }
         }
     }
     object groupPredHistManager : IdBasedEntityManager<Prediction>(database.getCollection("groupPredHist")) {
@@ -363,6 +379,9 @@ object serverState : GlobalState() {
         loginLinkManager.register()
         verificationLinkManager.register()
         userSessionManager.register()
+        userPredManager.register()
+        userPredHistManager.register()
+        groupPredHistManager.register()
     }
 
 
