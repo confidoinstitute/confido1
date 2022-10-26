@@ -3,7 +3,7 @@ package components.questions
 import Client
 import components.AppStateContext
 import components.DistributionSummary
-import components.StatelessIconToggleButton
+import components.IconToggleButton
 import csstype.WhiteSpace
 import csstype.Width
 import emotion.react.css
@@ -119,7 +119,7 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                                     )
                                     arrow = true
                                     span {
-                                        StatelessIconToggleButton {
+                                        IconToggleButton {
                                             on = question.visible
                                             onIcon = VisibilityIcon.create()
                                             offIcon = VisibilityOffOutlinedIcon.create()
@@ -134,7 +134,7 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                                     )
                                     arrow = true
                                     span {
-                                        StatelessIconToggleButton {
+                                        IconToggleButton {
                                             on = question.open
                                             onIcon = LockOpenIcon.create()
                                             offIcon = LockIcon.create()
@@ -156,7 +156,7 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                         }
                         if (showGroupPredCol)
                             TableCell {
-                                StatelessIconToggleButton {
+                                IconToggleButton {
                                     on = question.groupPredVisible
                                     onIcon = VisibilityIcon.create()
                                     offIcon = VisibilityOffOutlinedIcon.create()
@@ -172,7 +172,7 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                         if (showResolutionCol)
                             TableCell {
                                 question.resolution?.let {
-                                    StatelessIconToggleButton {
+                                    IconToggleButton {
                                         on = question.resolutionVisible
                                         onIcon = VisibilityIcon.create()
                                         offIcon = VisibilityOffOutlinedIcon.create()
