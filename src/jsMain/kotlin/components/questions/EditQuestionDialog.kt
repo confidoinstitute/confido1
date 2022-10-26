@@ -5,6 +5,7 @@ import components.AppStateContext
 import components.ValueEntry
 import components.rooms.RoomContext
 import csstype.px
+import hooks.EditEntityDialogProps
 import io.ktor.client.request.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -17,6 +18,7 @@ import react.dom.onChange
 import payloads.requests.EditQuestion
 import payloads.requests.EditQuestionComplete
 import tools.confido.question.Question
+import tools.confido.refs.HasId
 import tools.confido.spaces.*
 import tools.confido.utils.*
 import utils.eventNumberValue
@@ -165,14 +167,11 @@ val EditDaysAnswerSpace = FC<EditAnswerSpaceProps<NumericSpace>> { props ->
     }
 }
 
-external interface EditQuestionDialogProps : Props {
-    var question: Question?
-    var open: Boolean
-    var onClose: (() -> Unit)?
+external interface EditQuestionDialogProps : EditEntityDialogProps<Question> {
 }
 
 val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
-    val q = props.question
+    val q = props.entity
     val (_, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
 
@@ -229,7 +228,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
             resolution = if (resolved) resolution else null,
         )
 
-        if (props.question == null) {
+        if (props.entity == null) {
             Client.postData("/rooms/${room.id}/questions/add", question)
         } else {
             val editQuestion: EditQuestion = EditQuestionComplete(question)

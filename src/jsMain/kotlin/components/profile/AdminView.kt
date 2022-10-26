@@ -2,6 +2,8 @@ package components.profile
 
 import components.AppStateContext
 import csstype.pct
+import hooks.EditEntityDialogProps
+import hooks.useEditDialog
 import icons.AddIcon
 import icons.EditIcon
 import io.ktor.client.request.*
@@ -19,23 +21,20 @@ import utils.eventValue
 import utils.isEmailValid
 import utils.toDateTime
 
-external interface EditUserDialogProps : Props {
-    var user: User?
-    var open: Boolean
-    var onClose: (() -> Unit)?
+external interface EditUserDialogProps : EditEntityDialogProps<User> {
 }
 
 val EditUserDialog = FC<EditUserDialogProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
 
-    val newUser = props.user == null
+    val newUser = props.entity == null
     val htmlId = useId()
-    val isSelf = props.user?.let { appState.session.user eqid it } ?: false
+    val isSelf = props.entity?.let { appState.session.user eqid it } ?: false
 
-    var nick by useState(props.user?.nick ?: "")
-    var email by useState(props.user?.email ?: "")
-    var userType by useState(props.user?.type ?: UserType.GUEST)
-    var active by useState(props.user?.active ?: true)
+    var nick by useState(props.entity?.nick ?: "")
+    var email by useState(props.entity?.email ?: "")
+    var userType by useState(props.entity?.type ?: UserType.MEMBER)
+    var active by useState(props.entity?.active ?: true)
     var invite by useState(false)
 
     val errorEmptyEmail = email.isEmpty() && userType != UserType.GUEST
@@ -48,15 +47,15 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
             return
         }
         val user = User(
-            id = props.user?.id ?: "",
+            id = props.entity?.id ?: "",
             nick = nick.ifEmpty { null },
             email = email.ifEmpty { null },
             emailVerified = true,
             type = userType,
             password = null,
             active = active,
-            createdAt = props.user?.createdAt ?: Clock.System.now(),
-            lastLoginAt = props.user?.lastLoginAt
+            createdAt = props.entity?.createdAt ?: Clock.System.now(),
+            lastLoginAt = props.entity?.lastLoginAt
         )
 
         if (newUser) {
@@ -171,24 +170,7 @@ val AdminView = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
     if (!appState.isAdmin()) return@FC
 
-    var editUser by useState<User?>(null)
-    var editUserKey by useState("")
-    var editOpen by useState(false)
-    useLayoutEffect(editOpen) {
-        if (editOpen)
-            editUserKey = randomString(20)
-    }
-
-    EditUserDialog {
-        key = "##editDialog##$editUserKey"
-        user = editUser
-        open = editOpen
-        onClose = { editOpen = false }
-    }
-
-    fun editUserOpen(it: User) {
-        editUser = it; editOpen = true
-    }
+    val editUserOpen = useEditDialog(EditUserDialog)
 
     TableContainer {
         sx {
@@ -238,7 +220,7 @@ val AdminView = FC<Props> {
         this.startIcon = AddIcon.create()
         this.color = ButtonColor.primary
         this.disabled = stale
-        onClick = { editUser = null; editOpen = true }
+        onClick = { editUserOpen(null) }
         +"Add user…"
     }
 }

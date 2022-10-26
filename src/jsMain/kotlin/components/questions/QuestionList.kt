@@ -2,6 +2,7 @@ package components.questions
 
 import components.*
 import components.rooms.RoomContext
+import hooks.useEditDialog
 import icons.AddIcon
 import mui.material.*
 import react.*
@@ -22,26 +23,9 @@ val QuestionList = FC<QuestionListProps> { props ->
     val questions = props.questions.sortedBy { it.name }
     val visibleQuestions = if (props.showHiddenQuestions) questions else questions.filter { it.visible }
 
-    var editQuestion by useState<Question?>(null)
-    var editQuestionKey by useState("")
-    var editOpen by useState(false)
-    useLayoutEffect(editOpen) {
-        if (editOpen)
-            editQuestionKey = randomString(20)
-    }
-
     var expandedQuestion by useState<String?>(null)
 
-    EditQuestionDialog {
-        key = "##editDialog##$editQuestionKey"
-        question = editQuestion
-        open = editOpen
-        onClose = { editOpen = false }
-    }
-
-    fun editQuestionOpen(it: Question) {
-        editQuestion = it; editOpen = true
-    }
+    val editQuestionOpen = useEditDialog(EditQuestionDialog)
 
     val canPredict = appState.hasPermission(room, RoomPermission.SUBMIT_PREDICTION)
     visibleQuestions.map { question ->
@@ -53,7 +37,7 @@ val QuestionList = FC<QuestionListProps> { props ->
             this.editable = props.allowEditingQuestions
             this.canPredict = canPredict
             this.comments = appState.questionComments[question.ref] ?: emptyMap()
-            this.onEditDialog = ::editQuestionOpen
+            this.onEditDialog = editQuestionOpen
             this.onChange = {state -> expandedQuestion = if (state) question.id else null}
         }
     }
@@ -65,7 +49,7 @@ val QuestionList = FC<QuestionListProps> { props ->
                 this.startIcon = AddIcon.create()
                 this.color = ButtonColor.primary
                 this.disabled = stale
-                onClick = { editQuestion = null; editOpen = true }
+                onClick = { editQuestionOpen(null) }
                 +"Add question…"
             }
         }

@@ -6,6 +6,7 @@ import components.DistributionSummary
 import components.IconToggleButton
 import csstype.*
 import emotion.react.css
+import hooks.useEditDialog
 import icons.*
 import mui.material.*
 import mui.material.styles.TypographyVariant
@@ -22,6 +23,7 @@ import react.dom.html.ReactHTML.span
 import rooms.Room
 import rooms.RoomPermission
 import tools.confido.question.Question
+import tools.confido.refs.HasId
 import tools.confido.state.havePermission
 import tools.confido.utils.randomString
 import utils.*
@@ -32,30 +34,12 @@ external interface QuestionTableProps : Props {
     var allowEditingQuestions: Boolean
 }
 
+
 val QuestionTable = FC<QuestionTableProps> { props ->
     val (_, stale) = useContext(AppStateContext)
     val room = props.room
 
-    var editQuestion by useState<Question?>(null)
-    var editQuestionKey by useState("")
-    var editOpen by useState(false)
-    useLayoutEffect(editOpen) {
-        if (editOpen)
-            editQuestionKey = randomString(20)
-    }
-
-    var expandedQuestion by useState<String?>(null)
-
-    EditQuestionDialog {
-        key = "##editDialog##$editQuestionKey"
-        question = editQuestion
-        open = editOpen
-        onClose = { editOpen = false }
-    }
-
-    fun editQuestionOpen(it: Question) {
-        editQuestion = it; editOpen = true
-    }
+    val editQuestionOpen = useEditDialog(EditQuestionDialog)
 
     fun postEditQuestion(id: String, field: EditQuestionFieldType, value: Boolean) {
         val editQuestion: EditQuestion = EditQuestionFlag(field, value)
