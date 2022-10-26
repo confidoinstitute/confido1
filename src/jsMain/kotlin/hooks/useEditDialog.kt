@@ -30,5 +30,5 @@ fun <E, DP: EditEntityDialogProps<E>> ChildrenBuilder.useEditDialog(comp: FC<DP>
         onClose = { editOpen = false }
     }
 
-    return {  editedEntity = it; editOpen = true; Unit }
+    return {  editedEntity = it; editOpen = true }
 }
