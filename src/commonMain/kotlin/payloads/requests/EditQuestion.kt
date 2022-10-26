@@ -9,6 +9,7 @@ enum class EditQuestionFieldType {
     VISIBLE,
     OPEN,
     GROUP_PRED_VISIBLE,
+    RESOLUTION_VISIBLE,
 }
 
 @Serializable

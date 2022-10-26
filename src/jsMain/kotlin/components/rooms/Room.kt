@@ -2,6 +2,7 @@ package components.rooms
 
 import components.*
 import components.questions.QuestionList
+import components.questions.QuestionTable
 import csstype.AlignItems
 import csstype.number
 import icons.EditIcon
@@ -152,7 +153,8 @@ val Room = FC<Props> {
             if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
             Route {
                 path = "manage_questions"
-                this.element = EditQuestions.create {
+                this.element = QuestionTable.create {
+                    this.room = room
                     questions = room.questions.mapNotNull { it.deref() }
                     allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
                 }

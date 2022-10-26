@@ -61,7 +61,7 @@ val GroupPredButton = FC<GroupPredButtonProps> { props ->
     Tooltip {
         //placement = TooltipPlacement.top
         title = if (props.count > 0)
-            span.create {
+            Fragment.create {
                 + "${props.count} ${if (props.count==1) "person" else "people"} predicted."
                 if(!props.disabled) {
                     br()

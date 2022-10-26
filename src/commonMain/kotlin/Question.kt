@@ -42,5 +42,6 @@ data class Question(
     val resolved : Boolean get() = resolution != null
     val numPredictions get() = globalState.predictionCount[ref] ?: 0
     val numPredictors get() = globalState.predictorCount[ref] ?: 0
+    val groupPred get() = globalState.groupPred[ref]
 }
 

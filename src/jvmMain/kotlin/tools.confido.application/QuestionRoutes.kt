@@ -62,6 +62,8 @@ fun questionRoutes(routing: Routing) = routing.apply {
                             it.copy(open = editQuestion.value)
                         EditQuestionFieldType.GROUP_PRED_VISIBLE ->
                             it.copy(groupPredVisible = editQuestion.value)
+                        EditQuestionFieldType.RESOLUTION_VISIBLE ->
+                            it.copy(resolutionVisible = it.resolution != null && editQuestion.value)
                     }
                 }
             }
