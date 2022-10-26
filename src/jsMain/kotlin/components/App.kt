@@ -7,7 +7,10 @@ import components.layout.RootLayout
 import csstype.*
 import kotlinx.browser.window
 import kotlinx.js.timers.setTimeout
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToDynamic
 import mui.material.*
 import mui.material.styles.PaletteColor
 import mui.material.styles.createPalette
@@ -64,7 +67,11 @@ val App = FC<Props> {
                 val decodedState = confidoJSON.decodeFromString<SentState>(it.data.toString())
                 clientState = ClientState(decodedState)
                 appState = decodedState
-                window.asDynamic().curState = decodedState.asDynamic() // for easy inspection in devtools
+
+                try {
+                    @OptIn(ExperimentalSerializationApi::class)
+                    window.asDynamic().curState = confidoJSON.encodeToDynamic(decodedState) // for easy inspection in devtools
+                } catch (e: Exception) {}
                 stale = false
                 @Suppress("RedundantUnitExpression")
                 Unit // This is not redundant, because assignment fails some weird type checks
