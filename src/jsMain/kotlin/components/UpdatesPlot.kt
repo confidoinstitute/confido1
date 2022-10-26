@@ -19,6 +19,7 @@ import react.*
 import react.dom.html.ReactHTML
 import rooms.RoomPermission
 import space.kscience.dataforge.values.asValue
+import space.kscience.plotly.layout
 import space.kscience.plotly.models.*
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.Question
@@ -63,6 +64,22 @@ val UpdatesPlot = FC<UpdatesPlotProps> {props ->
     val space = props.question.answerSpace
 
     ReactPlotly {
+        plotlyInit = {
+            it.layout {
+                yaxis {
+                    if (space is BinarySpace) {
+                        this.autorange = false
+                        this.range(0.0..100.0)
+                    }
+                }
+            }
+        }
+        fixupLayout = {
+            if (space is BinarySpace) { // zooming on probability range does not make sense
+                // FIXME: for some reason, this does not work, even though the parameter IS passed to plotly
+                it.yaxis.fixedrange = true
+            }
+        }
         traces =
             when(space) {
                 BinarySpace -> listOf(
