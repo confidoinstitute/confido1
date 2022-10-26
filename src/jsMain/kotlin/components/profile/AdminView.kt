@@ -189,7 +189,17 @@ val AdminView = FC<Props> {
                 }
             }
             TableBody {
-                appState.users.values.map {user ->
+                appState.users.values.sortedWith(compareBy(
+                        {when (it.type) {
+                            UserType.ADMIN -> 0
+                            UserType.MEMBER -> 1
+                            UserType.GUEST -> 2
+                        } },
+                        {if (it.email != null) 0 else 1},
+                        {if (it.nick != null) 0 else 1},
+                        {it.nick},
+                        {it.email},
+                    )).map { user ->
                     TableRow {
                         key = user.id
                         TableCell {+(user.nick ?: "")}
