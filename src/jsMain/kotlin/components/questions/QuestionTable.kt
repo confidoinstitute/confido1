@@ -4,11 +4,11 @@ import Client
 import components.AppStateContext
 import components.DistributionSummary
 import components.IconToggleButton
-import csstype.WhiteSpace
-import csstype.Width
+import csstype.*
 import emotion.react.css
 import icons.*
 import mui.material.*
+import mui.material.styles.TypographyVariant
 import mui.system.responsive
 import payloads.requests.EditQuestion
 import payloads.requests.EditQuestionFlag
@@ -24,7 +24,7 @@ import rooms.RoomPermission
 import tools.confido.question.Question
 import tools.confido.state.havePermission
 import tools.confido.utils.randomString
-import utils.breakLines
+import utils.*
 
 external interface QuestionTableProps : Props {
     var room: Room
@@ -77,14 +77,21 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                     )
             )
 
+    Typography {
+        this.variant = TypographyVariant.body1
+        css { fontStyle = FontStyle.italic; fontSize = FontSize.smaller; paddingBottom = 5.px; }
+        +"This table gives a quick and condensed moderator overview of the questions in the room."
+        +"It also allows for basic question management such as showing/hiding questions."
+        +"If you hover your mouse cursor over an icon or other similar element, an explanation of its function will be shown."
+    }
     TableContainer {
         component = Paper
         Table {
             colgroup {
-                col { css { width = "auto".asDynamic() as Width } }
+                col { css { width = WIDTH_AUTO } }
                 col {}
                 repeat(3) {
-                    col { css { width = "auto".asDynamic() as Width } }
+                    col { css { width = WIDTH_AUTO } }
                 }
             }
             TableHead {
@@ -114,8 +121,8 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                                 direction = responsive(StackDirection.row)
                                 Tooltip {
                                     title = breakLines(
-                                        if (question.visible) "Question is visible to forecasters.\nClick to hide."
-                                        else "Question is hidden from forecasters.\nClick to show."
+                                        if (question.visible) "Question is visible to forecasters.\nClick to make it hidden."
+                                        else "Question is hidden from forecasters.\nClick to make it visible."
                                     )
                                     arrow = true
                                     span {
@@ -129,8 +136,8 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                                 }
                                 Tooltip {
                                     title = breakLines(
-                                        if (question.open) "Question is open for new predictions.\nClick to close."
-                                        else "Question is closed (new predictions are not allowed).\nClick to open."
+                                        if (question.open) "Question is open for new predictions.\nClick to make it closed."
+                                        else "Question is closed (new predictions are not allowed).\nClick to make it open."
                                     )
                                     arrow = true
                                     span {
@@ -142,9 +149,12 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                                         }
                                     }
                                 }
-                                IconButton {
-                                    EditIcon()
-                                    onClick = {editQuestionOpen(question)}
+                                Tooltip {
+                                    title = ReactNode("Edit question")
+                                    IconButton {
+                                        EditIcon()
+                                        onClick = { editQuestionOpen(question) }
+                                    }
                                 }
                             }
                         }
@@ -156,11 +166,28 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                         }
                         if (showGroupPredCol)
                             TableCell {
-                                IconToggleButton {
-                                    on = question.groupPredVisible
-                                    onIcon = VisibilityIcon.create()
-                                    offIcon = VisibilityOffOutlinedIcon.create()
-                                    onChange = { postEditQuestion(question.id, EditQuestionFieldType.GROUP_PRED_VISIBLE, it) }
+                                Tooltip {
+                                    arrow = true
+                                    title = breakLines(
+                                        if (question.groupPredVisible)
+                                            "Group prediction is visible to forecaters.\nClick to make it hidden."
+                                        else
+                                            "Group prediction is hidden from forecaters.\nClick to make it visible."
+                                    )
+                                    span {
+                                        IconToggleButton {
+                                            on = question.groupPredVisible
+                                            onIcon = VisibilityIcon.create()
+                                            offIcon = VisibilityOffOutlinedIcon.create()
+                                            onChange = {
+                                                postEditQuestion(
+                                                    question.id,
+                                                    EditQuestionFieldType.GROUP_PRED_VISIBLE,
+                                                    it
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                                 question.groupPred?.dist?.let { groupDist->
                                     DistributionSummary {
@@ -172,16 +199,27 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                         if (showResolutionCol)
                             TableCell {
                                 question.resolution?.let {
-                                    IconToggleButton {
-                                        on = question.resolutionVisible
-                                        onIcon = VisibilityIcon.create()
-                                        offIcon = VisibilityOffOutlinedIcon.create()
-                                        onChange = {
-                                            postEditQuestion(
-                                                question.id,
-                                                EditQuestionFieldType.RESOLUTION_VISIBLE,
-                                                it
-                                            )
+                                    Tooltip {
+                                        arrow = true
+                                        title = breakLines(
+                                            if (question.resolutionVisible)
+                                                "Resolution is visible to forecaters.\nClick to make it hidden."
+                                            else
+                                                "Resolution is hidden from forecaters.\nClick to make it visible."
+                                        )
+                                        span {
+                                            IconToggleButton {
+                                                on = question.resolutionVisible
+                                                onIcon = VisibilityIcon.create()
+                                                offIcon = VisibilityOffOutlinedIcon.create()
+                                                onChange = {
+                                                    postEditQuestion(
+                                                        question.id,
+                                                        EditQuestionFieldType.RESOLUTION_VISIBLE,
+                                                        it
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                     +it.format()

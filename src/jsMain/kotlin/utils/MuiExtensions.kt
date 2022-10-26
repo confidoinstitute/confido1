@@ -1,5 +1,6 @@
 package utils
 
+import csstype.Width
 import kotlinx.js.Object
 import kotlinx.js.delete
 import org.w3c.dom.HTMLDivElement
@@ -30,6 +31,8 @@ fun <T> T.except(vararg except: String): T  where T: Props {
     except.forEach { delete(newProps[it]) }
     return newProps as T
 }
+
+val WIDTH_AUTO get() = "auto".asDynamic() as Width
 
 fun breakLines(text: String): ReactNode =
     Fragment.create {

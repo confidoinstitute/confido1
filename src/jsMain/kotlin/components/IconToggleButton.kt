@@ -19,7 +19,7 @@ external interface IconToggleButtonProps : Props {
 }
 
 val IconToggleButton = FC<IconToggleButtonProps> {props->
-    // FIXME: tooltip shows only after clicking on the button. Can be worked arround
+    // FIXME: tooltip shows only after clicking on the button. Can be worked around
     // by wrapping use in span{}
     var state by useState(props.defaultOn ?: false)
     val effectiveState = props.on ?: state
