@@ -69,20 +69,24 @@ val QuestionTable = FC<QuestionTableProps> { props ->
         +"If you hover your mouse cursor over an icon or other similar element, an explanation of its function will be shown."
     }
     TableContainer {
+        // apparently, this is the only way? (https://stackoverflow.com/questions/4757844/css-table-column-autowidth)
+        fun PropsWithClassName.autoSized() = css { width = 1.px; whiteSpace = WhiteSpace.nowrap }
+        fun ChildrenBuilder.autoSizedCol() = col { autoSized() }
         component = Paper
         Table {
             colgroup {
-                col { css { width = WIDTH_AUTO } }
+                autoSizedCol()
                 col {}
                 repeat(3) {
-                    col { css { width = WIDTH_AUTO } }
+                    autoSizedCol()
                 }
             }
             TableHead {
                 TableRow {
-                    TableCell {}
+                    TableCell { autoSized() }
                     TableCell { +"Question" }
                     TableCell {
+                        autoSized()
                         abbr {
                             title = "Number of people predicting, total number of prediction updates"
                             span {
@@ -93,14 +97,15 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                             }
                         }
                     }
-                    if (showGroupPredCol) TableCell { +"Group pred." }
-                    if (showResolutionCol) TableCell { +"Resolution" }
+                    if (showGroupPredCol) TableCell { autoSized(); +"Group pred." }
+                    if (showResolutionCol) TableCell { autoSized(); +"Resolution" }
                 }
             }
             TableBody {
                 props.questions.map {question ->
                     TableRow {
                         TableCell {
+                            autoSized()
                             Stack {
                                 direction = responsive(StackDirection.row)
                                 Tooltip {
@@ -144,12 +149,14 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                         }
                         TableCell { +question.name }
                         TableCell {
+                            autoSized()
                             +"${question.numPredictors} "
                             +" / "
                             +"${question.numPredictions}"
                         }
                         if (showGroupPredCol)
                             TableCell {
+                                autoSized()
                                 Tooltip {
                                     arrow = true
                                     title = breakLines(
@@ -182,6 +189,7 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                             }
                         if (showResolutionCol)
                             TableCell {
+                                autoSized()
                                 question.resolution?.let {
                                     Tooltip {
                                         arrow = true
