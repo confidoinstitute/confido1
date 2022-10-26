@@ -26,6 +26,11 @@ external interface PlotlyProps : Props {
     var annotations: List<Text>?
     var plotlyInit: ((Plot) -> Unit)?
     var config: dynamic
+
+    /**
+     * This can be used to set layout properties not supported by the PlotlyKt scheme.
+     */
+    var fixupLayout: ((dynamic) -> Unit)?
 }
 
 val ReactPlotly = FC<PlotlyProps> {props ->
@@ -43,7 +48,10 @@ val ReactPlotly = FC<PlotlyProps> {props ->
     useEffectOnce {
         val element = container.current ?: error("Div not found")
         console.log("New plot")
-        PlotlyJs.newPlot(element, props.traces.toDynamic(), plot.layout.toDynamic(), props.config)
+        val dynLayout = plot.layout.toDynamic()
+        props.fixupLayout?.invoke(dynLayout)
+        console.log(dynLayout)
+        PlotlyJs.newPlot(element, props.traces.toDynamic(), dynLayout, props.config)
 
         cleanup {
             PlotlyJs.asDynamic().purge(element)
