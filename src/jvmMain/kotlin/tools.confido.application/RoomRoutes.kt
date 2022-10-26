@@ -99,7 +99,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
 
                     val expiration = 14.days
                     val expiresAt = Clock.System.now().plus(expiration)
-                    val link = LoginLink(user = newUser.ref, expiryTime = expiresAt, url = "/room/${room.id}")
+                    val link = LoginLink(user = newUser.ref, expiryTime = expiresAt, url = "/room/${room.id}", sentToEmail = user.email)
                     try {
                         call.mailer.sendRoomInviteMail(member.email, room, link, user.email)
                     } catch (e: MailException) {

@@ -39,6 +39,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
         val user = serverState.users.values.find {
             it.email == login.email && it.password != null
                     && Password.check(login.password, it.password).withArgon2()
+                    && it.active
         } ?: return@postST unauthorized("Wrong e-mail or password")
 
         serverState.userManager.modifyEntity(user.ref) {
@@ -58,10 +59,10 @@ fun loginRoutes(routing: Routing) = routing.apply {
         val mail: SendMailLink = call.receive()
         val user = serverState.userManager.byEmail[mail.email]
 
-        if (user != null) {
+        if (user != null && user.active) {
             val expiration = 15.minutes
             val expiresAt = Clock.System.now().plus(expiration)
-            val link = LoginLink(user = user.ref, expiryTime = expiresAt, url = mail.url)
+            val link = LoginLink(user = user.ref, expiryTime = expiresAt, url = mail.url, sentToEmail = user.email)
             // The operation to send an e-mail can fail, do not ma
             try {
                 call.mailer.sendLoginMail(mail.email, link, expiration)
@@ -82,19 +83,31 @@ fun loginRoutes(routing: Routing) = routing.apply {
         val login: EmailLogin = call.receive()
         val loginLink = serverState.loginLinkManager.byToken[login.token] ?:
             return@postST unauthorized("No such token exists.")
-        if (loginLink.isExpired()) return@postST unauthorized("The token has expired.")
-
-        serverState.withTransaction {
-            serverState.userManager.modifyEntity(loginLink.user) {
-                it.copy(lastLoginAt = Clock.System.now(), emailVerified = true)
+        try {
+            if (loginLink.isExpired()) {
+                return@postST unauthorized("The token has expired.")
             }
-            // Login links are single-use
-            serverState.loginLinkManager.deleteEntity(loginLink.ref)
-        }
+            val user = loginLink.user.deref() ?:
+                return@postST unauthorized("The user does not exist.")
+            if (!user.active) {
+                return@postST unauthorized("The user is deactivated.")
+            }
 
-        call.modifyUserSession { it.copy(userRef = loginLink.user) }
-        TransientData.refreshAllWebsockets()
-        call.respond(HttpStatusCode.OK, loginLink.url)
+            serverState.userManager.modifyEntity(loginLink.user) {
+                if (loginLink.sentToEmail != null && loginLink.sentToEmail == user.email)
+                    // transparently verify email (if it has not changed since)
+                    it.copy(lastLoginAt = Clock.System.now(), emailVerified = true)
+                else
+                    it.copy(lastLoginAt = Clock.System.now())
+            }
+
+            call.modifyUserSession { it.copy(userRef = loginLink.user) }
+            TransientData.refreshAllWebsockets()
+            call.respond(HttpStatusCode.OK, loginLink.url)
+        } finally {
+            // Login links are single-use
+            serverState.loginLinkManager.deleteEntity(loginLink.ref, ignoreNonexistent = true)
+        }
     }
     // Log out
     postST("/logout") {
@@ -154,7 +167,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
     postST("/profile/nick") {
         val userRef = call.userSession?.userRef ?: return@postST unauthorized("Not logged in.")
         val setNick: SetNick = call.receive()
-        val newNick = if (setNick.name == "") null else setNick.name
+        val newNick = setNick.name.ifEmpty { null }
 
         System.err.println("Setting nick $userRef $newNick")
 

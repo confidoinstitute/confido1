@@ -36,6 +36,7 @@ data class LoginLink(
     val user: Ref<User>,
     val expiryTime: Instant,
     val url: String = "/",
+    val sentToEmail: String? = null,
 ) : ImmediateDerefEntity {
     fun isExpired() = now() > expiryTime
 
