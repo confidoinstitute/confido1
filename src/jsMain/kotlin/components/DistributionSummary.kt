@@ -7,6 +7,7 @@ import mui.material.*
 import mui.system.Box
 import mui.system.sx
 import react.*
+import react.dom.html.ReactHTML.br
 import react.dom.html.ReactHTML.span
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ProbabilityDistribution
@@ -48,18 +49,25 @@ val DistributionSummary = FC<DistributionSummaryProps> {props ->
         }
     }
 }
-external interface DistributionButtonProps : Props {
+external interface GroupPredButtonProps : Props {
     var count: Int
     var disabled: Boolean
     var distribution: ProbabilityDistribution?
 }
 
-val DistributionButton = FC<DistributionButtonProps> {props ->
+val GroupPredButton = FC<GroupPredButtonProps> { props ->
     var open by useState(false)
 
     Tooltip {
+        //placement = TooltipPlacement.top
         title = if (props.count > 0)
-            ReactNode("Number of predictors" + if(!props.disabled) " (show group prediction)" else "")
+            span.create {
+                + "${props.count} ${if (props.count==1) "person" else "people"} predicted."
+                if(!props.disabled) {
+                    br()
+                    + "Click to show group prediction."
+                }
+            }
         else
             ReactNode("Nobody predicted yet")
         arrow = true
@@ -80,7 +88,7 @@ val DistributionButton = FC<DistributionButtonProps> {props ->
         this.open = open
         this.onClose = {_, _ -> open = false}
         DialogTitle {
-            +"Group predictions"
+            +"Group prediction"
         }
         DialogContent {
             DialogContentText {

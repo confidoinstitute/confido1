@@ -1,7 +1,7 @@
 package components.questions
 
 import components.AppStateContext
-import components.DistributionButton
+import components.GroupPredButton
 import components.DistributionSummary
 import components.SpoilerButton
 import components.rooms.RoomContext
@@ -10,7 +10,6 @@ import hooks.useDebounce
 import hooks.useOnUnmount
 import icons.EditIcon
 import icons.ExpandMore
-import icons.GroupsIcon
 import icons.TimelineIcon
 import io.ktor.client.plugins.*
 import kotlinx.coroutines.CoroutineScope
@@ -22,6 +21,7 @@ import mui.system.responsive
 import mui.system.sx
 import react.*
 import react.dom.html.ReactHTML
+import react.dom.html.ReactHTML.br
 import react.dom.html.ReactHTML.small
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.strong
@@ -285,10 +285,17 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             Tooltip {
                 val count = props.question.numPredictions
                 title = if (count > 0)
-                    ReactNode("Total predictions" + if(false) " (show history)" else "")
+                    span.create {
+                        +"${count} prediction${if (count>1) "s" else ""} made."
+                        if (false) { // TODO
+                            br()
+                            +"Click to show prediction update history."
+                        }
+                    }
                 else
                     ReactNode("Nobody predicted yet")
                 arrow = true
+                // span is needed to show tooltip on disabled button (https://mui.com/material-ui/react-tooltip/#disabled-elements)
                 span {
                     IconButton {
                         disabled = true
@@ -300,7 +307,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     }
                 }
             }
-            DistributionButton {
+            GroupPredButton {
                 this.distribution = appState.groupPred[question.ref]?.dist
                 this.disabled =
                     !(question.groupPredVisible || appState.hasPermission( room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS ))
@@ -312,7 +319,9 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 this.prediction = props.prediction
             }
             if (props.editable) {
-                // XXX: CSS expects all elements to be of same type
+                // XXX: MUI CSS expects all children of AccordionIcons to be of same type
+                // (usually IconButton, but we need span for tooltips on disabled buttons
+                // above; so we use span also here)
                 span {
                     IconButton {
                         disabled = stale
