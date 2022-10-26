@@ -279,30 +279,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         }
         AccordionActions {
             // TODO turn it into a component
-            Tooltip {
-                val count = props.question.numPredictions
-                title = if (count > 0)
-                    span.create {
-                        +"${count} prediction${if (count>1) "s" else ""} made."
-                        if (false) { // TODO
-                            br()
-                            +"Click to show prediction update history."
-                        }
-                    }
-                else
-                    ReactNode("Nobody predicted yet")
-                arrow = true
-                // span is needed to show tooltip on disabled button (https://mui.com/material-ui/react-tooltip/#disabled-elements)
-                span {
-                    IconButton {
-                        disabled = true
-                        Badge {
-                            badgeContent = if (count > 0) ReactNode(count.toString()) else null
-                            color = BadgeColor.secondary
-                            TimelineIcon {}
-                        }
-                    }
-                }
+            UpdatesButton {
+                this.question = props.question
             }
             GroupPredButton {
                 this.distribution = appState.groupPred[question.ref]?.dist

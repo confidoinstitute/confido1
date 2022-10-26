@@ -127,7 +127,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
         //val user = call.userSession?.user ?: return@getST unauthorized("Not logged in.")
         val question = ref.deref() ?: return@getST notFound("No such question.")
 
-        val updates = serverState.groupPredHistManager.query(ref).map {
+        var updates = serverState.groupPredHistManager.query(ref).map {
             val dist = it.dist
             when(dist) {
                 is BinaryDistribution -> DistributionUpdate(
@@ -147,6 +147,9 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 )
             }
         }
+        if (updates.isNotEmpty())
+            // add a fake point for the current timestamp so that the graph does not abruptly end at last update time
+            updates += listOf(updates[updates.size - 1].copy(ts=unixNow()))
         call.respond(HttpStatusCode.OK, Cbor.encodeToByteArray(updates))
     }
 }

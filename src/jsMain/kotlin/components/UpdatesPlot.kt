@@ -1,5 +1,9 @@
 package components
+import components.rooms.RoomContext
+import csstype.px
 import csstype.rgb
+import icons.GroupsIcon
+import icons.TimelineIcon
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
 import io.ktor.client.request.*
@@ -7,13 +11,21 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.decodeFromByteArray
+import mui.material.*
+import mui.system.Box
+import mui.system.sx
 import payloads.responses.DistributionUpdate
 import react.*
+import react.dom.html.ReactHTML
+import rooms.RoomPermission
 import space.kscience.dataforge.values.asValue
 import space.kscience.plotly.models.*
+import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.Question
 import tools.confido.spaces.*
+import tools.confido.state.havePermission
 import tools.confido.utils.Zdiv
+import tools.confido.utils.randomString
 import utils.toIsoDateTime
 import utils.transposeForHeatmap
 import kotlin.coroutines.EmptyCoroutineContext
@@ -62,6 +74,9 @@ val UpdatesPlot = FC<UpdatesPlotProps> {props ->
                         name = "Yes"
                         stackgroup = "values"
                         groupnorm = GroupNorm.percent
+                        line {
+                            shape = LineShape.hv
+                        }
                     },
                     Scatter {
                         x.set(xAxis)
@@ -70,6 +85,9 @@ val UpdatesPlot = FC<UpdatesPlotProps> {props ->
                         })
                         name = "No"
                         stackgroup = "values"
+                        line {
+                            shape = LineShape.hv
+                        }
                     }
                 )
                 is NumericSpace -> listOf(
@@ -91,10 +109,72 @@ val UpdatesPlot = FC<UpdatesPlotProps> {props ->
                         x.set(xAxis)
                         y.set(Binner(space, 50).binBorders)
                         z.set(zAxis)
+                        showlegend = false // the normalized density values have no meaning, no point in showing legend
                         colorscale = "YlGnBu".asValue()
                         name = "Distribution"
                     }
                 )
             }
+    }
+}
+
+external interface UpdatesButtonProps : Props {
+    var disabled: Boolean
+    var question: Question
+}
+
+val UpdatesButton = FC<UpdatesButtonProps> { props ->
+    var open by useState(false)
+    val room = useContext(RoomContext)
+    var dialogKey by useState(randomString(20))
+
+    Tooltip {
+        val count = props.question.numPredictions
+        title = if (count > 0)
+            ReactHTML.span.create {
+                +"${count} prediction${if (count>1) "s" else ""} made."
+                if (false) { // TODO
+                    ReactHTML.br()
+                    +"Click to show prediction update history."
+                }
+            }
+        else
+            ReactNode("Nobody predicted yet")
+        arrow = true
+        // span is needed to show tooltip on disabled button (https://mui.com/material-ui/react-tooltip/#disabled-elements)
+        ReactHTML.span {
+            IconButton {
+                disabled = props.disabled || count == 0 ||
+                    !(room.havePermission(RoomPermission.VIEW_ALL_GROUP_PREDICTIONS) || props.question.groupPredVisible)
+                Badge {
+                    badgeContent = if (count > 0) ReactNode(count.toString()) else null
+                    color = BadgeColor.secondary
+                    TimelineIcon {}
+                }
+                onClick = {
+                    dialogKey = randomString(20) // force refresh
+                    open = true
+                }
+            }
+        }
+    }
+
+    Dialog {
+        this.open = open
+        this.onClose = {_, _ -> open = false}
+        fullWidth = true
+        maxWidth = "xl"
+        key = dialogKey
+        DialogTitle {
+            +"Group prediction history"
+        }
+        DialogContent {
+            DialogContentText {
+                +props.question.name
+            }
+            UpdatesPlot {
+                this.question = props.question
+            }
+        }
     }
 }
