@@ -302,17 +302,16 @@ object serverState : GlobalState() {
             @Serializable
             data class Result(val question: Ref<Question>, val cnt: Int)
             mongoCollection.aggregate<Result>(
-                group(Prediction::question, Result::question first Prediction::question, Result::cnt.count)
+                group(Prediction::question, Result::question first Prediction::question, Result::cnt.sum(1))
             ).toFlow().collect { totalPredictions[it.question] = it.cnt }
             //println("STATS!!! $totalPredictions")
         }
-        suspend fun query(question: Ref<Question>, user: Ref<User>) {
+        suspend fun query(question: Ref<Question>, user: Ref<User>) =
             mongoCollection.find(and(Prediction::question eq question, Prediction::user eq user))
                 .sort(ascending(Prediction::ts)).toList()
-        }
         init {
             onEntityAdded {
-                totalPredictions.compute(it.question, {q, cnt -> (cnt?:0) + 1})
+                totalPredictions.compute(it.question) { _, cnt -> (cnt ?: 0) + 1 }
             }
         }
     }
@@ -322,10 +321,9 @@ object serverState : GlobalState() {
         override suspend fun initialize() {
             mongoCollection.ensureIndex(Prediction::question, Prediction::ts)
         }
-        suspend fun query(question: Ref<Question>) {
+        suspend fun query(question: Ref<Question>) =
             mongoCollection.find(and(Prediction::question eq question))
                 .sort(ascending(Prediction::ts)).toList()
-        }
     }
 
     object questionCommentManager: InMemoryEntityManager<QuestionComment>(database.getCollection("questionComments")) {

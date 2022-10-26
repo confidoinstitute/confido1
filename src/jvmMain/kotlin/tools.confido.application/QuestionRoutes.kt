@@ -5,22 +5,28 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.serialization.cbor.Cbor
+import kotlinx.serialization.encodeToByteArray
 import payloads.requests.*
+import payloads.responses.DistributionUpdate
 import rooms.Room
 import rooms.RoomPermission
 import tools.confido.application.sessions.TransientData
 import tools.confido.application.sessions.transientUserData
 import tools.confido.application.sessions.userSession
-import tools.confido.distributions.ProbabilityDistribution
+import tools.confido.distributions.*
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.question.QuestionComment
 import tools.confido.refs.*
+import tools.confido.spaces.BinarySpace
+import tools.confido.spaces.NumericSpace
 import tools.confido.state.deleteEntity
 import tools.confido.state.insertEntity
 import tools.confido.state.modifyEntity
 import tools.confido.state.serverState
 import tools.confido.utils.unixNow
+import kotlin.math.min
 
 fun questionRoutes(routing: Routing) = routing.apply {
     // Add a new question
@@ -115,6 +121,34 @@ fun questionRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK)
     }
 
+    // Get question updates
+    getST("/questions/{id}/updates") {
+        val ref = Ref<Question>(call.parameters["id"] ?: "")
+        //val user = call.userSession?.user ?: return@getST unauthorized("Not logged in.")
+        val question = ref.deref() ?: return@getST notFound("No such question.")
+
+        val updates = serverState.groupPredHistManager.query(ref).map {
+            val dist = it.dist
+            when(dist) {
+                is BinaryDistribution -> DistributionUpdate(
+                    it.ts,
+                    null,
+                    listOf(dist.yesProb)
+                )
+                is ContinuousProbabilityDistribution -> DistributionUpdate(
+                    it.ts,
+                    dist.mean,
+                    dist.discretize(min(dist.space.bins,50)).binProbs
+                )
+                else -> DistributionUpdate(
+                    it.ts,
+                    null,
+                    emptyList(),
+                )
+            }
+        }
+        call.respond(HttpStatusCode.OK, Cbor.encodeToByteArray(updates))
+    }
 }
 
 fun questionCommentsRoutes(routing: Routing) = routing.apply {

@@ -1,9 +1,6 @@
 package components.questions
 
-import components.AppStateContext
-import components.GroupPredButton
-import components.DistributionSummary
-import components.SpoilerButton
+import components.*
 import components.rooms.RoomContext
 import csstype.*
 import hooks.useDebounce

@@ -174,3 +174,21 @@ fun isEmailValid(mail: String): Boolean {
     val regex = Regex(".+@.+\\..+")
     return regex.matches(mail)
 }
+
+fun <E> List<List<E>>.transposeForHeatmap(missingElementDefault: E? = null): List<List<E?>> {
+    val input = this
+
+    val columnIndices = 0 until input.size-1
+
+    val maxRowSize = input.maxOf { it.size }
+    val rowIndices = 0 until maxRowSize
+    console.log(rowIndices, columnIndices)
+
+    return rowIndices.map { columnIndex ->
+        columnIndices.map { rowIndex ->
+            // instead of getting input[column][row], get input[row][column]
+            val element = input.getOrNull(rowIndex)?.getOrNull(columnIndex)
+            element  ?: missingElementDefault
+        }
+    }
+}
