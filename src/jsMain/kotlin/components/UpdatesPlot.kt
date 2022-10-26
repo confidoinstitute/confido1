@@ -24,6 +24,7 @@ import space.kscience.plotly.models.*
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.Question
 import tools.confido.spaces.*
+import tools.confido.state.clientState
 import tools.confido.state.havePermission
 import tools.confido.utils.Zdiv
 import tools.confido.utils.randomString
@@ -162,7 +163,8 @@ val UpdatesButton = FC<UpdatesButtonProps> { props ->
         ReactHTML.span {
             IconButton {
                 disabled = props.disabled || count == 0 ||
-                    !(room.havePermission(RoomPermission.VIEW_ALL_GROUP_PREDICTIONS) || props.question.groupPredVisible)
+                    !(room.havePermission(RoomPermission.VIEW_ALL_GROUP_PREDICTIONS) || props.question.groupPredVisible) ||
+                        !clientState.sentState.devMode // XXX: UX is not finalized, enable only in devmode
                 Badge {
                     badgeContent = if (count > 0) ReactNode(count.toString()) else null
                     color = BadgeColor.secondary
