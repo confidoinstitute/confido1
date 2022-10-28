@@ -15,6 +15,7 @@ class Mailer(
     private val debugMode: Boolean,
     private val mailer: org.simplejavamail.api.mailer.Mailer?,
     private val senderAddress: String,
+    private val senderName: String,
 ) {
     private fun sendMail(mail: Email) {
         if (debugMode) {
@@ -34,7 +35,7 @@ class Mailer(
             """.trimIndent()
 
         val mail = EmailBuilder.startingBlank()
-            .from(senderAddress)
+            .from(senderName, senderAddress)
             .to(address)
             .withSubject(subject)
             .withPlainText(body)
@@ -87,7 +88,7 @@ class Mailer(
         // TODO: Send multipart with HTML version.
 
         val mail = EmailBuilder.startingBlank()
-            .from(senderAddress)
+            .from(senderName, senderAddress)
             .to(address)
             .withReplyTo(invitingUserAddress)
             .withSubject(subject)
@@ -114,7 +115,7 @@ class Mailer(
         // TODO: Send multipart with HTML version.
 
         val mail = EmailBuilder.startingBlank()
-            .from(senderAddress)
+            .from(senderName, senderAddress)
             .to(address)
             .withSubject(subject)
             .withPlainText(body)
@@ -165,7 +166,7 @@ class Mailer(
         }
 
         val mail = EmailBuilder.startingBlank()
-            .from(senderAddress)
+            .from(senderName, senderAddress)
             .to(address)
             .withSubject(subject)
             .withPlainText(body)
@@ -184,6 +185,7 @@ class MailingConfig {
     var debugMode: Boolean = false
     var mailer: org.simplejavamail.api.mailer.Mailer? = null
     var senderAddress: String = "noreply@localhost"
+    var senderName: String = "Confido"
 }
 
 val Mailing: RouteScopedPlugin<MailingConfig> = createRouteScopedPlugin("Mailing", ::MailingConfig) {
@@ -194,7 +196,7 @@ val Mailing: RouteScopedPlugin<MailingConfig> = createRouteScopedPlugin("Mailing
 
     application.attributes.put(
         MailerKey,
-        Mailer(pluginConfig.urlOrigin, pluginConfig.debugMode, pluginConfig.mailer, pluginConfig.senderAddress)
+        Mailer(pluginConfig.urlOrigin, pluginConfig.debugMode, pluginConfig.mailer, pluginConfig.senderAddress, pluginConfig.senderName)
     )
 }
 

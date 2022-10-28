@@ -165,6 +165,16 @@ val LoginForm = FC<LoginFormProps> { props ->
                     variant = TypographyVariant.body1
                     +email
                 }
+                Typography {
+                    sx {
+                        textAlign = TextAlign.center
+                        marginTop = themed(2)
+                        fontSize = FontSize.smaller
+                        color = Color("#999")
+                    }
+                    variant = TypographyVariant.body2
+                    +"Please check your spam folder in case you didn't get the email."
+                }
             }
         }
 
