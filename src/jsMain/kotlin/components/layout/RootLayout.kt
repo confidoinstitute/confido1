@@ -93,10 +93,10 @@ val RootLayout = FC<Props> {
                             path = "new_room"
                             this.element = NewRoom.create()
                         }
-                        Route {
-                            path = "profile"
-                            this.element = UserSettings.create()
-                        }
+                    }
+                    Route {
+                        path = "profile"
+                        this.element = UserSettings.create()
                     }
                     if (appState.isAdmin()) {
                         Route {

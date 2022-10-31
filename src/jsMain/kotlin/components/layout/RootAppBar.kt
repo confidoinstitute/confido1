@@ -124,18 +124,16 @@ val ProfileMenu = FC<Props> {
         open = menuOpen
         onClose = closeMenu
         anchorEl = anchorElement.asDynamic()
-        if (appState.isFullUser) {
-            MenuItemNavigation {
-                key = "user_settings"
-                to = "/profile"
-                this.onNavigate = closeMenu
+        MenuItemNavigation {
+            key = "user_settings"
+            to = "/profile"
+            this.onNavigate = closeMenu
 
-                ListItemIcon {
-                    SettingsIcon {}
-                }
-                ListItemText {
-                    primary = ReactNode("User settings")
-                }
+            ListItemIcon {
+                SettingsIcon {}
+            }
+            ListItemText {
+                primary = ReactNode("User settings")
             }
         }
         MenuItem {
