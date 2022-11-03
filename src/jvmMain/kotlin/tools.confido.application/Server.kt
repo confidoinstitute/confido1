@@ -61,6 +61,7 @@ val devMode = System.getenv("CONFIDO_DEVMODE") == "1"
 fun HTML.index() {
     head {
         title("Confido")
+        meta(name = "viewport", content = "width=device-width, initial-scale=1.0")
     }
     body {
         script(type="text/javascript") { +"bundleVer= '${jsHash}'" }
