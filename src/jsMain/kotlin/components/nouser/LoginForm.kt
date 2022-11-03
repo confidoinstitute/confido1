@@ -22,12 +22,12 @@ enum class LoginMode {
 }
 
 external interface LoginFormProps : Props {
-    var prefilledEmail: String
+    var prefilledEmail: String?
 }
 
 val LoginForm = FC<LoginFormProps> { props ->
     val (_, stale) = useContext(AppStateContext)
-    var email by useState<String>(props.prefilledEmail)
+    var email by useState<String>(props.prefilledEmail ?: "")
     var password by useState<String>("")
 
     var mode by useState(LoginMode.MagicLink)
