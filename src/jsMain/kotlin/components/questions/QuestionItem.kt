@@ -215,6 +215,9 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         }
         AccordionDetails {
             Typography {
+                sx {
+                    marginBottom = themed(2)
+                }
                 +question.description
             }
             if (props.canPredict) {
