@@ -134,7 +134,6 @@ fun main() {
         }
         install(Sessions)
         install(Mailing) {
-            // TODO(deploy): Set appropriately (*all* options listed here!) and test that emails arrive
             // This is the URL of the hosted frontend used in mailed links (no trailing /)
             urlOrigin = (System.getenv("CONFIDO_BASE_URL") ?: "http://localhost:8081").trimEnd('/')
             debugMode = System.getenv("CONFIDO_MAIL_DEBUG") == "1"
