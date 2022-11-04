@@ -1,12 +1,14 @@
 package components.nouser
 
 import components.AppStateContext
-import csstype.px
+import csstype.*
 import icons.CloseIcon
 import mui.material.*
+import mui.material.styles.TypographyVariant
 import mui.system.sx
 import payloads.requests.PasswordLogin
 import react.*
+import react.dom.html.ReactHTML.h1
 import users.DebugAdmin
 import users.DebugMember
 import utils.byTheme
@@ -17,7 +19,20 @@ val LandingPage = FC<Props> {
 
     Typography { +"Welcome to Confido!" }
 
-    LoginForm {}
+    if (appState.demoMode) {
+        Typography {
+            align = TypographyAlign.center
+            variant = TypographyVariant.h5
+            component = h1
+            +"Log in to Confido demo"
+        }
+
+        LoginByUserSelectForm {
+            helperText = "Try any account to see Confido from their point of view."
+        }
+    } else {
+        LoginForm {}
+    }
 
     if (appState.devMode) {
         DevModeSection {}

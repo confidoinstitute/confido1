@@ -109,8 +109,8 @@ fun loginRoutes(routing: Routing) = routing.apply {
             serverState.loginLinkManager.deleteEntity(loginLink.ref, ignoreNonexistent = true)
         }
     }
-    // Login by id (dev mode only; skips login checks and accessible for everyone)
-    if (devMode) {
+    // Login by id (dev mode and demo only; skips login checks and accessible for everyone)
+    if (devMode || demoMode) {
         // Login by id: Get user list
         getST("/login_users") {
             val censoredUsers = serverState.users.values.map { it.copy(password = null) }.toTypedArray()

@@ -243,14 +243,6 @@ val LoginForm = FC<LoginFormProps> { props ->
 }
 
 
-internal fun renderInput(params: AutocompleteRenderInputParams) =
-    TextField.create {
-        kotlinx.js.Object.assign(this, params)
-        margin = FormControlMargin.normal
-        placeholder = "User name or e-mail"
-        label = ReactNode("Choose an account")
-    }
-
 internal fun groupBy(u: User) = if (u.type.isProper()) "Organization users" else "Guests"
 
 internal fun getOptionLabel(option: User) = option.nick ?: option.email ?: "Temporary guest"
@@ -270,7 +262,11 @@ internal fun renderOption(
         +userListItemText(option)
     }
 
-val LoginByUserSelectForm = FC<Props> {
+external interface LoginByUserSelectFormProps : Props {
+    var helperText: String?
+}
+
+val LoginByUserSelectForm = FC<LoginByUserSelectFormProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     var chosenUser by useState<User?>(null)
     var users by useState<ReadonlyArray<User>?>(null)
@@ -313,7 +309,15 @@ val LoginByUserSelectForm = FC<Props> {
         val autocomplete: FC<AutocompleteProps<User>> = Autocomplete
         autocomplete {
             options = users ?: emptyArray()
-            renderInput = ::renderInput
+            renderInput = { params ->
+                TextField.create {
+                    Object.assign(this, params)
+                    margin = FormControlMargin.normal
+                    placeholder = "User name or e-mail"
+                    label = ReactNode("Choose an account")
+                    helperText = props.helperText?.let { ReactNode(it) }
+                }
+            }
             renderOption = ::renderOption
             autoComplete = true
             getOptionLabel = ::getOptionLabel
