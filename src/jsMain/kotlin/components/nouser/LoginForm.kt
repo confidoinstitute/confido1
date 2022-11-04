@@ -1,18 +1,27 @@
 package components.nouser
 
 import components.AppStateContext
+import components.UserAvatar
+import components.userListItemText
 import csstype.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.*
+import kotlinx.js.Object
+import kotlinx.js.ReadonlyArray
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.sx
+import org.w3c.dom.*
 import payloads.requests.PasswordLogin
 import payloads.requests.SendMailLink
 import react.*
+import react.dom.html.*
 import react.dom.onChange
-import react.dom.html.InputType
 import react.dom.html.ReactHTML.h1
+import tools.confido.refs.ref
+import users.User
 import utils.*
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -229,6 +238,88 @@ val LoginForm = FC<LoginFormProps> { props ->
                     +"Log in with email only"
                 }
             }
+        }
+    }
+}
+
+
+internal fun renderInput(params: AutocompleteRenderInputParams) =
+    TextField.create {
+        kotlinx.js.Object.assign(this, params)
+        margin = FormControlMargin.normal
+        placeholder = "User name or e-mail"
+        label = ReactNode("Choose an account")
+    }
+
+internal fun groupBy(u: User) = if (u.type.isProper()) "Organization users" else "Guests"
+
+internal fun getOptionLabel(option: User) = option.nick ?: option.email ?: "Temporary guest"
+
+internal fun renderOption(
+    attributes: HTMLAttributes<HTMLLIElement>,
+    option: User,
+    state: AutocompleteRenderOptionState
+) =
+    ListItem.create {
+        Object.assign(this, attributes)
+        ListItemAvatar {
+            UserAvatar {
+                user = option
+            }
+        }
+        +userListItemText(option)
+    }
+
+val LoginByUserSelectForm = FC<Props> {
+    val (appState, stale) = useContext(AppStateContext)
+    var chosenUser by useState<User?>(null)
+    var users by useState<ReadonlyArray<User>?>(null)
+
+    useEffectOnce {
+        CoroutineScope(EmptyCoroutineContext).launch {
+            val availableUsers: ReadonlyArray<User> = Client.httpClient.getJson("/login_users") {}.body()
+            users = availableUsers
+        }
+    }
+
+    fun attemptLogin() {
+        chosenUser?.let {
+            Client.postData("/login_users", it.ref)
+        }
+    }
+
+
+    Container {
+        maxWidth = byTheme("xs")
+        sx {
+            padding = themed(2)
+            display = Display.flex
+            flexDirection = FlexDirection.column
+            alignItems = AlignItems.center
+        }
+
+        val autocomplete: FC<AutocompleteProps<User>> = Autocomplete
+        autocomplete {
+            options = users ?: emptyArray()
+            renderInput = ::renderInput
+            renderOption = ::renderOption
+            autoComplete = true
+            getOptionLabel = ::getOptionLabel
+            groupBy = ::groupBy
+            ListboxComponent = List
+            ListboxProps = utils.jsObject {
+                dense = true
+            }.unsafeCast<ListProps>()
+            onChange = { _, value: User, _, _ -> chosenUser = value }
+            fullWidth = true
+        }
+
+        Button {
+            variant = ButtonVariant.contained
+            fullWidth = true
+            disabled = stale || chosenUser == null
+            onClick = { attemptLogin() }
+            +"Log in"
         }
     }
 }

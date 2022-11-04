@@ -109,6 +109,32 @@ fun loginRoutes(routing: Routing) = routing.apply {
             serverState.loginLinkManager.deleteEntity(loginLink.ref, ignoreNonexistent = true)
         }
     }
+    // Login by id (dev mode only; skips login checks and accessible for everyone)
+    if (devMode) {
+        // Login by id: Get user list
+        getST("/login_users") {
+            val censoredUsers = serverState.users.values.map { it.copy(password = null) }.toTypedArray()
+            call.respond(HttpStatusCode.OK, censoredUsers)
+        }
+        // Login by id: log in by only specifying a user ref
+        postST("/login_users") {
+            call.userSession ?: return@postST badRequest("No session")
+
+            val userRef: Ref<User> = call.receive()
+            val user = userRef.deref() ?: return@postST unauthorized("The user does not exist.")
+            if (!user.active) {
+                return@postST unauthorized("The user is deactivated.")
+            }
+
+            serverState.userManager.modifyEntity(user.ref) {
+                it.copy(lastLoginAt = Clock.System.now())
+            }
+
+            call.modifyUserSession { it.copy(userRef = user.ref) }
+            TransientData.refreshAllWebsockets()
+            call.respond(HttpStatusCode.OK)
+        }
+    }
     // Log out
     postST("/logout") {
         call.respond(HttpStatusCode.OK)

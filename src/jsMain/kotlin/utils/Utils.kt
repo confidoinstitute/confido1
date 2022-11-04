@@ -153,6 +153,12 @@ suspend inline fun <reified T> HttpClient.postJson(urlString: String, payload: T
         block.invoke(this)
     }
 
+suspend inline fun HttpClient.getJson(urlString: String, block: HttpRequestBuilder.() -> Unit) =
+    this.get(urlString) {
+        contentType(ContentType.Application.Json.withParameter("charset", "utf-8"))
+        block.invoke(this)
+    }
+
 fun webSocketUrl(path: String): String {
     val location = window.location
     val protocol = when(location.protocol) {
