@@ -88,7 +88,7 @@ val UserSettings = FC<Props> {
                 onClick = {
                     Client.postData("/profile/nick", SetNick(name))
                 }
-                val changed = user.nick != name
+                val changed = (user.nick ?: "") != name
                 disabled = stale || !changed
                 +"Change name"
             }
@@ -116,7 +116,7 @@ val UserSettings = FC<Props> {
                     Client.postData("/profile/email/start_verification", StartEmailVerification(email))
                     pendingEmailChange = email
                 }
-                val changed = user.email != email
+                val changed = (user.email ?: "") != email
                 disabled = stale || !changed || pendingEmailChange != null
                 +"Change email"
             }
