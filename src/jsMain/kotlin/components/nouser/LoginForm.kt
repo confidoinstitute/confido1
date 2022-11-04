@@ -274,11 +274,23 @@ val LoginByUserSelectForm = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
     var chosenUser by useState<User?>(null)
     var users by useState<ReadonlyArray<User>?>(null)
+    var open by useState(false)
+    val loading = open && users == null
 
-    useEffectOnce {
+    useEffect(loading) {
+        if (!loading) {
+            return@useEffect
+        }
+
         CoroutineScope(EmptyCoroutineContext).launch {
             val availableUsers: ReadonlyArray<User> = Client.httpClient.getJson("/login_users") {}.body()
             users = availableUsers
+        }
+    }
+
+    useEffect(open) {
+        if (!open) {
+            users = null
         }
     }
 
@@ -312,6 +324,10 @@ val LoginByUserSelectForm = FC<Props> {
             }.unsafeCast<ListProps>()
             onChange = { _, value: User, _, _ -> chosenUser = value }
             fullWidth = true
+            this.loading = loading
+            this.open = open
+            onOpen = { open = true }
+            onClose = { _, _ -> open = false }
         }
 
         Button {
