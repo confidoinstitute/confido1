@@ -10,6 +10,7 @@ import react.dom.onChange
 import payloads.requests.SetNick
 import payloads.requests.StartEmailVerification
 import react.dom.html.ReactHTML.br
+import users.UserType
 import utils.eventValue
 import utils.themed
 
@@ -32,36 +33,49 @@ val UserSettings = FC<Props> {
         }
 
         Typography {
+            sx {
+                marginBottom = themed(2)
+            }
             variant = TypographyVariant.h4
             +"User settings"
         }
 
-        if (!user.emailVerified || pendingEmailChange != null) {
+        if (user.type == UserType.GUEST && user.email == null && pendingEmailChange == null) {
             Alert {
                 AlertTitle {
-                    +"Your email is not verified!"
+                    +"No email is set!"
                 }
-                severity = AlertColor.warning
-                if (pendingEmailChange != null) {
-                    +"We have sent you a verification email, please check your inbox."
-                } else {
-                    +"To resolve this, we need to send you a verification email."
-                }
-                br{}
-                Box {
-                    sx {
-                        marginTop = themed(1)
+                severity = AlertColor.error
+                +"It is impossible to log back in without having an email set. Please set an email below if you want to return later."
+            }
+        } else {
+            if (!user.emailVerified || pendingEmailChange != null) {
+                Alert {
+                    AlertTitle {
+                        +"Your email is not verified!"
                     }
-                    Button {
-                        onClick = {
-                            Client.postData("/profile/email/start_verification", StartEmailVerification(email))
+                    severity = AlertColor.warning
+                    if (pendingEmailChange != null) {
+                        +"We have sent you a verification email, please check your inbox."
+                    } else {
+                        +"To resolve this, we need to send you a verification email."
+                    }
+                    br {}
+                    Box {
+                        sx {
+                            marginTop = themed(1)
                         }
-                        disabled = stale
+                        Button {
+                            onClick = {
+                                Client.postData("/profile/email/start_verification", StartEmailVerification(email))
+                            }
+                            disabled = stale
 
-                        if (pendingEmailChange != null) {
-                            +"Resend verification email"
-                        } else {
-                            +"Send verification email"
+                            if (pendingEmailChange != null) {
+                                +"Resend verification email"
+                            } else {
+                                +"Send verification email"
+                            }
                         }
                     }
                 }
