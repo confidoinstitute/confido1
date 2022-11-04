@@ -57,6 +57,7 @@ val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "./build/distributi
 val jsBundle = staticDir.resolve("confido1.js")
 val jsHash = DigestUtils(SHA_224).digestAsHex(jsBundle)
 val devMode = System.getenv("CONFIDO_DEVMODE") == "1"
+val demoMode = System.getenv("CONFIDO_DEMO") == "1"
 
 fun HTML.index() {
     head {

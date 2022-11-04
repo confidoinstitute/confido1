@@ -69,6 +69,7 @@ data class SentState(
     override val groupPred: Map<Ref<Question>, Prediction?> = emptyMap(),
     val session: UserSession = UserSession(),
     val devMode: Boolean = false,
+    val demoMode: Boolean = false,
     override val predictionCount: Map<Ref<Question>, Int> = emptyMap(),
     override val predictorCount: Map<Ref<Question>, Int> = emptyMap(),
 ) : BaseState {

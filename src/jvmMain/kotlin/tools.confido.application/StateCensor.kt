@@ -110,6 +110,7 @@ class StateCensor(val sess: UserSession) {
             myPredictions = getMyPredictions(),
             session = sess,
             devMode = devMode,
+            demoMode = demoMode,
         )
     }
 }
