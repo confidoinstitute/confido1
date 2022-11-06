@@ -1,9 +1,7 @@
 package components.layout
 
 import components.*
-import csstype.Color
-import csstype.None
-import csstype.number
+import csstype.*
 import emotion.react.css
 import icons.*
 import io.ktor.client.request.*
@@ -17,6 +15,7 @@ import react.*
 import react.dom.html.ButtonType
 import react.dom.onChange
 import react.dom.html.ReactHTML.form
+import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.sup
 import react.router.useLocation
 import react.router.useNavigate
@@ -188,9 +187,16 @@ val RootAppBar = FC<RootAppBarProps> { props ->
                 }
                 +"Confido"
                 if (appConfig.betaIndicator)
-                    sup{
-                        css { color = Color("red") }
-                        +"beta"
+                    Badge {
+                        this.color = BadgeColor.error
+                        this.badgeContent = ReactNode("BETA")
+                        span {
+                            css {
+                                visibility = Visibility.hidden
+                                width = 20.px
+                            }
+                            +"."
+                        }
                     }
             }
             if (stale) {
