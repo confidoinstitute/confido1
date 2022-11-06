@@ -28,6 +28,7 @@ import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.codec.digest.MessageDigestAlgorithms.SHA_224
 import org.litote.kmongo.serialization.registerModule
 import org.litote.kmongo.serialization.registerSerializer
+import org.litote.kmongo.upsert
 import org.simplejavamail.mailer.MailerBuilder
 import payloads.requests.*
 import payloads.responses.InviteStatus
@@ -126,12 +127,17 @@ suspend fun initDemo() {
             serverState.userManager.insertEntity(it, forceId = true)
     }
     val rooms = listOf(
-        Room(name="Testing room", members = listOf(
+        Room(id="demoroom1", name="Testing room", members = listOf(
             RoomMembership(admin.ref, role = Moderator),
             RoomMembership(user1.ref, role = Forecaster),
             RoomMembership(user2.ref, role = Forecaster),
         ))
     )
+
+    rooms.forEach {
+        if (!serverState.roomManager.entityMap.containsKey(it.id))
+            serverState.roomManager.insertEntity(it, forceId = true)
+    }
 }
 
 fun main() {
