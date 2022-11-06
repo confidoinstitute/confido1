@@ -41,10 +41,19 @@ class TransactionContextElement(val sess: ClientSession) : AbstractCoroutineCont
     companion object Key : CoroutineContext.Key<TransactionContextElement>
 }
 
+fun getenvBool(name: String) = (System.getenv(name) ?: "0") == "1"
+
+fun loadConfig() = AppConfig(
+    devMode = getenvBool("CONFIDO_DEVMODE"),
+    demoMode = getenvBool("CONFIDO_DEMO"),
+    betaIndicator = getenvBool("CONFIDO_BETA_INDICATOR"),
+    featureFlags = FeatureFlag.values().filter{ getenvBool("CONFIDO_FEAT_${it.name}")}.toSet()
+)
 
 object serverState : GlobalState() {
     override val groupPred : MutableMap<Ref<Question>, Prediction?> = mutableMapOf()
     override val predictorCount: MutableMap<Ref<Question>, Int> = mutableMapOf()
+    override var appConfig: AppConfig = loadConfig()
 
     // Now, for simplicity, serialize all mutations
     val mutationMutex = Mutex()

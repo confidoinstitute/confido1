@@ -1,5 +1,6 @@
 package rooms
 
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -14,9 +15,9 @@ import users.UserType
 @Serializable
 data class Room(
     @SerialName("_id")
-    override val id: String,
+    override val id: String = "",
     val name: String,
-    val createdAt: Instant,
+    val createdAt: Instant = Clock.System.now(),
     val description: String = "",
     val questions: List<Ref<Question>> = emptyList(),
     val members: List<RoomMembership> = emptyList(),

@@ -1,5 +1,6 @@
 package users
 
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System.now
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
@@ -11,15 +12,15 @@ import tools.confido.utils.generateToken
 @Serializable
 data class User(
     @SerialName("_id")
-    override val id: String,
+    override val id: String = "",
     val type: UserType,
     // TODO(privacy): make sure it does not get sent to the client for other users
-    val email: String?,
+    val email: String? = null,
     val emailVerified: Boolean = false,
-    val nick: String?,
+    val nick: String? = null,
     // TODO(security): make sure it does not get sent to the client
-    val password: String?,
-    val createdAt: Instant,
+    val password: String? = null,
+    val createdAt: Instant = Clock.System.now(),
     val lastLoginAt: Instant? = null,
     val active: Boolean = true
 ) : ImmediateDerefEntity {

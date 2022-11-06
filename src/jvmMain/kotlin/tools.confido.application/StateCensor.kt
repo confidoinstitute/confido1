@@ -97,6 +97,8 @@ class StateCensor(val sess: UserSession) {
     fun getMyPredictions() =
         if (user!=null) state.userPred.mapValuesNotNull { it.value[user.ref] } else emptyMap()
 
+    fun censorAppConfig() = state.appConfig
+
     fun censor(): SentState {
         return SentState(
             rooms = censorRooms(),
@@ -109,8 +111,7 @@ class StateCensor(val sess: UserSession) {
             users = censorUsers(), // MUST be AFTER roomComments and questionComments in order to fill referencedUsers
             myPredictions = getMyPredictions(),
             session = sess,
-            devMode = devMode,
-            demoMode = demoMode,
+            appConfig = censorAppConfig(),
         )
     }
 }

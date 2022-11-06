@@ -1,8 +1,10 @@
 package components.layout
 
 import components.*
+import csstype.Color
 import csstype.None
 import csstype.number
+import emotion.react.css
 import icons.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.CoroutineScope
@@ -15,8 +17,10 @@ import react.*
 import react.dom.html.ButtonType
 import react.dom.onChange
 import react.dom.html.ReactHTML.form
+import react.dom.html.ReactHTML.sup
 import react.router.useLocation
 import react.router.useNavigate
+import tools.confido.state.appConfig
 import utils.eventValue
 import utils.themed
 import kotlin.coroutines.EmptyCoroutineContext
@@ -183,6 +187,11 @@ val RootAppBar = FC<RootAppBarProps> { props ->
                     flexGrow = number(1.0)
                 }
                 +"Confido"
+                if (appConfig.betaIndicator)
+                    sup{
+                        css { color = Color("red") }
+                        +"beta"
+                    }
             }
             if (stale) {
                 Chip {

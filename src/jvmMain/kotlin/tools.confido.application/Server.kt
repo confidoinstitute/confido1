@@ -113,6 +113,27 @@ suspend inline fun PipelineContext<Unit, ApplicationCall>.notFound(msg: String =
     call.respond(HttpStatusCode.NotFound, msg)
 }
 
+// TODO move this to an external script for easier modification
+suspend fun initDemo() {
+    val admin = User(id="admin", type =UserType.ADMIN, email="admin@confido.example", emailVerified = true, nick = "Demo Admin")
+    val user1 = User(id="user1", type =UserType.MEMBER, email="user1@confido.example", emailVerified = true, nick = "Demo User 1")
+    val user2 = User(id="user2", type =UserType.MEMBER, email="user2@confido.example", emailVerified = true, nick = "Demo User 2")
+    val users = listOf(
+        admin,user1, user2
+    )
+    users.forEach {
+        if (!serverState.userManager.byEmail.containsKey(it.email))
+            serverState.userManager.insertEntity(it, forceId = true)
+    }
+    val rooms = listOf(
+        Room(name="Testing room", members = listOf(
+            RoomMembership(admin.ref, role = Moderator),
+            RoomMembership(user1.ref, role = Forecaster),
+            RoomMembership(user2.ref, role = Forecaster),
+        ))
+    )
+}
+
 fun main() {
     registerModule(confidoSM)
     // XXX kotlinx.serialization can serialize value classes out of the box. But KMongo uses
@@ -124,6 +145,7 @@ fun main() {
     runBlocking { // this is single-threaded by default
         serverState.initialize()
         serverState.load()
+        if (appConfig.demoMode) initDemo()
     }
 
 

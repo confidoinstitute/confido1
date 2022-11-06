@@ -9,6 +9,7 @@ import mui.system.sx
 import payloads.requests.PasswordLogin
 import react.*
 import react.dom.html.ReactHTML.h1
+import tools.confido.state.appConfig
 import users.DebugAdmin
 import users.DebugMember
 import utils.byTheme
@@ -19,7 +20,7 @@ val LandingPage = FC<Props> {
 
     Typography { +"Welcome to Confido!" }
 
-    if (appState.demoMode) {
+    if (appConfig.demoMode) {
         Typography {
             align = TypographyAlign.center
             variant = TypographyVariant.h5
@@ -34,7 +35,7 @@ val LandingPage = FC<Props> {
         LoginForm {}
     }
 
-    if (appState.devMode) {
+    if (appConfig.devMode) {
         DevModeSection {}
     }
     // TODO: Landing page.

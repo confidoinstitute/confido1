@@ -7,6 +7,7 @@ import kotlinx.html.stream.appendHTML
 import org.simplejavamail.api.email.Email
 import org.simplejavamail.email.EmailBuilder
 import rooms.*
+import tools.confido.state.appConfig
 import users.*
 import kotlin.time.*
 
@@ -27,6 +28,7 @@ class Mailer(
     }
 
     fun sendUserInviteMail(address: String) {
+        if (appConfig.demoMode) return
         val subject = "You have been invited to Confido"
 
         val body = """
@@ -46,6 +48,7 @@ class Mailer(
     }
 
     fun sendRoomInviteMail(address: String, room: Room, login: LoginLink, invitingUserAddress: String?) {
+        if (appConfig.demoMode) return
         // TODO: Improve subject
         // Subject ideas:
         // You have been invited to a Confido room
@@ -100,6 +103,7 @@ class Mailer(
     }
 
     fun sendVerificationMail(address: String, verification: EmailVerificationLink, expiration: Duration) {
+        if (appConfig.demoMode) return
         val subject = "Verify your email address"
         val url = verification.link(origin)
 
@@ -125,6 +129,7 @@ class Mailer(
     }
 
     fun sendLoginMail(address: String, login: LoginLink, expiration: Duration) {
+        if (appConfig.demoMode) return
         val subject = "Log in to Confido"
         val url = login.link(origin)
 

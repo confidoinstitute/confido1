@@ -8,5 +8,5 @@ import users.User
 data class RoomMembership(
     val user: Ref<User>,
     val role: RoomRole,
-    val invitedVia: String?,
+    val invitedVia: String? = null,
 )
