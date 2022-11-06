@@ -1,10 +1,7 @@
 package components.questions
 
 import components.*
-import csstype.Color
-import csstype.Padding
-import csstype.px
-import csstype.rem
+import csstype.*
 import emotion.react.css
 import mui.material.Slider
 import mui.material.Typography
@@ -16,6 +13,7 @@ import mui.system.sx
 import react.*
 import react.dom.aria.ariaLabel
 import react.dom.html.ReactHTML
+import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.em
 import space.kscience.dataforge.values.Value
 import space.kscience.dataforge.values.asValue
@@ -65,7 +63,7 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
     }
 
     fun formatDate(value: Number): String = Date(value.toDouble() * 1000.0).toISOString().substring(0, 10)
-    val formatUncertainty = {_: Number -> "Specify your uncertainty"}
+    val formatUncertainty = {_: Number -> if (!madeUncertainty) "Specify your uncertainty" else "Uncertainty"}
 
     fun addUnit(value: Any) = if (space.unit.isNotEmpty()) "$value ${space.unit}" else value.toString()
 
@@ -80,7 +78,13 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
                 this.outsideColor = if (props.enabled) Value.of("#3a2b63") else Value.of("#9c9c9c")
                 this.visible = madePrediction && madeUncertainty
             }
-
+            Typography {
+                css {
+                    color = Color("#999")
+                    fontWeight = FontWeight.bold
+                }
+                +"Estimate:"
+            }
             MarkedSlider {
                 ariaLabel = "Mean Value"
 
@@ -103,6 +107,14 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
                 onChange = { _, value, _ -> mean = value; if(madeUncertainty) props.onChange?.invoke() }
                 onChangeCommitted = { _, _ -> sendPrediction() }
             }
+            Typography {
+                css {
+                    marginTop = 8.px
+                    color = Color("#999")
+                    fontWeight = FontWeight.bold
+                }
+                +"Uncertainty:"
+            }
             Slider {
                 ariaLabel = "Uncertainty"
 
@@ -113,7 +125,7 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
                 this.step = 0.1
 
                 valueLabelDisplay = if (madeUncertainty || !madePrediction) "off" else "on"
-                if (!madeUncertainty)
+                //if (!madeUncertainty)
                     valueLabelFormat = formatUncertainty
                 track = if (madeUncertainty) "normal" else false.asDynamic()
                 onFocus = { madePrediction = true; madeUncertainty = true }
@@ -183,7 +195,47 @@ val BinaryQuestionInput = FC<QuestionInputProps<BinarySpace, BinaryDistribution>
                 onChange = { _, value, _ -> estimate = value; props.onChange?.invoke() }
                 onChangeCommitted = { _, _ -> sendPrediction() }
             }
+
+            div {
+                css {
+                    width = 100.pct
+                    display = Display.flex
+                    flexDirection =  FlexDirection.row
+                    marginTop = 5.px
+                }
+                div {
+                    css {
+                        width = 50.pct
+                        maxWidth = 50.pct
+                        borderTop = Border(3.px, LineStyle.solid, ConfidoColors.RED)
+                        color = ConfidoColors.RED
+                        textAlign = TextAlign.right
+                        paddingRight = 1.em
+                        display = Display.flex
+                        flexDirection = FlexDirection.row
+                        justifyContent = JustifyContent.spaceBetween
+                    }
+                    Typography {  + "no" }
+                    Typography {  + "← likely no" }
+                }
+                div {
+                    css {
+                        width = 50.pct
+                        maxWidth = 50.pct
+                        borderTop = Border(3.px, LineStyle.solid, ConfidoColors.GREEN)
+                        color = ConfidoColors.GREEN
+                        textAlign = TextAlign.left
+                        paddingLeft = 1.em
+                        display = Display.flex
+                        flexDirection = FlexDirection.row
+                        justifyContent = JustifyContent.spaceBetween
+                    }
+                    div { + "likely yes →"}
+                    div { +"yes" }
+                }
+            }
         }
+
         Typography {
             fun certaintyExplanation() {
                 Explanation {

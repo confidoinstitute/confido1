@@ -11,6 +11,6 @@ mkdir "$tmpd/static"
 cp build/distributions/confido1.js "$tmpd/static" || exit 1
 gzip -k "$tmpd/static/confido1.js" || exit 1
 
-rsync -rlvc "$tmpd/" root@prod1.confido.tools:/usr/local/lib/confido/"$slot"/
+rsync -rlvc "$tmpd/" root@${server:-prod1.confido.tools}:/usr/local/lib/confido/"$slot"/
 
 
