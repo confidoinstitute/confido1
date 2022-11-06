@@ -280,6 +280,8 @@ val LoginByUserSelectForm = FC<LoginByUserSelectFormProps> { props ->
 
         CoroutineScope(EmptyCoroutineContext).launch {
             val availableUsers: ReadonlyArray<User> = Client.httpClient.getJson("/login_users") {}.body()
+            // Required for the autocomplete groupBy
+            availableUsers.sortBy { it.type }
             users = availableUsers
         }
     }
