@@ -1,6 +1,7 @@
 package components.profile
 
 import components.AppStateContext
+import components.DemoEmailAlert
 import csstype.pct
 import hooks.EditEntityDialogProps
 import hooks.useEditDialog
@@ -14,7 +15,6 @@ import react.*
 import react.dom.html.InputType
 import react.dom.onChange
 import tools.confido.refs.eqid
-import tools.confido.utils.randomString
 import users.User
 import users.UserType
 import utils.eventValue
@@ -171,6 +171,10 @@ val AdminView = FC<Props> {
     if (!appState.isAdmin()) return@FC
 
     val editUserOpen = useEditDialog(EditUserDialog)
+
+    if (appState.appConfig.demoMode) {
+        DemoEmailAlert {}
+    }
 
     TableContainer {
         sx {

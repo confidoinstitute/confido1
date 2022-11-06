@@ -1,6 +1,7 @@
 package components.rooms
 
 import components.AppStateContext
+import components.DemoEmailAlert
 import components.UserAvatar
 import components.userListItemText
 import csstype.px
@@ -10,7 +11,6 @@ import io.ktor.client.request.*
 import kotlinx.browser.window
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.js.timers.setTimeout
 import react.*
 import mui.material.*
 import mui.system.sx
@@ -37,6 +37,9 @@ val RoomMembers = FC<Props> {
             editInviteLinkKey = randomString(20)
     }
 
+    if (appState.appConfig.demoMode) {
+        DemoEmailAlert {}
+    }
 
     EditInviteDialog {
         key = "##editDialog##$editInviteLinkKey"
