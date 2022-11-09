@@ -4,6 +4,7 @@ import components.*
 import components.questions.QuestionList
 import components.questions.QuestionTable
 import csstype.AlignItems
+import csstype.WhiteSpace
 import csstype.number
 import icons.EditIcon
 import io.ktor.client.plugins.*
@@ -113,6 +114,7 @@ val RoomInformation = FC<Props> {
         }
         Typography {
             sx {
+                whiteSpace = WhiteSpace.preLine
                 marginBottom = themed(2)
             }
             TextWithLinks { text = room.description }

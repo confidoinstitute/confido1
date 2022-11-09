@@ -216,6 +216,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         AccordionDetails {
             Typography {
                 sx {
+                    whiteSpace = WhiteSpace.preLine
                     marginBottom = themed(2)
                 }
                 TextWithLinks {
