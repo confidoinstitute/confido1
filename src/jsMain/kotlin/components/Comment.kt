@@ -97,7 +97,7 @@ val Comment = FC<CommentProps> { props ->
             }
         }
         CardContent {
-            +comment.content
+            TextWithLinks { text = comment.content }
         }
         if (comment is QuestionComment && comment.prediction != null) {
             Divider {}

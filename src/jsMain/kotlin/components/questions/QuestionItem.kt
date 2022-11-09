@@ -218,7 +218,9 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 sx {
                     marginBottom = themed(2)
                 }
-                +question.description
+                TextWithLinks {
+                    text = question.description
+                }
             }
             if (props.canPredict) {
                 val questionInput: FC<QuestionInputProps<Space, ProbabilityDistribution>> =

@@ -115,7 +115,7 @@ val RoomInformation = FC<Props> {
             sx {
                 marginBottom = themed(2)
             }
-            +room.description
+            TextWithLinks { text = room.description }
         }
     }
 }
