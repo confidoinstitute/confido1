@@ -318,7 +318,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                                 }
                         }
                     }
-                    mapOf("" to "Choose...", "binary" to "Binary", "numeric" to "Numeric", "day" to "Day").map { (value, label) ->
+                    mapOf("" to "Choose...", "binary" to "Yes/no", "numeric" to "Number", "day" to "Date").map { (value, label) ->
                         MenuItem {
                             this.value = value
                             +label
