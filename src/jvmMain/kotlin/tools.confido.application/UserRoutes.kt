@@ -270,6 +270,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
+    // Accept an invitation link as an existing user (requires login)
     postST("/rooms/{id}/invite/accept") {
         val user = call.userSession?.user ?: return@postST unauthorized("Not logged in.")
         val roomRef = Ref<Room>(call.parameters["id"] ?: "")
@@ -278,6 +279,10 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         val accept: AcceptInvite = call.receive()
         val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?:
             return@postST unauthorized("The invite does not exist or is currently not active.")
+
+        if (user.email == null && !invite.allowAnonymous) {
+            return@postST unauthorized("This invite requires an email.")
+        }
 
         serverState.withMutationLock {
             // Add the user as a member only if they are not yet in
