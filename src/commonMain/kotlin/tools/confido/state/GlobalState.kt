@@ -1,7 +1,6 @@
 package tools.confido.state
 
 import kotlinx.serialization.Serializable
-import rooms.Owner
 import rooms.Room
 import rooms.RoomPermission
 import tools.confido.question.*
@@ -19,6 +18,7 @@ interface BaseState {
     val groupPred : Map<Ref<Question>, Prediction?>
     val predictorCount : Map<Ref<Question>, Int>
     val predictionCount : Map<Ref<Question>, Int>
+    val commentLikeCount : Map<Ref<Comment>, Int>
     val appConfig: AppConfig
 }
 
@@ -71,6 +71,8 @@ data class SentState(
     val session: UserSession = UserSession(),
     override val predictionCount: Map<Ref<Question>, Int> = emptyMap(),
     override val predictorCount: Map<Ref<Question>, Int> = emptyMap(),
+    override val commentLikeCount: Map<Ref<Comment>, Int> = emptyMap(),
+    val commentsILike: Set<Ref<Comment>> = emptySet(),
     override val appConfig: AppConfig = AppConfig(),
 ) : BaseState {
     fun isAdmin(): Boolean {

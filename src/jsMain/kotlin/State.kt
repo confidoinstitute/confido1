@@ -13,6 +13,8 @@ import users.UserType
 class ClientState(var sentState: SentState)
     : GlobalState(), BaseState by sentState {
     val session by sentState::session
+    val commentsILike by sentState::commentsILike
+    val myPredictions by sentState::myPredictions
 }
 
 var clientState: ClientState = ClientState(SentState())

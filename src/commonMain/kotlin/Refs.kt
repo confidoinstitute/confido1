@@ -69,7 +69,7 @@ object RefAsStringSerializer : KSerializer<Ref<*>> {
 
 @Serializable(with = RefAsStringSerializer::class)
 @JvmInline
-value class Ref<T: Entity> (val id: String) {
+value class Ref<out T: Entity> (val id: String) {
 }
 
 inline val <reified  T: Entity> T.ref: Ref<T> get() {

@@ -1,9 +1,15 @@
 package tools.confido.state
 
 import com.mongodb.ConnectionString
+import com.mongodb.DuplicateKeyException
+import com.mongodb.ErrorCategory
+import com.mongodb.MongoWriteException
+import com.mongodb.WriteError
 import com.mongodb.client.model.Filters.and
+import com.mongodb.client.model.InsertOneOptions
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.reactivestreams.client.ClientSession
+import io.ktor.server.html.*
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.forEach
 import kotlinx.coroutines.sync.Mutex
@@ -15,10 +21,7 @@ import org.litote.kmongo.coroutine.*
 import org.litote.kmongo.reactivestreams.KMongo
 import rooms.Room
 import tools.confido.distributions.*
-import tools.confido.question.Prediction
-import tools.confido.question.Question
-import tools.confido.question.QuestionComment
-import tools.confido.question.RoomComment
+import tools.confido.question.*
 import tools.confido.refs.*
 import tools.confido.spaces.*
 import tools.confido.utils.*
@@ -359,6 +362,64 @@ object serverState : GlobalState() {
         }
     }
     override val roomComments by roomCommentManager::roomComments
+
+    //object commentLikeManager : EntityManager<CommentLike>(database.getCollection("commentLikes")) {
+    //    val numLikes = mutableMapOf<Ref<Comment>, Int>()
+    //    override suspend fun initialize() {
+    //        mongoCollection.ensureUniqueIndex(CommentLike::comment, CommentLike::user)
+    //    }
+    //    override suspend fun doLoad() {
+    //        @Serializable
+    //        data class Result(val comment: Ref<Comment>, val cnt: Int)
+    //        mongoCollection.aggregate<Result>(
+    //            group(CommentLike::comment, Result::comment first CommentLike::comment, Result::cnt.sum(1))
+    //        ).toFlow().collect { numLikes[it.comment] = it.cnt }
+    //        //println("STATS!!! $totalPredictions")
+    //    }
+
+    //    suspend fun addLike(comment: Ref<Comment>, user: Ref<User>) {
+    //        try {
+    //            mongoCollection.insertOne(CommentLike(generateId(), comment, user))
+    //            numLikes.compute(comment, {_, cnt -> (cnt?:0) + 1})
+    //        } catch (e: MongoWriteException) {
+    //            if (e.error.category != ErrorCategory.DUPLICATE_KEY) throw e;
+    //        }
+    //    }
+    //}
+    object commentLikeManager : InMemoryEntityManager<CommentLike>(database.getCollection("commentLikes")) {
+        val numLikes = mutableMapOf<Ref<Comment>, Int>()
+        val byComment = mutableMapOf<Ref<Comment>, MutableSet<Ref<User>>>()
+        val byUser = mutableMapOf<Ref<User>, MutableSet<Ref<Comment>>>()
+
+        fun addLike(comment: Ref<Comment>, user: Ref<User>) {
+            if (user in (byComment[comment]?:setOf())) return; // already liked
+
+        }
+        fun removeLike(comment: Ref<Comment>, user: Ref<User>) {
+            if (user !in (byComment[comment]?:setOf())) return; // not liked
+
+        }
+        fun setLike(comment: Ref<Comment>, user: Ref<User>, state: Boolean) {
+            if (state) addLike(comment, user)
+            else removeLike(comment, user)
+        }
+        init {
+            onEntityAdded {
+                byComment.getOrPut(it.comment, {mutableSetOf()}).add(it.user)
+                byUser.getOrPut(it.user, {mutableSetOf()}).add(it.comment)
+                numLikes[it.comment] = byComment[it.comment]?.size ?: 0
+            }
+            onEntityDeleted { like->
+                byComment[like.comment]?.let { it.remove(like.user) }
+                byUser[like.user]?.let { it.remove(like.comment) }
+                numLikes[like.comment] = byComment[like.comment]?.size ?: 0
+            }
+        }
+    }
+
+
+
+    override val commentLikeCount: Map<Ref<Comment>, Int> by commentLikeManager::numLikes
 
     object loginLinkManager : InMemoryEntityManager<LoginLink>(database.getCollection("loginLinks")) {
         val byToken: MutableMap<String, LoginLink> = mutableMapOf()

@@ -83,7 +83,7 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
                     color = Color("#999")
                     fontWeight = FontWeight.bold
                 }
-                +"Estimate:"
+                +"Your estimate:"
             }
             MarkedSlider {
                 ariaLabel = "Mean Value"
@@ -113,7 +113,7 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
                     color = Color("#999")
                     fontWeight = FontWeight.bold
                 }
-                +"Uncertainty:"
+                +"Your uncertainty:"
             }
             Slider {
                 ariaLabel = "Uncertainty"

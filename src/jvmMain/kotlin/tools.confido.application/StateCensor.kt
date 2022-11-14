@@ -4,6 +4,7 @@ import rooms.InviteLink
 import rooms.Room
 import rooms.RoomMembership
 import rooms.RoomPermission
+import tools.confido.question.Comment
 import tools.confido.question.Question
 import tools.confido.question.RoomComment
 import tools.confido.refs.*
@@ -19,6 +20,7 @@ class StateCensor(val sess: UserSession) {
     val user = sess.user
     val state = serverState
     val referencedUsers: MutableSet<Ref<User>> = mutableSetOf()
+    val referencedComments: MutableSet<Ref<Comment>> = mutableSetOf()
 
     fun censorMembership(room: Room, membership: RoomMembership) =
         membership.takeIf{user?.type in setOf(UserType.ADMIN, UserType.MEMBER) ||
@@ -58,6 +60,7 @@ class StateCensor(val sess: UserSession) {
                 val room = state.questionRoom[q.ref]?.deref() ?: return@mapValuesNotNull null
                 if (!room.hasPermission(user, RoomPermission.VIEW_QUESTION_COMMENTS)) return@mapValuesNotNull null
                 referencedUsers.addAll(comments.map { it.value.user })
+                referencedComments.addAll(comments.map{it.value.ref})
                 comments
             }
 
@@ -66,6 +69,7 @@ class StateCensor(val sess: UserSession) {
                 val room = roomRef.deref() ?: return@mapValuesNotNull null
                 if (!room.hasPermission(user, RoomPermission.VIEW_ROOM_COMMENTS)) return@mapValuesNotNull null
                 referencedUsers.addAll(comments.map { it.value.user })
+                referencedComments.addAll(comments.map{it.value.ref})
                 comments
             }
 
@@ -97,6 +101,12 @@ class StateCensor(val sess: UserSession) {
     fun getMyPredictions() =
         if (user!=null) state.userPred.mapValuesNotNull { it.value[user.ref] } else emptyMap()
 
+    fun censorCommentLikeCount() =
+        state.commentLikeCount.filterKeys { it in referencedComments }
+
+    fun getCommentsILike() =
+        user?.ref?.let { serverState.commentLikeManager.byUser[it] } ?: setOf()
+
     fun censorAppConfig() = state.appConfig
 
     fun censor(): SentState {
@@ -109,6 +119,8 @@ class StateCensor(val sess: UserSession) {
             questionComments = censorQuestionComments(),
             groupPred = censorGroupPred(),
             users = censorUsers(), // MUST be AFTER roomComments and questionComments in order to fill referencedUsers
+            commentLikeCount = censorCommentLikeCount(),// MUST be AFTER roomComments and questionComments in order to fill referencedCommnets
+            commentsILike = getCommentsILike(),
             myPredictions = getMyPredictions(),
             session = sess,
             appConfig = censorAppConfig(),

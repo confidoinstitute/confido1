@@ -3,8 +3,7 @@ package components
 import components.rooms.RoomContext
 import csstype.AlignItems
 import csstype.number
-import icons.DeleteIcon
-import icons.SendIcon
+import icons.*
 import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.CoroutineScope
@@ -32,6 +31,8 @@ import tools.confido.question.QuestionComment
 import tools.confido.question.RoomComment
 import tools.confido.refs.deref
 import tools.confido.refs.eqid
+import tools.confido.refs.ref
+import tools.confido.state.globalState
 import tools.confido.utils.unixNow
 import utils.*
 import kotlin.coroutines.EmptyCoroutineContext
@@ -81,20 +82,6 @@ val Comment = FC<CommentProps> { props ->
             avatar = UserAvatar.create {
                 this.user = user
             }
-            if (canDelete) {
-                action = IconButton.create {
-                    onClick = {
-                        val url = when(val comment = props.comment) {
-                            is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}"
-                            is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}"
-                        }
-                        CoroutineScope(EmptyCoroutineContext).launch {
-                            Client.httpClient.delete(url) {}
-                        }
-                    }
-                    DeleteIcon {}
-                }
-            }
         }
         CardContent {
             TextWithLinks { text = comment.content }
@@ -115,6 +102,44 @@ val Comment = FC<CommentProps> { props ->
                             distribution = comment.prediction?.dist
                         }
                     }
+                }
+            }
+        }
+        CardActions {
+            IconButton {
+                Badge {
+                    badgeContent = (globalState.commentLikeCount[comment.ref]?:0).let {
+                        if (it > 0) ReactNode(it.toString())
+                        else null
+                    }
+                    color = BadgeColor.secondary
+                    if (comment.ref in appState.commentsILike)
+                        ThumbUpIcon {}
+                    else
+                        ThumbUpOutlineIcon{}
+                }
+                onClick = {
+                    val url = when(val comment = props.comment) {
+                        is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}/$verb"
+                        is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}/$verb"
+                    }
+                    CoroutineScope(EmptyCoroutineContext).launch {
+                        Client.httpClient.delete(url) {}
+                    }
+                }
+            }
+            if (canDelete) {
+                IconButton {
+                    onClick = {
+                        val url = when(val comment = props.comment) {
+                            is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}"
+                            is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}"
+                        }
+                        CoroutineScope(EmptyCoroutineContext).launch {
+                            Client.httpClient.delete(url) {}
+                        }
+                    }
+                    DeleteIcon {}
                 }
             }
         }

@@ -195,4 +195,18 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
             call.respond(HttpStatusCode.OK)
         }
     }
+    postST("/questions/{qID}/comments/{id}/like") {
+        val qID = call.parameters["qID"] ?: ""
+        val id = call.parameters["id"] ?: ""
+        val user = call.userSession?.user ?: return@postST unauthorized("Not logged in.")
+        val state = call.receive<Boolean>()
+
+        serverState.withMutationLock {
+            val question = serverState.questions[qID] ?: return@withMutationLock notFound("No such question.")
+            val room = serverState.questionRoom[question.ref]?.deref() ?: return@withMutationLock notFound("No room???")
+            val comment = serverState.questionComments[question.ref]?.get(id)
+                ?: return@withMutationLock notFound("No such comment.")
+            serverState.commentLikeManager.setLike(user.ref, state);
+        }
+    }
 }
