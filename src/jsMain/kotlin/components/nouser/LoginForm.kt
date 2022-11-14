@@ -18,6 +18,7 @@ import payloads.requests.PasswordLogin
 import payloads.requests.SendMailLink
 import react.*
 import react.dom.html.*
+import react.dom.html.ReactHTML.button
 import react.dom.onChange
 import react.dom.html.ReactHTML.h1
 import tools.confido.refs.ref
@@ -203,7 +204,7 @@ val LoginForm = FC<LoginFormProps> { props ->
             if (mode == LoginMode.MagicLink) {
                 if (!emailSent) {
                     Link {
-                        href = "#"
+                        component = button
                         variant = TypographyVariant.body2
                         onClick = {
                             mode = LoginMode.Password
@@ -213,7 +214,7 @@ val LoginForm = FC<LoginFormProps> { props ->
                     }
                 } else {
                     Link {
-                        href = "#"
+                        component = button
                         variant = TypographyVariant.body2
                         onClick = {
                             emailSent = false
@@ -227,7 +228,7 @@ val LoginForm = FC<LoginFormProps> { props ->
                 }
             } else {
                 Link {
-                    href = "#"
+                    component = button
                     variant = TypographyVariant.body2
                     onClick = {
                         mode = LoginMode.MagicLink
