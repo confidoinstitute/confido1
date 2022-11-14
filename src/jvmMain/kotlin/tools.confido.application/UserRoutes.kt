@@ -250,11 +250,11 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         val user = call.userSession?.user ?: return@postST unauthorized("Not logged in")
         val roomRef = Ref<Room>(call.parameters["id"] ?: "")
         val room = roomRef.deref() ?: return@postST notFound("Room does not exist")
+        if (!room.hasPermission(user, RoomPermission.MANAGE_MEMBERS)) return@postST unauthorized("Cannot manage members")
 
         val invite: InviteLink = call.receive()
 
-        if (!room.hasPermission(user, RoomPermission.MANAGE_MEMBERS))
-            return@postST call.respond(HttpStatusCode.Unauthorized)
+        if (!canChangeRole(room.userRole(user), invite.role)) return@postST unauthorized("This role cannot be changed")
 
         serverState.roomManager.modifyEntity(room.id) { r ->
             val inviteLinks = r.inviteLinks.map { it ->
