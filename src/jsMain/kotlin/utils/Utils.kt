@@ -198,3 +198,6 @@ fun <E> List<List<E>>.transposeForHeatmap(missingElementDefault: E? = null): Lis
         }
     }
 }
+
+fun <E> Set<E>.xor(element: E) =
+    if (element in this) this.minus(element) else this.plus(element)

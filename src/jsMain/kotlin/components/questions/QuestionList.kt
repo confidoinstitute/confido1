@@ -1,6 +1,7 @@
 package components.questions
 
 import components.*
+import components.rooms.CsvExportDialog
 import components.rooms.RoomContext
 import hooks.useEditDialog
 import icons.AddIcon
@@ -52,6 +53,11 @@ val QuestionList = FC<QuestionListProps> { props ->
                 onClick = { editQuestionOpen(null) }
                 +"Add question…"
             }
+        }
+    }
+    if (appState.hasAnyPermission(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)) {
+        CsvExportDialog {
+
         }
     }
 }

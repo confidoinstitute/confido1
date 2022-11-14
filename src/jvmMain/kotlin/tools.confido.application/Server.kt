@@ -173,6 +173,9 @@ fun main() {
                 .buildMailer()
         }
         routing {
+            getST("/export.csv") {
+                call.respondText("", contentType = ContentType("text","csv"))
+            }
             getST("/{...}") {
                 if (call.userSession == null) {
                     call.setUserSession(UserSession())
