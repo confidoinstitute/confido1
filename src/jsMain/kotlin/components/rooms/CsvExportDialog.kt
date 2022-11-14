@@ -42,7 +42,7 @@ val CsvExportDialog = FC<Props> {
 
     val params = parametersOf(
         "questions" to listOf(selectedQuestions.map { it.id }.joinToString(",")),
-        "group" to if (canChangeAggregate) listOf(aggregate.toString()) else emptyList(),
+        "group" to listOf(aggregate.toString()),
         "history" to listOf(history.name),
         "buckets" to if (selectedNumeric) listOf(buckets.toString()) else emptyList(),
     )
