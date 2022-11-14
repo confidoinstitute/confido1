@@ -10,7 +10,6 @@ import io.ktor.server.html.*
 import io.ktor.server.http.content.*
 import io.ktor.server.plugins.callloging.*
 import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
@@ -20,6 +19,7 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System.now
 import kotlinx.html.*
@@ -28,31 +28,17 @@ import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.codec.digest.MessageDigestAlgorithms.SHA_224
 import org.litote.kmongo.serialization.registerModule
 import org.litote.kmongo.serialization.registerSerializer
-import org.litote.kmongo.upsert
 import org.simplejavamail.mailer.MailerBuilder
-import payloads.requests.*
-import payloads.responses.InviteStatus
 import rooms.*
 import tools.confido.application.sessions.*
-import tools.confido.distributions.ProbabilityDistribution
-import tools.confido.question.*
 import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.serialization.confidoSM
 import tools.confido.state.*
-import tools.confido.utils.*
 import users.*
 import java.io.File
-import java.nio.ByteBuffer
-import java.security.MessageDigest
 import java.time.Duration
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.days
-import kotlin.collections.any
-import kotlin.collections.find
 import kotlin.collections.listOf
-import kotlin.collections.plus
-import kotlin.collections.set
 
 val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "./build/distributions/").canonicalFile
 val jsBundle = staticDir.resolve("confido1.js")
@@ -174,7 +160,19 @@ fun main() {
         }
         routing {
             getST("/export.csv") {
-                call.respondText("", contentType = ContentType("text","csv"))
+                val exporter = PredictionExport(
+                    questions = call.parameters["questions"]?.split(",")?.mapNotNull { serverState.questions[it] } ?: emptyList(),
+                    group = call.parameters["group"]?.toBoolean() ?: false,
+                    history = call.parameters["history"]?.let { ExportHistory.valueOf(it) } ?: ExportHistory.LAST,
+                    buckets = call.parameters["buckets"]?.toIntOrNull() ?: 32
+                )
+
+                call.respondTextWriter(contentType = ContentType("text","csv")) {
+                    exporter.exportCSV().collect {
+                        write(it)
+                        write("\r\n")
+                    }
+                }
             }
             getST("/{...}") {
                 if (call.userSession == null) {

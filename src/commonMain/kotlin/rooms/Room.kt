@@ -53,3 +53,10 @@ data class Room(
         }
     }
 }
+
+@Serializable
+enum class ExportHistory {
+    LAST,
+    DAILY,
+    FULL,
+}
