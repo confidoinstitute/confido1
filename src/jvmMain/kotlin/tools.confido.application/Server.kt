@@ -274,7 +274,6 @@ fun main() {
                     }
                 }
 
-                var oldState: SentState? = null
                 call.transientUserData?.runRefreshable(closeNotifier) {
                     val sessionData = call.userSession
                     if (sessionData == null) {
@@ -283,10 +282,7 @@ fun main() {
                     }
 
                     val state = StateCensor(sessionData).censor()
-                    if (state != oldState) {
-                        send(Frame.Text(confidoJSON.encodeToString(state)))
-                        oldState = state
-                    }
+                    send(Frame.Text(confidoJSON.encodeToString(state)))
                 }
             }
             println("static dir: $staticDir")
