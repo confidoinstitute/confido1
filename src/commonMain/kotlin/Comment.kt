@@ -38,6 +38,8 @@ data class RoomComment(
     val isAnnotation: Boolean,
 ) : Comment()
 
+
+@Serializable
 data class CommentLike(
     @SerialName("_id")
     override val id: String,

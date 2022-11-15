@@ -201,12 +201,14 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
         val user = call.userSession?.user ?: return@postST unauthorized("Not logged in.")
         val state = call.receive<Boolean>()
 
-        serverState.withMutationLock {
-            val question = serverState.questions[qID] ?: return@withMutationLock notFound("No such question.")
-            val room = serverState.questionRoom[question.ref]?.deref() ?: return@withMutationLock notFound("No room???")
-            val comment = serverState.questionComments[question.ref]?.get(id)
-                ?: return@withMutationLock notFound("No such comment.")
-            serverState.commentLikeManager.setLike(user.ref, state);
-        }
+        val question = serverState.questions[qID] ?: return@postST notFound("No such question.")
+        val room = serverState.questionRoom[question.ref]?.deref() ?: return@postST notFound("No room???")
+        if (!room.hasPermission(user, RoomPermission.VIEW_QUESTION_COMMENTS))
+            return@postST unauthorized("No permission to access question comments")
+        val comment = serverState.questionComments[question.ref]?.get(id)
+            ?: return@postST notFound("No such comment.")
+        serverState.commentLikeManager.setLike(comment.ref, user.ref, state)
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK)
     }
 }

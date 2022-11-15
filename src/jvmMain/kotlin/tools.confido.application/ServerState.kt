@@ -24,6 +24,7 @@ import tools.confido.distributions.*
 import tools.confido.question.*
 import tools.confido.refs.*
 import tools.confido.spaces.*
+import tools.confido.state.serverState.register
 import tools.confido.utils.*
 import users.EmailVerificationLink
 import users.LoginLink
@@ -391,15 +392,22 @@ object serverState : GlobalState() {
         val byComment = mutableMapOf<Ref<Comment>, MutableSet<Ref<User>>>()
         val byUser = mutableMapOf<Ref<User>, MutableSet<Ref<Comment>>>()
 
-        fun addLike(comment: Ref<Comment>, user: Ref<User>) {
-            if (user in (byComment[comment]?:setOf())) return; // already liked
-
+        suspend fun addLike(comment: Ref<Comment>, user: Ref<User>) {
+            withMutationLock {
+                if (user in (byComment[comment] ?: setOf())) return@withMutationLock // already liked
+                insertEntity(CommentLike(id = "", comment, user))
+            }
         }
-        fun removeLike(comment: Ref<Comment>, user: Ref<User>) {
+        suspend fun removeLike(comment: Ref<Comment>, user: Ref<User>) {
             if (user !in (byComment[comment]?:setOf())) return; // not liked
-
+            withMutationLock {
+                mongoCollection.deleteMany(and(CommentLike::comment eq comment, CommentLike::user eq user))
+                (byComment[comment]?:mutableSetOf()).remove(user)
+                (byUser[user]?:mutableSetOf()).remove(comment)
+                numLikes[comment] = byComment[comment]?.size ?: 0
+            }
         }
-        fun setLike(comment: Ref<Comment>, user: Ref<User>, state: Boolean) {
+        suspend fun setLike(comment: Ref<Comment>, user: Ref<User>, state: Boolean) {
             if (state) addLike(comment, user)
             else removeLike(comment, user)
         }
@@ -453,6 +461,7 @@ object serverState : GlobalState() {
         userPredManager.register()
         userPredHistManager.register()
         groupPredHistManager.register()
+        commentLikeManager.register()
     }
 
 

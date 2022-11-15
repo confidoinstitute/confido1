@@ -51,6 +51,7 @@ val Comment = FC<CommentProps> { props ->
     var textAgo by useState("")
     val canDelete =
         (user eqid currentUser || appState.hasPermission(room, RoomPermission.MANAGE_COMMENTS)) && !stale
+    val liked = comment.ref in appState.commentsILike
 
     useEffect(comment.timestamp) {
         fun setText() {
@@ -82,6 +83,23 @@ val Comment = FC<CommentProps> { props ->
             avatar = UserAvatar.create {
                 this.user = user
             }
+            action = Stack.create {
+                direction = responsive(StackDirection.row)
+                if (canDelete) {
+                    IconButton {
+                        onClick = {
+                            val url = when(val comment = props.comment) {
+                                is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}"
+                                is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}"
+                            }
+                            CoroutineScope(EmptyCoroutineContext).launch {
+                                Client.httpClient.delete(url) {}
+                            }
+                        }
+                        DeleteIcon {}
+                    }
+                }
+            }
         }
         CardContent {
             TextWithLinks { text = comment.content }
@@ -106,6 +124,7 @@ val Comment = FC<CommentProps> { props ->
             }
         }
         CardActions {
+
             IconButton {
                 Badge {
                     badgeContent = (globalState.commentLikeCount[comment.ref]?:0).let {
@@ -113,33 +132,19 @@ val Comment = FC<CommentProps> { props ->
                         else null
                     }
                     color = BadgeColor.secondary
-                    if (comment.ref in appState.commentsILike)
+                    if (liked)
                         ThumbUpIcon {}
                     else
                         ThumbUpOutlineIcon{}
                 }
                 onClick = {
                     val url = when(val comment = props.comment) {
-                        is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}/$verb"
-                        is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}/$verb"
+                        is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}/like"
+                        is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}/like"
                     }
                     CoroutineScope(EmptyCoroutineContext).launch {
-                        Client.httpClient.delete(url) {}
+                        Client.httpClient.postJson(url, !liked) {}
                     }
-                }
-            }
-            if (canDelete) {
-                IconButton {
-                    onClick = {
-                        val url = when(val comment = props.comment) {
-                            is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}"
-                            is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}"
-                        }
-                        CoroutineScope(EmptyCoroutineContext).launch {
-                            Client.httpClient.delete(url) {}
-                        }
-                    }
-                    DeleteIcon {}
                 }
             }
         }

@@ -171,4 +171,19 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
+    postST("/rooms/{rID}/comments/{id}/like") {
+        val rID = call.parameters["rID"] ?: ""
+        val id = call.parameters["id"] ?: ""
+        val user = call.userSession?.user ?: return@postST unauthorized("Not logged in.")
+        val state = call.receive<Boolean>()
+
+        val room = serverState.rooms[rID] ?: return@postST notFound("No room???")
+        val comment = serverState.roomComments[room.ref]?.get(id)
+            ?: return@postST notFound("No such comment.")
+        if (!room.hasPermission(user, RoomPermission.VIEW_ROOM_COMMENTS))
+            return@postST unauthorized("No permission to access room comments")
+        serverState.commentLikeManager.setLike(comment.ref, user.ref, state);
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
 }
