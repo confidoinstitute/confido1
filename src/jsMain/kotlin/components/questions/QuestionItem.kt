@@ -168,6 +168,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
     useOnUnmount(pendingPrediction) { Client.postData("/questions/${props.question.id}/predict", it) }
 
     Accordion {
+        className = ClassName("questionitem")
+        id = "questionitem-${props.question.id}"
         expanded = props.expanded
         onChange = { _, state -> props.onChange?.invoke(state) }
         TransitionProps = jsObject { unmountOnExit = true }

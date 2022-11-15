@@ -51,7 +51,7 @@ fun HTML.index() {
         meta(name = "viewport", content = "width=device-width, initial-scale=1.0")
     }
     body {
-        script(type="text/javascript") { +"bundleVer= '${jsHash}'" }
+        script(type="text/javascript") { unsafe { +"bundleVer= '${jsHash}'" } }
         script(src = "/static/confido1.js?${jsHash}") {}
     }
 }
@@ -87,15 +87,18 @@ fun Route.webSocketST(
 ) = webSocket(path, protocol) {  handler(this) }
 
 suspend inline fun PipelineContext<Unit, ApplicationCall>.badRequest(msg: String = "") {
-    System.err.println("bad request: ${msg}")
+    System.err.println("bad request: $msg")
+    System.err.flush()
     call.respond(HttpStatusCode.BadRequest, msg)
 }
 suspend inline fun PipelineContext<Unit, ApplicationCall>.unauthorized(msg: String = "") {
-    System.err.println("bad request: ${msg}")
+    System.err.println("unauthorized: $msg")
+    System.err.flush()
     call.respond(HttpStatusCode.Unauthorized, msg)
 }
 suspend inline fun PipelineContext<Unit, ApplicationCall>.notFound(msg: String = "") {
-    System.err.println("bad request: ${msg}")
+    System.err.println("not found: $msg")
+    System.err.flush()
     call.respond(HttpStatusCode.NotFound, msg)
 }
 
