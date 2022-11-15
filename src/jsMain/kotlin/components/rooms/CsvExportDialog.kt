@@ -36,15 +36,17 @@ val CsvExportDialog = FC<Props> {
     var buckets by useState(32)
     var bucketsText by useState(buckets.toString())
 
+    var exportWhat by useState("predictions")
     var aggregate by useState(appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS))
     val canChangeAggregate = appState.hasAllPermissions(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
     var history by useState(ExportHistory.LAST)
 
     val params = parametersOf(
         "questions" to listOf(selectedQuestions.map { it.id }.joinToString(",")),
-        "group" to listOf(aggregate.toString()),
-        "history" to listOf(history.name),
-        "buckets" to if (selectedNumeric) listOf(buckets.toString()) else emptyList(),
+        "what" to listOf(exportWhat),
+        "group" to if (exportWhat == "predictions") listOf(aggregate.toString()) else emptyList(),
+        "history" to if (exportWhat == "predictions") listOf(history.name) else emptyList(),
+        "buckets" to if (exportWhat == "predictions" && selectedNumeric) listOf(buckets.toString()) else emptyList(),
     )
     val href = "/export.csv?${params.formUrlEncode()}"
 
@@ -112,7 +114,6 @@ val CsvExportDialog = FC<Props> {
                     }
                     ListItemText {
                         primary = ReactNode(question.name)
-                        secondary = ReactNode(question.description)
                     }
                     onClick = {
                         selectedQuestions = selectedQuestions.xor(question)
@@ -126,11 +127,35 @@ val CsvExportDialog = FC<Props> {
                 overflowY = Overflow.visible
                 flex = Flex(themed(0), shrink=themed(0))
             }
-            if (canChangeAggregate)
             FormGroup {
                 FormControl {
                     FormLabel {
-                        +"Export predictions"
+                        +"Export"
+                    }
+                    RadioGroup {
+                        value = exportWhat
+                        row = true
+                        onChange = { _, value ->
+                            exportWhat = value
+                        }
+                        FormControlLabel {
+                            label = ReactNode("Predictions")
+                            value = "predictions"
+                            control = Radio.create {}
+                        }
+                        FormControlLabel {
+                            label = ReactNode("Comments")
+                            value = "comments"
+                            control = Radio.create {}
+                        }
+                    }
+                }
+            }
+            if (exportWhat == "predictions" && canChangeAggregate)
+            FormGroup {
+                FormControl {
+                    FormLabel {
+                        +"Export predictions as"
                     }
                     RadioGroup {
                         value = aggregate
@@ -143,18 +168,19 @@ val CsvExportDialog = FC<Props> {
                             }
                         }
                         FormControlLabel {
-                            label = ReactNode("As group")
+                            label = ReactNode("Group aggregate")
                             value = "true"
                             control = Radio.create {}
                         }
                         FormControlLabel {
-                            label = ReactNode("Individual")
+                            label = ReactNode("Individual predictions")
                             value = "false"
                             control = Radio.create {}
                         }
                     }
                 }
             }
+            if (exportWhat == "predictions")
             FormGroup {
                 FormControl {
                     FormLabel {
@@ -184,7 +210,7 @@ val CsvExportDialog = FC<Props> {
                     }
                 }
             }
-            if (selectedNumeric) {
+            if (exportWhat == "predictions" && selectedNumeric) {
                 TextField {
                     margin = FormControlMargin.dense
                     type = InputType.number

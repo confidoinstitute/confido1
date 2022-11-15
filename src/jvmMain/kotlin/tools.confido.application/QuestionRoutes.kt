@@ -5,6 +5,8 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.toList
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.encodeToByteArray
 import payloads.requests.*
@@ -146,7 +148,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
                     emptyList(),
                 )
             }
-        }
+        }.toList()
         if (updates.isNotEmpty())
             // add a fake point for the current timestamp so that the graph does not abruptly end at last update time
             updates += listOf(updates[updates.size - 1].copy(ts=unixNow()))

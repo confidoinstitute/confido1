@@ -19,7 +19,6 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.onEach
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System.now
 import kotlinx.html.*
@@ -161,6 +160,7 @@ fun main() {
         routing {
             getST("/export.csv") {
                 val user = call.userSession?.user ?: return@getST unauthorized("Not logged in.")
+                if (user.type == UserType.GUEST) return@getST unauthorized("Guests cannot make exports")
 
                 val questions = call.parameters["questions"]?.split(",")?.mapNotNull { serverState.questions[it] } ?: emptyList()
                 val rooms = questions.mapNotNull { serverState.questionRoom[it.ref]?.deref() }.toSet()
@@ -168,23 +168,38 @@ fun main() {
 
                 val canIndividual = rooms.all { it.hasPermission(user, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS) }
                 val canGroup = rooms.all { it.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS) }
-                val group = call.parameters["group"]?.toBoolean()
-                when(group) {
-                    true -> if (!canGroup) return@getST unauthorized("You cannot export group predictions.")
-                    false -> if (!canIndividual) return@getST unauthorized("You cannot export individual predictions.")
-                    null -> return@getST badRequest("You must specify if you export group or individual predictions.")
+
+                val exportWhat = call.parameters["what"] ?: "predictions"
+
+                val exporter = when (exportWhat) {
+                    "predictions" -> {
+                        val group = call.parameters["group"]?.toBoolean()
+                        when (group) {
+                            true -> if (!canGroup) return@getST unauthorized("You cannot export group predictions.")
+                            false -> if (!canIndividual) return@getST unauthorized("You cannot export individual predictions.")
+                            null -> return@getST badRequest("You must specify if you export group or individual predictions.")
+                        }
+
+                        val history =
+                            call.parameters["history"]?.let { ExportHistory.valueOf(it) } ?: ExportHistory.LAST
+                        val buckets = call.parameters["buckets"]?.toIntOrNull() ?: 32
+                        if (buckets < 0) return@getST badRequest("You cannot request negative amount of buckets.")
+
+                        PredictionExport(questions, group, history, buckets)
+                    }
+                    "comments" -> {
+                        if (!rooms.all { it.hasPermission(user, RoomPermission.VIEW_QUESTION_COMMENTS) })
+                            return@getST unauthorized("No permission to view comments")
+                        CommentExport(questions)
+                    }
+                    else -> return@getST badRequest("Invalid export type $exportWhat")
                 }
 
-                val history = call.parameters["history"]?.let { ExportHistory.valueOf(it) } ?: ExportHistory.LAST
-                val buckets = call.parameters["buckets"]?.toIntOrNull() ?: 32
-                if (buckets < 0) return@getST badRequest("You cannot request negative amount of buckets.")
-
-                val exporter = PredictionExport(questions, group, history, buckets)
-
-                call.respondTextWriter(contentType = ContentType("text","csv")) {
+                call.respondBytesWriter(contentType = ContentType("text","csv")) {
                     exporter.exportCSV().collect {
-                        write(it)
-                        write("\r\n") // CSV specs says you must use CRLF.
+                        val arr = it.encodeToByteArray()
+                        writeFully(arr, 0, arr.size)
+                        writeFully("\r\n".encodeToByteArray(), 0, 2) // CSV specs says you must use CRLF.
                     }
                 }
             }

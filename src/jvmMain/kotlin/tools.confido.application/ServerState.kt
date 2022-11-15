@@ -321,7 +321,7 @@ object serverState : GlobalState() {
         }
         suspend fun query(question: Ref<Question>, user: Ref<User>) =
             mongoCollection.find(and(Prediction::question eq question, Prediction::user eq user))
-                .sort(ascending(Prediction::ts)).toList()
+                .sort(ascending(Prediction::ts)).toFlow()
         init {
             onEntityAdded {
                 totalPredictions.compute(it.question) { _, cnt -> (cnt ?: 0) + 1 }
@@ -336,7 +336,7 @@ object serverState : GlobalState() {
         }
         suspend fun query(question: Ref<Question>) =
             mongoCollection.find(and(Prediction::question eq question))
-                .sort(ascending(Prediction::ts)).toList()
+                .sort(ascending(Prediction::ts)).toFlow()
     }
 
     object questionCommentManager: InMemoryEntityManager<QuestionComment>(database.getCollection("questionComments")) {
