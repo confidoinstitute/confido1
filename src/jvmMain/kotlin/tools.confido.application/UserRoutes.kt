@@ -14,15 +14,12 @@ import tools.confido.application.sessions.TransientData
 import tools.confido.application.sessions.modifyUserSession
 import tools.confido.application.sessions.transientUserData
 import tools.confido.application.sessions.userSession
-import tools.confido.refs.Ref
-import tools.confido.refs.deref
-import tools.confido.refs.eqid
-import tools.confido.refs.ref
+import tools.confido.refs.*
 import tools.confido.state.deleteEntity
 import tools.confido.state.insertEntity
 import tools.confido.state.modifyEntity
 import tools.confido.state.serverState
-import tools.confido.utils.randomString
+import tools.confido.utils.*
 import users.EmailVerificationLink
 import users.LoginLink
 import users.User
@@ -37,7 +34,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
 
         val login: PasswordLogin = call.receive()
         val user = serverState.users.values.find {
-            it.email == login.email && it.password != null
+            it.email?.lowercase() == login.email.lowercase() && it.password != null
                     && Password.check(login.password, it.password).withArgon2()
                     && it.active
         } ?: return@postST unauthorized("Wrong e-mail or password")
@@ -57,15 +54,15 @@ fun loginRoutes(routing: Routing) = routing.apply {
         val session = call.userSession ?: return@postST badRequest("Missing session")
 
         val mail: SendMailLink = call.receive()
-        val user = serverState.userManager.byEmail[mail.email]
+        val user = serverState.userManager.byEmail[mail.email.lowercase()]
 
         if (user != null && user.active) {
             val expiration = 15.minutes
             val expiresAt = Clock.System.now().plus(expiration)
-            val link = LoginLink(user = user.ref, expiryTime = expiresAt, url = mail.url, sentToEmail = user.email)
+            val link = LoginLink(user = user.ref, expiryTime = expiresAt, url = mail.url, sentToEmail = user.email?.lowercase())
             // The operation to send an e-mail can fail, do not ma
             try {
-                call.mailer.sendLoginMail(mail.email, link, expiration)
+                call.mailer.sendLoginMail(mail.email.lowercase(), link, expiration)
             } catch(e: org.simplejavamail.MailException) {
                 // Possible side channel!!!
                 return@postST call.respond(HttpStatusCode.ServiceUnavailable, "There was a failure in sending the e-mail.")
@@ -94,7 +91,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
             }
 
             serverState.userManager.modifyEntity(loginLink.user) {
-                if (loginLink.sentToEmail != null && loginLink.sentToEmail == user.email)
+                if (loginLink.sentToEmail != null && loginLink.sentToEmail.lowercase() == user.email?.lowercase())
                     // transparently verify email (if it has not changed since)
                     it.copy(lastLoginAt = Clock.System.now(), emailVerified = true)
                 else
@@ -154,7 +151,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
 
         val mail: StartEmailVerification = call.receive()
 
-        if (user.emailVerified && user.email == mail.email)
+        if (user.emailVerified && user.email?.lowercase() == mail.email.lowercase())
             return@postST badRequest("The e-mail is already verified")
 
         val expiration = 15.minutes
@@ -179,7 +176,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
 
         serverState.withTransaction {
             serverState.userManager.modifyEntity(verificationLink.user) {
-                it.copy(email = verificationLink.email, emailVerified = true)
+                it.copy(email = verificationLink.email.lowercase(), emailVerified = true)
             }
 
             // Verification links are single-use
@@ -350,19 +347,32 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
         val user = call.userSession?.user ?: return@postST unauthorized("Not logged in")
         if (user.type != UserType.ADMIN) return@postST unauthorized("Cannot manage users")
 
-        val editedUser: User = call.receive()
+        var editedUser: User = call.receive()
+        editedUser = editedUser.copy(email = editedUser.email?.lowercase()?.ifEmpty { null }, nick = editedUser.nick?.ifEmpty{null})
         if (editedUser.email == null && editedUser.type != UserType.GUEST) return@postST badRequest("Only guest can not have e-mail")
         val isSelf = editedUser eqid user
 
-        serverState.userManager.modifyEntity(editedUser.id) {
-           it.copy(
-               nick = editedUser.nick?.ifEmpty { null },
-               email = editedUser.email?.ifEmpty { null },
-               emailVerified = true,
-               type = if (isSelf) UserType.ADMIN else editedUser.type,
-               active = if (isSelf) true else editedUser.active,
-           )
+        var duplicateEmail = false
+        serverState.withMutationLock {
+            editedUser.email?.lowercase()?.let {
+                val emailUser = serverState.userManager.byEmail[it]
+                if (emailUser != null && !(emailUser eqid editedUser)) {
+                    duplicateEmail = true
+                    return@withMutationLock
+                }
+            }
+
+            serverState.userManager.modifyEntity(editedUser.id) {
+                it.copy(
+                    nick = editedUser.nick?.ifEmpty { null },
+                    email = editedUser.email?.lowercase()?.ifEmpty { null },
+                    emailVerified = true,
+                    type = if (isSelf) UserType.ADMIN else editedUser.type,
+                    active = if (isSelf) true else editedUser.active,
+                )
+            }
         }
+        if (duplicateEmail) return@postST badRequest("E-mail address already used by another account")
 
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
@@ -373,15 +383,27 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
 
         val sendInvitationEmail = (call.parameters["invite"] != null)
 
-        val addedUser: User = call.receive()
-        if (addedUser.email == null && addedUser.type != UserType.GUEST) return@postST badRequest("Only guest can not have e-mail")
+        var addedUser: User = call.receive()
+        addedUser = addedUser.copy(email = addedUser.email?.lowercase()?.ifEmpty { null }, nick = addedUser.nick?.ifEmpty{null})
+        if (addedUser.email == null && addedUser.type != UserType.GUEST) return@postST badRequest("Only guest can have empty e-mail")
 
-        serverState.userManager.insertEntity(addedUser)
+        var duplicateEmail = false
+        serverState.withMutationLock {
+            addedUser.email?.lowercase()?.let {
+                val emailUser = serverState.userManager.byEmail[it]
+                if (emailUser != null && !(emailUser eqid addedUser)) {
+                    duplicateEmail = true
+                    return@withMutationLock
+                }
+            }
+            serverState.userManager.insertEntity(addedUser)
+        }
+        if (duplicateEmail) return@postST badRequest("E-mail address already used by another account")
         TransientData.refreshAllWebsockets()
 
         if (sendInvitationEmail && addedUser.email != null) {
             try {
-                call.mailer.sendUserInviteMail(addedUser.email)
+                call.mailer.sendUserInviteMail(addedUser.email!!)
             } catch(e: org.simplejavamail.MailException) {
                 // Possible side channel!!!
                 return@postST call.respond(HttpStatusCode.ServiceUnavailable, "There was a failure in sending the e-mail.")

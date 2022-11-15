@@ -253,8 +253,8 @@ object serverState : GlobalState() {
         }
         val byEmail: MutableMap<String, User> = mutableMapOf()
         init {
-            onEntityAddedOrUpdated { it.email?.let{ email-> byEmail[email] = it } }
-            onEntityDeleted { it.email?.let{ email -> byEmail.remove(email) } }
+            onEntityAddedOrUpdated { it.email?.let{ email-> byEmail[email.lowercase()] = it } }
+            onEntityDeleted { it.email?.let{ email -> byEmail.remove(email.lowercase()) } }
         }
 
     }

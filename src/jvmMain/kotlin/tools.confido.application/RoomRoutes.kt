@@ -83,7 +83,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                 addExistingMember(member.user, member.role)
             }
             is AddedNewMember -> {
-                serverState.userManager.byEmail[member.email]?.let {
+                serverState.userManager.byEmail[member.email.lowercase()]?.let {
                     // In this case just add a new member directly
                     addExistingMember(it.ref, member.role)
                 } ?: run {
@@ -99,9 +99,9 @@ fun roomRoutes(routing: Routing) = routing.apply {
 
                     val expiration = 14.days
                     val expiresAt = Clock.System.now().plus(expiration)
-                    val link = LoginLink(user = newUser.ref, expiryTime = expiresAt, url = "/room/${room.id}", sentToEmail = user.email)
+                    val link = LoginLink(user = newUser.ref, expiryTime = expiresAt, url = "/room/${room.id}", sentToEmail = user.email?.lowercase())
                     try {
-                        call.mailer.sendRoomInviteMail(member.email, room, link, user.email)
+                        call.mailer.sendRoomInviteMail(member.email.lowercase(), room, link, user.email?.lowercase())
                     } catch (e: MailException) {
                         e.printStackTrace()
                         return@postST call.respond(HttpStatusCode.ServiceUnavailable, "Could not send an invitation e-mail.")

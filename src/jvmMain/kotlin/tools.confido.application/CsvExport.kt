@@ -74,7 +74,7 @@ class PredictionExport  (
         user?.let {
             ret["user_id"] = it.id
             ret["nick"] = it.nick ?: ""
-            ret["email"] = it.email ?: ""
+            ret["email"] = it.email?.lowercase() ?: ""
         }
 
         val dt = Instant.fromEpochSeconds(prediction.ts.toLong()).toLocalDateTime(TimeZone.UTC)
@@ -154,7 +154,7 @@ class CommentExport  (
             "question" to q.name,
             "user_id" to c.user.id,
             "nick" to (user?.nick ?: ""),
-            "email" to (user?.email ?: ""),
+            "email" to (user?.email?.lowercase() ?: ""),
             "timestamp" to c.timestamp.toString(),
             "date" to dt.date.toString(),
             "time" to dt.time.toString(),
