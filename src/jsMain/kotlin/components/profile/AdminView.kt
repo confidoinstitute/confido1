@@ -211,8 +211,14 @@ val AdminView = FC<Props> {
                         TableCell {+user.type.name}
                         TableCell {
                             Checkbox {
-                                this.readOnly = true
+                                val isSelf = user eqid appState.session.user
+                                this.disabled = isSelf
                                 this.checked = user.active
+                                onClick = {
+                                    if (!isSelf) {
+                                        Client.postData("/users/edit", user.copy(active = !user.active))
+                                    }
+                                }
                             }
                         }
                         TableCell {+(user.lastLoginAt?.epochSeconds?.toDateTime() ?: "Never")}
