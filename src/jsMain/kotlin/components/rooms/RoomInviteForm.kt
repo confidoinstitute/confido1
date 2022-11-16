@@ -1,6 +1,7 @@
 package components.rooms
 
 import components.AppStateContext
+import components.RouterLink
 import components.nouser.LoginForm
 import csstype.*
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +27,7 @@ import kotlin.coroutines.EmptyCoroutineContext
 
 val RoomInviteForm = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
+    val user = appState.session.user
     var name by useState("")
     var email by useState("")
     var emailError by useState<String?>(null)
@@ -57,7 +59,31 @@ val RoomInviteForm = FC<Props> {
         CircularProgress {}
     }
 
+
     if (inviteStatus != null) {
+        val missingRequiredEmail = user != null && user.email == null && !inviteStatus!!.allowAnonymous
+        if (missingRequiredEmail) {
+            Container {
+                maxWidth = byTheme("md")
+                Alert {
+                    sx {
+                        marginTop = themed(2)
+                    }
+                    severity = AlertColor.error
+
+                    AlertTitle {
+                        +"No email is set!"
+                    }
+                    +"This invite requires you to set an email before accepting. You can do so in "
+                    RouterLink {
+                        to = "/profile"
+                        +"user settings"
+                    }
+                    +"."
+                }
+            }
+        }
+
         Container {
             maxWidth = byTheme("xs")
             sx {
@@ -75,7 +101,8 @@ val RoomInviteForm = FC<Props> {
                         +"${inviteStatus?.roomName}"
                     }
                 }
-                if (appState.session.user == null) {
+
+                if (user == null) {
                     val emailRequired = !inviteStatus!!.allowAnonymous
 
                     if (!loginRequired) {
@@ -184,7 +211,7 @@ val RoomInviteForm = FC<Props> {
                                 navigate("/room/${roomId}")
                             }
                         }
-                        disabled = stale
+                        disabled = stale || missingRequiredEmail
                         +"Start forecasting"
                     }
                 }
