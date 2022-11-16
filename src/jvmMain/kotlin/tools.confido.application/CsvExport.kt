@@ -6,8 +6,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import rooms.ExportHistory
-import tools.confido.distributions.BinaryDistribution
-import tools.confido.distributions.ContinuousProbabilityDistribution
+import tools.confido.distributions.*
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.question.QuestionComment
@@ -87,8 +86,17 @@ class PredictionExport  (
             is ContinuousProbabilityDistribution -> {
                 ret["mean"] = dist.mean.toString()
                 ret["stdev"] = dist.stdev.toString()
-                bucketNames.zip(dist.discretize(buckets).binProbs).map {(name, prob) ->
-                    ret[name] = prob.toString()
+                if (dist is TruncatedNormalDistribution){
+                    ret["pseudo_mean"] = dist.pseudoMean.toString()
+                    ret["pseudo_stdev"] = dist.pseudoStdev.toString()
+                }
+
+                // For group prediction, always add buckets, even when there is only one prediction
+                // and we get the original TruncatedNormalDistribution
+                if (user == null || dist !is TruncatedNormalDistribution) {
+                    bucketNames.zip(dist.discretize(buckets).binProbs).map { (name, prob) ->
+                        ret[name] = prob.toString()
+                    }
                 }
             }
         }
