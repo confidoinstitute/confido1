@@ -260,7 +260,7 @@ internal fun renderOption(
                 user = option
             }
         }
-        +userListItemText(option)
+        +userListItemText(option, withInactive = true)
     }
 
 external interface LoginByUserSelectFormProps : Props {
@@ -321,6 +321,7 @@ val LoginByUserSelectForm = FC<LoginByUserSelectFormProps> { props ->
                     helperText = props.helperText?.let { ReactNode(it) }
                 }
             }
+            getOptionDisabled = { option -> !option.active }
             renderOption = ::renderOption
             autoComplete = true
             getOptionLabel = ::getOptionLabel

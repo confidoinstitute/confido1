@@ -22,18 +22,28 @@ val UserAvatar = FC<UserAvatarProps> {props ->
     }
 }
 
-fun userListItemText(user: User) = ListItemText.create {
+/**
+ * @param withInactive if true, add `(inactive)` to the name when user is inactive.
+ */
+fun userListItemText(user: User, withInactive: Boolean = false) = ListItemText.create {
     val nick = user.nick
     val email = user.email
+
+    val suffix = if (withInactive && !user.active) {
+        " (inactive)"
+    } else {
+        ""
+    }
+
     if (nick != null && email != null) {
-        primary = ReactNode(nick)
+        primary = ReactNode("$nick$suffix")
         secondary = ReactNode(email)
     } else if (nick != null) {
-        primary = ReactNode(nick)
+        primary = ReactNode("$nick$suffix")
         secondary = ReactNode("Temporary guest")
     } else if (email != null) {
-        primary = ReactNode(email)
+        primary = ReactNode("$email$suffix")
     } else {
-        primary = ReactNode("Temporary guest")
+        primary = ReactNode("Temporary guest$suffix")
     }
 }
