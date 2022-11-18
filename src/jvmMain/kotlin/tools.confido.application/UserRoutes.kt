@@ -59,7 +59,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
         if (user != null && user.active) {
             val expiration = 15.minutes
             val expiresAt = Clock.System.now().plus(expiration)
-            val link = LoginLink(user = user.ref, expiryTime = expiresAt, url = mail.url, sentToEmail = user.email?.lowercase())
+            val link = LoginLink(token = generateToken(), user = user.ref, expiryTime = expiresAt, url = mail.url, sentToEmail = user.email?.lowercase())
             // The operation to send an e-mail can fail, do not ma
             try {
                 call.mailer.sendLoginMail(mail.email.lowercase(), link, expiration)
@@ -156,7 +156,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
 
         val expiration = 15.minutes
         val expiresAt = Clock.System.now().plus(expiration)
-        val link = EmailVerificationLink(user = user.ref, expiryTime = expiresAt, email = mail.email)
+        val link = EmailVerificationLink(token = generateToken(), user = user.ref, expiryTime = expiresAt, email = mail.email)
         try {
             call.mailer.sendVerificationMail(mail.email, link, expiration)
         } catch (e: org.simplejavamail.MailException) {
@@ -232,9 +232,15 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         if (!canChangeRole(room.userRole(user), invited.role)) return@postST unauthorized("This role cannot be changed")
 
         val inviteLink = InviteLink(
-            description = invited.description ?: "", role = invited.role,
-            createdBy=user.ref, createdAt = Clock.System.now(), allowAnonymous = invited.anonymous, state = InviteLinkState.ENABLED
+            token = generateToken(),
+            description = invited.description ?: "",
+            role = invited.role,
+            createdBy = user.ref,
+            createdAt = Clock.System.now(),
+            allowAnonymous = invited.anonymous,
+            state = InviteLinkState.ENABLED
         )
+
         serverState.roomManager.modifyEntity(room.id) {
             it.copy(inviteLinks=it.inviteLinks + listOf(inviteLink))
         }

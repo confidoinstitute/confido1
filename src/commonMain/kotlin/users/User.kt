@@ -7,7 +7,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import tools.confido.refs.ImmediateDerefEntity
 import tools.confido.refs.Ref
-import tools.confido.utils.generateToken
 
 @Serializable
 data class User(
@@ -31,7 +30,7 @@ data class User(
 data class LoginLink(
     @SerialName("_id")
     override val id: String = "", // generated on insert
-    val token: String = generateToken(),
+    val token: String,
     val user: Ref<User>,
     val expiryTime: Instant,
     val url: String = "/",
@@ -46,7 +45,7 @@ data class LoginLink(
 data class EmailVerificationLink(
     @SerialName("_id")
     override val id: String = "", // generated on insert
-    val token: String = generateToken(),
+    val token: String,
     val user: Ref<User>,
     val email: String,
     val expiryTime: Instant,
