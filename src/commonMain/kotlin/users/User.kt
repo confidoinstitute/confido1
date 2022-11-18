@@ -14,11 +14,9 @@ data class User(
     @SerialName("_id")
     override val id: String = "",
     val type: UserType,
-    // TODO(privacy): make sure it does not get sent to the client for other users
     val email: String? = null,
     val emailVerified: Boolean = false,
     val nick: String? = null,
-    // TODO(security): make sure it does not get sent to the client
     val password: String? = null,
     val createdAt: Instant = Clock.System.now(),
     val lastLoginAt: Instant? = null,
