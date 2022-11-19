@@ -3,6 +3,7 @@ package components.questions
 import components.Comment
 import components.CommentInput
 import components.CommentInputVariant
+import components.DialogTitleWithCloseButton
 import csstype.number
 import csstype.pct
 import icons.CommentIcon
@@ -53,11 +54,12 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
             }
         }
 
-        DialogTitle {
+        DialogTitleWithCloseButton {
             +"Comments"
             Typography {
                 +props.question.name
             }
+            onClose = { open = false }
         }
         DialogContent {
             sx {

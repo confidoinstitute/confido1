@@ -34,8 +34,9 @@ val FeedbackForm = FC<Props> {
     Dialog {
         open = formOpen
         onClose = {_, _ -> formOpen = false}
-        DialogTitle {
+        DialogTitleWithCloseButton {
             +"Send feedback"
+            onClose = { formOpen = false }
         }
         form {
             onSubmit = {

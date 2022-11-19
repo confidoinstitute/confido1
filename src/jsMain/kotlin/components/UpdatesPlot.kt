@@ -186,8 +186,9 @@ val UpdatesButton = FC<UpdatesButtonProps> { props ->
         fullWidth = true
         maxWidth = "xl"
         key = dialogKey
-        DialogTitle {
+        DialogTitleWithCloseButton {
             +"Group prediction history"
+            onClose = { open = false }
         }
         DialogContent {
             DialogContentText {

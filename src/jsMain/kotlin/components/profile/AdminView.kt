@@ -2,6 +2,7 @@ package components.profile
 
 import components.AppStateContext
 import components.DemoEmailAlert
+import components.DialogTitleWithCloseButton
 import csstype.pct
 import hooks.EditEntityDialogProps
 import hooks.useEditDialog
@@ -72,8 +73,9 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
     Dialog {
         open = props.open
         onClose = { _, _ -> props.onClose?.invoke() }
-        DialogTitle {
+        DialogTitleWithCloseButton {
             if (newUser) +"New user" else +"Edit user"
+            onClose = { props.onClose?.invoke() }
         }
 
         DialogContent {
