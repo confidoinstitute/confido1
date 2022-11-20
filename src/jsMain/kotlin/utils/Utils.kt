@@ -5,10 +5,10 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlinx.browser.window
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlinx.datetime.*
+import web.location.location
 import kotlin.js.Date
 
 inline fun jsObject(init: dynamic.() -> Unit): dynamic {
@@ -160,7 +160,6 @@ suspend inline fun HttpClient.getJson(urlString: String, block: HttpRequestBuild
     }
 
 fun webSocketUrl(path: String): String {
-    val location = window.location
     val protocol = when(location.protocol) {
         "https:" -> "wss:"
         else -> "ws:"

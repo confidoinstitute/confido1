@@ -8,7 +8,6 @@ import csstype.px
 import hooks.useDebounce
 import icons.*
 import io.ktor.client.request.*
-import kotlinx.browser.window
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import react.*
@@ -22,6 +21,8 @@ import tools.confido.refs.eqid
 import tools.confido.state.SentState
 import tools.confido.utils.randomString
 import utils.themed
+import web.location.location
+import web.navigator.navigator
 import kotlin.coroutines.EmptyCoroutineContext
 
 val RoomMembers = FC<Props> {
@@ -159,8 +160,8 @@ val InvitationMembers = FC<InvitationMembersProps> {props ->
                     ContentCopyIcon {}
                     disabled = !active
                     onClick = {
-                        val url = props.invitation.link(window.location.origin, room)
-                        window.navigator.clipboard.writeText(url)
+                        val url = props.invitation.link(location.origin, room)
+                        navigator.clipboard.writeText(url)
                         copyShown = true
                     }
                 }

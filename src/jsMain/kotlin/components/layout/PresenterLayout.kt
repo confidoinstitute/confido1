@@ -1,9 +1,6 @@
 package components.layout
 
-import kotlinx.browser.window
 import kotlinx.serialization.decodeFromString
-import org.w3c.dom.CloseEvent
-import org.w3c.dom.WebSocket
 import react.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.utils.unixNow
@@ -12,6 +9,7 @@ import web.timers.Timeout
 import web.timers.clearInterval
 import web.timers.setInterval
 import web.timers.setTimeout
+import websockets.WebSocket
 
 val PresenterLayout = FC<Props> {
     val webSocket = useRef<WebSocket>(null)
