@@ -4,6 +4,7 @@ import components.AppStateContext
 import components.UserAvatar
 import components.userListItemText
 import csstype.*
+import dom.html.HTMLLIElement
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -13,7 +14,6 @@ import kotlinx.js.ReadonlyArray
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.sx
-import org.w3c.dom.*
 import payloads.requests.PasswordLogin
 import payloads.requests.SendMailLink
 import react.*

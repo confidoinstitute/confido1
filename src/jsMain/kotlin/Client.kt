@@ -4,7 +4,7 @@ import io.ktor.client.call.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.serialization.kotlinx.json.*
-import kotlinx.browser.document
+import browser.document
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import react.create
@@ -37,7 +37,7 @@ object Client {
 
 fun main() {
     val container = document.createElement("div")
-    document.body!!.appendChild(container)
+    document.body.appendChild(container)
 
     val app = App.create {}
     createRoot(container).render(app)

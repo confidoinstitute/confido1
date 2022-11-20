@@ -1,7 +1,7 @@
 package hooks
 
-import org.w3c.dom.HTMLElement
-import org.w3c.dom.ResizeObserver
+import dom.html.HTMLElement
+import dom.observers.ResizeObserver
 import react.*
 
 data class ElementSize<T: HTMLElement>(

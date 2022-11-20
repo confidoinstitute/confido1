@@ -8,8 +8,6 @@ import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.js.timers.clearInterval
-import kotlinx.js.timers.setInterval
 import mui.lab.LoadingButton
 import mui.lab.LoadingPosition
 import mui.material.*
@@ -35,6 +33,8 @@ import tools.confido.refs.ref
 import tools.confido.state.globalState
 import tools.confido.utils.unixNow
 import utils.*
+import web.timers.clearInterval
+import web.timers.setInterval
 import kotlin.coroutines.EmptyCoroutineContext
 
 external interface CommentProps : Props {

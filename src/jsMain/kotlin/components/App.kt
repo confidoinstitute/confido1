@@ -6,7 +6,6 @@ import components.layout.PresenterLayout
 import components.layout.RootLayout
 import csstype.*
 import kotlinx.browser.window
-import kotlinx.js.timers.setTimeout
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -29,6 +28,7 @@ import tools.confido.state.SentState
 import tools.confido.state.clientState
 import utils.buildObject
 import utils.webSocketUrl
+import web.timers.setTimeout
 
 val AppStateContext = createContext<ClientAppState>()
 

@@ -2,7 +2,7 @@
 val ktorVersion = "2.1.3"
 val serializationVersion = "1.4.1"
 val kmongoVersion = "4.7.2"
-val kotlinWrappersVersion = "1.0.0-pre.442"
+val kotlinWrappersVersion = "1.0.0-pre.444"
 
 plugins {
     kotlin("multiplatform") version "1.7.21"
