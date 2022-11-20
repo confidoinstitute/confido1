@@ -1,11 +1,12 @@
 
-val ktorVersion = "2.1.2"
-val serializationVersion = "1.4.0"
-val kmongoVersion = "4.7.0"
+val ktorVersion = "2.1.3"
+val serializationVersion = "1.4.1"
+val kmongoVersion = "4.7.2"
+val kotlinWrappersVersion = "1.0.0-pre.442"
 
 plugins {
-    kotlin("multiplatform") version "1.7.20"
-    kotlin("plugin.serialization") version "1.7.20"
+    kotlin("multiplatform") version "1.7.21"
+    kotlin("plugin.serialization") version "1.7.21"
     application
 }
 
@@ -17,6 +18,8 @@ repositories {
     maven("https://maven.pkg.jetbrains.space/public/p/kotlinx-html/maven")
     maven("https://repo.kotlin.link")
 }
+
+fun kotlinw(target: String): String = "org.jetbrains.kotlin-wrappers:kotlin-$target"
 
 // https://kotlinlang.org/docs/multiplatform-dsl-reference.html
 // https://docs.gradle.org/current/userguide/kotlin_dsl.html
@@ -71,24 +74,24 @@ kotlin {
                 implementation("io.ktor:ktor-serialization:$ktorVersion")
                 implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
                 implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
-                implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.7.2")
+                implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.8.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
-                implementation("org.slf4j:slf4j-simple:2.0.0")
+                implementation("org.slf4j:slf4j-simple:2.0.4")
                 implementation("org.litote.kmongo:kmongo-coroutine:$kmongoVersion")
                 implementation("org.litote.kmongo:kmongo-coroutine-serialization:$kmongoVersion")
                 implementation("com.password4j:password4j:1.6.1")
                 implementation("org.simplejavamail:simple-java-mail:7.5.0")
-                implementation("com.github.jnr:jnr-unixsocket:0.38.17") // for mongodb unix socket connection (faster)
+                implementation("com.github.jnr:jnr-unixsocket:0.38.19") // for mongodb unix socket connection (faster)
                 implementation("commons-codec:commons-codec:1.15")
             }
         }
         val jsMain by getting {
             dependencies {
-                implementation("org.jetbrains.kotlin-wrappers:kotlin-react:18.0.0-pre.332-kotlin-1.6.21")
-                implementation("org.jetbrains.kotlin-wrappers:kotlin-react-dom:18.0.0-pre.332-kotlin-1.6.21")
-                implementation("org.jetbrains.kotlin-wrappers:kotlin-emotion:11.9.0-pre.332-kotlin-1.6.21")
-                implementation("org.jetbrains.kotlin-wrappers:kotlin-react-router-dom:6.3.0-pre.332-kotlin-1.6.21")
-                implementation("org.jetbrains.kotlin-wrappers:kotlin-mui:5.6.2-pre.332-kotlin-1.6.21")
+                implementation(kotlinw("react"))
+                implementation(kotlinw("react-dom"))
+                implementation(kotlinw("emotion"))
+                implementation(kotlinw("react-router-dom"))
+                implementation(kotlinw("mui"))
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
                 implementation("io.ktor:ktor-client-core:$ktorVersion")
                 implementation("io.ktor:ktor-client-serialization:$ktorVersion")
@@ -96,7 +99,7 @@ kotlin {
                 implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
                 // Plotly
                 implementation("space.kscience:plotlykt-core:0.5.0")
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.1")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
             }
         }
     }
@@ -107,6 +110,13 @@ kotlin {
             optIn("kotlin.ExperimentalStdlibApi")
         }
     }
+}
+
+dependencies {
+    // This specifies the use of the kotlin wrapper BOM to find compatible dependencies. We cannot define
+    // enforcedPlatform directly within jsMain dependencies in multiplatform projects, so we do it here instead.
+    // See also: https://github.com/JetBrains/kotlin-wrappers/issues/1519
+    "jsMainImplementation"(enforcedPlatform(kotlinw("wrappers-bom:$kotlinWrappersVersion")))
 }
 
 application {
