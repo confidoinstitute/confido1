@@ -142,8 +142,10 @@ fun main() {
         if (appConfig.demoMode) initDemo()
     }
 
+    val port = System.getenv("CONFIDO_HTTP_PORT")?.toIntOrNull() ?: 8080
+    val host = System.getenv("CONFIDO_HTTP_HOST") ?: "127.0.0.1"
 
-    embeddedServer(CIO, port = System.getenv("CONFIDO_HTTP_PORT")?.toIntOrNull() ?: 8080, host = "127.0.0.1") {
+    embeddedServer(CIO, port = port, host = host) {
         install(WebSockets)
         install(CallLogging)
         install(ContentNegotiation) {
