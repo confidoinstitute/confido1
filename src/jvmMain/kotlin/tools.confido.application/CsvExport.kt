@@ -15,6 +15,8 @@ import tools.confido.refs.ref
 import tools.confido.spaces.NumericSpace
 import tools.confido.state.serverState
 import tools.confido.utils.fromUnix
+import tools.confido.utils.toFixed
+import tools.confido.utils.utcFromUnix
 import users.User
 
 typealias CsvRecord = Map<String, String>
@@ -41,6 +43,36 @@ sealed class CsvExport {
             }.joinToString((","))
             emit(line)
         }
+    }
+
+    fun exportValue(space: NumericSpace, value: Double) =
+        if (space.representsDays) {
+            LocalDate.utcFromUnix(value.toInt()).toString()
+        } else {
+            value.toFixed(2)
+        }
+    fun exportDiff(space: NumericSpace, diff: Double) =
+        if (space.representsDays) {
+            (diff / (24.0 * 3600.0)).toFixed(2)
+        } else {
+            diff.toFixed(2)
+        }
+
+    fun exportDist(dist: ProbabilityDistribution): CsvRecord {
+        val ret = mutableMapOf<String, String>()
+        when (dist) {
+            is BinaryDistribution -> ret["probability"] = dist.yesProb.toString()
+            is ContinuousProbabilityDistribution -> {
+                ret["mean"] = exportValue(dist.space, dist.mean)
+                ret["stdev"] = exportDiff(dist.space, dist.stdev)
+                if (dist is TruncatedNormalDistribution) {
+                    ret["pseudo_mean"] = exportValue(dist.space, dist.pseudoMean)
+                    ret["pseudo_stdev"] = exportDiff(dist.space, dist.pseudoStdev)
+                }
+            }
+        }
+        return ret
+
     }
 }
 
@@ -81,23 +113,15 @@ class PredictionExport  (
         ret["date"] = dt.date.toString()
         ret["time"] = dt.time.toString()
 
-        when(val dist = prediction.dist) {
-            is BinaryDistribution -> ret["probability"] = dist.yesProb.toString()
-            is ContinuousProbabilityDistribution -> {
-                ret["mean"] = dist.mean.toString()
-                ret["stdev"] = dist.stdev.toString()
-                if (dist is TruncatedNormalDistribution){
-                    ret["pseudo_mean"] = dist.pseudoMean.toString()
-                    ret["pseudo_stdev"] = dist.pseudoStdev.toString()
-                }
+        ret += exportDist(prediction.dist)
 
-                // For group prediction, always add buckets, even when there is only one prediction
-                // and we get the original TruncatedNormalDistribution
-                if (user == null || dist !is TruncatedNormalDistribution) {
-                    bucketNames.zip(dist.discretize(buckets).binProbs).map { (name, prob) ->
-                        ret[name] = prob.toString()
-                    }
-                }
+        // For group prediction, always add buckets, even when there is only one prediction
+        // and we get the original TruncatedNormalDistribution
+        if (prediction.dist is ContinuousProbabilityDistribution && (user == null || prediction.dist !is TruncatedNormalDistribution)) {
+            val discretized = prediction.dist.discretize(buckets)
+            bucketNames.zip(discretized.binProbs).map { (name, prob) ->
+                val density = prob / discretized.binner.binSize
+                ret[name] = density.toFixed(4)
             }
         }
 
@@ -157,7 +181,7 @@ class CommentExport  (
     fun exportComment(q: Question, c: QuestionComment): CsvRecord {
         val dt = Instant.fromEpochSeconds(c.timestamp.toLong()).toLocalDateTime(TimeZone.UTC)
         val user = c.user.deref()
-        return mapOf(
+        val ret =  mutableMapOf(
             "question_id" to q.id,
             "question" to q.name,
             "user_id" to c.user.id,
@@ -169,6 +193,10 @@ class CommentExport  (
             "comment" to c.content,
             "num_likes" to (serverState.commentLikeCount[c.ref] ?: 0).toString(),
         )
+        c.prediction?.let {pred->
+            ret += exportDist(pred.dist)
+        }
+        return ret
     }
     suspend fun exportQuestion(q: Question) = flow {
         (serverState.questionComments[q.ref]?: emptyMap()).values.asFlow().collect {
