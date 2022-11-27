@@ -1,7 +1,6 @@
 package components.profile
 
 import components.AppStateContext
-import csstype.*
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.sx
@@ -12,6 +11,7 @@ import payloads.requests.StartEmailVerification
 import react.dom.html.ReactHTML.br
 import users.UserType
 import utils.eventValue
+import utils.isEmailValid
 import utils.themed
 
 val UserSettings = FC<Props> {
@@ -24,21 +24,46 @@ val UserSettings = FC<Props> {
     var name by useState(user.nick ?: "")
     var email by useState(user.email ?: "")
 
+    var emailError by useState<String?>(null);
+
+    var nameUpdated by useState(false);
+
+    // Note that this is currently only stored on the frontend.
+    // Navigating away from user settings and coming back will show the user the old email
+    // without any verification prompt.
     var pendingEmailChange by useState<String?>(null)
 
-    Paper {
-        sx {
-            marginTop = themed(2)
-            padding = themed(2)
+    fun changeEmail() {
+        val changed = (user.email ?: "") != email
+        if (!changed) {
+            emailError = "This is already your current email address.";
+            return
+        }
+        if (!isEmailValid(email)) {
+            emailError = "This email address is not valid."
+            return
         }
 
-        Typography {
-            sx {
-                marginBottom = themed(2)
-            }
-            variant = TypographyVariant.h4
-            +"User settings"
+        Client.postData("/profile/email/start_verification", StartEmailVerification(email))
+        emailError = null
+        pendingEmailChange = email
+    }
+
+    fun changeName() {
+        Client.postData("/profile/nick", SetNick(name))
+        nameUpdated = true
+    }
+
+    Typography {
+        sx {
+            marginBottom = themed(4)
         }
+        variant = TypographyVariant.h2
+        +"User settings"
+    }
+
+    Stack {
+        spacing = themed(2);
 
         if (user.type == UserType.GUEST && user.email == null && pendingEmailChange == null) {
             Alert {
@@ -82,57 +107,98 @@ val UserSettings = FC<Props> {
             }
         }
 
-        Box {
-            sx {
-                marginTop = themed(2)
-                display = Display.flex
-                alignItems = AlignItems.flexEnd
-            }
-            TextField {
-                variant = FormControlVariant.standard
-                id = "name-field"
-                label = ReactNode("Name")
-                value = name
-                disabled = stale
-                onChange = {
-                    name = it.eventValue()
-                }
-            }
-            Button {
-                onClick = {
-                    Client.postData("/profile/nick", SetNick(name))
-                }
-                val changed = (user.nick ?: "") != name
-                disabled = stale || !changed
-                +"Change name"
+        if (nameUpdated) {
+            Alert {
+                severity = AlertColor.success
+                +"Your name has been updated."
             }
         }
 
-        Box {
-            sx {
-                marginTop = themed(1)
-                display = Display.flex
-                alignItems = AlignItems.flexEnd
+        val textFieldVariant = FormControlVariant.outlined
+
+        Card {
+            CardHeader {
+                title = ReactNode("Profile")
             }
-            TextField {
-                variant = FormControlVariant.standard
-                id = "email-field"
-                label = ReactNode("Email address")
-                value = email
-                disabled = stale
-                onChange = {
-                    email = it.eventValue()
+            CardContent {
+                Stack {
+                    TextField {
+                        variant = textFieldVariant
+                        id = "name-field"
+                        label = ReactNode("Name")
+                        helperText = ReactNode("Your name may appear whenever you comment or make predictions. You can change it at any time.")
+                        value = name
+                        disabled = stale
+                        onChange = {
+                            name = it.eventValue()
+                        }
+                        onKeyUp = {
+                            if (it.key == "Enter") {
+                                changeName()
+                            }
+                        }
+                    }
+                }
+            }
+            CardActions {
+                sx {
+                    padding = themed(2)
+                }
+                Button {
+                    onClick = { changeName() }
+                    variant = ButtonVariant.contained
+                    disabled = stale
+
+                    if (user.nick == null) {
+                        +"Set name"
+                    } else {
+                        +"Update name"
+                    }
+                }
+            }
+        }
+
+        Card {
+            CardHeader {
+                title = ReactNode("Email address")
+            }
+
+            CardContent {
+                // TODO: Better explanation of email visibility
+                Stack {
+                    // TODO: full-width or not?
+                    TextField {
+                        variant = textFieldVariant
+                        id = "email-field"
+                        label = ReactNode("Email address")
+                        helperText = emailError?.let { ReactNode(it) }
+                            ?: ReactNode("This email address is used for logging into your account and may be shown to other members of the organization.")
+                        error = emailError != null
+                        required = true
+                        value = email
+                        disabled = stale
+                        onChange = {
+                            email = it.eventValue()
+                        }
+                        onKeyUp = {
+                            if (it.key == "Enter") {
+                                changeEmail()
+                            }
+                        }
+                    }
                 }
             }
 
-            Button {
-                onClick = {
-                    Client.postData("/profile/email/start_verification", StartEmailVerification(email))
-                    pendingEmailChange = email
+            CardActions {
+                sx {
+                    padding = themed(2)
                 }
-                val changed = (user.email ?: "") != email
-                disabled = stale || !changed || pendingEmailChange != null
-                +"Change email"
+                Button {
+                    onClick = { changeEmail() }
+                    variant = ButtonVariant.contained
+                    disabled = stale
+                    +"Update email"
+                }
             }
         }
     }
