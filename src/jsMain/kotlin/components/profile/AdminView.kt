@@ -214,7 +214,7 @@ val AdminView = FC<Props> {
                         TableCell {
                             Checkbox {
                                 val isSelf = user eqid appState.session.user
-                                this.disabled = isSelf
+                                this.disabled = stale || isSelf
                                 this.checked = user.active
                                 onClick = {
                                     if (!isSelf) {
