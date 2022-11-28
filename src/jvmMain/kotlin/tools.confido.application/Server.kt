@@ -49,6 +49,10 @@ fun HTML.index() {
     head {
         title("Confido")
         meta(name = "viewport", content = "width=device-width, initial-scale=1.0")
+        link(rel = "icon", href = "/static/favicon.ico") { sizes = "any" }
+        link(rel = "icon", href = "/static/icon.svg", type = "image/svg+xml")
+        link(rel = "apple-touch-icon", href = "/static/apple-touch-icon.png")
+        link(rel = "manifest", href = "static/manifest.webmanifest")
     }
     body {
         script(type="text/javascript") { unsafe { +"bundleVer= '${jsHash}'" } }
@@ -310,6 +314,7 @@ fun main() {
                 staticRootFolder = staticDir
                 preCompressed(CompressedFileType.BROTLI, CompressedFileType.GZIP) {
                     files(".")
+                    resources()
                 }
             }
             webSocketST("/state_presenter") {
