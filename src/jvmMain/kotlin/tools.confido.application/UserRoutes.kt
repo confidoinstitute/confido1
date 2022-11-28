@@ -20,10 +20,7 @@ import tools.confido.state.insertEntity
 import tools.confido.state.modifyEntity
 import tools.confido.state.serverState
 import tools.confido.utils.*
-import users.EmailVerificationLink
-import users.LoginLink
-import users.User
-import users.UserType
+import users.*
 import kotlin.time.Duration.Companion.minutes
 
 fun loginRoutes(routing: Routing) = routing.apply {
@@ -186,6 +183,34 @@ fun profileRoutes(routing: Routing) = routing.apply {
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
+    // Change password
+    postST("/profile/password") {
+        val user = call.userSession?.user ?: return@postST unauthorized("Not logged in.")
+        val passwordChange: SetPassword = call.receive()
+        if (user.password != null) {
+            if (passwordChange.currentPassword == null || !Password.check(passwordChange.currentPassword, user.password).withArgon2()) {
+                return@postST unauthorized("The current password is incorrect.")
+            }
+        }
+
+        when (checkPassword(passwordChange.newPassword)) {
+            PasswordCheckResult.OK -> {}
+            PasswordCheckResult.TOO_SHORT ->
+                return@postST badRequest("Password is too short, needs to be at least $MIN_PASSWORD_LENGTH characters long.")
+            PasswordCheckResult.TOO_LONG ->
+                return@postST badRequest("Password is too long, needs to be at most $MAX_PASSWORD_LENGTH characters long.")
+        }
+
+        val hash = Password.hash(passwordChange.newPassword).addRandomSalt().withArgon2().result
+        serverState.userManager.modifyEntity(user.ref) {
+            it.copy(password = hash)
+        }
+
+        call.application.log.info("User ${user.ref} changed password.")
+
+        call.transientUserData?.refreshSessionWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
     // Change nick
     postST("/profile/nick") {
         val userRef = call.userSession?.userRef ?: return@postST unauthorized("Not logged in.")
@@ -314,7 +339,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         val invite = room.inviteLinks.find {it.token == accept.inviteToken && it.canJoin} ?:
             return@postST unauthorized("The invite does not exist or is currently not active.")
 
-
+        // TODO: Accept happens when not logged in without authentication being required.
         var userAlreadyExists = false
         serverState.userManager.byEmail[accept.email]?.let {user ->
             if (room.members.none {it.user eqid user}) {
