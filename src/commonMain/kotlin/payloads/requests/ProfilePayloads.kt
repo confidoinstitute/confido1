@@ -8,6 +8,12 @@ data class SetNick(
 )
 
 @Serializable
+data class SetPassword(
+    val currentPassword: String?,
+    val newPassword: String,
+)
+
+@Serializable
 data class StartEmailVerification (
     val email: String,
 )

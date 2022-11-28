@@ -1,19 +1,22 @@
 package components.profile
 
 import components.AppStateContext
+import io.ktor.http.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.sx
 import react.*
 import react.dom.onChange
 import payloads.requests.SetNick
+import payloads.requests.SetPassword
 import payloads.requests.StartEmailVerification
+import react.dom.html.InputType
 import react.dom.html.ReactHTML.br
-import users.UserType
-import utils.byTheme
-import utils.eventValue
-import utils.isEmailValid
-import utils.themed
+import users.*
+import utils.*
+import kotlin.coroutines.EmptyCoroutineContext
 
 val UserSettings = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
@@ -25,9 +28,17 @@ val UserSettings = FC<Props> {
     var name by useState(user.nick ?: "")
     var email by useState(user.email ?: "")
 
-    var emailError by useState<String?>(null);
+    var emailError by useState<String?>(null)
+    var currentPasswordError by useState<String?>(null)
+    var newPasswordError by useState<String?>(null)
+    var newPasswordRepeatError by useState<String?>(null)
 
-    var nameUpdated by useState(false);
+    var currentPassword by useState("")
+    var newPassword by useState("")
+    var newPasswordRepeat by useState("")
+
+    var nameUpdated by useState(false)
+    var passwordUpdated by useState(false)
 
     // Note that this is currently only stored on the frontend.
     // Navigating away from user settings and coming back will show the user the old email
@@ -53,6 +64,43 @@ val UserSettings = FC<Props> {
     fun changeName() {
         Client.postData("/profile/nick", SetNick(name))
         nameUpdated = true
+    }
+
+    fun changePassword() {
+        currentPasswordError = null
+        newPasswordError = null
+        newPasswordRepeatError = null
+
+        if (newPassword != newPasswordRepeat) {
+            newPasswordRepeatError = "The passwords do not match."
+            return
+        }
+
+        when (checkPassword(newPassword)) {
+            PasswordCheckResult.OK -> {}
+            PasswordCheckResult.TOO_SHORT -> {
+                newPasswordError = "Please choose a password at least $MIN_PASSWORD_LENGTH characters long."
+                return
+            }
+            PasswordCheckResult.TOO_LONG -> {
+                newPasswordError = "Please choose a password at most $MAX_PASSWORD_LENGTH characters long."
+                return
+            }
+        }
+
+        val setPassword = SetPassword(if (appState.myPasswordIsSet) currentPassword else null, newPassword)
+
+        CoroutineScope(EmptyCoroutineContext).launch {
+            val response = Client.httpClient.postJson("/profile/password", setPassword) {}
+            if (response.status == HttpStatusCode.OK) {
+                passwordUpdated = true
+                currentPassword = ""
+                newPassword = ""
+                newPasswordRepeat = ""
+            } else if (response.status == HttpStatusCode.Unauthorized) {
+                currentPasswordError = "The current password is incorrect."
+            }
+        }
     }
 
     Container {
@@ -115,6 +163,13 @@ val UserSettings = FC<Props> {
                 Alert {
                     severity = AlertColor.success
                     +"Your name has been updated."
+                }
+            }
+
+            if (passwordUpdated) {
+                Alert {
+                    severity = AlertColor.success
+                    +"Your password has been updated."
                 }
             }
 
@@ -202,6 +257,83 @@ val UserSettings = FC<Props> {
                         variant = ButtonVariant.contained
                         disabled = stale
                         +"Update email"
+                    }
+                }
+            }
+
+            Card {
+                CardHeader {
+                    title = ReactNode("Password")
+                }
+
+                CardContent {
+                    Stack {
+                        if (appState.myPasswordIsSet) {
+                            TextField {
+                                label = ReactNode("Current password")
+                                required = true
+                                type = InputType.password
+                                margin = FormControlMargin.dense
+                                variant = textFieldVariant
+                                value = currentPassword
+                                helperText = currentPasswordError?.let { ReactNode(it) }
+                                error = currentPasswordError != null
+                                onChange = { currentPassword = it.eventValue() }
+                                onKeyUp = {
+                                    if (it.key == "Enter") {
+                                        changePassword()
+                                    }
+                                }
+                            }
+                        }
+                        TextField {
+                            label = ReactNode("New password")
+                            required = true
+                            type = InputType.password
+                            margin = FormControlMargin.dense
+                            variant = textFieldVariant
+                            value = newPassword
+                            helperText = newPasswordError?.let { ReactNode(it) }
+                            error = newPasswordError != null
+                            onChange = { newPassword = it.eventValue() }
+                            onKeyUp = {
+                                if (it.key == "Enter") {
+                                    changePassword()
+                                }
+                            }
+                        }
+                        TextField {
+                            label = ReactNode("Confirm new password")
+                            required = true
+                            type = InputType.password
+                            margin = FormControlMargin.dense
+                            variant = textFieldVariant
+                            value = newPasswordRepeat
+                            helperText = newPasswordRepeatError?.let { ReactNode(it) }
+                            error = newPasswordRepeatError != null
+                            onChange = { newPasswordRepeat = it.eventValue() }
+                            onKeyUp = {
+                                if (it.key == "Enter") {
+                                    changePassword()
+                                }
+                            }
+                        }
+                    }
+                }
+
+                CardActions {
+                    sx {
+                        padding = themed(2)
+                    }
+                    Button {
+                        onClick = { changePassword() }
+                        variant = ButtonVariant.contained
+                        disabled = stale
+                        if (appState.myPasswordIsSet) {
+                            +"Change password"
+                        } else {
+                            +"Set password"
+                        }
                     }
                 }
             }

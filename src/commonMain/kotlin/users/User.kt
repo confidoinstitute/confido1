@@ -54,3 +54,27 @@ data class EmailVerificationLink(
 
     fun link(origin: String) = "$origin/email_verify?t=$token"
 }
+
+enum class PasswordCheckResult {
+    OK,
+    TOO_SHORT,
+    TOO_LONG,
+}
+
+const val MIN_PASSWORD_LENGTH = 8
+// Setting a max password length prevents DoS attacks by providing very long passwords.
+// With password4j's Argon2 implementation, the slowdown becomes noticeable at lengths of 100,000 characters and more.
+// We choose a conservative limit that is significantly longer than anyone is likely to ever try, even with password
+// managers.
+const val MAX_PASSWORD_LENGTH = 4096
+
+fun checkPassword(password: String): PasswordCheckResult {
+    if (password.length < MIN_PASSWORD_LENGTH) {
+        return PasswordCheckResult.TOO_SHORT
+    }
+    if (password.length > MAX_PASSWORD_LENGTH) {
+        return PasswordCheckResult.TOO_LONG
+    }
+
+    return PasswordCheckResult.OK;
+}

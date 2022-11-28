@@ -107,6 +107,8 @@ class StateCensor(val sess: UserSession) {
     fun getCommentsILike() =
         user?.ref?.let { serverState.commentLikeManager.byUser[it] } ?: setOf()
 
+    fun getMyPasswordIsSet() = user?.let { it.password != null } ?: false
+
     fun censorAppConfig() = state.appConfig
 
     fun censor(): SentState {
@@ -121,6 +123,7 @@ class StateCensor(val sess: UserSession) {
             users = censorUsers(), // MUST be AFTER roomComments and questionComments in order to fill referencedUsers
             commentLikeCount = censorCommentLikeCount(),// MUST be AFTER roomComments and questionComments in order to fill referencedCommnets
             commentsILike = getCommentsILike(),
+            myPasswordIsSet = getMyPasswordIsSet(),
             myPredictions = getMyPredictions(),
             session = sess,
             appConfig = censorAppConfig(),
