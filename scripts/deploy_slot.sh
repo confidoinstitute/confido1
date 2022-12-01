@@ -9,6 +9,8 @@ chmod a+rx "$tmpd" # permissions get copied to server, mktemp does 0700 by defau
 tar xvf build/distributions/confido1-1.0-SNAPSHOT.tar --xform='s#^confido1-1.0-SNAPSHOT/##' --show-transformed-names -C "$tmpd" || exit 1
 mkdir "$tmpd/static"
 cp build/distributions/confido1.js "$tmpd/static" || exit 1
+cp -r ./src/jvmMain/resources/* "$tmpd/static/" || exit 1
+
 gzip -k "$tmpd/static/confido1.js" || exit 1
 
 ssh=root@${server:-prod1.confido.tools}
