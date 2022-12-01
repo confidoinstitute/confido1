@@ -88,7 +88,7 @@ class PredictionExport  (
         val numericQuestions = questions.filter { it.answerSpace is NumericSpace }
         if (numericQuestions.size == 1) {
             val space = (numericQuestions[0].answerSpace as NumericSpace).copy(bins = buckets)
-            space.binner.binRanges.map { "bucket${it.start}-${it.endExclusive}" }
+            space.binner.binRanges.mapIndexed { idx,it -> "bucket${idx+1}_${it.start}-${it.endExclusive}" }
         } else {
             (1..buckets).map { "bucket$it" }
         }
