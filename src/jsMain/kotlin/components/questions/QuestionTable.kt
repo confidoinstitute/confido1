@@ -161,9 +161,9 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                                     arrow = true
                                     title = breakLines(
                                         if (question.groupPredVisible)
-                                            "Group prediction is visible to forecaters.\nClick to make it hidden."
+                                            "Group prediction is visible to forecasters.\nClick to make it hidden."
                                         else
-                                            "Group prediction is hidden from forecaters.\nClick to make it visible."
+                                            "Group prediction is hidden from forecasters.\nClick to make it visible."
                                     )
                                     span {
                                         IconToggleButton {
@@ -195,9 +195,9 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                                         arrow = true
                                         title = breakLines(
                                             if (question.resolutionVisible)
-                                                "Resolution is visible to forecaters.\nClick to make it hidden."
+                                                "Resolution is visible to forecasters.\nClick to make it hidden."
                                             else
-                                                "Resolution is hidden from forecaters.\nClick to make it visible."
+                                                "Resolution is hidden from forecasters.\nClick to make it visible."
                                         )
                                         span {
                                             IconToggleButton {
