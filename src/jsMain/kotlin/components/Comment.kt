@@ -137,6 +137,7 @@ val Comment = FC<CommentProps> { props ->
                     else
                         ThumbUpOutlineIcon{}
                 }
+                disabled = stale
                 onClick = {
                     val url = when(val comment = props.comment) {
                         is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}/like"
