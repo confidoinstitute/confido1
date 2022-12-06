@@ -20,7 +20,7 @@ external interface QuestionListProps : Props {
 val QuestionList = FC<QuestionListProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
-    val questions = props.questions.sortedBy { it.name }
+    val questions = props.questions.reversed()
     val visibleQuestions = if (props.showHiddenQuestions) questions else questions.filter { it.visible }
 
     var expandedQuestions by useState<Set<String>>(emptySet())
