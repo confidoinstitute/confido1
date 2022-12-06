@@ -97,6 +97,8 @@ kotlin {
                 // Plotly
                 implementation("space.kscience:plotlykt-core:0.5.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.1")
+                implementation(npm("@dnd-kit/core", "6.0.5"))
+                implementation(npm("@dnd-kit/sortable", "7.0.1"))
             }
         }
     }
