@@ -4,22 +4,23 @@ import Client
 import components.AppStateContext
 import components.DistributionSummary
 import components.IconToggleButton
-import components.globalTheme
 import csstype.*
 import dndkit.core.*
+import dndkit.modifiers.restrictToVerticalAxis
+import dndkit.modifiers.restrictToWindowEdges
 import dndkit.sortable.*
 import dndkit.utilities.CSS
-import dndkit.utilities.Transform
+import dndkit.utilities.closestCenter
 import emotion.react.css
 import hooks.useEditDialog
 import icons.*
-import kotlinx.browser.window
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.*
 import payloads.requests.EditQuestion
 import payloads.requests.EditQuestionFlag
 import payloads.requests.EditQuestionFieldType
+import payloads.requests.ReorderQuestions
 import react.*
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.abbr
@@ -29,9 +30,7 @@ import react.dom.html.ReactHTML.span
 import rooms.Room
 import rooms.RoomPermission
 import tools.confido.question.Question
-import tools.confido.refs.HasId
 import tools.confido.state.havePermission
-import tools.confido.utils.randomString
 import utils.*
 
 external interface QuestionTableProps : Props {
@@ -47,6 +46,12 @@ val QuestionTable = FC<QuestionTableProps> { props ->
 
     val mouseSensor = useSensor<MouseSensorOptions>(MouseSensor)
     val sensors = useSensors(mouseSensor)
+
+    // We maintain the order of questions separately to allow
+    // for instant UI updates when swapping them around.
+    // Note that the order is reversed (newest at the top)
+    // TODO: If new questions are added, add them to the order
+    var questionOrder by useState(props.questions.map { it.id }.reversed().toTypedArray())
 
     val showGroupPredCol = (
             props.questions.any{it.groupPred != null}
@@ -107,23 +112,36 @@ val QuestionTable = FC<QuestionTableProps> { props ->
             }
             TableBody {
                 DndContext {
+                    collisionDetection = closestCenter
+                    modifiers = arrayOf(restrictToVerticalAxis, restrictToWindowEdges)
                     this.sensors = sensors
                     this.onDragEnd = { event ->
                         // TODO: fix dynamic
                         if (event.over != null && event.active.id != event.over.id) {
-                            // TODO: Swap
-                            window.alert("swap ${event.active.id} with ${event.over.id}")
+                            val draggedId = event.active.id as String
+                            val overId = event.over.id as String
+
+                            // Apply the move immediately to make the UI feel responsive.
+                            val oldIndex = questionOrder.indexOf(draggedId)
+                            val newIndex = questionOrder.indexOf(overId)
+                            questionOrder = arrayMove(questionOrder, oldIndex, newIndex)
+
+                            // TODO: Add debounce
+                            val newOrder = questionOrder.map { tools.confido.refs.Ref<Question>(it) }.toList()
+                            val reorder = ReorderQuestions(newOrder)
+                            Client.postData("/rooms/${room.id}/questions/reorder", reorder)
                         }
                     }
                     SortableContext {
-                        items = props.questions.map { it.id }.toTypedArray()
-                        console.log(verticalListSortingStrategy)
+                        items = questionOrder
                         strategy = verticalListSortingStrategy
-                        props.questions.map { question ->
-                            QuestionRow {
-                                this.question = question
-                                this.showGroupPredCol = showGroupPredCol
-                                this.showResolutionCol = showResolutionCol
+                        questionOrder.map { questionId ->
+                            props.questions.find { it.id == questionId }?.let { question ->
+                                QuestionRow {
+                                    this.question = question
+                                    this.showGroupPredCol = showGroupPredCol
+                                    this.showResolutionCol = showResolutionCol
+                                }
                             }
                         }
                     }
@@ -145,6 +163,7 @@ external interface DragHandleProps : Props {
 }
 
 val DragHandle = FC<DragHandleProps> { props ->
+    // TODO (a11y): Make this a button, or at least role=button
     DragIndicatorIcon {
         sx {
             verticalAlign = VerticalAlign.middle
@@ -152,7 +171,6 @@ val DragHandle = FC<DragHandleProps> { props ->
             // TODO: IconButton-like highlight on hover
         }
         color = SvgIconColor.action
-        //this.disableFocusRipple = true
         // TODO: Wrapper for this (+sortable.listeners)?
         // <div {...listeners} />
         // should be export type SyntheticListenerMap = Record<string, Function>;
@@ -177,17 +195,15 @@ val QuestionRow = FC<QuestionRowProps> { props ->
 
     val editQuestionOpen = useEditDialog(EditQuestionDialog)
 
-
     TableRow {
-        // TODO: is this valid?
+        // TODO: How to write this without dynamic?
         this.asDynamic().ref = sortable.setNodeRef
         css {
             // TODO: Get rid of asDynamic
             this.asDynamic().transform = CSS.transform.toString(sortable.transform)
             this.asDynamic().transition = sortable.transition
         }
-        // TODO: sortable.attributes (a11y)
-
+        // TODO: apply sortable.attributes (a11y)
 
         // apparently, this is the only way? (https://stackoverflow.com/questions/4757844/css-table-column-autowidth)
         fun PropsWithClassName.autoSized() = css { width = 1.px; whiteSpace = WhiteSpace.nowrap }

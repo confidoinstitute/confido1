@@ -257,6 +257,7 @@ fun main() {
             inviteRoutes(this)
             adminUserRoutes(this)
             roomRoutes(this)
+            roomQuestionRoutes(this)
             roomCommentsRoutes(this)
             questionRoutes(this)
             questionCommentsRoutes(this)

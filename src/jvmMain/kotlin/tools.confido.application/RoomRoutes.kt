@@ -11,6 +11,7 @@ import payloads.requests.*
 import rooms.*
 import tools.confido.application.sessions.TransientData
 import tools.confido.application.sessions.userSession
+import tools.confido.question.Question
 import tools.confido.question.RoomComment
 import tools.confido.refs.*
 import tools.confido.state.*
@@ -133,6 +134,28 @@ fun roomRoutes(routing: Routing) = routing.apply {
 
         serverState.roomManager.modifyEntity(roomRef) {
             it.copy(members = it.members.filterNot { m -> m.user eqid id })
+        }
+
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
+}
+
+fun roomQuestionRoutes(routing: Routing) = routing.apply {
+    postST("/rooms/{id}/questions/reorder") {
+        val roomRef = Ref<Room>(call.parameters["id"] ?: "")
+        val user = call.userSession?.user ?: return@postST unauthorized("Not logged in.")
+        val room = roomRef.deref() ?: return@postST notFound("This room does not exist.")
+        if (!room.hasPermission(user, RoomPermission.MANAGE_QUESTIONS)) return@postST unauthorized("Cannot manage questions.")
+
+        val move: ReorderQuestions = call.receive()
+
+        serverState.roomManager.modifyEntity(room.id) {
+            // Append questions that are not mentioned at the end of the new order (they are likely new)
+            val orderSet = move.newOrder.toSet()
+            val questionsNotInOrder = it.questions.filterNot { q -> q in orderSet }
+            val newQuestions = move.newOrder + questionsNotInOrder
+            return@modifyEntity it.copy(questions = newQuestions)
         }
 
         TransientData.refreshAllWebsockets()
