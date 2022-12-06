@@ -51,7 +51,8 @@ val QuestionTable = FC<QuestionTableProps> { props ->
     // for instant UI updates when swapping them around.
     // Note that the order is reversed (newest at the top)
     // TODO: If new questions are added, add them to the order
-    var questionOrder by useState(props.questions.map { it.id }.reversed().toTypedArray())
+    var questionOrder by useState(props.questions.map { it.id }.toTypedArray())
+    val questionOrderReversed = questionOrder.reversed().toTypedArray()
 
     val showGroupPredCol = (
             props.questions.any{it.groupPred != null}
@@ -124,18 +125,22 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                             // Apply the move immediately to make the UI feel responsive.
                             val oldIndex = questionOrder.indexOf(draggedId)
                             val newIndex = questionOrder.indexOf(overId)
-                            questionOrder = arrayMove(questionOrder, oldIndex, newIndex)
+
+                            // We need to keep a copy of the moved array to send it right away,
+                            // questionOrder does not get updated until later.
+                            val moved = arrayMove(questionOrder, oldIndex, newIndex)
+                            questionOrder = moved
 
                             // TODO: Add debounce
-                            val newOrder = questionOrder.map { tools.confido.refs.Ref<Question>(it) }.toList()
+                            val newOrder = moved.map { tools.confido.refs.Ref<Question>(it) }.toList()
                             val reorder = ReorderQuestions(newOrder)
                             Client.postData("/rooms/${room.id}/questions/reorder", reorder)
                         }
                     }
                     SortableContext {
-                        items = questionOrder
+                        items = questionOrderReversed
                         strategy = verticalListSortingStrategy
-                        questionOrder.map { questionId ->
+                        questionOrderReversed.map { questionId ->
                             props.questions.find { it.id == questionId }?.let { question ->
                                 QuestionRow {
                                     this.question = question
