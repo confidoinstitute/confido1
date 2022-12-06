@@ -4,6 +4,7 @@ import Client
 import components.AppStateContext
 import components.DistributionSummary
 import components.IconToggleButton
+import components.globalTheme
 import csstype.*
 import dndkit.core.*
 import dndkit.sortable.*
@@ -76,6 +77,7 @@ val QuestionTable = FC<QuestionTableProps> { props ->
         component = Paper
         Table {
             colgroup {
+                col {}
                 autoSizedCol()
                 col {}
                 repeat(3) {
@@ -84,6 +86,7 @@ val QuestionTable = FC<QuestionTableProps> { props ->
             }
             TableHead {
                 TableRow {
+                    TableCell {}
                     TableCell { autoSized() }
                     TableCell { +"Question" }
                     TableCell {
@@ -136,6 +139,29 @@ external interface QuestionRowProps : Props {
     var showResolutionCol: Boolean
 }
 
+external interface DragHandleProps : Props {
+    var isDragging: Boolean
+    var listeners: dynamic // TODO: type
+}
+
+val DragHandle = FC<DragHandleProps> { props ->
+    DragIndicatorIcon {
+        sx {
+            verticalAlign = VerticalAlign.middle
+            cursor = if (props.isDragging) Cursor.grabbing else Cursor.grab
+            // TODO: IconButton-like highlight on hover
+        }
+        color = SvgIconColor.action
+        //this.disableFocusRipple = true
+        // TODO: Wrapper for this (+sortable.listeners)?
+        // <div {...listeners} />
+        // should be export type SyntheticListenerMap = Record<string, Function>;
+        val keys = js("Object").keys(props.listeners).unsafeCast<Array<String>>()
+        val listeners = props.listeners
+        keys.map { this.asDynamic()[it] = listeners[it] }
+    }
+}
+
 val QuestionRow = FC<QuestionRowProps> { props ->
     val question = props.question
 
@@ -162,16 +188,20 @@ val QuestionRow = FC<QuestionRowProps> { props ->
         }
         // TODO: sortable.attributes (a11y)
 
-        // TODO: Wrapper for this (+sortable.listeners)?
-        // <div {...listeners} />
-        // should be export type SyntheticListenerMap = Record<string, Function>;
-        val keys = js("Object").keys(sortable.listeners).unsafeCast<Array<String>>()
-        val listeners = sortable.listeners.asDynamic()
-        keys.map { this.asDynamic()[it] = listeners[it] }
 
         // apparently, this is the only way? (https://stackoverflow.com/questions/4757844/css-table-column-autowidth)
         fun PropsWithClassName.autoSized() = css { width = 1.px; whiteSpace = WhiteSpace.nowrap }
-        fun ChildrenBuilder.autoSizedCol() = col { autoSized() }
+        TableCell {
+            sx {
+                paddingLeft = themed(1)
+                paddingRight = themed(0)
+            }
+            //autoSized()
+            DragHandle {
+                listeners = sortable.listeners.asDynamic()
+                isDragging = sortable.isDragging
+            }
+        }
         TableCell {
             autoSized()
             Stack {
