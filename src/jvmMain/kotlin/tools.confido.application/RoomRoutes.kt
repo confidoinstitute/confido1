@@ -151,10 +151,16 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
         val move: ReorderQuestions = call.receive()
 
         serverState.roomManager.modifyEntity(room.id) {
-            // Append questions that are not mentioned at the end of the new order (they are likely new)
-            val orderSet = move.newOrder.toSet()
+            // Questions may have gotten removed before this request happened
+            val roomQuestionSet = room.questions.toSet()
+            val newOrder = move.newOrder.filter { q -> q in roomQuestionSet }
+
+            // Questions may have been added before this request happened
+            val orderSet = newOrder.toSet()
             val questionsNotInOrder = it.questions.filterNot { q -> q in orderSet }
-            val newQuestions = move.newOrder + questionsNotInOrder
+
+            // Append questions that are not mentioned at the end of the new order (they are likely new)
+            val newQuestions = newOrder + questionsNotInOrder
             return@modifyEntity it.copy(questions = newQuestions)
         }
 
