@@ -22,6 +22,7 @@ import payloads.requests.EditQuestionFlag
 import payloads.requests.EditQuestionFieldType
 import payloads.requests.ReorderQuestions
 import react.*
+import react.dom.aria.AriaRole
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.abbr
 import react.dom.html.ReactHTML.col
@@ -168,12 +169,11 @@ external interface DragHandleProps : Props {
 }
 
 val DragHandle = FC<DragHandleProps> { props ->
-    // TODO (a11y): Make this a button, or at least role=button
     DragIndicatorIcon {
+        role = AriaRole.button
         sx {
             verticalAlign = VerticalAlign.middle
             cursor = if (props.isDragging) Cursor.grabbing else Cursor.grab
-            // TODO: IconButton-like highlight on hover
         }
         color = SvgIconColor.action
         // TODO: Wrapper for this (+sortable.listeners)?
