@@ -201,6 +201,7 @@ val QuestionRow = FC<QuestionRowProps> { props ->
     val editQuestionOpen = useEditDialog(EditQuestionDialog)
 
     TableRow {
+        // TODO: This likely does not work because table row is a FC.
         // TODO: How to write this without dynamic?
         this.asDynamic().ref = sortable.setNodeRef
         css {
@@ -219,6 +220,7 @@ val QuestionRow = FC<QuestionRowProps> { props ->
             }
             autoSized()
             DragHandle {
+                // TODO apply sortable.setActivatorNodeRef
                 listeners = sortable.listeners.asDynamic()
                 isDragging = sortable.isDragging
             }
