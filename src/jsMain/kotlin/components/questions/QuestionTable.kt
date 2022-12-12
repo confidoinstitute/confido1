@@ -77,70 +77,70 @@ val QuestionTable = FC<QuestionTableProps> { props ->
         +"It also allows for basic question management such as showing/hiding questions."
         +"If you hover your mouse cursor over an icon or other similar element, an explanation of its function will be shown."
     }
-    TableContainer {
-        // apparently, this is the only way? (https://stackoverflow.com/questions/4757844/css-table-column-autowidth)
-        fun PropsWithClassName.autoSized() = css { width = 1.px; whiteSpace = WhiteSpace.nowrap }
-        fun ChildrenBuilder.autoSizedCol() = col { autoSized() }
-        component = Paper
-        Table {
-            colgroup {
-                col {}
-                autoSizedCol()
-                col {}
-                repeat(3) {
-                    autoSizedCol()
-                }
+    DndContext {
+        collisionDetection = closestCenter
+        modifiers = arrayOf(restrictToVerticalAxis, restrictToWindowEdges)
+        this.sensors = sensors
+        this.onDragEnd = { event ->
+            // TODO: fix dynamic
+            if (event.over != null && event.active.id != event.over.id) {
+                val draggedId = event.active.id as String
+                val overId = event.over.id as String
+
+                // Apply the move immediately to make the UI feel responsive.
+                val oldIndex = questionOrder.indexOf(draggedId)
+                val newIndex = questionOrder.indexOf(overId)
+
+                // We need to keep a copy of the moved array to send it right away,
+                // questionOrder does not get updated until later.
+                val moved = arrayMove(questionOrder, oldIndex, newIndex)
+                questionOrder = moved
+
+                // TODO: Add debounce
+                val newOrder = moved.map { tools.confido.refs.Ref<Question>(it) }.toList()
+                val reorder = ReorderQuestions(newOrder)
+                Client.postData("/rooms/${room.id}/questions/reorder", reorder)
             }
-            TableHead {
-                TableRow {
-                    TableCell {}
-                    TableCell { autoSized() }
-                    TableCell { +"Question" }
-                    TableCell {
-                        autoSized()
-                        abbr {
-                            title = "Number of people predicting, total number of prediction updates"
-                            span {
-                                css { whiteSpace = WhiteSpace.nowrap }
-                                GroupsIcon { fontSize = SvgIconSize.inherit }
-                                +" / "
-                                TimelineIcon { fontSize = SvgIconSize.inherit }
+        }
+        TableContainer {
+            // apparently, this is the only way? (https://stackoverflow.com/questions/4757844/css-table-column-autowidth)
+            fun PropsWithClassName.autoSized() = css { width = 1.px; whiteSpace = WhiteSpace.nowrap }
+            fun ChildrenBuilder.autoSizedCol() = col { autoSized() }
+            component = Paper
+            Table {
+                colgroup {
+                    col {}
+                    autoSizedCol()
+                    col {}
+                    repeat(3) {
+                        autoSizedCol()
+                    }
+                }
+                TableHead {
+                    TableRow {
+                        TableCell {}
+                        TableCell { autoSized() }
+                        TableCell { +"Question" }
+                        TableCell {
+                            autoSized()
+                            abbr {
+                                title = "Number of people predicting, total number of prediction updates"
+                                span {
+                                    css { whiteSpace = WhiteSpace.nowrap }
+                                    GroupsIcon { fontSize = SvgIconSize.inherit }
+                                    +" / "
+                                    TimelineIcon { fontSize = SvgIconSize.inherit }
+                                }
                             }
                         }
+                        if (showGroupPredCol) TableCell { autoSized(); +"Group pred." }
+                        if (showResolutionCol) TableCell { autoSized(); +"Resolution" }
                     }
-                    if (showGroupPredCol) TableCell { autoSized(); +"Group pred." }
-                    if (showResolutionCol) TableCell { autoSized(); +"Resolution" }
                 }
-            }
-            TableBody {
-                DndContext {
-                    collisionDetection = closestCenter
-                    modifiers = arrayOf(restrictToVerticalAxis, restrictToWindowEdges)
-                    this.sensors = sensors
-                    this.onDragEnd = { event ->
-                        // TODO: fix dynamic
-                        if (event.over != null && event.active.id != event.over.id) {
-                            val draggedId = event.active.id as String
-                            val overId = event.over.id as String
-
-                            // Apply the move immediately to make the UI feel responsive.
-                            val oldIndex = questionOrder.indexOf(draggedId)
-                            val newIndex = questionOrder.indexOf(overId)
-
-                            // We need to keep a copy of the moved array to send it right away,
-                            // questionOrder does not get updated until later.
-                            val moved = arrayMove(questionOrder, oldIndex, newIndex)
-                            questionOrder = moved
-
-                            // TODO: Add debounce
-                            val newOrder = moved.map { tools.confido.refs.Ref<Question>(it) }.toList()
-                            val reorder = ReorderQuestions(newOrder)
-                            Client.postData("/rooms/${room.id}/questions/reorder", reorder)
-                        }
-                    }
-                    SortableContext {
-                        items = questionOrderReversed
-                        strategy = verticalListSortingStrategy
+                SortableContext {
+                    items = questionOrderReversed
+                    strategy = verticalListSortingStrategy
+                    TableBody {
                         questionOrderReversed.map { questionId ->
                             props.questions.find { it.id == questionId }?.let { question ->
                                 QuestionRow {
