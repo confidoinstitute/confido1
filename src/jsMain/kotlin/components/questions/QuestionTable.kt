@@ -217,7 +217,7 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                 paddingLeft = themed(1)
                 paddingRight = themed(0)
             }
-            //autoSized()
+            autoSized()
             DragHandle {
                 listeners = sortable.listeners.asDynamic()
                 isDragging = sortable.isDragging
