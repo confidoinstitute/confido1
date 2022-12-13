@@ -8,6 +8,7 @@ import io.ktor.client.request.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import mui.material.*
+import mui.material.styles.TypographyVariant
 import mui.system.responsive
 import mui.system.sx
 import org.w3c.dom.HTMLElement
@@ -15,6 +16,7 @@ import react.*
 import react.dom.html.ButtonType
 import react.dom.onChange
 import react.dom.html.ReactHTML.form
+import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.sup
 import react.router.useLocation
@@ -51,7 +53,13 @@ val FeedbackForm = FC<Props> {
             }
             DialogContent {
                 DialogContentText {
-                    +"Have you found a bug? Do you think something can be improved? Please, let us know."
+                    +"Have you found a bug? Something can be improved? Help us by sending feedback."
+                    Typography {
+                        variant = TypographyVariant.body2
+
+                        p { +"Your feedback will be sent directly to Confido developers." }
+                        p { +"Do not use it to contact your instance admin or moderator – for that, use question comments or room discussions." }
+                    }
                 }
 
                 TextField {

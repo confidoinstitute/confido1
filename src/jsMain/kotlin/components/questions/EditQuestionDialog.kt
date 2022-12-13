@@ -428,7 +428,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
             Button {
                 onClick = {submitQuestion()}
                 disabled = stale
-                if (q != null) +"Edit" else +"Add"
+                if (q != null) +"Save" else +"Add"
             }
         }
     }
