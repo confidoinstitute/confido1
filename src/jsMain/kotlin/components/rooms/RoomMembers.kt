@@ -19,7 +19,9 @@ import payloads.requests.AddedMember
 import rooms.*
 import tools.confido.refs.deref
 import tools.confido.refs.eqid
+import tools.confido.state.FeatureFlag
 import tools.confido.state.SentState
+import tools.confido.state.appConfig
 import tools.confido.utils.randomString
 import utils.themed
 import kotlin.coroutines.EmptyCoroutineContext
@@ -228,6 +230,7 @@ val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
                 val changedRole = when(event.target.value) {
                     "viewer" -> Viewer
                     "forecaster" -> Forecaster
+                    "question_writer" -> QuestionWriter
                     "moderator" -> Moderator
                     "owner" -> Owner
                     else -> error("This role does not exist")
@@ -235,7 +238,8 @@ val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
                 if (canChangeRole(appState, room, changedRole))
                     props.onChange?.invoke(changedRole)
             }
-            listOf(Viewer, Forecaster, Moderator, Owner).map { role ->
+            val qw = if (FeatureFlag.QUESTION_WRITER_ROLE in appConfig.featureFlags) arrayOf(QuestionWriter) else emptyArray()
+            listOf(Viewer, Forecaster, *qw, Moderator, Owner).map { role ->
                 if (canChangeRole(appState, room, role))
                     MenuItem {
                         value = role.id

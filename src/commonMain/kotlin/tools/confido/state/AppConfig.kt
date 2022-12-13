@@ -4,7 +4,8 @@ import kotlinx.serialization.Serializable
 
 enum class FeatureFlag {
     UPDATE_HISTORY,
-};
+    QUESTION_WRITER_ROLE,
+}
 
 @Serializable
 data class AppConfig(
