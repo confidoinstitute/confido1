@@ -227,8 +227,8 @@ val QuestionRow = FC<QuestionRowProps> { props ->
         }
         TableCell {
             autoSized()
-            Stack {
-                direction = responsive(StackDirection.row)
+            mui.material.Stack {
+                direction = responsive(mui.material.StackDirection.row)
                 Tooltip {
                     title = breakLines(
                         if (question.visible) "Question is visible to forecasters.\nClick to make it hidden."
