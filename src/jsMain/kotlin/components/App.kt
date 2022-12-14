@@ -1,10 +1,7 @@
 package components
 
 import browser.window
-import components.layout.NoStateLayout
-import components.layout.NoUserLayout
-import components.layout.PresenterLayout
-import components.layout.RootLayout
+import components.layout.*
 import csstype.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromString
@@ -109,22 +106,31 @@ val App = FC<Props> {
         return@FC
     }
 
+    CssBaseline {}
     AppStateContext.Provider {
         value = ClientAppState(appState ?: error("No app state!"), stale)
 
-        val layout = if (appState?.session?.user == null) {
-            NoUserLayout
-        } else {
+        val loggedIn = appState?.session?.user !=null
+        val isDemo = appState?.appConfig?.demoMode ?: false
+        val layout = if (loggedIn) {
             RootLayout
+        } else {
+            NoUserLayout
         }
 
         ThemeProvider {
             this.theme = globalTheme
             BrowserRouter {
                 Routes {
+                    if (isDemo)
+                        Route {
+                            path = "/"
+                            index = true
+                            element = DemoLayout.create {}
+                        }
                     Route {
                         path = "/*"
-                        index = true
+                        index = !isDemo
                         element = layout.create {
                             key = "layout"
                         }

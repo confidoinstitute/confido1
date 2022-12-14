@@ -5,12 +5,14 @@ import components.UserAvatar
 import components.userListItemText
 import csstype.*
 import dom.html.HTMLLIElement
+import emotion.react.css
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.*
 import kotlinx.js.Object
 import kotlinx.js.ReadonlyArray
+import kotlinx.js.jso
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.sx
@@ -265,9 +267,11 @@ internal fun renderOption(
 
 external interface LoginByUserSelectFormProps : Props {
     var helperText: String?
+    var demoMode: Boolean
 }
 
-val LoginByUserSelectForm = FC<LoginByUserSelectFormProps> { props ->
+val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
+
     val (appState, stale) = useContext(AppStateContext)
     var chosenUser by useState<User?>(null)
     var users by useState<ReadonlyArray<User>?>(null)
@@ -292,14 +296,51 @@ val LoginByUserSelectForm = FC<LoginByUserSelectFormProps> { props ->
             users = null
         }
     }
-
+    val autocomplete: FC<AutocompleteProps<User>> = Autocomplete
     fun attemptLogin() {
         chosenUser?.let {
             Client.postData("/login_users", it.ref)
         }
     }
+    autocomplete {
+        options = users ?: emptyArray()
+        renderInput = { params ->
+            TextField.create {
+                Object.assign(this, params)
+                margin = FormControlMargin.normal
+                placeholder = "User name or e-mail"
+                label = ReactNode("Choose account to see Confido from their view")
+                helperText = props.helperText?.let { ReactNode(it) }
+            }
+        }
+        getOptionDisabled = { option -> !option.active }
+        renderOption = ::renderOption
+        autoComplete = true
+        getOptionLabel = ::getOptionLabel
+        groupBy = ::groupBy
+        ListboxComponent = List
+        ListboxProps = jso<ListProps> {
+            dense = true
+        }
+        onChange = { _, value: User, _, _ -> chosenUser = value }
+        fullWidth = true
+        this.loading = loading
+        this.open = open
+        onOpen = { open = true }
+        onClose = { _, _ -> open = false }
+    }
 
+    Button {
+        variant = ButtonVariant.contained
+        fullWidth = true
+        disabled = stale || chosenUser == null
+        onClick = { attemptLogin() }
+        +"Log in"
+    }
 
+}
+
+val LoginByUserSelectForm = FC<LoginByUserSelectFormProps> { props ->
     Container {
         maxWidth = byTheme("xs")
         sx {
@@ -309,41 +350,7 @@ val LoginByUserSelectForm = FC<LoginByUserSelectFormProps> { props ->
             alignItems = AlignItems.center
         }
 
-        val autocomplete: FC<AutocompleteProps<User>> = Autocomplete
-        autocomplete {
-            options = users ?: emptyArray()
-            renderInput = { params ->
-                TextField.create {
-                    Object.assign(this, params)
-                    margin = FormControlMargin.normal
-                    placeholder = "User name or e-mail"
-                    label = ReactNode("Choose an account")
-                    helperText = props.helperText?.let { ReactNode(it) }
-                }
-            }
-            getOptionDisabled = { option -> !option.active }
-            renderOption = ::renderOption
-            autoComplete = true
-            getOptionLabel = ::getOptionLabel
-            groupBy = ::groupBy
-            ListboxComponent = List
-            ListboxProps = utils.jsObject {
-                dense = true
-            }.unsafeCast<ListProps>()
-            onChange = { _, value: User, _, _ -> chosenUser = value }
-            fullWidth = true
-            this.loading = loading
-            this.open = open
-            onOpen = { open = true }
-            onClose = { _, _ -> open = false }
-        }
+        LoginByUserSelectInner {+props}
 
-        Button {
-            variant = ButtonVariant.contained
-            fullWidth = true
-            disabled = stale || chosenUser == null
-            onClick = { attemptLogin() }
-            +"Log in"
-        }
     }
 }

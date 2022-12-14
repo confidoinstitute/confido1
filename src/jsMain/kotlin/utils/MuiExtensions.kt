@@ -1,5 +1,6 @@
 package utils
 
+import csstype.AutoLength
 import csstype.Width
 import kotlinx.js.Object
 import kotlinx.js.delete
@@ -32,7 +33,7 @@ fun <T> T.except(vararg except: String): T  where T: Props {
     return newProps as T
 }
 
-val WIDTH_AUTO get() = "auto".asDynamic() as Width
+val AUTO get() = "auto".asDynamic() as AutoLength
 
 fun breakLines(text: String): ReactNode =
     Fragment.create {
