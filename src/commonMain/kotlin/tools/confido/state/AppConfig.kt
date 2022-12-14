@@ -7,6 +7,8 @@ enum class FeatureFlag {
     QUESTION_WRITER_ROLE,
 }
 
+val DEFAULT_FEATURE_FLAGS = setOf(FeatureFlag.UPDATE_HISTORY)
+
 @Serializable
 data class AppConfig(
     val devMode: Boolean = false,
