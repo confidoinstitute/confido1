@@ -1,8 +1,9 @@
 package components.questions
+import canvas.CanvasRenderingContext2D
 import hooks.useElementSize
-import org.w3c.dom.CanvasRenderingContext2D
-import org.w3c.dom.HTMLCanvasElement
-import org.w3c.dom.HTMLDivElement
+import dom.html.HTMLCanvasElement
+import dom.html.HTMLDivElement
+import dom.html.RenderingContextId
 import react.*
 import react.dom.html.ReactHTML.canvas
 import react.dom.html.ReactHTML.div
@@ -45,7 +46,7 @@ val SimpleContDistPlot = FC<SimpleCondDistPlotProps> { props ->
 
     val canvas = useRef<HTMLCanvasElement>()
     useLayoutEffect(yTicks, elementSize.width, elementSize.height, props.visible) {
-        val context = canvas.current?.getContext("2d") as? CanvasRenderingContext2D
+        val context = canvas.current?.getContext(RenderingContextId.canvas)
         val scale = height / (yTicks.maxByOrNull { (value, _) -> value }?.first ?: 1.0)
         context?.apply {
             clearRect(0.0, 0.0, elementSize.width, height)

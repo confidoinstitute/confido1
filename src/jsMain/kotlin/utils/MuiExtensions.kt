@@ -3,8 +3,8 @@ package utils
 import csstype.Width
 import kotlinx.js.Object
 import kotlinx.js.delete
-import org.w3c.dom.HTMLDivElement
-import org.w3c.dom.HTMLInputElement
+import dom.html.HTMLDivElement
+import dom.html.HTMLInputElement
 import react.*
 import react.dom.events.ChangeEvent
 import react.dom.events.FormEvent

@@ -11,8 +11,6 @@ import icons.TimelineIcon
 import io.ktor.client.plugins.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.js.timers.clearInterval
-import kotlinx.js.timers.setInterval
 import mui.material.*
 import mui.system.responsive
 import mui.system.sx
@@ -34,6 +32,8 @@ import tools.confido.spaces.Space
 import tools.confido.utils.unixNow
 import utils.*
 import kotlin.coroutines.EmptyCoroutineContext
+import web.timers.clearInterval
+import web.timers.setInterval
 
 enum class PendingPredictionState {
     NONE,

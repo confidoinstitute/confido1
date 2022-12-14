@@ -11,14 +11,13 @@ import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.responsive
 import mui.system.sx
-import org.w3c.dom.HTMLElement
+import dom.html.HTMLElement
 import react.*
 import react.dom.html.ButtonType
 import react.dom.onChange
 import react.dom.html.ReactHTML.form
 import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
-import react.dom.html.ReactHTML.sup
 import react.router.useLocation
 import react.router.useNavigate
 import tools.confido.state.appConfig
@@ -36,9 +35,11 @@ val FeedbackForm = FC<Props> {
     Dialog {
         open = formOpen
         onClose = {_, _ -> formOpen = false}
-        DialogTitleWithCloseButton {
+        DialogTitle {
             +"Send feedback"
-            onClose = { formOpen = false }
+            DialogCloseButton {
+                onClose = { formOpen = false }
+            }
         }
         form {
             onSubmit = {

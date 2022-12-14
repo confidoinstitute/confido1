@@ -3,7 +3,6 @@ package icons
 import kotlinx.js.Object
 import mui.material.SvgIcon
 import mui.material.SvgIconProps
-import org.w3c.dom.svg.SVGSVGElement
 import react.ChildrenBuilder
 import react.FC
 import react.ReactNode

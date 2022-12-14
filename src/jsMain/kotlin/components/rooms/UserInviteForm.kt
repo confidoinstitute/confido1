@@ -11,7 +11,7 @@ import mui.base.FilterOptionsState
 import mui.material.*
 import mui.system.responsive
 import mui.system.sx
-import org.w3c.dom.HTMLLIElement
+import dom.html.HTMLLIElement
 import payloads.requests.AddedExistingMember
 import payloads.requests.AddedNewMember
 import react.*
