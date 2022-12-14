@@ -19,7 +19,12 @@ try: name = sys.argv[3]
 except IndexError: name = None
 
 
+
 client = MongoClient()
+
+if dbname not in client.list_database_names():
+    raise Exception("Database does not exist")
+
 db = client[dbname]
 
 users = db['users']
