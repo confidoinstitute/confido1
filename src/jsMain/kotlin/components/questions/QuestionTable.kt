@@ -14,6 +14,7 @@ import dndkit.utilities.closestCenter
 import emotion.react.css
 import hooks.useEditDialog
 import icons.*
+import kotlinx.js.jso
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.*
@@ -189,9 +190,9 @@ val QuestionRow = FC<QuestionRowProps> { props ->
     val question = props.question
 
     // TODO: Transform useSortable to builder?
-    val sortable = useSortable(jsObject {
+    val sortable = useSortable(jso<UseSortableArguments> {
         this.id = props.question.id
-    }.unsafeCast<UseSortableArguments>())
+    })
 
     fun postEditQuestion(id: String, field: EditQuestionFieldType, value: Boolean) {
         val editQuestion: EditQuestion = EditQuestionFlag(field, value)
@@ -207,7 +208,9 @@ val QuestionRow = FC<QuestionRowProps> { props ->
         css {
             // TODO: Get rid of asDynamic
             this.asDynamic().transform = CSS.transform.toString(sortable.transform)
-            this.asDynamic().transition = sortable.transition
+            // XXX this was causing confusing visual artifacts, as seen here:
+            // https://chat.confido.institute/file-upload/ikuaaPABuHgNjD7XR/reorder-questions-2022-12-06_23.04.39.webm
+            //this.asDynamic().transition = sortable.transition
         }
         // TODO: apply sortable.attributes (a11y)
 
