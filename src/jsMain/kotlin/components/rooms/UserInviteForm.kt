@@ -39,16 +39,16 @@ internal fun groupBy(u: UserAutocomplete) = when(u) {
 }
 
 internal fun isOptionEqualValue(option: UserAutocomplete, value: UserAutocomplete) =
-    if (value.asDynamic() is String) false else option == value
+    option == value
 
-internal fun getOptionLabel(option: UserAutocomplete) =
-    when (option) {
+internal fun getOptionLabel(option: UserAutocomplete) = when (option) {
         is ExistingUser -> {
             val user = option.userRef.deref()
             user?.nick ?: user?.email ?: ""
         }
         is NewUser -> option.email
     }
+
 internal fun renderOption(attributes: HTMLAttributes<HTMLLIElement>, option: UserAutocomplete, state: AutocompleteRenderOptionState) =
     ListItem.create {
         Object.assign(this, attributes)
@@ -82,45 +82,43 @@ val UserInviteForm = FC<Props> {
     var role by useState<RoomRole>(Forecaster)
 
     val members = room.members.filter {it.invitedVia == null}.map {it.user.id}.toSet()
-    val emails = useMemo(appState.users) { appState.users.values.mapNotNull {it.email}.toSet() }
     val users = useMemo(appState.users, chosenUsers) {
         val options = appState.users.values.sortedWith(
             compareBy({ it.type }, { (it.nick ?: it.email ?: "") })
         ).mapNotNull {
             if (!it.isAnonymous() && it.id !in members) ExistingUser(it.ref) else null
-        }// + chosenUsers.filterIsInstance<NewUser>().sortedBy { it.email }
+        } + chosenUsers.filterIsInstance<NewUser>().sortedBy { it.email }
 
         options.toTypedArray()
     }
-    useEffect(chosenUsers) {
-        console.log(chosenUsers)
-    }
 
     val filterOptions: (ReadonlyArray<UserAutocomplete>, FilterOptionsState<UserAutocomplete>) -> ReadonlyArray<UserAutocomplete> = useMemo(users, chosenUsers) {{
-        users, state ->
+        optUsers, state ->
         val value = state.inputValue
-        var valueInOptions = false
+        val valueInOptions = users.any {
+            when (it) {
+                is ExistingUser ->
+                    it.userRef.deref()?.email?.equals(value, true) ?: false
+                is NewUser -> it.email.equals(value, true)
+            }
+        }
 
-        val filtered = users.filter {
+        val filtered = optUsers.filter {
             when(it) {
                 is ExistingUser -> {
                     val user = it.userRef.deref()
                     val inNick = user?.nick?.contains(value, true) ?: false
                     val inEmail = user?.email?.contains(value, true) ?: false
-                    valueInOptions = valueInOptions || user?.email?.equals(value, true) ?: false
                     inNick || inEmail
                 }
                 is NewUser -> {
                     val contains = it.email.contains(value, true)
-                    valueInOptions = valueInOptions || it.email.equals(value, true)
                     contains
                 }
             }
         }
 
         when {
-            (filtered.size == 1 && value == ((filtered[0] as ExistingUser).userRef.deref()?.email ?: "")) ->
-                filtered.toTypedArray()
             (value.contains("@") && !valueInOptions) ->
                 (filtered + listOf(NewUser(value))).toTypedArray()
             else -> filtered.toTypedArray()
@@ -143,13 +141,14 @@ val UserInviteForm = FC<Props> {
             renderOption = ::renderOption
             autoComplete = true
             getOptionLabel = ::getOptionLabel
-            //isOptionEqualToValue = ::isOptionEqualValue
+            isOptionEqualToValue = ::isOptionEqualValue
             groupBy = ::groupBy
             ListboxComponent = List
             ListboxProps = utils.jsObject {
                 dense = true
             }.unsafeCast<ListProps>()
             onChange = { _, value: Array<UserAutocomplete>, _, _ -> chosenUsers = value }
+            this.filterSelectedOptions = true
             this.filterOptions = filterOptions
             fullWidth = true
         }
