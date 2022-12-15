@@ -191,20 +191,20 @@ val DemoLayout = FC<Props> { props ->
                 backgroundImage = url("/static/demo_bg.jpg")
                 display = Display.flex
                 justifyContent = JustifyContent.center
-            alignItems = AlignItems.center
-            backgroundPosition = "0 0" as BackgroundPosition
-            backgroundSize = BackgroundSize.cover
-            backgroundRepeat = BackgroundRepeat.noRepeat
-            fontSize = 16.px
-            lineHeight = 25.px
-            fontFamily = "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif" as FontFamily
+                alignItems = AlignItems.center
+                backgroundPosition = "0 0" as BackgroundPosition
+                backgroundSize = BackgroundSize.cover
+                backgroundRepeat = BackgroundRepeat.noRepeat
+                fontSize = 16.px
+                lineHeight = 25.px
+                fontFamily = "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif" as FontFamily
+            }
+            if (loggedIn) {
+                DemoWelcomeBox{}
+            } else {
+                DemoLoginBox{}
+            }
         }
-        if (loggedIn) {
-            DemoWelcomeBox{}
-        } else {
-            DemoLoginBox{}
-        }
-    }
     }
 
 }
