@@ -84,3 +84,10 @@ val GroupPredictions = FC<GroupPredictionsProps> { props ->
         }
     }
 }
+
+// Workaround for https://github.com/JetBrains/kotlin-wrappers/issues/1856
+inline var GridProps.xs: Any?
+    get() = asDynamic().xs
+    set(value) {
+        asDynamic().xs = value
+    }

@@ -1,6 +1,7 @@
 package components.rooms
 
 import components.AppStateContext
+import components.DialogCloseButton
 import csstype.Flex
 import csstype.Overflow
 import csstype.px
@@ -63,6 +64,9 @@ val CsvExportDialog = FC<Props> {
         onClose = {_, _ -> open = false}
         DialogTitle {
             +"Export as CSV…"
+            DialogCloseButton {
+                onClose = { open = false }
+            }
         }
         DialogContent {
             sx {

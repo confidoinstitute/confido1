@@ -1,8 +1,5 @@
 package components
 import components.rooms.RoomContext
-import csstype.px
-import csstype.rgb
-import icons.GroupsIcon
 import icons.TimelineIcon
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
@@ -12,8 +9,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.decodeFromByteArray
 import mui.material.*
-import mui.system.Box
-import mui.system.sx
 import payloads.responses.DistributionUpdate
 import react.*
 import react.dom.html.ReactHTML
@@ -21,12 +16,10 @@ import rooms.RoomPermission
 import space.kscience.dataforge.values.asValue
 import space.kscience.plotly.layout
 import space.kscience.plotly.models.*
-import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.Question
 import tools.confido.spaces.*
 import tools.confido.state.FeatureFlag
 import tools.confido.state.appConfig
-import tools.confido.state.clientState
 import tools.confido.state.havePermission
 import tools.confido.utils.Zdiv
 import tools.confido.utils.randomString
@@ -188,6 +181,9 @@ val UpdatesButton = FC<UpdatesButtonProps> { props ->
         key = dialogKey
         DialogTitle {
             +"Group prediction history"
+            DialogCloseButton {
+                onClose = { open = false }
+            }
         }
         DialogContent {
             DialogContentText {

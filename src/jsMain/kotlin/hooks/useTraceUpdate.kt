@@ -1,6 +1,5 @@
 package hooks
 
-import kotlinext.js.asJsObject
 import kotlinx.js.Object
 import react.*
 

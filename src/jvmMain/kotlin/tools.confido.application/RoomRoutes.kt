@@ -11,6 +11,7 @@ import payloads.requests.*
 import rooms.*
 import tools.confido.application.sessions.TransientData
 import tools.confido.application.sessions.userSession
+import tools.confido.question.Question
 import tools.confido.question.RoomComment
 import tools.confido.refs.*
 import tools.confido.state.*
@@ -99,7 +100,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
 
                     val expiration = 14.days
                     val expiresAt = Clock.System.now().plus(expiration)
-                    val link = LoginLink(user = newUser.ref, expiryTime = expiresAt, url = "/room/${room.id}", sentToEmail = user.email?.lowercase())
+                    val link = LoginLink(token = generateToken(), user = newUser.ref, expiryTime = expiresAt, url = "/room/${room.id}", sentToEmail = user.email?.lowercase())
                     try {
                         call.mailer.sendRoomInviteMail(member.email.lowercase(), room, link, user.email?.lowercase())
                     } catch (e: MailException) {
@@ -133,6 +134,34 @@ fun roomRoutes(routing: Routing) = routing.apply {
 
         serverState.roomManager.modifyEntity(roomRef) {
             it.copy(members = it.members.filterNot { m -> m.user eqid id })
+        }
+
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
+}
+
+fun roomQuestionRoutes(routing: Routing) = routing.apply {
+    postST("/rooms/{id}/questions/reorder") {
+        val roomRef = Ref<Room>(call.parameters["id"] ?: "")
+        val user = call.userSession?.user ?: return@postST unauthorized("Not logged in.")
+        val room = roomRef.deref() ?: return@postST notFound("This room does not exist.")
+        if (!room.hasPermission(user, RoomPermission.MANAGE_QUESTIONS)) return@postST unauthorized("Cannot manage questions.")
+
+        val move: ReorderQuestions = call.receive()
+
+        serverState.roomManager.modifyEntity(room.id) {
+            // Questions may have gotten removed before this request happened
+            val roomQuestionSet = room.questions.toSet()
+            val newOrder = move.newOrder.filter { q -> q in roomQuestionSet }
+
+            // Questions may have been added before this request happened
+            val orderSet = newOrder.toSet()
+            val questionsNotInOrder = it.questions.filterNot { q -> q in orderSet }
+
+            // Append questions that are not mentioned at the end of the new order (they are likely new)
+            val newQuestions = newOrder + questionsNotInOrder
+            return@modifyEntity it.copy(questions = newQuestions)
         }
 
         TransientData.refreshAllWebsockets()

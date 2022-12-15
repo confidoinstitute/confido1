@@ -10,6 +10,7 @@ import icons.EditIcon
 import io.ktor.client.plugins.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.js.get
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.responsive

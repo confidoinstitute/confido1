@@ -4,7 +4,7 @@ import io.ktor.http.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToDynamic
-import org.w3c.dom.HTMLDivElement
+import dom.html.HTMLDivElement
 import react.*
 import react.dom.html.ReactHTML.div
 import space.kscience.dataforge.meta.MetaSerializer
@@ -35,6 +35,10 @@ external interface PlotlyProps : Props {
 
 val ReactPlotly = FC<PlotlyProps> {props ->
     val container = useRef<HTMLDivElement>(null)
+
+    // Note that the plotly.kt library does not yet support dom.html.Element, which
+    // is why use unsafe casts. These should be removed once the library is updated.
+
     val annotations = props.annotations ?: emptyList()
     val plot = Plot().apply {
             layout {
@@ -51,7 +55,7 @@ val ReactPlotly = FC<PlotlyProps> {props ->
         val dynLayout = plot.layout.toDynamic()
         props.fixupLayout?.invoke(dynLayout)
         console.log(dynLayout)
-        PlotlyJs.newPlot(element, props.traces.toDynamic(), dynLayout, props.config)
+        PlotlyJs.newPlot(element.unsafeCast<org.w3c.dom.Element>(), props.traces.toDynamic(), dynLayout, props.config)
 
         cleanup {
             PlotlyJs.asDynamic().purge(element)
@@ -60,11 +64,11 @@ val ReactPlotly = FC<PlotlyProps> {props ->
 
     useEffect(props.traces, props.annotations) {
         val element = container.current ?: error("Div not found")
-        PlotlyJs.react(element, props.traces.toDynamic(), plot.layout.toDynamic(), props.config)
+        PlotlyJs.react(element.unsafeCast<org.w3c.dom.Element>(), props.traces.toDynamic(), plot.layout.toDynamic(), props.config)
     }
     useEffect(props.title) {
         val element = container.current ?: error("Div not found")
-        PlotlyJs.relayout(element, jsObject { this.title = props.title })
+        PlotlyJs.relayout(element.unsafeCast<org.w3c.dom.Element>(), jsObject { this.title = props.title })
     }
 
     div {

@@ -2,6 +2,7 @@ package components.profile
 
 import components.AppStateContext
 import components.DemoEmailAlert
+import components.DialogCloseButton
 import csstype.pct
 import hooks.EditEntityDialogProps
 import hooks.useEditDialog
@@ -74,6 +75,9 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
         onClose = { _, _ -> props.onClose?.invoke() }
         DialogTitle {
             if (newUser) +"New user" else +"Edit user"
+            DialogCloseButton {
+                onClose = { props.onClose?.invoke() }
+            }
         }
 
         DialogContent {
@@ -212,7 +216,7 @@ val AdminView = FC<Props> {
                         TableCell {
                             Checkbox {
                                 val isSelf = user eqid appState.session.user
-                                this.disabled = isSelf
+                                this.disabled = stale || isSelf
                                 this.checked = user.active
                                 onClick = {
                                     if (!isSelf) {

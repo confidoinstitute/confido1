@@ -49,6 +49,10 @@ fun HTML.index() {
     head {
         title("Confido")
         meta(name = "viewport", content = "width=device-width, initial-scale=1.0")
+        link(rel = "icon", href = "/static/favicon.ico") { sizes = "any" }
+        link(rel = "icon", href = "/static/icon.svg", type = "image/svg+xml")
+        link(rel = "apple-touch-icon", href = "/static/apple-touch-icon.png")
+        link(rel = "manifest", href = "static/manifest.webmanifest")
     }
     body {
         script(type="text/javascript") { unsafe { +"bundleVer= '${jsHash}'" } }
@@ -142,8 +146,10 @@ fun main() {
         if (appConfig.demoMode) initDemo()
     }
 
+    val port = System.getenv("CONFIDO_HTTP_PORT")?.toIntOrNull() ?: 8080
+    val host = System.getenv("CONFIDO_HTTP_HOST") ?: "127.0.0.1"
 
-    embeddedServer(CIO, port = System.getenv("CONFIDO_HTTP_PORT")?.toIntOrNull() ?: 8080, host = "127.0.0.1") {
+    embeddedServer(CIO, port = port, host = host) {
         install(WebSockets)
         install(CallLogging)
         install(ContentNegotiation) {
@@ -251,6 +257,7 @@ fun main() {
             inviteRoutes(this)
             adminUserRoutes(this)
             roomRoutes(this)
+            roomQuestionRoutes(this)
             roomCommentsRoutes(this)
             questionRoutes(this)
             questionCommentsRoutes(this)
@@ -308,6 +315,7 @@ fun main() {
                 staticRootFolder = staticDir
                 preCompressed(CompressedFileType.BROTLI, CompressedFileType.GZIP) {
                     files(".")
+                    resources()
                 }
             }
             webSocketST("/state_presenter") {

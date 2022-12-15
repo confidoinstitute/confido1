@@ -1,6 +1,7 @@
 package components
 
 import csstype.*
+import dom.html.HTMLSpanElement
 import hooks.useElementSize
 import icons.EditIcon
 import kotlinx.js.Object
@@ -9,15 +10,7 @@ import mui.material.*
 import mui.material.Size
 import mui.system.responsive
 import mui.system.sx
-import org.w3c.dom.HTMLElement
-import org.w3c.dom.HTMLFormElement
-import org.w3c.dom.HTMLSpanElement
-import org.w3c.xhr.FormData
 import react.*
-import react.dom.html.ButtonType
-import react.dom.html.InputType
-import react.dom.html.ReactHTML.div
-import react.dom.html.ReactHTML.form
 import utils.jsObject
 
 fun mark(value: Number, label: String?) = jsObject {

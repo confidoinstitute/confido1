@@ -1,5 +1,6 @@
 package components.layout
 
+import components.layout.RootAppBar
 import components.nouser.EmailLogin
 import components.nouser.LandingPage
 import components.rooms.RoomInviteForm

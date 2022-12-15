@@ -10,7 +10,6 @@ import react.*
 import rooms.RoomPermission
 import tools.confido.question.*
 import tools.confido.refs.ref
-import tools.confido.utils.*
 
 external interface QuestionListProps : Props {
     var questions: List<Question>
@@ -21,10 +20,10 @@ external interface QuestionListProps : Props {
 val QuestionList = FC<QuestionListProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
-    val questions = props.questions.sortedBy { it.name }
+    val questions = props.questions.reversed()
     val visibleQuestions = if (props.showHiddenQuestions) questions else questions.filter { it.visible }
 
-    var expandedQuestion by useState<String?>(null)
+    var expandedQuestions by useState<Set<String>>(emptySet())
 
     val editQuestionOpen = useEditDialog(EditQuestionDialog)
 
@@ -33,13 +32,19 @@ val QuestionList = FC<QuestionListProps> { props ->
         QuestionItem {
             this.key = question.id
             this.question = question
-            this.expanded = question.id == expandedQuestion
+            this.expanded = question.id in expandedQuestions
             this.prediction = appState.myPredictions[question.ref]
             this.editable = props.allowEditingQuestions
             this.canPredict = canPredict
             this.comments = appState.questionComments[question.ref] ?: emptyMap()
             this.onEditDialog = editQuestionOpen
-            this.onChange = {state -> expandedQuestion = if (state) question.id else null}
+            this.onChange = { state ->
+                if (state) {
+                    expandedQuestions += question.id
+                } else {
+                    expandedQuestions -= question.id
+                }
+            }
         }
     }
 

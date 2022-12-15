@@ -54,8 +54,6 @@ fun randomString(length: Int) =
     }.joinToString("")
 
 fun generateId() = randomString(16)
-// TODO: Make this cryptographically secure
-fun generateToken() = randomString(32)
 
 fun formatPercent(value: Number, space: Boolean=true): String = "${(value.toDouble()*100).roundToInt()}${if (space) " " else ""}%"
 

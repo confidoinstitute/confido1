@@ -1,8 +1,11 @@
 package rooms
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import tools.confido.state.FeatureFlag
 import tools.confido.state.SentState
+import tools.confido.state.appConfig
 
 @Serializable
 sealed class RoomRole(val permissions: Set<RoomPermission>) {
@@ -23,6 +26,7 @@ fun canChangeRole(myRole: RoomRole?, otherRole: RoomRole): Boolean {
     return when(otherRole) {
         is Viewer -> moderator
         is Forecaster -> moderator
+        is QuestionWriter -> (FeatureFlag.QUESTION_WRITER_ROLE in appConfig.featureFlags &&  moderator)
         is Moderator -> owner
         is Owner -> owner
     }
@@ -52,6 +56,17 @@ object Forecaster : RoomRole(setOf(
     override val name = "Forecaster"
 }
 
+
+@Serializable
+@SerialName("question_writer")
+object QuestionWriter : RoomRole(
+    Forecaster.permissions +
+    setOf(
+    RoomPermission.ADD_QUESTION
+)) {
+    override val id = "question_writer"
+    override val name = "Question Writer"
+}
 @Serializable
 object Moderator : RoomRole(
     Forecaster.permissions + setOf(

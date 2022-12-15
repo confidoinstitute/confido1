@@ -9,8 +9,11 @@ chmod a+rx "$tmpd" # permissions get copied to server, mktemp does 0700 by defau
 tar xvf build/distributions/confido1-1.0-SNAPSHOT.tar --xform='s#^confido1-1.0-SNAPSHOT/##' --show-transformed-names -C "$tmpd" || exit 1
 mkdir "$tmpd/static"
 cp build/distributions/confido1.js "$tmpd/static" || exit 1
+cp -r ./src/jvmMain/resources/* "$tmpd/static/" || exit 1
+
 gzip -k "$tmpd/static/confido1.js" || exit 1
 
-rsync -rlvc "$tmpd/" root@${server:-prod1.confido.tools}:/usr/local/lib/confido/"$slot"/
+ssh=root@${server:-prod1.confido.tools}
+rsync -rlvc "$tmpd/" $ssh:/usr/local/lib/confido/"$slot"/
 
-
+ssh $ssh 'for fn in $(grep -Fxl CONFIDO_SLOT='"$slot"' /etc/confido/*.env) ; do name="confido@$(basename "$fn" .env)"; echo "Restarting $name"; systemctl restart $name; done'

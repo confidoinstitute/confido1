@@ -1,12 +1,8 @@
 package components
 
-import components.layout.NoStateLayout
-import components.layout.NoUserLayout
-import components.layout.PresenterLayout
-import components.layout.RootLayout
+import browser.window
+import components.layout.*
 import csstype.*
-import kotlinx.browser.window
-import kotlinx.js.timers.setTimeout
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -16,8 +12,6 @@ import mui.material.styles.PaletteColor
 import mui.material.styles.createPalette
 import mui.material.styles.createTheme
 import mui.system.ThemeProvider
-import org.w3c.dom.CloseEvent
-import org.w3c.dom.WebSocket
 import react.*
 import react.router.Route
 import react.router.Router
@@ -29,6 +23,10 @@ import tools.confido.state.SentState
 import tools.confido.state.clientState
 import utils.buildObject
 import utils.webSocketUrl
+import web.timers.setTimeout
+import web.location.location
+import websockets.CloseEvent
+import websockets.WebSocket
 
 val AppStateContext = createContext<ClientAppState>()
 
@@ -81,8 +79,8 @@ val App = FC<Props> {
                 stale = true
                 webSocket.current = null
                 (it as? CloseEvent)?.let { event ->
-                    if (event.code == 3000.toShort() || (event.code == 4001.toShort()))
-                        window.location.reload()
+                    if (event.code == 3000 || event.code == 4001)
+                        location.reload()
                 }
                 setTimeout(::startWebSocket, 5000)
             }
@@ -108,22 +106,31 @@ val App = FC<Props> {
         return@FC
     }
 
+    CssBaseline {}
     AppStateContext.Provider {
         value = ClientAppState(appState ?: error("No app state!"), stale)
 
-        val layout = if (appState?.session?.user == null) {
-            NoUserLayout
-        } else {
+        val loggedIn = appState?.session?.user !=null
+        val isDemo = appState?.appConfig?.demoMode ?: false
+        val layout = if (loggedIn) {
             RootLayout
+        } else {
+            NoUserLayout
         }
 
         ThemeProvider {
             this.theme = globalTheme
             BrowserRouter {
                 Routes {
+                    if (isDemo)
+                        Route {
+                            path = "/"
+                            index = true
+                            element = DemoLayout.create {}
+                        }
                     Route {
                         path = "/*"
-                        index = true
+                        index = !isDemo
                         element = layout.create {
                             key = "layout"
                         }

@@ -8,6 +8,8 @@ import payloads.requests.CreateNewInvite
 import react.*
 import react.dom.onChange
 import rooms.*
+import tools.confido.state.FeatureFlag
+import tools.confido.state.appConfig
 import utils.eventValue
 import utils.themed
 
@@ -81,10 +83,16 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                         role = when(event.target.value) {
                             "viewer" -> Viewer
                             "forecaster" -> Forecaster
+                            "question_writer" -> QuestionWriter
                             else -> error("This should not happen!")
                         }
                     }
-                    mapOf("viewer" to "Viewer", "forecaster" to "Forecaster").map { (value, label) ->
+                    (
+                            mapOf("viewer" to "Viewer", "forecaster" to "Forecaster")
+                            + if (FeatureFlag.QUESTION_WRITER_ROLE in appConfig.featureFlags)
+                                    mapOf("question_writer" to "Question Writer")
+                                    else emptyMap()
+                    ).map { (value, label) ->
                         MenuItem {
                             this.value = value
                             +label

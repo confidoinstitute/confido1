@@ -3,6 +3,7 @@ package components.questions
 import components.*
 import csstype.*
 import emotion.react.css
+import kotlinx.js.get
 import mui.material.Slider
 import mui.material.Typography
 import mui.material.styles.Theme

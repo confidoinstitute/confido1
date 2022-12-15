@@ -24,7 +24,6 @@ val RoomNavigation = FC<Props>
 
     val largeScreenQuery = mui.material.styles.useTheme<mui.material.styles.Theme>().breakpoints.up(Breakpoint.md)
     val largeScreen = useMediaQuery(largeScreenQuery)
-    // TODO: Fix if we are keeping this, see https://mui.com/material-ui/guides/routing/#tabs
 
     Tabs {
         value = locationValue

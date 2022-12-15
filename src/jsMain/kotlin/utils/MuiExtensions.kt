@@ -1,10 +1,11 @@
 package utils
 
+import csstype.AutoLength
 import csstype.Width
 import kotlinx.js.Object
 import kotlinx.js.delete
-import org.w3c.dom.HTMLDivElement
-import org.w3c.dom.HTMLInputElement
+import dom.html.HTMLDivElement
+import dom.html.HTMLInputElement
 import react.*
 import react.dom.events.ChangeEvent
 import react.dom.events.FormEvent
@@ -32,7 +33,7 @@ fun <T> T.except(vararg except: String): T  where T: Props {
     return newProps as T
 }
 
-val WIDTH_AUTO get() = "auto".asDynamic() as Width
+val AUTO get() = "auto".asDynamic() as AutoLength
 
 fun breakLines(text: String): ReactNode =
     Fragment.create {

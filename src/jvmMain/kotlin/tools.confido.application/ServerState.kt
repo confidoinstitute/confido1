@@ -45,13 +45,15 @@ class TransactionContextElement(val sess: ClientSession) : AbstractCoroutineCont
     companion object Key : CoroutineContext.Key<TransactionContextElement>
 }
 
-fun getenvBool(name: String) = (System.getenv(name) ?: "0") == "1"
+fun getenvBool(name: String, default: Boolean = false): Boolean {
+    return (System.getenv(name)?.ifEmpty {null} ?: return default) == "1"
+}
 
 fun loadConfig() = AppConfig(
     devMode = getenvBool("CONFIDO_DEVMODE"),
     demoMode = getenvBool("CONFIDO_DEMO"),
     betaIndicator = getenvBool("CONFIDO_BETA_INDICATOR"),
-    featureFlags = FeatureFlag.values().filter{ getenvBool("CONFIDO_FEAT_${it.name}")}.toSet()
+    featureFlags = FeatureFlag.values().filter{ getenvBool("CONFIDO_FEAT_${it.name}", it in DEFAULT_FEATURE_FLAGS)}.toSet()
 )
 
 object serverState : GlobalState() {

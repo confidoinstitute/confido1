@@ -18,6 +18,7 @@ fun sendCookie(call: ApplicationCall, value: String) {
         maxAge = SESSION_MAX_AGE.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
         expires = GMTDate() + SESSION_MAX_AGE * 1000L,
         path = "/",
+        extensions = mapOf("SameSite" to "Lax")
     )
     call.response.cookies.append(cookie)
 }

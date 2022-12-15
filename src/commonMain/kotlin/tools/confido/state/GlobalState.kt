@@ -73,6 +73,7 @@ data class SentState(
     override val predictorCount: Map<Ref<Question>, Int> = emptyMap(),
     override val commentLikeCount: Map<Ref<Comment>, Int> = emptyMap(),
     val commentsILike: Set<Ref<Comment>> = emptySet(),
+    val myPasswordIsSet: Boolean = false,
     override val appConfig: AppConfig = AppConfig(),
 ) : BaseState {
     fun isAdmin(): Boolean {

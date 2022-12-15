@@ -89,6 +89,9 @@ val GroupPredButton = FC<GroupPredButtonProps> { props ->
         this.onClose = {_, _ -> open = false}
         DialogTitle {
             +"Group prediction"
+            DialogCloseButton {
+                onClose = { open = false }
+            }
         }
         DialogContent {
             DialogContentText {

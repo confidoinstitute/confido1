@@ -14,10 +14,6 @@ fun genericRoutes(routing: Routing) = routing.apply {
 
         // TODO actually send it!
         println("=== FEEDBACK ===")
-        println("URL: $url")
-        call.userSession?.let {
-            println("App state: ${StateCensor(it).censor()}")
-        }
         println(feedback)
 
         call.respond(HttpStatusCode.OK)

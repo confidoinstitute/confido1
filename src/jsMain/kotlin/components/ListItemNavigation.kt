@@ -3,7 +3,7 @@ package components
 import kotlinx.js.Object
 import kotlinx.js.delete
 import mui.material.*
-import org.w3c.dom.HTMLAnchorElement
+import dom.html.HTMLAnchorElement
 import react.*
 import react.router.dom.Link
 import react.router.dom.LinkProps
