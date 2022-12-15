@@ -1,5 +1,6 @@
 package components.rooms
 
+import browser.window
 import components.AppStateContext
 import components.UserAvatar
 import components.userListItemText
@@ -12,9 +13,11 @@ import mui.material.*
 import mui.system.responsive
 import mui.system.sx
 import dom.html.HTMLLIElement
+import kotlinx.js.jso
 import payloads.requests.AddedExistingMember
 import payloads.requests.AddedNewMember
 import react.*
+import react.dom.aria.AriaRole
 import react.dom.html.HTMLAttributes
 import rooms.Forecaster
 import rooms.RoomPermission
@@ -80,6 +83,8 @@ val UserInviteForm = FC<Props> {
     val room = useContext(RoomContext)
     var chosenUsers by useState<Array<UserAutocomplete>>(emptyArray())
     var role by useState<RoomRole>(Forecaster)
+    var hasHighlight by useState(false)
+    var inputText by useState("")
 
     val members = room.members.filter {it.invitedVia == null}.map {it.user.id}.toSet()
     val users = useMemo(appState.users, chosenUsers) {
@@ -144,13 +149,23 @@ val UserInviteForm = FC<Props> {
             isOptionEqualToValue = ::isOptionEqualValue
             groupBy = ::groupBy
             ListboxComponent = List
-            ListboxProps = utils.jsObject {
+            ListboxProps = jso<ListProps> {
                 dense = true
-            }.unsafeCast<ListProps>()
+            }
             onChange = { _, value: Array<UserAutocomplete>, _, _ -> chosenUsers = value }
             this.filterSelectedOptions = true
             this.filterOptions = filterOptions
             fullWidth = true
+            onInputChange = { ev, s, reason -> inputText = s }
+            onOpen = { hasHighlight = false }
+            onClose = { ev,reason -> hasHighlight = false }
+            onHighlightChange = { ev, opt, reason -> hasHighlight = (opt!=null) }
+            onKeyDown = { ev->
+                if (ev.key == "Enter" && !hasHighlight && inputText.contains("@")) {
+                    chosenUsers += arrayOf(NewUser(inputText))
+                    ev.preventDefault()
+                }
+            }
         }
 
         MemberRoleSelect {
