@@ -5,12 +5,14 @@ import components.rooms.RoomContext
 import csstype.*
 import hooks.useDebounce
 import hooks.useOnUnmount
+import icons.CloseIcon
 import icons.EditIcon
 import icons.ExpandMore
 import icons.TimelineIcon
 import io.ktor.client.plugins.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.js.jso
 import mui.material.*
 import mui.system.responsive
 import mui.system.sx
@@ -29,6 +31,8 @@ import tools.confido.refs.ref
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.NumericSpace
 import tools.confido.spaces.Space
+import tools.confido.state.FeatureFlag
+import tools.confido.state.enabled
 import tools.confido.utils.unixNow
 import utils.*
 import kotlin.coroutines.EmptyCoroutineContext
@@ -134,6 +138,8 @@ external interface QuestionItemProps : Props {
     var expanded: Boolean
 }
 
+var lastCommentSnackTS: Int = 0
+
 @Suppress("UNCHECKED_CAST_TO_EXTERNAL_INTERFACE", "UNCHECKED_CAST")
 val QuestionItem = FC<QuestionItemProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
@@ -142,6 +148,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
     var pendingPrediction: ProbabilityDistribution? by useState(null)
     var pendingPredictionState by useState(PendingPredictionState.NONE)
+    var snackOpen by useState(false)
+    var commentsOpen by useState(false)
 
     useDebounce(5000, pendingPredictionState) {
         if (pendingPredictionState in listOf(PendingPredictionState.ACCEPTED, PendingPredictionState.ERROR))
@@ -157,6 +165,10 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                         expectSuccess = true
                     }
                     pendingPredictionState = PendingPredictionState.ACCEPTED
+                    if (FeatureFlag.ENCOURAGE_COMMENTS.enabled && unixNow() - lastCommentSnackTS >= 24*3600) {
+                        snackOpen = true
+                        lastCommentSnackTS = unixNow()
+                    }
                 } catch (e: Throwable) {
                     pendingPredictionState = PendingPredictionState.ERROR
                 } finally {
@@ -166,6 +178,27 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         }
     }
     useOnUnmount(pendingPrediction) { Client.postData("/questions/${props.question.id}/predict", it) }
+
+    Snackbar {
+        open = snackOpen
+        anchorOrigin = jso { vertical=SnackbarOriginVertical.bottom; horizontal=SnackbarOriginHorizontal.center}
+        message = ReactNode("Thank you for your prediction. You can use comments to explain the thinking behind your prediction to others.")
+        autoHideDuration = 5000
+        action = Fragment.create {
+            Button {
+                color = ButtonColor.secondary
+                onClick = { snackOpen = false; commentsOpen = true }
+                +"Write a comment"
+            }
+            IconButton {
+                CloseIcon{}
+                size = mui.material.Size.small
+                color = IconButtonColor.inherit
+                onClick = { snackOpen = false }
+            }
+        }
+        onClose = { ev,reason-> snackOpen = false }
+    }
 
     Accordion {
         className = ClassName("questionitem")
@@ -296,10 +329,16 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     !(question.groupPredVisible || appState.hasPermission( room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS ))
                 this.count = props.question.numPredictors
             }
-            QuestionComments {
+            QuestionCommentsDialog {
+                this.open = commentsOpen
                 this.question = props.question
                 this.comments = props.comments
                 this.prediction = props.prediction
+                this.onClose = { commentsOpen = false }
+            }
+            QuestionCommentsButton {
+                this.numComments = props.comments.count()
+                this.onClick = { commentsOpen = true }
             }
             if (props.editable) {
                 // XXX: MUI CSS expects all children of AccordionIcons to be of same type

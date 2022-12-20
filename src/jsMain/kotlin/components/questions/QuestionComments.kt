@@ -15,39 +15,27 @@ import tools.confido.question.Comment
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 
-external interface QuestionCommentsProps : Props {
+external interface QuestionCommentsDialogProps : Props {
     var question: Question
     var prediction: Prediction?
     var comments: Map<String, Comment>
+    var open: Boolean
+    var onClose: (()->Unit)?
 }
 
-val QuestionComments = FC<QuestionCommentsProps> { props ->
-    val count = props.comments.count()
-    var open by useState(false)
+external interface QuestionCommentsButtonProps : Props {
+    var onClick: (()->Unit)?
+    var numComments: Int
+}
 
-
-    Tooltip {
-        title = ReactNode("Question comments")
-        arrow = true
-        span {
-            IconButton {
-                onClick = { open = true; it.stopPropagation() }
-
-                Badge {
-                    this.badgeContent = if (count > 0) ReactNode(count.toString()) else null
-                    this.color = BadgeColor.secondary
-                    CommentIcon {}
-                }
-            }
-        }
-    }
+val QuestionCommentsDialog = FC<QuestionCommentsDialogProps> { props->
 
     Dialog {
-        this.open = open
+        this.open = props.open
         this.scroll = DialogScroll.paper
         this.fullWidth = true
         this.maxWidth = "lg"
-        this.onClose = { _, _ -> open = false }
+        this.onClose = { _, _ -> props.onClose?.invoke() }
         sx {
             ".MuiDialog-paper" {
                 minHeight = 50.pct
@@ -60,7 +48,7 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
                 +props.question.name
             }
             DialogCloseButton {
-                onClose = { open = false }
+                onClose = { props.onClose?.invoke() }
             }
         }
         DialogContent {
@@ -81,4 +69,25 @@ val QuestionComments = FC<QuestionCommentsProps> { props ->
             variant = CommentInputVariant.QUESTION
         }
     }
+}
+
+val QuestionCommentsButton = FC<QuestionCommentsButtonProps> { props ->
+    val count = props.numComments
+
+    Tooltip {
+        title = ReactNode("Question comments")
+        arrow = true
+        span {
+            IconButton {
+                onClick = { props.onClick?.invoke(); it.stopPropagation() }
+
+                Badge {
+                    this.badgeContent = if (count > 0) ReactNode(count.toString()) else null
+                    this.color = BadgeColor.secondary
+                    CommentIcon {}
+                }
+            }
+        }
+    }
+
 }

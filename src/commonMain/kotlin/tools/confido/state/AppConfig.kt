@@ -5,7 +5,11 @@ import kotlinx.serialization.Serializable
 enum class FeatureFlag {
     UPDATE_HISTORY,
     QUESTION_WRITER_ROLE,
+    ENCOURAGE_COMMENTS,
 }
+
+val FeatureFlag.enabled : Boolean
+    get() = this in appConfig.featureFlags
 
 val DEFAULT_FEATURE_FLAGS = setOf(FeatureFlag.UPDATE_HISTORY)
 
