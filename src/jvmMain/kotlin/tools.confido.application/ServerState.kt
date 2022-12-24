@@ -56,10 +56,13 @@ fun loadConfig() = AppConfig(
     featureFlags = FeatureFlag.values().filter{ getenvBool("CONFIDO_FEAT_${it.name}", it in DEFAULT_FEATURE_FLAGS)}.toSet()
 )
 
+
 object serverState : GlobalState() {
     override val groupPred : MutableMap<Ref<Question>, Prediction?> = mutableMapOf()
     override val predictorCount: MutableMap<Ref<Question>, Int> = mutableMapOf()
     override var appConfig: AppConfig = loadConfig()
+    val presenterByUser: MutableMap<Ref<User>, PresenterInfo> = mutableMapOf() // this does not persist after restart
+    val presenterByToken: MutableMap<String, PresenterInfo> = mutableMapOf() // this does not persist after restart
 
     // Now, for simplicity, serialize all mutations
     val mutationMutex = Mutex()

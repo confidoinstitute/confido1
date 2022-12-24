@@ -4,11 +4,10 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import tools.confido.refs.Entity
-import tools.confido.refs.Ref
-import tools.confido.refs.eqid
 import tools.confido.question.Question
-import tools.confido.refs.ImmediateDerefEntity
+import tools.confido.refs.*
+import tools.confido.state.PresenterInfo
+import tools.confido.state.globalState
 import users.User
 import users.UserType
 
@@ -23,6 +22,8 @@ data class Room(
     val members: List<RoomMembership> = emptyList(),
     val inviteLinks: List<InviteLink> = emptyList(),
 ) : ImmediateDerefEntity {
+
+    val presenterInfo get() = globalState.presenterInfo[this.ref] ?: PresenterInfo()
 
     fun findLink(id: String?): InviteLink? {
         if (id == null || id == "") {
