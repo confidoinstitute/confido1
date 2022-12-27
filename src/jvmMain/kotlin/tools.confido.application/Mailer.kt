@@ -102,6 +102,25 @@ class Mailer(
         sendMail(mail)
     }
 
+    /**
+     * Sends an email with feedback about Confido.
+     */
+    fun sendFeedbackMail(address: String, feedback: String, instanceName: String) {
+        // We cannot easily use trimIndent or trimMargin because feedback may contain newlines.
+        val body = """The following feedback was sent from instance $instanceName
+
+$feedback"""
+
+        val mail = EmailBuilder.startingBlank()
+            .from(senderName, senderAddress)
+            .to(address)
+            .withSubject("Confido application feedback")
+            .withPlainText(body)
+            .buildEmail()
+
+        sendMail(mail)
+    }
+
     fun sendVerificationMail(address: String, verification: EmailVerificationLink, expiration: Duration) {
         if (appConfig.demoMode) return
         val subject = "Verify your email address"
