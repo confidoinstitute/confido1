@@ -56,6 +56,8 @@ val QuestionTable = FC<QuestionTableProps> { props ->
     var questionOrder by useState(props.questions.map { it.id }.toTypedArray())
     val questionOrderReversed = questionOrder.reversed().toTypedArray()
 
+    val editQuestionOpen = useEditDialog(EditQuestionDialog)
+
     val showGroupPredCol = (
             props.questions.any{it.groupPred != null}
                     && (
@@ -145,9 +147,11 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                         questionOrderReversed.map { questionId ->
                             props.questions.find { it.id == questionId }?.let { question ->
                                 QuestionRow {
+                                    key = question.id
                                     this.question = question
                                     this.showGroupPredCol = showGroupPredCol
                                     this.showResolutionCol = showResolutionCol
+                                    this.onEditDialog = editQuestionOpen
                                 }
                             }
                         }
@@ -156,12 +160,23 @@ val QuestionTable = FC<QuestionTableProps> { props ->
             }
         }
     }
+
+    if (room.havePermission(RoomPermission.ADD_QUESTION)) {
+        Button {
+            this.startIcon = AddIcon.create()
+            this.color = ButtonColor.primary
+            this.disabled = stale
+            onClick = { editQuestionOpen(null) }
+            +"Add question…"
+        }
+    }
 }
 
 external interface QuestionRowProps : Props {
     var question: Question
     var showGroupPredCol: Boolean
     var showResolutionCol: Boolean
+    var onEditDialog: ((Question) -> Unit)?
 }
 
 external interface DragHandleProps : Props {
@@ -198,8 +213,6 @@ val QuestionRow = FC<QuestionRowProps> { props ->
         val editQuestion: EditQuestion = EditQuestionFlag(field, value)
         Client.postData("/questions/$id/edit", editQuestion)
     }
-
-    val editQuestionOpen = useEditDialog(EditQuestionDialog)
 
     TableRow {
         // TODO: This likely does not work because table row is a FC.
@@ -278,7 +291,7 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                     title = ReactNode("Edit question")
                     IconButton {
                         EditIcon()
-                        onClick = { editQuestionOpen(question) }
+                        onClick = { props.onEditDialog?.invoke(question); it.stopPropagation() }
                     }
                 }
             }
