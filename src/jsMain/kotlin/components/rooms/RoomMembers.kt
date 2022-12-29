@@ -210,7 +210,6 @@ fun canChangeRole(appState: SentState, room: Room, role: RoomRole) =
 
 external interface MemberRoleSelectProps : Props {
     var value: RoomRole
-    var ownerSelectable: Boolean
     var disabled: Boolean
     var onChange: ((RoomRole) -> Unit)?
 }

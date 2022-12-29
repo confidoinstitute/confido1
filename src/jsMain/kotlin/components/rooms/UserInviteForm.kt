@@ -171,7 +171,6 @@ val UserInviteForm = FC<Props> {
         MemberRoleSelect {
             value = role
             disabled = stale
-            ownerSelectable = appState.hasPermission(room, RoomPermission.ROOM_OWNER)
             onChange = { role = it }
         }
 
