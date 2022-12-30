@@ -11,7 +11,6 @@ import payloads.requests.*
 import rooms.*
 import tools.confido.application.sessions.TransientData
 import tools.confido.application.sessions.userSession
-import tools.confido.question.Question
 import tools.confido.question.RoomComment
 import tools.confido.refs.*
 import tools.confido.state.*
@@ -66,7 +65,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
         val member: AddedMember = call.receive()
         if (!(user.type == UserType.ADMIN || canChangeRole(room.userRole(user), member.role))) return@postST unauthorized("This role cannot be changed")
 
-        suspend fun addExistingMember(user: Ref<User>, role: RoomRole) =
+        suspend fun addExistingMember(user: User, role: RoomRole) =
             serverState.roomManager.modifyEntity(roomRef) {
                 var existing = false
                 val members = it.members.map { membership ->
@@ -75,18 +74,22 @@ fun roomRoutes(routing: Routing) = routing.apply {
                         membership.copy(role = role, invitedVia = null)
                     } else membership
                 } + if(existing) emptyList() else
-                    listOf((RoomMembership(user, role, null)))
+                    listOf((RoomMembership(user.ref, role, null)))
                 it.copy(members = members)
             }
 
         when(member) {
             is AddedExistingMember -> {
-                addExistingMember(member.user, member.role)
+                // TODO: prevent in frontend
+                val existingUser = member.user.deref() ?: return@postST badRequest("User does not exist")
+                if (!member.role.isAvailableToGuests && !existingUser.type.isProper()) return@postST badRequest("This role cannot be used for a guest")
+                addExistingMember(existingUser, member.role)
             }
             is AddedNewMember -> {
                 serverState.userManager.byEmail[member.email.lowercase()]?.let {
                     // In this case just add a new member directly
-                    addExistingMember(it.ref, member.role)
+                    if (!member.role.isAvailableToGuests && !it.type.isProper()) return@postST badRequest("This role cannot be used for a guest")
+                    addExistingMember(it, member.role)
                 } ?: run {
                     val newUser = User(
                         randomString(32),

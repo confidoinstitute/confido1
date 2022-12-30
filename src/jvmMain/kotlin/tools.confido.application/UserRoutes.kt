@@ -255,6 +255,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
 
         val invited: CreateNewInvite = call.receive()
         if (!canChangeRole(room.userRole(user), invited.role)) return@postST unauthorized("This role cannot be changed")
+        if (!invited.role.isAvailableToGuests) return@postST badRequest("This role cannot be used for invite links.")
 
         val inviteLink = InviteLink(
             token = generateToken(),
@@ -283,6 +284,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         val invite: InviteLink = call.receive()
 
         if (!canChangeRole(room.userRole(user), invite.role)) return@postST unauthorized("This role cannot be changed")
+        if (!invite.role.isAvailableToGuests) return@postST badRequest("This role cannot be used for invite links.")
 
         serverState.roomManager.modifyEntity(room.id) { r ->
             val inviteLinks = r.inviteLinks.map { it ->

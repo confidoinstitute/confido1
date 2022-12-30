@@ -32,6 +32,17 @@ fun canChangeRole(myRole: RoomRole?, otherRole: RoomRole): Boolean {
     }
 }
 
+val RoomRole.isAvailableToGuests: Boolean
+    get() = when (this) {
+        is Viewer -> true
+        is Forecaster -> true
+        is QuestionWriter -> true
+        // Guest moderators and owners would not be able to see the users of the organization
+        // in the moderation interface because of the StateCensor.
+        is Moderator -> false
+        is Owner -> false
+    }
+
 @Serializable
 object Viewer : RoomRole(setOf(
         RoomPermission.VIEW_QUESTIONS,
