@@ -107,7 +107,7 @@ val UserInviteForm = FC<Props> {
         }
 
         val filtered = optUsers.filter {
-            when(it) {
+            when (it) {
                 is ExistingUser -> {
                     val user = it.userRef.deref()
                     val inNick = user?.nick?.contains(value, true) ?: false
@@ -156,9 +156,9 @@ val UserInviteForm = FC<Props> {
             fullWidth = true
             onInputChange = { ev, s, reason -> inputText = s }
             onOpen = { hasHighlight = false }
-            onClose = { ev,reason -> hasHighlight = false }
-            onHighlightChange = { ev, opt, reason -> hasHighlight = (opt!=null) }
-            onKeyDown = { ev->
+            onClose = { ev, reason -> hasHighlight = false }
+            onHighlightChange = { ev, opt, reason -> hasHighlight = (opt != null) }
+            onKeyDown = { ev ->
                 if (ev.key == "Enter" && !hasHighlight && inputText.contains("@")) {
                     chosenUsers += arrayOf(NewUser(inputText))
                     ev.preventDefault()
@@ -192,13 +192,12 @@ val UserInviteForm = FC<Props> {
             }
             disabled = chosenUsers.isEmpty() || stale
             if (chosenUsers.any { it is NewUser }) {
-                    endIcon = icons.SendIcon.create()
-                    +"Invite"
-                }
-                else {
-                    startIcon = icons.AddIcon.create()
-                    +"Add"
-                }
+                endIcon = icons.SendIcon.create()
+                +"Invite"
+            } else {
+                startIcon = icons.AddIcon.create()
+                +"Add"
+            }
 
             onClick = {
                 chosenUsers.forEach {
