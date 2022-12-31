@@ -246,50 +246,54 @@ val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
             }
             val qw = if (FeatureFlag.QUESTION_WRITER_ROLE in appConfig.featureFlags) arrayOf(QuestionWriter) else emptyArray()
             listOf(Viewer, Forecaster, *qw, Moderator, Owner).map { role ->
-                if (canChangeRole(appState, room, role)) {
-                    val roleUnavailable = props.isGuest && !role.isAvailableToGuests
+                val disableReason = if (!canChangeRole(appState, room, role)) {
+                    "You do not have permission to set this role"
+                } else if (props.isGuest && !role.isAvailableToGuests) {
+                    "This role is not available for guests"
+                } else {
+                    null
+                }
 
-                    val inner = MenuItem.create {
-                        value = role.id
-                        disabled = roleUnavailable
-                        sx {
-                            display = Display.flex
-                            justifyContent = JustifyContent.spaceBetween
-                            width = 100.pct
-                            gap = themed(2)
-                        }
-                        ListItemText {
-                            +role.name
-                        }
-                        if (roleUnavailable) {
-                            // We use ListItemIcon mainly for its ability to apply the disabled color.
-                            ListItemIcon {
-                                // We need to use style, as sx and css have a lower priority
-                                // than the applied style in this case.
-                                style = jso {
-                                    // This removes the extra space on the right of the icon.
-                                    minWidth = 0.px
-                                }
-                                HelpOutlineIcon {}
+                val inner = MenuItem.create {
+                    value = role.id
+                    disabled = disableReason != null
+                    sx {
+                        display = Display.flex
+                        justifyContent = JustifyContent.spaceBetween
+                        width = 100.pct
+                        gap = themed(2)
+                    }
+                    ListItemText {
+                        +role.name
+                    }
+                    if (disableReason != null) {
+                        // We use ListItemIcon mainly for its ability to apply the disabled color.
+                        ListItemIcon {
+                            // We need to use style, as sx and css have a lower priority
+                            // than the applied style in this case.
+                            style = jso {
+                                // This removes the extra space on the right of the icon.
+                                minWidth = 0.px
                             }
+                            HelpOutlineIcon {}
                         }
                     }
+                }
 
-                    if (roleUnavailable) {
-                        // We need to wrap the entire MenuItem in a tooltip and a span
-                        // as it is disabled and thus no events are fired.
-                        Tooltip {
-                            title = ReactNode("This role is not available for guests")
-                            placement = TooltipPlacement.right
-                            arrow = true
+                if (disableReason != null) {
+                    // We need to wrap the entire MenuItem in a tooltip and a span
+                    // as it is disabled and thus no events are fired.
+                    Tooltip {
+                        title = ReactNode(disableReason)
+                        placement = TooltipPlacement.right
+                        arrow = true
 
-                            span {
-                                +inner
-                            }
+                        span {
+                            +inner
                         }
-                    } else {
-                        +inner
                     }
+                } else {
+                    +inner
                 }
             }
         }
