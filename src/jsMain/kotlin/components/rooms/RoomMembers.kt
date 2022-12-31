@@ -4,17 +4,22 @@ import components.AppStateContext
 import components.DemoEmailAlert
 import components.UserAvatar
 import components.userListItemText
+import csstype.Display
+import csstype.JustifyContent
+import csstype.pct
 import csstype.px
 import hooks.useDebounce
 import icons.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.js.jso
 import react.*
 import mui.material.*
 import mui.system.sx
 import payloads.requests.AddedExistingMember
 import payloads.requests.AddedMember
+import react.dom.html.ReactHTML.span
 import rooms.*
 import tools.confido.refs.deref
 import tools.confido.refs.eqid
@@ -210,6 +215,7 @@ fun canChangeRole(appState: SentState, room: Room, role: RoomRole) =
 
 external interface MemberRoleSelectProps : Props {
     var value: RoomRole
+    var isGuest: Boolean
     var disabled: Boolean
     var onChange: ((RoomRole) -> Unit)?
 }
@@ -240,11 +246,51 @@ val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
             }
             val qw = if (FeatureFlag.QUESTION_WRITER_ROLE in appConfig.featureFlags) arrayOf(QuestionWriter) else emptyArray()
             listOf(Viewer, Forecaster, *qw, Moderator, Owner).map { role ->
-                if (canChangeRole(appState, room, role))
-                    MenuItem {
+                if (canChangeRole(appState, room, role)) {
+                    val roleUnavailable = props.isGuest && !role.isAvailableToGuests
+
+                    val inner = MenuItem.create {
                         value = role.id
-                        +role.name
+                        disabled = roleUnavailable
+                        sx {
+                            display = Display.flex
+                            justifyContent = JustifyContent.spaceBetween
+                            width = 100.pct
+                            gap = themed(2)
+                        }
+                        ListItemText {
+                            +role.name
+                        }
+                        if (roleUnavailable) {
+                            // We use ListItemIcon mainly for its ability to apply the disabled color.
+                            ListItemIcon {
+                                // We need to use style, as sx and css have a lower priority
+                                // than the applied style in this case.
+                                style = jso {
+                                    // This removes the extra space on the right of the icon.
+                                    minWidth = 0.px
+                                }
+                                HelpOutlineIcon {}
+                            }
+                        }
                     }
+
+                    if (roleUnavailable) {
+                        // We need to wrap the entire MenuItem in a tooltip and a span
+                        // as it is disabled and thus no events are fired.
+                        Tooltip {
+                            title = ReactNode("This role is not available for guests")
+                            placement = TooltipPlacement.right
+                            arrow = true
+
+                            span {
+                                +inner
+                            }
+                        }
+                    } else {
+                        +inner
+                    }
+                }
             }
         }
     }
@@ -280,6 +326,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
         if (canChangeRole(appState, room, membership.role) && canChangeSelf()) {
             MemberRoleSelect {
                 value = membership.role
+                isGuest = !user.type.isProper()
                 onChange = ::memberRoleChange
                 disabled = stale || props.disabled
             }

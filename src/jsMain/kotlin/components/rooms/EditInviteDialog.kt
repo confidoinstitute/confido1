@@ -35,7 +35,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
 
     fun submitInviteLink() {
         if (i == null) {
-            val invite = CreateNewInvite(description, role!!, anonymous)
+            val invite = CreateNewInvite(description, role, anonymous)
             Client.postData("/rooms/${room.id}/invites/create", invite)
         } else {
             val invite = i.copy(
@@ -87,6 +87,9 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                             else -> error("This should not happen!")
                         }
                     }
+                    // We cannot provide viewer and forecaster here, as we are potentially inviting non-members.
+                    // They would not be able to see the users of the organization in the moderation
+                    // interface because of the censorship. See also: RoomRole.isAvailableForGuests
                     (
                             mapOf("viewer" to "Viewer", "forecaster" to "Forecaster")
                             + if (FeatureFlag.QUESTION_WRITER_ROLE in appConfig.featureFlags)
