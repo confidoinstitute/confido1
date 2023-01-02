@@ -20,7 +20,21 @@ class StateCensor(val sess: UserSession) {
     val user = sess.user
     val state = serverState
     val referencedUsers: MutableSet<Ref<User>> = mutableSetOf()
-    val referencedComments: MutableSet<Ref<Comment>> = mutableSetOf()
+
+    init {
+        state.questionComments.forEach { (qref, comments)->
+            val q = qref.deref() ?: return@forEach
+            val room = state.questionRoom[q.ref]?.deref() ?: return@forEach
+            if (!room.hasPermission(user, RoomPermission.VIEW_QUESTION_COMMENTS)) return@forEach
+            referencedUsers.addAll(comments.map { it.value.user })
+        }
+
+        state.roomComments.forEach { (roomRef, comments)->
+            val room = roomRef.deref() ?: return@forEach
+            if (!room.hasPermission(user, RoomPermission.VIEW_ROOM_COMMENTS)) return@forEach
+            referencedUsers.addAll(comments.map { it.value.user })
+        }
+    }
 
     fun censorMembership(room: Room, membership: RoomMembership) =
         membership.takeIf{user?.type in setOf(UserType.ADMIN, UserType.MEMBER) ||
@@ -54,25 +68,6 @@ class StateCensor(val sess: UserSession) {
         return ret
     }
 
-    fun censorQuestionComments() =
-        state.questionComments.mapValuesNotNull { (qref, comments)->
-                val q = qref.deref() ?: return@mapValuesNotNull null
-                val room = state.questionRoom[q.ref]?.deref() ?: return@mapValuesNotNull null
-                if (!room.hasPermission(user, RoomPermission.VIEW_QUESTION_COMMENTS)) return@mapValuesNotNull null
-                referencedUsers.addAll(comments.map { it.value.user })
-                referencedComments.addAll(comments.map{it.value.ref})
-                comments
-            }
-
-    fun censorRoomComments(): Map<Ref<Room>, Map<String, RoomComment>> =
-        state.roomComments.mapValuesNotNull { (roomRef, comments)->
-                val room = roomRef.deref() ?: return@mapValuesNotNull null
-                if (!room.hasPermission(user, RoomPermission.VIEW_ROOM_COMMENTS)) return@mapValuesNotNull null
-                referencedUsers.addAll(comments.map { it.value.user })
-                referencedComments.addAll(comments.map{it.value.ref})
-                comments
-            }
-
     fun censorUser(u: User): User? {
         if (user?.type in setOf(UserType.ADMIN, UserType.MEMBER) || user eqid u) return u.copy(password = null)
         else if (u.ref in referencedUsers) return u.copy(password = null, email = null)
@@ -91,9 +86,6 @@ class StateCensor(val sess: UserSession) {
     fun getMyPredictions() =
         if (user!=null) state.userPred.mapValuesNotNull { it.value[user.ref] } else emptyMap()
 
-    fun censorCommentLikeCount() =
-        state.commentLikeCount.filterKeys { it in referencedComments }
-
     fun getCommentsILike() =
         user?.ref?.let { serverState.commentLikeManager.byUser[it] } ?: setOf()
 
@@ -105,13 +97,10 @@ class StateCensor(val sess: UserSession) {
         return SentState(
             rooms = censorRooms(),
             questions = censorQuestions(),
+            commentCount = censorQuestionInfo(state.commentCount),
             predictorCount = censorQuestionInfo(state.predictorCount),
             predictionCount = censorQuestionInfo(state.predictionCount),
-            roomComments = censorRoomComments(),
-            questionComments = censorQuestionComments(),
-            users = censorUsers(), // MUST be AFTER roomComments and questionComments in order to fill referencedUsers
-            commentLikeCount = censorCommentLikeCount(),// MUST be AFTER roomComments and questionComments in order to fill referencedCommnets
-            commentsILike = getCommentsILike(),
+            users = censorUsers(),
             myPasswordIsSet = getMyPasswordIsSet(),
             myPredictions = getMyPredictions(),
             session = sess,

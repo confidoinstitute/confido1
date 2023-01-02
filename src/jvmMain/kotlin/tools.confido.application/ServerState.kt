@@ -59,6 +59,7 @@ fun loadConfig() = AppConfig(
 object serverState : GlobalState() {
     val groupPred : MutableMap<Ref<Question>, Prediction?> = mutableMapOf()
     override val predictorCount: MutableMap<Ref<Question>, Int> = mutableMapOf()
+    override val commentCount: MutableMap<Ref<Question>, Int> = mutableMapOf()
     override var appConfig: AppConfig = loadConfig()
 
     // Now, for simplicity, serialize all mutations
@@ -343,16 +344,25 @@ object serverState : GlobalState() {
 
     object questionCommentManager: InMemoryEntityManager<QuestionComment>(database.getCollection("questionComments")) {
         val questionComments : MutableMap<Ref<Question>, MutableMap<String, QuestionComment>> = mutableMapOf()
+        fun updateCommentCount(question: Ref<Question>) {
+            val size = questionComments[question]?.size ?: 0
+            if (size > 0)
+                commentCount[question] = size
+            else
+                commentCount.remove(question)
+        }
         init {
             onEntityAddedOrUpdated { comment ->
                 questionComments.getOrPut(comment.question){ mutableMapOf() }[comment.id] = comment
+                updateCommentCount(comment.question)
             }
             onEntityDeleted {comment ->
                 (questionComments[comment.question] ?: return@onEntityDeleted).remove(comment.id)
+                updateCommentCount(comment.question)
             }
         }
     }
-    override val questionComments: MutableMap<Ref<Question>, MutableMap<String, QuestionComment>> by questionCommentManager::questionComments
+    val questionComments: MutableMap<Ref<Question>, MutableMap<String, QuestionComment>> by questionCommentManager::questionComments
     object roomCommentManager: InMemoryEntityManager<RoomComment>(database.getCollection("roomComments")) {
         val roomComments : MutableMap<Ref<Room>, MutableMap<String, RoomComment>> = mutableMapOf()
         init {
@@ -364,7 +374,7 @@ object serverState : GlobalState() {
             }
         }
     }
-    override val roomComments by roomCommentManager::roomComments
+    val roomComments by roomCommentManager::roomComments
 
     //object commentLikeManager : EntityManager<CommentLike>(database.getCollection("commentLikes")) {
     //    val numLikes = mutableMapOf<Ref<Comment>, Int>()
@@ -426,10 +436,6 @@ object serverState : GlobalState() {
             }
         }
     }
-
-
-
-    override val commentLikeCount: Map<Ref<Comment>, Int> by commentLikeManager::numLikes
 
     object loginLinkManager : InMemoryEntityManager<LoginLink>(database.getCollection("loginLinks")) {
         val byToken: MutableMap<String, LoginLink> = mutableMapOf()

@@ -5,31 +5,21 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.util.*
-import io.ktor.websocket.*
-import kotlinx.coroutines.channels.onFailure
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.launch
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.encodeToByteArray
-import kotlinx.serialization.encodeToString
 import payloads.requests.*
 import payloads.responses.*
 import rooms.Room
 import rooms.RoomPermission
 import tools.confido.application.sessions.TransientData
-import tools.confido.application.sessions.transientUserData
 import tools.confido.application.sessions.userSession
 import tools.confido.distributions.*
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.question.QuestionComment
 import tools.confido.refs.*
-import tools.confido.serialization.confidoJSON
-import tools.confido.spaces.BinarySpace
-import tools.confido.spaces.NumericSpace
 import tools.confido.state.deleteEntity
 import tools.confido.state.insertEntity
 import tools.confido.state.modifyEntity
@@ -161,9 +151,46 @@ fun questionRoutes(routing: Routing) = routing.apply {
             updates += listOf(updates[updates.size - 1].copy(ts=unixNow()))
         call.respond(HttpStatusCode.OK, Cbor.encodeToByteArray(updates))
     }
+
+    // View group predictions
+    getWS("/state/questions/{qID}/group_pred") {
+        val qID = call.parameters["qID"] ?: ""
+        val user = call.userSession?.user ?: return@getWS unauthorized("Not logged in.")
+        val question = serverState.questions[qID] ?: return@getWS notFound("No such question.")
+        val room = serverState.questionRoom[question.ref]?.deref() ?: return@getWS notFound("No room???")
+
+        if (!(room.hasPermission(user, RoomPermission.VIEW_QUESTIONS) && question.groupPredVisible)
+            && !room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+        )
+            return@getWS unauthorized("You cannot view this group prediction.")
+
+        serverState.groupPred[question.ref]?.let {
+            WSData(it)
+        } ?: WSError(WSErrorType.NOT_FOUND, "There is no group prediction.")
+    }
 }
 
 fun questionCommentsRoutes(routing: Routing) = routing.apply {
+    // View comments
+    getWS("/state/question/{id}/comments") {
+        val id = call.parameters["id"] ?: ""
+        val user = call.userSession?.user ?: return@getWS unauthorized("Not logged in.")
+        val question = serverState.questions[id] ?: return@getWS notFound("No such question.")
+        val room = serverState.questionRoom[question.ref]?.deref() ?: return@getWS notFound("No room???")
+
+        if (!room.hasPermission(user, RoomPermission.VIEW_QUESTION_COMMENTS)) return@getWS WSError(WSErrorType.UNAUTHORIZED, "You cannot view the discussion.")
+
+        val commentInfo = serverState.questionComments[question.ref]?.mapValues {
+            val comment = it.value
+            CommentInfo(
+                comment,
+                serverState.commentLikeManager.numLikes[comment.ref] ?: 0,
+                comment.ref in (serverState.commentLikeManager.byUser[user.ref] ?: emptySet())
+            )
+        } ?: emptyMap()
+        WSData(commentInfo)
+    }
+
     postST("/questions/{id}/comments/add") {
         val user = call.userSession?.user ?: return@postST unauthorized("Not logged in.")
         val id = call.parameters["id"] ?: ""
@@ -219,20 +246,5 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
         serverState.commentLikeManager.setLike(comment.ref, user.ref, state)
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
-    }
-    getWS("/state/questions/{qID}/group_pred") { call ->
-        val qID = call.parameters["qID"] ?: ""
-        val user = call.userSession?.user ?: return@getWS WSError(WSErrorType.UNAUTHORIZED, "Not logged in.")
-        val question = serverState.questions[qID] ?: return@getWS WSError(WSErrorType.NOT_FOUND, "No such question.")
-        val room = serverState.questionRoom[question.ref]?.deref() ?: return@getWS WSError(WSErrorType.NOT_FOUND, "No room???")
-
-        if (!(room.hasPermission(user, RoomPermission.VIEW_QUESTIONS) && question.groupPredVisible)
-            && !room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
-        )
-        return@getWS WSError(WSErrorType.UNAUTHORIZED, "You cannot view this group prediction.")
-
-        serverState.groupPred[question.ref]?.let {
-            WSData(it)
-        } ?: WSError(WSErrorType.NOT_FOUND, "There is no group prediction.")
     }
 }

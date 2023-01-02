@@ -32,7 +32,6 @@ import org.simplejavamail.mailer.MailerBuilder
 import payloads.responses.WSResponse
 import rooms.*
 import tools.confido.application.sessions.*
-import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.serialization.confidoSM
@@ -78,60 +77,6 @@ val singleThreadContext = newSingleThreadContext("confido_server")
 // val singleThreadContext = IO.limitedParallelism(1) // alternative solution
 
 
-fun Route.getST(path: String, body: PipelineInterceptor<Unit, ApplicationCall>): Route =
-    get(path) { arg-> withContext(singleThreadContext) { body(this@get, arg) } }
-fun Route.postST(path: String, body: PipelineInterceptor<Unit, ApplicationCall>): Route =
-    post(path) { arg-> withContext(singleThreadContext) { body(this@post, arg) } }
-fun Route.putST(path: String, body: PipelineInterceptor<Unit, ApplicationCall>): Route =
-    put(path) { arg-> withContext(singleThreadContext) { body(this@put, arg) } }
-fun Route.deleteST(path: String, body: PipelineInterceptor<Unit, ApplicationCall>): Route =
-    delete(path) { arg-> withContext(singleThreadContext) { body(this@delete, arg) } }
-
-fun Route.webSocketST(
-    path: String,
-    protocol: String? = null,
-    handler: suspend DefaultWebSocketServerSession.() -> Unit
-) = webSocket(path, protocol) {  handler(this) }
-
-inline fun <reified T> Route.getWS(path: String, crossinline body: suspend (ApplicationCall) -> WSResponse<T>) =
-    webSocketST(path) {
-        val closeNotifier = MutableStateFlow(false)
-
-        launch {
-            incoming.receiveCatching().onFailure {
-                closeNotifier.emit(true)
-            }
-        }
-
-        call.transientUserData?.runRefreshable(closeNotifier) {
-            print("Checking session")
-            if (call.userSession == null) {
-                closeNotifier.emit(true)
-                return@runRefreshable
-            }
-            val message: WSResponse<T> = body(call)
-            val encoded = confidoJSON.encodeToString( message )
-            send(Frame.Text(encoded))
-            println(encoded)
-            println(confidoJSON.decodeFromString<WSResponse<T>>(encoded))
-        }
-    }
-
-suspend inline fun PipelineContext<Unit, ApplicationCall>.badRequest(msg: String = "") {
-    System.err.println("bad request: $msg")
-    System.err.flush()
-    call.respond(HttpStatusCode.BadRequest, msg)
-}
-suspend inline fun PipelineContext<Unit, ApplicationCall>.unauthorized(msg: String = "") {
-    System.err.println("unauthorized: $msg")
-    System.err.flush()
-    call.respond(HttpStatusCode.Unauthorized, msg)
-}
-suspend inline fun PipelineContext<Unit, ApplicationCall>.notFound(msg: String = "") {
-    System.err.println("not found: $msg")
-    System.err.flush()
-    call.respond(HttpStatusCode.NotFound, msg)
-}
 
 // TODO move this to an external script for easier modification
 suspend fun initDemo() {

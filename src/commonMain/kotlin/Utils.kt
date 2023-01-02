@@ -1,13 +1,11 @@
+@file:Suppress("DANGEROUS_CHARACTERS")
+
 package tools.confido.utils
 
 import kotlinx.datetime.*
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import kotlin.js.JsName
-import kotlin.jvm.JvmInline
 import kotlin.jvm.JvmName
 import kotlin.math.roundToInt
-import kotlin.math.roundToLong
 
 operator fun Number.compareTo(b : Number): Int {
     if ((this is Int || this is Short || this is Long || this is Byte || this is Float || this is Double)

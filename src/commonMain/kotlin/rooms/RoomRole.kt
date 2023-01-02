@@ -9,9 +9,7 @@ import tools.confido.state.appConfig
 
 @Serializable
 sealed class RoomRole(val permissions: Set<RoomPermission>) {
-    @Transient
     abstract val id: String
-    @Transient
     abstract val name: String
 
     fun hasPermission(permission: RoomPermission): Boolean {

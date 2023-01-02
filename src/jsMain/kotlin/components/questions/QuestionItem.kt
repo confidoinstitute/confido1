@@ -133,7 +133,7 @@ external interface QuestionItemProps : Props {
     var prediction: Prediction?
     var canPredict: Boolean
     var editable: Boolean
-    var comments: Map<String, Comment>
+    var commentCount: Int
     var onEditDialog: ((Question) -> Unit)?
     var onChange: ((Boolean) -> Unit)?
     var expanded: Boolean
@@ -333,12 +333,12 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             QuestionCommentsDialog {
                 this.open = commentsOpen
                 this.question = props.question
-                this.comments = props.comments
+                this.numComments = props.commentCount
                 this.prediction = props.prediction
                 this.onClose = { commentsOpen = false }
             }
             QuestionCommentsButton {
-                this.numComments = props.comments.count()
+                this.numComments = props.commentCount
                 this.onClick = { commentsOpen = true }
             }
             if (props.editable) {

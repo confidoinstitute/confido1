@@ -36,8 +36,8 @@ inline fun <reified T> useWebSocket(address: String, retryDelay: Int = 5000, cle
                 }
                 onclose = {
                     state = WebSocketState.STALE
-                    if (clearOnStale)
-                        value = WSError(WSErrorType.DISCONNECTED, "Lost connection")
+                    if (clearOnStale || value is WSLoading)
+                        value = WSError(WSErrorType.DISCONNECTED, "Cannot reach server")
                     webSocket.current = null
                 }
             }

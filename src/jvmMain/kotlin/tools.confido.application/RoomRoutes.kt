@@ -8,18 +8,16 @@ import io.ktor.server.routing.*
 import kotlinx.datetime.Clock
 import org.simplejavamail.MailException
 import payloads.requests.*
+import payloads.responses.CommentInfo
 import payloads.responses.WSData
 import payloads.responses.WSError
 import payloads.responses.WSErrorType
 import rooms.*
 import tools.confido.application.sessions.TransientData
 import tools.confido.application.sessions.userSession
-import tools.confido.question.Prediction
-import tools.confido.question.Question
 import tools.confido.question.RoomComment
 import tools.confido.refs.*
 import tools.confido.state.*
-import tools.confido.utils.mapValuesNotNull
 import tools.confido.utils.randomString
 import tools.confido.utils.unixNow
 import users.LoginLink
@@ -176,10 +174,10 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
-    getWS("/state/rooms/{id}/group_pred") { call ->
+    getWS("/state/rooms/{id}/group_pred") {
         val roomRef = Ref<Room>(call.parameters["id"] ?: "")
-        val user = call.userSession?.user ?: return@getWS WSError(WSErrorType.UNAUTHORIZED, "Not logged in.")
-        val room = roomRef.deref() ?: return@getWS WSError(WSErrorType.NOT_FOUND, "No room???")
+        val user = call.userSession?.user ?: return@getWS unauthorized("Not logged in.")
+        val room = roomRef.deref() ?: return@getWS notFound("No room???")
 
         val canViewPred = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
 
@@ -189,6 +187,24 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
 }
 
 fun roomCommentsRoutes(routing: Routing) = routing.apply {
+    getWS("/state/rooms/{id}/comments") {
+        val id = call.parameters["id"] ?: ""
+        val user = call.userSession?.user ?: return@getWS unauthorized("Not logged in.")
+        val room = serverState.rooms[id] ?: return@getWS notFound( "No such room.")
+
+        if (!room.hasPermission(user, RoomPermission.VIEW_ROOM_COMMENTS)) return@getWS WSError(WSErrorType.UNAUTHORIZED, "You cannot view the discussion.")
+
+        val commentInfo = serverState.roomComments[room.ref]?.mapValues {
+            val comment = it.value
+            CommentInfo(
+                comment,
+                serverState.commentLikeManager.numLikes[comment.ref] ?: 0,
+                comment.ref in (serverState.commentLikeManager.byUser[user.ref] ?: emptySet())
+            )
+        } ?: emptyMap()
+        WSData(commentInfo)
+    }
+
     postST("/rooms/{id}/comments/add") {
         val id = call.parameters["id"] ?: ""
         val user = call.userSession?.user ?: return@postST unauthorized("Not logged in.")

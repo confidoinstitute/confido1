@@ -12,12 +12,10 @@ import kotlin.reflect.KClass
 interface BaseState {
     val rooms:  Map<String, Room>
     val questions:  Map<String, Question>
-    val questionComments:  Map<Ref<Question>, Map<String, QuestionComment>>
-    val roomComments:  Map<Ref<Room>, Map<String, RoomComment>>
     val users:  Map<String, User>
     val predictorCount : Map<Ref<Question>, Int>
     val predictionCount : Map<Ref<Question>, Int>
-    val commentLikeCount : Map<Ref<Comment>, Int>
+    val commentCount : Map<Ref<Question>, Int>
     val appConfig: AppConfig
 }
 
@@ -64,13 +62,10 @@ data class SentState(
     override val questions: Map<String, Question> = emptyMap(),
     override val users: Map<String, User> = emptyMap(),
     val myPredictions: Map<Ref<Question>, Prediction> = emptyMap(),
-    override val questionComments: Map<Ref<Question>, Map<String, QuestionComment>> = emptyMap(),
-    override val roomComments: Map<Ref<Room>, Map<String, RoomComment>> = emptyMap(),
     val session: UserSession = UserSession(),
     override val predictionCount: Map<Ref<Question>, Int> = emptyMap(),
     override val predictorCount: Map<Ref<Question>, Int> = emptyMap(),
-    override val commentLikeCount: Map<Ref<Comment>, Int> = emptyMap(),
-    val commentsILike: Set<Ref<Comment>> = emptySet(),
+    override val commentCount: Map<Ref<Question>, Int> = emptyMap(),
     val myPasswordIsSet: Boolean = false,
     override val appConfig: AppConfig = AppConfig(),
 ) : BaseState {

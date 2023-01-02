@@ -76,7 +76,7 @@ enum class WSErrorType {
         UNAUTHORIZED -> "Not Authorized"
         NOT_FOUND -> "Not Found"
         BAD_REQUEST -> "Bad Request"
-        DISCONNECTED -> "Lost Connection"
+        DISCONNECTED -> "Disconnected"
     }
 }
 
