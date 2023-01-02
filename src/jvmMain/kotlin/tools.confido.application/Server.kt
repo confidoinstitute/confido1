@@ -22,14 +22,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System.now
 import kotlinx.html.*
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.codec.digest.MessageDigestAlgorithms.SHA_224
 import org.litote.kmongo.serialization.registerModule
 import org.litote.kmongo.serialization.registerSerializer
 import org.simplejavamail.mailer.MailerBuilder
+import payloads.responses.WSResponse
 import rooms.*
 import tools.confido.application.sessions.*
+import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.serialization.confidoSM
@@ -89,6 +92,30 @@ fun Route.webSocketST(
     protocol: String? = null,
     handler: suspend DefaultWebSocketServerSession.() -> Unit
 ) = webSocket(path, protocol) {  handler(this) }
+
+inline fun <reified T> Route.getWS(path: String, crossinline body: suspend (ApplicationCall) -> WSResponse<T>) =
+    webSocketST(path) {
+        val closeNotifier = MutableStateFlow(false)
+
+        launch {
+            incoming.receiveCatching().onFailure {
+                closeNotifier.emit(true)
+            }
+        }
+
+        call.transientUserData?.runRefreshable(closeNotifier) {
+            print("Checking session")
+            if (call.userSession == null) {
+                closeNotifier.emit(true)
+                return@runRefreshable
+            }
+            val message: WSResponse<T> = body(call)
+            val encoded = confidoJSON.encodeToString( message )
+            send(Frame.Text(encoded))
+            println(encoded)
+            println(confidoJSON.decodeFromString<WSResponse<T>>(encoded))
+        }
+    }
 
 suspend inline fun PipelineContext<Unit, ApplicationCall>.badRequest(msg: String = "") {
     System.err.println("bad request: $msg")

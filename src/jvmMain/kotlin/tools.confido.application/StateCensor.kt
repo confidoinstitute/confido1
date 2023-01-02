@@ -73,16 +73,6 @@ class StateCensor(val sess: UserSession) {
                 comments
             }
 
-    fun censorGroupPred() =
-        state.groupPred.filterKeys { qref->
-            val q = qref.deref() ?: return@filterKeys false
-            val room = state.questionRoom[q.ref]?.deref() ?: return@filterKeys false
-            (
-                    (room.hasPermission(user, RoomPermission.VIEW_QUESTIONS) && q.groupPredVisible)
-                            || room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
-            )
-        }
-
     fun censorUser(u: User): User? {
         if (user?.type in setOf(UserType.ADMIN, UserType.MEMBER) || user eqid u) return u.copy(password = null)
         else if (u.ref in referencedUsers) return u.copy(password = null, email = null)
@@ -119,7 +109,6 @@ class StateCensor(val sess: UserSession) {
             predictionCount = censorQuestionInfo(state.predictionCount),
             roomComments = censorRoomComments(),
             questionComments = censorQuestionComments(),
-            groupPred = censorGroupPred(),
             users = censorUsers(), // MUST be AFTER roomComments and questionComments in order to fill referencedUsers
             commentLikeCount = censorCommentLikeCount(),// MUST be AFTER roomComments and questionComments in order to fill referencedCommnets
             commentsILike = getCommentsILike(),

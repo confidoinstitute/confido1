@@ -13,6 +13,7 @@ import dndkit.utilities.CSS
 import dndkit.utilities.closestCenter
 import emotion.react.css
 import hooks.useEditDialog
+import hooks.useWebSocket
 import icons.*
 import kotlinx.js.jso
 import mui.material.*
@@ -22,6 +23,8 @@ import payloads.requests.EditQuestion
 import payloads.requests.EditQuestionFlag
 import payloads.requests.EditQuestionFieldType
 import payloads.requests.ReorderQuestions
+import payloads.responses.WSData
+import payloads.responses.WSError
 import react.*
 import react.dom.aria.AriaRole
 import react.dom.html.ReactHTML
@@ -31,7 +34,9 @@ import react.dom.html.ReactHTML.colgroup
 import react.dom.html.ReactHTML.span
 import rooms.Room
 import rooms.RoomPermission
+import tools.confido.question.Prediction
 import tools.confido.question.Question
+import tools.confido.refs.ref
 import tools.confido.state.havePermission
 import utils.*
 
@@ -46,6 +51,9 @@ val QuestionTable = FC<QuestionTableProps> { props ->
     val (_, stale) = useContext(AppStateContext)
     val room = props.room
 
+    val groupPredsWS = useWebSocket<Map<String, Prediction?>>("/state/rooms/${room.id}/group_pred")
+    val groupPreds = groupPredsWS.data ?: emptyMap()
+
     val mouseSensor = useSensor<MouseSensorOptions>(MouseSensor)
     val sensors = useSensors(mouseSensor)
 
@@ -59,7 +67,7 @@ val QuestionTable = FC<QuestionTableProps> { props ->
     val editQuestionOpen = useEditDialog(EditQuestionDialog)
 
     val showGroupPredCol = (
-            props.questions.any{it.groupPred != null}
+            props.questions.any{it.numPredictions > 0}
                     && (
                         room.havePermission(RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
                         || props.questions.any{it.groupPredVisible}
@@ -80,6 +88,14 @@ val QuestionTable = FC<QuestionTableProps> { props ->
         +"It also allows for basic question management such as showing/hiding questions."
         +"If you hover your mouse cursor over an icon or other similar element, an explanation of its function will be shown."
     }
+
+    if (groupPredsWS is WSError) {
+        Alert {
+            severity = AlertColor.error
+            +groupPredsWS.prettyMessage
+        }
+    }
+
     DndContext {
         collisionDetection = closestCenter
         modifiers = arrayOf(restrictToVerticalAxis, restrictToWindowEdges)
@@ -150,6 +166,7 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                                     key = question.id
                                     this.question = question
                                     this.showGroupPredCol = showGroupPredCol
+                                    this.groupPred = groupPreds.get(question.id)
                                     this.showResolutionCol = showResolutionCol
                                     this.onEditDialog = editQuestionOpen
                                 }
@@ -175,6 +192,7 @@ val QuestionTable = FC<QuestionTableProps> { props ->
 external interface QuestionRowProps : Props {
     var question: Question
     var showGroupPredCol: Boolean
+    var groupPred: Prediction?
     var showResolutionCol: Boolean
     var onEditDialog: ((Question) -> Unit)?
 }
@@ -329,11 +347,19 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                         }
                     }
                 }
-                question.groupPred?.dist?.let { groupDist ->
+                props.groupPred?.dist?.let { groupDist ->
                     DistributionSummary {
                         distribution = groupDist
                         allowPlotDialog = true
                     }
+                } ?: run {
+                    if (question.numPredictions > 0)
+                        Skeleton {
+                            sx {
+                                display = Display.inlineBlock
+                                width = 3.rem
+                            }
+                        }
                 }
             }
         if (props.showResolutionCol)

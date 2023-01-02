@@ -57,7 +57,7 @@ fun loadConfig() = AppConfig(
 )
 
 object serverState : GlobalState() {
-    override val groupPred : MutableMap<Ref<Question>, Prediction?> = mutableMapOf()
+    val groupPred : MutableMap<Ref<Question>, Prediction?> = mutableMapOf()
     override val predictorCount: MutableMap<Ref<Question>, Int> = mutableMapOf()
     override var appConfig: AppConfig = loadConfig()
 

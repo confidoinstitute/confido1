@@ -5,12 +5,18 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.util.*
+import io.ktor.websocket.*
+import kotlinx.coroutines.channels.onFailure
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.encodeToString
 import payloads.requests.*
-import payloads.responses.DistributionUpdate
+import payloads.responses.*
 import rooms.Room
 import rooms.RoomPermission
 import tools.confido.application.sessions.TransientData
@@ -21,6 +27,7 @@ import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.question.QuestionComment
 import tools.confido.refs.*
+import tools.confido.serialization.confidoJSON
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.NumericSpace
 import tools.confido.state.deleteEntity
@@ -212,5 +219,20 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
         serverState.commentLikeManager.setLike(comment.ref, user.ref, state)
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
+    }
+    getWS("/state/questions/{qID}/group_pred") { call ->
+        val qID = call.parameters["qID"] ?: ""
+        val user = call.userSession?.user ?: return@getWS WSError(WSErrorType.UNAUTHORIZED, "Not logged in.")
+        val question = serverState.questions[qID] ?: return@getWS WSError(WSErrorType.NOT_FOUND, "No such question.")
+        val room = serverState.questionRoom[question.ref]?.deref() ?: return@getWS WSError(WSErrorType.NOT_FOUND, "No room???")
+
+        if (!(room.hasPermission(user, RoomPermission.VIEW_QUESTIONS) && question.groupPredVisible)
+            && !room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+        )
+        return@getWS WSError(WSErrorType.UNAUTHORIZED, "You cannot view this group prediction.")
+
+        serverState.groupPred[question.ref]?.let {
+            WSData(it)
+        } ?: WSError(WSErrorType.NOT_FOUND, "There is no group prediction.")
     }
 }

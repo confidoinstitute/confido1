@@ -8,12 +8,18 @@ import io.ktor.server.routing.*
 import kotlinx.datetime.Clock
 import org.simplejavamail.MailException
 import payloads.requests.*
+import payloads.responses.WSData
+import payloads.responses.WSError
+import payloads.responses.WSErrorType
 import rooms.*
 import tools.confido.application.sessions.TransientData
 import tools.confido.application.sessions.userSession
+import tools.confido.question.Prediction
+import tools.confido.question.Question
 import tools.confido.question.RoomComment
 import tools.confido.refs.*
 import tools.confido.state.*
+import tools.confido.utils.mapValuesNotNull
 import tools.confido.utils.randomString
 import tools.confido.utils.unixNow
 import users.LoginLink
@@ -169,6 +175,16 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
 
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
+    }
+    getWS("/state/rooms/{id}/group_pred") { call ->
+        val roomRef = Ref<Room>(call.parameters["id"] ?: "")
+        val user = call.userSession?.user ?: return@getWS WSError(WSErrorType.UNAUTHORIZED, "Not logged in.")
+        val room = roomRef.deref() ?: return@getWS WSError(WSErrorType.NOT_FOUND, "No room???")
+
+        val canViewPred = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+
+        val groupPreds = room.questions.associateWith { ref -> if (canViewPred || ref.deref()?.groupPredVisible == true) serverState.groupPred[ref] else null }
+        WSData(groupPreds)
     }
 }
 

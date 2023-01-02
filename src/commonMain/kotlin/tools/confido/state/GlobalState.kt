@@ -15,7 +15,6 @@ interface BaseState {
     val questionComments:  Map<Ref<Question>, Map<String, QuestionComment>>
     val roomComments:  Map<Ref<Room>, Map<String, RoomComment>>
     val users:  Map<String, User>
-    val groupPred : Map<Ref<Question>, Prediction?>
     val predictorCount : Map<Ref<Question>, Int>
     val predictionCount : Map<Ref<Question>, Int>
     val commentLikeCount : Map<Ref<Comment>, Int>
@@ -67,7 +66,6 @@ data class SentState(
     val myPredictions: Map<Ref<Question>, Prediction> = emptyMap(),
     override val questionComments: Map<Ref<Question>, Map<String, QuestionComment>> = emptyMap(),
     override val roomComments: Map<Ref<Room>, Map<String, RoomComment>> = emptyMap(),
-    override val groupPred: Map<Ref<Question>, Prediction?> = emptyMap(),
     val session: UserSession = UserSession(),
     override val predictionCount: Map<Ref<Question>, Int> = emptyMap(),
     override val predictorCount: Map<Ref<Question>, Int> = emptyMap(),

@@ -6,6 +6,7 @@ import csstype.*
 import hooks.useDebounce
 import hooks.useOnUnmount
 import icons.CloseIcon
+import hooks.useWebSocket
 import icons.EditIcon
 import icons.ExpandMore
 import icons.TimelineIcon
@@ -292,7 +293,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     SpoilerButton {
                         DistributionSummary {
                             allowPlotDialog = true
-                            distribution = appState.groupPred[question.ref]?.dist
+                            distribution = null
                         }
                     }
                 }
@@ -324,7 +325,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 this.question = props.question
             }
             GroupPredButton {
-                this.distribution = appState.groupPred[question.ref]?.dist
+                this.question = question
                 this.disabled =
                     !(question.groupPredVisible || appState.hasPermission( room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS ))
                 this.count = props.question.numPredictors
