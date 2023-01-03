@@ -60,9 +60,15 @@ val QuestionTable = FC<QuestionTableProps> { props ->
     // We maintain the order of questions separately to allow
     // for instant UI updates when swapping them around.
     // Note that the order is reversed (newest at the top)
-    // TODO: If new questions are added, add them to the order
     var questionOrder by useState(props.questions.map { it.id }.toTypedArray())
     val questionOrderReversed = questionOrder.reversed().toTypedArray()
+
+    // Update the saved question order with new or removed questions (the order is derived state)
+    if (props.questions.size != questionOrder.size) {
+        val newQuestionIds = props.questions.map { it.id }.filter { !questionOrder.contains(it) }
+        val nonRemovedIds = questionOrder.filter { storedId -> props.questions.any { it.id == storedId } }
+        questionOrder = (nonRemovedIds + newQuestionIds).toTypedArray()
+    }
 
     val editQuestionOpen = useEditDialog(EditQuestionDialog)
 
