@@ -1,3 +1,5 @@
+@file:Suppress("NOTHING_TO_INLINE")
+
 package tools.confido.refs
 
 import kotlinx.serialization.KSerializer
@@ -90,7 +92,7 @@ inline infix fun <T: Entity> Ref<T>?.eqid(other: Ref<T>?) =
 inline infix fun <T: Entity> Ref<T>?.eqid(other: String) =
     (this?.id ?: "") == other
 inline infix fun <T: Entity> String.eqid(other: Ref<T>) =
-    this == (other.id ?: "")
+    this == other.id
 
 fun <T: Entity> List<T>.indexOfById(what: T) = this.indexOfFirst { it eqid what }
 fun <T: Entity> List<T>.findById(what: T) = this.find { it eqid what }

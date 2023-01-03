@@ -198,7 +198,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 onClick = { snackOpen = false }
             }
         }
-        onClose = { ev,reason-> snackOpen = false }
+        onClose = { _, _ -> snackOpen = false }
     }
 
     Accordion {

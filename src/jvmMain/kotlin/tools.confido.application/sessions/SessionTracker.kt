@@ -60,7 +60,7 @@ val ApplicationCall.userSession: UserSession?
     get() =
         sessionId?.let { serverState.userSessionManager.entityMap[sessionId] }
 
-suspend fun ApplicationCall.setUserSession(value: UserSession) {
+suspend fun ApplicationCall.setUserSession(value: UserSession?) {
         val id = getSessionIdOrCreateNew()
         if (value == null) {
             serverState.userSessionManager.deleteEntity(id, ignoreNonexistent = true)

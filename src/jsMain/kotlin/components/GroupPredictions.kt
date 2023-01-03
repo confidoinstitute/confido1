@@ -26,10 +26,6 @@ external interface PredictionPlotProps : Props {
 }
 
 val PredictionPlot = FC<PredictionPlotProps> {props ->
-    val config = jsObject {
-        this.responsive = true
-    }
-
     Card {
         raised = true
 

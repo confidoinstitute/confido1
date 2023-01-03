@@ -1,3 +1,5 @@
+@file:Suppress("UNCHECKED_CAST_TO_EXTERNAL_INTERFACE", "UNCHECKED_CAST")
+
 package utils
 
 import csstype.AutoLength
@@ -27,7 +29,7 @@ fun <T> byTheme(key: String): T {
 }
 
 fun <T> T.except(vararg except: String): T  where T: Props {
-    var newProps = jsObject {  }
+    val newProps = jsObject {  }
     Object.assign(newProps, this)
     except.forEach { delete(newProps[it]) }
     return newProps as T

@@ -1,17 +1,12 @@
+@file:Suppress("NOTHING_TO_INLINE")
+
 package tools.confido.state
 
 import com.mongodb.ConnectionString
-import com.mongodb.DuplicateKeyException
-import com.mongodb.ErrorCategory
-import com.mongodb.MongoWriteException
-import com.mongodb.WriteError
 import com.mongodb.client.model.Filters.and
-import com.mongodb.client.model.InsertOneOptions
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.reactivestreams.client.ClientSession
 import io.ktor.server.html.*
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.forEach
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -24,7 +19,6 @@ import tools.confido.distributions.*
 import tools.confido.question.*
 import tools.confido.refs.*
 import tools.confido.spaces.*
-import tools.confido.state.serverState.register
 import tools.confido.utils.*
 import users.EmailVerificationLink
 import users.LoginLink
@@ -84,7 +78,7 @@ object serverState : GlobalState() {
 
         fun onEntityAddedOrUpdated(cb: EntityManager<E>.(E) -> Unit) {
             onEntityAdded(cb)
-            onEntityUpdated({ old, new -> cb(new) })
+            onEntityUpdated({ _, new -> cb(new) })
         }
 
         fun onEntityDeleted(cb: EntityManager<E>.(E) -> Unit) {
@@ -134,7 +128,7 @@ object serverState : GlobalState() {
             }
         suspend fun replaceEntity(new: E, compare: E? = null,
                              upsert: Boolean = false,
-                             merge: (orig: E, new: E)->E = { _, new -> new }, ) : E =
+                             merge: (orig: E, new: E)->E = { _, newM -> newM }, ) : E =
             withMutationLock {
                 if (upsert && compare != null) throw IllegalArgumentException()
                 val orig: E? = get(new.id)
@@ -279,9 +273,9 @@ object serverState : GlobalState() {
         fun get(question: Ref<Question>, user: Ref<User>) =
             userPred[question]?.get(user)
 
-        suspend fun save(pred: Prediction)  = withMutationLock {
-            require(pred.user != null)
-            val pred = pred.copy(id = "${pred.question.id}:${pred.user.id}")
+        suspend fun save(savedPred: Prediction)  = withMutationLock {
+            require(savedPred.user != null)
+            val pred = savedPred.copy(id = "${savedPred.question.id}:${savedPred.user.id}")
             val orig = get(pred.question, pred.user!!)
             val filter = and(Prediction::question eq pred.question, Prediction::user eq pred.user)
 
@@ -568,7 +562,6 @@ object serverState : GlobalState() {
     }
 
     suspend fun addPrediction(pred: Prediction) {
-        require(pred.question != null)
         val q = pred.question.deref()
         require(q != null)
         withTransaction {

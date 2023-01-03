@@ -119,7 +119,7 @@ val Comment = FC<CommentProps> { props ->
                     SpoilerButton {
                         DistributionSummary {
                             allowPlotDialog = true
-                            distribution = comment.prediction?.dist
+                            distribution = comment.prediction.dist
                         }
                     }
                 }

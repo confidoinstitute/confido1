@@ -100,7 +100,7 @@ val RoomMembers = FC<Props> {
             }
 
         }
-        invitations.entries.sortedBy { it.key?.createdAt }.map {(invitation, maybeMembers) ->
+        invitations.entries.sortedBy { it.key.createdAt }.map { (invitation, maybeMembers) ->
             InvitationMembers {
                 key = "invitation__" + invitation.token
                 this.invitation = invitation

@@ -176,7 +176,7 @@ val DemoWelcomeBox = FC<Props> {
     }
 }
 
-val DemoLayout = FC<Props> { props ->
+val DemoLayout = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
     val loggedIn = appState.session.user != null
     mui.system.ThemeProvider {
