@@ -64,7 +64,7 @@ val QuestionTable = FC<QuestionTableProps> { props ->
     val questionOrderReversed = questionOrder.reversed().toTypedArray()
 
     // Update the saved question order with new or removed questions (the order is derived state)
-    if (props.questions.size != questionOrder.size) {
+    if (props.questions.map { it.id }.toSet() != questionOrder.toSet()) {
         val newQuestionIds = props.questions.map { it.id }.filter { !questionOrder.contains(it) }
         val nonRemovedIds = questionOrder.filter { storedId -> props.questions.any { it.id == storedId } }
         questionOrder = (nonRemovedIds + newQuestionIds).toTypedArray()
