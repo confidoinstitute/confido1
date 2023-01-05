@@ -2,16 +2,14 @@ package components
 
 import kotlinx.datetime.LocalDate
 import kotlinx.js.Object
+import kotlinx.js.jso
 import mui.material.*
 import react.*
 import react.dom.html.InputType
 import react.dom.onChange
 import tools.confido.spaces.*
 import tools.confido.utils.fromUnix
-import utils.buildObject
-import utils.eventNumberValue
-import utils.eventValue
-import utils.jsObject
+import utils.*
 import kotlin.math.min
 
 external interface ValueEntryProps : Props {
@@ -54,13 +52,9 @@ val NumericValueEntry = FC<NumericValueEntryProps> { props->
         type = InputType.number
         props.label?.let { this.label = ReactNode(it) }
         val step = min(0.1, props.space.binner.binSize) // TODO
-        this.inputProps = jsObject {
-            this.min = props.space.min
-            this.max = props.space.max
-            this.step = step
-        }.unsafeCast<InputBaseComponentProps>()
+        this.inputProps = numericInputProps(props.space.min, props.space.max, step)
         this.defaultValue = props.value?.value ?: ""
-        this.asDynamic().InputProps = buildObject<InputProps> {
+        this.asDynamic().InputProps = jso<InputProps> {
             endAdornment = InputAdornment.create {
                 position = InputAdornmentPosition.end
                 +props.space.unit
@@ -79,13 +73,10 @@ val DateValueEntry = FC<NumericValueEntryProps> { props->
     TextField {
         type = InputType.date
         props.label?.let { this.label = ReactNode(it) }
-        this.inputProps = jsObject {
-            this.min = LocalDate.fromUnix(props.space.min).toString()
-            this.max = LocalDate.fromUnix(props.space.max).toString()
-        }.unsafeCast<InputBaseComponentProps>()
+        this.inputProps = numericInputProps(props.space.min, props.space.max, null)
         this.defaultValue = props.value?.value?.let { LocalDate.fromUnix(it).toString() } ?: ""
         if (props.space.unit.isNotEmpty())
-            this.asDynamic().InputProps = buildObject<InputProps> {
+            this.asDynamic().InputProps = jso<InputProps> {
                 endAdornment = InputAdornment.create {
                     position = InputAdornmentPosition.end
                     +props.space.unit

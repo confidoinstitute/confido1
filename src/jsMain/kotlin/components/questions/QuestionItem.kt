@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.js.jso
 import mui.material.*
+import mui.material.transitions.TransitionProps
 import mui.system.responsive
 import mui.system.sx
 import react.*
@@ -206,7 +207,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         id = "questionitem-${props.question.id}"
         expanded = props.expanded
         onChange = { _, state -> props.onChange?.invoke(state) }
-        TransitionProps = jsObject { unmountOnExit = true }
+        TransitionProps = buildObject { unmountOnExit = true }
         AccordionSummary {
             id = question.id
             expandIcon = ExpandMore.create()

@@ -8,17 +8,13 @@ import io.ktor.http.*
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlinx.datetime.*
+import kotlinx.js.jso
 import web.location.location
 import kotlin.js.Date
 
-inline fun jsObject(init: dynamic.() -> Unit): dynamic {
-    val o = js("{}")
-    init(o)
-    return o
-}
-
-inline fun <T: Any> buildObject(init: T.() -> Unit): T =
-    jsObject(init).unsafeCast<T>()
+// Build an object which does not have properly defined interface
+inline fun <T: Any> buildObject(init: dynamic.() -> Unit): T =
+    jso(init).unsafeCast<T>()
 
 fun Number.toDateTime(): String = Date(this.toDouble() * 1000).toLocaleString()
 fun Number.toIsoDateTime(): String = Date(this.toDouble() * 1000).toISOString()

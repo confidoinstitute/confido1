@@ -3,6 +3,7 @@ package components
 import browser.window
 import components.layout.*
 import csstype.*
+import kotlinx.js.jso
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -14,14 +15,12 @@ import mui.material.styles.createTheme
 import mui.system.ThemeProvider
 import react.*
 import react.router.Route
-import react.router.Router
 import react.router.Routes
 import react.router.dom.BrowserRouter
 import tools.confido.serialization.confidoJSON
 import tools.confido.state.ClientState
 import tools.confido.state.SentState
 import tools.confido.state.clientState
-import utils.buildObject
 import utils.webSocketUrl
 import web.timers.setTimeout
 import web.location.location
@@ -34,15 +33,15 @@ val AppStateContext = createContext<ClientAppState>()
 data class ClientAppState(val state: SentState, val stale: Boolean = false)
 
 val globalTheme = createTheme(
-    buildObject {
-        this.palette = buildObject {
-            this.primary = buildObject<PaletteColor> {
+    jso {
+        palette = jso {
+            primary = jso<PaletteColor> {
                 main = Color("#675491")
                 light = Color("#9681c2")
                 dark = Color("#3a2b63")
                 contrastText = Color("#ffffff")
             }
-            this.secondary = buildObject<PaletteColor> {
+            secondary = jso<PaletteColor> {
                 main = Color("#55a3b5")
                 light = Color("#88d4e7")
                 dark = Color("#1c7485")

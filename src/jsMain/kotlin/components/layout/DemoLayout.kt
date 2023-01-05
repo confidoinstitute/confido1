@@ -28,9 +28,9 @@ const val REQUEST_WORKSPACE_URL = "https://confido.institute/request-a-workspace
 const val DEMO_CONTINUE_URL = "/room/demoroom1"
 
 val demoTheme = createTheme(
-    buildObject {
-        this.palette = buildObject {
-            this.primary = buildObject<PaletteColor> {
+    jso {
+        this.palette = jso {
+            this.primary = jso<PaletteColor> {
                 main = Color("#6733da")
                 light = Color("#9e62ff")
                 dark = Color("#2700a7")

@@ -6,9 +6,12 @@ import kotlinx.js.Object
 import kotlinx.js.delete
 import dom.html.HTMLDivElement
 import dom.html.HTMLInputElement
+import kotlinx.js.jso
+import mui.material.InputBaseComponentProps
 import react.*
 import react.dom.events.ChangeEvent
 import react.dom.events.FormEvent
+import react.dom.html.InputHTMLAttributes
 import react.dom.html.ReactHTML.br
 
 fun FormEvent<HTMLDivElement>.eventValue(): String = this.asDynamic().target.value
@@ -27,7 +30,7 @@ fun <T> byTheme(key: String): T {
 }
 
 fun <T> T.except(vararg except: String): T  where T: Props {
-    var newProps = jsObject {  }
+    var newProps = jso<dynamic> {  }
     Object.assign(newProps, this)
     except.forEach { delete(newProps[it]) }
     return newProps as T
@@ -42,3 +45,10 @@ fun breakLines(text: String): ReactNode =
             +line
         }
     }
+
+fun numericInputProps(min: Double?, max: Double?, step: Double?) = jso<InputHTMLAttributes<HTMLInputElement>> {
+    this.min = min
+    this.max = max
+    this.step = step
+}.unsafeCast<InputBaseComponentProps>()
+
