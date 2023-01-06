@@ -154,10 +154,10 @@ val UserInviteForm = FC<Props> {
             this.filterSelectedOptions = true
             this.filterOptions = filterOptions
             fullWidth = true
-            onInputChange = { ev, s, reason -> inputText = s }
+            onInputChange = { _, s, _ -> inputText = s }
             onOpen = { hasHighlight = false }
-            onClose = { ev, reason -> hasHighlight = false }
-            onHighlightChange = { ev, opt, reason -> hasHighlight = (opt != null) }
+            onClose = { _, _ -> hasHighlight = false }
+            onHighlightChange = { _, opt, _ -> hasHighlight = (opt != null) }
             onKeyDown = { ev ->
                 if (ev.key == "Enter" && !hasHighlight && inputText.contains("@")) {
                     chosenUsers += arrayOf(NewUser(inputText))

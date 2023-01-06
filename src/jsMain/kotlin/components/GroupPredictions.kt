@@ -18,10 +18,6 @@ external interface PredictionPlotProps : Props {
 }
 
 val PredictionPlot = FC<PredictionPlotProps> {props ->
-    val config = jso<dynamic> {
-        this.responsive = true
-    }
-
     Card {
         raised = true
 

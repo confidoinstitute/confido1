@@ -6,6 +6,7 @@ import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.decodeFromByteArray
 import mui.material.*
@@ -32,7 +33,8 @@ external interface UpdatesPlotProps : Props {
     var annotations: Map<Double, String>
 }
 
-val UpdatesPlot = FC<UpdatesPlotProps> {props ->
+@OptIn(ExperimentalSerializationApi::class)
+val UpdatesPlot = FC<UpdatesPlotProps> { props ->
     var fetchError by useState(false)
     var updates by useState<List<DistributionUpdate>?>(null)
     useEffectOnce {

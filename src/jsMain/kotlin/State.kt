@@ -20,6 +20,6 @@ var clientState: ClientState = ClientState(SentState())
 actual val globalState: GlobalState get() = clientState
 
 fun Room.havePermission(permission: RoomPermission): Boolean {
-    val myself = clientState.session?.user
+    val myself = clientState.session.user
     return hasPermission(myself, permission)
 }
