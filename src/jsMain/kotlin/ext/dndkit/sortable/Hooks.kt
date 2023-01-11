@@ -24,6 +24,9 @@ external interface UseSortableArguments {
     var transition: dynamic // SortableTransition?
 }
 
+// Record<string, function>
+external interface SyntheticListenerMap
+
 external interface UseSortable {
     var active: Any?
     var activeIndex: Number
@@ -36,7 +39,7 @@ external interface UseSortable {
     var isOver: Boolean
     var isSorting: Boolean
     var isDragging: Boolean
-    var listeners: Any?
+    var listeners: SyntheticListenerMap? /* SyntheticListenerMap | undefined */
     var node: Any
     var overIndex: Number
     var over: Any?

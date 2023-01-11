@@ -5,11 +5,13 @@ import components.AppStateContext
 import components.DistributionSummary
 import components.IconToggleButton
 import csstype.*
+import dndkit.applyListeners
 import dndkit.core.*
 import dndkit.modifiers.restrictToVerticalAxis
 import dndkit.modifiers.restrictToWindowEdges
 import dndkit.sortable.*
 import dndkit.utilities.CSS
+import dndkit.utilities.Transform
 import dndkit.utilities.closestCenter
 import emotion.react.css
 import hooks.useEditDialog
@@ -107,10 +109,10 @@ val QuestionTable = FC<QuestionTableProps> { props ->
         modifiers = arrayOf(restrictToVerticalAxis, restrictToWindowEdges)
         this.sensors = sensors
         this.onDragEnd = { event ->
-            // TODO: fix dynamic
-            if (event.over != null && event.active.id != event.over.id) {
-                val draggedId = event.active.id as String
-                val overId = event.over.id as String
+            val over = event.over
+            if (over != null && event.active.id != over.id) {
+                val draggedId = event.active.id
+                val overId = over.id
 
                 // Apply the move immediately to make the UI feel responsive.
                 val oldIndex = questionOrder.indexOf(draggedId)
@@ -205,7 +207,7 @@ external interface QuestionRowProps : Props {
 
 external interface DragHandleProps : Props {
     var isDragging: Boolean
-    var listeners: dynamic // TODO: type
+    var listeners: SyntheticListenerMap?
 }
 
 val DragHandle = FC<DragHandleProps> { props ->
@@ -216,19 +218,13 @@ val DragHandle = FC<DragHandleProps> { props ->
             cursor = if (props.isDragging) Cursor.grabbing else Cursor.grab
         }
         color = SvgIconColor.action
-        // TODO: Wrapper for this (+sortable.listeners)?
-        // <div {...listeners} />
-        // should be export type SyntheticListenerMap = Record<string, Function>;
-        val keys = js("Object").keys(props.listeners).unsafeCast<Array<String>>()
-        val listeners = props.listeners
-        keys.map { this.asDynamic()[it] = listeners[it] }
+        applyListeners(props.listeners)
     }
 }
 
 val QuestionRow = FC<QuestionRowProps> { props ->
     val question = props.question
 
-    // TODO: Transform useSortable to builder?
     val sortable = useSortable(jso<UseSortableArguments> {
         this.id = props.question.id
     })
@@ -239,11 +235,8 @@ val QuestionRow = FC<QuestionRowProps> { props ->
     }
 
     TableRow {
-        // TODO: This likely does not work because table row is a FC.
-        // TODO: How to write this without dynamic?
         this.asDynamic().ref = sortable.setNodeRef
         css {
-            // TODO: Get rid of asDynamic
             this.asDynamic().transform = CSS.transform.toString(sortable.transform)
             // XXX this was causing confusing visual artifacts, as seen here:
             // https://chat.confido.institute/file-upload/ikuaaPABuHgNjD7XR/reorder-questions-2022-12-06_23.04.39.webm
@@ -260,8 +253,8 @@ val QuestionRow = FC<QuestionRowProps> { props ->
             }
             autoSized()
             DragHandle {
-                // TODO apply sortable.setActivatorNodeRef
-                listeners = sortable.listeners.asDynamic()
+                // TODO apply sortable.setActivatorNodeRef (requires forwardref in DragHandle)
+                listeners = sortable.listeners
                 isDragging = sortable.isDragging
             }
         }
