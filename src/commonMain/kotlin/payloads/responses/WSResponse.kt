@@ -70,12 +70,14 @@ enum class WSErrorType {
     UNAUTHORIZED,
     NOT_FOUND,
     BAD_REQUEST,
-    DISCONNECTED;
+    DISCONNECTED,
+    INTERNAL_ERROR;
 
     val prettyName get() = when(this) {
         UNAUTHORIZED -> "Not Authorized"
         NOT_FOUND -> "Not Found"
         BAD_REQUEST -> "Bad Request"
+        INTERNAL_ERROR -> "Internal Error"
         DISCONNECTED -> "Disconnected"
     }
 }
