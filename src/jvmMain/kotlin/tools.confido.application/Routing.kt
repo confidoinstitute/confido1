@@ -67,7 +67,6 @@ inline fun <reified T> Route.getWS(path: String, crossinline body: suspend GetWS
 
         val context = GetWSContext(call)
         call.transientUserData?.runRefreshable(closeNotifier) {
-            print("Checking session")
             if (call.userSession == null) {
                 closeNotifier.emit(true)
                 return@runRefreshable
@@ -75,8 +74,6 @@ inline fun <reified T> Route.getWS(path: String, crossinline body: suspend GetWS
             val message: WSResponse<T> = body(context)
             val encoded = confidoJSON.encodeToString( message )
             send(Frame.Text(encoded))
-            println(encoded)
-            println(confidoJSON.decodeFromString<WSResponse<T>>(encoded))
         }
     }
 
