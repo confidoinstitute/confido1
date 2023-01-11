@@ -11,7 +11,6 @@ import dndkit.modifiers.restrictToVerticalAxis
 import dndkit.modifiers.restrictToWindowEdges
 import dndkit.sortable.*
 import dndkit.utilities.CSS
-import dndkit.utilities.Transform
 import dndkit.utilities.closestCenter
 import emotion.react.css
 import hooks.useEditDialog
@@ -20,17 +19,17 @@ import icons.*
 import kotlinx.js.jso
 import mui.material.*
 import mui.material.styles.TypographyVariant
-import mui.system.*
+import mui.system.responsive
+import mui.system.sx
 import payloads.requests.EditQuestion
-import payloads.requests.EditQuestionFlag
 import payloads.requests.EditQuestionFieldType
+import payloads.requests.EditQuestionFlag
 import payloads.requests.ReorderQuestions
-import payloads.responses.WSData
 import payloads.responses.WSError
 import react.*
 import react.dom.aria.AriaRole
-import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.abbr
+import react.dom.html.ReactHTML.br
 import react.dom.html.ReactHTML.col
 import react.dom.html.ReactHTML.colgroup
 import react.dom.html.ReactHTML.span
@@ -38,9 +37,8 @@ import rooms.Room
 import rooms.RoomPermission
 import tools.confido.question.Prediction
 import tools.confido.question.Question
-import tools.confido.refs.ref
 import tools.confido.state.havePermission
-import utils.*
+import utils.themed
 
 external interface QuestionTableProps : Props {
     var room: Room
@@ -223,11 +221,23 @@ val DragHandle = FC<DragHandleProps> { props ->
 }
 
 val QuestionRow = FC<QuestionRowProps> { props ->
+    val (_, stale) = useContext(AppStateContext)
     val question = props.question
 
     val sortable = useSortable(jso<UseSortableArguments> {
         this.id = props.question.id
     })
+
+    fun toggleTooltip(on: Boolean, onText: String, onClickText: String, offText: String, offClickText: String) =
+        if (stale) {
+            ReactNode(if (on) onText else offText)
+        } else {
+            Fragment.create {
+                if (on) +onText else +offText
+                br {}
+                if (on) +onClickText else +offClickText
+            }
+        }
 
     fun postEditQuestion(id: String, field: EditQuestionFieldType, value: Boolean) {
         val editQuestion: EditQuestion = EditQuestionFlag(field, value)
@@ -252,6 +262,7 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                 paddingRight = themed(0)
             }
             autoSized()
+            if (!stale)
             DragHandle {
                 // TODO apply sortable.setActivatorNodeRef (requires forwardref in DragHandle)
                 listeners = sortable.listeners
@@ -263,16 +274,19 @@ val QuestionRow = FC<QuestionRowProps> { props ->
             mui.material.Stack {
                 direction = responsive(mui.material.StackDirection.row)
                 Tooltip {
-                    title = breakLines(
-                        if (question.visible) "Question is visible to forecasters.\nClick to make it hidden."
-                        else "Question is hidden from forecasters.\nClick to make it visible."
+                    title = toggleTooltip(question.visible,
+                        "Question is visible to forecasters.",
+                        "Click to make it hidden.",
+                        "Question is hidden from forecasters.",
+                        "Click to make it visible."
                     )
                     arrow = true
-                    ReactHTML.span {
+                    span {
                         IconToggleButton {
                             on = question.visible
                             onIcon = VisibilityIcon.create()
                             offIcon = VisibilityOffOutlinedIcon.create()
+                            disabled = stale
                             onChange = {
                                 postEditQuestion(
                                     question.id,
@@ -284,16 +298,19 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                     }
                 }
                 Tooltip {
-                    title = breakLines(
-                        if (question.open) "Question is open for new predictions.\nClick to make it closed."
-                        else "Question is closed (new predictions are not allowed).\nClick to make it open."
+                    title = toggleTooltip(question.open,
+                        "Question is open for new predictions.",
+                        "Click to make it closed.",
+                        "Question is closed (new predictions are not allowed).",
+                        "Click to make it open.",
                     )
                     arrow = true
-                    ReactHTML.span {
+                    span {
                         IconToggleButton {
                             on = question.open
                             onIcon = LockOpenIcon.create()
                             offIcon = LockIcon.create()
+                            disabled = stale
                             onChange = {
                                 postEditQuestion(
                                     question.id,
@@ -306,9 +323,13 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                 }
                 Tooltip {
                     title = ReactNode("Edit question")
-                    IconButton {
-                        EditIcon()
-                        onClick = { props.onEditDialog?.invoke(question); it.stopPropagation() }
+                    arrow = true
+                    span {
+                        IconButton {
+                            EditIcon()
+                            disabled = stale
+                            onClick = { props.onEditDialog?.invoke(question); it.stopPropagation() }
+                        }
                     }
                 }
             }
@@ -325,17 +346,18 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                 autoSized()
                 Tooltip {
                     arrow = true
-                    title = breakLines(
-                        if (question.groupPredVisible)
-                            "Group prediction is visible to forecasters.\nClick to make it hidden."
-                        else
-                            "Group prediction is hidden from forecasters.\nClick to make it visible."
+                    title = toggleTooltip(question.groupPredVisible,
+                        "Group prediction is visible to forecasters.",
+                        "Click to make it hidden.",
+                        "Group prediction is hidden from forecasters.",
+                        "Click to make it visible.",
                     )
                     span {
                         IconToggleButton {
                             on = question.groupPredVisible
                             onIcon = VisibilityIcon.create()
                             offIcon = VisibilityOffOutlinedIcon.create()
+                            disabled = stale
                             onChange = {
                                 postEditQuestion(
                                     question.id,
@@ -367,17 +389,18 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                 question.resolution?.let {
                     Tooltip {
                         arrow = true
-                        title = breakLines(
-                            if (question.resolutionVisible)
-                                "Resolution is visible to forecasters.\nClick to make it hidden."
-                            else
-                                "Resolution is hidden from forecasters.\nClick to make it visible."
+                        title = toggleTooltip(question.resolutionVisible,
+                            "Resolution is visible to forecasters.",
+                            "Click to make it hidden.",
+                            "Resolution is hidden from forecasters.",
+                            "Click to make it visible.",
                         )
                         span {
                             IconToggleButton {
                                 on = question.resolutionVisible
                                 onIcon = VisibilityIcon.create()
                                 offIcon = VisibilityOffOutlinedIcon.create()
+                                disabled = stale
                                 onChange = {
                                     postEditQuestion(
                                         question.id,
