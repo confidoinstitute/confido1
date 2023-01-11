@@ -5,12 +5,12 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlin.math.ceil
-import kotlin.math.floor
 import kotlinx.datetime.*
 import kotlinx.js.jso
 import web.location.location
 import kotlin.js.Date
+import kotlin.math.ceil
+import kotlin.math.floor
 
 // Build an object which does not have properly defined interface
 inline fun <T: Any> buildObject(init: dynamic.() -> Unit): T =

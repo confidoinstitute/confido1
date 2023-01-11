@@ -31,8 +31,12 @@ inline fun <reified T> useWebSocket(address: String, retryDelay: Int = 5000, cle
             val ws = WebSocket(webSocketUrl(address))
             ws.apply {
                 onmessage = {
-                    value = confidoJSON.decodeFromString(it.data.toString())
-                    state = WebSocketState.DATA
+                    try {
+                        value = confidoJSON.decodeFromString(it.data.toString())
+                        state = WebSocketState.DATA
+                    } catch (e: Throwable) {
+                        value = WSError(WSErrorType.INTERNAL_ERROR, "Failed to parse server data")
+                    }
                 }
                 onclose = {
                     state = WebSocketState.STALE
