@@ -45,17 +45,6 @@ val RoomMembers = FC<Props> {
             editInviteLinkKey = randomString(20)
     }
 
-    if (appState.appConfig.demoMode) {
-        DemoEmailAlert {}
-    }
-
-    EditInviteDialog {
-        key = "##editDialog##$editInviteLinkKey"
-        invite = editInviteLink
-        open = editInviteLinkOpen
-        onClose = { editInviteLinkOpen = false }
-    }
-
     if (canManage)
         UserInviteForm {
             key = "__invite_form"
@@ -65,6 +54,18 @@ val RoomMembers = FC<Props> {
         it.invitedVia ?: if (it.user.deref()?.type?.isProper()?:false) "internal" else "guest"
     }
     val invitations = room.inviteLinks.associateWith { groupedMembership[it.id] }
+
+    if (appState.appConfig.demoMode) {
+        DemoEmailAlert {}
+    }
+
+    EditInviteDialog {
+        key = "##editDialog##$editInviteLinkKey"
+        invite = editInviteLink
+        hasUsers = invitations[editInviteLink]?.isNotEmpty() ?: false
+        open = editInviteLinkOpen
+        onClose = { editInviteLinkOpen = false }
+    }
 
     List {
         groupedMembership["internal"]?.let {

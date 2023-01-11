@@ -149,6 +149,13 @@ suspend inline fun <reified T> HttpClient.postJson(urlString: String, payload: T
         block.invoke(this)
     }
 
+suspend inline fun <reified T> HttpClient.deleteJson(urlString: String, payload: T, block: HttpRequestBuilder.() -> Unit) =
+    this.delete(urlString) {
+        contentType(ContentType.Application.Json.withParameter("charset", "utf-8"))
+        setBody(payload)
+        block.invoke(this)
+    }
+
 suspend inline fun HttpClient.getJson(urlString: String, block: HttpRequestBuilder.() -> Unit) =
     this.get(urlString) {
         contentType(ContentType.Application.Json.withParameter("charset", "utf-8"))

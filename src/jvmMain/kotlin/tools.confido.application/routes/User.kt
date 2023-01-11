@@ -313,6 +313,27 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
+    // Delete an invitation link
+    deleteST("/rooms/{rID}/invite") {
+        withRoom {
+            assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members")
+
+            val delete: DeleteInvite = call.receive()
+
+            serverState.roomManager.modifyEntity(room.ref) { r ->
+                val inviteLinks = r.inviteLinks.filterNot { it.id == delete.id }
+                val members = r.members.mapNotNull {
+                    if (it.invitedVia == delete.id) {
+                        if (delete.keepUsers) it.copy(invitedVia = null) else null
+                    } else it
+                }
+                r.copy(inviteLinks = inviteLinks, members = members)
+            }
+        }
+
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
     // Accept an invitation link as an existing user (requires login)
     postST("/rooms/{rID}/invite/accept") {
         withRoom {
