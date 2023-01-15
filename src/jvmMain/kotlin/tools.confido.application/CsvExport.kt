@@ -191,7 +191,7 @@ class CommentExport  (
             "date" to dt.date.toString(),
             "time" to dt.time.toString(),
             "comment" to c.content,
-            "num_likes" to (serverState.commentLikeCount[c.ref] ?: 0).toString(),
+            "num_likes" to (serverState.commentLikeManager.numLikes[c.ref] ?: 0).toString(),
         )
         c.prediction?.let {pred->
             ret += exportDist(pred.dist)

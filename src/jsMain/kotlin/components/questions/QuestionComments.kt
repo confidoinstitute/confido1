@@ -1,24 +1,29 @@
 package components.questions
 
-import components.Comment
-import components.CommentInput
-import components.CommentInputVariant
-import components.DialogCloseButton
+import components.*
 import csstype.number
 import csstype.pct
+import hooks.useWebSocket
 import icons.CommentIcon
 import mui.material.*
 import mui.system.sx
+import payloads.responses.CommentInfo
+import payloads.responses.WSData
+import payloads.responses.WSError
 import react.*
 import react.dom.html.ReactHTML.span
-import tools.confido.question.Comment
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 
+external interface QuestionCommentsListProps : Props {
+    var question: Question
+    var count: Int
+}
+
 external interface QuestionCommentsDialogProps : Props {
     var question: Question
+    var numComments: Int
     var prediction: Prediction?
-    var comments: Map<String, Comment>
     var open: Boolean
     var onClose: (()->Unit)?
 }
@@ -28,8 +33,28 @@ external interface QuestionCommentsButtonProps : Props {
     var numComments: Int
 }
 
-val QuestionCommentsDialog = FC<QuestionCommentsDialogProps> { props->
+val QuestionCommentsList = FC<QuestionCommentsListProps> {props ->
+    val comments = useWebSocket<Map<String, CommentInfo>>("/state/question/${props.question.id}/comments")
 
+    if (comments is WSError) {
+        Alert {
+            severity = AlertColor.error
+            +comments.prettyMessage
+        }
+    }
+
+    when(comments) {
+        is WSData -> comments.data.entries.sortedByDescending { it.value.comment.timestamp }.map {
+            Comment {
+                key = it.key
+                commentInfo = it.value
+            }
+        }
+        else -> (0 until props.count).map { CommentSkeleton {} }
+    }
+}
+
+val QuestionCommentsDialog = FC<QuestionCommentsDialogProps> { props->
     Dialog {
         this.open = props.open
         this.scroll = DialogScroll.paper
@@ -56,12 +81,7 @@ val QuestionCommentsDialog = FC<QuestionCommentsDialogProps> { props->
                 flexGrow = number(1.0)
             }
             this.dividers = true
-            props.comments.entries.sortedByDescending { it.value.timestamp }.map {
-                Comment {
-                    key = it.key
-                    comment = it.value
-                }
-            }
+            QuestionCommentsList { question = props.question; count = props.numComments }
         }
         CommentInput {
             id = props.question.id

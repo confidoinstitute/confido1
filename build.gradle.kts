@@ -38,6 +38,7 @@ kotlin {
                 cssSupport {
                     enabled = true
                 }
+                devServer?.open = false
                 devServer?.port = 8081
                 devServer?.proxy = mutableMapOf(
                     "/" to mapOf(

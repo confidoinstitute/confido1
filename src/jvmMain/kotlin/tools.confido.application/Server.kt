@@ -29,6 +29,7 @@ import org.litote.kmongo.serialization.registerModule
 import org.litote.kmongo.serialization.registerSerializer
 import org.simplejavamail.mailer.MailerBuilder
 import rooms.*
+import tools.confido.application.routes.*
 import tools.confido.application.sessions.*
 import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
@@ -71,40 +72,11 @@ fun HTML.index() {
 // single-threaded dispatch of their bodies. Except for special cases, we should always use these methods
 // instead of the original ones.
 // See https://git.confido.institute/confido/confido1/commit/d251e84a9f4e987d379087d8b5e7ac1e0c77e967
+@OptIn(DelicateCoroutinesApi::class)
 val singleThreadContext = newSingleThreadContext("confido_server")
 // val singleThreadContext = IO.limitedParallelism(1) // alternative solution
 
 
-fun Route.getST(path: String, body: PipelineInterceptor<Unit, ApplicationCall>): Route =
-    get(path) { arg-> withContext(singleThreadContext) { body(this@get, arg) } }
-fun Route.postST(path: String, body: PipelineInterceptor<Unit, ApplicationCall>): Route =
-    post(path) { arg-> withContext(singleThreadContext) { body(this@post, arg) } }
-fun Route.putST(path: String, body: PipelineInterceptor<Unit, ApplicationCall>): Route =
-    put(path) { arg-> withContext(singleThreadContext) { body(this@put, arg) } }
-fun Route.deleteST(path: String, body: PipelineInterceptor<Unit, ApplicationCall>): Route =
-    delete(path) { arg-> withContext(singleThreadContext) { body(this@delete, arg) } }
-
-fun Route.webSocketST(
-    path: String,
-    protocol: String? = null,
-    handler: suspend DefaultWebSocketServerSession.() -> Unit
-) = webSocket(path, protocol) {  handler(this) }
-
-suspend inline fun PipelineContext<Unit, ApplicationCall>.badRequest(msg: String = "") {
-    System.err.println("bad request: $msg")
-    System.err.flush()
-    call.respond(HttpStatusCode.BadRequest, msg)
-}
-suspend inline fun PipelineContext<Unit, ApplicationCall>.unauthorized(msg: String = "") {
-    System.err.println("unauthorized: $msg")
-    System.err.flush()
-    call.respond(HttpStatusCode.Unauthorized, msg)
-}
-suspend inline fun PipelineContext<Unit, ApplicationCall>.notFound(msg: String = "") {
-    System.err.println("not found: $msg")
-    System.err.flush()
-    call.respond(HttpStatusCode.NotFound, msg)
-}
 
 // TODO move this to an external script for easier modification
 suspend fun initDemo() {
@@ -168,12 +140,12 @@ fun main() {
         }
         routing {
             getST("/export.csv") {
-                val user = call.userSession?.user ?: return@getST unauthorized("Not logged in.")
-                if (user.type == UserType.GUEST) return@getST unauthorized("Guests cannot make exports")
+                val user = call.userSession?.user ?: unauthorized("Not logged in.")
+                if (user.type == UserType.GUEST) unauthorized("Guests cannot make exports")
 
                 val questions = call.parameters["questions"]?.split(",")?.mapNotNull { serverState.questions[it] } ?: emptyList()
                 val rooms = questions.mapNotNull { serverState.questionRoom[it.ref]?.deref() }.toSet()
-                if (questions.isEmpty()) return@getST badRequest("No question to be exported.")
+                if (questions.isEmpty()) badRequest("No question to be exported.")
 
                 val canIndividual = rooms.all { it.hasPermission(user, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS) }
                 val canGroup = rooms.all { it.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS) }
@@ -184,24 +156,24 @@ fun main() {
                     "predictions" -> {
                         val group = call.parameters["group"]?.toBoolean()
                         when (group) {
-                            true -> if (!canGroup) return@getST unauthorized("You cannot export group predictions.")
-                            false -> if (!canIndividual) return@getST unauthorized("You cannot export individual predictions.")
-                            null -> return@getST badRequest("You must specify if you export group or individual predictions.")
+                            true -> if (!canGroup) unauthorized("You cannot export group predictions.")
+                            false -> if (!canIndividual) unauthorized("You cannot export individual predictions.")
+                            null -> badRequest("You must specify if you export group or individual predictions.")
                         }
 
                         val history =
                             call.parameters["history"]?.let { ExportHistory.valueOf(it) } ?: ExportHistory.LAST
                         val buckets = call.parameters["buckets"]?.toIntOrNull() ?: 32
-                        if (buckets < 0) return@getST badRequest("You cannot request negative amount of buckets.")
+                        if (buckets < 0) badRequest("You cannot request negative amount of buckets.")
 
                         PredictionExport(questions, group, history, buckets)
                     }
                     "comments" -> {
                         if (!rooms.all { it.hasPermission(user, RoomPermission.VIEW_QUESTION_COMMENTS) })
-                            return@getST unauthorized("No permission to view comments")
+                            unauthorized("No permission to view comments")
                         CommentExport(questions)
                     }
-                    else -> return@getST badRequest("Invalid export type $exportWhat")
+                    else -> badRequest("Invalid export type $exportWhat")
                 }
 
                 call.respondBytesWriter(contentType = ContentType("text","csv")) {

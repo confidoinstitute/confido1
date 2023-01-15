@@ -5,6 +5,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToDynamic
 import dom.html.HTMLDivElement
+import kotlinx.js.jso
 import react.*
 import react.dom.html.ReactHTML.div
 import space.kscience.dataforge.meta.MetaSerializer
@@ -68,7 +69,7 @@ val ReactPlotly = FC<PlotlyProps> {props ->
     }
     useEffect(props.title) {
         val element = container.current ?: error("Div not found")
-        PlotlyJs.relayout(element.unsafeCast<org.w3c.dom.Element>(), jsObject { this.title = props.title })
+        PlotlyJs.relayout(element.unsafeCast<org.w3c.dom.Element>(), jso<dynamic> { this.title = props.title })
     }
 
     div {

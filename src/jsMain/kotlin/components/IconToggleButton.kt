@@ -1,29 +1,27 @@
 package components
 
+import dom.html.HTMLButtonElement
 import mui.material.IconButton
-import react.FC
-import react.Props
-import react.ReactNode
+import react.*
 import react.dom.aria.AriaPressed
 import react.dom.aria.ariaPressed
 import react.dom.html.ReactHTML.span
-import react.useState
 import utils.except
 
-external interface IconToggleButtonProps : Props {
+external interface IconToggleButtonProps : PropsWithRef<HTMLButtonElement> {
     var onIcon: ReactNode
     var offIcon: ReactNode
+    var disabled: Boolean
     var on: Boolean?
     var defaultOn: Boolean?
     var onChange: ((Boolean) -> Unit)?
 }
 
-val IconToggleButton = FC<IconToggleButtonProps> {props->
-    // FIXME: tooltip shows only after clicking on the button. Can be worked around
-    // by wrapping use in span{}
+val IconToggleButton = ForwardRef<HTMLButtonElement, IconToggleButtonProps> {props, forwardedRef ->
     var state by useState(props.defaultOn ?: false)
     val effectiveState = props.on ?: state
     IconButton {
+        this.ref = forwardedRef
         +props.except("onIcon", "offIcon", "on", "defaultOn", "onChange") // needed to show tooltips
         ariaPressed = if (effectiveState) AriaPressed.`true` else AriaPressed.`false`
         +(if (effectiveState) props.onIcon else props.offIcon)

@@ -25,6 +25,12 @@ data class CreateNewInvite(
 )
 
 @Serializable
+data class DeleteInvite(
+    val id: String,
+    val keepUsers: Boolean,
+)
+
+@Serializable
 data class CheckInvite(
     val inviteToken: String,
 )

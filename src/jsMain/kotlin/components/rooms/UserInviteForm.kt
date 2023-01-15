@@ -1,6 +1,5 @@
 package components.rooms
 
-import browser.window
 import components.AppStateContext
 import components.UserAvatar
 import components.userListItemText
@@ -17,11 +16,8 @@ import kotlinx.js.jso
 import payloads.requests.AddedExistingMember
 import payloads.requests.AddedNewMember
 import react.*
-import react.dom.aria.AriaRole
 import react.dom.html.HTMLAttributes
-import rooms.Forecaster
-import rooms.RoomPermission
-import rooms.RoomRole
+import rooms.*
 import tools.confido.refs.*
 import users.User
 
@@ -79,10 +75,12 @@ internal fun renderOption(attributes: HTMLAttributes<HTMLLIElement>, option: Use
 
 
 val UserInviteForm = FC<Props> {
+    val defaultRole = Forecaster
+
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
     var chosenUsers by useState<Array<UserAutocomplete>>(emptyArray())
-    var role by useState<RoomRole>(Forecaster)
+    var role by useState<RoomRole>(defaultRole)
     var hasHighlight by useState(false)
     var inputText by useState("")
 
@@ -109,7 +107,7 @@ val UserInviteForm = FC<Props> {
         }
 
         val filtered = optUsers.filter {
-            when(it) {
+            when (it) {
                 is ExistingUser -> {
                     val user = it.userRef.deref()
                     val inNick = user?.nick?.contains(value, true) ?: false
@@ -156,11 +154,11 @@ val UserInviteForm = FC<Props> {
             this.filterSelectedOptions = true
             this.filterOptions = filterOptions
             fullWidth = true
-            onInputChange = { ev, s, reason -> inputText = s }
+            onInputChange = { _, s, _ -> inputText = s }
             onOpen = { hasHighlight = false }
-            onClose = { ev,reason -> hasHighlight = false }
-            onHighlightChange = { ev, opt, reason -> hasHighlight = (opt!=null) }
-            onKeyDown = { ev->
+            onClose = { _, _ -> hasHighlight = false }
+            onHighlightChange = { _, opt, _ -> hasHighlight = (opt != null) }
+            onKeyDown = { ev ->
                 if (ev.key == "Enter" && !hasHighlight && inputText.contains("@")) {
                     chosenUsers += arrayOf(NewUser(inputText))
                     ev.preventDefault()
@@ -168,10 +166,23 @@ val UserInviteForm = FC<Props> {
             }
         }
 
+        val guestChosen = chosenUsers.any {
+            when(it) {
+                is ExistingUser -> !(it.userRef.deref()?.type?.isProper() ?: false)
+                is NewUser -> true
+            }
+        }
+
+        // We need to fall back to an acceptable role in case a guest is chosen.
+        if (guestChosen && !role.isAvailableToGuests) {
+            role = defaultRole
+        }
+
         MemberRoleSelect {
             value = role
             disabled = stale
-            ownerSelectable = appState.hasPermission(room, RoomPermission.ROOM_OWNER)
+            // If any chosen user is a guest or a new user, we may need to restrict available roles.
+            isGuest = guestChosen
             onChange = { role = it }
         }
 
@@ -181,13 +192,12 @@ val UserInviteForm = FC<Props> {
             }
             disabled = chosenUsers.isEmpty() || stale
             if (chosenUsers.any { it is NewUser }) {
-                    endIcon = icons.SendIcon.create()
-                    +"Invite"
-                }
-                else {
-                    startIcon = icons.AddIcon.create()
-                    +"Add"
-                }
+                endIcon = icons.SendIcon.create()
+                +"Invite"
+            } else {
+                startIcon = icons.AddIcon.create()
+                +"Add"
+            }
 
             onClick = {
                 chosenUsers.forEach {

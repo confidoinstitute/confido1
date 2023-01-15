@@ -4,21 +4,13 @@ import csstype.AlignItems
 import csstype.Display
 import csstype.JustifyContent
 import csstype.px
-import emotion.react.css
+import kotlinx.js.jso
 import mui.material.*
 import mui.system.responsive
 import mui.system.sx
 import react.*
-import space.kscience.plotly.layout
-import space.kscience.plotly.models.Bar
-import space.kscience.plotly.models.Pie
-import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.*
-import tools.confido.spaces.BinarySpace
-import tools.confido.spaces.NumericSpace
-import utils.jsObject
-import kotlin.js.Date
 
 external interface PredictionPlotProps : Props {
     var question: Question
@@ -26,10 +18,6 @@ external interface PredictionPlotProps : Props {
 }
 
 val PredictionPlot = FC<PredictionPlotProps> {props ->
-    val config = jsObject {
-        this.responsive = true
-    }
-
     Card {
         raised = true
 

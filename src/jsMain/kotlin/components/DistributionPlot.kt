@@ -1,5 +1,6 @@
 package components
 
+import kotlinx.js.jso
 import react.FC
 import react.Props
 import space.kscience.plotly.layout
@@ -7,8 +8,6 @@ import space.kscience.plotly.models.Bar
 import space.kscience.plotly.models.Pie
 import tools.confido.distributions.*
 import tools.confido.spaces.Binner
-import tools.confido.spaces.NumericSpace
-import utils.jsObject
 import utils.toIsoDateTime
 
 external interface DistributionPlotProps : Props {
@@ -16,7 +15,7 @@ external interface DistributionPlotProps : Props {
 }
 
 val DistributionPlot = FC<DistributionPlotProps> { props ->
-    val config = jsObject {
+    val config = jso<dynamic> {
         this.responsive = true
     }
 

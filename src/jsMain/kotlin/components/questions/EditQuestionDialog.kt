@@ -27,6 +27,7 @@ import utils.themed
 import kotlin.coroutines.EmptyCoroutineContext
 
 external interface DeleteQuestionConfirmationProps : Props {
+    var disabled: Boolean
     var confirmDelete: Boolean
     var hasPrediction: Boolean
     var onDelete: (() -> Unit)?
@@ -37,6 +38,7 @@ val DeleteQuestionConfirmation = FC<DeleteQuestionConfirmationProps> { props ->
     Button {
         onClick = {if (props.confirmDelete) open = true else {props.onDelete?.invoke()} }
         color = ButtonColor.error
+        disabled = props.disabled
         +"Delete"
     }
 
@@ -55,6 +57,7 @@ val DeleteQuestionConfirmation = FC<DeleteQuestionConfirmationProps> { props ->
         DialogActions {
             Button {
                 onClick = {props.onDelete?.invoke(); open = false}
+                disabled = props.disabled
                 color = ButtonColor.error
                 +"Delete"
             }
@@ -416,6 +419,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         DialogActions {
             if (q != null) {
                 DeleteQuestionConfirmation {
+                    this.disabled = stale
                     this.onDelete = { deleteQuestion() ; props.onClose?.invoke()}
                     this.confirmDelete = q.visible
                     this.hasPrediction = q.numPredictions > 0

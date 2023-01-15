@@ -220,10 +220,7 @@ val CsvExportDialog = FC<Props> {
                     type = InputType.number
                     value = bucketsText
                     fullWidth = true
-                    this.inputProps = jsObject {
-                        this.min = 0
-                        this.step = 1
-                    }.unsafeCast<InputBaseComponentProps>()
+                    this.inputProps = numericInputProps(0.0, null, 1.0)
                     label = ReactNode("Bucket count")
                     helperText = ReactNode("Probability distribution will be split into this many equal-sized buckets.")
                     onChange = {

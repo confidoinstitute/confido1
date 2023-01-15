@@ -1,16 +1,23 @@
 package components
 
+import csstype.pct
 import csstype.px
+import hooks.useWebSocket
 import icons.BarChart
 import icons.GroupsIcon
 import mui.material.*
+import mui.material.styles.TypographyVariant
 import mui.system.Box
 import mui.system.sx
+import payloads.responses.WSData
+import payloads.responses.WSError
 import react.*
 import react.dom.html.ReactHTML.br
 import react.dom.html.ReactHTML.span
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ProbabilityDistribution
+import tools.confido.question.Prediction
+import tools.confido.question.Question
 
 external interface DistributionSummaryProps : Props {
     var distribution: ProbabilityDistribution?
@@ -20,7 +27,7 @@ external interface DistributionSummaryProps : Props {
 val DistributionSummary = FC<DistributionSummaryProps> {props ->
     var open by useState(false)
 
-     props.distribution?.let {
+    props.distribution?.let {
         +props.distribution!!.description
         if (props.allowPlotDialog && props.distribution != null && props.distribution !is BinaryDistribution) {
             IconButton {
@@ -49,14 +56,57 @@ val DistributionSummary = FC<DistributionSummaryProps> {props ->
         }
     }
 }
+
 external interface GroupPredButtonProps : Props {
     var count: Int
     var disabled: Boolean
-    var distribution: ProbabilityDistribution?
+    var question: Question
 }
 
 val GroupPredButton = FC<GroupPredButtonProps> { props ->
     var open by useState(false)
+
+    val groupPredContent = useMemo(props.question) { FC<Props> {
+        val response = useWebSocket<Prediction?>("/state/questions/${props.question.id}/group_pred")
+
+        DialogContent {
+            if (response is WSData) {
+                val dist = response.data?.dist
+                DialogContentText {
+                    +(dist?.description ?: "(no predictions)")
+                }
+                dist?.let {
+                    Box {
+                        sx {
+                            width = 500.px
+                            height = 500.px
+                            maxHeight = 500.px
+                            maxWidth = 500.px
+                        }
+                        DistributionPlot {
+                            distribution = it
+                        }
+                    }
+                }
+            } else {
+                if (response is WSError) {
+                    Alert {
+                        severity = AlertColor.error
+                        +response.prettyMessage
+                    }
+                }
+                Typography {
+                    variant = TypographyVariant.body1
+                    Skeleton { sx { height = 100.pct } }
+                }
+                Skeleton {
+                    variant = SkeletonVariant.rectangular
+                    width = 500
+                    height = 500
+                }
+            }
+        }
+    } }
 
     Tooltip {
         //placement = TooltipPlacement.top
@@ -73,7 +123,7 @@ val GroupPredButton = FC<GroupPredButtonProps> { props ->
         arrow = true
         span {
             IconButton {
-                disabled = props.disabled || props.distribution == null
+                disabled = props.disabled || props.count == 0
                 onClick = { open = true }
                 Badge {
                     badgeContent = if (props.count > 0) ReactNode(props.count.toString()) else null
@@ -93,23 +143,6 @@ val GroupPredButton = FC<GroupPredButtonProps> { props ->
                 onClose = { open = false }
             }
         }
-        DialogContent {
-            DialogContentText {
-                +(props.distribution?.description ?: "(no predictions)")
-            }
-            props.distribution?.let {
-                Box {
-                    sx {
-                        width = 500.px
-                        height = 500.px
-                        maxHeight = 500.px
-                        maxWidth = 500.px
-                    }
-                    DistributionPlot {
-                        distribution = it
-                    }
-                }
-            }
-        }
+        groupPredContent {}
     }
 }

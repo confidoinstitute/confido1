@@ -2,20 +2,69 @@ package components.rooms
 
 import Client
 import components.AppStateContext
+import io.ktor.client.request.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import mui.material.*
 import mui.system.sx
 import payloads.requests.CreateNewInvite
+import payloads.requests.DeleteInvite
 import react.*
 import react.dom.onChange
 import rooms.*
 import tools.confido.state.FeatureFlag
 import tools.confido.state.appConfig
+import utils.deleteJson
 import utils.eventValue
 import utils.themed
+import kotlin.coroutines.EmptyCoroutineContext
 
+external interface DeleteInviteConfirmationProps : Props {
+    var hasUsers: Boolean
+    var onDelete: ((Boolean) -> Unit)?
+}
+
+val DeleteInviteConfirmation = FC<DeleteInviteConfirmationProps> { props ->
+    var open by useState(false)
+    Button {
+        onClick = {if (props.hasUsers) open = true else props.onDelete?.invoke(false)}
+        color = ButtonColor.error
+        +"Delete"
+    }
+
+    Dialog {
+        this.open = open
+        onClose = { _, _ -> open = false }
+        DialogTitle {
+            +"Delete invitation link"
+        }
+        DialogContent {
+            DialogContentText {
+                +"There are members who joined this room via this invitation link. By deleting it, you must choose whether these members are kept and become permanent members or are also removed."
+            }
+        }
+        DialogActions {
+            Button {
+                onClick = {props.onDelete?.invoke(true); open = false}
+                color = ButtonColor.success
+                +"Keep members"
+            }
+            Button {
+                onClick = {props.onDelete?.invoke(false); open = false}
+                color = ButtonColor.error
+                +"Remove members"
+            }
+            Button {
+                onClick = {open = false}
+                +"Cancel"
+            }
+        }
+    }
+}
 
 external interface EditInviteDialogProps : Props {
     var invite: InviteLink?
+    var hasUsers: Boolean
     var open: Boolean
     var onClose: (() -> Unit)?
 }
@@ -35,7 +84,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
 
     fun submitInviteLink() {
         if (i == null) {
-            val invite = CreateNewInvite(description, role!!, anonymous)
+            val invite = CreateNewInvite(description, role, anonymous)
             Client.postData("/rooms/${room.id}/invites/create", invite)
         } else {
             val invite = i.copy(
@@ -47,6 +96,13 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
             Client.postData("/rooms/${room.id}/invites/edit", invite)
         }
         props.onClose?.invoke()
+    }
+
+    fun deleteInviteLink(keepMembers: Boolean) {
+        if (i == null) return
+        CoroutineScope(EmptyCoroutineContext).launch {
+            Client.httpClient.deleteJson("/rooms/${room.id}/invite", DeleteInvite(i.id, keepMembers)) { }
+        }
     }
 
     Dialog {
@@ -87,6 +143,9 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                             else -> error("This should not happen!")
                         }
                     }
+                    // We cannot provide viewer and forecaster here, as we are potentially inviting non-members.
+                    // They would not be able to see the users of the organization in the moderation
+                    // interface because of the censorship. See also: RoomRole.isAvailableForGuests
                     (
                             mapOf("viewer" to "Viewer", "forecaster" to "Forecaster")
                             + if (FeatureFlag.QUESTION_WRITER_ROLE in appConfig.featureFlags)
@@ -155,6 +214,11 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
 
         }
         DialogActions {
+            if (i != null)
+                DeleteInviteConfirmation {
+                    hasUsers = props.hasUsers
+                    onDelete = { deleteInviteLink(it); props.onClose?.invoke() }
+                }
             Button {
                 onClick = {props.onClose?.invoke()}
                 +"Cancel"

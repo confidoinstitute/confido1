@@ -27,6 +27,9 @@ class Mailer(
         }
     }
 
+    /**
+     * Sends an email inviting a user to the instance.
+     */
     fun sendUserInviteMail(address: String) {
         if (appConfig.demoMode) return
         val subject = "You have been invited to Confido"
@@ -47,6 +50,9 @@ class Mailer(
         sendMail(mail)
     }
 
+    /**
+     * Sends an email inviting a user to a specific [Room].
+     */
     fun sendRoomInviteMail(address: String, room: Room, login: LoginLink, invitingUserAddress: String?) {
         if (appConfig.demoMode) return
         // TODO: Improve subject
@@ -102,6 +108,25 @@ class Mailer(
         sendMail(mail)
     }
 
+    /**
+     * Sends an email with feedback about Confido.
+     */
+    fun sendFeedbackMail(address: String, feedback: String, instanceName: String) {
+        // We cannot easily use trimIndent or trimMargin because feedback may contain newlines.
+        val body = """The following feedback was sent from instance $instanceName
+
+$feedback"""
+
+        val mail = EmailBuilder.startingBlank()
+            .from(senderName, senderAddress)
+            .to(address)
+            .withSubject("Confido application feedback")
+            .withPlainText(body)
+            .buildEmail()
+
+        sendMail(mail)
+    }
+
     fun sendVerificationMail(address: String, verification: EmailVerificationLink, expiration: Duration) {
         if (appConfig.demoMode) return
         val subject = "Verify your email address"
@@ -128,6 +153,9 @@ class Mailer(
         sendMail(mail)
     }
 
+    /**
+     * Sends an email with a magic link ([LoginLink]) for logging in.
+     */
     fun sendLoginMail(address: String, login: LoginLink, expiration: Duration) {
         if (appConfig.demoMode) return
         val subject = "Log in to Confido"
@@ -185,11 +213,15 @@ class Mailer(
 internal val MailerKey = AttributeKey<Mailer>("Mailer")
 
 class MailingConfig {
+    /** The URL of the hosted frontend used in mailed links (no trailing /) **/
     var urlOrigin: String = "http://localhost:8081/"
     /** Do not send emails, print to stdout instead. */
     var debugMode: Boolean = false
+    /** The underlying mailer with SMTP configuration. */
     var mailer: org.simplejavamail.api.mailer.Mailer? = null
+    /** The sender address for all emails. **/
     var senderAddress: String = "noreply@localhost"
+    /** The sender name for all emails. **/
     var senderName: String = "Confido"
 }
 

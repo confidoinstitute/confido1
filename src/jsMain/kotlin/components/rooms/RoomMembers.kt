@@ -4,17 +4,22 @@ import components.AppStateContext
 import components.DemoEmailAlert
 import components.UserAvatar
 import components.userListItemText
+import csstype.Display
+import csstype.JustifyContent
+import csstype.pct
 import csstype.px
 import hooks.useDebounce
 import icons.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.js.jso
 import react.*
 import mui.material.*
 import mui.system.sx
 import payloads.requests.AddedExistingMember
 import payloads.requests.AddedMember
+import react.dom.html.ReactHTML.span
 import rooms.*
 import tools.confido.refs.deref
 import tools.confido.refs.eqid
@@ -40,17 +45,6 @@ val RoomMembers = FC<Props> {
             editInviteLinkKey = randomString(20)
     }
 
-    if (appState.appConfig.demoMode) {
-        DemoEmailAlert {}
-    }
-
-    EditInviteDialog {
-        key = "##editDialog##$editInviteLinkKey"
-        invite = editInviteLink
-        open = editInviteLinkOpen
-        onClose = { editInviteLinkOpen = false }
-    }
-
     if (canManage)
         UserInviteForm {
             key = "__invite_form"
@@ -60,6 +54,18 @@ val RoomMembers = FC<Props> {
         it.invitedVia ?: if (it.user.deref()?.type?.isProper()?:false) "internal" else "guest"
     }
     val invitations = room.inviteLinks.associateWith { groupedMembership[it.id] }
+
+    if (appState.appConfig.demoMode) {
+        DemoEmailAlert {}
+    }
+
+    EditInviteDialog {
+        key = "##editDialog##$editInviteLinkKey"
+        invite = editInviteLink
+        hasUsers = invitations[editInviteLink]?.isNotEmpty() ?: false
+        open = editInviteLinkOpen
+        onClose = { editInviteLinkOpen = false }
+    }
 
     List {
         groupedMembership["internal"]?.let {
@@ -95,7 +101,7 @@ val RoomMembers = FC<Props> {
             }
 
         }
-        invitations.entries.sortedBy { it.key?.createdAt }.map {(invitation, maybeMembers) ->
+        invitations.entries.sortedBy { it.key.createdAt }.map { (invitation, maybeMembers) ->
             InvitationMembers {
                 key = "invitation__" + invitation.token
                 this.invitation = invitation
@@ -210,7 +216,7 @@ fun canChangeRole(appState: SentState, room: Room, role: RoomRole) =
 
 external interface MemberRoleSelectProps : Props {
     var value: RoomRole
-    var ownerSelectable: Boolean
+    var isGuest: Boolean
     var disabled: Boolean
     var onChange: ((RoomRole) -> Unit)?
 }
@@ -241,11 +247,53 @@ val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
             }
             val qw = if (FeatureFlag.QUESTION_WRITER_ROLE in appConfig.featureFlags) arrayOf(QuestionWriter) else emptyArray()
             listOf(Viewer, Forecaster, *qw, Moderator, Owner).map { role ->
-                if (canChangeRole(appState, room, role))
+                val disableReason = if (!canChangeRole(appState, room, role)) {
+                    "You do not have permission to set this role"
+                } else if (props.isGuest && !role.isAvailableToGuests) {
+                    "This role is not available for guests"
+                } else {
+                    null
+                }
+
+                if (disableReason != null) {
+                    // We need to wrap the entire MenuItem in a tooltip and a span
+                    // as it is disabled and thus no events are fired.
+                    Tooltip {
+                        title = ReactNode(disableReason)
+                        placement = TooltipPlacement.right
+                        arrow = true
+                        span {
+                            MenuItem {
+                                value = role.id
+                                disabled = true
+                                sx {
+                                    display = Display.flex
+                                    justifyContent = JustifyContent.spaceBetween
+                                    width = 100.pct
+                                    gap = themed(2)
+                                }
+                                ListItemText {
+                                    +role.name
+                                }
+                                // We use ListItemIcon mainly for its ability to apply the disabled color.
+                                ListItemIcon {
+                                    // We need to use style, as sx and css have a lower priority
+                                    // than the applied style in this case.
+                                    style = jso {
+                                        // This removes the extra space on the right of the icon.
+                                        minWidth = 0.px
+                                    }
+                                    HelpOutlineIcon {}
+                                }
+                            }
+                        }
+                    }
+                } else {
                     MenuItem {
                         value = role.id
                         +role.name
                     }
+                }
             }
         }
     }
@@ -281,6 +329,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
         if (canChangeRole(appState, room, membership.role) && canChangeSelf()) {
             MemberRoleSelect {
                 value = membership.role
+                isGuest = !user.type.isProper()
                 onChange = ::memberRoleChange
                 disabled = stale || props.disabled
             }

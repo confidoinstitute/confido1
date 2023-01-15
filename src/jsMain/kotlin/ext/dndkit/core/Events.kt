@@ -7,10 +7,10 @@ import org.w3c.dom.events.Event
 
 external interface DragEvent {
     var activatorEvent: Event
-    var active: dynamic // Active
+    var active: Active // Active
     var collisions: dynamic // Array<Collision>?
     var delta: dynamic // Translate
-    var over: dynamic // Over?
+    var over: Over?
 }
 
 external interface DragStartEvent : DragEvent

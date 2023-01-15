@@ -6,6 +6,7 @@ import csstype.*
 import hooks.useDebounce
 import hooks.useOnUnmount
 import icons.CloseIcon
+import hooks.useWebSocket
 import icons.EditIcon
 import icons.ExpandMore
 import icons.TimelineIcon
@@ -14,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.js.jso
 import mui.material.*
+import mui.material.transitions.TransitionProps
 import mui.system.responsive
 import mui.system.sx
 import react.*
@@ -132,7 +134,7 @@ external interface QuestionItemProps : Props {
     var prediction: Prediction?
     var canPredict: Boolean
     var editable: Boolean
-    var comments: Map<String, Comment>
+    var commentCount: Int
     var onEditDialog: ((Question) -> Unit)?
     var onChange: ((Boolean) -> Unit)?
     var expanded: Boolean
@@ -197,7 +199,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 onClick = { snackOpen = false }
             }
         }
-        onClose = { ev,reason-> snackOpen = false }
+        onClose = { _, _ -> snackOpen = false }
     }
 
     Accordion {
@@ -205,7 +207,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         id = "questionitem-${props.question.id}"
         expanded = props.expanded
         onChange = { _, state -> props.onChange?.invoke(state) }
-        TransitionProps = jsObject { unmountOnExit = true }
+        TransitionProps = buildObject { unmountOnExit = true }
         AccordionSummary {
             id = question.id
             expandIcon = ExpandMore.create()
@@ -292,7 +294,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     SpoilerButton {
                         DistributionSummary {
                             allowPlotDialog = true
-                            distribution = appState.groupPred[question.ref]?.dist
+                            distribution = null
                         }
                     }
                 }
@@ -324,7 +326,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 this.question = props.question
             }
             GroupPredButton {
-                this.distribution = appState.groupPred[question.ref]?.dist
+                this.question = question
                 this.disabled =
                     !(question.groupPredVisible || appState.hasPermission( room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS ))
                 this.count = props.question.numPredictors
@@ -332,12 +334,12 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             QuestionCommentsDialog {
                 this.open = commentsOpen
                 this.question = props.question
-                this.comments = props.comments
+                this.numComments = props.commentCount
                 this.prediction = props.prediction
                 this.onClose = { commentsOpen = false }
             }
             QuestionCommentsButton {
-                this.numComments = props.comments.count()
+                this.numComments = props.commentCount
                 this.onClick = { commentsOpen = true }
             }
             if (props.editable) {

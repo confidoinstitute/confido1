@@ -6,14 +6,14 @@ import hooks.useElementSize
 import icons.EditIcon
 import kotlinx.js.Object
 import kotlinx.js.delete
+import kotlinx.js.jso
 import mui.material.*
 import mui.material.Size
 import mui.system.responsive
 import mui.system.sx
 import react.*
-import utils.jsObject
 
-fun mark(value: Number, label: String?) = jsObject {
+fun mark(value: Number, label: String?) = jso<dynamic> {
     this.value = value
     this.label = label
 }

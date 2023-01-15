@@ -17,7 +17,7 @@ fun <T: HTMLElement> useElementSize(): ElementSize<T> {
 
     val observer = useMemo {
         ResizeObserver { entries, _ ->
-            val rect = entries.getOrNull(0)?.let {
+            entries.getOrNull(0)?.let {
                 width = it.contentRect.width
                 height = it.contentRect.height
             }

@@ -13,7 +13,6 @@ import users.UserType
 class ClientState(var sentState: SentState)
     : GlobalState(), BaseState by sentState {
     val session by sentState::session
-    val commentsILike by sentState::commentsILike
     val myPredictions by sentState::myPredictions
 }
 
@@ -21,6 +20,6 @@ var clientState: ClientState = ClientState(SentState())
 actual val globalState: GlobalState get() = clientState
 
 fun Room.havePermission(permission: RoomPermission): Boolean {
-    val myself = clientState.session?.user
+    val myself = clientState.session.user
     return hasPermission(myself, permission)
 }

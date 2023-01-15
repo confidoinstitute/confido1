@@ -46,3 +46,21 @@ external interface DroppableMeasuring {
     var strategy: MeasuringStrategy
     var frequency: dynamic /* dndkit.core.MeasuringFrequency | Number */
 }
+
+external interface Over {
+    var id: Any /* String | Number */
+    var disabled: Boolean
+    //var rect: ClientRect
+    //var data: DataRef
+}
+
+external interface Active {
+    var id: Any /* String | Number */
+    /*
+    data: DataRef;
+    rect: MutableRefObject<{
+        initial: ClientRect | null;
+        translated: ClientRect | null;
+    }>;
+     */
+}

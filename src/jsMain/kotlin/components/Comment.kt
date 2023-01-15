@@ -2,6 +2,7 @@ package components
 
 import components.rooms.RoomContext
 import csstype.AlignItems
+import csstype.rem
 import csstype.number
 import icons.*
 import io.ktor.client.plugins.*
@@ -15,6 +16,7 @@ import mui.material.styles.TypographyVariant
 import mui.system.responsive
 import mui.system.sx
 import payloads.requests.CreateComment
+import payloads.responses.CommentInfo
 import react.*
 import react.dom.html.ButtonType
 import react.dom.html.ReactHTML
@@ -38,20 +40,20 @@ import web.timers.setInterval
 import kotlin.coroutines.EmptyCoroutineContext
 
 external interface CommentProps : Props {
-    var comment: Comment
+    var commentInfo: CommentInfo
 }
 
 val Comment = FC<CommentProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
     val currentUser = appState.session.user
-    val comment = props.comment
+    val comment = props.commentInfo.comment
     val user = comment.user.deref() ?: return@FC
 
     var textAgo by useState("")
     val canDelete =
         (user eqid currentUser || appState.hasPermission(room, RoomPermission.MANAGE_COMMENTS)) && !stale
-    val liked = comment.ref in appState.commentsILike
+    val liked = props.commentInfo.likedByMe
 
     useEffect(comment.timestamp) {
         fun setText() {
@@ -75,7 +77,7 @@ val Comment = FC<CommentProps> { props ->
             title = ReactNode(name)
             subheader =
             Tooltip.create {
-                this.title = ReactNode(props.comment.timestamp.toDateTime())
+                this.title = ReactNode(comment.timestamp.toDateTime())
                 span {
                     +textAgo
                 }
@@ -88,7 +90,7 @@ val Comment = FC<CommentProps> { props ->
                 if (canDelete) {
                     IconButton {
                         onClick = {
-                            val url = when(val comment = props.comment) {
+                            val url = when(comment) {
                                 is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}"
                                 is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}"
                             }
@@ -117,7 +119,7 @@ val Comment = FC<CommentProps> { props ->
                     SpoilerButton {
                         DistributionSummary {
                             allowPlotDialog = true
-                            distribution = comment.prediction?.dist
+                            distribution = comment.prediction.dist
                         }
                     }
                 }
@@ -127,7 +129,7 @@ val Comment = FC<CommentProps> { props ->
 
             IconButton {
                 Badge {
-                    badgeContent = (globalState.commentLikeCount[comment.ref]?:0).let {
+                    badgeContent = (props.commentInfo.likeCount).let {
                         if (it > 0) ReactNode(it.toString())
                         else null
                     }
@@ -139,7 +141,7 @@ val Comment = FC<CommentProps> { props ->
                 }
                 disabled = stale
                 onClick = {
-                    val url = when(val comment = props.comment) {
+                    val url = when(comment) {
                         is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}/like"
                         is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}/like"
                     }
@@ -165,11 +167,13 @@ external interface CommentInputProps : Props {
 }
 
 val CommentInput = FC<CommentInputProps> { props ->
-    val (_, stale) = useContext(AppStateContext)
+    val (appState, stale) = useContext(AppStateContext)
     var content by useState("")
     var attachPrediction by useState(false)
     var pendingSend by useState(false)
     var errorSend by useState(false)
+
+    val room = useContext(RoomContext)
 
     form {
         onSubmit = {
@@ -228,6 +232,7 @@ val CommentInput = FC<CommentInputProps> { props ->
                     commentInput(this)
                 }
                 DialogActions {
+                    if (room.hasPermission(appState.session.user, RoomPermission.SUBMIT_PREDICTION))
                     FormGroup {
                         sx {
                             flexGrow = number(1.0)
@@ -263,6 +268,37 @@ val CommentInput = FC<CommentInputProps> { props ->
                     commentInput(this)
                     sendButton(this)
                 }
+            }
+        }
+    }
+}
+
+val CommentSkeleton = FC<Props> {
+    Card {
+        sx {
+            marginTop = themed(2)
+            marginBottom = themed(2)
+        }
+        CardHeader {
+            title = Skeleton.create {
+                width = 15.rem
+            }
+            subheader = Skeleton.create {
+                width = 3.rem
+            }
+            avatar = Skeleton.create {
+                variant = SkeletonVariant.circular
+                width = 40
+                height = 40
+            }
+        }
+        CardContent {
+            Skeleton { }
+        }
+        CardActions {
+            IconButton {
+                ThumbUpOutlineIcon{}
+                disabled = true
             }
         }
     }

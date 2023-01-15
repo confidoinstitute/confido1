@@ -26,10 +26,9 @@ external interface SidebarProps : Props {
 
 val Sidebar = FC<SidebarProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
-    val navigate = useNavigate()
 
     val navigateClose = useMemo(props.onClose) {
-        fun(vararg args: Any) {
+        fun(vararg _: Any) {
             props.onClose?.invoke()
         }
     }

@@ -84,18 +84,15 @@ data class DiscretizedContinuousDistribution(
     @Transient
     val binner = Binner(space, binProbs.size)
 
-    @Transient
     val probBeforeBin by lazy {
         // force the last item to be exactly 1 to circumvent floating point roundoff errors
         binProbs.runningFoldIndexed(0.0, { idx, acc, d ->  if (idx==bins-1) 1.0 else acc+d })
     }
 
-    @Transient
     val discretizedMean: Double by lazy {
         binProbs.zip(binner.binMidpoints) { p, midp -> p*midp }.sum()
     }
 
-    @Transient
     val discretizedStdev: Double by lazy {
         sqrt(binProbs.zip(binner.binMidpoints) { p, midp -> p * (midp - discretizedMean).pow(2) }.sum())
     }
