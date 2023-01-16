@@ -104,6 +104,20 @@ suspend fun initDemo() {
     }
 }
 
+suspend fun initData() {
+    // upon first start, create admin accounts specified in environment
+    // in order to make first login after deploy possible
+    if (serverState.users.isEmpty()) {
+        val admins = System.getenv("CONFIDO_ADMIN_EMAILS")
+        if (admins != null && admins.trim() != "") {
+            admins.split(',').forEach {
+                val user = User(email = it.trim(), emailVerified = true, createdAt = now(), type = UserType.ADMIN)
+                serverState.userManager.insertEntity(user)
+            }
+        }
+    }
+}
+
 fun main() {
     registerModule(confidoSM)
     // XXX kotlinx.serialization can serialize value classes out of the box. But KMongo uses
@@ -116,6 +130,7 @@ fun main() {
         serverState.initialize()
         serverState.load()
         if (appConfig.demoMode) initDemo()
+        else initData()
     }
 
     val port = System.getenv("CONFIDO_HTTP_PORT")?.toIntOrNull() ?: 8080
