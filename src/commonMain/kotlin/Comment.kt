@@ -14,6 +14,7 @@ sealed class Comment : ImmediateDerefEntity{ // FIXME: probably load comments on
     abstract val user: Ref<User>
     abstract val timestamp: Int
     abstract val content: String
+    abstract val modified: Int?
     fun key() = "${user.id}__${timestamp}"
 }
 @Serializable
@@ -23,6 +24,7 @@ data class QuestionComment(
     override val user: Ref<User>,
     override val timestamp: Int,
     override val content: String,
+    override val modified: Int? = null,
     val question: Ref<Question>,
     val prediction: Prediction?,
 ) : Comment()
@@ -34,6 +36,7 @@ data class RoomComment(
     override val user: Ref<User>,
     override val timestamp: Int,
     override val content: String,
+    override val modified: Int? = null,
     val room: Ref<Room>,
     val isAnnotation: Boolean,
 ) : Comment()
