@@ -209,7 +209,7 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
             val groupPreds = room.questions.associateWith { ref ->
                 if (canViewPred || ref.deref()?.groupPredVisible == true) serverState.groupPred[ref] else null
             }
-            WSData(groupPreds)
+            groupPreds
         }
     }
 }
@@ -220,7 +220,7 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
             assertPermission( RoomPermission.VIEW_ROOM_COMMENTS, "You cannot view the discussion.")
 
             val commentInfo = makeCommentInfo(user, room)
-            WSData(commentInfo)
+            commentInfo
         }
     }
 
