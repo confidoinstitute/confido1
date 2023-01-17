@@ -153,6 +153,32 @@ $feedback"""
         sendMail(mail)
     }
 
+    fun sendPasswordChangedEmail(address: String, undoLink: PasswordUndoLink) {
+        if (appConfig.demoMode) return
+        val subject = "Your Confido password has changed"
+        val url = undoLink.link(origin)
+
+        val body = """
+            Your password to Confido ($origin) has been changed.
+            
+            If you did not wish to change your password, you can use the following link:
+            $url
+            to undo this change and reset your password.
+            This action will invalidate all your sessions.
+            """.trimIndent()
+
+        // TODO: Send multipart with HTML version.
+
+        val mail = EmailBuilder.startingBlank()
+            .from(senderName, senderAddress)
+            .to(address)
+            .withSubject(subject)
+            .withPlainText(body)
+            .buildEmail()
+
+        sendMail(mail)
+    }
+
     /**
      * Sends an email with a magic link ([LoginLink]) for logging in.
      */

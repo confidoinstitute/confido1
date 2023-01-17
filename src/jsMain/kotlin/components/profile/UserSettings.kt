@@ -1,6 +1,7 @@
 package components.profile
 
 import components.AppStateContext
+import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -103,6 +104,19 @@ val UserSettings = FC<Props> {
         }
     }
 
+
+    fun removePassword() {
+        CoroutineScope(EmptyCoroutineContext).launch {
+            val response = Client.httpClient.delete("/profile/password") {}
+            if (response.status == HttpStatusCode.OK) {
+                passwordUpdated = true
+            }
+            currentPassword = ""
+            newPassword = ""
+            newPasswordRepeat = ""
+        }
+    }
+
     Container {
         maxWidth = byTheme("sm")
 
@@ -169,7 +183,11 @@ val UserSettings = FC<Props> {
             if (passwordUpdated) {
                 Alert {
                     severity = AlertColor.success
-                    +"Your password has been updated."
+                    if (appState.myPasswordIsSet) {
+                        +"Your password has been updated."
+                    } else {
+                        +"Your password has been removed."
+                    }
                 }
             }
 
@@ -285,6 +303,10 @@ val UserSettings = FC<Props> {
                                     }
                                 }
                             }
+                        } else {
+                            Typography {
+                                +"You have no password set."
+                            }
                         }
                         TextField {
                             label = ReactNode("New password")
@@ -334,6 +356,14 @@ val UserSettings = FC<Props> {
                         } else {
                             +"Set password"
                         }
+                    }
+                    if (appState.myPasswordIsSet)
+                    Button {
+                        onClick = { removePassword() }
+                        variant = ButtonVariant.contained
+                        color = ButtonColor.secondary
+                        disabled = stale
+                        +"Remove password"
                     }
                 }
             }

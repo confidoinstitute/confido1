@@ -22,6 +22,7 @@ import tools.confido.spaces.*
 import tools.confido.utils.*
 import users.EmailVerificationLink
 import users.LoginLink
+import users.PasswordUndoLink
 import users.User
 import java.lang.RuntimeException
 import kotlin.coroutines.AbstractCoroutineContextElement
@@ -441,6 +442,14 @@ object serverState : GlobalState() {
 
     object verificationLinkManager : InMemoryEntityManager<EmailVerificationLink>(database.getCollection("mailVerificationLinks")) {
         val byToken: MutableMap<String, EmailVerificationLink> = mutableMapOf()
+        init {
+            onEntityAddedOrUpdated { byToken[it.token] = it }
+            onEntityDeleted { byToken.remove(it.token) }
+        }
+    }
+
+    object passwordUndoLinkManager : InMemoryEntityManager<PasswordUndoLink>(database.getCollection("passwordUndoLinks")) {
+        val byToken: MutableMap<String, PasswordUndoLink> = mutableMapOf()
         init {
             onEntityAddedOrUpdated { byToken[it.token] = it }
             onEntityDeleted { byToken.remove(it.token) }

@@ -18,7 +18,8 @@ data class StartEmailVerification (
     val email: String,
 )
 
+// Used for different tokens: E-mail verification, password set undo and e-mail set undo.
 @Serializable
-data class EmailVerification (
+data class TokenVerification (
     val token: String,
 )

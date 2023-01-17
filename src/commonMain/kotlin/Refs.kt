@@ -16,6 +16,7 @@ import tools.confido.state.globalState
 import tools.confido.utils.generateId
 import users.EmailVerificationLink
 import users.LoginLink
+import users.PasswordUndoLink
 import users.User
 import kotlin.jvm.JvmInline
 
@@ -121,6 +122,7 @@ inline fun <reified  T: HasId> T.withId(id: String): T =
         is User -> copy(id = id) as T
         is LoginLink -> copy(id = id) as T
         is EmailVerificationLink -> copy(id = id) as T
+        is PasswordUndoLink -> copy(id = id) as T
         is UserSession -> copy(id = id) as T
         is Prediction -> copy(id = id) as T
         is CommentLike -> copy(id = id) as T

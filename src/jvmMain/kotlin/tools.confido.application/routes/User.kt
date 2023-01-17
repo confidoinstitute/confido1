@@ -16,6 +16,7 @@ import tools.confido.refs.*
 import tools.confido.state.*
 import tools.confido.utils.*
 import users.*
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
 data class UserContext(val user: User)
@@ -173,7 +174,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
     postST("/profile/email/verify") {
         assertSession()
 
-        val validation: EmailVerification = call.receive()
+        val validation: TokenVerification = call.receive()
         val verificationLink = serverState.verificationLinkManager.byToken[validation.token] ?: unauthorized("No such token exists.")
         if (verificationLink.isExpired()) unauthorized("The token has already expired.")
 
@@ -214,10 +215,62 @@ fun profileRoutes(routing: Routing) = routing.apply {
                 it.copy(password = hash)
             }
 
+            // Prepare password change notification
+            val expiration = 7.days
+            val expiresAt = Clock.System.now().plus(expiration)
+            val link = PasswordUndoLink(
+                token = generateToken(),
+                user = user.ref,
+                expiryTime = expiresAt,
+            )
+            try {
+                if (user.email != null)
+                    call.mailer.sendPasswordChangedEmail(user.email, link)
+            } catch (e: org.simplejavamail.MailException) {
+                //serviceUnavailable("Password change e-mail failed to send")
+                call.application.log.info("The link to undo password change for ${user.ref} is ${link.link("")}")
+            }
+            serverState.passwordUndoLinkManager.insertEntity(link)
+
+            // TODO: Anti password undo spam DDoS
+
             call.application.log.info("User ${user.ref} changed password.")
         }
 
         call.transientUserData?.refreshSessionWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
+    // Remove password
+    deleteST("/profile/password") {
+        withUser {
+            serverState.userManager.modifyEntity(user.ref) {
+                it.copy(password = null)
+            }
+            call.application.log.info("User ${user.ref} removed password.")
+        }
+
+        call.transientUserData?.refreshSessionWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
+    // Undo password change
+    postST("/profile/password/undo") {
+        assertSession()
+
+        val validation: TokenVerification = call.receive()
+        val verificationLink = serverState.passwordUndoLinkManager.byToken[validation.token] ?: unauthorized("No such token exists.")
+        if (verificationLink.isExpired()) unauthorized("The token has already expired.")
+
+        serverState.withTransaction {
+            serverState.userManager.modifyEntity(verificationLink.user) {
+                it.copy(password = null)
+            }
+
+            // Verification links are single-use
+            serverState.passwordUndoLinkManager.deleteEntity(verificationLink.ref)
+        }
+
+        // TODO invalidate all user's sessions
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Change nick
