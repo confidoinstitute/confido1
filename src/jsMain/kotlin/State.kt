@@ -1,14 +1,10 @@
 package tools.confido.state
 
+import browser.window
 import rooms.Room
 import rooms.RoomPermission
-import tools.confido.question.Prediction
-import tools.confido.question.Question
-import tools.confido.question.QuestionComment
-import tools.confido.question.RoomComment
-import tools.confido.refs.*
-import users.User
-import users.UserType
+import tools.confido.serialization.confidoJSON
+import kotlinx.serialization.decodeFromString
 
 class ClientState(var sentState: SentState)
     : GlobalState(), BaseState by sentState {
@@ -23,3 +19,5 @@ fun Room.havePermission(permission: RoomPermission): Boolean {
     val myself = clientState.session.user
     return hasPermission(myself, permission)
 }
+
+actual val appConfig: AppConfig = confidoJSON.decodeFromString(window.asDynamic().appConfig as String)

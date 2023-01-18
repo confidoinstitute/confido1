@@ -92,8 +92,6 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
 
     fun getMyPasswordIsSet() = user?.let { it.password != null } ?: false
 
-    fun censorAppConfig() = state.appConfig
-
     fun censor(): SentState {
         return SentState(
             rooms = censorRooms(),
@@ -105,7 +103,6 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
             myPasswordIsSet = getMyPasswordIsSet(),
             myPredictions = getMyPredictions(),
             session = sess,
-            appConfig = censorAppConfig(),
             presenterWindowActive = transientData.activePresenterWindows > 0,
         )
     }

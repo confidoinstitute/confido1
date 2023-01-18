@@ -56,7 +56,7 @@ val RoomMembers = FC<Props> {
     }
     val invitations = room.inviteLinks.associateWith { groupedMembership[it.id] }
 
-    if (appState.appConfig.demoMode) {
+    if (appConfig.demoMode) {
         Box {
             sx {
                 marginTop = themed(2)

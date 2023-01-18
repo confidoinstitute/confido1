@@ -16,7 +16,6 @@ interface BaseState {
     val predictorCount : Map<Ref<Question>, Int>
     val predictionCount : Map<Ref<Question>, Int>
     val commentCount : Map<Ref<Question>, Int>
-    val appConfig: AppConfig
 }
 
 abstract class GlobalState : BaseState {
@@ -67,7 +66,6 @@ data class SentState(
     override val predictorCount: Map<Ref<Question>, Int> = emptyMap(),
     override val commentCount: Map<Ref<Question>, Int> = emptyMap(),
     val myPasswordIsSet: Boolean = false,
-    override val appConfig: AppConfig = AppConfig(),
     val presenterWindowActive: Boolean = false,
 ) : BaseState {
     fun isAdmin(): Boolean {
@@ -86,5 +84,3 @@ data class SentState(
     val isAnonymous get() = session.user?.isAnonymous() ?: true
     val isFullUser get() = session.user?.type?.isProper() ?: false
 }
-
-val appConfig get() = globalState.appConfig

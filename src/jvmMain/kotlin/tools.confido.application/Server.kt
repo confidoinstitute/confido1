@@ -23,6 +23,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System.now
 import kotlinx.html.*
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.codec.digest.MessageDigestAlgorithms.SHA_224
 import org.litote.kmongo.serialization.registerModule
@@ -57,6 +58,7 @@ fun HTML.index() {
     }
     body {
         script(type="text/javascript") { unsafe { +"bundleVer= '${jsHash}'" } }
+        script(type="text/javascript") { unsafe { +"appConfig= '${Json.encodeToString(appConfig)}'" } }
         script(src = "/static/confido1.js?${jsHash}") {}
     }
 }

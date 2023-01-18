@@ -22,6 +22,7 @@ import react.dom.html.InputType
 import react.dom.html.TdAlign
 import react.dom.onChange
 import tools.confido.refs.eqid
+import tools.confido.state.appConfig
 import users.User
 import users.UserType
 import utils.eventValue
@@ -187,7 +188,7 @@ val AdminView = FC<Props> {
 
     val activate = useCoroutineLock()
 
-    if (appState.appConfig.demoMode) {
+    if (appConfig.demoMode) {
         DemoEmailAlert {}
     }
 

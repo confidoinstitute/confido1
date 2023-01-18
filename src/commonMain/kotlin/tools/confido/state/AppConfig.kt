@@ -20,3 +20,5 @@ data class AppConfig(
     val betaIndicator: Boolean = false,
     val featureFlags: Set<FeatureFlag> = setOf(),
 )
+
+expect val appConfig: AppConfig

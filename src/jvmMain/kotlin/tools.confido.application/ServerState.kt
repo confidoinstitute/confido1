@@ -54,6 +54,8 @@ fun loadConfig() = AppConfig(
     featureFlags = FeatureFlag.values().filter{ getenvBool("CONFIDO_FEAT_${it.name}", it in DEFAULT_FEATURE_FLAGS)}.toSet()
 )
 
+actual val appConfig = loadConfig()
+
 data class ShortLink(
     val room: Ref<Room>,
     val linkId: String,
@@ -72,7 +74,6 @@ object serverState : GlobalState() {
     val groupPred : MutableMap<Ref<Question>, Prediction?> = mutableMapOf()
     override val predictorCount: MutableMap<Ref<Question>, Int> = mutableMapOf()
     override val commentCount: MutableMap<Ref<Question>, Int> = mutableMapOf()
-    override var appConfig: AppConfig = loadConfig()
     //val presenterByUser: MutableMap<Ref<User>, PresenterInfo> = mutableMapOf() // this does not persist after restart
     //val presenterByToken: MutableMap<String, PresenterInfo> = mutableMapOf() // this does not persist after restart
 

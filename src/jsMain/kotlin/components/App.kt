@@ -20,6 +20,7 @@ import react.router.dom.BrowserRouter
 import tools.confido.serialization.confidoJSON
 import tools.confido.state.ClientState
 import tools.confido.state.SentState
+import tools.confido.state.appConfig
 import tools.confido.state.clientState
 import utils.webSocketUrl
 import web.timers.setTimeout
@@ -109,7 +110,7 @@ val App = FC<Props> {
         value = ClientAppState(appState ?: error("No app state!"), stale)
 
         val loggedIn = appState?.session?.user !=null
-        val isDemo = appState?.appConfig?.demoMode ?: false
+        val isDemo = appConfig.demoMode
         val layout = if (loggedIn) {
             RootLayout
         } else {
