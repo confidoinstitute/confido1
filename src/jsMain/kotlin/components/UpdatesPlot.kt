@@ -120,7 +120,6 @@ val UpdatesPlot = FC<UpdatesPlotProps> { props ->
                             val maxVal = it.probs.maxOrNull() ?: 1
                             it.probs `Zdiv` maxVal
                         }.transposeForHeatmap()
-                        console.log(zAxis)
                         x.set(xAxis)
                         y.set(Binner(space, 50).binBorders)
                         z.set(zAxis)

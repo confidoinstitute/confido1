@@ -217,7 +217,6 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
             errorInvalidResolution = true
             error = true
         }
-        console.log("resolved: $resolved resolution: $resolution")
         if (error) return
         val question = Question(
             id = id,

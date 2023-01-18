@@ -52,7 +52,6 @@ val globalTheme = createTheme(
 )
 
 val App = FC<Props> {
-    console.log(globalTheme)
     var appState by useState<SentState?>(null)
     var stale by useState(false)
     val webSocket = useRef<WebSocket>(null)

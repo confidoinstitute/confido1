@@ -190,7 +190,6 @@ fun <E> List<List<E>>.transposeForHeatmap(missingElementDefault: E? = null): Lis
 
     val maxRowSize = input.maxOf { it.size }
     val rowIndices = 0 until maxRowSize
-    console.log(rowIndices, columnIndices)
 
     return rowIndices.map { columnIndex ->
         columnIndices.map { rowIndex ->

@@ -64,7 +64,6 @@ val LoginForm = FC<LoginFormProps> { props ->
             LoginMode.Password -> {
                 CoroutineScope(EmptyCoroutineContext).launch {
                     val response = Client.httpClient.postJson("/login", PasswordLogin(trimmedEmail, password)) {}
-                    console.log(response)
                     if (response.status == HttpStatusCode.Unauthorized) {
                         passwordError = "Wrong password or email, please try again."
                         password = ""

@@ -20,7 +20,6 @@ import utils.themed
 val RootLayout = FC<Props> {
     val (appState, _) = useContext(AppStateContext)
     var drawerOpen by useState(false)
-    console.log("Root layout is being rerendered")
 
     val theme = mui.material.styles.useTheme<mui.material.styles.Theme>().breakpoints.up(permanentBreakpoint)
     val mediaMatch = useMediaQuery(theme)

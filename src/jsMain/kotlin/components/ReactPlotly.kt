@@ -52,10 +52,8 @@ val ReactPlotly = FC<PlotlyProps> {props ->
 
     useEffectOnce {
         val element = container.current ?: error("Div not found")
-        console.log("New plot")
         val dynLayout = plot.layout.toDynamic()
         props.fixupLayout?.invoke(dynLayout)
-        console.log(dynLayout)
         PlotlyJs.newPlot(element.unsafeCast<org.w3c.dom.Element>(), props.traces.toDynamic(), dynLayout, props.config)
 
         cleanup {
