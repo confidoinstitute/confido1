@@ -193,6 +193,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
     // Change password
     postST("/profile/password") {
         withUser {
+            if (user.email == null) badRequest("You cannot reset password without e-mail.")
             val passwordChange: SetPassword = call.receive()
             if (user.password != null) {
                 if (passwordChange.currentPassword == null || !Password.check(
@@ -218,7 +219,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
             // Prepare password change notification
             val expiration = 7.days
             val expiresAt = Clock.System.now().plus(expiration)
-            val link = PasswordUndoLink(
+            val link = PasswordResetLink(
                 token = generateToken(),
                 user = user.ref,
                 expiryTime = expiresAt,
@@ -230,7 +231,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
                 //serviceUnavailable("Password change e-mail failed to send")
                 call.application.log.info("The link to undo password change for ${user.ref} is ${link.link("")}")
             }
-            serverState.passwordUndoLinkManager.insertEntity(link)
+            serverState.passwordResetLinkManager.insertEntity(link)
 
             // TODO: Anti password undo spam DDoS
 
@@ -241,23 +242,35 @@ fun profileRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK)
     }
     // Remove password
-    deleteST("/profile/password") {
+    postST("/profile/password/reset") {
         withUser {
-            serverState.userManager.modifyEntity(user.ref) {
-                it.copy(password = null)
+            if (user.email == null) badRequest("You cannot reset password without e-mail.")
+            // Prepare password change notification
+            val expiration = 15.minutes
+            val expiresAt = Clock.System.now().plus(expiration)
+            val link = PasswordResetLink(
+                token = generateToken(),
+                user = user.ref,
+                expiryTime = expiresAt,
+            )
+            try {
+                call.mailer.sendPasswordResetEmail(user.email, link, expiration)
+            } catch (e: org.simplejavamail.MailException) {
+                serviceUnavailable("Password reset e-mail failed to send")
             }
-            call.application.log.info("User ${user.ref} removed password.")
+
+            serverState.passwordResetLinkManager.insertEntity(link)
         }
 
         call.transientUserData?.refreshSessionWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Undo password change
-    postST("/profile/password/undo") {
+    postST("/profile/password/reset") {
         assertSession()
 
         val validation: TokenVerification = call.receive()
-        val verificationLink = serverState.passwordUndoLinkManager.byToken[validation.token] ?: unauthorized("No such token exists.")
+        val verificationLink = serverState.passwordResetLinkManager.byToken[validation.token] ?: unauthorized("No such token exists.")
         if (verificationLink.isExpired()) unauthorized("The token has already expired.")
 
         serverState.withTransaction {
@@ -266,7 +279,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
             }
 
             // Verification links are single-use
-            serverState.passwordUndoLinkManager.deleteEntity(verificationLink.ref)
+            serverState.passwordResetLinkManager.deleteEntity(verificationLink.ref)
         }
 
         // TODO invalidate all user's sessions

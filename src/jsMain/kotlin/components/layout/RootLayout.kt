@@ -91,9 +91,9 @@ val RootLayout = FC<Props> {
                         }
                     }
                     Route {
-                        path = "password_undo"
+                        path = "password_reset"
                         this.element = VerifyToken.create {
-                            url = "/profile/password/undo"
+                            url = "/profile/password/reset"
                             failureTitle = "Password undo failed"
                             successTitle = "Password change undone"
                             failureText = "The link is expired or invalid."

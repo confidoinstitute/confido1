@@ -56,7 +56,7 @@ data class EmailVerificationLink(
 }
 
 @Serializable
-data class PasswordUndoLink(
+data class PasswordResetLink(
     @SerialName("_id")
     override val id: String = "", // generated on insert
     val token: String,
@@ -65,7 +65,7 @@ data class PasswordUndoLink(
 ) : ImmediateDerefEntity {
     fun isExpired() = now() > expiryTime
 
-    fun link(origin: String) = "$origin/password_undo?t=$token"
+    fun link(origin: String) = "$origin/password_reset?t=$token"
 }
 
 enum class PasswordCheckResult {
