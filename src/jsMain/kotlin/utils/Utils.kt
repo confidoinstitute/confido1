@@ -29,7 +29,7 @@ fun linearSpace(first: Double, last: Double, step: Double) = sequence {
 }
 
 fun roundNumbers() = sequence {
-    var base = 1
+    var base = 1.0
     while (true) {
         yield(base)
         yield(2*base)
@@ -125,7 +125,7 @@ fun dateMarkSpacing(width: Double, start: Double, end: Double): List<Double> {
             val yearStep = roundNumbers().takeWhile{it * 365 <= rangeDays}.find { step ->
                 dayWidth * 365 * step >= 100
             } ?: return emptyList()
-            yearSpacing(timestampToDate(start), timestampToDate(end), yearStep).map {it.toEpochDays() * 86400.0 }
+            yearSpacing(timestampToDate(start), timestampToDate(end), yearStep.toInt()).map {it.toEpochDays() * 86400.0 }
         }
     }
 
