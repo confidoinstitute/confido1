@@ -218,6 +218,7 @@ external interface MemberRoleSelectProps : Props {
     var value: RoomRole
     var isGuest: Boolean
     var disabled: Boolean
+    var size: BaseSize?
     var onChange: ((RoomRole) -> Unit)?
 }
 
@@ -230,7 +231,7 @@ val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
         }
         val select: FC<SelectProps<String>> = Select
         select {
-            this.size = Size.small
+            this.size = props.size
             value = props.value.id
             disabled = props.disabled
             onChange = { event, _ ->
@@ -329,6 +330,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
         if (canChangeRole(appState, room, membership.role) && canChangeSelf()) {
             MemberRoleSelect {
                 value = membership.role
+                size = Size.small
                 isGuest = !user.type.isProper()
                 onChange = ::memberRoleChange
                 disabled = stale || props.disabled
