@@ -3,9 +3,7 @@ package components.rooms
 import components.*
 import components.questions.QuestionList
 import components.questions.QuestionTable
-import csstype.AlignItems
-import csstype.WhiteSpace
-import csstype.number
+import csstype.*
 import icons.EditIcon
 import io.ktor.client.plugins.*
 import kotlinx.coroutines.CoroutineScope
@@ -79,6 +77,8 @@ val RoomInformation = FC<Props> {
             spacing = responsive(2)
             sx {
                 alignItems = AlignItems.start
+                justifyContent = JustifyContent.flexEnd
+                flexWrap = FlexWrap.wrapReverse
             }
             Typography {
                 sx {

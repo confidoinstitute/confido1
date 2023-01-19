@@ -186,7 +186,7 @@ val InvitationMembers = FC<InvitationMembersProps> {props ->
             IconButton {
                 disabled = stale
                 onClick = { props.onEditDialog?.invoke(props.invitation) }
-                SettingsIcon {}
+                EditIcon {}
             }
         }
     }

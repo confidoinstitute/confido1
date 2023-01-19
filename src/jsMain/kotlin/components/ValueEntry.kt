@@ -82,6 +82,9 @@ val DateValueEntry = FC<NumericValueEntryProps> { props->
                     +props.space.unit
                 }
             }
+        InputLabelProps = jso {
+            shrink = true
+        }
         onChange = { event->
             val date = try { LocalDate.parse(event.eventValue()) } catch  (e: Exception) { null }
             if (date != null) {
