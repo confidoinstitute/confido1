@@ -5,13 +5,12 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.serialization.kotlinx.json.*
 import browser.document
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import kotlinx.coroutines.delay
 import react.create
 import react.dom.client.createRoot
 import tools.confido.serialization.confidoJSON
-import utils.postJson
-import kotlin.coroutines.EmptyCoroutineContext
 
 object Client {
     val httpClient = HttpClient {
@@ -20,26 +19,50 @@ object Client {
         }
     }
 
-    fun post(url: String, block: (() -> Unit)? = null) = CoroutineScope(EmptyCoroutineContext).launch {
-        httpClient.post(url) {}
-        block?.invoke()
+    suspend inline fun <reified T> sendDataRequest(
+        url: String,
+        payload: T,
+        method: HttpMethod = HttpMethod.Post,
+        crossinline req: HttpRequestBuilder.() -> Unit = {},
+    ) = httpClient.request(url) {
+        this.method = method
+        if (payload !is String)
+            contentType(ContentType.Application.Json.withParameter("charset", "utf-8"))
+        setBody(payload)
+        req()
     }
 
-    inline fun <reified T> postData(url: String, payload: T, crossinline block: (HttpRequestBuilder.() -> Unit) = {})
-    = CoroutineScope(EmptyCoroutineContext).launch {
-        httpClient.postJson(url, payload, block)
-    }
-
-    inline fun postRawData(url: String, payload: String, crossinline block: (HttpRequestBuilder.() -> Unit) = {})
-            = CoroutineScope(EmptyCoroutineContext).launch {
-        httpClient.post(url) {
-            setBody(payload)
-            block()
+    suspend inline fun send(
+        url: String,
+        method: HttpMethod = HttpMethod.Post,
+        crossinline req: HttpRequestBuilder.() -> Unit = {},
+        crossinline onError: suspend HttpResponse.(String) -> Unit,
+        crossinline block: suspend HttpResponse.() -> Unit,
+    ) {
+        val resp = httpClient.request(url) {
+            this.method = method
+            req()
         }
+        if (resp.status.isSuccess())
+            block(resp)
+        else
+            onError(resp, resp.body())
     }
 
-    suspend inline fun <reified T, reified R> postDataAndReceive(url: String, payload: T, block: (HttpRequestBuilder.() -> Unit) = {}): R {
-        return httpClient.postJson(url, payload, block).body()
+    suspend inline fun <reified T> sendData(
+        url: String,
+        payload: T,
+        method: HttpMethod = HttpMethod.Post,
+        crossinline req: HttpRequestBuilder.() -> Unit = {},
+        crossinline onError: suspend HttpResponse.(String) -> Unit,
+        crossinline block: suspend HttpResponse.() -> Unit,
+    ) {
+        console.log("Send data", url, payload!!::class.simpleName, payload)
+        val resp = sendDataRequest(url, payload, method, req)
+        if (resp.status.isSuccess())
+            block(resp)
+        else
+            onError(resp, resp.body())
     }
 }
 

@@ -5,9 +5,12 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 import kotlinx.js.jso
 import web.location.location
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.js.Date
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -142,26 +145,6 @@ fun durationAgo(difference: Number) = difference.toInt().let {
     }
 }
 
-suspend inline fun <reified T> HttpClient.postJson(urlString: String, payload: T, block: HttpRequestBuilder.() -> Unit) =
-    this.post(urlString) {
-        contentType(ContentType.Application.Json.withParameter("charset", "utf-8"))
-        setBody(payload)
-        block.invoke(this)
-    }
-
-suspend inline fun <reified T> HttpClient.deleteJson(urlString: String, payload: T, block: HttpRequestBuilder.() -> Unit) =
-    this.delete(urlString) {
-        contentType(ContentType.Application.Json.withParameter("charset", "utf-8"))
-        setBody(payload)
-        block.invoke(this)
-    }
-
-suspend inline fun HttpClient.getJson(urlString: String, block: HttpRequestBuilder.() -> Unit) =
-    this.get(urlString) {
-        contentType(ContentType.Application.Json.withParameter("charset", "utf-8"))
-        block.invoke(this)
-    }
-
 fun webSocketUrl(path: String): String {
     val protocol = when(location.protocol) {
         "https:" -> "wss:"
@@ -203,3 +186,5 @@ fun <E> List<List<E>>.transposeForHeatmap(missingElementDefault: E? = null): Lis
 
 fun <E> Set<E>.xor(element: E) =
     if (element in this) this.minus(element) else this.plus(element)
+
+inline fun runCoroutine(noinline coro: suspend CoroutineScope.() -> Unit) { CoroutineScope(EmptyCoroutineContext).launch(block = coro) }

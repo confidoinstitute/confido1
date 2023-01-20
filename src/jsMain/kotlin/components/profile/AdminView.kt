@@ -6,6 +6,7 @@ import components.DialogCloseButton
 import csstype.pct
 import hooks.EditEntityDialogProps
 import hooks.useEditDialog
+import hooks.useRunCoroutine
 import icons.AddIcon
 import icons.EditIcon
 import io.ktor.client.request.*
@@ -41,6 +42,8 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
     val errorEmptyEmail = email.isEmpty() && userType != UserType.GUEST
     var errorBadEmail by useState(false)
 
+    val submit = useRunCoroutine()
+
     fun submitUser() {
         if (errorEmptyEmail) return
         if (email.isNotEmpty() && !isEmailValid(email)) {
@@ -50,7 +53,7 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
         val user = User(
             id = props.entity?.id ?: "",
             nick = nick.ifEmpty { null },
-            email = email.lowercase()?.ifEmpty { null },
+            email = email.lowercase().ifEmpty { null },
             emailVerified = true,
             type = userType,
             password = null,
@@ -59,15 +62,15 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
             lastLoginAt = props.entity?.lastLoginAt
         )
 
-        if (newUser) {
-            Client.postData("/users/add", user) {
+        val url = if (newUser) "edit" else "add"
+        submit {
+            Client.sendData("/users/$url", user, req = {
                 if (invite)
                     this.parameter("invite", 1)
+            }, onError = {}) {
+                props.onClose?.invoke()
             }
-        } else {
-            Client.postData("/users/edit", user)
         }
-        props.onClose?.invoke()
     }
 
     Dialog {
@@ -160,7 +163,7 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
             DialogActions {
                 Button {
                     size = Size.small
-                    disabled = stale || errorEmptyEmail
+                    disabled = stale || errorEmptyEmail || submit.running
                     color = ButtonColor.primary
                     onClick = {submitUser()}
                     +"Confirm"
@@ -175,6 +178,8 @@ val AdminView = FC<Props> {
     if (!appState.isAdmin()) return@FC
 
     val editUserOpen = useEditDialog(EditUserDialog)
+
+    val activate = useRunCoroutine()
 
     if (appState.appConfig.demoMode) {
         DemoEmailAlert {}
@@ -219,8 +224,10 @@ val AdminView = FC<Props> {
                                 this.disabled = stale || isSelf
                                 this.checked = user.active
                                 onClick = {
-                                    if (!isSelf) {
-                                        Client.postData("/users/edit", user.copy(active = !user.active))
+                                    activate {
+                                        if (!isSelf) {
+                                            Client.sendData("/users/edit", user.copy(active = !user.active), onError = {}) {}
+                                        }
                                     }
                                 }
                             }

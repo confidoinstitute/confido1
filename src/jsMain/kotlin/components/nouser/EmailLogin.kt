@@ -2,20 +2,16 @@ package components.nouser
 
 import csstype.*
 import io.ktor.client.call.*
-import io.ktor.http.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import mui.material.*
 import mui.system.sx
 import payloads.requests.*
 import react.*
 import react.router.useNavigate
 import utils.themed
-import kotlin.coroutines.EmptyCoroutineContext
 
 import react.FC
 import react.router.dom.useSearchParams
-import utils.postJson
+import utils.runCoroutine
 
 val EmailLogin = FC<Props> {
     val searchParams by useSearchParams()
@@ -26,13 +22,9 @@ val EmailLogin = FC<Props> {
     var failed by useState(false)
 
     useEffectOnce {
-        CoroutineScope(EmptyCoroutineContext).launch {
-            val response = Client.httpClient.postJson("/login_email", EmailLogin(loginToken)) {}
-            if (response.status == HttpStatusCode.Unauthorized) {
-                failed = true
-            } else {
-                val url: String = response.body()
-                navigate(url)
+        runCoroutine {
+            Client.sendData("/login_email", EmailLogin(loginToken), onError = { failed = true }) {
+                navigate(body<String>())
             }
         }
     }

@@ -22,6 +22,7 @@ import react.router.useLocation
 import react.router.useNavigate
 import tools.confido.state.appConfig
 import utils.eventValue
+import utils.runCoroutine
 import utils.themed
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -158,11 +159,9 @@ val ProfileMenu = FC<Props> {
             ListItemText {
                 primary = ReactNode("Log out")
             }
-            onClick = {
-                Client.post("/logout") {
-                    navigate("/")
-                }
-            }
+            onClick = {runCoroutine {
+                Client.send("/logout", onError = {}) {navigate("/")}
+            } }
         }
     }
 }

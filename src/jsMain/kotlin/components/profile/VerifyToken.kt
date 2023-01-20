@@ -14,7 +14,7 @@ import kotlin.coroutines.EmptyCoroutineContext
 
 import react.FC
 import react.router.dom.useSearchParams
-import utils.postJson
+import utils.runCoroutine
 
 enum class CheckStatus {
     CHECKING,
@@ -38,12 +38,9 @@ val VerifyToken = FC<VerifyTokenProps> { props ->
     var status by useState(CheckStatus.CHECKING)
 
     useEffectOnce {
-        CoroutineScope(EmptyCoroutineContext).launch {
-            val response = Client.httpClient.postJson(props.url, TokenVerification(verificationToken)) {}
-            status = if (response.status == HttpStatusCode.OK) {
-                CheckStatus.SUCCESS
-            } else {
-                CheckStatus.FAILURE
+        runCoroutine {
+            Client.sendData(props.url, TokenVerification(verificationToken), onError = {status = CheckStatus.FAILURE}) {
+                status = CheckStatus.SUCCESS
             }
         }
     }
