@@ -1,9 +1,6 @@
 package components.rooms
 
-import components.AppStateContext
-import components.DemoEmailAlert
-import components.UserAvatar
-import components.userListItemText
+import components.*
 import csstype.Display
 import csstype.JustifyContent
 import csstype.pct
@@ -317,7 +314,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
         (!(user eqid appState.session.user) || appState.isAdmin())
 
     fun memberRoleChange(role: RoomRole) = runCoroutine {
-        Client.sendData("/rooms/${room.id}/members/add", AddedExistingMember(membership.user, role) as AddedMember, onError = {}) {}
+        Client.sendData("/rooms/${room.id}/members/add", AddedExistingMember(membership.user, role) as AddedMember, onError = {showError?.invoke(it)}) {}
     }
 
     ListItem {

@@ -1,6 +1,7 @@
 package components.nouser
 
 import components.AppStateContext
+import components.showError
 import csstype.*
 import icons.CloseIcon
 import mui.material.*
@@ -79,14 +80,14 @@ val DevModeSection = FC<Props> {
             CardActions {
                 Button {
                     onClick = { runCoroutine {
-                        Client.sendData("/login", PasswordLogin(DebugAdmin.email, DebugAdmin.password), onError = {}) {}
+                        Client.sendData("/login", PasswordLogin(DebugAdmin.email, DebugAdmin.password), onError = {showError?.invoke(it)}) {}
                     }}
                     disabled = stale
                     +"Log in as debug admin"
                 }
                 Button {
                     onClick = { runCoroutine {
-                        Client.sendData("/login", PasswordLogin(DebugAdmin.email, DebugAdmin.password), onError = {}) {}
+                        Client.sendData("/login", PasswordLogin(DebugAdmin.email, DebugAdmin.password), onError = {showError?.invoke(it)}) {}
                     }}
                     disabled = stale
                     +"Log in as debug member"

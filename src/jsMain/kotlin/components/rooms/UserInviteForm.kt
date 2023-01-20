@@ -2,6 +2,7 @@ package components.rooms
 
 import components.AppStateContext
 import components.UserAvatar
+import components.showError
 import components.userListItemText
 import csstype.AlignItems
 import csstype.number
@@ -213,7 +214,7 @@ val UserInviteForm = FC<Props> {
                         }
                         null -> null
                     }?.let { addedMember -> runCoroutine {
-                        Client.sendData("/rooms/${room.id}/members/add", addedMember, onError = {}) {}
+                        Client.sendData("/rooms/${room.id}/members/add", addedMember, onError = {showError?.invoke(it)}) {}
                     } }
                 }
                 chosenUsers = emptyArray()

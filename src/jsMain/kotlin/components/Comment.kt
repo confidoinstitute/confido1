@@ -108,7 +108,7 @@ val Comment = FC<CommentProps> { props ->
             is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}"
             is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}"
         }
-        Client.send(url, method = HttpMethod.Delete, onError = {}) {}
+        Client.send(url, method = HttpMethod.Delete, onError = {showError?.invoke(it)}) {}
     }
 
     fun editCommentMode() {
@@ -125,7 +125,7 @@ val Comment = FC<CommentProps> { props ->
             is RoomComment ->
                 "/rooms/${comment.room.id}/comments/${comment.id}/edit"
         }
-        Client.sendData(url, editContent, onError = {}) { editMode = false }
+        Client.sendData(url, editContent, onError = {showError?.invoke(it)}) { editMode = false }
     }
 
     val liked = props.commentInfo.likedByMe
@@ -245,7 +245,7 @@ val Comment = FC<CommentProps> { props ->
                         is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}/like"
                         is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}/like"
                     }
-                    Client.sendData(url, !liked, onError = {}) {}
+                    Client.sendData(url, !liked, onError = {showError?.invoke(it)}) {}
                 }
                 }
             }
@@ -269,7 +269,6 @@ val CommentInput = FC<CommentInputProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     var content by useState("")
     var attachPrediction by useState(false)
-    var errorSend by useState(false)
 
     val room = useContext(RoomContext)
 
@@ -279,14 +278,13 @@ val CommentInput = FC<CommentInputProps> { props ->
         onSubmit = {
             it.preventDefault()
             submit {
-                errorSend = false
                 val createdComment = CreateComment(unixNow(), content, attachPrediction)
                 val url = when(props.variant) {
                     CommentInputVariant.QUESTION -> "/questions/${props.id}/comments/add"
                     CommentInputVariant.ROOM -> "/rooms/${props.id}/comments/add"
                 }
 
-                Client.sendData(url, createdComment, onError = {errorSend = true}) {
+                Client.sendData(url, createdComment, onError = {showError?.invoke(it)}) {
                     content = ""
                     props.onSubmit?.invoke(createdComment)
                 }
@@ -301,10 +299,6 @@ val CommentInput = FC<CommentInputProps> { props ->
                 this.name = "content"
                 this.value = content
                 this.onChange = { content = it.eventValue() }
-                if (errorSend) {
-                    this.error = true
-                    this.helperText = ReactNode("Comment failed to send. Try again later.")
-                }
             }
         }
 

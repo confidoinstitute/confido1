@@ -2,6 +2,7 @@ package components.nouser
 
 import components.AppStateContext
 import components.UserAvatar
+import components.showError
 import components.userListItemText
 import csstype.*
 import dom.html.HTMLLIElement
@@ -61,7 +62,7 @@ val LoginForm = FC<LoginFormProps> { props ->
         login {
             when (mode) {
                 LoginMode.MagicLink -> {
-                    Client.sendData("/login_email/create", SendMailLink(trimmedEmail, "/"), onError = {}) {
+                    Client.sendData("/login_email/create", SendMailLink(trimmedEmail, "/"), onError = {showError?.invoke(it)}) {
                         emailSent = true
                     }
                 }
@@ -290,7 +291,7 @@ val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
         }
 
         runCoroutine {
-            Client.send("/login_users", HttpMethod.Get, onError = {}) {
+            Client.send("/login_users", HttpMethod.Get, onError = {showError?.invoke(it)}) {
                 val availableUsers: ReadonlyArray<User> = body()
                 // Required for the autocomplete groupBy
                 availableUsers.sortBy { it.type }
@@ -307,7 +308,7 @@ val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
     val autocomplete: FC<AutocompleteProps<User>> = Autocomplete
     fun attemptLogin() = login {
         chosenUser?.let {
-            Client.sendData("/login_users", it.ref, onError = {}) {}
+            Client.sendData("/login_users", it.ref, onError = {showError?.invoke(it)}) {}
         }
     }
     autocomplete {

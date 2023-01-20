@@ -3,6 +3,7 @@ package components.rooms
 import components.AppStateContext
 import components.RouterLink
 import components.nouser.LoginForm
+import components.showError
 import csstype.*
 import io.ktor.client.call.*
 import kotlinx.coroutines.CoroutineScope
@@ -48,7 +49,7 @@ val RoomInviteForm = FC<Props> {
     useEffectOnce {
         val check = CheckInvite(inviteToken)
         runCoroutine {
-            Client.sendData("/rooms/${roomId}/invite/check", check, onError = {}) {
+            Client.sendData("/rooms/${roomId}/invite/check", check, onError = {showError?.invoke(it)}) {
                 inviteStatus = body()
             }
         }
@@ -172,7 +173,7 @@ val RoomInviteForm = FC<Props> {
                                                     name.trim().ifEmpty { null },
                                                     userMail
                                                 ),
-                                                onError = {}
+                                                onError = {showError?.invoke(it)}
                                             ) {
                                                 if (body()) {
                                                     // We need to log in.
@@ -208,7 +209,7 @@ val RoomInviteForm = FC<Props> {
                         }
                         variant = ButtonVariant.contained
                         onClick = { runCoroutine {
-                            Client.sendData("/rooms/$roomId/invite/accept", AcceptInvite(inviteToken), onError = {}) {
+                            Client.sendData("/rooms/$roomId/invite/accept", AcceptInvite(inviteToken), onError = {showError?.invoke(it)}) {
                                 navigate("/room/${roomId}")
                             }
                         } }

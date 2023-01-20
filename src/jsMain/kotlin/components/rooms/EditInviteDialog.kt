@@ -2,6 +2,7 @@ package components.rooms
 
 import Client
 import components.AppStateContext
+import components.showError
 import hooks.useRunCoroutine
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -91,7 +92,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
     fun submitInviteLink() = submit {
         if (i == null) {
             val invite = CreateNewInvite(description, role, anonymous)
-            Client.sendData("/rooms/${room.id}/invites/create", invite, onError = {}) {
+            Client.sendData("/rooms/${room.id}/invites/create", invite, onError = {showError?.invoke(it)}) {
                 props.onClose?.invoke()
             }
         } else {
@@ -101,7 +102,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                 allowAnonymous = anonymous,
                 state = linkState,
             )
-            Client.sendData("/rooms/${room.id}/invites/edit", invite, onError = {}) {
+            Client.sendData("/rooms/${room.id}/invites/edit", invite, onError = {showError?.invoke(it)}) {
                 props.onClose?.invoke()
             }
         }
@@ -109,7 +110,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
 
     fun deleteInviteLink(keepMembers: Boolean) = delete {
         if (i == null) return@delete
-            Client.sendData("/rooms/${room.id}/invite", DeleteInvite(i.id, keepMembers), method = HttpMethod.Delete, onError = {}) { }
+            Client.sendData("/rooms/${room.id}/invite", DeleteInvite(i.id, keepMembers), method = HttpMethod.Delete, onError = {showError?.invoke(it)}) { }
     }
 
     Dialog {

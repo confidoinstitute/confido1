@@ -119,24 +119,26 @@ val App = FC<Props> {
 
         ThemeProvider {
             this.theme = globalTheme
-            BrowserRouter {
-                Routes {
-                    if (isDemo)
+            GlobalErrorMessage {
+                BrowserRouter {
+                    Routes {
+                        if (isDemo)
+                            Route {
+                                path = "/"
+                                index = true
+                                element = DemoLayout.create {}
+                            }
                         Route {
-                            path = "/"
-                            index = true
-                            element = DemoLayout.create {}
+                            path = "/*"
+                            index = !isDemo
+                            element = layout.create {
+                                key = "layout"
+                            }
                         }
-                    Route {
-                        path = "/*"
-                        index = !isDemo
-                        element = layout.create {
-                            key = "layout"
+                        Route {
+                            path = "presenter"
+                            element = PresenterLayout.create()
                         }
-                    }
-                    Route {
-                        path = "presenter"
-                        element = PresenterLayout.create()
                     }
                 }
             }

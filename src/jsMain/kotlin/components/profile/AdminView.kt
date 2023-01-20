@@ -3,6 +3,7 @@ package components.profile
 import components.AppStateContext
 import components.DemoEmailAlert
 import components.DialogCloseButton
+import components.showError
 import csstype.pct
 import hooks.EditEntityDialogProps
 import hooks.useEditDialog
@@ -67,7 +68,7 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
             Client.sendData("/users/$url", user, req = {
                 if (invite)
                     this.parameter("invite", 1)
-            }, onError = {}) {
+            }, onError = {showError?.invoke(it)}) {
                 props.onClose?.invoke()
             }
         }
@@ -226,7 +227,7 @@ val AdminView = FC<Props> {
                                 onClick = {
                                     activate {
                                         if (!isSelf) {
-                                            Client.sendData("/users/edit", user.copy(active = !user.active), onError = {}) {}
+                                            Client.sendData("/users/edit", user.copy(active = !user.active), onError = {showError?.invoke(it)}) {}
                                         }
                                     }
                                 }

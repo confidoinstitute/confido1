@@ -160,7 +160,7 @@ val ProfileMenu = FC<Props> {
                 primary = ReactNode("Log out")
             }
             onClick = {runCoroutine {
-                Client.send("/logout", onError = {}) {navigate("/")}
+                Client.send("/logout", onError = {showError?.invoke(it)}) {navigate("/")}
             } }
         }
     }

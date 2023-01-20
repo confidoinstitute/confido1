@@ -1,6 +1,7 @@
 package components.rooms
 
 import components.AppStateContext
+import components.showError
 import hooks.useRunCoroutine
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
@@ -14,7 +15,6 @@ import react.router.useNavigate
 import kotlin.coroutines.EmptyCoroutineContext
 
 val NewRoom = FC<Props> {
-    var error by useState(false)
     val stale = useContext(AppStateContext).stale
 
     val navigate = useNavigate()
@@ -22,17 +22,9 @@ val NewRoom = FC<Props> {
     val create = useRunCoroutine()
 
     fun createRoom(information: BaseRoomInformation) = create {
-        Client.sendData("/rooms/add", information, onError = {error = true}) {
+        Client.sendData("/rooms/add", information, onError = {showError?.invoke(it)}) {
             val roomId: String = body()
             navigate("/room/$roomId")
-        }
-    }
-
-    Collapse {
-        this.`in` = error
-        Alert {
-            severity = AlertColor.error
-            +"Room could not be created."
         }
     }
 

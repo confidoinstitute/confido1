@@ -2,6 +2,7 @@ package components.profile
 
 import components.AlertSnackbar
 import components.AppStateContext
+import components.showError
 import hooks.useRunCoroutine
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -360,9 +361,7 @@ val UserSettings = FC<Props> {
     }
 
     fun onError(message: String) {
-        alertOpen = true
-        alertContent = message
-        alertSeverity = AlertColor.error
+        showError?.invoke(message)
     }
 
     Container {

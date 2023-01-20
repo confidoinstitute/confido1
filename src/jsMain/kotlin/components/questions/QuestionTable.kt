@@ -4,6 +4,7 @@ import Client
 import components.AppStateContext
 import components.DistributionSummary
 import components.IconToggleButton
+import components.showError
 import csstype.*
 import dndkit.applyListeners
 import dndkit.core.*
@@ -126,7 +127,7 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                 val newOrder = moved.map { tools.confido.refs.Ref<Question>(it) }.toList()
                 val reorder = ReorderQuestions(newOrder)
                 runCoroutine {
-                    Client.sendData("/rooms/${room.id}/questions/reorder", reorder, onError = {}) {}
+                    Client.sendData("/rooms/${room.id}/questions/reorder", reorder, onError = {showError?.invoke(it)}) {}
                 }
             }
         }
@@ -244,7 +245,7 @@ val QuestionRow = FC<QuestionRowProps> { props ->
 
     fun postEditQuestion(id: String, field: EditQuestionFieldType, value: Boolean) = runCoroutine {
         val editQuestion: EditQuestion = EditQuestionFlag(field, value)
-        Client.sendData("/questions/$id/edit", editQuestion, onError = {}) {}
+        Client.sendData("/questions/$id/edit", editQuestion, onError = {showError?.invoke(it)}) {}
     }
 
     TableRow {

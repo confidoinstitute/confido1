@@ -4,6 +4,7 @@ import Client
 import components.AppStateContext
 import components.ValueEntry
 import components.rooms.RoomContext
+import components.showError
 import csstype.px
 import hooks.EditEntityDialogProps
 import hooks.useRunCoroutine
@@ -236,15 +237,15 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         )
 
         if (props.entity == null) {
-            Client.sendData("/rooms/${room.id}/questions/add", question, onError = {}) {props.onClose?.invoke()}
+            Client.sendData("/rooms/${room.id}/questions/add", question, onError = {showError?.invoke(it)}) {props.onClose?.invoke()}
         } else {
             val editQuestion: EditQuestion = EditQuestionComplete(question)
-            Client.sendData("/questions/${id}/edit", editQuestion, onError = {}) {props.onClose?.invoke()}
+            Client.sendData("/questions/${id}/edit", editQuestion, onError = {showError?.invoke(it)}) {props.onClose?.invoke()}
         }
     }
 
     fun deleteQuestion() = delete {
-        Client.send("/questions/$id", HttpMethod.Delete, onError = {}) { props.onClose?.invoke() }
+        Client.send("/questions/$id", HttpMethod.Delete, onError = {showError?.invoke(it)}) { props.onClose?.invoke() }
     }
 
     val answerSpaceType = when(val space = answerSpace) {

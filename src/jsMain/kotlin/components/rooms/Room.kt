@@ -28,32 +28,22 @@ val RoomInformation = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
 
-    var editMode by useState(false)
-    var editError by useState(false)
-
     val currentUser = appState.session.user ?: return@FC
 
+    var editMode by useState(false)
     val edit = useRunCoroutine()
 
     val editRoom: ((BaseRoomInformation) -> Unit) = useMemo(room) {
         { information ->
             edit {
-                Client.sendData("/rooms/${room.id}/edit", information, onError = { editError = true }) {
+                Client.sendData("/rooms/${room.id}/edit", information, onError = { showError?.invoke(it) }) {
                     editMode = false
-                    editError = false
                 }
             }
         }
     }
 
     if (editMode) {
-        Collapse {
-            this.`in` = editError
-            Alert {
-                severity = AlertColor.error
-                +"There was a failure in editing the room details."
-            }
-        }
         RoomInfoForm {
             this.room = room
             this.disabled = edit.running
