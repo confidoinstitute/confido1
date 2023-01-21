@@ -7,7 +7,7 @@ import components.userListItemText
 import csstype.*
 import dom.html.HTMLLIElement
 import emotion.react.css
-import hooks.useRunCoroutine
+import hooks.useCoroutineLock
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -49,7 +49,7 @@ val LoginForm = FC<LoginFormProps> { props ->
     var emailError by useState<String?>(null)
     var passwordError by useState<String?>(null)
 
-    val login = useRunCoroutine()
+    val login = useCoroutineLock()
 
     fun attemptLogin() {
         val trimmedEmail = email.trim()
@@ -283,7 +283,7 @@ val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
     var open by useState(false)
     val loading = open && users == null
 
-    val login = useRunCoroutine()
+    val login = useCoroutineLock()
 
     useEffect(loading) {
         if (!loading) {

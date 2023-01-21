@@ -2,7 +2,7 @@ package components.rooms
 
 import components.AppStateContext
 import components.showError
-import hooks.useRunCoroutine
+import hooks.useCoroutineLock
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
 import kotlinx.coroutines.*
@@ -19,7 +19,7 @@ val NewRoom = FC<Props> {
 
     val navigate = useNavigate()
 
-    val create = useRunCoroutine()
+    val create = useCoroutineLock()
 
     fun createRoom(information: BaseRoomInformation) = create {
         Client.sendData("/rooms/add", information, onError = {showError?.invoke(it)}) {

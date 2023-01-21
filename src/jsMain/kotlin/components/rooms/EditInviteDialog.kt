@@ -3,7 +3,7 @@ package components.rooms
 import Client
 import components.AppStateContext
 import components.showError
-import hooks.useRunCoroutine
+import hooks.useCoroutineLock
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
@@ -86,8 +86,8 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
 
     val htmlId = useId()
 
-    val submit = useRunCoroutine()
-    val delete = useRunCoroutine()
+    val submit = useCoroutineLock()
+    val delete = useCoroutineLock()
 
     fun submitInviteLink() = submit {
         if (i == null) {

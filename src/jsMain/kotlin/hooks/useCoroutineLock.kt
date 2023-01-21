@@ -9,14 +9,15 @@ import kotlin.coroutines.EmptyCoroutineContext
 
 typealias Coroutine = suspend () -> Unit
 
-data class CoroutineWithRunning(val running: Boolean, private val call: (Coroutine) -> Unit) {
+data class CoroutineLock(val running: Boolean, private val call: (Coroutine) -> Unit) {
     operator fun invoke(coro: Coroutine): Unit = call(coro)
 }
 
-inline fun useRunCoroutine(): CoroutineWithRunning {
+inline fun useCoroutineLock(): CoroutineLock {
     var running by useState(false)
 
     val call = useMemo {{ block: Coroutine ->
+        if (!running)
         runCoroutine {
             running = true
             try {
@@ -30,5 +31,5 @@ inline fun useRunCoroutine(): CoroutineWithRunning {
         Unit
     }}
 
-    return CoroutineWithRunning(running, call)
+    return CoroutineLock(running, call)
 }

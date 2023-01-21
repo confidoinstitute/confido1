@@ -7,7 +7,7 @@ import components.rooms.RoomContext
 import components.showError
 import csstype.px
 import hooks.EditEntityDialogProps
-import hooks.useRunCoroutine
+import hooks.useCoroutineLock
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
@@ -206,8 +206,8 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     var errorBadAnswerSpace by useState(false)
     var errorInvalidResolution by useState(false)
 
-    val submit = useRunCoroutine()
-    val delete = useRunCoroutine()
+    val submit = useCoroutineLock()
+    val delete = useCoroutineLock()
 
     fun submitQuestion() = submit {
         var error = false

@@ -3,7 +3,7 @@ package components.profile
 import components.AlertSnackbar
 import components.AppStateContext
 import components.showError
-import hooks.useRunCoroutine
+import hooks.useCoroutineLock
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
@@ -34,7 +34,7 @@ external interface UserSettingsCardProps : Props {
 val UserSettingsName = FC<UserSettingsCardProps> { props ->
     var name by useState(props.user.nick ?: "")
 
-    val change = useRunCoroutine()
+    val change = useCoroutineLock()
 
     fun changeName() = change {
         Client.sendData("/profile/nick", SetNick(name), onError = {props.onError("Could not update name.")}) {
@@ -93,7 +93,7 @@ val UserSettingsEmail = FC<UserSettingsCardProps> { props ->
     // without any verification prompt.
     var pendingEmailChange by useState<String?>(null)
 
-    val change = useRunCoroutine()
+    val change = useCoroutineLock()
 
     fun changeEmail() {
         val changed = (user.email ?: "") != email
@@ -207,7 +207,7 @@ val UserSettingsPassword = FC<UserSettingsCardProps> {props ->
     var newPasswordError by useState<String?>(null)
     var newPasswordRepeatError by useState<String?>(null)
 
-    val change = useRunCoroutine()
+    val change = useCoroutineLock()
 
     fun changePassword() {
         currentPasswordError = null

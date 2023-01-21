@@ -4,7 +4,7 @@ import components.*
 import components.questions.QuestionList
 import components.questions.QuestionTable
 import csstype.*
-import hooks.useRunCoroutine
+import hooks.useCoroutineLock
 import icons.EditIcon
 import kotlinx.js.get
 import mui.material.*
@@ -31,7 +31,7 @@ val RoomInformation = FC<Props> {
     val currentUser = appState.session.user ?: return@FC
 
     var editMode by useState(false)
-    val edit = useRunCoroutine()
+    val edit = useCoroutineLock()
 
     val editRoom: ((BaseRoomInformation) -> Unit) = useMemo(room) {
         { information ->

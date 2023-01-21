@@ -7,7 +7,7 @@ import csstype.number
 import csstype.rem
 import dom.html.HTMLElement
 import dom.html.HTMLInputElement
-import hooks.useRunCoroutine
+import hooks.useCoroutineLock
 import icons.*
 import io.ktor.client.plugins.*
 import io.ktor.client.request.*
@@ -116,7 +116,7 @@ val Comment = FC<CommentProps> { props ->
         editContent = comment.content
     }
 
-    val editSubmit = useRunCoroutine()
+    val editSubmit = useCoroutineLock()
 
     fun editComment() = editSubmit {
         val url = when (comment) {
@@ -272,7 +272,7 @@ val CommentInput = FC<CommentInputProps> { props ->
 
     val room = useContext(RoomContext)
 
-    val submit = useRunCoroutine()
+    val submit = useCoroutineLock()
 
     form {
         onSubmit = {

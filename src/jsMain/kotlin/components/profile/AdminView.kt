@@ -7,7 +7,7 @@ import components.showError
 import csstype.pct
 import hooks.EditEntityDialogProps
 import hooks.useEditDialog
-import hooks.useRunCoroutine
+import hooks.useCoroutineLock
 import icons.AddIcon
 import icons.EditIcon
 import io.ktor.client.request.*
@@ -43,7 +43,7 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
     val errorEmptyEmail = email.isEmpty() && userType != UserType.GUEST
     var errorBadEmail by useState(false)
 
-    val submit = useRunCoroutine()
+    val submit = useCoroutineLock()
 
     fun submitUser() {
         if (errorEmptyEmail) return
@@ -180,7 +180,7 @@ val AdminView = FC<Props> {
 
     val editUserOpen = useEditDialog(EditUserDialog)
 
-    val activate = useRunCoroutine()
+    val activate = useCoroutineLock()
 
     if (appState.appConfig.demoMode) {
         DemoEmailAlert {}
