@@ -169,11 +169,10 @@ val ProfileMenu = FC<Props> {
 external interface RootAppBarProps : Props {
     var hasDrawer: Boolean
     var onDrawerOpen: (() -> Unit)?
+    var isDisconnected: Boolean
 }
 
 val RootAppBar = FC<RootAppBarProps> { props ->
-    val (_, stale) = useContext(AppStateContext)
-
     AppBar {
         position = AppBarPosition.fixed
         Toolbar {
@@ -208,7 +207,7 @@ val RootAppBar = FC<RootAppBarProps> { props ->
                         }
                     }
             }
-            if (stale) {
+            if (props.isDisconnected) {
                 Chip {
                     this.color = ChipColor.error
                     this.label = ReactNode("Disconnected")

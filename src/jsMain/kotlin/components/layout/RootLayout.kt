@@ -18,7 +18,7 @@ import utils.byTheme
 import utils.themed
 
 val RootLayout = FC<Props> {
-    val (appState, _) = useContext(AppStateContext)
+    val (appState, stale) = useContext(AppStateContext)
     var drawerOpen by useState(false)
 
     val theme = mui.material.styles.useTheme<mui.material.styles.Theme>().breakpoints.up(permanentBreakpoint)
@@ -42,6 +42,7 @@ val RootLayout = FC<Props> {
             key = "appbar"
             hasDrawer = true
             onDrawerOpen = { drawerOpen = true }
+            isDisconnected = stale
         }
 
         Sidebar {

@@ -40,7 +40,6 @@ external interface LoginFormProps : Props {
 }
 
 val LoginForm = FC<LoginFormProps> { props ->
-    val (_, stale) = useContext(AppStateContext)
     var email by useState<String>(props.prefilledEmail ?: "")
     var password by useState<String>("")
 
@@ -115,7 +114,6 @@ val LoginForm = FC<LoginFormProps> { props ->
                 }
                 error = emailError != null
                 value = email
-                disabled = stale
                 onChange = {
                     email = it.eventValue()
                 }
@@ -135,7 +133,6 @@ val LoginForm = FC<LoginFormProps> { props ->
                     type = InputType.password
                     label = ReactNode("Password")
                     value = password
-                    disabled = stale
                     helperText = if (passwordError != null) {
                         ReactNode(passwordError!!)
                     } else {
@@ -198,7 +195,7 @@ val LoginForm = FC<LoginFormProps> { props ->
         Button {
             variant = ButtonVariant.contained
             fullWidth = true
-            disabled = stale || emailSent || login.running
+            disabled = emailSent || login.running
             onClick = { attemptLogin() }
             +"Log in"
         }
@@ -276,8 +273,6 @@ external interface LoginByUserSelectFormProps : Props {
 }
 
 val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
-
-    val (appState, stale) = useContext(AppStateContext)
     var chosenUser by useState<User?>(null)
     var users by useState<ReadonlyArray<User>?>(null)
     var open by useState(false)
@@ -342,7 +337,7 @@ val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
     Button {
         variant = ButtonVariant.contained
         fullWidth = true
-        disabled = stale || chosenUser == null || login.running
+        disabled = chosenUser == null || login.running
         onClick = { attemptLogin() }
         +"Log in"
     }
@@ -359,6 +354,5 @@ val LoginByUserSelectForm = FC<LoginByUserSelectFormProps> { props ->
         }
 
         LoginByUserSelectInner {+props}
-
     }
 }

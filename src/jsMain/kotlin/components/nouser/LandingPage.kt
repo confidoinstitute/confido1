@@ -40,7 +40,6 @@ val LandingPage = FC<Props> {
 }
 
 val DevModeSection = FC<Props> {
-    val (appState, stale) = useContext(AppStateContext)
     var hidden by useState(false)
 
     if (hidden) return@FC
@@ -78,14 +77,12 @@ val DevModeSection = FC<Props> {
                     onClick = { runCoroutine {
                         Client.sendData("/login", PasswordLogin(DebugAdmin.email, DebugAdmin.password), onError = {showError?.invoke(it)}) {}
                     }}
-                    disabled = stale
                     +"Log in as debug admin"
                 }
                 Button {
                     onClick = { runCoroutine {
                         Client.sendData("/login", PasswordLogin(DebugAdmin.email, DebugAdmin.password), onError = {showError?.invoke(it)}) {}
                     }}
-                    disabled = stale
                     +"Log in as debug member"
                 }
 
