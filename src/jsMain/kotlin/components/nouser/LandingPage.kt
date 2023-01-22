@@ -18,9 +18,6 @@ import utils.runCoroutine
 import utils.themed
 
 val LandingPage = FC<Props> {
-    val (appState, stale) = useContext(AppStateContext)
-
-
     if (appConfig.demoMode) {
         Typography {
             align = TypographyAlign.center
