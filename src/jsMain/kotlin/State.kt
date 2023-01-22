@@ -4,7 +4,7 @@ import browser.window
 import rooms.Room
 import rooms.RoomPermission
 import tools.confido.serialization.confidoJSON
-import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.decodeFromDynamic
 
 class ClientState(var sentState: SentState)
     : GlobalState(), BaseState by sentState {
@@ -20,4 +20,4 @@ fun Room.havePermission(permission: RoomPermission): Boolean {
     return hasPermission(myself, permission)
 }
 
-actual val appConfig: AppConfig = confidoJSON.decodeFromString(window.asDynamic().appConfig as String)
+actual val appConfig: AppConfig = confidoJSON.decodeFromDynamic(window.asDynamic().appConfig)

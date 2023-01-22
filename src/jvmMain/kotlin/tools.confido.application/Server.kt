@@ -58,7 +58,7 @@ fun HTML.index() {
     }
     body {
         script(type="text/javascript") { unsafe { +"bundleVer= '${jsHash}'" } }
-        script(type="text/javascript") { unsafe { +"appConfig= '${Json.encodeToString(appConfig)}'" } }
+        script(type="text/javascript") { unsafe { +"appConfig= ${Json.encodeToString(appConfig)}" } }
         script(src = "/static/confido1.js?${jsHash}") {}
     }
 }
