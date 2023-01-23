@@ -1,6 +1,7 @@
 package tools.confido.state
 
 import browser.window
+import kotlinx.serialization.ExperimentalSerializationApi
 import rooms.Room
 import rooms.RoomPermission
 import tools.confido.serialization.confidoJSON

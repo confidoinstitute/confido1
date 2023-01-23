@@ -4,7 +4,7 @@ import components.layout.RootAppBar
 import components.nouser.EmailLogin
 import components.nouser.LandingPage
 import components.profile.VerifyToken
-import components.rooms.RoomInviteForm
+import components.rooms.RoomInviteNoUser
 import mui.material.Toolbar
 import mui.system.*
 import react.*
@@ -35,7 +35,7 @@ val NoUserLayout = FC<Props> {
             }
             Route {
                 path = "room/:roomID/invite/:inviteToken"
-                this.element = RoomInviteForm.create()
+                this.element = RoomInviteNoUser.create()
             }
             Route {
                 path = "password_reset"

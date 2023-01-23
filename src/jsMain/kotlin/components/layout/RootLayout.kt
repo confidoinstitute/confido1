@@ -5,9 +5,9 @@ import components.nouser.EmailLoginAlreadyLoggedIn
 import components.profile.AdminView
 import components.profile.UserSettings
 import components.profile.VerifyToken
-import components.rooms.RoomInviteForm
 import components.rooms.NewRoom
 import components.rooms.Room
+import components.rooms.RoomInviteLoggedIn
 import csstype.*
 import mui.material.*
 import mui.system.*
@@ -77,7 +77,7 @@ val RootLayout = FC<Props> {
                     }
                     Route {
                         path = "room/:roomID/invite/:inviteToken"
-                        this.element = RoomInviteForm.create()
+                        this.element = RoomInviteLoggedIn.create()
                     }
                     Route {
                         path = "email_verify"
