@@ -197,6 +197,30 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK)
     }
 
+    postST("/questions/{qID}/comments/{cID}/edit") {
+        withQuestion {
+            val id = call.parameters["cID"]
+            val comment = serverState.questionComments[question.ref]?.get(id)
+                ?: notFound("No such comment.")
+
+            val newContent: String = call.receive()
+            if (newContent.isEmpty()) unauthorized("No comment content.")
+
+            if (!room.hasPermission(
+                    user,
+                    RoomPermission.MANAGE_COMMENTS
+                ) && !(comment.user eqid user)
+            ) unauthorized("No rights.")
+
+            serverState.questionCommentManager.modifyEntity(comment.ref) {
+                it.copy(content = newContent, modified = unixNow())
+            }
+        }
+
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
+
     deleteST("/questions/{qID}/comments/{cID}") {
         withQuestion {
             serverState.withMutationLock {

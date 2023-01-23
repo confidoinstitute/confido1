@@ -30,6 +30,14 @@ object Client {
         httpClient.postJson(url, payload, block)
     }
 
+    inline fun postRawData(url: String, payload: String, crossinline block: (HttpRequestBuilder.() -> Unit) = {})
+            = CoroutineScope(EmptyCoroutineContext).launch {
+        httpClient.post(url) {
+            setBody(payload)
+            block()
+        }
+    }
+
     suspend inline fun <reified T, reified R> postDataAndReceive(url: String, payload: T, block: (HttpRequestBuilder.() -> Unit) = {}): R {
         return httpClient.postJson(url, payload, block).body()
     }

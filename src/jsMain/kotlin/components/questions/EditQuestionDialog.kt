@@ -395,7 +395,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                             marginTop = themed(1)
                             marginLeft = 42.px
                         }
-                        ValueEntry  {
+                        ValueEntry {
                             this.key = "resolvedValueEntry"
                             this.label = "Resolution"
                             this.space = answerSpace

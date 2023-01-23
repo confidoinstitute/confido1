@@ -3,6 +3,7 @@ package components.layout
 import components.layout.RootAppBar
 import components.nouser.EmailLogin
 import components.nouser.LandingPage
+import components.profile.VerifyToken
 import components.rooms.RoomInviteForm
 import mui.material.Toolbar
 import mui.system.*
@@ -35,6 +36,16 @@ val NoUserLayout = FC<Props> {
             Route {
                 path = "room/:roomID/invite/:inviteToken"
                 this.element = RoomInviteForm.create()
+            }
+            Route {
+                path = "password_reset"
+                this.element = VerifyToken.create {
+                    url = "/profile/password/reset"
+                    failureTitle = "Password undo failed"
+                    successTitle = "Password change undone"
+                    failureText = "The link is expired or invalid."
+                    successText = "Your password has been successfully undone. Please log-in again by e-mail."
+                }
             }
         }
     }

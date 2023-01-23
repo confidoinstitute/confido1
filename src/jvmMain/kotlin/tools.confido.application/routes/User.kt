@@ -16,6 +16,7 @@ import tools.confido.refs.*
 import tools.confido.state.*
 import tools.confido.utils.*
 import users.*
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
 data class UserContext(val user: User, val session: UserSession, val transientData: TransientData)
@@ -175,7 +176,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
     postST("/profile/email/verify") {
         assertSession()
 
-        val validation: EmailVerification = call.receive()
+        val validation: TokenVerification = call.receive()
         val verificationLink = serverState.verificationLinkManager.byToken[validation.token] ?: unauthorized("No such token exists.")
         if (verificationLink.isExpired()) unauthorized("The token has already expired.")
 
@@ -194,6 +195,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
     // Change password
     postST("/profile/password") {
         withUser {
+            if (user.email == null) badRequest("You cannot reset password without e-mail.")
             val passwordChange: SetPassword = call.receive()
             if (user.password != null) {
                 if (passwordChange.currentPassword == null || !Password.check(
@@ -216,10 +218,74 @@ fun profileRoutes(routing: Routing) = routing.apply {
                 it.copy(password = hash)
             }
 
+            // Prepare password change notification
+            val expiration = 7.days
+            val expiresAt = Clock.System.now().plus(expiration)
+            val link = PasswordResetLink(
+                token = generateToken(),
+                user = user.ref,
+                expiryTime = expiresAt,
+            )
+            try {
+                if (user.email != null)
+                    call.mailer.sendPasswordChangedEmail(user.email, link)
+            } catch (e: org.simplejavamail.MailException) {
+                //serviceUnavailable("Password change e-mail failed to send")
+                call.application.log.info("The link to undo password change for ${user.ref} is ${link.link("")}")
+            }
+            serverState.passwordResetLinkManager.insertEntity(link)
+
+            // TODO: Anti password undo spam DDoS
+
             call.application.log.info("User ${user.ref} changed password.")
         }
 
         call.transientUserData?.refreshSessionWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
+    // Remove password
+    postST("/profile/password/reset") {
+        withUser {
+            if (user.email == null) badRequest("You cannot reset password without e-mail.")
+            // Prepare password change notification
+            val expiration = 15.minutes
+            val expiresAt = Clock.System.now().plus(expiration)
+            val link = PasswordResetLink(
+                token = generateToken(),
+                user = user.ref,
+                expiryTime = expiresAt,
+            )
+            try {
+                call.mailer.sendPasswordResetEmail(user.email, link, expiration)
+            } catch (e: org.simplejavamail.MailException) {
+                serviceUnavailable("Password reset e-mail failed to send")
+            }
+
+            serverState.passwordResetLinkManager.insertEntity(link)
+        }
+
+        call.transientUserData?.refreshSessionWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
+    // Undo password change
+    postST("/profile/password/reset") {
+        assertSession()
+
+        val validation: TokenVerification = call.receive()
+        val verificationLink = serverState.passwordResetLinkManager.byToken[validation.token] ?: unauthorized("No such token exists.")
+        if (verificationLink.isExpired()) unauthorized("The token has already expired.")
+
+        serverState.withTransaction {
+            serverState.userManager.modifyEntity(verificationLink.user) {
+                it.copy(password = null)
+            }
+
+            // Verification links are single-use
+            serverState.passwordResetLinkManager.deleteEntity(verificationLink.ref)
+        }
+
+        // TODO invalidate all user's sessions
+        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Change nick

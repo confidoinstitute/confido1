@@ -4,6 +4,7 @@ import components.AppStateContext
 import components.UserAvatar
 import components.userListItemText
 import csstype.AlignItems
+import csstype.number
 import csstype.rem
 import kotlinx.js.Object
 import kotlinx.js.ReadonlyArray
@@ -137,6 +138,9 @@ val UserInviteForm = FC<Props> {
 
         val autocomplete: FC<AutocompleteProps<UserAutocomplete>> = Autocomplete
         autocomplete {
+            sx {
+                flexGrow = number(1.0)
+            }
             multiple = true
             options = users
             value = chosenUsers
@@ -153,7 +157,6 @@ val UserInviteForm = FC<Props> {
             onChange = { _, value: Array<UserAutocomplete>, _, _ -> chosenUsers = value }
             this.filterSelectedOptions = true
             this.filterOptions = filterOptions
-            fullWidth = true
             onInputChange = { _, s, _ -> inputText = s }
             onOpen = { hasHighlight = false }
             onClose = { _, _ -> hasHighlight = false }
@@ -188,7 +191,7 @@ val UserInviteForm = FC<Props> {
 
         Button {
             sx {
-                width = 7.rem
+                width = 6.rem
             }
             disabled = chosenUsers.isEmpty() || stale
             if (chosenUsers.any { it is NewUser }) {

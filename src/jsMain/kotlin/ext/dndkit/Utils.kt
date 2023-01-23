@@ -1,6 +1,7 @@
 package dndkit
 
 import dndkit.sortable.SyntheticListenerMap
+import kotlinx.js.Object
 import react.ChildrenBuilder
 
 
@@ -8,7 +9,7 @@ import react.ChildrenBuilder
 fun ChildrenBuilder.applyListeners(listeners: SyntheticListenerMap?) {
     // SyntheticListenerMap is Record<string, Function>
     if (listeners != undefined) {
-        val keys = js("Object").keys(listeners.asDynamic()).unsafeCast<Array<String>>()
+        val keys = Object.keys(listeners)
         keys.map { this.asDynamic()[it] = listeners.asDynamic()[it] }
     }
 }

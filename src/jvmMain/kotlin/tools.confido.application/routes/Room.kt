@@ -239,6 +239,28 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
+    postST("/rooms/{rID}/comments/{cID}/edit") {
+        withRoom {
+            val id = call.parameters["cID"]
+            val comment = serverState.roomComments[room.ref]?.get(id) ?: notFound("No such comment.")
+
+            val newContent: String = call.receive()
+            if (newContent.isEmpty()) unauthorized("No comment content.")
+
+            if (!room.hasPermission(
+                    user,
+                    RoomPermission.MANAGE_COMMENTS
+                ) && !(comment.user eqid user)
+            ) unauthorized("You cannot delete this comment.")
+
+            serverState.roomCommentManager.modifyEntity(comment.ref) {
+                it.copy(content = newContent, modified = unixNow())
+            }
+        }
+
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
     deleteST("/rooms/{rID}/comments/{cID}") {
         withRoom {
             serverState.withMutationLock {

@@ -55,6 +55,19 @@ data class EmailVerificationLink(
     fun link(origin: String) = "$origin/email_verify?t=$token"
 }
 
+@Serializable
+data class PasswordResetLink(
+    @SerialName("_id")
+    override val id: String = "", // generated on insert
+    val token: String,
+    val user: Ref<User>,
+    val expiryTime: Instant,
+) : ImmediateDerefEntity {
+    fun isExpired() = now() > expiryTime
+
+    fun link(origin: String) = "$origin/password_reset?t=$token"
+}
+
 enum class PasswordCheckResult {
     OK,
     TOO_SHORT,

@@ -22,7 +22,15 @@ enum class CheckStatus {
     SUCCESS,
 }
 
-val VerifyEmail = FC<Props> {
+external interface VerifyTokenProps : Props {
+    var url: String
+    var successTitle: String
+    var successText: String
+    var failureTitle: String
+    var failureText: String
+}
+
+val VerifyToken = FC<VerifyTokenProps> { props ->
     val searchParams by useSearchParams()
     val navigate = useNavigate()
     val verificationToken = searchParams.get("t") ?: ""
@@ -31,7 +39,7 @@ val VerifyEmail = FC<Props> {
 
     useEffectOnce {
         CoroutineScope(EmptyCoroutineContext).launch {
-            val response = Client.httpClient.postJson("/profile/email/verify", EmailVerification(verificationToken)) {}
+            val response = Client.httpClient.postJson(props.url, TokenVerification(verificationToken)) {}
             status = if (response.status == HttpStatusCode.OK) {
                 CheckStatus.SUCCESS
             } else {
@@ -56,17 +64,17 @@ val VerifyEmail = FC<Props> {
             Alert {
                 severity = AlertColor.error
                 AlertTitle {
-                    +"Email verification failed"
+                    +props.failureTitle
                 }
-                +"The verification link is expired or invalid."
+                +props.failureText
             }
         } else if (status == CheckStatus.SUCCESS) {
             Alert {
                 severity = AlertColor.success
                 AlertTitle {
-                    +"Email verification success"
+                    +props.successTitle
                 }
-                +"Your email address has been successfully verified."
+                +props.successText
             }
         }
 

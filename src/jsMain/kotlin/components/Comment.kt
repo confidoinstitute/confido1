@@ -1,14 +1,18 @@
 package components
 
+import Client
 import components.rooms.RoomContext
 import csstype.AlignItems
-import csstype.rem
 import csstype.number
+import csstype.rem
+import dom.html.HTMLElement
+import dom.html.HTMLInputElement
 import icons.*
 import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.js.jso
 import mui.lab.LoadingButton
 import mui.lab.LoadingPosition
 import mui.material.*
@@ -19,25 +23,64 @@ import payloads.requests.CreateComment
 import payloads.responses.CommentInfo
 import react.*
 import react.dom.html.ButtonType
-import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.form
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.strong
 import react.dom.onChange
 import rooms.RoomPermission
-import tools.confido.question.Comment
 import tools.confido.question.Prediction
 import tools.confido.question.QuestionComment
 import tools.confido.question.RoomComment
 import tools.confido.refs.deref
 import tools.confido.refs.eqid
-import tools.confido.refs.ref
-import tools.confido.state.globalState
 import tools.confido.utils.unixNow
 import utils.*
 import web.timers.clearInterval
 import web.timers.setInterval
+import web.timers.setTimeout
 import kotlin.coroutines.EmptyCoroutineContext
+
+external interface CommentManageMenuProps : Props {
+    var disabled: Boolean
+    var onEdit: (() -> Unit)?
+    var onDelete: (() -> Unit)?
+}
+
+val CommentManageMenu = FC<CommentManageMenuProps> {props ->
+    var menuAnchor by useState<HTMLElement?>(null)
+    var menuOpen by useState(false)
+
+    IconButton {
+        disabled = props.disabled
+        onClick = {menuOpen = true; menuAnchor = it.currentTarget}
+        MoreVertIcon {}
+    }
+    Menu {
+        anchorEl = menuAnchor.asDynamic()
+        open = menuOpen
+        onClose = {menuOpen = false}
+        MenuItem {
+            onClick = {props.onEdit?.invoke(); menuOpen = false}
+            disabled = props.disabled
+            ListItemIcon {
+                EditIcon {}
+            }
+            ListItemText {
+                +"Edit…"
+            }
+        }
+        MenuItem {
+            onClick = { props.onDelete?.invoke(); menuOpen = false }
+            disabled = props.disabled
+            ListItemIcon {
+                DeleteIcon {}
+            }
+            ListItemText {
+                +"Delete"
+            }
+        }
+    }
+}
 
 external interface CommentProps : Props {
     var commentInfo: CommentInfo
@@ -51,8 +94,27 @@ val Comment = FC<CommentProps> { props ->
     val user = comment.user.deref() ?: return@FC
 
     var textAgo by useState("")
-    val canDelete =
+
+    val canManage =
         (user eqid currentUser || appState.hasPermission(room, RoomPermission.MANAGE_COMMENTS)) && !stale
+    var editMode by useState(false)
+    var editContent by useState("")
+
+    fun deleteComment() {
+        val url = when(comment) {
+            is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}"
+            is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}"
+        }
+        CoroutineScope(EmptyCoroutineContext).launch {
+            Client.httpClient.delete(url) {}
+        }
+    }
+
+    fun editComment() {
+        editMode = true
+        editContent = comment.content
+    }
+
     val liked = props.commentInfo.likedByMe
 
     useEffect(comment.timestamp) {
@@ -75,36 +137,76 @@ val Comment = FC<CommentProps> { props ->
         CardHeader {
             val name = user.nick ?: "Anonymous"
             title = ReactNode(name)
-            subheader =
-            Tooltip.create {
-                this.title = ReactNode(comment.timestamp.toDateTime())
-                span {
-                    +textAgo
+            subheader = Tooltip.create {
+                    this.title = ReactNode(comment.timestamp.toDateTime() + if (comment.modified != null) ", edited ${comment.modified?.toDateTime() ?: ""}" else "")
+                    span {
+                        +textAgo
+                        if (comment.modified != null) +" (edited)"
+                    }
                 }
-            }
             avatar = UserAvatar.create {
                 this.user = user
             }
-            action = Stack.create {
-                direction = responsive(StackDirection.row)
-                if (canDelete) {
-                    IconButton {
-                        onClick = {
-                            val url = when(comment) {
-                                is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}"
-                                is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}"
-                            }
-                            CoroutineScope(EmptyCoroutineContext).launch {
-                                Client.httpClient.delete(url) {}
-                            }
-                        }
-                        DeleteIcon {}
+            action = Fragment.create {
+                if (canManage) {
+                    CommentManageMenu {
+                        disabled = stale
+                        onEdit = ::editComment
+                        onDelete = ::deleteComment
                     }
                 }
             }
         }
         CardContent {
-            TextWithLinks { text = comment.content }
+            if (editMode)
+                //ClickAwayListener {
+                    //onClickAway = {editMode = false}
+                    form {
+                        onSubmit = {
+                            when (comment) {
+                                is QuestionComment ->
+                                    Client.postRawData(
+                                        "/questions/${comment.question.id}/comments/${comment.id}/edit",
+                                        editContent
+                                    )
+                                is RoomComment ->
+                                    Client.postRawData(
+                                        "/rooms/${comment.room.id}/comments/${comment.id}/edit",
+                                        editContent
+                                    )
+                            }
+                            editMode = false
+                        }
+                        TextField {
+                            inputRef =
+                                { el: HTMLInputElement? -> console.log(el); setTimeout({ el?.focus() }, 0) }.asDynamic()
+                            variant = FormControlVariant.standard
+                            fullWidth = true
+                            value = editContent
+                            onChange = { editContent = it.eventValue() }
+                            onKeyDown = { if (it.key == "Escape") editMode = false; it.stopPropagation() }
+                            this.asDynamic().InputProps = jso<InputProps> {
+                                startAdornment = InputAdornment.create {
+                                    position = InputAdornmentPosition.start
+                                    IconButton {
+                                        onClick = {editMode = false}
+                                        CloseIcon {}
+                                    }
+                                }
+                                endAdornment = InputAdornment.create {
+                                    position = InputAdornmentPosition.end
+                                    IconButton {
+                                        type = ButtonType.submit
+                                        disabled = stale || editContent.isEmpty()
+                                        SendIcon {}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                //}
+            else
+                TextWithLinks { text = comment.content }
         }
         if (comment is QuestionComment && comment.prediction != null) {
             Divider {}
@@ -126,7 +228,6 @@ val Comment = FC<CommentProps> { props ->
             }
         }
         CardActions {
-
             IconButton {
                 Badge {
                     badgeContent = (props.commentInfo.likeCount).let {
@@ -238,7 +339,7 @@ val CommentInput = FC<CommentInputProps> { props ->
                             flexGrow = number(1.0)
                         }
                         FormControlLabel {
-                            label = ReactHTML.span.create {
+                            label = span.create {
                                 +"Attach prediction "
                                 props.prediction?.let {
                                     Typography {

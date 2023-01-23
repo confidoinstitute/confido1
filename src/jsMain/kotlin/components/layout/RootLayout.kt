@@ -4,7 +4,7 @@ import components.AppStateContext
 import components.nouser.EmailLoginAlreadyLoggedIn
 import components.profile.AdminView
 import components.profile.UserSettings
-import components.profile.VerifyEmail
+import components.profile.VerifyToken
 import components.rooms.RoomInviteForm
 import components.rooms.NewRoom
 import components.rooms.Room
@@ -82,7 +82,23 @@ val RootLayout = FC<Props> {
                     }
                     Route {
                         path = "email_verify"
-                        this.element = VerifyEmail.create()
+                        this.element = VerifyToken.create {
+                            url = "/profile/email/verify"
+                            failureTitle = "Email verification failed"
+                            successTitle = "Email verification success"
+                            failureText = "The verification link is expired or invalid."
+                            successText = "Your email address has been successfully verified."
+                        }
+                    }
+                    Route {
+                        path = "password_reset"
+                        this.element = VerifyToken.create {
+                            url = "/profile/password/reset"
+                            failureTitle = "Password undo failed"
+                            successTitle = "Password change undone"
+                            failureText = "The link is expired or invalid."
+                            successText = "Your password has been successfully undone. Please log-in again by e-mail."
+                        }
                     }
                     Route {
                         path = "email_login"
