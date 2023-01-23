@@ -45,6 +45,10 @@ class GeneratedList<T>(override val size: Int, val gen: (Int) -> T) : List<T> {
 
 }
 
+fun String.mapFirst(f: (Char) -> String): String = if (isEmpty()) "" else f(this[0]) + this.substring(1)
+fun String.capFirst() = mapFirst { it.uppercase() }
+fun String.uncapFirst() = mapFirst { it.lowercase() }
+
 val alnum = ('a'..'z').toList() + ('0'..'9').toList()
 fun randomString(length: Int) =
     (1..length).map {

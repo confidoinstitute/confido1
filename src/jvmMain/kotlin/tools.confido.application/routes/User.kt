@@ -18,17 +18,19 @@ import tools.confido.utils.*
 import users.*
 import kotlin.time.Duration.Companion.minutes
 
-data class UserContext(val user: User)
+data class UserContext(val user: User, val session: UserSession, val transientData: TransientData)
 
 suspend fun <T> RouteBody.withUser(body: suspend UserContext.() -> T): T {
-    val user = call.userSession?.user ?: unauthorized("Not logged in.")
-    return body(UserContext(user))
+    val session = call.userSession ?: unauthorized("Not logged in.")
+    val user = session.user ?: unauthorized("Not logged in.")
+    val transientData = call.transientUserData ?: unauthorized("Not logged in.")
+    return body(UserContext(user, session, transientData))
 }
-suspend fun <T> RouteBody.withAdmin(body: suspend UserContext.() -> T): T{
-    val user = call.userSession?.user ?: unauthorized("Not logged in.")
-    if (user.type != UserType.ADMIN) unauthorized("Cannot manage users.")
-    return body(UserContext(user))
-}
+suspend fun <T> RouteBody.withAdmin(body: suspend UserContext.() -> T): T =
+    withUser {
+        if (user.type != UserType.ADMIN) unauthorized("This operation requires administrator privileges.")
+        body(this@withUser)
+    }
 
 fun RouteBody.assertSession() = call.userSession ?: badRequest("Missing session.")
 

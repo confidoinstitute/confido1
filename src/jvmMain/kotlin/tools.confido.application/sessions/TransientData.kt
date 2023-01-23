@@ -10,6 +10,7 @@ val globalWebsocketRefresh = MutableStateFlow(false)
 class TransientData {
     private val _websocketRefreshChannel: MutableStateFlow<Boolean> = MutableStateFlow(false)
     private val websocketRefreshFlow: StateFlow<Boolean> = _websocketRefreshChannel.asStateFlow()
+    var activePresenterWindows: Int = 0
 
     fun refreshSessionWebsockets() {
         _websocketRefreshChannel.update { !it }

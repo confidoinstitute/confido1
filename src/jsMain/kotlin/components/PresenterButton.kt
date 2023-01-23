@@ -1,44 +1,60 @@
 package components
 
+import browser.window
 import components.rooms.RoomContext
 import icons.ProjectorScreenIcon
 import icons.ProjectorScreenOutlineIcon
 import mui.material.*
 import react.*
+import react.dom.html.ReactHTML.p
 import rooms.Room
 import tools.confido.refs.Ref
 import tools.confido.refs.ref
+import tools.confido.state.EmptyPV
 import tools.confido.state.PresenterView
 import tools.confido.state.clientState
+import tools.confido.utils.capFirst
+import tools.confido.utils.uncapFirst
 
 external interface PresenterButtonProps : Props {
     var view: PresenterView
     var what: String // description (noun phrase) of the thing being shown (e.g. "Crowd prediction graph")
-    var icon: ReactNode?
-    var iconActive: ReactNode?
 }
 
-fun setPresenterView(room: Ref<Room>, view: PresenterView) {
-
+fun setPresenterView(view: PresenterView) {
+    Client.postData("/presenter/set", view)
 }
 
 enum class  PresenterButtonState {
     NORMAL, SNACKBAR_OPEN, DIALOG_OPEN
 }
 
+fun openPresenterWindow() {
+    // this seems to force new window (not tab) in both Firefox and Chrome
+    window.open("/presenter", "_blank", "popup")
+}
+
 val PresenterButton = FC <PresenterButtonProps> { props->
     var state by useState(PresenterButtonState.NORMAL)
     val room = useContext(RoomContext)
+    val (appState, stale) = useContext(AppStateContext)
+    val isActive = appState.session.presenterInfo?.view == props.view && appState.presenterWindowActive
     Tooltip {
-        title = ReactNode("Show ${props.what} in a presenter window")
+        title = if (isActive)
+            ReactNode("${props.what.capFirst()} is shown in a presentation window. Click to hide.")
+        else
+            ReactNode("Show ${props.what.uncapFirst()} in a presentation window")
         IconButton {
-            if (room.presenterInfo.view == props.view)
-                +(props.iconActive ?: props.icon ?: ProjectorScreenIcon.create())
+            disabled = stale
+            if (isActive)
+                ProjectorScreenIcon{}
             else
-                +(props.icon ?: ProjectorScreenOutlineIcon.create())
+                ProjectorScreenOutlineIcon{}
             onClick = {
-                if (room.presenterInfo.isPresenterWindowOpen) {
-                    setPresenterView(room.ref, props.view)
+                if (isActive) {
+                    setPresenterView(EmptyPV)
+                } else if (appState.presenterWindowActive) {
+                    setPresenterView(props.view)
                     state = PresenterButtonState.SNACKBAR_OPEN
                 } else {
                     state = PresenterButtonState.DIALOG_OPEN
@@ -47,9 +63,11 @@ val PresenterButton = FC <PresenterButtonProps> { props->
         }
     }
     Snackbar {
-        message = ReactNode("${props.what} displayed in existing presenter window.")
+        message = ReactNode("${props.what.capFirst()} displayed in existing presentation window.")
         action = Button.create {
-            +"Open new presenter window"
+            +"Open new presentation window"
+            color = ButtonColor.secondary
+            onClick = { openPresenterWindow() }
         }
         autoHideDuration = 5000
         open = (state == PresenterButtonState.SNACKBAR_OPEN)
@@ -57,26 +75,37 @@ val PresenterButton = FC <PresenterButtonProps> { props->
     }
     Dialog {
         open = (state == PresenterButtonState.DIALOG_OPEN)
-        DialogTitleWithCloseButton {
-            +"Open in presenter view"
-            onClose = { if (state == PresenterButtonState.DIALOG_OPEN) state = PresenterButtonState.NORMAL }
+        DialogTitle {
+            +"Presentation mode"
+            DialogCloseButton {
+                onClose = { if (state == PresenterButtonState.DIALOG_OPEN) state = PresenterButtonState.NORMAL }
+            }
         }
-        DialogContentText{
-            // TODO  link to an explanatory article
-            +"This will open a new browser window/tab showing the ${props.what}. This is most useful for showing "
-            +" things on a projector. You can simply drag the window/tab to the projector screen and then make it"
-            +" full screen. Alternatively, you can copy a link to the presenter view and then e.g. open it on another"
-            +" device."
+        DialogContent {
+            DialogContentText {
+                // TODO  link to an explanatory article
+                +"This will open a new browser window showing the ${props.what}."
+            }
+            DialogContentText {
+
+                    + "This is most useful for presenting "
+                    +" things on a projector. You can simply drag the window to the projector screen and then make it"
+                    +" full screen by pressing F11."
+
+                // TODO not implemented: sharable presentation view
+                // + " Alternatively, you can copy a link to the presenter view and then e.g. open it on another"
+                // + +" device."
+            }
         }
         DialogActions {
             Button {
-                +"Open presenter window"
-                onClick = {}
+                +"Open presentation window"
+                onClick = { setPresenterView(props.view); openPresenterWindow(); state = PresenterButtonState.NORMAL }
             }
-            Button {
-                +"Copy link"
-                onClick = {}
-            }
+            //Button {
+            //    +"Copy link"
+            //    onClick = {}
+            //}
         }
     }
 }

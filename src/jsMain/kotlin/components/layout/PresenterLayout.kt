@@ -15,11 +15,7 @@ val PresenterLayout = FC<Props> {
     val webSocket = useRef<WebSocket>(null)
 
     fun startWebSocket() {
-        val ws = WebSocket(("ws://localhost:8080/state_presenter"))
-
-        fun ping() {
-            ws.send(unixNow().toString())
-        }
+        val ws = WebSocket(("ws://localhost:8080/presenter/track"))
 
         ws.apply {
             onmessage = {

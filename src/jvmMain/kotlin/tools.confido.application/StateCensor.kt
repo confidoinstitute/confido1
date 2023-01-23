@@ -4,6 +4,7 @@ import rooms.InviteLink
 import rooms.Room
 import rooms.RoomMembership
 import rooms.RoomPermission
+import tools.confido.application.sessions.TransientData
 import tools.confido.question.Comment
 import tools.confido.question.Question
 import tools.confido.question.RoomComment
@@ -16,7 +17,7 @@ import users.UserType
 /**
  * @author Ministry of Truth
  */
-class StateCensor(val sess: UserSession) {
+class StateCensor(val sess: UserSession, val transientData: TransientData) {
     val user = sess.user
     val state = serverState
     val referencedUsers: MutableSet<Ref<User>> = mutableSetOf()
@@ -105,6 +106,7 @@ class StateCensor(val sess: UserSession) {
             myPredictions = getMyPredictions(),
             session = sess,
             appConfig = censorAppConfig(),
+            presenterWindowActive = transientData.activePresenterWindows > 0,
         )
     }
 }

@@ -23,8 +23,6 @@ data class Room(
     val inviteLinks: List<InviteLink> = emptyList(),
 ) : ImmediateDerefEntity {
 
-    val presenterInfo get() = globalState.presenterInfo[this.ref] ?: PresenterInfo()
-
     fun findLink(id: String?): InviteLink? {
         if (id == null || id == "") {
             return null

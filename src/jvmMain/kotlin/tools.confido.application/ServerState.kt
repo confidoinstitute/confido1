@@ -56,8 +56,8 @@ object serverState : GlobalState() {
     override val predictorCount: MutableMap<Ref<Question>, Int> = mutableMapOf()
     override val commentCount: MutableMap<Ref<Question>, Int> = mutableMapOf()
     override var appConfig: AppConfig = loadConfig()
-    val presenterByUser: MutableMap<Ref<User>, PresenterInfo> = mutableMapOf() // this does not persist after restart
-    val presenterByToken: MutableMap<String, PresenterInfo> = mutableMapOf() // this does not persist after restart
+    //val presenterByUser: MutableMap<Ref<User>, PresenterInfo> = mutableMapOf() // this does not persist after restart
+    //val presenterByToken: MutableMap<String, PresenterInfo> = mutableMapOf() // this does not persist after restart
 
     // Now, for simplicity, serialize all mutations
     val mutationMutex = Mutex()

@@ -11,6 +11,7 @@ data class UserSession(
     override val id: String = "",
     val userRef: Ref<User>? = null,
     val language: String = "en",
+    val presenterInfo: PresenterInfo? = null,
 ) : ImmediateDerefEntity {
     // this is done often enough to warrant a shortcut
     val user: User?
