@@ -93,7 +93,6 @@ fun ChildrenBuilder.usePresenterOpener(): ((PresenterView)->Unit) {
 }
 
 val PresenterButton = FC <PresenterButtonProps> { props->
-    val room = useContext(RoomContext)
     val (appState, stale) = useContext(AppStateContext)
     val isActive = appState.session.presenterInfo?.view == props.view && appState.presenterWindowActive
     val openPresenter = usePresenterOpener()

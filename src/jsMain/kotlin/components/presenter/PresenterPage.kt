@@ -5,6 +5,7 @@ import react.Props
 import tools.confido.state.EmptyPV
 import tools.confido.state.InviteLinkPV
 import tools.confido.state.PresenterView
+import tools.confido.state.QuestionPV
 
 external interface PresenterPageProps<V: PresenterView> : Props {
     var view: V
@@ -20,6 +21,7 @@ typealias PresenterPageType = FC<PresenterPageProps<PresenterView>>
 val view2page = mapOf(
     EmptyPV::class to EmptyPP as PresenterPageType,
     InviteLinkPV::class to InviteLinkPP as PresenterPageType,
+    QuestionPV::class to QuestionPP as PresenterPageType,
 )
 
 @Suppress("UNCHECKED_CAST_TO_EXTERNAL_INTERFACE", "UNCHECKED_CAST")

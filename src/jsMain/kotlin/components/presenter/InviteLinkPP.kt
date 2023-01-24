@@ -4,6 +4,7 @@ import csstype.*
 import ext.qrcodereact.QRCodeSVG
 import emotion.react.css
 import hooks.useWebSocket
+import mui.material.Box
 import mui.material.Typography
 import mui.material.styles.TypographyVariant
 import mui.system.sx
@@ -12,7 +13,6 @@ import react.FC
 import react.dom.html.ReactHTML.i
 import tools.confido.refs.deref
 import tools.confido.state.InviteLinkPV
-import utils.AUTO
 import web.location.location
 
 val InviteLinkPP = FC<PresenterPageProps<InviteLinkPV>> { props->
@@ -20,45 +20,39 @@ val InviteLinkPP = FC<PresenterPageProps<InviteLinkPV>> { props->
     val link = room.inviteLinks.firstOrNull { it.id == props.view.id } ?: return@FC
     val url = link.link(location.origin, room)
     val ws = useWebSocket<String>("/state/rooms/${room.id}/invites/${link.id}/shortlink")
-    mui.material.Box {
+
+    mui.material.Stack {
         sx {
-            display = Display.flex
-            justifyContent = JustifyContent.spaceAround
+            alignItems = AlignItems.center
+            justifyContent = JustifyContent.center
+            gap = 20.pt
             width = 100.pct
             height = 100.pct
         }
-        mui.material.Stack {
+        Typography {
+            variant = TypographyVariant.h4
+            +"Join Confido room "
+        }
+        Typography {
+            variant = TypographyVariant.h3
+            i { +room.name }
+        }
+        Box {
             sx {
-                textAlign = TextAlign.center
-                width = 100.pct
-                margin = AUTO
-            }
-            Typography {
-                variant = TypographyVariant.h4
-                +"Join Confido room "
-            }
-            Typography {
-                variant = TypographyVariant.h3
-                i { +room.name }
+                margin = Margin(10.pt, 0.px)
             }
             QRCodeSVG {
                 value = url
                 size = 300
                 level = "M"
-                css {
-                    marginLeft = AUTO
-                    marginRight = AUTO
-                    marginTop =  42.px
-                    marginBottom =  42.px
-                }
             }
-            if (ws is WSData<String>)
-                Typography {
-                    variant = TypographyVariant.h4
-                    +location.origin
-                    +"/join/"
-                    +ws.data
-                }
         }
+        if (ws is WSData<String>)
+            Typography {
+                variant = TypographyVariant.h4
+                +location.origin
+                +"/join/"
+                +ws.data
+            }
     }
 }
