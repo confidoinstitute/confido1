@@ -1,5 +1,6 @@
 package components
 
+import components.presenter.PresenterButton
 import csstype.pct
 import csstype.px
 import hooks.useWebSocket
@@ -18,6 +19,8 @@ import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.Prediction
 import tools.confido.question.Question
+import tools.confido.refs.ref
+import tools.confido.state.GroupPredPV
 
 external interface DistributionSummaryProps : Props {
     var distribution: ProbabilityDistribution?
@@ -144,5 +147,10 @@ val GroupPredButton = FC<GroupPredButtonProps> { props ->
             }
         }
         groupPredContent {}
+        DialogActions {
+            PresenterButton {
+                view = GroupPredPV(props.question.ref)
+            }
+        }
     }
 }

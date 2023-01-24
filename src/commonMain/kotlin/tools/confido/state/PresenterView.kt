@@ -33,6 +33,16 @@ data class QuestionPV(
 }
 
 @Serializable
+@SerialName("groupPred")
+data class GroupPredPV(
+    val question: Ref<Question>,
+    val showResolution: Boolean = false,
+) : PresenterView() {
+    override suspend fun isValid() = question.deref() != null
+    override fun describe() = "group predictions for this question"
+}
+
+@Serializable
 @SerialName("inviteLink")
 data class InviteLinkPV(
     val room: Ref<Room>,
