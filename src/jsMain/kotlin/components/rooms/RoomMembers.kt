@@ -176,7 +176,6 @@ val InvitationMembers = FC<InvitationMembersProps> {props ->
             }
             PresenterButton {
                 view = InviteLinkPV(room.ref, props.invitation.id)
-                what = "invite link and QR code"
             }
             // TODO QR code
             if(false)

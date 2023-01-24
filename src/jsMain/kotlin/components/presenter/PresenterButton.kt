@@ -15,7 +15,6 @@ import tools.confido.utils.uncapFirst
 
 external interface PresenterButtonProps : Props {
     var view: PresenterView
-    var what: String // description (noun phrase) of the thing being shown (e.g. "Crowd prediction graph")
 }
 
 fun setPresenterView(view: PresenterView) {
@@ -100,9 +99,9 @@ val PresenterButton = FC <PresenterButtonProps> { props->
     val openPresenter = usePresenterOpener()
     Tooltip {
         title = if (isActive)
-            ReactNode("${props.what.capFirst()} is shown in a presentation window. Click to hide.")
+            ReactNode("${props.view.describe().capFirst()} is shown in a presentation window. Click to hide.")
         else
-            ReactNode("Show ${props.what.uncapFirst()} in a presentation window")
+            ReactNode("Show ${props.view.describe().uncapFirst()} in a presentation window")
         IconButton {
             disabled = stale
             if (isActive)
