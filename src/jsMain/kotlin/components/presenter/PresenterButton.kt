@@ -1,18 +1,15 @@
-package components
+package components.presenter
 
 import browser.window
+import components.AppStateContext
+import components.DialogCloseButton
 import components.rooms.RoomContext
 import icons.ProjectorScreenIcon
 import icons.ProjectorScreenOutlineIcon
 import mui.material.*
 import react.*
-import react.dom.html.ReactHTML.p
-import rooms.Room
-import tools.confido.refs.Ref
-import tools.confido.refs.ref
 import tools.confido.state.EmptyPV
 import tools.confido.state.PresenterView
-import tools.confido.state.clientState
 import tools.confido.utils.capFirst
 import tools.confido.utils.uncapFirst
 
