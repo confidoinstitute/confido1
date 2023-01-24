@@ -13,12 +13,15 @@ import users.User
 @Serializable
 sealed class PresenterView {
     open suspend fun isValid() = true
+    abstract fun describe(): String
 }
 
 
 @Serializable
 @SerialName("empty")
-object EmptyPV: PresenterView()
+object EmptyPV: PresenterView() {
+    override fun describe() = "blank screen"
+}
 
 @Serializable
 @SerialName("question")
@@ -26,6 +29,7 @@ data class QuestionPV(
     val question: Ref<Question>
 ) : PresenterView() {
     override suspend fun isValid() = question.deref() != null
+    override fun describe() = "question text"
 }
 
 @Serializable
@@ -35,6 +39,7 @@ data class InviteLinkPV(
     val id: String,
 ) : PresenterView() {
     override suspend fun isValid() = room.deref()?.inviteLinks?.any { it.id == this.id } ?: false
+    override fun describe() = "invite link and QR code"
 }
 
 

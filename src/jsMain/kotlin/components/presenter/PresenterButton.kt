@@ -31,36 +31,13 @@ fun openPresenterWindow() {
     window.open("/presenter", "_blank", "popup")
 }
 
-val PresenterButton = FC <PresenterButtonProps> { props->
-    var state by useState(PresenterButtonState.NORMAL)
-    val room = useContext(RoomContext)
+fun ChildrenBuilder.usePresenterOpener(): ((PresenterView)->Unit) {
     val (appState, stale) = useContext(AppStateContext)
-    val isActive = appState.session.presenterInfo?.view == props.view && appState.presenterWindowActive
-    Tooltip {
-        title = if (isActive)
-            ReactNode("${props.what.capFirst()} is shown in a presentation window. Click to hide.")
-        else
-            ReactNode("Show ${props.what.uncapFirst()} in a presentation window")
-        IconButton {
-            disabled = stale
-            if (isActive)
-                ProjectorScreenIcon{}
-            else
-                ProjectorScreenOutlineIcon{}
-            onClick = {
-                if (isActive) {
-                    setPresenterView(EmptyPV)
-                } else if (appState.presenterWindowActive) {
-                    setPresenterView(props.view)
-                    state = PresenterButtonState.SNACKBAR_OPEN
-                } else {
-                    state = PresenterButtonState.DIALOG_OPEN
-                }
-            }
-        }
-    }
+    var state by useState(PresenterButtonState.NORMAL)
+    var view by useState<PresenterView>(EmptyPV)
+    val desc = view.describe()
     Snackbar {
-        message = ReactNode("${props.what.capFirst()} displayed in existing presentation window.")
+        message = ReactNode("${desc.capFirst()} displayed in existing presentation window.")
         action = Button.create {
             +"Open new presentation window"
             color = ButtonColor.secondary
@@ -81,13 +58,13 @@ val PresenterButton = FC <PresenterButtonProps> { props->
         DialogContent {
             DialogContentText {
                 // TODO  link to an explanatory article
-                +"This will open a new browser window showing the ${props.what}."
+                +"This will open a new browser window showing the ${desc}."
             }
             DialogContentText {
 
-                    + "This is most useful for presenting "
-                    +" things on a projector. You can simply drag the window to the projector screen and then make it"
-                    +" full screen by pressing F11."
+                + "This is most useful for presenting "
+                +" things on a projector. You can simply drag the window to the projector screen and then make it"
+                +" full screen by pressing F11."
 
                 // TODO not implemented: sharable presentation view
                 // + " Alternatively, you can copy a link to the presenter view and then e.g. open it on another"
@@ -95,14 +72,49 @@ val PresenterButton = FC <PresenterButtonProps> { props->
             }
         }
         DialogActions {
-            Button {
+            mui.material.Button {
                 +"Open presentation window"
-                onClick = { setPresenterView(props.view); openPresenterWindow(); state = PresenterButtonState.NORMAL }
+                onClick = { setPresenterView(view); openPresenterWindow(); state = PresenterButtonState.NORMAL }
             }
             //Button {
             //    +"Copy link"
             //    onClick = {}
             //}
+        }
+    }
+    return {
+        view = it
+        state = if (appState.presenterWindowActive) {
+            setPresenterView(it)
+            PresenterButtonState.SNACKBAR_OPEN
+        } else {
+            PresenterButtonState.DIALOG_OPEN
+        }
+    }
+}
+
+val PresenterButton = FC <PresenterButtonProps> { props->
+    val room = useContext(RoomContext)
+    val (appState, stale) = useContext(AppStateContext)
+    val isActive = appState.session.presenterInfo?.view == props.view && appState.presenterWindowActive
+    val openPresenter = usePresenterOpener()
+    Tooltip {
+        title = if (isActive)
+            ReactNode("${props.what.capFirst()} is shown in a presentation window. Click to hide.")
+        else
+            ReactNode("Show ${props.what.uncapFirst()} in a presentation window")
+        IconButton {
+            disabled = stale
+            if (isActive)
+                ProjectorScreenIcon{}
+            else
+                ProjectorScreenOutlineIcon{}
+            onClick = {
+                if (isActive)
+                    setPresenterView(EmptyPV)
+                else
+                    openPresenter(props.view)
+            }
         }
     }
 }
