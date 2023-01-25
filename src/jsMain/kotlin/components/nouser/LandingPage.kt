@@ -1,20 +1,14 @@
 package components.nouser
 
-import components.AppStateContext
-import components.showError
 import csstype.*
 import icons.CloseIcon
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.sx
-import payloads.requests.PasswordLogin
 import react.*
 import react.dom.html.ReactHTML.h1
 import tools.confido.state.appConfig
-import users.DebugAdmin
-import users.DebugMember
 import utils.byTheme
-import utils.runCoroutine
 import utils.themed
 
 val LandingPage = FC<Props> {
@@ -70,22 +64,6 @@ val DevModeSection = FC<Props> {
 
             CardContent {
                 LoginByUserSelectForm {}
-            }
-
-            CardActions {
-                Button {
-                    onClick = { runCoroutine {
-                        Client.sendData("/login", PasswordLogin(DebugAdmin.email, DebugAdmin.password), onError = {showError?.invoke(it)}) {}
-                    }}
-                    +"Log in as debug admin"
-                }
-                Button {
-                    onClick = { runCoroutine {
-                        Client.sendData("/login", PasswordLogin(DebugAdmin.email, DebugAdmin.password), onError = {showError?.invoke(it)}) {}
-                    }}
-                    +"Log in as debug member"
-                }
-
             }
         }
     }
