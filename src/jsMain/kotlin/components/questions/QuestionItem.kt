@@ -1,6 +1,7 @@
 package components.questions
 
 import components.*
+import components.presenter.PresenterButton
 import components.rooms.RoomContext
 import csstype.*
 import hooks.useDebounce
@@ -34,6 +35,8 @@ import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.NumericSpace
 import tools.confido.spaces.Space
 import tools.confido.state.FeatureFlag
+import tools.confido.state.InviteLinkPV
+import tools.confido.state.QuestionPV
 import tools.confido.state.enabled
 import tools.confido.utils.unixNow
 import utils.*
@@ -321,6 +324,9 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             }
         }
         AccordionActions {
+            PresenterButton {
+                view = QuestionPV(question.ref)
+            }
             // TODO turn it into a component
             UpdatesButton {
                 this.question = props.question

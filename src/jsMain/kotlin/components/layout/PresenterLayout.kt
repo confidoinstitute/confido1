@@ -1,8 +1,14 @@
 package components.layout
 
+import components.AppStateContext
+import components.presenter.PresenterPage
+import csstype.vh
+import csstype.vw
 import kotlinx.serialization.decodeFromString
+import mui.system.sx
 import react.*
 import tools.confido.serialization.confidoJSON
+import tools.confido.state.EmptyPV
 import tools.confido.utils.unixNow
 import utils.webSocketUrl
 import web.timers.Timeout
@@ -13,13 +19,10 @@ import websockets.WebSocket
 
 val PresenterLayout = FC<Props> {
     val webSocket = useRef<WebSocket>(null)
+    val (appState, stale) = useContext(AppStateContext)
 
     fun startWebSocket() {
-        val ws = WebSocket(("ws://localhost:8080/state_presenter"))
-
-        fun ping() {
-            ws.send(unixNow().toString())
-        }
+        val ws = WebSocket(("ws://localhost:8080/presenter/track"))
 
         ws.apply {
             onmessage = {
@@ -39,5 +42,11 @@ val PresenterLayout = FC<Props> {
         }
     }
 
-    +"This is presenter mode."
+    mui.system.Box {
+        sx {
+            height = 100.vh
+            width = 100.vw
+        }
+        PresenterPage { view = appState.session.presenterInfo?.view ?: EmptyPV }
+    }
 }

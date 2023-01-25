@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
+import payloads.responses.WSData
 import payloads.responses.WSError
 import payloads.responses.WSResponse
 import tools.confido.application.sessions.transientUserData
@@ -47,7 +48,7 @@ fun Route.webSocketST(
 ) = webSocket(path, protocol) {  handler(this) }
 
 
-inline fun <reified T> Route.getWS(path: String, crossinline body: suspend RouteBody.() -> WSResponse<T>) =
+inline fun <reified T> Route.getWS(path: String, crossinline body: suspend RouteBody.() -> T) =
     webSocketST(path) {
         val closeNotifier = MutableStateFlow(false)
 
@@ -65,7 +66,7 @@ inline fun <reified T> Route.getWS(path: String, crossinline body: suspend Route
                 return@runRefreshable
             }
             val message: WSResponse<T> = try {
-                body(context)
+                WSData(body(context))
             } catch (e: ResponseError) {
                 WSError(e.wsCode, e.message)
             }

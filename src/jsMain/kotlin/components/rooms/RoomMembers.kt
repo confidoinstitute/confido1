@@ -1,9 +1,7 @@
 package components.rooms
 
-import components.AppStateContext
-import components.DemoEmailAlert
-import components.UserAvatar
-import components.userListItemText
+import components.*
+import components.presenter.PresenterButton
 import csstype.Display
 import csstype.JustifyContent
 import csstype.pct
@@ -23,7 +21,9 @@ import react.dom.html.ReactHTML.span
 import rooms.*
 import tools.confido.refs.deref
 import tools.confido.refs.eqid
+import tools.confido.refs.ref
 import tools.confido.state.FeatureFlag
+import tools.confido.state.InviteLinkPV
 import tools.confido.state.SentState
 import tools.confido.state.appConfig
 import tools.confido.utils.randomString
@@ -173,6 +173,9 @@ val InvitationMembers = FC<InvitationMembersProps> {props ->
                         copyShown = true
                     }
                 }
+            }
+            PresenterButton {
+                view = InviteLinkPV(room.ref, props.invitation.id)
             }
             // TODO QR code
             if(false)

@@ -32,6 +32,7 @@ data class InviteLink(
     /* Indicates whether this link can be used by new users. */
     val state: InviteLinkState = InviteLinkState.ENABLED
 ) : HasId {
+    // FIXME should we preferably use server-configured base URL?
     fun link(origin: String, room: Room) = "$origin/room/${room.id}/invite/$token"
 
     val canJoin get() = state == InviteLinkState.ENABLED

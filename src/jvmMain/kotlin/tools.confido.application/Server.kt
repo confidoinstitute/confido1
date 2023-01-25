@@ -249,6 +249,7 @@ fun main() {
             questionRoutes(this)
             questionCommentsRoutes(this)
             genericRoutes(this)
+            presenterRoutes(this)
 
             webSocketST("/state") {
                 print(call.request.headers["user-agent"])
@@ -288,12 +289,13 @@ fun main() {
 
                 call.transientUserData?.runRefreshable(closeNotifier) {
                     val sessionData = call.userSession
-                    if (sessionData == null) {
+                    val transientData = call.transientUserData
+                    if (sessionData == null || transientData == null) {
                         closeNotifier.emit(true)
                         return@runRefreshable
                     }
 
-                    val state = StateCensor(sessionData).censor()
+                    val state = StateCensor(sessionData, transientData).censor()
                     send(Frame.Text(confidoJSON.encodeToString(state)))
                 }
             }
@@ -303,28 +305,6 @@ fun main() {
                 preCompressed(CompressedFileType.BROTLI, CompressedFileType.GZIP) {
                     files(".")
                     resources()
-                }
-            }
-            webSocketST("/state_presenter") {
-                val session = call.userSession
-
-                if (session == null) {
-                    // Code 3000 is registered with IANA as "Unauthorized".
-                    close(CloseReason(3000, "Missing session"))
-                    return@webSocketST
-                }
-
-                session.presenterActive += 1
-                timeout = Duration.ofSeconds(15)
-                println("Opened presenter socket for $session")
-                send("Connection acquired")
-                try {
-                    for (message in incoming) {
-                        println("Presenter socket pong")
-                    }
-                } finally {
-                    session.presenterActive -= 1
-                    println("Closed presenter socket for $session")
                 }
             }
         }

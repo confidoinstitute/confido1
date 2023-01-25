@@ -6,7 +6,11 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.websocket.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.onFailure
 import kotlinx.datetime.Clock
+import kotlinx.serialization.encodeToString
 import org.simplejavamail.MailException
 import payloads.requests.*
 import payloads.responses.*
@@ -16,6 +20,7 @@ import tools.confido.application.actions.makeCommentInfo
 import tools.confido.application.sessions.*
 import tools.confido.question.RoomComment
 import tools.confido.refs.*
+import tools.confido.serialization.confidoJSON
 import tools.confido.state.*
 import tools.confido.utils.randomString
 import tools.confido.utils.unixNow
@@ -209,7 +214,41 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
             val groupPreds = room.questions.associateWith { ref ->
                 if (canViewPred || ref.deref()?.groupPredVisible == true) serverState.groupPred[ref] else null
             }
-            WSData(groupPreds)
+            groupPreds
+        }
+    }
+
+    webSocketST("/state/rooms/{rID}/invites/{id}/shortlink") {
+        RouteBody(call).withRoom {
+            val linkId = call.parameters["id"] ?: return@withRoom
+            val link = room.inviteLinks.firstOrNull { it.id == linkId } ?: return@withRoom
+
+            var curCode: String? = null
+            try {
+                coroutineScope {
+                    async {
+                        incoming.receiveCatching().onFailure {
+                            this@coroutineScope.cancel()
+                        }
+                    }
+                    async {
+                        while (true) {
+                            val shortLink = ShortLink(room.ref, linkId)
+                            curCode?.let { serverState.shortInviteLinks.remove(it) }
+                            serverState.shortInviteLinks[shortLink.shortcode] = shortLink
+                            curCode = shortLink.shortcode
+                            send(Frame.Text(confidoJSON.encodeToString(WSData(shortLink.shortcode) as WSResponse<String>)))
+                            delay(((ShortLink.VALIDITY - 5) * 1000).toLong())
+                        }
+                    }
+                }
+            } catch (_: CancellationException) {
+                //ignore
+            } finally {
+                if (curCode != null) {
+                    serverState.shortInviteLinks.remove(curCode)
+                }
+            }
         }
     }
 }
@@ -220,7 +259,7 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
             assertPermission( RoomPermission.VIEW_ROOM_COMMENTS, "You cannot view the discussion.")
 
             val commentInfo = makeCommentInfo(user, room)
-            WSData(commentInfo)
+            commentInfo
         }
     }
 

@@ -1,5 +1,6 @@
 package components
 
+import csstype.FontSize
 import kotlinx.js.jso
 import react.FC
 import react.Props
@@ -12,6 +13,7 @@ import utils.toIsoDateTime
 
 external interface DistributionPlotProps : Props {
     var distribution: ProbabilityDistribution
+    var fontSize: Double?
 }
 
 val DistributionPlot = FC<DistributionPlotProps> { props ->
@@ -52,9 +54,17 @@ val DistributionPlot = FC<DistributionPlotProps> { props ->
                     y.set(discretizedDistribution.binProbs)
                 }
             )
+            props.fontSize?.let {fontSize ->
+                fixupLayout = {
+                    it.font = jso {
+                        size = 24
+                    }
+                }
+            }
             plotlyInit = { plot ->
                 plot.layout {
                     bargap = 0
+                    autosize = true
                     yaxis {
                         visible = false
                         showline = false

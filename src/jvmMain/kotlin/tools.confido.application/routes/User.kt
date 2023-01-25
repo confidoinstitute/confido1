@@ -19,17 +19,19 @@ import users.*
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
-data class UserContext(val user: User)
+data class UserContext(val user: User, val session: UserSession, val transientData: TransientData)
 
 suspend fun <T> RouteBody.withUser(body: suspend UserContext.() -> T): T {
-    val user = call.userSession?.user ?: unauthorized("Not logged in.")
-    return body(UserContext(user))
+    val session = call.userSession ?: unauthorized("Not logged in.")
+    val user = session.user ?: unauthorized("Not logged in.")
+    val transientData = call.transientUserData ?: unauthorized("Not logged in.")
+    return body(UserContext(user, session, transientData))
 }
-suspend fun <T> RouteBody.withAdmin(body: suspend UserContext.() -> T): T{
-    val user = call.userSession?.user ?: unauthorized("Not logged in.")
-    if (user.type != UserType.ADMIN) unauthorized("Cannot manage users.")
-    return body(UserContext(user))
-}
+suspend fun <T> RouteBody.withAdmin(body: suspend UserContext.() -> T): T =
+    withUser {
+        if (user.type != UserType.ADMIN) unauthorized("This operation requires administrator privileges.")
+        body(this@withUser)
+    }
 
 fun RouteBody.assertSession() = call.userSession ?: badRequest("Missing session.")
 
@@ -305,6 +307,16 @@ fun profileRoutes(routing: Routing) = routing.apply {
 }
 
 fun inviteRoutes(routing: Routing) = routing.apply {
+    getST("/join/{shortcode}") {
+        val shortcode = call.parameters["shortcode"] ?: badRequest("Missing invite code (incomplete url entered?)")
+        val shortLink = serverState.shortInviteLinks[shortcode] ?: unauthorized("Invalid or expired invite code")
+        if (!shortLink.isValid()) unauthorized("Expired invite code")
+        val room = shortLink.room.deref() ?: notFound("Room does not exist")
+        val link = room.inviteLinks.firstOrNull { it.id == shortLink.linkId } ?: notFound("Invite link does not exist")
+        // Send 301 as a hack if user tries to re-visit the original shortcode URL
+        // from history after is has already expired.
+        call.respondRedirect("/room/${shortLink.room.id}/invite/${link.token}", permanent=true)
+    }
     // Verify that this invitation is still valid
     postST("/rooms/{rID}/invite/check") {
         val roomRef = Ref<Room>(call.parameters["rID"] ?: "")

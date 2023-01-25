@@ -104,6 +104,7 @@ kotlin {
                 implementation(npm("@dnd-kit/core", "6.0.5"))
                 implementation(npm("@dnd-kit/modifiers", "6.0.0"))
                 implementation(npm("@dnd-kit/sortable", "7.0.1"))
+                implementation(npm("qrcode.react", "3.1.0"))
             }
         }
     }

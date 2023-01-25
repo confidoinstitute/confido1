@@ -7,6 +7,7 @@ import com.mongodb.client.model.Filters.and
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.reactivestreams.client.ClientSession
 import io.ktor.server.html.*
+import io.ktor.util.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -29,6 +30,8 @@ import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
 import kotlin.reflect.KClass
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 
 class DuplicateIdException : Exception() {}
@@ -51,11 +54,27 @@ fun loadConfig() = AppConfig(
     featureFlags = FeatureFlag.values().filter{ getenvBool("CONFIDO_FEAT_${it.name}", it in DEFAULT_FEATURE_FLAGS)}.toSet()
 )
 
+data class ShortLink(
+    val room: Ref<Room>,
+    val linkId: String,
+    val shortcode: String = generate(),
+    val expires: Int = unixNow() + VALIDITY,
+) {
+    fun isValid() = unixNow() < expires
+    companion object {
+        const val LENGTH = 6
+        const val VALIDITY = 30 * 60
+        fun generate() = generateNonce(LENGTH).joinToString("") { (it % 10).toString() }
+    }
+}
+
 object serverState : GlobalState() {
     val groupPred : MutableMap<Ref<Question>, Prediction?> = mutableMapOf()
     override val predictorCount: MutableMap<Ref<Question>, Int> = mutableMapOf()
     override val commentCount: MutableMap<Ref<Question>, Int> = mutableMapOf()
     override var appConfig: AppConfig = loadConfig()
+    //val presenterByUser: MutableMap<Ref<User>, PresenterInfo> = mutableMapOf() // this does not persist after restart
+    //val presenterByToken: MutableMap<String, PresenterInfo> = mutableMapOf() // this does not persist after restart
 
     // Now, for simplicity, serialize all mutations
     val mutationMutex = Mutex()
@@ -63,6 +82,7 @@ object serverState : GlobalState() {
     val client = KMongo.createClient(ConnectionString(System.getenv("CONFIDO_MONGODB_URL") ?: "mongodb://localhost/?replicaSet=rs01")).coroutine
     val database = client.getDatabase(System.getenv("CONFIDO_DB_NAME") ?: "confido1")
 
+    val shortInviteLinks = mutableMapOf<String, ShortLink>()
 
     abstract class EntityManager<E: HasId>(val mongoCollection: CoroutineCollection<E>) {
         var isLoading = false

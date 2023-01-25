@@ -68,6 +68,7 @@ data class SentState(
     override val commentCount: Map<Ref<Question>, Int> = emptyMap(),
     val myPasswordIsSet: Boolean = false,
     override val appConfig: AppConfig = AppConfig(),
+    val presenterWindowActive: Boolean = false,
 ) : BaseState {
     fun isAdmin(): Boolean {
         return session.user?.type == UserType.ADMIN

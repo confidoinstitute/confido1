@@ -41,7 +41,6 @@ suspend fun <T> RouteBody.withQuestion(body: suspend QuestionContext.() -> T): T
     return body(QuestionContext(user, question))
 }
 
-@OptIn(ExperimentalSerializationApi::class)
 fun questionRoutes(routing: Routing) = routing.apply {
     // Add a new question
     postST("/rooms/{rID}/questions/add") {
@@ -161,8 +160,8 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 unauthorized("You cannot view this group prediction.")
 
             serverState.groupPred[question.ref]?.let {
-                WSData(it)
-            } ?: WSError(WSErrorType.NOT_FOUND, "There is no group prediction.")
+                it
+            } ?: notFound("There is no group prediction.")
         }
     }
 }
@@ -174,7 +173,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
             assertPermission(RoomPermission.VIEW_QUESTION_COMMENTS, "You cannot view the discussion for this question.")
 
             val commentInfo = makeCommentInfo(user, question)
-            WSData(commentInfo)
+            commentInfo
         }
     }
 
