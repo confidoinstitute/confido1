@@ -1,6 +1,7 @@
 package components.rooms
 
 import components.AppStateContext
+import components.LoginContext
 import components.RouterLink
 import components.nouser.LoginForm
 import components.showError
@@ -52,6 +53,7 @@ external interface RoomInviteFormProps : Props {
 }
 
 private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
+    val (_, login) = useContext(LoginContext)
     val emailRequired = !props.allowAnonymous
 
     var name by useState("")
@@ -86,6 +88,7 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                             // We need to log in.
                             loginRequired = true
                         } else {
+                            login(true)
                             navigate("/room/${roomId}")
                         }
                     }
