@@ -96,6 +96,7 @@ val RoomInformation = FC<Props> {
             }
 
             val seesUsers = appState.isFullUser
+            if (seesUsers)
             AvatarGroup {
                 max = 4
                 room.members.sortedBy {
