@@ -1,5 +1,6 @@
 package components.layout
 
+import browser.document
 import browser.window
 import components.AppStateContext
 import components.ClientAppState
@@ -57,9 +58,18 @@ private val AppStateWebsocketProvider = FC<PropsWithChildren> { props ->
                 stale = true
                 webSocket.current = null
                 (it as? CloseEvent)?.let { event ->
-                    // TODO: Invalidate session cookie on unauthorized
-                    if (event.code == 3000 || event.code == 4001)
+                    if (event.code == 4001) {
+                        // Incompatible frontend version
                         location.reload()
+                    }
+                    if (event.code == 3000) {
+                        // Unauthorized; clear the cookie and reload.
+                        // TODO: Make sure to remove cookie on logout as well
+                        // TODO: Match path and domain as well
+                        document.cookie = "session=; expires=Thu, 01 Jan 1970 00:00:01 GMT"
+                        // TODO: Avoid reload in this case (likely needs a cookie-aware hook in the LoginContext provider)
+                        location.reload()
+                    }
                 }
                 setTimeout(::startWebSocket, 5000)
             }
