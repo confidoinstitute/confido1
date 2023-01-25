@@ -91,6 +91,7 @@ val FeedbackForm = FC<Props> {
 }
 
 val ProfileMenu = FC<Props> {
+    val (_, login) = useContext(LoginContext)
     val (appState, stale) = useContext(AppStateContext)
     val user = appState.session.user ?: return@FC
     var anchorElement by useState<HTMLElement?>(null)
@@ -107,8 +108,8 @@ val ProfileMenu = FC<Props> {
             this.user = user
         }
     }
-    Menu {
 
+    Menu {
         ListItem {
             ListItemAvatar {
                 +userListItemText(user)
@@ -156,9 +157,14 @@ val ProfileMenu = FC<Props> {
             ListItemText {
                 primary = ReactNode("Log out")
             }
-            onClick = {runCoroutine {
-                Client.send("/logout", onError = {showError?.invoke(it)}) {navigate("/")}
-            } }
+            onClick = {
+                runCoroutine {
+                    Client.send("/logout", onError = { showError?.invoke(it) }) {
+                        navigate("/")
+                        login(false)
+                    }
+                }
+            }
         }
     }
 }
@@ -167,6 +173,7 @@ external interface RootAppBarProps : Props {
     var hasDrawer: Boolean
     var onDrawerOpen: (() -> Unit)?
     var isDisconnected: Boolean
+    var hasProfileMenu: Boolean
 }
 
 val RootAppBar = FC<RootAppBarProps> { props ->
@@ -211,7 +218,9 @@ val RootAppBar = FC<RootAppBarProps> { props ->
                 }
             }
             FeedbackForm {}
-            ProfileMenu {}
+            if (props.hasProfileMenu) {
+                ProfileMenu {}
+            }
         }
     }
 }

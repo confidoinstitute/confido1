@@ -1,6 +1,8 @@
 package components.layout
 
+import browser.window
 import components.AppStateContext
+import components.ClientAppState
 import components.nouser.EmailLoginAlreadyLoggedIn
 import components.profile.AdminView
 import components.profile.UserSettings
@@ -9,15 +11,94 @@ import components.rooms.NewRoom
 import components.rooms.Room
 import components.rooms.RoomInviteLoggedIn
 import csstype.*
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.encodeToDynamic
 import mui.material.*
 import mui.system.*
 import react.*
 import react.dom.html.ReactHTML.main
 import react.router.*
+import tools.confido.serialization.confidoJSON
+import tools.confido.state.ClientState
+import tools.confido.state.SentState
+import tools.confido.state.clientState
 import utils.byTheme
 import utils.themed
+import utils.webSocketUrl
+import web.location.location
+import web.timers.setTimeout
+import websockets.CloseEvent
+import websockets.WebSocket
+
+private val AppStateWebsocketProvider = FC<PropsWithChildren> { props ->
+    var appState by useState<SentState?>(null)
+    var stale by useState(false)
+    val webSocket = useRef<WebSocket>(null)
+
+    fun startWebSocket() {
+        val ws = WebSocket(webSocketUrl("/state?bundleVer=${window.asDynamic().bundleVer as String}"))
+        ws.apply {
+            onmessage = {
+                val decodedState = confidoJSON.decodeFromString<SentState>(it.data.toString())
+                clientState = ClientState(decodedState)
+                appState = decodedState
+
+                try {
+                    @OptIn(ExperimentalSerializationApi::class)
+                    window.asDynamic().curState = confidoJSON.encodeToDynamic(decodedState) // for easy inspection in devtools
+                } catch (e: Exception) {}
+                stale = false
+                @Suppress("RedundantUnitExpression")
+                Unit // This is not redundant, because assignment fails some weird type checks
+            }
+            onclose = {
+                console.log("Closed websocket")
+                stale = true
+                webSocket.current = null
+                (it as? CloseEvent)?.let { event ->
+                    // TODO: Invalidate session cookie on unauthorized
+                    if (event.code == 3000 || event.code == 4001)
+                        location.reload()
+                }
+                setTimeout(::startWebSocket, 5000)
+            }
+        }
+        webSocket.current = ws
+    }
+
+    useEffectOnce {
+        startWebSocket()
+        cleanup {
+            // Do not push reconnect
+            webSocket.current?.apply {
+                onclose = null
+                close()
+            }
+        }
+    }
+
+    if (appState != null) {
+        AppStateContext.Provider {
+            value = ClientAppState(appState ?: error("No app state!"), stale)
+            +props.children
+        }
+    } else {
+        // TODO: Handle first connect after login gracefully
+        NoStateLayout {
+            // TODO: why does this exist?
+            this.stale = stale
+        }
+    }
+}
 
 val RootLayout = FC<Props> {
+    AppStateWebsocketProvider {
+        RootLayoutInner {}
+    }
+}
+
+private val RootLayoutInner = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
     var drawerOpen by useState(false)
 
@@ -26,7 +107,6 @@ val RootLayout = FC<Props> {
     useEffect(mediaMatch) {
         drawerOpen = false
     }
-
 
     // Root element
     mui.system.Box {
@@ -43,6 +123,7 @@ val RootLayout = FC<Props> {
             hasDrawer = true
             onDrawerOpen = { drawerOpen = true }
             isDisconnected = stale
+            hasProfileMenu = true
         }
 
         Sidebar {

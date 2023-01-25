@@ -15,6 +15,7 @@ import utils.byTheme
 val NoUserLayout = FC<Props> {
     RootAppBar {
         hasDrawer = false
+        hasProfileMenu = false
     }
     Toolbar {}
     Box {

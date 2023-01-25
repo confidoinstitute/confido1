@@ -1,37 +1,26 @@
 package components
 
-import browser.window
+import browser.document
 import components.layout.*
 import csstype.*
 import kotlinx.js.jso
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.encodeToDynamic
 import mui.material.*
 import mui.material.styles.PaletteColor
-import mui.material.styles.createPalette
 import mui.material.styles.createTheme
 import mui.system.ThemeProvider
 import react.*
 import react.router.Route
 import react.router.Routes
 import react.router.dom.BrowserRouter
-import tools.confido.serialization.confidoJSON
-import tools.confido.state.ClientState
 import tools.confido.state.SentState
 import tools.confido.state.appConfig
-import tools.confido.state.clientState
-import utils.webSocketUrl
-import web.timers.setTimeout
-import web.location.location
-import websockets.CloseEvent
-import websockets.WebSocket
 
 val AppStateContext = createContext<ClientAppState>()
+val LoginContext = createContext<Login>()
 
 
 data class ClientAppState(val state: SentState, val stale: Boolean = false)
+data class Login(val isLoggedIn: Boolean, val changeState: (Boolean) -> Unit) // TODO: Better types for changeState
 
 val globalTheme = createTheme(
     jso {
@@ -53,65 +42,17 @@ val globalTheme = createTheme(
 )
 
 val App = FC<Props> {
-    var appState by useState<SentState?>(null)
-    var stale by useState(false)
-    val webSocket = useRef<WebSocket>(null)
-
-    fun startWebSocket() {
-        val ws = WebSocket(webSocketUrl("/state?bundleVer=${window.asDynamic().bundleVer as String}"))
-        ws.apply {
-            onmessage = {
-                val decodedState = confidoJSON.decodeFromString<SentState>(it.data.toString())
-                clientState = ClientState(decodedState)
-                appState = decodedState
-
-                try {
-                    @OptIn(ExperimentalSerializationApi::class)
-                    window.asDynamic().curState = confidoJSON.encodeToDynamic(decodedState) // for easy inspection in devtools
-                } catch (e: Exception) {}
-                stale = false
-                @Suppress("RedundantUnitExpression")
-                Unit // This is not redundant, because assignment fails some weird type checks
-            }
-            onclose = {
-                console.log("Closed websocket")
-                stale = true
-                webSocket.current = null
-                (it as? CloseEvent)?.let { event ->
-                    if (event.code == 3000 || event.code == 4001)
-                        location.reload()
-                }
-                setTimeout(::startWebSocket, 5000)
-            }
-        }
-        webSocket.current = ws
-    }
-
-    useEffectOnce {
-        startWebSocket()
-        cleanup {
-            // Do not push reconnect
-            webSocket.current?.apply {
-                onclose = null
-                close()
-            }
-        }
-    }
-
-    if (appState == null) {
-        NoStateLayout {
-            this.stale = stale
-        }
-        return@FC
-    }
+    // TODO: initial state from cookie
+    // TODO: react to cookie change?
+    val sessionCookieExists = document.cookie.contains("session")
+    var isLoggedIn by useState(sessionCookieExists)
 
     CssBaseline {}
-    AppStateContext.Provider {
-        value = ClientAppState(appState ?: error("No app state!"), stale)
+    LoginContext.Provider {
+        value = Login(isLoggedIn) { isLoggedIn = it }
 
-        val loggedIn = appState?.session?.user !=null
         val isDemo = appConfig.demoMode
-        val layout = if (loggedIn) {
+        val layout = if (isLoggedIn) {
             RootLayout
         } else {
             NoUserLayout
