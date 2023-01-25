@@ -133,6 +133,7 @@ val UserSettingsEmail = FC<UserSettingsCardProps> { props ->
                     Button {
                         onClick = {
                             Client.postData("/profile/email/start_verification", StartEmailVerification(email))
+                            pendingEmailChange = email
                         }
                         disabled = props.disabled
 
