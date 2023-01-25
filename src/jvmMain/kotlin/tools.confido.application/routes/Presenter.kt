@@ -22,7 +22,7 @@ import tools.confido.utils.unixNow
 import kotlin.time.Duration.Companion.seconds
 
 fun presenterRoutes(routing: Routing) = routing.apply {
-    webSocketST("/presenter/track") {
+    webSocketST("/state/presenter/track") {
         RouteBody(call).withUser {
             transientData.activePresenterWindows += 1
             transientData.refreshSessionWebsockets()
