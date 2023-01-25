@@ -35,12 +35,18 @@ suspend fun <T> RouteBody.withAdmin(body: suspend UserContext.() -> T): T =
 
 fun RouteBody.assertSession() = call.userSession ?: badRequest("Missing session.")
 
+suspend fun RouteBody.initSession() {
+    if (call.userSession != null) {
+        // TODO: Destroy old session
+    }
+
+    call.setUserSession(UserSession())
+}
+
 fun loginRoutes(routing: Routing) = routing.apply {
     // Login by password
     postST("/login") {
         // TODO: Rate limiting.
-        val session = assertSession()
-
         val login: PasswordLogin = call.receive()
         val user = serverState.users.values.find {
             it.email?.lowercase() == login.email.lowercase() && it.password != null
@@ -52,15 +58,15 @@ fun loginRoutes(routing: Routing) = routing.apply {
             it.copy(lastLoginAt = Clock.System.now())
         }
 
+        initSession()
         call.modifyUserSession { it.copy(userRef = user.ref) }
+
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Login by e-mail: Step one (sending link)
     postST("/login_email/create") {
         // TODO: Rate limiting.
-        assertSession()
-
         val mail: SendMailLink = call.receive()
         val user = serverState.userManager.byEmail[mail.email.lowercase()]
 
@@ -83,8 +89,6 @@ fun loginRoutes(routing: Routing) = routing.apply {
     }
     // Login by e-mail: Step two (using token)
     postST("/login_email") {
-        assertSession()
-
         val login: EmailLogin = call.receive()
         val loginLink = serverState.loginLinkManager.byToken[login.token] ?: unauthorized("No such token exists.")
         try {
@@ -100,6 +104,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
                     it.copy(lastLoginAt = Clock.System.now())
             }
 
+            initSession()
             call.modifyUserSession { it.copy(userRef = loginLink.user) }
             TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK, loginLink.url)
@@ -117,8 +122,6 @@ fun loginRoutes(routing: Routing) = routing.apply {
         }
         // Login by id: log in by only specifying a user ref
         postST("/login_users") {
-            assertSession()
-
             val userRef: Ref<User> = call.receive()
             val user = userRef.deref() ?: unauthorized("The user does not exist.")
             if (!user.active) { unauthorized("The user is deactivated.") }
@@ -127,6 +130,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
                 it.copy(lastLoginAt = Clock.System.now())
             }
 
+            initSession()
             call.modifyUserSession { it.copy(userRef = user.ref) }
             TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
@@ -138,6 +142,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
         val session = call.userSession
         session?.user ?: return@postST
 
+        // TODO: Destroy session
         call.modifyUserSession { it.copy(userRef = null) }
         call.transientUserData?.refreshSessionWebsockets()
     }

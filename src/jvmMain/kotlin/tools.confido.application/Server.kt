@@ -202,10 +202,6 @@ fun main() {
                 }
             }
             getST("/{...}") {
-                if (call.userSession == null) {
-                    call.setUserSession(UserSession())
-                }
-
                 call.respondHtml(HttpStatusCode.OK, HTML::index)
             }
             if (devMode) {
@@ -270,11 +266,12 @@ fun main() {
                 }
                 // Require a session to already be initialized; it is not possible
                 // to edit session cookies within websockets.
-                val session = call.userSession
+                // In addition, require the user to be logged in.
+                val user = call.userSession?.user
 
-                if (session == null) {
+                if (user == null) {
                     // Code 3000 is registered with IANA as "Unauthorized".
-                    close(CloseReason(3000, "Missing session"))
+                    close(CloseReason(3000, "Missing session or user"))
                     return@webSocketST
                 }
 
