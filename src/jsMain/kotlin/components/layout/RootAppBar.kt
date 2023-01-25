@@ -27,7 +27,6 @@ import utils.themed
 import kotlin.coroutines.EmptyCoroutineContext
 
 val FeedbackForm = FC<Props> {
-    val (appState, stale) = useContext(AppStateContext)
     val location = useLocation()
 
     var formOpen by useState(false)
@@ -75,7 +74,6 @@ val FeedbackForm = FC<Props> {
             DialogActions {
                 Button {
                     type = ButtonType.submit
-                    disabled = stale
                     +"Send"
                 }
             }
@@ -86,7 +84,6 @@ val FeedbackForm = FC<Props> {
         sx {
             marginLeft = themed(2)
         }
-        disabled = stale
         onClick = {formOpen = true}
         color = ButtonColor.inherit
         +"Feedback"
