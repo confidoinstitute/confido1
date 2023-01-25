@@ -98,7 +98,7 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
                 margin = FormControlMargin.normal
                 if (errorEmptyEmail) {
                     this.error = true
-                    helperText = ReactNode("Only guests can have an e-mail not set.")
+                    helperText = ReactNode("Email address is required for non-guest accounts.")
                 } else if (errorBadEmail) {
                     this.error = true
                 }
