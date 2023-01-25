@@ -22,7 +22,7 @@ val PresenterLayout = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
 
     fun startWebSocket() {
-        val ws = WebSocket(("ws://localhost:8080/presenter/track"))
+        val ws = WebSocket(webSocketUrl("/state/presenter/track"))
 
         ws.apply {
             onmessage = {
