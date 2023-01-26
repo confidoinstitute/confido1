@@ -25,7 +25,7 @@ data class Login(val isLoggedIn: Boolean, private val changeState: (Boolean) -> 
     fun login() = changeState(true)
     /** Change state to logged out and remove the session cookie. **/
     fun logout() {
-        document.cookie = "session=; expires=Thu, 01 Jan 1970 00:00:01 GMT"
+        document.cookie = "session=; Path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
         changeState(false)
     }
 }
