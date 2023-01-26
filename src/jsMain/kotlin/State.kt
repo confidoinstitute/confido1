@@ -21,4 +21,5 @@ fun Room.havePermission(permission: RoomPermission): Boolean {
     return hasPermission(myself, permission)
 }
 
+@OptIn(ExperimentalSerializationApi::class)
 actual val appConfig: AppConfig = confidoJSON.decodeFromDynamic(window.asDynamic().appConfig)
