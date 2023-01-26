@@ -1,10 +1,13 @@
 package components.questions
 
 import components.*
+import components.layout.permanentBreakpoint
 import components.presenter.PresenterButton
 import components.rooms.RoomContext
 import csstype.*
+import dom.html.HTMLDivElement
 import hooks.useDebounce
+import hooks.useElementSize
 import hooks.useOnUnmount
 import icons.CloseIcon
 import hooks.useWebSocket
@@ -17,6 +20,7 @@ import kotlinx.coroutines.launch
 import kotlinx.js.jso
 import mui.material.*
 import mui.material.transitions.TransitionProps
+import mui.system.Breakpoint
 import mui.system.responsive
 import mui.system.sx
 import react.*
@@ -211,14 +215,18 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         expanded = props.expanded
         onChange = { _, state -> props.onChange?.invoke(state) }
         TransitionProps = buildObject { unmountOnExit = true }
+        val sz = useElementSize<HTMLDivElement>()
+        val chipsSz = useElementSize<HTMLDivElement>()
+        val chipsUnder = (sz.width != 0.0 && chipsSz.width != 0.0 && sz.width - chipsSz.width < 600)
         AccordionSummary {
+            ref = sz.ref
             id = question.id
             expandIcon = ExpandMore.create()
             Stack {
-                this.direction = responsive(StackDirection.row)
+                this.direction = responsive(if (chipsUnder) StackDirection.column else StackDirection.row)
                 this.spacing = responsive(1)
                 sx {
-                    alignItems = AlignItems.center
+                    alignItems = if (chipsUnder) AlignItems.flexStart else AlignItems.center
                     flexGrow = number(1.0)
                 }
                 Typography {
@@ -231,26 +239,34 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                         }
                     }
                 }
-                if (question.resolved) {
-                    Chip {
-                        label = ReactNode("Resolved")
-                        variant = ChipVariant.outlined
+                Stack {
+                    ref = chipsSz.ref
+                    this.direction = responsive(StackDirection.row)
+                    this.spacing = responsive(1)
+                    sx {
+                        alignItems = AlignItems.center
                     }
+                    if (question.resolved) {
+                        Chip {
+                            label = ReactNode("Resolved")
+                            variant = ChipVariant.outlined
+                        }
+                    }
+                    if (!question.visible) {
+                        Chip {
+                            label = ReactNode("Not visible")
+                            variant = ChipVariant.outlined
+                            color = ChipColor.warning
+                        }
+                    }
+                    if (props.canPredict)
+                        QuestionPredictionChip {
+                            this.enabled = question.open && !stale
+                            this.pending = pendingPrediction != null
+                            this.prediction = props.prediction
+                            this.state = pendingPredictionState
+                        }
                 }
-                if (!question.visible) {
-                    Chip {
-                        label = ReactNode("Not visible")
-                        variant = ChipVariant.outlined
-                        color = ChipColor.warning
-                    }
-                }
-                if (props.canPredict)
-                    QuestionPredictionChip {
-                        this.enabled = question.open && !stale
-                        this.pending = pendingPrediction != null
-                        this.prediction = props.prediction
-                        this.state = pendingPredictionState
-                    }
             }
         }
         AccordionDetails {
