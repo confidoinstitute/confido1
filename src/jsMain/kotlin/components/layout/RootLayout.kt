@@ -1,9 +1,9 @@
 package components.layout
 
-import browser.document
 import browser.window
 import components.AppStateContext
 import components.ClientAppState
+import components.LoginContext
 import components.nouser.EmailLoginAlreadyLoggedIn
 import components.profile.AdminView
 import components.profile.UserSettings
@@ -23,23 +23,36 @@ import react.router.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.state.ClientState
 import tools.confido.state.SentState
+import tools.confido.state.appConfig
 import tools.confido.state.clientState
 import utils.byTheme
 import utils.themed
 import utils.webSocketUrl
 import web.location.location
-import web.timers.setTimeout
+import web.timers.*
 import websockets.CloseEvent
 import websockets.WebSocket
 
+enum class State {
+    CONNECTING,
+    CONNECTED,
+    STALE,
+}
+
 private val AppStateWebsocketProvider = FC<PropsWithChildren> { props ->
+    val loginState = useContext(LoginContext)
     var appState by useState<SentState?>(null)
-    var stale by useState(false)
+    val websocketState = useRef(State.CONNECTING)
     val webSocket = useRef<WebSocket>(null)
 
     fun startWebSocket() {
+        if (websocketState.current == State.CONNECTED) return
+
         val ws = WebSocket(webSocketUrl("/state?bundleVer=${window.asDynamic().bundleVer as String}"))
         ws.apply {
+            onopen = {
+                websocketState.current = State.CONNECTED
+            }
             onmessage = {
                 val decodedState = confidoJSON.decodeFromString<SentState>(it.data.toString())
                 clientState = ClientState(decodedState)
@@ -49,38 +62,37 @@ private val AppStateWebsocketProvider = FC<PropsWithChildren> { props ->
                     @OptIn(ExperimentalSerializationApi::class)
                     window.asDynamic().curState = confidoJSON.encodeToDynamic(decodedState) // for easy inspection in devtools
                 } catch (e: Exception) {}
-                stale = false
                 @Suppress("RedundantUnitExpression")
                 Unit // This is not redundant, because assignment fails some weird type checks
             }
             onclose = {
                 console.log("Closed websocket")
-                stale = true
+                websocketState.current = State.STALE
                 webSocket.current = null
                 (it as? CloseEvent)?.let { event ->
+                    if (appConfig.devMode) console.log("AppState Websocket closed: code ${event.code}")
                     if (event.code == 4001) {
+                        if (appConfig.devMode) console.log("AppState Websocket closed: incompatible frontend version")
                         // Incompatible frontend version
                         location.reload()
                     }
                     if (event.code == 3000) {
-                        // Unauthorized; clear the cookie and reload.
-                        // TODO: Make sure to remove cookie on logout as well
-                        // TODO: Match path and domain as well
-                        document.cookie = "session=; expires=Thu, 01 Jan 1970 00:00:01 GMT"
-                        // TODO: Avoid reload in this case (likely needs a cookie-aware hook in the LoginContext provider)
-                        location.reload()
+                        // Unauthorized
+                        if (appConfig.devMode) console.log("AppState Websocket closed: unauthorized")
+                        loginState.logout()
                     }
                 }
-                setTimeout(::startWebSocket, 5000)
             }
         }
         webSocket.current = ws
     }
 
     useEffectOnce {
+        val retryInterval = setInterval(::startWebSocket, 5000)
         startWebSocket()
+
         cleanup {
-            // Do not push reconnect
+            clearInterval(retryInterval)
             webSocket.current?.apply {
                 onclose = null
                 close()
@@ -90,13 +102,12 @@ private val AppStateWebsocketProvider = FC<PropsWithChildren> { props ->
 
     if (appState != null) {
         AppStateContext.Provider {
-            value = ClientAppState(appState ?: error("No app state!"), stale)
+            value = ClientAppState(appState ?: error("No app state!"), websocketState.current == State.STALE)
             +props.children
         }
     } else {
-        // TODO: Handle first connect after login gracefully
+        // TODO: Handle first connect after login gracefully (websocketState.current == State.CONNECTING)
         NoStateLayout {
-            // TODO: why does this exist?
             this.stale = stale
         }
     }

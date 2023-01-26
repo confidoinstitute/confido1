@@ -286,7 +286,7 @@ fun main() {
                 call.transientUserData?.runRefreshable(closeNotifier) {
                     val sessionData = call.userSession
                     val transientData = call.transientUserData
-                    if (sessionData == null || transientData == null) {
+                    if (sessionData?.user == null || transientData == null) {
                         closeNotifier.emit(true)
                         return@runRefreshable
                     }
