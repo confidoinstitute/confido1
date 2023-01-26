@@ -18,7 +18,6 @@ import utils.themed
 val LandingPage = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
 
-    Typography { +"Welcome to Confido!" }
 
     if (appConfig.demoMode) {
         Typography {
