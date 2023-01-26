@@ -4,13 +4,16 @@ import browser.window
 import components.AppStateContext
 import components.ClientAppState
 import components.LoginContext
+import components.nouser.EmailLogin
 import components.nouser.EmailLoginAlreadyLoggedIn
+import components.nouser.LandingPage
 import components.profile.AdminView
 import components.profile.UserSettings
 import components.profile.VerifyToken
 import components.rooms.NewRoom
 import components.rooms.Room
 import components.rooms.RoomInviteLoggedIn
+import components.rooms.RoomInviteNoUser
 import csstype.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromString
@@ -106,10 +109,28 @@ private val AppStateWebsocketProvider = FC<PropsWithChildren> { props ->
             +props.children
         }
     } else {
-        // TODO: Handle first connect after login gracefully (websocketState.current == State.CONNECTING)
-        NoStateLayout {
-            this.stale = stale
+        if (websocketState.current == State.CONNECTING) {
+            LoadingLayout {}
+        } else {
+            NoStateLayout {
+                this.stale = stale
+            }
         }
+    }
+}
+
+private val LoadingLayout = FC<Props> {
+    RootAppBar {
+        hasDrawer = false
+        hasProfileMenu = false
+    }
+    Toolbar {}
+    mui.system.Box {
+        sx {
+            margin = byTheme("auto")
+            maxWidth = byTheme("lg")
+        }
+        NoStateLayout {}
     }
 }
 
