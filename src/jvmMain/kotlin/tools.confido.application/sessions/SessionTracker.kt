@@ -57,18 +57,18 @@ fun ApplicationCall.getSessionIdOrCreateNew(): String {
  * In case a session does not exist, setting a value will create a new session.
  */
 val ApplicationCall.userSession: UserSession?
-    get() =
-        sessionId?.let { serverState.userSessionManager.entityMap[sessionId] }
+    get() = sessionId?.let { serverState.userSessionManager.entityMap[sessionId] }
 
 suspend fun ApplicationCall.setUserSession(value: UserSession?) {
-        val id = getSessionIdOrCreateNew()
-        if (value == null) {
-            serverState.userSessionManager.deleteEntity(id, ignoreNonexistent = true)
-        } else {
-            serverState.userSessionManager.replaceEntity(value.copy(id = id), upsert = true)
-        }
+    val id = getSessionIdOrCreateNew()
+    if (value == null) {
+        serverState.userSessionManager.deleteEntity(id, ignoreNonexistent = true)
+    } else {
+        serverState.userSessionManager.replaceEntity(value.copy(id = id), upsert = true)
     }
-suspend fun ApplicationCall.modifyUserSession(modify: (UserSession)->UserSession) =
+}
+
+suspend fun ApplicationCall.modifyUserSession(modify: (UserSession) -> UserSession) =
     serverState.withMutationLock {
         val id = getSessionIdOrCreateNew()
         val oldSession = userSession ?: UserSession(id = id)
@@ -76,6 +76,8 @@ suspend fun ApplicationCall.modifyUserSession(modify: (UserSession)->UserSession
         setUserSession(newSession)
         newSession
     }
+
+suspend fun ApplicationCall.destroyUserSession() = setUserSession(null)
 
 /**
  * Provides access to short-lived session data, which will be lost upon server shutdown.

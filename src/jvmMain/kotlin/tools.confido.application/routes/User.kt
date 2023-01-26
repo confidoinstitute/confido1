@@ -35,12 +35,12 @@ suspend fun <T> RouteBody.withAdmin(body: suspend UserContext.() -> T): T =
 
 fun RouteBody.assertSession() = call.userSession ?: badRequest("Missing session.")
 
-suspend fun RouteBody.initSession() {
+suspend fun RouteBody.initSession(user: User) {
     if (call.userSession != null) {
-        // TODO: Destroy old session
+        call.destroyUserSession()
     }
 
-    call.setUserSession(UserSession())
+    call.setUserSession(UserSession(userRef = user.ref))
 }
 
 fun loginRoutes(routing: Routing) = routing.apply {
@@ -58,7 +58,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
             it.copy(lastLoginAt = Clock.System.now())
         }
 
-        initSession()
+        initSession(user)
         call.modifyUserSession { it.copy(userRef = user.ref) }
 
         TransientData.refreshAllWebsockets()
@@ -104,7 +104,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
                     it.copy(lastLoginAt = Clock.System.now())
             }
 
-            initSession()
+            initSession(user)
             call.modifyUserSession { it.copy(userRef = loginLink.user) }
             TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK, loginLink.url)
@@ -130,7 +130,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
                 it.copy(lastLoginAt = Clock.System.now())
             }
 
-            initSession()
+            initSession(user)
             call.modifyUserSession { it.copy(userRef = user.ref) }
             TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
@@ -142,8 +142,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
         val session = call.userSession
         session?.user ?: return@postST
 
-        // TODO: Destroy session
-        call.modifyUserSession { it.copy(userRef = null) }
+        call.destroyUserSession()
         call.transientUserData?.refreshSessionWebsockets()
     }
 }
