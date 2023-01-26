@@ -41,7 +41,7 @@ external interface LoginFormProps : Props {
 }
 
 val LoginForm = FC<LoginFormProps> { props ->
-    val (_, login) = useContext(LoginContext)
+    val loginState = useContext(LoginContext)
     var email by useState<String>(props.prefilledEmail ?: "")
     var password by useState<String>("")
 
@@ -75,7 +75,7 @@ val LoginForm = FC<LoginFormProps> { props ->
                             password = ""
                         }
                     }) {
-                        login(true)
+                        loginState.login()
                     }
                 }
             }
@@ -277,7 +277,7 @@ external interface LoginByUserSelectFormProps : Props {
 }
 
 val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
-    val (_, login) = useContext(LoginContext)
+    val loginState = useContext(LoginContext)
     var chosenUser by useState<User?>(null)
     var users by useState<ReadonlyArray<User>?>(null)
     var open by useState(false)
@@ -308,8 +308,8 @@ val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
     val autocomplete: FC<AutocompleteProps<User>> = Autocomplete
     fun attemptLogin() = login {
         chosenUser?.let {
-            Client.sendData("/login_users", it.ref, onError = {showError?.invoke(it)}) {
-                login(true)
+            Client.sendData("/login_users", it.ref, onError = { showError?.invoke(it) }) {
+                loginState.login()
             }
         }
     }

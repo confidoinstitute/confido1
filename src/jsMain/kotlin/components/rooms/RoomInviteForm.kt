@@ -53,7 +53,7 @@ external interface RoomInviteFormProps : Props {
 }
 
 private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
-    val (_, login) = useContext(LoginContext)
+    val loginState = useContext(LoginContext)
     val emailRequired = !props.allowAnonymous
 
     var name by useState("")
@@ -88,7 +88,7 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                             // We need to log in.
                             loginRequired = true
                         } else {
-                            login(true)
+                            loginState.login()
                             navigate("/room/${roomId}")
                         }
                     }

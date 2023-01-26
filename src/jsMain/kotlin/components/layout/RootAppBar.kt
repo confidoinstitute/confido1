@@ -91,7 +91,7 @@ val FeedbackForm = FC<Props> {
 }
 
 val ProfileMenu = FC<Props> {
-    val (_, login) = useContext(LoginContext)
+    val loginState = useContext(LoginContext)
     val (appState, stale) = useContext(AppStateContext)
     val user = appState.session.user ?: return@FC
     var anchorElement by useState<HTMLElement?>(null)
@@ -161,7 +161,7 @@ val ProfileMenu = FC<Props> {
                 runCoroutine {
                     Client.send("/logout", onError = { showError?.invoke(it) }) {
                         navigate("/")
-                        login(false)
+                        loginState.logout()
                     }
                 }
             }

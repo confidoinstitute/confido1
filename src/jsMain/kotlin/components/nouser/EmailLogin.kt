@@ -15,7 +15,7 @@ import react.router.dom.useSearchParams
 import utils.runCoroutine
 
 val EmailLogin = FC<Props> {
-    val (_, login) = useContext(LoginContext)
+    val loginState = useContext(LoginContext)
     val searchParams by useSearchParams()
     val navigate = useNavigate()
     val loginToken = searchParams.get("t") ?: ""
@@ -27,7 +27,7 @@ val EmailLogin = FC<Props> {
         runCoroutine {
             Client.sendData("/login_email", EmailLogin(loginToken), onError = { failed = true }) {
                 navigate(body<String>())
-                login(true)
+                loginState.login()
             }
         }
     }
