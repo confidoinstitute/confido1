@@ -1,7 +1,7 @@
 package components.layout
 
-import components.AppStateContext
 import components.DialogCloseButton
+import components.LoginContext
 import components.nouser.LoginByUserSelectInner
 import csstype.*
 import emotion.react.css
@@ -180,8 +180,7 @@ val DemoWelcomeBox = FC<Props> {
 }
 
 val DemoLayout = FC<Props> {
-    val (appState, stale) = useContext(AppStateContext)
-    val loggedIn = appState.session.user != null
+    val loginState = useContext(LoginContext)
     mui.system.ThemeProvider {
         theme = demoTheme
         div {
@@ -202,12 +201,11 @@ val DemoLayout = FC<Props> {
                 lineHeight = 25.px
                 fontFamily = "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif" as FontFamily
             }
-            if (loggedIn) {
-                DemoWelcomeBox{}
+            if (loginState.isLoggedIn) {
+                DemoWelcomeBox {}
             } else {
-                DemoLoginBox{}
+                DemoLoginBox {}
             }
         }
     }
-
 }
