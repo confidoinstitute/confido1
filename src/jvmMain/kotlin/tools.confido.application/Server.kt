@@ -80,9 +80,9 @@ val singleThreadContext = newSingleThreadContext("confido_server")
 
 // TODO move this to an external script for easier modification
 suspend fun initDemo() {
-    val admin = User(id="admin", type =UserType.ADMIN, email="admin@confido.example", emailVerified = true, nick = "Demo Admin")
-    val user1 = User(id="user1", type =UserType.MEMBER, email="user1@confido.example", emailVerified = true, nick = "Demo User 1")
-    val user2 = User(id="user2", type =UserType.MEMBER, email="user2@confido.example", emailVerified = true, nick = "Demo User 2")
+    val admin = User(id="admin", type = UserType.ADMIN, email="admin@confido.example", emailVerified = true, nick = "Demo Admin")
+    val user1 = User(id="user1", type = UserType.MEMBER, email="user1@confido.example", emailVerified = true, nick = "Demo User 1")
+    val user2 = User(id="user2", type = UserType.MEMBER, email="user2@confido.example", emailVerified = true, nick = "Demo User 2")
     val users = listOf(
         admin,user1, user2
     )
@@ -91,7 +91,7 @@ suspend fun initDemo() {
             serverState.userManager.insertEntity(it, forceId = true)
     }
     val rooms = listOf(
-        Room(id="demoroom1", name="Testing room", members = listOf(
+        Room(id = "demoroom1", name = "Testing room", members = listOf(
             RoomMembership(admin.ref, role = Moderator),
             RoomMembership(user1.ref, role = Forecaster),
             RoomMembership(user2.ref, role = Forecaster),
