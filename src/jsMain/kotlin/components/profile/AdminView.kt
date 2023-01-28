@@ -3,6 +3,8 @@ package components.profile
 import components.AppStateContext
 import components.DemoEmailAlert
 import components.DialogCloseButton
+import components.UserAvatar
+import csstype.AlignItems
 import csstype.pct
 import hooks.EditEntityDialogProps
 import hooks.useEditDialog
@@ -11,15 +13,18 @@ import icons.EditIcon
 import io.ktor.client.request.*
 import kotlinx.datetime.Clock
 import mui.material.*
+import mui.system.responsive
 import mui.system.sx
 import react.*
 import react.dom.html.InputType
+import react.dom.html.TdAlign
 import react.dom.onChange
 import tools.confido.refs.eqid
 import users.User
 import users.UserType
 import utils.eventValue
 import utils.isEmailValid
+import utils.themed
 import utils.toDateTime
 
 external interface EditUserDialogProps : EditEntityDialogProps<User> {
@@ -188,31 +193,43 @@ val AdminView = FC<Props> {
         Table {
             TableHead {
                 TableRow {
-                    TableCell {+"Nick"}
-                    TableCell {+"E-mail"}
-                    TableCell {+"Status"}
-                    TableCell {+"Active"}
-                    TableCell {+"Last login"}
-                    TableCell {}
+                    TableCell { +"Nick" }
+                    TableCell { +"E-mail" }
+                    TableCell { +"Status" }
+                    TableCell { +"Active" }
+                    TableCell { +"Last login" }
+                    TableCell {} // Edit button
                 }
             }
             TableBody {
                 appState.users.values.sortedWith(compareBy(
-                        {when (it.type) {
+                    {
+                        when (it.type) {
                             UserType.ADMIN -> 0
                             UserType.MEMBER -> 1
                             UserType.GUEST -> 2
-                        } },
-                        {if (it.email != null) 0 else 1},
-                        {if (it.nick != null) 0 else 1},
-                        {it.nick},
-                        {it.email},
-                    )).map { user ->
+                        }
+                    },
+                    { if (it.email != null) 0 else 1 },
+                    { if (it.nick != null) 0 else 1 },
+                    { it.nick },
+                    { it.email },
+                )).map { user ->
                     TableRow {
                         key = user.id
-                        TableCell {+(user.nick ?: "")}
-                        TableCell {+(user.email ?: "")}
-                        TableCell {+user.type.name}
+                        TableCell {
+                            Stack {
+                                sx {
+                                    alignItems = AlignItems.center
+                                    gap = themed(1)
+                                }
+                                direction = responsive(StackDirection.row)
+                                UserAvatar { this.user = user }
+                                +(user.nick ?: "")
+                            }
+                        }
+                        TableCell { +(user.email ?: "") }
+                        TableCell { +user.type.name }
                         TableCell {
                             Checkbox {
                                 val isSelf = user eqid appState.session.user
@@ -225,11 +242,11 @@ val AdminView = FC<Props> {
                                 }
                             }
                         }
-                        TableCell {+(user.lastLoginAt?.epochSeconds?.toDateTime() ?: "Never")}
+                        TableCell { +(user.lastLoginAt?.epochSeconds?.toDateTime() ?: "Never") }
                         TableCell {
                             IconButton {
                                 disabled = stale
-                                onClick = {editUserOpen(user)}
+                                onClick = { editUserOpen(user) }
                                 EditIcon {}
                             }
                         }
