@@ -2,14 +2,10 @@ package components.rooms
 
 import components.AppStateContext
 import components.ListItemNavigation
-import csstype.Color
-import csstype.None.none
-import emotion.react.css
-import hooks.useTraceUpdate
 import icons.AddIcon
 import mui.material.*
 import react.*
-import react.router.dom.NavLink
+import react.router.useLocation
 
 external interface RoomListProps : Props {
     var newRoomEnabled: Boolean
@@ -18,6 +14,7 @@ external interface RoomListProps : Props {
 
 val RoomList = FC<RoomListProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
+    val location = useLocation()
 
     List {
         dense = true
@@ -28,6 +25,7 @@ val RoomList = FC<RoomListProps> { props ->
             ListItemNavigation {
                 this.key = room.key
                 to = "/room/${room.key}"
+                selected = location.pathname.startsWith(to)
                 onNavigate = props.onNavigate
 
                 ListItemText {
@@ -39,6 +37,7 @@ val RoomList = FC<RoomListProps> { props ->
         ListItemNavigation {
             this.key = "#create"
             to = "/new_room"
+            selected = location.pathname.startsWith(to)
             onNavigate = props.onNavigate
             disabled = stale
 
