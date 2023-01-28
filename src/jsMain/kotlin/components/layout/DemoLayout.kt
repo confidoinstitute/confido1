@@ -19,6 +19,7 @@ import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.img
 import react.dom.html.ReactHTML.h1
 import react.dom.html.ReactHTML.p
+import react.router.useNavigate
 import react.useContext
 import utils.AUTO
 import utils.buildObject
@@ -127,6 +128,8 @@ val DemoLoginBox = FC<Props> {
 }
 
 val DemoWelcomeBox = FC<Props> {
+    val navigate = useNavigate()
+
     div {
         css {
             position = Position.relative
@@ -139,7 +142,7 @@ val DemoWelcomeBox = FC<Props> {
             fontSize = 16.px
             lineHeight = 25.px
         }
-        DialogCloseButton{ onClose = { location.href = DEMO_CONTINUE_URL } }
+        DialogCloseButton { onClose = { navigate(DEMO_CONTINUE_URL) } }
         h1 {
             css {
                 marginTop =  0.px
@@ -169,7 +172,7 @@ val DemoWelcomeBox = FC<Props> {
             }
             Button {
                 variant = ButtonVariant.contained
-                href = DEMO_CONTINUE_URL
+                onClick = { navigate(DEMO_CONTINUE_URL) }
                 +"Start testing"
             }
         }
