@@ -54,7 +54,6 @@ fun loginRoutes(routing: Routing) = routing.apply {
 
         call.modifyUserSession { it.copy(userRef = user.ref) }
         TransientData.refreshAllWebsockets()
-        println(session)
         call.respond(HttpStatusCode.OK)
     }
     // Login by e-mail: Step one (sending link)
@@ -293,8 +292,6 @@ fun profileRoutes(routing: Routing) = routing.apply {
         withUser {
             val setNick: SetNick = call.receive()
             val newNick = setNick.name.ifEmpty { null }
-
-            System.err.println("Setting nick ${user.id} $newNick")
 
             serverState.userManager.modifyEntity(user.ref) {
                 it.copy(nick = newNick)

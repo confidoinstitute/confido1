@@ -65,7 +65,6 @@ suspend fun ApplicationCall.setUserSession(value: UserSession?) {
         if (value == null) {
             serverState.userSessionManager.deleteEntity(id, ignoreNonexistent = true)
         } else {
-            System.err.println("Saving session: ${value.copy(id=id)}")
             serverState.userSessionManager.replaceEntity(value.copy(id = id), upsert = true)
         }
     }

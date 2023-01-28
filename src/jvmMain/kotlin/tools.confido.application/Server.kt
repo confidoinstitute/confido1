@@ -252,11 +252,9 @@ fun main() {
             presenterRoutes(this)
 
             webSocketST("/state") {
-                print(call.request.headers["user-agent"])
-                print(call.request.headers.toMap())
                 val clientVer = call.request.queryParameters["bundleVer"] ?: ""
                 if (clientVer.isNotEmpty() && clientVer != jsHash && (call.request.headers["x-webpack-dev"] ?: "").isEmpty()) {
-                    System.err.println("Forcing reload - clientVer: $clientVer jsHash: $jsHash")
+                    call.application.log.info("Forcing reload - clientVer: $clientVer jsHash: $jsHash")
                     // If someone has the website open and an old frontend loaded and server then gets
                     // updated, we have to force reload of the page, otherwise, likely state deserialization
                     // would fail anyway.
@@ -271,7 +269,6 @@ fun main() {
                 // Require a session to already be initialized; it is not possible
                 // to edit session cookies within websockets.
                 val session = call.userSession
-                println(session)
 
                 if (session == null) {
                     // Code 3000 is registered with IANA as "Unauthorized".
@@ -299,7 +296,7 @@ fun main() {
                     send(Frame.Text(confidoJSON.encodeToString(state)))
                 }
             }
-            println("static dir: $staticDir")
+            application.log.info("static dir: $staticDir")
             static("/static") {
                 staticRootFolder = staticDir
                 preCompressed(CompressedFileType.BROTLI, CompressedFileType.GZIP) {

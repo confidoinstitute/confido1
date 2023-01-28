@@ -1,6 +1,7 @@
 package tools.confido.application.routes
 
 import io.ktor.http.*
+import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -26,14 +27,14 @@ fun presenterRoutes(routing: Routing) = routing.apply {
         RouteBody(call).withUser {
             transientData.activePresenterWindows += 1
             transientData.refreshSessionWebsockets()
-            System.err.println("new presenter\n")
+            call.application.log.info("new presenter")
             try {
                 timeoutMillis = 30*1000
                 pingIntervalMillis = 15*1000
 
                 incoming.receiveCatching()
             } finally {
-                System.err.println("presenter died\n")
+                call.application.log.info("presenter closed")
                 transientData.activePresenterWindows -= 1
                 transientData.refreshSessionWebsockets()
             }

@@ -2,6 +2,7 @@ package tools.confido.application
 
 import io.ktor.server.application.*
 import io.ktor.util.*
+import io.ktor.util.logging.*
 import kotlinx.html.*
 import kotlinx.html.stream.appendHTML
 import org.simplejavamail.api.email.Email
@@ -17,11 +18,12 @@ class Mailer(
     private val mailer: org.simplejavamail.api.mailer.Mailer?,
     private val senderAddress: String,
     private val senderName: String,
+    private val logger: Logger,
 ) {
     private fun sendMail(mail: Email) {
         if (debugMode) {
-            println("Debug mode; not sending the following email:")
-            println(mail.toString())
+            logger.info("Debug mode; not sending the following email:")
+            logger.info(mail.toString())
         } else {
             mailer!!.sendMail(mail)
         }
@@ -284,7 +286,7 @@ val Mailing: RouteScopedPlugin<MailingConfig> = createRouteScopedPlugin("Mailing
 
     application.attributes.put(
         MailerKey,
-        Mailer(pluginConfig.urlOrigin, pluginConfig.debugMode, pluginConfig.mailer, pluginConfig.senderAddress, pluginConfig.senderName)
+        Mailer(pluginConfig.urlOrigin, pluginConfig.debugMode, pluginConfig.mailer, pluginConfig.senderAddress, pluginConfig.senderName, application.log)
     )
 }
 

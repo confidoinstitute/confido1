@@ -29,8 +29,7 @@ fun Route.performST(route: Route.(String, PipelineInterceptor<Unit, ApplicationC
             try {
                 body(RouteBody(call))
             } catch (e: ResponseError) {
-                System.err.println("${e.httpCode.description}: ${e.message}")
-                System.err.flush()
+                call.application.log.info("Responding ${e.httpCode.value} (${e.httpCode.description}): ${e.message}")
                 call.respond(e.httpCode, e.message)
             }
         }
@@ -60,7 +59,6 @@ inline fun <reified T> Route.getWS(path: String, crossinline body: suspend Route
 
         val context = RouteBody(call)
         call.transientUserData?.runRefreshable(closeNotifier) {
-            print("Checking session")
             if (call.userSession == null) {
                 closeNotifier.emit(true)
                 return@runRefreshable
