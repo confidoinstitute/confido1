@@ -56,7 +56,12 @@ val RoomMembers = FC<Props> {
     val invitations = room.inviteLinks.associateWith { groupedMembership[it.id] }
 
     if (appState.appConfig.demoMode) {
-        DemoEmailAlert {}
+        Box {
+            sx {
+                marginTop = themed(2)
+            }
+            DemoEmailAlert {}
+        }
     }
 
     EditInviteDialog {
