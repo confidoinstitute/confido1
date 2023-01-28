@@ -1,3 +1,9 @@
+# Confido architecture
+
+Confido is designed as a client-server web application. The server (backend)
+is responsible for managing the data while the client is an SPA frontend and
+provides the user interface.
+
 ## Data Flow
 
 There are two directions to which the data communicates between the clients and
@@ -42,11 +48,43 @@ For this purpose, the Ministry of Truth provided us with a State
 censor. As the subscription channel is refreshed, before the data is sent to
 the client, it is censored, receiving only the relevant subset of this state.
 
-## Persistence
+The (censored) global state has its dedicated subscription channel, which also
+handles other functions:
 
-- Entities and managers
-	- Global state, ref and deref
-- MongoDB
+- Version management: If the server's version differs from the client, the
+  client is notified and completely reloads itself.
+- Session creation: A new client starts their session by subscribing to the
+  global state.
+
+### Instance configuration
+
+Each Confido instance may have its static configuration. This configuration can
+be changed only by fully restarting the server.
+
+## Data model
+
+The Confido data is made up of *entities* and auxilliary data. The entities can
+be referred to by other objects or used as indices. Auxilliary data exist
+either as singleton objects, or are indexed by an entity. Data is considered
+immutable.
+
+Each entity contains a unique string `id` which is used as its identifier. Any
+reference to this entity is then done via this `id`. If an entity needs to be
+referenced, there must exist a source of data containing the index
+of these entites. In general, this index exists in the (censored) global
+state. Then, if we wish to obtain the entity from its reference, this index is
+looked up.
+
+### Persistence
+
+The persistence of the global state is handled by MongoDB. Each entity type has
+its own collection. All references are stored as the corresponding `id`
+strings.
+
+Most of the data is kept synchronized between the persistent database and the
+in-memory state. Thus, only modification requests access the database. There
+are exceptions when the sheer volume of the data would be too much to be stored
+in-memory. In such case, this data is loaded on-demand from the database.
 
 ## Frontend structure
 
