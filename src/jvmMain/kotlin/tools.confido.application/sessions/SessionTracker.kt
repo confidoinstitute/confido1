@@ -3,6 +3,7 @@ package tools.confido.application.sessions
 import io.ktor.server.application.*
 import io.ktor.util.*
 import tools.confido.state.UserSession
+import tools.confido.state.deleteEntity
 import tools.confido.state.serverState
 import users.User
 
@@ -19,7 +20,7 @@ private fun newSessionId(): String {
  *
  * @return the id of the newly created session
  */
-fun ApplicationCall.createNewSession(): String {
+private fun ApplicationCall.createNewSession(): String {
     val tracker = application.attributes[SessionTrackerKey]
     return tracker.createNewSession(this)
 }
@@ -29,7 +30,7 @@ fun ApplicationCall.createNewSession(): String {
  *
  * @return the id of the current session if any is active
  */
-val ApplicationCall.sessionId: String?
+private val ApplicationCall.sessionId: String?
     get() {
         val tracker = application.attributes[SessionTrackerKey]
         return tracker.sessionId(this)
@@ -109,9 +110,11 @@ var ApplicationCall.transientUserData: TransientData?
 class SessionTracker {
     private val sessionIdKey = AttributeKey<String>("SessionId")
 
-    fun load(call: ApplicationCall) {
+    suspend fun load(call: ApplicationCall) {
         val cookie = readCookie(call) ?: return
-        call.attributes.put(sessionIdKey, cookie)
+
+        if (serverState.userSessionManager.get(cookie) != null)
+            call.attributes.put(sessionIdKey, cookie)
     }
 
     fun sessionId(call: ApplicationCall): String? {
