@@ -326,7 +326,7 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
             assertPermission(RoomPermission.VIEW_ROOM_COMMENTS, "You cannot like this comment.")
             val comment = serverState.roomComments[room.ref]?.get(id) ?: notFound("No such comment.")
 
-            serverState.commentLikeManager.setLike(comment.ref, user.ref, state);
+            serverState.commentLikeManager.setLike(comment.ref, user.ref, state)
         }
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)

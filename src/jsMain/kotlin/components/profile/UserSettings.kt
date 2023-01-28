@@ -91,7 +91,7 @@ val UserSettingsEmail = FC<UserSettingsCardProps> { props ->
     fun changeEmail() {
         val changed = (user.email ?: "") != email
         if (!changed) {
-            emailError = "This is already your current email address.";
+            emailError = "This is already your current email address."
             return
         }
         if (!isEmailValid(email)) {
@@ -371,7 +371,7 @@ val UserSettings = FC<Props> {
         }
 
         Stack {
-            spacing = themed(2);
+            spacing = themed(2)
 
             listOf(UserSettingsName, UserSettingsEmail, UserSettingsPassword).map {
                 it {

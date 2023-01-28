@@ -89,5 +89,5 @@ fun checkPassword(password: String): PasswordCheckResult {
         return PasswordCheckResult.TOO_LONG
     }
 
-    return PasswordCheckResult.OK;
+    return PasswordCheckResult.OK
 }

@@ -42,7 +42,7 @@ export interface Sensor<T extends Object> {
 
 open external class SensorInstance {
     open var autoScrollEnabled: Boolean;
-};
+}
 
 
 external interface SensorProps<T> {
@@ -52,7 +52,7 @@ external interface SensorProps<T> {
     var event: Event;
     var context: MutableRefObject<SensorContext>;
      */
-    var options: T;
+    var options: T
     /*
     var onStart(coordinates: Coordinates): void;
     var onCancel(): void;
