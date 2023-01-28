@@ -40,8 +40,7 @@ val RootLayout = FC<Props> {
 
         RootAppBar {
             key = "appbar"
-            if (appState.isFullUser)
-                hasDrawer = true
+            hasDrawer = true
             onDrawerOpen = { drawerOpen = true }
         }
 
