@@ -2,10 +2,30 @@ package rooms
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import tools.confido.state.FeatureFlag
-import tools.confido.state.SentState
 import tools.confido.state.appConfig
+
+enum class RoomPermission {
+    VIEW_QUESTIONS,
+    VIEW_QUESTION_COMMENTS,
+    VIEW_ROOM_COMMENTS,
+    POST_QUESTION_COMMENT,
+    POST_ROOM_COMMENT,
+    SUBMIT_PREDICTION,
+    ADD_QUESTION,
+    SUGGEST_QUESTION,
+    VIEW_HIDDEN_QUESTIONS,
+    VIEW_ALL_INVITE_TOKENS,
+    CREATE_INVITE_LINK,
+    /** See all group predictions regardless of question setting. */
+    VIEW_ALL_GROUP_PREDICTIONS,
+    VIEW_ALL_RESOLUTIONS,
+    VIEW_INDIVIDUAL_PREDICTIONS,
+    MANAGE_QUESTIONS,
+    MANAGE_MEMBERS,
+    MANAGE_COMMENTS,
+    ROOM_OWNER,
+}
 
 @Serializable
 sealed class RoomRole(val permissions: Set<RoomPermission>) {

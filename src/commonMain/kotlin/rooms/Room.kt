@@ -6,8 +6,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import tools.confido.question.Question
 import tools.confido.refs.*
-import tools.confido.state.PresenterInfo
-import tools.confido.state.globalState
+import tools.confido.utils.generateId
 import users.User
 import users.UserType
 
@@ -52,6 +51,43 @@ data class Room(
         }
     }
 }
+
+@Serializable
+enum class InviteLinkState {
+    ENABLED,
+    DISABLED_JOIN,
+    DISABLED_FULL,
+}
+
+@Serializable
+data class InviteLink(
+    @SerialName("_id")
+    override val id: String = generateId(),
+    val token: String,
+    val description: String,
+    /* Role granted by the invite link. */
+    val role: RoomRole,
+    /* User who created the invite link. */
+    val createdBy: Ref<User>,
+    /* Time of creation of the invite link. */
+    val createdAt: Instant,
+    /* Indicates whether guests are anonymous. */
+    val allowAnonymous: Boolean = false,
+    /* Indicates whether this link can be used by new users. */
+    val state: InviteLinkState = InviteLinkState.ENABLED
+) : HasId {
+    fun link(origin: String, room: Room) = "$origin/room/${room.id}/invite/$token"
+
+    val canJoin get() = state == InviteLinkState.ENABLED
+    val canAccess get() = state != InviteLinkState.DISABLED_FULL
+}
+
+@Serializable
+data class RoomMembership(
+    val user: Ref<User>,
+    val role: RoomRole,
+    val invitedVia: String? = null,
+)
 
 @Serializable
 enum class ExportHistory {
