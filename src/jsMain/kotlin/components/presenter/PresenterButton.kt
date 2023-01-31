@@ -4,6 +4,7 @@ import browser.window
 import components.AppStateContext
 import components.DialogCloseButton
 import components.rooms.RoomContext
+import components.showError
 import icons.ProjectorScreenIcon
 import icons.ProjectorScreenOutlineIcon
 import mui.material.*
@@ -12,13 +13,14 @@ import tools.confido.state.EmptyPV
 import tools.confido.state.PresenterView
 import tools.confido.utils.capFirst
 import tools.confido.utils.uncapFirst
+import utils.runCoroutine
 
 external interface PresenterButtonProps : Props {
     var view: PresenterView
 }
 
-fun setPresenterView(view: PresenterView) {
-    Client.postData("/presenter/set", view)
+suspend fun setPresenterView(view: PresenterView) {
+    Client.sendData("/presenter/set", view, onError = {showError?.invoke(it)}) {}
 }
 
 enum class  PresenterButtonState {
@@ -73,7 +75,7 @@ fun ChildrenBuilder.usePresenterOpener(): ((PresenterView)->Unit) {
         DialogActions {
             mui.material.Button {
                 +"Open presentation window"
-                onClick = { setPresenterView(view); openPresenterWindow(); state = PresenterButtonState.NORMAL }
+                onClick = { runCoroutine{  setPresenterView(view); openPresenterWindow(); state = PresenterButtonState.NORMAL } }
             }
             //Button {
             //    +"Copy link"
@@ -83,11 +85,13 @@ fun ChildrenBuilder.usePresenterOpener(): ((PresenterView)->Unit) {
     }
     return {
         view = it
-        state = if (appState.presenterWindowActive) {
-            setPresenterView(it)
-            PresenterButtonState.SNACKBAR_OPEN
+        if (appState.presenterWindowActive) {
+            runCoroutine {
+                setPresenterView(it)
+                state = PresenterButtonState.SNACKBAR_OPEN
+            }
         } else {
-            PresenterButtonState.DIALOG_OPEN
+            state = PresenterButtonState.DIALOG_OPEN
         }
     }
 }
@@ -109,7 +113,7 @@ val PresenterButton = FC <PresenterButtonProps> { props->
                 ProjectorScreenOutlineIcon{}
             onClick = {
                 if (isActive)
-                    setPresenterView(EmptyPV)
+                    runCoroutine { setPresenterView(EmptyPV) }
                 else
                     openPresenter(props.view)
             }

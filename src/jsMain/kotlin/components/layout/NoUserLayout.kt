@@ -41,10 +41,10 @@ val NoUserLayout = FC<Props> {
                 path = "password_reset"
                 this.element = VerifyToken.create {
                     url = "/profile/password/reset"
-                    failureTitle = "Password undo failed"
-                    successTitle = "Password change undone"
+                    failureTitle = "Password reset failed"
+                    successTitle = "Password was reset"
                     failureText = "The link is expired or invalid."
-                    successText = "Your password has been successfully undone. Please log-in again by e-mail."
+                    successText = "Your password has been successfully reset. You can log in by e-mail only now."
                 }
             }
         }
