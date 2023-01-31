@@ -40,7 +40,7 @@ val NoUserLayout = FC<Props> {
             Route {
                 path = "password_reset"
                 this.element = VerifyToken.create {
-                    url = "/profile/password/reset"
+                    url = "/profile/password/reset/finish"
                     failureTitle = "Password reset failed"
                     successTitle = "Password was reset"
                     failureText = "The link is expired or invalid."

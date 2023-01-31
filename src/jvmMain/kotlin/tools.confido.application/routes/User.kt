@@ -267,7 +267,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK)
     }
     // Undo password change
-    postST("/profile/password/reset") {
+    postST("/profile/password/reset/finish") {
         assertSession()
 
         val validation: TokenVerification = call.receive()
