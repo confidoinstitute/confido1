@@ -1,50 +1,39 @@
 package components.questions
 
+import Client
 import components.*
 import components.layout.permanentBreakpoint
 import components.presenter.PresenterButton
 import components.rooms.RoomContext
 import csstype.*
 import dom.html.HTMLDivElement
-import hooks.useDebounce
-import hooks.useElementSize
-import hooks.useOnUnmount
-import icons.CloseIcon
-import hooks.useWebSocket
-import icons.EditIcon
-import icons.ExpandMore
-import icons.TimelineIcon
 import io.ktor.client.plugins.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.js.jso
-import mui.material.*
 import mui.material.transitions.TransitionProps
 import mui.system.Breakpoint
+import hooks.*
+import icons.*
+import kotlinx.js.jso
+import mui.material.*
 import mui.system.responsive
 import mui.system.sx
 import react.*
-import react.dom.html.ReactHTML
-import react.dom.html.ReactHTML.br
 import react.dom.html.ReactHTML.small
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.strong
 import rooms.RoomPermission
 import tools.confido.distributions.ProbabilityDistribution
-import tools.confido.question.Comment
 import tools.confido.question.Prediction
 import tools.confido.question.Question
-import tools.confido.refs.ref
-import tools.confido.spaces.BinarySpace
-import tools.confido.spaces.NumericSpace
-import tools.confido.spaces.Space
+import tools.confido.spaces.*
 import tools.confido.state.FeatureFlag
 import tools.confido.state.InviteLinkPV
 import tools.confido.state.QuestionPV
 import tools.confido.state.enabled
 import tools.confido.utils.unixNow
 import utils.*
-import kotlin.coroutines.EmptyCoroutineContext
 import web.timers.clearInterval
 import web.timers.setInterval
 
@@ -88,7 +77,7 @@ val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
             variant = ChipVariant.outlined
         }
         PendingPredictionState.SENDING -> Chip {
-            label = ReactHTML.span.create {
+            label = span.create {
                 CircularProgress {
                     this.size = "0.8rem"
                 }
@@ -115,7 +104,7 @@ val QuestionPredictionChip = FC<QuestionPredictionChipProps> { props ->
                 }
             } else if (props.prediction != null) {
                 Chip {
-                    label = ReactHTML.span.create {
+                    label = span.create {
                         +"Your last prediction: "
                         Tooltip {
                             this.title = ReactNode(props.prediction!!.ts.toDateTime())
@@ -167,26 +156,22 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
     useDebounce(1000, pendingPrediction) {
         pendingPrediction?.let { dist ->
-            CoroutineScope(EmptyCoroutineContext).launch {
+            runCoroutine {
                 pendingPredictionState = PendingPredictionState.SENDING
-                try {
-                    Client.httpClient.postJson("/questions/${props.question.id}/predict", dist) {
-                        expectSuccess = true
-                    }
+                Client.sendData("/questions/${question.id}/predict", dist, onError = {
+                    pendingPredictionState = PendingPredictionState.ERROR
+                }) {
                     pendingPredictionState = PendingPredictionState.ACCEPTED
                     if (FeatureFlag.ENCOURAGE_COMMENTS.enabled && unixNow() - lastCommentSnackTS >= 24*3600) {
                         snackOpen = true
                         lastCommentSnackTS = unixNow()
                     }
-                } catch (e: Throwable) {
-                    pendingPredictionState = PendingPredictionState.ERROR
-                } finally {
-                    pendingPrediction = null
                 }
+                pendingPrediction = null
             }
         }
     }
-    useOnUnmount(pendingPrediction) { Client.postData("/questions/${props.question.id}/predict", it) }
+    useOnUnmount(pendingPrediction) { runCoroutine { Client.sendData("/questions/${question.id}/predict", it, onError = {showError?.invoke(it)}) {} } }
 
     Snackbar {
         open = snackOpen

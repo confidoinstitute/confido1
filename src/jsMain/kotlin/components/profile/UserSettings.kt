@@ -2,6 +2,8 @@ package components.profile
 
 import components.AlertSnackbar
 import components.AppStateContext
+import components.showError
+import hooks.useCoroutineLock
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
@@ -32,9 +34,12 @@ external interface UserSettingsCardProps : Props {
 val UserSettingsName = FC<UserSettingsCardProps> { props ->
     var name by useState(props.user.nick ?: "")
 
-    fun changeName() {
-        Client.postData("/profile/nick", SetNick(name))
-        props.onSuccess("Name updated.")
+    val change = useCoroutineLock()
+
+    fun changeName() = change {
+        Client.sendData("/profile/nick", SetNick(name), onError = {props.onError("Could not update name.")}) {
+            props.onSuccess("Name updated.")
+        }
     }
 
     Card {
@@ -65,7 +70,7 @@ val UserSettingsName = FC<UserSettingsCardProps> { props ->
                 Button {
                     type = ButtonType.submit
                     variant = ButtonVariant.contained
-                    disabled = props.disabled
+                    disabled = props.disabled || change.running
 
                     if (props.user.nick == null) {
                         +"Set name"
@@ -88,6 +93,8 @@ val UserSettingsEmail = FC<UserSettingsCardProps> { props ->
     // without any verification prompt.
     var pendingEmailChange by useState<String?>(null)
 
+    val change = useCoroutineLock()
+
     fun changeEmail() {
         val changed = (user.email ?: "") != email
         if (!changed) {
@@ -99,10 +106,13 @@ val UserSettingsEmail = FC<UserSettingsCardProps> { props ->
             return
         }
 
-        Client.postData("/profile/email/start_verification", StartEmailVerification(email))
-        emailError = null
-        pendingEmailChange = email
-        props.onSuccess("We sent you a verification e-mail.")
+        change {
+            Client.sendData("/profile/email/start_verification",StartEmailVerification(email), onError = {emailError = it}) {
+                emailError = null
+                pendingEmailChange = email
+                props.onSuccess("We sent you a verification e-mail.")
+            }
+        }
     }
 
     if (user.type == UserType.GUEST && user.email == null && pendingEmailChange == null) {
@@ -131,11 +141,8 @@ val UserSettingsEmail = FC<UserSettingsCardProps> { props ->
                         marginTop = themed(1)
                     }
                     Button {
-                        onClick = {
-                            Client.postData("/profile/email/start_verification", StartEmailVerification(email))
-                            pendingEmailChange = email
-                        }
                         disabled = props.disabled
+                        onClick = {changeEmail()}
 
                         if (pendingEmailChange != null) {
                             +"Resend verification email"
@@ -181,7 +188,7 @@ val UserSettingsEmail = FC<UserSettingsCardProps> { props ->
                 Button {
                     type = ButtonType.submit
                     variant = ButtonVariant.contained
-                    disabled = props.disabled
+                    disabled = props.disabled || change.running
                     +"Update email"
                 }
             }
@@ -199,6 +206,8 @@ val UserSettingsPassword = FC<UserSettingsCardProps> {props ->
     var currentPasswordError by useState<String?>(null)
     var newPasswordError by useState<String?>(null)
     var newPasswordRepeatError by useState<String?>(null)
+
+    val change = useCoroutineLock()
 
     fun changePassword() {
         currentPasswordError = null
@@ -224,29 +233,27 @@ val UserSettingsPassword = FC<UserSettingsCardProps> {props ->
 
         val setPassword = SetPassword(if (appState.myPasswordIsSet) currentPassword else null, newPassword)
 
-        CoroutineScope(EmptyCoroutineContext).launch {
-            val response = Client.httpClient.postJson("/profile/password", setPassword) {}
-            if (response.status == HttpStatusCode.OK) {
+        change {
+            Client.sendData("/profile/password", setPassword, onError = {
+                if (status == HttpStatusCode.Unauthorized) {
+                    currentPasswordError = "The current password is incorrect."
+                }
+            }) {
                 props.onSuccess("The password was changed.")
-            } else if (response.status == HttpStatusCode.Unauthorized) {
-                currentPasswordError = "The current password is incorrect."
             }
         }
     }
 
-    fun resetPassword() {
-        CoroutineScope(EmptyCoroutineContext).launch {
-            val response = Client.httpClient.post("/profile/password/reset") {}
-            if (response.status == HttpStatusCode.OK) {
-                props.onSuccess("An e-mail to reset your password was sent.")
-            } else {
+    fun resetPassword() = change {
+            Client.send("/profile/password/reset", onError = {
                 props.onError("We could not reset your password. Please try again later.")
+            }) {
+                props.onSuccess("An e-mail to reset your password was sent.")
             }
             currentPassword = ""
             newPassword = ""
             newPasswordRepeat = ""
         }
-    }
 
     Card {
         form {
@@ -354,9 +361,7 @@ val UserSettings = FC<Props> {
     }
 
     fun onError(message: String) {
-        alertOpen = true
-        alertContent = message
-        alertSeverity = AlertColor.error
+        showError?.invoke(message)
     }
 
     Container {

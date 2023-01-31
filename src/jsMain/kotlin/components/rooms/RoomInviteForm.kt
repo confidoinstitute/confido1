@@ -3,7 +3,9 @@ package components.rooms
 import components.AppStateContext
 import components.RouterLink
 import components.nouser.LoginForm
+import components.showError
 import csstype.*
+import io.ktor.client.call.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.js.get
@@ -20,11 +22,9 @@ import react.dom.html.InputType
 import react.dom.html.ReactHTML.em
 import react.router.useNavigate
 import tools.confido.refs.eqid
-import utils.byTheme
-import utils.eventValue
-import utils.isEmailValid
-import utils.themed
-import kotlin.coroutines.EmptyCoroutineContext
+import utils.*
+
+// TODO Split this huge component into nouser and user variants
 
 val RoomInviteForm = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
@@ -48,9 +48,10 @@ val RoomInviteForm = FC<Props> {
 
     useEffectOnce {
         val check = CheckInvite(inviteToken)
-        CoroutineScope(EmptyCoroutineContext).launch {
-            val result: InviteStatus = Client.postDataAndReceive("/rooms/${roomId}/invite/check", check)
-            inviteStatus = result
+        runCoroutine {
+            Client.sendData("/rooms/${roomId}/invite/check", check, onError = {showError?.invoke(it)}) {
+                inviteStatus = body()
+            }
         }
     }
 
@@ -165,21 +166,21 @@ val RoomInviteForm = FC<Props> {
                                     if (emailRequired && userMail == null) {
                                         emailError = "An email address is required."
                                     } else {
-                                        CoroutineScope(EmptyCoroutineContext).launch {
-                                            val userAlreadyExists: Boolean = Client.postDataAndReceive(
-                                                "/rooms/$roomId/invite/accept_newuser",
+                                        runCoroutine {
+                                            Client.sendData("/rooms/$roomId/invite/accept_newuser",
                                                 AcceptInviteAndCreateUser(
                                                     inviteToken,
                                                     name.trim().ifEmpty { null },
                                                     userMail
-                                                )
-                                            )
-
-                                            if (userAlreadyExists) {
-                                                // We need to log in.
-                                                loginRequired = true
-                                            } else {
-                                                navigate("/room/${roomId}")
+                                                ),
+                                                onError = {showError?.invoke(it)}
+                                            ) {
+                                                if (body()) {
+                                                    // We need to log in.
+                                                    loginRequired = true
+                                                } else {
+                                                    navigate("/room/${roomId}")
+                                                }
                                             }
                                         }
                                     }
@@ -207,11 +208,11 @@ val RoomInviteForm = FC<Props> {
                             marginTop = themed(2)
                         }
                         variant = ButtonVariant.contained
-                        onClick = {
-                            Client.postData("/rooms/$roomId/invite/accept", AcceptInvite(inviteToken)).invokeOnCompletion {
+                        onClick = { runCoroutine {
+                            Client.sendData("/rooms/$roomId/invite/accept", AcceptInvite(inviteToken), onError = {showError?.invoke(it)}) {
                                 navigate("/room/${roomId}")
                             }
-                        }
+                        } }
                         disabled = stale || missingRequiredEmail
                         +"Start forecasting"
                     }

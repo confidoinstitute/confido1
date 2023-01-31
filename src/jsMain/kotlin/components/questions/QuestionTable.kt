@@ -4,6 +4,7 @@ import Client
 import components.AppStateContext
 import components.DistributionSummary
 import components.IconToggleButton
+import components.showError
 import csstype.*
 import dndkit.applyListeners
 import dndkit.core.*
@@ -38,6 +39,7 @@ import rooms.RoomPermission
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.state.havePermission
+import utils.runCoroutine
 import utils.themed
 
 external interface QuestionTableProps : Props {
@@ -124,7 +126,9 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                 // TODO: Add debounce
                 val newOrder = moved.map { tools.confido.refs.Ref<Question>(it) }.toList()
                 val reorder = ReorderQuestions(newOrder)
-                Client.postData("/rooms/${room.id}/questions/reorder", reorder)
+                runCoroutine {
+                    Client.sendData("/rooms/${room.id}/questions/reorder", reorder, onError = {showError?.invoke(it)}) {}
+                }
             }
         }
         TableContainer {
@@ -239,9 +243,9 @@ val QuestionRow = FC<QuestionRowProps> { props ->
             }
         }
 
-    fun postEditQuestion(id: String, field: EditQuestionFieldType, value: Boolean) {
+    fun postEditQuestion(id: String, field: EditQuestionFieldType, value: Boolean) = runCoroutine {
         val editQuestion: EditQuestion = EditQuestionFlag(field, value)
-        Client.postData("/questions/$id/edit", editQuestion)
+        Client.sendData("/questions/$id/edit", editQuestion, onError = {showError?.invoke(it)}) {}
     }
 
     TableRow {

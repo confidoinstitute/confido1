@@ -4,9 +4,12 @@ import Client
 import components.AppStateContext
 import components.ValueEntry
 import components.rooms.RoomContext
+import components.showError
 import csstype.px
 import hooks.EditEntityDialogProps
+import hooks.useCoroutineLock
 import io.ktor.client.request.*
+import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -203,7 +206,10 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     var errorBadAnswerSpace by useState(false)
     var errorInvalidResolution by useState(false)
 
-    fun submitQuestion() {
+    val submit = useCoroutineLock()
+    val delete = useCoroutineLock()
+
+    fun submitQuestion() = submit {
         var error = false
         if (answerSpace == null) {
             errorEmptyAnswerSpace = true
@@ -217,7 +223,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
             errorInvalidResolution = true
             error = true
         }
-        if (error) return
+        if (error) return@submit
         val question = Question(
             id = id,
             name = name,
@@ -231,18 +237,15 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         )
 
         if (props.entity == null) {
-            Client.postData("/rooms/${room.id}/questions/add", question)
+            Client.sendData("/rooms/${room.id}/questions/add", question, onError = {showError?.invoke(it)}) {props.onClose?.invoke()}
         } else {
             val editQuestion: EditQuestion = EditQuestionComplete(question)
-            Client.postData("/questions/${id}/edit", editQuestion)
+            Client.sendData("/questions/${id}/edit", editQuestion, onError = {showError?.invoke(it)}) {props.onClose?.invoke()}
         }
-        props.onClose?.invoke()
     }
 
-    fun deleteQuestion() {
-        CoroutineScope(EmptyCoroutineContext).launch {
-            Client.httpClient.delete("/questions/$id")
-        }
+    fun deleteQuestion() = delete {
+        Client.send("/questions/$id", HttpMethod.Delete, onError = {showError?.invoke(it)}) { props.onClose?.invoke() }
     }
 
     val answerSpaceType = when(val space = answerSpace) {
@@ -418,8 +421,8 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         DialogActions {
             if (q != null) {
                 DeleteQuestionConfirmation {
-                    this.disabled = stale
-                    this.onDelete = { deleteQuestion() ; props.onClose?.invoke()}
+                    this.disabled = stale || delete.running
+                    this.onDelete = { deleteQuestion() }
                     this.confirmDelete = q.visible
                     this.hasPrediction = q.numPredictions > 0
                 }
@@ -430,7 +433,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
             }
             Button {
                 onClick = {submitQuestion()}
-                disabled = stale
+                disabled = stale || submit.running
                 if (q != null) +"Save" else +"Add"
             }
         }

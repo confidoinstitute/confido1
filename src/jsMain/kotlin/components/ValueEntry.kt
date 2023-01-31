@@ -75,13 +75,6 @@ val DateValueEntry = FC<NumericValueEntryProps> { props->
         props.label?.let { this.label = ReactNode(it) }
         this.inputProps = numericInputProps(props.space.min, props.space.max, null)
         this.defaultValue = props.value?.value?.let { LocalDate.fromUnix(it).toString() } ?: ""
-        if (props.space.unit.isNotEmpty())
-            this.asDynamic().InputProps = jso<InputProps> {
-                endAdornment = InputAdornment.create {
-                    position = InputAdornmentPosition.end
-                    +props.space.unit
-                }
-            }
         InputLabelProps = jso {
             shrink = true
         }

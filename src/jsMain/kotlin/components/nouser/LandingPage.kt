@@ -1,6 +1,7 @@
 package components.nouser
 
 import components.AppStateContext
+import components.showError
 import csstype.*
 import icons.CloseIcon
 import mui.material.*
@@ -13,6 +14,7 @@ import tools.confido.state.appConfig
 import users.DebugAdmin
 import users.DebugMember
 import utils.byTheme
+import utils.runCoroutine
 import utils.themed
 
 val LandingPage = FC<Props> {
@@ -76,16 +78,16 @@ val DevModeSection = FC<Props> {
 
             CardActions {
                 Button {
-                    onClick = {
-                        Client.postData("/login", PasswordLogin(DebugAdmin.email, DebugAdmin.password))
-                    }
+                    onClick = { runCoroutine {
+                        Client.sendData("/login", PasswordLogin(DebugAdmin.email, DebugAdmin.password), onError = {showError?.invoke(it)}) {}
+                    }}
                     disabled = stale
                     +"Log in as debug admin"
                 }
                 Button {
-                    onClick = {
-                        Client.postData("/login", PasswordLogin(DebugMember.email, DebugMember.password))
-                    }
+                    onClick = { runCoroutine {
+                        Client.sendData("/login", PasswordLogin(DebugAdmin.email, DebugAdmin.password), onError = {showError?.invoke(it)}) {}
+                    }}
                     disabled = stale
                     +"Log in as debug member"
                 }

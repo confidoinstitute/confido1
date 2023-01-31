@@ -2,10 +2,12 @@ package components.nouser
 
 import components.AppStateContext
 import components.UserAvatar
+import components.showError
 import components.userListItemText
 import csstype.*
 import dom.html.HTMLLIElement
 import emotion.react.css
+import hooks.useCoroutineLock
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -47,6 +49,8 @@ val LoginForm = FC<LoginFormProps> { props ->
     var emailError by useState<String?>(null)
     var passwordError by useState<String?>(null)
 
+    val login = useCoroutineLock()
+
     fun attemptLogin() {
         val trimmedEmail = email.trim()
         val valid = isEmailValid(trimmedEmail)
@@ -55,19 +59,21 @@ val LoginForm = FC<LoginFormProps> { props ->
             return
         }
 
-        when (mode) {
-            LoginMode.MagicLink -> {
-                Client.postData("/login_email/create", SendMailLink(trimmedEmail, "/"))
-                emailSent = true
-            }
-
-            LoginMode.Password -> {
-                CoroutineScope(EmptyCoroutineContext).launch {
-                    val response = Client.httpClient.postJson("/login", PasswordLogin(trimmedEmail, password)) {}
-                    if (response.status == HttpStatusCode.Unauthorized) {
-                        passwordError = "Wrong password or email, please try again."
-                        password = ""
+        login {
+            when (mode) {
+                LoginMode.MagicLink -> {
+                    Client.sendData("/login_email/create", SendMailLink(trimmedEmail, "/"), onError = {showError?.invoke(it)}) {
+                        emailSent = true
                     }
+                }
+
+                LoginMode.Password -> {
+                    Client.sendData("/login", PasswordLogin(trimmedEmail, password), onError = {
+                        if (status == HttpStatusCode.Unauthorized) {
+                            passwordError = "Wrong password or email, please try again."
+                            password = ""
+                        }
+                    }) {}
                 }
             }
         }
@@ -192,7 +198,7 @@ val LoginForm = FC<LoginFormProps> { props ->
         Button {
             variant = ButtonVariant.contained
             fullWidth = true
-            disabled = stale || emailSent
+            disabled = stale || emailSent || login.running
             onClick = { attemptLogin() }
             +"Log in"
         }
@@ -277,16 +283,20 @@ val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
     var open by useState(false)
     val loading = open && users == null
 
+    val login = useCoroutineLock()
+
     useEffect(loading) {
         if (!loading) {
             return@useEffect
         }
 
-        CoroutineScope(EmptyCoroutineContext).launch {
-            val availableUsers: ReadonlyArray<User> = Client.httpClient.getJson("/login_users") {}.body()
-            // Required for the autocomplete groupBy
-            availableUsers.sortBy { it.type }
-            users = availableUsers
+        runCoroutine {
+            Client.send("/login_users", HttpMethod.Get, onError = {showError?.invoke(it)}) {
+                val availableUsers: ReadonlyArray<User> = body()
+                // Required for the autocomplete groupBy
+                availableUsers.sortBy { it.type }
+                users = availableUsers
+            }
         }
     }
 
@@ -296,9 +306,9 @@ val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
         }
     }
     val autocomplete: FC<AutocompleteProps<User>> = Autocomplete
-    fun attemptLogin() {
+    fun attemptLogin() = login {
         chosenUser?.let {
-            Client.postData("/login_users", it.ref)
+            Client.sendData("/login_users", it.ref, onError = {showError?.invoke(it)}) {}
         }
     }
     autocomplete {
@@ -332,11 +342,10 @@ val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
     Button {
         variant = ButtonVariant.contained
         fullWidth = true
-        disabled = stale || chosenUser == null
+        disabled = stale || chosenUser == null || login.running
         onClick = { attemptLogin() }
         +"Log in"
     }
-
 }
 
 val LoginByUserSelectForm = FC<LoginByUserSelectFormProps> { props ->

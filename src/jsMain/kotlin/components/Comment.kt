@@ -7,10 +7,13 @@ import csstype.number
 import csstype.rem
 import dom.html.HTMLElement
 import dom.html.HTMLInputElement
+import hooks.useCoroutineLock
 import icons.*
 import io.ktor.client.plugins.*
 import io.ktor.client.request.*
+import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.js.jso
 import mui.lab.LoadingButton
@@ -52,7 +55,7 @@ val CommentManageMenu = FC<CommentManageMenuProps> {props ->
 
     IconButton {
         disabled = props.disabled
-        onClick = {menuOpen = true; menuAnchor = it.currentTarget}
+        onClick = { menuOpen = true; menuAnchor = it.currentTarget }
         MoreVertIcon {}
     }
     Menu {
@@ -100,19 +103,29 @@ val Comment = FC<CommentProps> { props ->
     var editMode by useState(false)
     var editContent by useState("")
 
-    fun deleteComment() {
+    fun deleteComment() = runCoroutine {
         val url = when(comment) {
             is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}"
             is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}"
         }
-        CoroutineScope(EmptyCoroutineContext).launch {
-            Client.httpClient.delete(url) {}
-        }
+        Client.send(url, method = HttpMethod.Delete, onError = {showError?.invoke(it)}) {}
     }
 
-    fun editComment() {
+    fun editCommentMode() {
         editMode = true
         editContent = comment.content
+    }
+
+    val editSubmit = useCoroutineLock()
+
+    fun editComment() = editSubmit {
+        val url = when (comment) {
+            is QuestionComment ->
+                "/questions/${comment.question.id}/comments/${comment.id}/edit"
+            is RoomComment ->
+                "/rooms/${comment.room.id}/comments/${comment.id}/edit"
+        }
+        Client.sendData(url, editContent, onError = {showError?.invoke(it)}) { editMode = false }
     }
 
     val liked = props.commentInfo.likedByMe
@@ -151,7 +164,7 @@ val Comment = FC<CommentProps> { props ->
                 if (canManage) {
                     CommentManageMenu {
                         disabled = stale
-                        onEdit = ::editComment
+                        onEdit = ::editCommentMode
                         onDelete = ::deleteComment
                     }
                 }
@@ -162,24 +175,10 @@ val Comment = FC<CommentProps> { props ->
                 //ClickAwayListener {
                     //onClickAway = {editMode = false}
                     form {
-                        onSubmit = {
-                            when (comment) {
-                                is QuestionComment ->
-                                    Client.postRawData(
-                                        "/questions/${comment.question.id}/comments/${comment.id}/edit",
-                                        editContent
-                                    )
-                                is RoomComment ->
-                                    Client.postRawData(
-                                        "/rooms/${comment.room.id}/comments/${comment.id}/edit",
-                                        editContent
-                                    )
-                            }
-                            editMode = false
-                        }
+                        onSubmit = { it.preventDefault(); editComment() }
                         TextField {
                             inputRef =
-                                { el: HTMLInputElement? -> console.log(el); setTimeout({ el?.focus() }, 0) }.asDynamic()
+                                { el: HTMLInputElement? -> setTimeout({ el?.focus() }, 0) }.asDynamic()
                             variant = FormControlVariant.standard
                             fullWidth = true
                             value = editContent
@@ -197,7 +196,7 @@ val Comment = FC<CommentProps> { props ->
                                     position = InputAdornmentPosition.end
                                     IconButton {
                                         type = ButtonType.submit
-                                        disabled = stale || editContent.isEmpty()
+                                        disabled = stale || editContent.isEmpty() || editSubmit.running
                                         SendIcon {}
                                     }
                                 }
@@ -241,14 +240,13 @@ val Comment = FC<CommentProps> { props ->
                         ThumbUpOutlineIcon{}
                 }
                 disabled = stale
-                onClick = {
-                    val url = when(comment) {
+                onClick = {runCoroutine {
+                    val url = when (comment) {
                         is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}/like"
                         is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}/like"
                     }
-                    CoroutineScope(EmptyCoroutineContext).launch {
-                        Client.httpClient.postJson(url, !liked) {}
-                    }
+                    Client.sendData(url, !liked, onError = {showError?.invoke(it)}) {}
+                }
                 }
             }
         }
@@ -271,32 +269,24 @@ val CommentInput = FC<CommentInputProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     var content by useState("")
     var attachPrediction by useState(false)
-    var pendingSend by useState(false)
-    var errorSend by useState(false)
 
     val room = useContext(RoomContext)
+
+    val submit = useCoroutineLock()
 
     form {
         onSubmit = {
             it.preventDefault()
-            CoroutineScope(EmptyCoroutineContext).launch {
-                errorSend = false
-                pendingSend = true
-                try {
-                    val createdComment = CreateComment(unixNow(), content, attachPrediction)
-                    val url = when(props.variant) {
-                        CommentInputVariant.QUESTION -> "/questions/${props.id}/comments/add"
-                        CommentInputVariant.ROOM -> "/rooms/${props.id}/comments/add"
-                    }
-                    Client.httpClient.postJson(url, createdComment) {
-                        expectSuccess = true
-                    }
+            submit {
+                val createdComment = CreateComment(unixNow(), content, attachPrediction)
+                val url = when(props.variant) {
+                    CommentInputVariant.QUESTION -> "/questions/${props.id}/comments/add"
+                    CommentInputVariant.ROOM -> "/rooms/${props.id}/comments/add"
+                }
+
+                Client.sendData(url, createdComment, onError = {showError?.invoke(it)}) {
                     content = ""
                     props.onSubmit?.invoke(createdComment)
-                } catch (e: Throwable) {
-                    errorSend = true
-                } finally {
-                    pendingSend = false
                 }
             }
         }
@@ -309,19 +299,15 @@ val CommentInput = FC<CommentInputProps> { props ->
                 this.name = "content"
                 this.value = content
                 this.onChange = { content = it.eventValue() }
-                if (errorSend) {
-                    this.error = true
-                    this.helperText = ReactNode("Comment failed to send. Try again later.")
-                }
             }
         }
 
         fun sendButton(childrenBuilder: ChildrenBuilder) = childrenBuilder.apply {
             LoadingButton {
                 +"Send"
-                disabled = pendingSend || content.isEmpty() || stale
+                disabled = submit.running || content.isEmpty() || stale
                 type = ButtonType.submit
-                loading = pendingSend
+                loading = submit.running
                 loadingPosition = LoadingPosition.end
                 endIcon = SendIcon.create()
             }

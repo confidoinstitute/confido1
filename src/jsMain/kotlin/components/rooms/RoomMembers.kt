@@ -27,6 +27,7 @@ import tools.confido.state.InviteLinkPV
 import tools.confido.state.SentState
 import tools.confido.state.appConfig
 import tools.confido.utils.randomString
+import utils.runCoroutine
 import utils.themed
 import web.location.location
 import web.navigator.navigator
@@ -323,8 +324,8 @@ val RoomMember = FC<RoomMemberProps> {props ->
     fun canChangeSelf() =
         (!(user eqid appState.session.user) || appState.isAdmin())
 
-    fun memberRoleChange(role: RoomRole) {
-        Client.postData("/rooms/${room.id}/members/add", AddedExistingMember(membership.user, role) as AddedMember)
+    fun memberRoleChange(role: RoomRole) = runCoroutine {
+        Client.sendData("/rooms/${room.id}/members/add", AddedExistingMember(membership.user, role) as AddedMember, onError = {showError?.invoke(it)}) {}
     }
 
     ListItem {

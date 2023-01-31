@@ -2,7 +2,10 @@ package components.rooms
 
 import Client
 import components.AppStateContext
+import components.showError
+import hooks.useCoroutineLock
 import io.ktor.client.request.*
+import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import mui.material.*
@@ -14,12 +17,12 @@ import react.dom.onChange
 import rooms.*
 import tools.confido.state.FeatureFlag
 import tools.confido.state.appConfig
-import utils.deleteJson
 import utils.eventValue
 import utils.themed
 import kotlin.coroutines.EmptyCoroutineContext
 
 external interface DeleteInviteConfirmationProps : Props {
+    var running: Boolean
     var hasUsers: Boolean
     var onDelete: ((Boolean) -> Unit)?
 }
@@ -27,6 +30,7 @@ external interface DeleteInviteConfirmationProps : Props {
 val DeleteInviteConfirmation = FC<DeleteInviteConfirmationProps> { props ->
     var open by useState(false)
     Button {
+        disabled = props.running
         onClick = {if (props.hasUsers) open = true else props.onDelete?.invoke(false)}
         color = ButtonColor.error
         +"Delete"
@@ -82,10 +86,15 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
 
     val htmlId = useId()
 
-    fun submitInviteLink() {
+    val submit = useCoroutineLock()
+    val delete = useCoroutineLock()
+
+    fun submitInviteLink() = submit {
         if (i == null) {
             val invite = CreateNewInvite(description, role, anonymous)
-            Client.postData("/rooms/${room.id}/invites/create", invite)
+            Client.sendData("/rooms/${room.id}/invites/create", invite, onError = {showError?.invoke(it)}) {
+                props.onClose?.invoke()
+            }
         } else {
             val invite = i.copy(
                 description = description,
@@ -93,16 +102,15 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                 allowAnonymous = anonymous,
                 state = linkState,
             )
-            Client.postData("/rooms/${room.id}/invites/edit", invite)
+            Client.sendData("/rooms/${room.id}/invites/edit", invite, onError = {showError?.invoke(it)}) {
+                props.onClose?.invoke()
+            }
         }
-        props.onClose?.invoke()
     }
 
-    fun deleteInviteLink(keepMembers: Boolean) {
-        if (i == null) return
-        CoroutineScope(EmptyCoroutineContext).launch {
-            Client.httpClient.deleteJson("/rooms/${room.id}/invite", DeleteInvite(i.id, keepMembers)) { }
-        }
+    fun deleteInviteLink(keepMembers: Boolean) = delete {
+        if (i == null) return@delete
+            Client.sendData("/rooms/${room.id}/invite", DeleteInvite(i.id, keepMembers), method = HttpMethod.Delete, onError = {showError?.invoke(it)}) { }
     }
 
     Dialog {
@@ -216,6 +224,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
         DialogActions {
             if (i != null)
                 DeleteInviteConfirmation {
+                    running = delete.running
                     hasUsers = props.hasUsers
                     onDelete = { deleteInviteLink(it); props.onClose?.invoke() }
                 }
@@ -225,7 +234,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
             }
             Button {
                 onClick = {submitInviteLink()}
-                disabled = stale
+                disabled = stale || submit.running
                 if (i != null) +"Edit" else +"Add"
             }
         }

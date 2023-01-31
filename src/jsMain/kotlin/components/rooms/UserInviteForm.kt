@@ -2,6 +2,7 @@ package components.rooms
 
 import components.AppStateContext
 import components.UserAvatar
+import components.showError
 import components.userListItemText
 import csstype.AlignItems
 import csstype.number
@@ -21,6 +22,7 @@ import react.dom.html.HTMLAttributes
 import rooms.*
 import tools.confido.refs.*
 import users.User
+import utils.runCoroutine
 
 internal sealed external interface UserAutocomplete
 internal data class ExistingUser(val userRef: tools.confido.refs.Ref<User>) : UserAutocomplete
@@ -211,9 +213,9 @@ val UserInviteForm = FC<Props> {
                             AddedNewMember(who.email, role)
                         }
                         null -> null
-                    }?.let { addedMember ->
-                        Client.postData("/rooms/${room.id}/members/add", addedMember)
-                    }
+                    }?.let { addedMember -> runCoroutine {
+                        Client.sendData("/rooms/${room.id}/members/add", addedMember, onError = {showError?.invoke(it)}) {}
+                    } }
                 }
                 chosenUsers = emptyArray()
                 role = Forecaster

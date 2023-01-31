@@ -4,10 +4,8 @@ import components.*
 import components.questions.QuestionList
 import components.questions.QuestionTable
 import csstype.*
+import hooks.useCoroutineLock
 import icons.EditIcon
-import io.ktor.client.plugins.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import kotlinx.js.get
 import mui.material.*
 import mui.material.styles.TypographyVariant
@@ -22,9 +20,7 @@ import rooms.Room
 import rooms.RoomPermission
 import tools.confido.refs.deref
 import tools.confido.refs.eqid
-import utils.postJson
 import utils.themed
-import kotlin.coroutines.EmptyCoroutineContext
 
 val RoomContext = createContext<Room>()
 
@@ -32,42 +28,25 @@ val RoomInformation = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
 
-    var editMode by useState(false)
-    var editPending by useState(false)
-    var editError by useState(false)
-
     val currentUser = appState.session.user ?: return@FC
 
+    var editMode by useState(false)
+    val edit = useCoroutineLock()
+
     val editRoom: ((BaseRoomInformation) -> Unit) = useMemo(room) {
-        {information ->
-            CoroutineScope(EmptyCoroutineContext).launch {
-                editPending = true
-                try {
-                    Client.httpClient.postJson("/rooms/${room.id}/edit", information) {
-                        expectSuccess = true
-                    }
+        { information ->
+            edit {
+                Client.sendData("/rooms/${room.id}/edit", information, onError = { showError?.invoke(it) }) {
                     editMode = false
-                    editError = false
-                } catch (e: Throwable) {
-                    editError = true
-                } finally {
-                    editPending = false
                 }
             }
         }
     }
 
     if (editMode) {
-        Collapse {
-            this.`in` = editError
-            Alert {
-                severity = AlertColor.error
-                +"There was a failure in editing the room details."
-            }
-        }
         RoomInfoForm {
             this.room = room
-            this.disabled = editPending
+            this.disabled = edit.running
             this.onCancel = {editMode = false}
             this.onSubmit = editRoom
         }
