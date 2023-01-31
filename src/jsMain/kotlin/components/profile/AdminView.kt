@@ -68,7 +68,7 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
             lastLoginAt = props.entity?.lastLoginAt
         )
 
-        val url = if (newUser) "edit" else "add"
+        val url = if (newUser) "add" else "edit"
         submit {
             Client.sendData("/users/$url", user, req = {
                 if (invite)
