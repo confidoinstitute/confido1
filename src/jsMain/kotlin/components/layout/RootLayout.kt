@@ -4,16 +4,13 @@ import browser.window
 import components.AppStateContext
 import components.ClientAppState
 import components.LoginContext
-import components.nouser.EmailLogin
 import components.nouser.EmailLoginAlreadyLoggedIn
-import components.nouser.LandingPage
 import components.profile.AdminView
 import components.profile.UserSettings
 import components.profile.VerifyToken
 import components.rooms.NewRoom
 import components.rooms.Room
 import components.rooms.RoomInviteLoggedIn
-import components.rooms.RoomInviteNoUser
 import csstype.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromString
@@ -39,55 +36,62 @@ import websockets.WebSocket
 enum class State {
     CONNECTING,
     CONNECTED,
-    STALE,
+    DISCONNECTED,
 }
 
 private val AppStateWebsocketProvider = FC<PropsWithChildren> { props ->
     val loginState = useContext(LoginContext)
     var appState by useState<SentState?>(null)
-    val websocketState = useRef(State.CONNECTING)
+    var stale by useState(false)
+    val (_, setWebsocketState) = useState(State.DISCONNECTED)
     val webSocket = useRef<WebSocket>(null)
 
     fun startWebSocket() {
-        if (websocketState.current == State.CONNECTED) return
+        setWebsocketState.invoke { current ->
+            if (current != State.DISCONNECTED) return@invoke current
 
-        val ws = WebSocket(webSocketUrl("/state?bundleVer=${window.asDynamic().bundleVer as String}"))
-        ws.apply {
-            onopen = {
-                websocketState.current = State.CONNECTED
-            }
-            onmessage = {
-                val decodedState = confidoJSON.decodeFromString<SentState>(it.data.toString())
-                clientState = ClientState(decodedState)
-                appState = decodedState
+            // These versions are used to check compatibility with the server.
+            val bundleVer = window.asDynamic().bundleVer as String
 
-                try {
-                    @OptIn(ExperimentalSerializationApi::class)
-                    window.asDynamic().curState = confidoJSON.encodeToDynamic(decodedState) // for easy inspection in devtools
-                } catch (e: Exception) {}
-                @Suppress("RedundantUnitExpression")
-                Unit // This is not redundant, because assignment fails some weird type checks
-            }
-            onclose = {
-                console.log("Closed websocket")
-                websocketState.current = State.STALE
-                webSocket.current = null
-                (it as? CloseEvent)?.let { event ->
-                    if (appConfig.devMode) console.log("AppState Websocket closed: code ${event.code}")
-                    if (event.code == 4001) {
-                        if (appConfig.devMode) console.log("AppState Websocket closed: incompatible frontend version")
-                        // Incompatible frontend version
-                        location.reload()
-                    }
-                    if (event.code == 3000) {
-                        // Unauthorized
-                        if (appConfig.devMode) console.log("AppState Websocket closed: unauthorized")
-                        loginState.logout()
+            val ws = WebSocket(webSocketUrl("/state?bundleVer=${window.asDynamic().bundleVer as String}"))
+            ws.apply {
+                onmessage = {
+                    val decodedState = confidoJSON.decodeFromString<SentState>(it.data.toString())
+                    clientState = ClientState(decodedState)
+                    appState = decodedState
+                    stale = false
+                    setWebsocketState(State.CONNECTED)
+
+                    try {
+                        @OptIn(ExperimentalSerializationApi::class)
+                        window.asDynamic().curState = confidoJSON.encodeToDynamic(decodedState) // for easy inspection in devtools
+                    } catch (e: Exception) {}
+                    @Suppress("RedundantUnitExpression")
+                    Unit // This is not redundant, because assignment fails some weird type checks
+                }
+                onclose = {
+                    console.log("Closed websocket")
+                    setWebsocketState(State.DISCONNECTED)
+                    stale = true
+                    webSocket.current = null
+                    (it as? CloseEvent)?.let { event ->
+                        if (appConfig.devMode) console.log("AppState Websocket closed: code ${event.code}")
+                        if (event.code == 4001) {
+                            if (appConfig.devMode) console.log("AppState Websocket closed: incompatible frontend version")
+                            // Incompatible frontend version
+                            location.reload()
+                        }
+                        if (event.code == 3000) {
+                            // Unauthorized
+                            if (appConfig.devMode) console.log("AppState Websocket closed: unauthorized")
+                            loginState.logout()
+                        }
                     }
                 }
             }
+            webSocket.current = ws
+            return@invoke State.CONNECTING
         }
-        webSocket.current = ws
     }
 
     useEffectOnce {
@@ -105,13 +109,14 @@ private val AppStateWebsocketProvider = FC<PropsWithChildren> { props ->
 
     if (appState != null) {
         AppStateContext.Provider {
-            value = ClientAppState(appState ?: error("No app state!"), websocketState.current == State.STALE)
+            value = ClientAppState(appState ?: error("No app state!"), stale)
             +props.children
         }
     } else {
-        if (websocketState.current == State.CONNECTING) {
+        if (!stale) {
             LoadingLayout {}
         } else {
+            console.log("no state layout")
             NoStateLayout {
                 this.stale = stale
             }
