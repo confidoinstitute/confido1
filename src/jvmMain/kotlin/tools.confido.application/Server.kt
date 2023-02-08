@@ -44,6 +44,7 @@ import kotlin.collections.listOf
 val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "./build/distributions/").canonicalFile
 val jsBundle = staticDir.resolve("confido1.js")
 val jsHash = DigestUtils(SHA_224).digestAsHex(jsBundle)
+val appConfigHash = DigestUtils(SHA_224).digestAsHex(Json.encodeToString(appConfig))
 val devMode = System.getenv("CONFIDO_DEVMODE") == "1"
 val demoMode = System.getenv("CONFIDO_DEMO") == "1"
 
@@ -58,6 +59,7 @@ fun HTML.index() {
     }
     body {
         script(type="text/javascript") { unsafe { +"bundleVer= '${jsHash}'" } }
+        script(type="text/javascript") { unsafe { +"appConfigVer= '${appConfigHash}'" } }
         script(type="text/javascript") { unsafe { +"appConfig= ${Json.encodeToString(appConfig)}" } }
         script(src = "/static/confido1.js?${jsHash}") {}
     }
@@ -251,8 +253,11 @@ fun main() {
 
             webSocketST("/state") {
                 val clientVer = call.request.queryParameters["bundleVer"] ?: ""
-                if (clientVer.isNotEmpty() && clientVer != jsHash && (call.request.headers["x-webpack-dev"] ?: "").isEmpty()) {
-                    call.application.log.info("Forcing reload - clientVer: $clientVer jsHash: $jsHash")
+                val appConfigVer = call.request.queryParameters["appConfigVer"] ?: ""
+                val isDev = call.request.headers["x-webpack-dev"]?.isNotEmpty() ?: false
+
+                if (clientVer.isNotEmpty() && clientVer != jsHash && !isDev) {
+                    call.application.log.info("Forcing reload due to version mismatch - clientVer: $clientVer jsHash: $jsHash")
                     // If someone has the website open and an old frontend loaded and server then gets
                     // updated, we have to force reload of the page, otherwise, likely state deserialization
                     // would fail anyway.
@@ -264,6 +269,13 @@ fun main() {
                     close(CloseReason(4001, "Incompatible frontend version"))
                     return@webSocketST
                 }
+
+                if (appConfigVer.isNotEmpty() && appConfigVer != appConfigHash) {
+                    call.application.log.info("Forcing reload due to app config mismatch - appConfigVer: $appConfigVer appConfigHash: $appConfigHash")
+                    close(CloseReason(4001, "Incompatible app configuration"))
+                    return@webSocketST
+                }
+
                 // Require a session to already be initialized; it is not possible
                 // to edit session cookies within websockets.
                 // In addition, require the user to be logged in.

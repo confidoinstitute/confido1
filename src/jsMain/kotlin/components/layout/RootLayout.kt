@@ -52,8 +52,9 @@ private val AppStateWebsocketProvider = FC<PropsWithChildren> { props ->
 
             // These versions are used to check compatibility with the server.
             val bundleVer = window.asDynamic().bundleVer as String
+            val appConfigVer = window.asDynamic().appConfigVer as String
 
-            val ws = WebSocket(webSocketUrl("/state?bundleVer=${window.asDynamic().bundleVer as String}"))
+            val ws = WebSocket(webSocketUrl("/state?bundleVer=${bundleVer}&appConfigVer=${appConfigVer}"))
             ws.apply {
                 onmessage = {
                     val decodedState = confidoJSON.decodeFromString<SentState>(it.data.toString())
@@ -116,7 +117,6 @@ private val AppStateWebsocketProvider = FC<PropsWithChildren> { props ->
         if (!stale) {
             LoadingLayout {}
         } else {
-            console.log("no state layout")
             NoStateLayout {
                 this.stale = stale
             }
