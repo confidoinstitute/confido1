@@ -1,0 +1,68 @@
+# This is an example of environment variables that configure the Confido
+# instance. To apply them, you can call `. config.example` before starting up
+# the instance.
+#
+# -------------
+# Host settings
+# -------------
+#
+# Location of the directory with the static data
+# Used by the build script and the webserver to detect the Confido version
+#CONFIDO_STATIC_PATH=/srv/confido/static
+
+# HTTP server host and port to which the instance listens
+CONFIDO_HTTP_HOST=127.0.0.1
+CONFIDO_HTTP_PORT=8080
+
+# MongoDB URL and name to which server connects
+# Replica set is required for the database
+CONFIDO_MONGODB_URL=mongodb://localhost/?replicaSet=rs01
+CONFIDO_DB_NAME=confido1
+
+# -------------
+# Mail settings
+# -------------
+#
+# SMTP server to which e-mails are sent
+CONFIDO_SMTP_HOST=localhost
+CONFIDO_SMTP_PORT=25
+
+# Debug mode: do not send the e-mail, only print it out
+#CONFIDO_MAIL_DEBUG=1
+
+# The e-mail sender address used by automatic messages
+CONFIDO_MAIL_SENDER=noreply@confido.tools
+
+# When someone posts feedback, send it to this address
+CONFIDO_MAIL_FEEDBACK_TO=feedback@confido.tools
+
+# ----------------
+# Feature settings
+# ----------------
+#
+# These settings alter the behaviour of the server or frontend. Most of these
+# are experimental or for development purpose only.
+#
+# When server is started up and there are no admin accounts, create an admin
+# account for each e-mail address. Comma-separated.
+#CONFIDO_ADMIN_EMAILS=admin1@example.org,admin2@example.org
+
+# When an user enters the app, show them a demo message before giving them an
+# option to login to any user
+#CONFIDO_DEMO=1
+
+# Developer mode: enables development only endpoints and adds a list of users
+# to login into without authentication
+#CONFIDO_DEVMODE=1
+
+# Show a BETA flag in the header of the app
+#CONFIDO_BETA_INDICATOR=1
+
+# Enable viewing of the update history; experimental
+CONFIDO_FEAT_UPDATE_HISTORY=1
+
+# Add a Question Writer role
+#CONFIDO_FEAT_QUESTION_WRITER_ROLE=1
+
+# Add a popup to encourage users to comment when they make a prediction
+#CONFIDO_FEAT_ENCOURAGE_COMMENTS=1
