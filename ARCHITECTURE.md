@@ -9,9 +9,6 @@ provides the user interface.
 There are two directions to which the data communicates between the clients and
 the server. These directions are asymmetric.
 
-In most cases, the communication is done via JSON messages. In some cases the
-amount of data transferred may be very high and CBOR is used instead.
-
 ### Receiving data from the server
 
 There are in general two types of data that the client may request: one-shot
@@ -48,32 +45,34 @@ For this purpose, the Ministry of Truth provided us with a State
 censor. As the subscription channel is refreshed, before the data is sent to
 the client, it is censored, receiving only the relevant subset of this state.
 
-The (censored) global state has its dedicated subscription channel, which also
-handles other functions:
+The censored (global) state is sent to the client via a subscription channel
+and most data modifications server-side refresh it.
 
-- Version management: If the server's version differs from the client, the
-  client is notified and completely reloads itself.
-- Session creation: A new client starts their session by subscribing to the
-  global state.
+Parts of the global state are not sent by this channel as they would require to
+send too much data. Instead, these parts may be obrained by the secondary
+subscription channels. These channels handle the state censorship on their own.
 
 ### Instance configuration
 
 Each Confido instance may have its static configuration. This configuration can
 be changed only by fully restarting the server.
 
+This static configuration is handled by Environment variables. Their
+meaning is documented in `config.example`.
+
 ## Data model
 
-The Confido data is made up of *entities* and auxilliary data. The entities can
-be referred to by other objects or used as indices. Auxilliary data exist
-either as singleton objects, or are indexed by an entity. Data is considered
+The Confido data is made up primarily of *entities*. The entities can
+be referred to by other objects or used as indices. All data is considered
 immutable.
 
 Each entity contains a unique string `id` which is used as its identifier. Any
 reference to this entity is then done via this `id`. If an entity needs to be
 referenced, there must exist a source of data containing the index
-of these entites. In general, this index exists in the (censored) global
-state. Then, if we wish to obtain the entity from its reference, this index is
-looked up.
+of these entites.
+
+In general, this index currently exists in the (censored) global state. Then,
+if we wish to obtain the entity from its reference, this index is looked up.
 
 ### Persistence
 
@@ -81,16 +80,12 @@ The persistence of the global state is handled by MongoDB. Each entity type has
 its own collection. All references are stored as the corresponding `id`
 strings.
 
-Most of the data is kept synchronized between the persistent database and the
-in-memory state. Thus, only modification requests access the database. There
-are exceptions when the sheer volume of the data would be too much to be stored
-in-memory. In such case, this data is loaded on-demand from the database.
+The global state is modified server-side exclusively by *managers*. These allow
+manipulation of entities and their auxilliary data. Managers are also
+responsible to store the modified data in the global state and the persisten
+storage.
 
-## Frontend structure
-
-- URL route mapping
-- HTTP Client and sendData
-- Layouts
-- Contexts used
-- Component grouping
-- Hooks
+Most of the data is kept in-memory and only modification requests access the
+database. There are exceptions when the sheer volume of the data would be too
+much to be stored in-memory. In such case, this data is loaded on-demand from
+the database.
