@@ -40,7 +40,7 @@ val UpdatesPlot = FC<UpdatesPlotProps> { props ->
     useEffectOnce {
         CoroutineScope(EmptyCoroutineContext).launch {
             try {
-                val response = Client.httpClient.get("/questions/${props.question.id}/updates") {
+                val response = Client.httpClient.get("${props.question.urlPrefix}/updates") {
                     expectSuccess = true
                 }
                 val content = response.body<ByteArray>()

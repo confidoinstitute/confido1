@@ -104,10 +104,7 @@ val Comment = FC<CommentProps> { props ->
     var editContent by useState("")
 
     fun deleteComment() = runCoroutine {
-        val url = when(comment) {
-            is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}"
-            is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}"
-        }
+        val url = comment.urlPrefix
         Client.send(url, method = HttpMethod.Delete, onError = {showError?.invoke(it)}) {}
     }
 
@@ -119,12 +116,7 @@ val Comment = FC<CommentProps> { props ->
     val editSubmit = useCoroutineLock()
 
     fun editComment() = editSubmit {
-        val url = when (comment) {
-            is QuestionComment ->
-                "/questions/${comment.question.id}/comments/${comment.id}/edit"
-            is RoomComment ->
-                "/rooms/${comment.room.id}/comments/${comment.id}/edit"
-        }
+        val url = "${comment.urlPrefix}/edit"
         Client.sendData(url, editContent, onError = {showError?.invoke(it)}) { editMode = false }
     }
 
@@ -241,10 +233,7 @@ val Comment = FC<CommentProps> { props ->
                 }
                 disabled = stale
                 onClick = {runCoroutine {
-                    val url = when (comment) {
-                        is QuestionComment -> "/questions/${comment.question.id}/comments/${comment.id}/like"
-                        is RoomComment -> "/rooms/${comment.room.id}/comments/${comment.id}/like"
-                    }
+                    val url = "${comment.urlPrefix}/like"
                     Client.sendData(url, !liked, onError = {showError?.invoke(it)}) {}
                 }
                 }
@@ -280,8 +269,8 @@ val CommentInput = FC<CommentInputProps> { props ->
             submit {
                 val createdComment = CreateComment(unixNow(), content, attachPrediction)
                 val url = when(props.variant) {
-                    CommentInputVariant.QUESTION -> "/questions/${props.id}/comments/add"
-                    CommentInputVariant.ROOM -> "/rooms/${props.id}/comments/add"
+                    CommentInputVariant.QUESTION -> "${questionUrl(props.id)}/comments/add"
+                    CommentInputVariant.ROOM -> "${roomUrl(props.id)}/comments/add"
                 }
 
                 Client.sendData(url, createdComment, onError = {showError?.invoke(it)}) {

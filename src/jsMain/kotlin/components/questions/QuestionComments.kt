@@ -34,7 +34,7 @@ external interface QuestionCommentsButtonProps : Props {
 }
 
 val QuestionCommentsList = FC<QuestionCommentsListProps> {props ->
-    val comments = useWebSocket<Map<String, CommentInfo>>("/state/question/${props.question.id}/comments")
+    val comments = useWebSocket<Map<String, CommentInfo>>("/state${props.question.urlPrefix}/comments")
 
     if (comments is WSError) {
         Alert {

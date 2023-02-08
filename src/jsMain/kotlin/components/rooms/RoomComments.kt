@@ -22,7 +22,7 @@ val RoomComments = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
 
-    val roomComments = useWebSocket<Map<String, CommentInfo>>("/state/rooms/${room.id}/comments")
+    val roomComments = useWebSocket<Map<String, CommentInfo>>("/state${room.urlPrefix}/comments")
 
     CommentInput {
         variant = CommentInputVariant.ROOM

@@ -19,7 +19,7 @@ val InviteLinkPP = FC<PresenterPageProps<InviteLinkPV>> { props->
     val room = props.view.room.deref() ?: return@FC
     val link = room.inviteLinks.firstOrNull { it.id == props.view.id } ?: return@FC
     val url = link.link(location.origin, room)
-    val ws = useWebSocket<String>("/state/rooms/${room.id}/invites/${link.id}/shortlink")
+    val ws = useWebSocket<String>("/state${room.urlPrefix}/invites/${link.id}/shortlink")
 
     mui.material.Stack {
         sx {

@@ -105,3 +105,7 @@ fun <K,V,R> Map<K,V>.mapValuesNotNull(f: (Map.Entry<K,V>) -> R?) = mapNotNull {
     if (mapped == null) null
     else it.key to mapped
 }.toMap()
+
+interface HasUrlPrefix {
+    val urlPrefix: String
+}

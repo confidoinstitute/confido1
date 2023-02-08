@@ -70,7 +70,7 @@ val GroupPredButton = FC<GroupPredButtonProps> { props ->
     var open by useState(false)
 
     val groupPredContent = useMemo(props.question) { FC<Props> {
-        val response = useWebSocket<Prediction?>("/state/questions/${props.question.id}/group_pred")
+        val response = useWebSocket<Prediction?>("/state${props.question.urlPrefix}/group_pred")
 
         DialogContent {
             if (response is WSData) {

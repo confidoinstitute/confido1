@@ -6,8 +6,6 @@ import components.nouser.LoginForm
 import components.showError
 import csstype.*
 import io.ktor.client.call.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import kotlinx.js.get
 import mui.material.*
 import mui.material.styles.TypographyVariant
@@ -49,7 +47,7 @@ val RoomInviteForm = FC<Props> {
     useEffectOnce {
         val check = CheckInvite(inviteToken)
         runCoroutine {
-            Client.sendData("/rooms/${roomId}/invite/check", check, onError = {showError?.invoke(it)}) {
+            Client.sendData("${roomUrl(roomId)}/invite/check", check, onError = {showError?.invoke(it)}) {
                 inviteStatus = body()
             }
         }
@@ -167,7 +165,7 @@ val RoomInviteForm = FC<Props> {
                                         emailError = "An email address is required."
                                     } else {
                                         runCoroutine {
-                                            Client.sendData("/rooms/$roomId/invite/accept_newuser",
+                                            Client.sendData("${roomUrl(roomId)}/invite/accept_newuser",
                                                 AcceptInviteAndCreateUser(
                                                     inviteToken,
                                                     name.trim().ifEmpty { null },
@@ -209,8 +207,8 @@ val RoomInviteForm = FC<Props> {
                         }
                         variant = ButtonVariant.contained
                         onClick = { runCoroutine {
-                            Client.sendData("/rooms/$roomId/invite/accept", AcceptInvite(inviteToken), onError = {showError?.invoke(it)}) {
-                                navigate("/room/${roomId}")
+                            Client.sendData("${roomUrl(roomId)}/invite/accept", AcceptInvite(inviteToken), onError = {showError?.invoke(it)}) {
+                                navigate(roomUrl(roomId))
                             }
                         } }
                         disabled = stale || missingRequiredEmail

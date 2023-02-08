@@ -39,6 +39,7 @@ import rooms.RoomPermission
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.state.havePermission
+import utils.questionUrl
 import utils.runCoroutine
 import utils.themed
 
@@ -53,7 +54,7 @@ val QuestionTable = FC<QuestionTableProps> { props ->
     val (_, stale) = useContext(AppStateContext)
     val room = props.room
 
-    val groupPredsWS = useWebSocket<Map<String, Prediction?>>("/state/rooms/${room.id}/group_pred")
+    val groupPredsWS = useWebSocket<Map<String, Prediction?>>("/state${room.urlPrefix}/group_pred")
     val groupPreds = groupPredsWS.data ?: emptyMap()
 
     val mouseSensor = useSensor<MouseSensorOptions>(MouseSensor)
@@ -127,7 +128,7 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                 val newOrder = moved.map { tools.confido.refs.Ref<Question>(it) }.toList()
                 val reorder = ReorderQuestions(newOrder)
                 runCoroutine {
-                    Client.sendData("/rooms/${room.id}/questions/reorder", reorder, onError = {showError?.invoke(it)}) {}
+                    Client.sendData("${room.urlPrefix}/questions/reorder", reorder, onError = {showError?.invoke(it)}) {}
                 }
             }
         }
@@ -243,9 +244,9 @@ val QuestionRow = FC<QuestionRowProps> { props ->
             }
         }
 
-    fun postEditQuestion(id: String, field: EditQuestionFieldType, value: Boolean) = runCoroutine {
+    fun postEditQuestion(question: Question, field: EditQuestionFieldType, value: Boolean) = runCoroutine {
         val editQuestion: EditQuestion = EditQuestionFlag(field, value)
-        Client.sendData("/questions/$id/edit", editQuestion, onError = {showError?.invoke(it)}) {}
+        Client.sendData("${question.urlPrefix}/edit", editQuestion, onError = {showError?.invoke(it)}) {}
     }
 
     TableRow {
@@ -293,7 +294,7 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                             disabled = stale
                             onChange = {
                                 postEditQuestion(
-                                    question.id,
+                                    question,
                                     payloads.requests.EditQuestionFieldType.VISIBLE,
                                     it
                                 )
@@ -317,7 +318,7 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                             disabled = stale
                             onChange = {
                                 postEditQuestion(
-                                    question.id,
+                                    question,
                                     payloads.requests.EditQuestionFieldType.OPEN,
                                     it
                                 )
@@ -364,7 +365,7 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                             disabled = stale
                             onChange = {
                                 postEditQuestion(
-                                    question.id,
+                                    question,
                                     payloads.requests.EditQuestionFieldType.GROUP_PRED_VISIBLE,
                                     it
                                 )
@@ -407,7 +408,7 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                                 disabled = stale
                                 onChange = {
                                     postEditQuestion(
-                                        question.id,
+                                        question,
                                         payloads.requests.EditQuestionFieldType.RESOLUTION_VISIBLE,
                                         it
                                     )

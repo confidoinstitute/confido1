@@ -1,8 +1,6 @@
 package tools.confido.application.routes
 
 import io.ktor.http.*
-import tools.confido.question.Question
-import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -16,18 +14,17 @@ import payloads.requests.*
 import payloads.responses.*
 import rooms.*
 import tools.confido.application.*
-import tools.confido.application.actions.makeCommentInfo
 import tools.confido.application.sessions.*
-import tools.confido.question.RoomComment
 import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.state.*
 import tools.confido.utils.randomString
-import tools.confido.utils.unixNow
 import users.LoginLink
 import users.User
 import users.UserType
 import kotlin.time.Duration.Companion.days
+
+val roomUrl = Room.urlPrefix("{rID}")
 
 data class RoomContext(val inUser: User?, val room: Room) {
     val user: User by lazy { inUser ?: unauthorized("Not logged in.") }
@@ -66,7 +63,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK, room.id)
     }
     // Edit a room's details
-    postST("/rooms/{rID}/edit") {
+    postST("$roomUrl/edit") {
         withRoom {
             val information: BaseRoomInformation = call.receive()
 
@@ -82,7 +79,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK)
     }
     // Add a new member, either an existing user directly or a new user by e-mail
-    postST("/rooms/{rID}/members/add") {
+    postST("$roomUrl/members/add") {
         withRoom {
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members.")
             val member: AddedMember = call.receive()
@@ -165,7 +162,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK)
     }
     // Remove a room's member
-    deleteST("/rooms/{rID}/members/{cID}") {
+    deleteST("$roomUrl/members/{cID}") {
         withRoom {
             val id = call.parameters["cID"] ?: ""
             val membership = room.members.find { it.user eqid id } ?: notFound("No such member.")
@@ -184,7 +181,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
 }
 
 fun roomQuestionRoutes(routing: Routing) = routing.apply {
-    postST("/rooms/{rID}/questions/reorder") {
+    postST("$roomUrl/questions/reorder") {
         withRoom {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot manage questions.")
             val move: ReorderQuestions = call.receive()
@@ -207,7 +204,7 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
-    getWS("/state/rooms/{rID}/group_pred") {
+    getWS("/state$roomUrl/group_pred") {
         withRoom {
             val canViewPred = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
 
@@ -218,7 +215,7 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
         }
     }
 
-    webSocketST("/state/rooms/{rID}/invites/{id}/shortlink") {
+    webSocketST("/state$roomUrl/invites/{id}/shortlink") {
         RouteBody(call).withRoom {
             val linkId = call.parameters["id"] ?: return@withRoom
             val link = room.inviteLinks.firstOrNull { it.id == linkId } ?: return@withRoom
@@ -250,85 +247,5 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
                 }
             }
         }
-    }
-}
-
-fun roomCommentsRoutes(routing: Routing) = routing.apply {
-    getWS("/state/rooms/{rID}/comments") {
-        withRoom {
-            assertPermission( RoomPermission.VIEW_ROOM_COMMENTS, "You cannot view the discussion.")
-
-            val commentInfo = makeCommentInfo(user, room)
-            commentInfo
-        }
-    }
-
-    postST("/rooms/{rID}/comments/add") {
-        withRoom {
-            assertPermission(RoomPermission.POST_ROOM_COMMENT, "You cannot add comments to this room.")
-
-            val createdComment: CreateComment = call.receive()
-            if (createdComment.content.isEmpty()) badRequest("No comment content.")
-
-            val comment = RoomComment(id = "", room = room.ref, user = user.ref, timestamp = unixNow(),
-                content = createdComment.content, isAnnotation = false)
-            serverState.roomCommentManager.insertEntity(comment)
-        }
-
-        TransientData.refreshAllWebsockets()
-        call.respond(HttpStatusCode.OK)
-    }
-    postST("/rooms/{rID}/comments/{cID}/edit") {
-        withRoom {
-            val id = call.parameters["cID"]
-            val comment = serverState.roomComments[room.ref]?.get(id) ?: notFound("No such comment.")
-
-            val newContent: String = call.receive()
-            if (newContent.isEmpty()) unauthorized("No comment content.")
-
-            if (!room.hasPermission(
-                    user,
-                    RoomPermission.MANAGE_COMMENTS
-                ) && !(comment.user eqid user)
-            ) unauthorized("You cannot delete this comment.")
-
-            serverState.roomCommentManager.modifyEntity(comment.ref) {
-                it.copy(content = newContent, modified = unixNow())
-            }
-        }
-
-        TransientData.refreshAllWebsockets()
-        call.respond(HttpStatusCode.OK)
-    }
-    deleteST("/rooms/{rID}/comments/{cID}") {
-        withRoom {
-            serverState.withMutationLock {
-                val id = call.parameters["cID"]
-                val comment = serverState.roomComments[room.ref]?.get(id) ?: notFound("No such comment.")
-
-                if (!room.hasPermission(
-                        user,
-                        RoomPermission.MANAGE_COMMENTS
-                    ) && !(comment.user eqid user)
-                ) unauthorized("You cannot delete this comment.")
-
-                serverState.roomCommentManager.deleteEntity(comment, true)
-            }
-        }
-        TransientData.refreshAllWebsockets()
-        call.respond(HttpStatusCode.OK)
-    }
-    postST("/rooms/{rID}/comments/{cID}/like") {
-        withRoom {
-            val id = call.parameters["cID"] ?: ""
-            val state = call.receive<Boolean>()
-
-            assertPermission(RoomPermission.VIEW_ROOM_COMMENTS, "You cannot like this comment.")
-            val comment = serverState.roomComments[room.ref]?.get(id) ?: notFound("No such comment.")
-
-            serverState.commentLikeManager.setLike(comment.ref, user.ref, state)
-        }
-        TransientData.refreshAllWebsockets()
-        call.respond(HttpStatusCode.OK)
     }
 }

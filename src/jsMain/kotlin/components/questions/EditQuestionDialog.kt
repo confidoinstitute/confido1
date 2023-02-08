@@ -26,6 +26,7 @@ import tools.confido.spaces.*
 import tools.confido.utils.*
 import utils.eventNumberValue
 import utils.eventValue
+import utils.questionUrl
 import utils.themed
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -237,15 +238,15 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         )
 
         if (props.entity == null) {
-            Client.sendData("/rooms/${room.id}/questions/add", question, onError = {showError?.invoke(it)}) {props.onClose?.invoke()}
+            Client.sendData("${room.urlPrefix}/questions/add", question, onError = {showError?.invoke(it)}) {props.onClose?.invoke()}
         } else {
             val editQuestion: EditQuestion = EditQuestionComplete(question)
-            Client.sendData("/questions/${id}/edit", editQuestion, onError = {showError?.invoke(it)}) {props.onClose?.invoke()}
+            Client.sendData("${questionUrl(id)}/edit", editQuestion, onError = {showError?.invoke(it)}) {props.onClose?.invoke()}
         }
     }
 
     fun deleteQuestion() = delete {
-        Client.send("/questions/$id", HttpMethod.Delete, onError = {showError?.invoke(it)}) { props.onClose?.invoke() }
+        Client.send("${questionUrl(id)}", HttpMethod.Delete, onError = {showError?.invoke(it)}) { props.onClose?.invoke() }
     }
 
     val answerSpaceType = when(val space = answerSpace) {

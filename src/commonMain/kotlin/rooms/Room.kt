@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import tools.confido.question.Question
 import tools.confido.refs.*
 import tools.confido.utils.generateId
+import tools.confido.utils.HasUrlPrefix
 import users.User
 import users.UserType
 
@@ -20,7 +21,7 @@ data class Room(
     val questions: List<Ref<Question>> = emptyList(),
     val members: List<RoomMembership> = emptyList(),
     val inviteLinks: List<InviteLink> = emptyList(),
-) : ImmediateDerefEntity {
+) : ImmediateDerefEntity, HasUrlPrefix {
 
     fun findLink(id: String?): InviteLink? {
         if (id == null || id == "") {
@@ -50,6 +51,12 @@ data class Room(
             it.user eqid user && findLink(it.invitedVia)?.canAccess ?: true && it.role.hasPermission(permission)
         }
     }
+
+    override val urlPrefix get() = urlPrefix(id)
+
+    companion object {
+        fun urlPrefix(id: String) = "/rooms/$id"
+    }
 }
 
 @Serializable
@@ -76,7 +83,7 @@ data class InviteLink(
     /* Indicates whether this link can be used by new users. */
     val state: InviteLinkState = InviteLinkState.ENABLED
 ) : HasId {
-    fun link(origin: String, room: Room) = "$origin/room/${room.id}/invite/$token"
+    fun link(origin: String, room: Room) = "$origin${room.urlPrefix}/invite/$token"
 
     val canJoin get() = state == InviteLinkState.ENABLED
     val canAccess get() = state != InviteLinkState.DISABLED_FULL

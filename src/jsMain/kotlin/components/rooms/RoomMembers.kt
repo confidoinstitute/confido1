@@ -325,7 +325,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
         (!(user eqid appState.session.user) || appState.isAdmin())
 
     fun memberRoleChange(role: RoomRole) = runCoroutine {
-        Client.sendData("/rooms/${room.id}/members/add", AddedExistingMember(membership.user, role) as AddedMember, onError = {showError?.invoke(it)}) {}
+        Client.sendData("${room.urlPrefix}/members/add", AddedExistingMember(membership.user, role) as AddedMember, onError = {showError?.invoke(it)}) {}
     }
 
     ListItem {
@@ -347,7 +347,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
             IconButton {
                 onClick = {
                     CoroutineScope(EmptyCoroutineContext).launch {
-                        Client.httpClient.delete("/rooms/${room.id}/members/${membership.user.id}")
+                        Client.httpClient.delete("${room.urlPrefix}/members/${membership.user.id}")
                     }
                 }
                 disabled = stale || props.disabled

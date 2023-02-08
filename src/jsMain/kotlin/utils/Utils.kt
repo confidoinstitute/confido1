@@ -9,6 +9,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 import kotlinx.js.jso
+import rooms.Room
+import tools.confido.question.Question
 import web.location.location
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.js.Date
@@ -187,3 +189,6 @@ fun <E> Set<E>.xor(element: E) =
     if (element in this) this.minus(element) else this.plus(element)
 
 inline fun runCoroutine(noinline coro: suspend CoroutineScope.() -> Unit) { CoroutineScope(EmptyCoroutineContext).launch(block = coro) }
+
+fun questionUrl(id: String) = Question.urlPrefix(id)
+fun roomUrl(id: String) = Room.urlPrefix(id)

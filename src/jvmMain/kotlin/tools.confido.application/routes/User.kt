@@ -315,7 +315,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         call.respondRedirect("/room/${shortLink.room.id}/invite/${link.token}", permanent=true)
     }
     // Verify that this invitation is still valid
-    postST("/rooms/{rID}/invite/check") {
+    postST("$roomUrl/invite/check") {
         val roomRef = Ref<Room>(call.parameters["rID"] ?: "")
         val room = roomRef.deref() ?: run {
             call.respond(HttpStatusCode.OK, InviteStatus(false, null, false))
@@ -332,7 +332,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK, InviteStatus(true, room.name, invite.allowAnonymous))
     }
     // Create an invitation link
-    postST("/rooms/{rID}/invites/create") {
+    postST("$roomUrl/invites/create") {
         val inviteLink = withRoom {
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members")
 
@@ -361,7 +361,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK, inviteLink)
     }
     // Edit an invitation link
-    postST("/rooms/{rID}/invites/edit") {
+    postST("$roomUrl/invites/edit") {
         withRoom {
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members")
 
@@ -389,7 +389,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK)
     }
     // Delete an invitation link
-    deleteST("/rooms/{rID}/invite") {
+    deleteST("$roomUrl/invite") {
         withRoom {
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members")
 
@@ -410,7 +410,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK)
     }
     // Accept an invitation link as an existing user (requires login)
-    postST("/rooms/{rID}/invite/accept") {
+    postST("$roomUrl/invite/accept") {
         withRoom {
             val accept: AcceptInvite = call.receive()
             val invite = room.inviteLinks.find { it.token == accept.inviteToken && it.canJoin }
@@ -433,7 +433,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
-    postST("/rooms/{rID}/invite/accept_newuser") {
+    postST("$roomUrl/invite/accept_newuser") {
         val session = assertSession()
         if (session.user != null) badRequest("You are already logged in.")
         val userAlreadyExists = withRoom {

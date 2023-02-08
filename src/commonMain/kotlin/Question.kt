@@ -8,6 +8,7 @@ import tools.confido.refs.Ref
 import tools.confido.refs.ref
 import tools.confido.spaces.*
 import tools.confido.state.globalState
+import tools.confido.utils.HasUrlPrefix
 import users.User
 
 @Serializable
@@ -32,7 +33,7 @@ data class Question(
     val groupPredVisible: Boolean = false,
     val resolutionVisible: Boolean = false,
     val resolution: Value? = null,
-) : ImmediateDerefEntity {
+) : ImmediateDerefEntity, HasUrlPrefix {
     init {
         if (resolution != null) {
             require(resolution.space == answerSpace)
@@ -42,5 +43,10 @@ data class Question(
     val resolved : Boolean get() = resolution != null
     val numPredictions get() = globalState.predictionCount[ref] ?: 0
     val numPredictors get() = globalState.predictorCount[ref] ?: 0
+
+    override val urlPrefix get() = urlPrefix(id)
+    companion object {
+        fun urlPrefix(id: String) = "/questions/$id"
+    }
 }
 

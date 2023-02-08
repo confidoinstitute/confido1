@@ -25,7 +25,7 @@ import utils.themed
 
 val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
     val question = props.view.question.deref() ?: return@FC
-    val response = useWebSocket<Prediction?>("/state/questions/${question.id}/group_pred")
+    val response = useWebSocket<Prediction?>("/state${question.urlPrefix}/group_pred")
 
     Stack {
         sx {
