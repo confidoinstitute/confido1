@@ -13,11 +13,11 @@ external interface TextWithLinksProps : Props {
  *
  * Requirements:
  *   - should match all urls with http[s]:// and reasonable urls without scheme (e.g. "confido.tools/contact")
- *   - should NOT match punctuation at the end of a sentence ending with an URL:
+ *   - should NOT match punctuation at the end of a sentence ending with a URL:
  *        "Have a look here: http://example.com."
  *     punctuations is here considered to mean: . , : ; ? ! )
  *   - should allow diacritics and weird letters in URLs (IDN, wikipedia article names)
- *   - should match crazy Wikipedia URLs with paretheses at the end, e.g.
+ *   - should match crazy Wikipedia URLs with parentheses at the end, e.g.
  *         "https://en.wikipedia.org/wiki/Naturalism_(philosophy)"
  *     this conflicts with the previous rule because we do not want to match the closing paren in:
  *         "(for more, see https://en.wikipedia.org/wiki/Philosophy)"
