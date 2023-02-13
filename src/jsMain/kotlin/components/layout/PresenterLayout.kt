@@ -18,6 +18,11 @@ import web.timers.setTimeout
 import websockets.WebSocket
 
 val PresenterLayout = FC<Props> {
+    AppStateWebsocketProvider {
+        PresenterLayoutInner {}
+    }
+}
+val PresenterLayoutInner = FC<Props> {
     val webSocket = useRef<WebSocket>(null)
     val (appState, stale) = useContext(AppStateContext)
 
