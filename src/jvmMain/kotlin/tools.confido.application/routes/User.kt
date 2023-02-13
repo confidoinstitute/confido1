@@ -438,8 +438,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK)
     }
     postST("$roomUrl/invite/accept_newuser") {
-        val session = assertSession()
-        if (session.user != null) badRequest("You are already logged in.")
+        if (call.userSession?.user != null) badRequest("You are already logged in.")
         val userAlreadyExists = withRoom {
             val accept: AcceptInviteAndCreateUser = call.receive()
             val invite = room.inviteLinks.find { it.token == accept.inviteToken && it.canJoin }
@@ -476,6 +475,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                         it.copy(members = it.members + listOf(RoomMembership(newUser.ref, invite.role, invite.id)))
                     }
                 }
+                initSession(newUser)
                 call.modifyUserSession { it.copy(userRef = newUser.ref) }
             }
             userAlreadyExists
