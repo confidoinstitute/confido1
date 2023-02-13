@@ -177,7 +177,7 @@ private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
         onClick = {
             val accept = AcceptInvite(props.inviteToken)
             runCoroutine {
-                Client.sendData("/rooms/${props.roomId}/invite/accept", accept, onError = { showError?.invoke(it) }) {
+                Client.sendData("${roomUrl(props.roomId)}/invite/accept", accept, onError = { showError?.invoke(it) }) {
                     navigate("/room/${props.roomId}")
                 }
             }
