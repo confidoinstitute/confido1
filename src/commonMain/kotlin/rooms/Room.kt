@@ -83,7 +83,7 @@ data class InviteLink(
     /* Indicates whether this link can be used by new users. */
     val state: InviteLinkState = InviteLinkState.ENABLED
 ) : HasId {
-    fun link(origin: String, room: Room) = "$origin${room.urlPrefix}/invite/$token"
+    fun link(origin: String, room: Room) = "$origin/join/$token"
 
     val canJoin get() = state == InviteLinkState.ENABLED
     val canAccess get() = state != InviteLinkState.DISABLED_FULL

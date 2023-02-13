@@ -43,6 +43,7 @@ suspend fun RouteBody.initSession(user: User) {
     call.setUserSession(UserSession(userRef = user.ref))
 }
 
+
 fun loginRoutes(routing: Routing) = routing.apply {
     // Login by password
     postST("/login") {
@@ -308,32 +309,44 @@ fun profileRoutes(routing: Routing) = routing.apply {
 }
 
 fun inviteRoutes(routing: Routing) = routing.apply {
-    getST("/join/{shortcode}") {
-        val shortcode = call.parameters["shortcode"] ?: badRequest("Missing invite code (incomplete url entered?)")
-        val shortLink = serverState.shortInviteLinks[shortcode] ?: unauthorized("Invalid or expired invite code")
-        if (!shortLink.isValid()) unauthorized("Expired invite code")
-        val room = shortLink.room.deref() ?: notFound("Room does not exist")
-        val link = room.inviteLinks.firstOrNull { it.id == shortLink.linkId } ?: notFound("Invite link does not exist")
-        // Send 301 as a hack if user tries to re-visit the original shortcode URL
-        // from history after is has already expired.
-        call.respondRedirect("/room/${shortLink.room.id}/invite/${link.token}", permanent=true)
+    getST("/room/{rID}/invite/{token}") {
+        val token = call.parameters["token"] ?: ""
+        return@getST call.respondRedirect("/join/${token}")
+    }
+    getST("/join/{token}") {
+        val token = call.parameters["token"] ?: return@getST serveFrontend() // frontend will display error
+        if (token.matches(ShortLink.REGEX)) {
+            val shortLink = serverState.shortInviteLinks[token] ?: return@getST serveFrontend()
+            if (!shortLink.isValid()) return@getST serveFrontend()
+            val room = shortLink.room.deref() ?: return@getST serveFrontend()
+            val link = room.inviteLinks.firstOrNull { it.id == shortLink.linkId } ?: return@getST serveFrontend()
+
+            // Send 301 as a hack if user tries to re-visit the original shortcode URL
+            // from history after is has already expired.
+            return@getST call.respondRedirect("/join/${link.token}", permanent=true)
+        }
+        serveFrontend()
     }
     // Verify that this invitation is still valid
-    postST("$roomUrl/invite/check") {
-        val roomRef = Ref<Room>(call.parameters["rID"] ?: "")
-        val room = roomRef.deref() ?: run {
-            call.respond(HttpStatusCode.OK, InviteStatus(false, null, false))
-            return@postST
+    getST("/join/{token}/check") {
+        suspend fun invalid() {
+            call.respond(HttpStatusCode.OK, InviteStatus(false, null, null, false))
         }
 
-        val check: CheckInvite = call.receive()
-        val invite = room.inviteLinks.find {it.token == check.inviteToken && it.canJoin}
-        if (invite == null) {
-            call.respond(HttpStatusCode.OK, InviteStatus(false, null, false))
-            return@postST
+        val token = call.parameters["token"] ?: return@getST invalid()
+
+        val linkMatch: (InviteLink)->Boolean = if (token.matches(ShortLink.REGEX)) {
+            val shortLink = serverState.shortInviteLinks[token] ?: return@getST invalid()
+            if (!shortLink.isValid()) return@getST invalid()
+            ({ it.id == shortLink.linkId })
+        } else {
+            ({ it.token == token })
         }
 
-        call.respond(HttpStatusCode.OK, InviteStatus(true, room.name, invite.allowAnonymous))
+        val room = serverState.rooms.values.firstOrNull { it.inviteLinks.any(linkMatch) } ?: return@getST invalid()
+        val invite = room.inviteLinks.find(linkMatch) ?: return@getST invalid()
+
+        call.respond(HttpStatusCode.OK, InviteStatus(true, room.name, room.ref, invite.allowAnonymous))
     }
     // Create an invitation link
     postST("$roomUrl/invites/create") {

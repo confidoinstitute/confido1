@@ -39,7 +39,7 @@ enum class State {
     DISCONNECTED,
 }
 
-private val AppStateWebsocketProvider = FC<PropsWithChildren> { props ->
+val AppStateWebsocketProvider = FC<PropsWithChildren> { props ->
     val loginState = useContext(LoginContext)
     var appState by useState<SentState?>(null)
     var stale by useState(false)
@@ -204,7 +204,7 @@ private val RootLayoutInner = FC<Props> {
                         this.element = Room.create()
                     }
                     Route {
-                        path = "room/:roomID/invite/:inviteToken"
+                        path = "/join/:inviteToken"
                         this.element = RoomInviteLoggedIn.create()
                     }
                     Route {

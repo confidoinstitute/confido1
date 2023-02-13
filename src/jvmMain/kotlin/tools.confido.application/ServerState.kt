@@ -66,6 +66,7 @@ data class ShortLink(
     companion object {
         const val LENGTH = 6
         const val VALIDITY = 30 * 60
+        val REGEX = Regex("^[0-9]{$LENGTH}$")
         fun generate() = generateNonce(LENGTH).joinToString("") { (it % 10).toString() }
     }
 }

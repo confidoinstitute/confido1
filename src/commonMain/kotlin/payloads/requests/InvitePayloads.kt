@@ -30,10 +30,6 @@ data class DeleteInvite(
     val keepUsers: Boolean,
 )
 
-@Serializable
-data class CheckInvite(
-    val inviteToken: String,
-)
 
 @Serializable
 sealed class AddedMember {

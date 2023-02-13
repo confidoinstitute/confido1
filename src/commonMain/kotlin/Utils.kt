@@ -109,3 +109,5 @@ fun <K,V,R> Map<K,V>.mapValuesNotNull(f: (Map.Entry<K,V>) -> R?) = mapNotNull {
 interface HasUrlPrefix {
     val urlPrefix: String
 }
+
+const val TOKEN_LEN = 32

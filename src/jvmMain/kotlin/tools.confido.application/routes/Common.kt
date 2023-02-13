@@ -2,6 +2,7 @@ package tools.confido.application.routes
 
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.html.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
@@ -11,10 +12,12 @@ import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.html.HTML
 import kotlinx.serialization.encodeToString
 import payloads.responses.WSData
 import payloads.responses.WSError
 import payloads.responses.WSResponse
+import tools.confido.application.index
 import tools.confido.application.sessions.transientUserData
 import tools.confido.application.sessions.userSession
 import tools.confido.application.singleThreadContext
@@ -23,6 +26,10 @@ import tools.confido.serialization.confidoJSON
 typealias RouteBodyCall = suspend RouteBody.() -> Unit
 
 data class RouteBody(val call: ApplicationCall)
+
+suspend fun RouteBody.serveFrontend() {
+    call.respondHtml(HttpStatusCode.OK, HTML::index)
+}
 
 fun Route.performST(route: Route.(String, PipelineInterceptor<Unit, ApplicationCall>) -> Route, path: String, body: RouteBodyCall): Route =
     this.route(path) {

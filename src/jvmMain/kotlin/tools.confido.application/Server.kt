@@ -204,7 +204,7 @@ fun main() {
                 }
             }
             getST("/{...}") {
-                call.respondHtml(HttpStatusCode.OK, HTML::index)
+                serveFrontend()
             }
             if (devMode) {
                 getST("/init/") {

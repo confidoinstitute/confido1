@@ -35,7 +35,7 @@ val NoUserLayout = FC<Props> {
                 this.element = EmailLogin.create()
             }
             Route {
-                path = "room/:roomID/invite/:inviteToken"
+                path = "/join/:inviteToken"
                 this.element = RoomInviteNoUser.create()
             }
             Route {

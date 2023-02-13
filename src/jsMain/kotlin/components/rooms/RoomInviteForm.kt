@@ -7,21 +7,26 @@ import components.nouser.LoginForm
 import components.showError
 import csstype.*
 import io.ktor.client.call.*
+import io.ktor.http.*
 import kotlinx.js.get
 import mui.material.*
 import mui.material.styles.TypographyVariant
 import mui.system.sx
 import payloads.requests.*
 import react.*
+import tools.confido.refs.Ref
 import react.dom.onChange
 import react.router.useParams
-import payloads.requests.CheckInvite
 import payloads.responses.InviteStatus
 import react.dom.html.InputType
+import react.dom.html.ReactHTML.code
 import react.dom.html.ReactHTML.em
 import react.router.useNavigate
+import rooms.Room
 import tools.confido.refs.eqid
+import tools.confido.utils.TOKEN_LEN
 import utils.*
+import web.location.location
 
 val RoomInviteNoUser = FC<Props> {
     RoomInviteCore {
@@ -35,14 +40,24 @@ val RoomInviteLoggedIn = FC<Props> {
         form = RoomInviteFormLoggedIn
     }
 }
-
-private val InvalidInviteAlert = FC<Props> {
+external interface InvalidInviteAlertProps: Props {
+    var tooShort: Boolean
+}
+private val InvalidInviteAlert = FC<InvalidInviteAlertProps> { props->
     Alert {
         severity = AlertColor.error
         AlertTitle {
-            +"Invalid invite"
+            +"Invalid invite link"
         }
-        +"This invite is not valid. It may have been disabled or it has expired."
+        if(props.tooShort) {
+            +"The invite link "
+            code{+location.href}
+            + " appears too short. Please ensure you have pasted it whole."
+        } else {
+            +"The invite link "
+            code{+location.href}
+            +" is not valid. Please ensure you have pasted it correctly. It may also have been disabled or have expired."
+        }
     }
 }
 
@@ -166,7 +181,7 @@ private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
     } ?: false
 
     if (alreadyAccepted) {
-        navigate("/room/${props.roomId}")
+        navigate(roomUrl(props.roomId))
     }
 
     Button {
@@ -178,7 +193,7 @@ private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
             val accept = AcceptInvite(props.inviteToken)
             runCoroutine {
                 Client.sendData("${roomUrl(props.roomId)}/invite/accept", accept, onError = { showError?.invoke(it) }) {
-                    navigate("/room/${props.roomId}")
+                    navigate(roomUrl(props.roomId))
                 }
             }
         }
@@ -190,6 +205,8 @@ private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
 external interface RoomInviteAlertProps : Props {
     var allowAnonymous: Boolean
 }
+
+val POTENTIAL_SHORTLINK_RE = Regex("^[0-9]+$")
 
 private val MissingEmailConditionalAlert = FC<RoomInviteAlertProps> { props ->
     val (appState, _) = useContext(AppStateContext)
@@ -222,10 +239,6 @@ external interface RoomInviteCoreProps : Props {
 }
 
 private val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
-    val roomId = useParams()["roomID"] ?: run {
-        console.error("Missing room id")
-        return@FC
-    }
     val inviteToken = useParams()["inviteToken"] ?: run {
         console.error("Missing invite token")
         return@FC
@@ -234,9 +247,8 @@ private val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
     var inviteStatus by useState<InviteStatus?>(null)
 
     useEffectOnce {
-        val check = CheckInvite(inviteToken)
         runCoroutine {
-            Client.sendData("${roomUrl(roomId)}/invite/check", check, onError = {showError?.invoke(it)}) {
+            Client.send("/join/$inviteToken/check", method= HttpMethod.Get, onError = {showError?.invoke(it)}) {
                 inviteStatus = body()
             }
         }
@@ -275,12 +287,12 @@ private val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
                 }
 
                 +props.form.create {
-                    this.roomId = roomId
+                    this.roomId = inviteStatus!!.roomRef!!.id
                     this.inviteToken = inviteToken
                     this.allowAnonymous = inviteStatus!!.allowAnonymous
                 }
             } else {
-                InvalidInviteAlert {}
+                InvalidInviteAlert { tooShort = inviteToken.length < TOKEN_LEN && !POTENTIAL_SHORTLINK_RE.matches(inviteToken) }
             }
         }
     }
