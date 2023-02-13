@@ -76,9 +76,9 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                 emailError = "An email address is required."
             } else {
                 runCoroutine {
-                    Client.sendData("${roomUrl(roomId)}/invite/accept_newuser",
+                    Client.sendData("${roomUrl(props.roomId)}/invite/accept_newuser",
                         AcceptInviteAndCreateUser(
-                            inviteToken,
+                            props.inviteToken,
                             name.trim().ifEmpty { null },
                             userMail
                         ),
@@ -89,7 +89,7 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                             loginRequired = true
                         } else {
                             loginState.login()
-                            navigate("/room/${roomId}")
+                            navigate("/room/${props.roomId}")
                         }
                     }
                 }
@@ -175,8 +175,11 @@ private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
         }
         variant = ButtonVariant.contained
         onClick = {
-            Client.postData("/rooms/${props.roomId}/invite/accept", AcceptInvite(props.inviteToken)).invokeOnCompletion {
-                navigate("/room/${props.roomId}")
+            val accept = AcceptInvite(props.inviteToken)
+            runCoroutine {
+                Client.sendData("/rooms/${props.roomId}/invite/accept", accept, onError = { showError?.invoke(it) }) {
+                    navigate("/room/${props.roomId}")
+                }
             }
         }
         disabled = stale || missingRequiredEmail
