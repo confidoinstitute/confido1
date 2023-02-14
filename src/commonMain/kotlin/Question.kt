@@ -21,6 +21,12 @@ data class Prediction (
     val dist: ProbabilityDistribution,
 ): HasId
 
+enum class PredictionTerminology {
+    PREDICTION,
+    ANSWER,
+    ESTIMATE,
+}
+
 @Serializable
 data class Question(
     @SerialName("_id")
@@ -28,6 +34,7 @@ data class Question(
     val name: String,
     val answerSpace: Space,
     val description: String = "",
+    val predictionTerminology: PredictionTerminology = PredictionTerminology.PREDICTION,
     val visible: Boolean = true,
     val open: Boolean = true, // submitting predictions allowed
     val groupPredVisible: Boolean = false,
