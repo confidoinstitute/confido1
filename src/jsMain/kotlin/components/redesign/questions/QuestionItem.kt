@@ -10,10 +10,12 @@ import react.dom.html.ReactHTML.span
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.distributions.ProbabilityDistribution
+import tools.confido.question.Prediction
 import tools.confido.question.PredictionTerminology
 import tools.confido.question.Question
 import tools.confido.refs.ref
 import tools.confido.utils.pluralize
+import tools.confido.utils.toFixed
 import tools.confido.utils.unixNow
 import web.timers.clearInterval
 import web.timers.setInterval
@@ -27,6 +29,7 @@ private enum class QuestionState {
 
 external interface QuestionItemProps : Props {
     var question: Question
+    var groupPred: Prediction?
     var onClick: (() -> Unit)?
 }
 
@@ -233,12 +236,17 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                         val space = distribution.space
                         when (distribution) {
                             is BinaryDistribution -> {
-                                +"${distribution.yesProb * 100}%"
+                                +"${(distribution.yesProb * 100).toFixed(0)}%"
                             }
 
                             is ContinuousProbabilityDistribution -> {
                                 val interval = distribution.confidenceInterval(0.8)
-                                +"${space.formatValue(interval.start, showUnit = false)} to ${space.formatValue(interval.endInclusive)}"
+                                +"${
+                                    space.formatValue(
+                                        interval.start,
+                                        showUnit = false
+                                    )
+                                } to ${space.formatValue(interval.endInclusive)}"
                             }
                         }
                     }
@@ -263,8 +271,13 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                         }
                     } else {
                         if (prediction != null) {
-                            renderDistribution(prediction.dist)
-                            // TODO: Group estimate if available
+                            // We show the group prediction if available,
+                            // otherwise we show the latest prediction made by us.
+                            props.groupPred?.let {
+                                renderDistribution(it.dist)
+                            } ?: run {
+                                renderDistribution(prediction.dist)
+                            }
                         } else {
                             br {}
                         }
@@ -289,8 +302,11 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                         +"correct answer"
                     } else {
                         if (prediction != null) {
-                            +"your $predictionTerm from $predictionAgoPrefix ago"
-                            // TODO: "group estimate" if available
+                            if (props.groupPred != null) {
+                                +"group $predictionTerm"
+                            } else {
+                                +"your $predictionTerm from $predictionAgoPrefix ago"
+                            }
                         } else if (questionState == QuestionState.OPEN) {
                             if (props.question.numPredictions == 0) {
                                 +"be the first to answer!"
@@ -301,6 +317,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                                     +"add your $predictionTerm"
                                 }
                             }
+                        } else if (questionState == QuestionState.CLOSED) {
+                            +"you did not answer"
                         }
                     }
                 }

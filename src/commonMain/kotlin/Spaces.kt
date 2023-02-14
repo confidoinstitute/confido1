@@ -38,7 +38,7 @@ sealed class TypedSpace<T : Any> : Space() {
         if (!checkValue(value)) return "(invalid)"
         try {
             @Suppress("UNCHECKED_CAST")
-            return formatValue(value as T)
+            return formatValue(value as T, showUnit)
         } catch (e: ClassCastException) {
             return "(invalid)"
         }
