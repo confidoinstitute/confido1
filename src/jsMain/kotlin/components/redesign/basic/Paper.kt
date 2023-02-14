@@ -1,13 +1,13 @@
 package components.redesign.basic
 
 import csstype.*
+import dom.html.HTMLDivElement
 import emotion.react.*
-import org.w3c.dom.*
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.div
 
-val Paper = FC<HTMLAttributes<HTMLDivElement>> {props ->
+val Paper = FC<HTMLAttributes<HTMLDivElement>> { props ->
     div {
         +props
         css(props.className) {

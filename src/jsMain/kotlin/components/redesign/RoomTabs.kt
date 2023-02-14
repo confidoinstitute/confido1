@@ -4,7 +4,7 @@ import components.redesign.basic.*
 import csstype.*
 import emotion.react.*
 import kotlinx.js.*
-import org.w3c.dom.*
+import dom.html.*
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.div

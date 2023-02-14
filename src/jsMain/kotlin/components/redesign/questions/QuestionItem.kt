@@ -1,6 +1,7 @@
 package components.redesign.questions
 
 import components.AppStateContext
+import components.redesign.basic.QuestionPalette
 import csstype.*
 import emotion.react.css
 import react.*
@@ -33,12 +34,6 @@ external interface QuestionItemProps : Props {
     var onClick: (() -> Unit)?
 }
 
-private data class QuestionItemColors(
-    val questionColor: Color,
-    val secondaryColor: Color,
-    val mutedColor: Color,
-)
-
 fun agoPrefix(timestamp: Int): String {
     return when (val diff = unixNow() - timestamp) {
         in 0..120 -> "$diff ${pluralize("second", diff)}"
@@ -59,31 +54,11 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         questionState = QuestionState.RESOLVED
 
     // TODO: Backend support for Annulled state.
-
-    val colors = when (questionState) {
-        QuestionState.OPEN -> QuestionItemColors(
-            questionColor = Color("#000000"),
-            secondaryColor = Color("#5433B4"),
-            mutedColor = Color("rgba(84, 51, 180, 0.5)"),
-        )
-
-        QuestionState.CLOSED -> QuestionItemColors(
-            questionColor = Color("#000000"),
-            secondaryColor = Color("#0B65B8"),
-            mutedColor = Color("rgba(11, 101, 184, 0.5)"),
-        )
-
-        QuestionState.RESOLVED -> QuestionItemColors(
-            questionColor = Color("#000000"),
-            secondaryColor = Color("#0A9653"),
-            mutedColor = Color("rgba(10, 150, 83, 0.5)"),
-        )
-
-        QuestionState.ANNULLED -> QuestionItemColors(
-            questionColor = Color("#000000"),
-            secondaryColor = Color("#8B8B8B"),
-            mutedColor = Color("rgba(139, 139, 139, 0.5)"),
-        )
+    val palette = when (questionState) {
+        QuestionState.OPEN -> QuestionPalette.open
+        QuestionState.CLOSED -> QuestionPalette.closed
+        QuestionState.RESOLVED -> QuestionPalette.resolved
+        QuestionState.ANNULLED -> QuestionPalette.annulled
     }
 
     val predictionTerm = when (props.question.predictionTerminology) {
@@ -138,7 +113,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     fontWeight = FontWeight.bold
                     fontSize = 11.px
                     lineHeight = 13.px
-                    color = colors.mutedColor
+                    color = palette.color
+                    opacity = number(0.5)
                 }
 
                 val stateLabel = when (questionState) {
@@ -166,7 +142,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     fontWeight = 500.unsafeCast<FontWeight>()
                     fontSize = 24.px
                     lineHeight = 29.px
-                    color = colors.questionColor
+                    color = Color("#000000")
                 }
                 +props.question.name
             }
@@ -202,7 +178,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                         fontWeight = FontWeight.bold
                         fontSize = 14.px
                         lineHeight = 17.px
-                        color = colors.secondaryColor
+                        color = palette.color
                     }
 
                     +"${props.question.numPredictors} ${pluralize(predictionTerm, props.question.numPredictors)}"
@@ -227,7 +203,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                         fontWeight = FontWeight.bold
                         fontSize = 28.px
                         lineHeight = 33.px
-                        color = colors.secondaryColor
+                        color = palette.color
                         textAlign = TextAlign.right
                         width = 100.pct
                     }
@@ -292,7 +268,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                         fontWeight = FontWeight.bold
                         fontSize = 11.px
                         lineHeight = 13.px
-                        color = colors.mutedColor
+                        color = palette.color
+                        opacity = number(0.5)
                         textAlign = TextAlign.right
                         alignSelf = AlignSelf.baseline
                         width = 100.pct

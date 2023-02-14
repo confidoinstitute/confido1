@@ -3,8 +3,8 @@ package components.redesign.basic
 import csstype.*
 import emotion.css.*
 import kotlinx.browser.*
-import org.w3c.dom.*
-import org.w3c.dom.events.*
+import dom.html.*
+import kotlinx.js.asList
 import react.dom.events.*
 import react.dom.events.MouseEvent
 import kotlin.math.*

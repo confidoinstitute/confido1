@@ -4,10 +4,11 @@ import components.redesign.basic.*
 import csstype.*
 import csstype.FlexDirection.Companion.row
 import csstype.FontFamily.Companion.sansSerif
+import dom.ScrollBehavior
+import dom.html.HTMLDivElement
 import emotion.react.*
 import hooks.*
 import kotlinx.js.*
-import org.w3c.dom.*
 import react.*
 import react.dom.html.ReactHTML.div
 import kotlin.js.console
@@ -143,7 +144,7 @@ val RoomHeaderTest = FC<Props> {
                     tabRef.current?.apply {
                         scrollIntoView(jso {
                             if (scrollY < offsetTop)
-                                behavior = "smooth"
+                                behavior = ScrollBehavior.smooth
                         })
                     }
                 }
