@@ -111,3 +111,10 @@ interface HasUrlPrefix {
 }
 
 const val TOKEN_LEN = 32
+
+fun pluralize(word: String, count: Int): String {
+    return when (count) {
+        1 -> word
+        else -> "${word}s"
+    }
+}
