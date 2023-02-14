@@ -79,3 +79,6 @@ val ReactPlotly = FC<PlotlyProps> {props ->
         ref = container
     }
 }
+
+
+fun plotlyVal(x: Number) = space.kscience.dataforge.values.NumberValue(x)

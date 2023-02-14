@@ -68,11 +68,12 @@ val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
                             interactive = false
                         }
                     } else {
-                        DistributionPlot {
-                            distribution = it
-                            fontSize = 32.0
-                        }
+                    DistributionPlot {
+                        distribution = it
+                        fontSize = 32.0
+                        resolutionLine = if (props.view.showResolution) question.resolution?.value as? Double else null
                     }
+                  }
                 } ?: Typography {
                     variant = TypographyVariant.h4
                     +"Nobody has yet answered."
