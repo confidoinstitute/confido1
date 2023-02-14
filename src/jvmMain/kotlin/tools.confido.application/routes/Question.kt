@@ -151,7 +151,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
     }
 
     // View group predictions
-    getWS("/state/$questionUrl/group_pred") {
+    getWS("/state$questionUrl/group_pred") {
         withQuestion {
             if (!(room.hasPermission(user, RoomPermission.VIEW_QUESTIONS) && question.groupPredVisible)
                 && !room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
