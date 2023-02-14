@@ -1,13 +1,24 @@
 package components.redesign.questions
 
+import components.AppStateContext
 import csstype.*
 import emotion.react.css
-import react.FC
-import react.Props
+import react.*
+import react.dom.html.ReactHTML.br
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
+import tools.confido.distributions.BinaryDistribution
+import tools.confido.distributions.ContinuousProbabilityDistribution
+import tools.confido.distributions.ProbabilityDistribution
+import tools.confido.question.PredictionTerminology
+import tools.confido.question.Question
+import tools.confido.refs.ref
+import tools.confido.utils.pluralize
+import tools.confido.utils.unixNow
+import web.timers.clearInterval
+import web.timers.setInterval
 
-enum class QuestionState {
+private enum class QuestionState {
     OPEN,
     CLOSED,
     RESOLVED,
@@ -15,12 +26,8 @@ enum class QuestionState {
 }
 
 external interface QuestionItemProps : Props {
-    // TODO: Replace with Question
-    var questionName: String
-    var questionState: QuestionState
-    var answerCount: Int
-    var estimateText: String
-    var estimateDaysAgo: Int
+    var question: Question
+    var onClick: (() -> Unit)?
 }
 
 private data class QuestionItemColors(
@@ -29,8 +36,28 @@ private data class QuestionItemColors(
     val mutedColor: Color,
 )
 
+fun agoPrefix(timestamp: Int): String {
+    return when (val diff = unixNow() - timestamp) {
+        in 0..120 -> "$diff ${pluralize("second", diff)}"
+        in 120..7200 -> "${diff / 60} ${pluralize("minute", diff / 60)}"
+        in 7200..172800 -> "${diff / 3600} ${pluralize("hour", diff / 3600)}"
+        else -> "${diff / 86400} ${pluralize("day", diff / 86400)}"
+    }
+}
+
 val QuestionItem = FC<QuestionItemProps> { props ->
-    val colors = when (props.questionState) {
+    val (appState, stale) = useContext(AppStateContext)
+    val prediction = appState.myPredictions[props.question.ref]
+
+    var questionState = QuestionState.OPEN
+    if (!props.question.open)
+        questionState = QuestionState.CLOSED
+    if (props.question.resolved && props.question.resolutionVisible)
+        questionState = QuestionState.RESOLVED
+
+    // TODO: Backend support for Annulled state.
+
+    val colors = when (questionState) {
         QuestionState.OPEN -> QuestionItemColors(
             questionColor = Color("#000000"),
             secondaryColor = Color("#5433B4"),
@@ -56,6 +83,29 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         )
     }
 
+    val predictionTerm = when (props.question.predictionTerminology) {
+        PredictionTerminology.PREDICTION -> "prediction"
+        PredictionTerminology.ANSWER -> "answer"
+        PredictionTerminology.ESTIMATE -> "estimate"
+    }
+
+    var predictionAgoPrefix by useState<String?>(null)
+
+    useEffect(prediction?.ts) {
+        if (prediction == null)
+            return@useEffect
+
+        fun setText() {
+            predictionAgoPrefix = agoPrefix(prediction.ts)
+        }
+        setText()
+        val interval = setInterval(::setText, 5000)
+
+        cleanup {
+            clearInterval(interval)
+        }
+    }
+
     div {
         css {
             display = Display.flex;
@@ -66,6 +116,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             background = Color("#FFFFFF")
             borderRadius = 10.px
         }
+
+        onClick = { props.onClick?.invoke() }
 
         // Question Status Frame
         div {
@@ -83,10 +135,16 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     fontWeight = FontWeight.bold
                     fontSize = 11.px
                     lineHeight = 13.px
-
                     color = colors.mutedColor
                 }
-                +props.questionState.toString()
+
+                val stateLabel = when (questionState) {
+                    QuestionState.OPEN -> "OPEN"
+                    QuestionState.CLOSED -> "CLOSED"
+                    QuestionState.RESOLVED -> "RESOLVED"
+                    QuestionState.ANNULLED -> "ANNULLED"
+                }
+                +stateLabel
                 // TODO: append ", closing in X hours" | ", closing in X days" if scheduled to close
             }
         }
@@ -107,7 +165,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     lineHeight = 29.px
                     color = colors.questionColor
                 }
-                +props.questionName
+                +props.question.name
             }
         }
 
@@ -120,7 +178,6 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 justifyContent = JustifyContent.spaceBetween
                 alignSelf = AlignSelf.stretch
                 padding = 0.px
-
                 gap = 10.px
                 flexWrap = FlexWrap.wrap
             }
@@ -144,7 +201,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                         lineHeight = 17.px
                         color = colors.secondaryColor
                     }
-                    +"${props.answerCount} answers"
+
+                    +"${props.question.numPredictors} ${pluralize(predictionTerm, props.question.numPredictors)}"
                 }
             }
 
@@ -170,8 +228,47 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                         textAlign = TextAlign.right
                         width = 100.pct
                     }
-                    // TODO: group estimate or empty (br)
-                    +props.estimateText
+
+                    fun renderDistribution(distribution: ProbabilityDistribution) {
+                        val space = distribution.space
+                        when (distribution) {
+                            is BinaryDistribution -> {
+                                +"${distribution.yesProb * 100}%"
+                            }
+
+                            is ContinuousProbabilityDistribution -> {
+                                val interval = distribution.confidenceInterval(0.8)
+                                +"${space.formatValue(interval.start, showUnit = false)} to ${space.formatValue(interval.endInclusive)}"
+                            }
+                        }
+                    }
+
+                    // If open:
+                    // -> do NOT show group prediction before making a prediction
+                    // If closed:
+                    // -> show group prediction
+                    // If resolved:
+                    // -> show resolved value
+                    // If annulled:
+                    // -> ?
+                    // If prediction is made
+                    // -> show group prediction or answer if group prediction not available
+
+                    if (questionState == QuestionState.RESOLVED) {
+                        props.question.resolution?.format()?.let {
+                            +it
+                        } ?: run {
+                            console.error("Missing resolution for resolved question")
+                            br {}
+                        }
+                    } else {
+                        if (prediction != null) {
+                            renderDistribution(prediction.dist)
+                            // TODO: Group estimate if available
+                        } else {
+                            br {}
+                        }
+                    }
                 }
 
                 // Label Frame
@@ -188,13 +285,24 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                         width = 100.pct
                         padding = Padding(0.px, 0.px, 2.px)
                     }
-                    // TODO: Text depends on value frame
-                    //       - "your estimate from N days ago" (N minutes ago etc.)
-                    //                ^ this can also be answer
-                    //       - "answer to see the group estimate"
-                    //       - "group estimate"
-                    //       - "be the first to answer!"
-                    +"your answer from ${props.estimateDaysAgo} days ago"
+                    if (questionState == QuestionState.RESOLVED) {
+                        +"correct answer"
+                    } else {
+                        if (prediction != null) {
+                            +"your $predictionTerm from $predictionAgoPrefix ago"
+                            // TODO: "group estimate" if available
+                        } else if (questionState == QuestionState.OPEN) {
+                            if (props.question.numPredictions == 0) {
+                                +"be the first to answer!"
+                            } else {
+                                if (props.question.groupPredVisible) {
+                                    +"answer to see the group $predictionTerm"
+                                } else {
+                                    +"add your $predictionTerm"
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
