@@ -15,6 +15,9 @@ val FormSection = FC<FormSectionProps> { props ->
         css {
             backgroundColor = Color("#F2F2F2")
             color = Color("#777777")
+            border = Border(0.px, LineStyle.solid, Color("#CCCCCC"))
+            borderTopWidth = 0.5.px
+            borderBottomWidth = 0.5.px
 
             fontFamily = FontFamily.sansSerif
             fontSize = 13.px
@@ -27,9 +30,7 @@ val FormSection = FC<FormSectionProps> { props ->
     Stack {
         direction = FlexDirection.column
         css {
-            border = Border(0.px, LineStyle.solid, Color("#CCCCCC"))
-            borderTopWidth = 0.5.px
-            borderBottomWidth = 0.5.px
+            backgroundColor = Color("#FFFFFF")
             gap = 20.px
             padding = 20.px
         }

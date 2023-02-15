@@ -1,22 +1,27 @@
-package components.redesign
+package components.redesign.rooms
 
+import components.AppStateContext
 import components.redesign.basic.*
+import components.rooms.RoomContext
 import csstype.*
 import emotion.react.*
 import kotlinx.js.*
 import dom.html.*
 import react.*
-import react.dom.html.*
 import react.dom.html.ReactHTML.div
+import react.router.dom.Link
+import react.router.dom.LinkProps
+import react.router.useLocation
+import rooms.RoomPermission
 
 external interface RoomTabsProps : PropsWithPalette<RoomPalette>, PropsWithClassName {
     var onChange: (() -> Unit)?
 }
-external interface RoomTabProps : HTMLAttributes<HTMLDivElement>, PropsWithPalette<RoomPalette> {
+external interface RoomTabProps : LinkProps, PropsWithPalette<RoomPalette> {
     var active: Boolean
 }
 
-val RoomTab = ForwardRef<HTMLDivElement, RoomTabProps> {props, fRef ->
+val RoomTab = ForwardRef<HTMLAnchorElement, RoomTabProps> { props, fRef ->
     val palette = props.palette ?: RoomPalette.red
     div {
         css {
@@ -33,7 +38,7 @@ val RoomTab = ForwardRef<HTMLDivElement, RoomTabProps> {props, fRef ->
             }
         }
     }
-    div {
+    Link {
         +props
         delete(asDynamic().active)
         ref = fRef
@@ -56,6 +61,7 @@ val RoomTab = ForwardRef<HTMLDivElement, RoomTabProps> {props, fRef ->
             textAlign = TextAlign.center
             fontFamily = FontFamily.sansSerif
             fontWeight = FontWeight.bolder
+            textDecoration = "none".asDynamic()
         }
     }
     div {
@@ -76,9 +82,13 @@ val RoomTab = ForwardRef<HTMLDivElement, RoomTabProps> {props, fRef ->
 
 }
 
-val RoomTabs = FC<RoomTabsProps> {props ->
+val RoomTabs = FC<RoomTabsProps> { props ->
     val palette = props.palette ?: RoomPalette.red
-    var active by useState(0)
+
+    val (appState, _) = useContext(AppStateContext)
+    val room = useContext(RoomContext)
+    val location = useLocation()
+    val locationValue = location.pathname.split('/').getOrNull(3) ?: ""
 
     Stack {
         direction = FlexDirection.row
@@ -86,16 +96,27 @@ val RoomTabs = FC<RoomTabsProps> {props ->
             padding = Padding(0.px, 10.px)
             backgroundColor = palette.color
         }
-        (0..3).map {
+
+        fun tab(to: String, label: String) {
             RoomTab {
                 this.palette = palette
                 css {
                     flexGrow = number(1.0)
                 }
-                this.active = (active == it)
-                onClick = { _ -> active = it; props.onChange?.invoke() }
-                +"Tab $it"
+                this.to = to
+                this.active = (to == locationValue)
+                this.onClick = {if (to != locationValue) props.onChange?.invoke()}
+                +label
             }
         }
+
+        if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
+            tab("", "Questions")
+
+        if (appState.hasPermission(room, RoomPermission.VIEW_ROOM_COMMENTS))
+            tab("discussion", "Discussion")
+
+        if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
+            tab("members", "Room members")
     }
 }

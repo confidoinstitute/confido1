@@ -1,6 +1,12 @@
-package components.redesign
+package components.redesign.rooms
 
+import components.AppStateContext
 import components.redesign.basic.*
+import components.redesign.forms.*
+import components.redesign.questions.QuestionList
+import components.rooms.RoomComments
+import components.rooms.RoomContext
+import components.rooms.RoomMembers
 import csstype.*
 import csstype.FlexDirection.Companion.row
 import csstype.FontFamily.Companion.sansSerif
@@ -11,7 +17,10 @@ import hooks.*
 import kotlinx.js.*
 import react.*
 import react.dom.html.ReactHTML.div
-import kotlin.js.console
+import react.router.Route
+import react.router.Routes
+import rooms.RoomPermission
+import tools.confido.refs.deref
 
 fun PropertiesBuilder.bigQuestionTitle() {
     fontSize = 26.px
@@ -25,22 +34,58 @@ fun PropertiesBuilder.navQuestionTitle() {
     fontWeight = FontWeight.bold
 }
 
-val RoomHeaderTest = FC<Props> {
+val RoomHeader = FC<Props> {
+
+}
+
+val RoomLayout = FC<Props> {
+    val (appState, _) = useContext(AppStateContext)
+    val room = useContext(RoomContext)
+
     val size = useElementSize<HTMLDivElement>()
     val tabRef = useRef<HTMLDivElement>()
     val palette = RoomPalette.red
-    val questionTitle = "Curious questions"
 
     var scrollY by useState(0.0)
-    val cutoff = 60 + size.height/2
-    console.log(size.height, cutoff)
+    val cutoff = 60 + size.height / 2
 
-    Paper {
+    var dialogOpen by useState(false)
+
+    Button {
+        onClick = {dialogOpen = true}
         css {
-            display = Display.flex
+            borderRadius = 100.pct
+        }
+    }
+
+    Dialog {
+        open = dialogOpen
+        onClose = {dialogOpen = false}
+        title = "Do something with room"
+        action = "Do it"
+
+        Form {
+            FormSection {
+                title = "SOMETHING"
+                FormField {
+                    title = "Name"
+                    required = true
+                    comment = "Name of something, I don't know."
+                    TextInput {}
+                }
+            }
+
+            Button {
+                +"DO IT"
+            }
+        }
+    }
+
+    Stack {
+        css {
             flexDirection = FlexDirection.column
-            height = 500.px
             position = Position.relative
+            height = 100.pct
         }
         div {
             css {
@@ -68,7 +113,7 @@ val RoomHeaderTest = FC<Props> {
                     if (scrollY <= cutoff)
                         visibility = Visibility.hidden
                 }
-                +questionTitle
+                +room.name
             }
             div {
                 css {
@@ -114,7 +159,7 @@ val RoomHeaderTest = FC<Props> {
                         if (scrollY > cutoff)
                             visibility = Visibility.hidden
                     }
-                    +questionTitle
+                    +room.name
                 }
                 div {
                     css {
@@ -128,7 +173,7 @@ val RoomHeaderTest = FC<Props> {
                         fontSize = 16.px
                         lineHeight = 19.px
                     }
-                    +"Welcome to curious questions! Join the estimating game and snare your insights with our community of forecasters."
+                    +room.description
                 }
             }
 
@@ -150,11 +195,26 @@ val RoomHeaderTest = FC<Props> {
                 }
             }
 
-            div {
-                css {
-                    height = 1000.px
-                }
-                +"Content start"
+            Routes {
+                if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
+                    Route {
+                        index = true
+                        this.element = QuestionList.create {
+                            questions = room.questions.mapNotNull { it.deref() }
+                            showHiddenQuestions = appState.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
+                            allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
+                        }
+                    }
+                if (appState.hasPermission(room, RoomPermission.VIEW_ROOM_COMMENTS))
+                    Route {
+                        path = "discussion"
+                        this.element = RoomComments.create {}
+                    }
+                if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
+                    Route {
+                        path = "members"
+                        this.element = RoomMembers.create()
+                    }
             }
         }
     }

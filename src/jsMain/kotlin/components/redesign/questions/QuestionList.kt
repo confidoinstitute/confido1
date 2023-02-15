@@ -36,6 +36,8 @@ val QuestionList = FC<QuestionListProps> { props ->
             gap = 20.px
             width = 100.pct
             position = Position.relative
+
+             backgroundColor = Color("#E6E6E6")
         }
 
         visibleQuestions.map { question ->

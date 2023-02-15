@@ -37,12 +37,13 @@ fun <T: HTMLElement, E: NativeMouseEvent> createRipple(event: MouseEvent<T, E>, 
 
     val ripple: HTMLSpanElement = document.createElement("span") as HTMLSpanElement
     val diameter = max(element.clientHeight, element.clientWidth)
+    val rect = element.getBoundingClientRect()
 
     ripple.style.width = "${diameter}px"
     ripple.style.height = "${diameter}px"
-    val offsetLeft = event.pageX - (element.offsetLeft + diameter/2)
+    val offsetLeft = event.clientX - (rect.left + diameter/2)
     ripple.style.left = "${offsetLeft}px"
-    val offsetTop = event.pageY - (element.offsetTop + diameter/2)
+    val offsetTop = event.clientY - (rect.top + diameter/2)
     ripple.style.top = "${offsetTop}px"
     ripple.classList.add("ripple", rippleClass(rippleColor).toString())
 
