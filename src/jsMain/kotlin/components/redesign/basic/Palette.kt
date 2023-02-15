@@ -23,6 +23,7 @@ enum class MainPalette(override val color: Color, override val text: TextPalette
     primary(Color("#6319FF"), TextPalette.white),
     secondary(Color("#00C2FF"), TextPalette.white),
     link(Color("transparent"), TextPalette.action),
+    inverted(Color("#FFFFFF"), TextPalette.black),
 }
 
 enum class RoomPalette(override val color: Color, override val text: TextPalette): PaletteWithText {

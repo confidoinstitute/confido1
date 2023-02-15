@@ -10,6 +10,8 @@ import react.dom.html.ReactHTML.h1
 import tools.confido.state.appConfig
 import utils.byTheme
 import utils.themed
+import components.redesign.nouser.*
+
 
 val LandingPage = FC<Props> {
     if (appConfig.demoMode) {
@@ -24,7 +26,7 @@ val LandingPage = FC<Props> {
             helperText = "Try any account to see Confido from their point of view."
         }
     } else {
-        LoginForm {}
+        LoginFormRedesigned {}
     }
 
     if (appConfig.devMode) {
