@@ -1,10 +1,11 @@
 package hooks
 
+import io.ktor.client.plugins.websocket.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.ClosedReceiveChannelException
+import kotlinx.coroutines.delay
 import kotlinx.serialization.decodeFromString
-import payloads.responses.WSResponse
-import payloads.responses.WSError
-import payloads.responses.WSErrorType
-import payloads.responses.WSLoading
+import payloads.responses.*
 import react.useEffect
 import react.useEffectOnce
 import react.useRef
@@ -22,46 +23,27 @@ enum class WebSocketState {
 
 inline fun <reified T> useWebSocket(address: String, retryDelay: Int = 5000, clearOnStale: Boolean = false): WSResponse<T> {
     var value by useState<WSResponse<T>>(WSLoading())
-    var state by useState(WebSocketState.LOADING)
-    val webSocket = useRef<WebSocket>(null)
 
-    useEffect(state) {
-        // If we are loading, create the websocket
-        if (state == WebSocketState.LOADING) {
-            val ws = WebSocket(webSocketUrl(address))
-            ws.apply {
-                onmessage = {
-                    try {
-                        value = confidoJSON.decodeFromString(it.data.toString())
-                        state = WebSocketState.DATA
-                    } catch (e: Throwable) {
-                        value = WSError(WSErrorType.INTERNAL_ERROR, "Failed to parse server data")
+    useCoroutine(address) {
+        value = WSLoading()
+        while (true) {
+            try {
+                console.log("WS OPEN", address)
+                Client.httpClient.webSocket(address) {
+                    while (true) {
+                        value = receiveDeserialized()
                     }
                 }
-                onclose = {
-                    state = WebSocketState.STALE
-                    if (clearOnStale || value is WSLoading)
-                        value = WSError(WSErrorType.DISCONNECTED, "Cannot reach server")
-                    webSocket.current = null
-                }
+            } catch (e: CancellationException) {
+                console.log("WS CANCEL", address)
+                throw e
+            } catch (e: Exception) {
+                console.log("WS ERROR", address, "\n", e.toString())
             }
-            webSocket.current = ws
-        }
-        // If we are stale, try reloading later
-        else if (state == WebSocketState.STALE) {
-            setTimeout({ state = WebSocketState.LOADING }, retryDelay)
+            if (value is WSData && !clearOnStale) value = WSData(value.data!!, true)
+            else value = WSLoading()
+            delay(retryDelay.toLong())
         }
     }
-
-    // Close the websocket on unmount
-    useEffectOnce {
-        cleanup {
-            webSocket.current?.apply {
-                onclose = null
-                close()
-            }
-        }
-    }
-
     return value
 }

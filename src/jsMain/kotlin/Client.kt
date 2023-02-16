@@ -5,8 +5,11 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.serialization.kotlinx.json.*
 import browser.document
+import components.showError
+import io.ktor.client.plugins.websocket.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.*
 import kotlinx.coroutines.delay
 import react.create
 import react.dom.client.createRoot
@@ -16,6 +19,9 @@ object Client {
     val httpClient = HttpClient {
         install(ContentNegotiation) {
             json(confidoJSON)
+        }
+        install(WebSockets) {
+            contentConverter = KotlinxWebsocketSerializationConverter(confidoJSON)
         }
     }
 
