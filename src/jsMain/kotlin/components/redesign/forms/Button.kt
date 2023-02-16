@@ -37,7 +37,7 @@ val Button = FC<ButtonProps> { props ->
             props.onClick?.invoke(it)
         }
 
-        css(confidoButtonClass, props.className) {
+        css(confidoButtonClass, override=props) {
             backgroundColor = palette.color
             color = palette.text.color
         }
@@ -54,7 +54,7 @@ val TextButton = FC<TextButtonProps> {props ->
             props.onClick?.invoke(it)
         }
 
-        css(confidoButtonClass, props.className) {
+        css(confidoButtonClass, override=props) {
             padding = 8.px
             color = palette.color
             backgroundColor = rgba(0,0,0,0.0)
@@ -71,7 +71,7 @@ val IconButton = FC<ButtonProps> {props ->
 
     button {
         onClick = { createRipple(it, palette.color); props.onClick?.invoke(it) }
-        css {
+        css(override = props) {
             display = Display.flex
             alignItems = AlignItems.center
             justifyContent = JustifyContent.center
