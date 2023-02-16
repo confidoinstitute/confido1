@@ -4,6 +4,7 @@ import components.AppStateContext
 import components.redesign.basic.QuestionPalette
 import csstype.*
 import emotion.react.css
+import hooks.useTimeAgo
 import react.*
 import react.dom.html.ReactHTML.br
 import react.dom.html.ReactHTML.div
@@ -17,9 +18,6 @@ import tools.confido.question.Question
 import tools.confido.refs.ref
 import tools.confido.utils.pluralize
 import tools.confido.utils.toFixed
-import tools.confido.utils.unixNow
-import web.timers.clearInterval
-import web.timers.setInterval
 
 private enum class QuestionState {
     OPEN,
@@ -32,15 +30,6 @@ external interface QuestionItemProps : Props {
     var question: Question
     var groupPred: Prediction?
     var onClick: (() -> Unit)?
-}
-
-fun agoPrefix(timestamp: Int): String {
-    return when (val diff = unixNow() - timestamp) {
-        in 0..120 -> "$diff ${pluralize("second", diff)}"
-        in 120..7200 -> "${diff / 60} ${pluralize("minute", diff / 60)}"
-        in 7200..172800 -> "${diff / 3600} ${pluralize("hour", diff / 3600)}"
-        else -> "${diff / 86400} ${pluralize("day", diff / 86400)}"
-    }
 }
 
 val QuestionItem = FC<QuestionItemProps> { props ->
@@ -67,22 +56,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         PredictionTerminology.ESTIMATE -> "estimate"
     }
 
-    var predictionAgoPrefix by useState<String?>(null)
-
-    useEffect(prediction?.ts) {
-        if (prediction == null)
-            return@useEffect
-
-        fun setText() {
-            predictionAgoPrefix = agoPrefix(prediction.ts)
-        }
-        setText()
-        val interval = setInterval(::setText, 5000)
-
-        cleanup {
-            clearInterval(interval)
-        }
-    }
+    val predictionAgoText = useTimeAgo(prediction?.ts)
 
     div {
         css {
@@ -282,7 +256,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                             if (props.groupPred != null) {
                                 +"group $predictionTerm"
                             } else {
-                                +"your $predictionTerm from $predictionAgoPrefix ago"
+                                +"your $predictionTerm from $predictionAgoText"
                             }
                         } else if (questionState == QuestionState.OPEN) {
                             if (props.question.numPredictions == 0) {
