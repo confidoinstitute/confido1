@@ -17,6 +17,7 @@ import react.dom.svg.StrokeLinejoin
 import tools.confido.refs.deref
 import users.User
 import utils.runCoroutine
+import utils.toDateTime
 
 private enum class VoteState {
     NO_VOTE, UPVOTED, DOWNVOTED,
@@ -192,13 +193,17 @@ val CommentHeader = FC<CommentHeaderProps> { props ->
                 size = 3.px
             }
             span {
+                title = props.timestamp.toDateTime()
+                props.modified?.let {
+                    title += ", edited ${it.toDateTime()}"
+                }
+
                 timeAgo?.let {
-                    val suffix = if (props.modified != null) {
-                        " (edited)"
+                    if (props.modified != null) {
+                        +"$it (edited)"
                     } else {
-                        ""
+                        +it
                     }
-                    +"$it$suffix"
                 }
             }
         }
