@@ -39,7 +39,7 @@ val Checkbox = FC<CheckboxProps> { props ->
             delete(asDynamic().alwaysColorBackground)
             type = InputType.checkbox
             css {
-                display = "none".asDynamic()
+                display = None.none
             }
         }
 
@@ -109,7 +109,7 @@ val Switch = FC<CheckboxProps> { props ->
             delete(asDynamic().alwaysColorBackground)
             type = InputType.checkbox
             css {
-                display = "none".asDynamic()
+                display = None.none
             }
         }
         span {

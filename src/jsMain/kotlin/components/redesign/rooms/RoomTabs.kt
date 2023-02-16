@@ -61,7 +61,7 @@ val RoomTab = ForwardRef<HTMLAnchorElement, RoomTabProps> { props, fRef ->
             textAlign = TextAlign.center
             fontFamily = FontFamily.sansSerif
             fontWeight = FontWeight.bolder
-            textDecoration = "none".asDynamic()
+            textDecoration = None.none
         }
     }
     div {

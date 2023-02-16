@@ -62,7 +62,7 @@ val OptionGroupComponent = FC<OptionGroupProps<dynamic>> { props ->
                     this.checked = checked;
                     type = InputType.radio
                     css {
-                        display = "none".asDynamic()
+                        display = None.none
                     }
                     onChange = { currentValue = option; props.onChange?.invoke(option) }
                 }

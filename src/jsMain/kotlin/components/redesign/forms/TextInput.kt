@@ -19,7 +19,7 @@ internal fun PropertiesBuilder.textInputCss() {
     fontSize = 17.px
     lineHeight = 20.px
     fontFamily = FontFamily.sansSerif
-    resize = "none".asDynamic()
+    resize = None.none
 
     focus {
         outline = Outline(2.px, LineStyle.solid, MainPalette.primary.color)

@@ -53,7 +53,7 @@ val Dialog = FC<DialogProps> {props ->
                         height = 100.pct
                         overflow = Overflow.hidden
                         backgroundColor = rgba(0, 0, 0, 0.5)
-                        zIndex = (2000).asDynamic()
+                        zIndex = integer(2000)
                         animationName = fadeKF
                         animationDuration = 0.25.s
                         animationTimingFunction = AnimationTimingFunction.easeOut
@@ -64,7 +64,7 @@ val Dialog = FC<DialogProps> {props ->
                     css {
                         maxHeight = 100.pct
                         width = 100.pct
-                        zIndex = (2100).asDynamic()
+                        zIndex = integer(2100)
                         position = Position.fixed
                         bottom = 0.px
                         animationName = slideKF
@@ -141,7 +141,7 @@ val Dialog = FC<DialogProps> {props ->
                         css {
                             flexShrink = number(1.0)
                             minHeight = 0.px
-                            overflow = "auto".asDynamic()
+                            overflow = Auto.auto
                             backgroundColor = Color("#FFFFFF")
                         }
                         +props.children

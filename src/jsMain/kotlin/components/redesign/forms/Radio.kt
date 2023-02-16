@@ -25,7 +25,7 @@ val RadioInput = FC<RadioInputProps> { props ->
             +props
             type = InputType.radio
             css {
-                display = "none".asDynamic()
+                display = None.none
             }
         }
         span {

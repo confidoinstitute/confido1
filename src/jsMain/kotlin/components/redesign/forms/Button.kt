@@ -80,8 +80,8 @@ val IconButton = FC<ButtonProps> {props ->
             padding = 0.px
             borderRadius = 100.pct
 
-            background = "none".asDynamic()
-            border = "none".asDynamic()
+            background = None.none
+            border = None.none
             cursor = Cursor.pointer
 
             "&:hover" {

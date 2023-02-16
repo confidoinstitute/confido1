@@ -129,7 +129,7 @@ val RoomLayout = FC<Props> {
             css {
                 flexGrow = number(1.0)
                 position = Position.relative
-                overflow = "auto".asDynamic()
+                overflow = Auto.auto
             }
 
             div {
@@ -144,7 +144,7 @@ val RoomLayout = FC<Props> {
                         width = 100.pct
                         height = 30.px
                         background = linearGradient(stop(palette.color, 0.pct), stop(rgba(0, 0, 0, 0.0), 100.pct))
-                        zIndex = (1.0).asDynamic()
+                        zIndex = integer(1)
                     }
                 }
                 div {
