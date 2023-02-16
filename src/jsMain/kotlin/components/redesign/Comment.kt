@@ -1,8 +1,12 @@
 package components.redesign
 
+import components.showError
 import csstype.*
 import emotion.react.css
+import hooks.useTimeAgo
+import payloads.responses.CommentInfo
 import react.*
+import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 import react.dom.svg.FillRule
@@ -10,20 +14,43 @@ import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.svg
 import react.dom.svg.StrokeLinecap
 import react.dom.svg.StrokeLinejoin
+import tools.confido.refs.deref
+import users.User
+import utils.runCoroutine
 
-enum class VoteState {
+private enum class VoteState {
     NO_VOTE, UPVOTED, DOWNVOTED,
 }
 
 external interface CommentProps : Props {
-    var text: String
-    var authorName: String
-    var timeAgo: String
-    var score: Int
-    var voteState: VoteState
+    var commentInfo: CommentInfo
 }
 
+
 val Comment = FC<CommentProps> { props ->
+    val comment = props.commentInfo.comment
+    val author = comment.user.deref() ?: return@FC
+
+    // TODO: backend support for downvotes
+    val voteState = if (props.commentInfo.likedByMe) {
+        VoteState.UPVOTED
+    } else {
+        VoteState.NO_VOTE
+    }
+
+    fun upvote() {
+        runCoroutine {
+            val url = "${comment.urlPrefix}/like"
+            val newState = voteState != VoteState.UPVOTED
+            Client.sendData(url, newState, onError = { showError?.invoke(it) }) {}
+        }
+    }
+
+    // TODO: Implement on backend
+    fun downvote() {
+        showError?.invoke("Downvoting is not currently available")
+    }
+
     div {
         css {
             display = Display.flex
@@ -32,62 +59,14 @@ val Comment = FC<CommentProps> { props ->
             fontFamily = FontFamily.sansSerif
         }
 
-        // Comment author header
-        div {
-            css {
-                padding = Padding(15.px, 15.px, 10.px)
-                display = Display.flex
-                flexDirection = FlexDirection.row
-                alignItems = AlignItems.center
-                gap = 8.px
-            }
-
-            // Avatar
-            // TODO: Proper avatar
-            Circle {
-                color = Color("#45AFEB")
-                size = 32.px
-            }
-
-            // Name and time
-            div {
-                val nameColor = Color("#777777")
-                css {
-                    padding = Padding(15.px, 15.px, 10.px)
-                    display = Display.flex
-                    flexDirection = FlexDirection.row
-                    alignItems = AlignItems.center
-                    padding = 0.px
-                    gap = 5.px
-                    color = nameColor
-                    fontSize = 12.px
-                    lineHeight = 14.px
-                }
-                span {
-                    css {
-                        fontWeight = 600.unsafeCast<FontWeight>()
-                    }
-                    +props.authorName
-                }
-                Circle {
-                    color = nameColor
-                    size = 3.px
-                }
-                span {
-                    +props.timeAgo
-                }
-            }
+        CommentHeader {
+            this.author = author
+            this.timestamp = props.commentInfo.comment.timestamp
+            this.modified = props.commentInfo.comment.modified
         }
 
-        // Contents
-        div {
-            css {
-                padding = Padding(0.px, 15.px)
-                color = Color("#000000")
-                fontSize = 15.px
-                lineHeight = 18.px
-            }
-            +props.text
+        CommentContents {
+            this.content = props.commentInfo.comment.content
         }
 
         // Actions
@@ -105,63 +84,139 @@ val Comment = FC<CommentProps> { props ->
             FooterAction {
                 icon = MoreIcon
             }
+            // TODO: Implement replies on backend
+            /*
             FooterAction {
                 icon = ReplyIcon
                 text = "Reply"
             }
-            FooterAction {
-                icon = UpvoteIcon
-                text = "Upvote"
-            }
-            FooterAction {
-                icon = DownvoteIcon
-                text = "Downvote"
-            }
-            // Voting
-            div {
-                css {
-                    display = Display.flex
-                    flexDirection = FlexDirection.row
-                    justifyContent = JustifyContent.center
-                    alignItems = AlignItems.center
-                    padding = 10.px
-                    gap = 12.px
+            */
+            if (props.commentInfo.likeCount == 0 && voteState == VoteState.NO_VOTE) {
+                FooterAction {
+                    icon = UpvoteIcon
+                    text = "Upvote"
+                    onClick = { upvote() }
                 }
-                if (props.voteState == VoteState.UPVOTED) {
-                    UpvoteActiveIcon {
-                        css {
-                            width = 14.px
-                            height = 15.px
-                        }
-                    }
-                } else {
-                    UpvoteIcon {
-                        css {
-                            width = 14.px
-                            height = 15.px
-                        }
-                    }
+                FooterAction {
+                    icon = DownvoteIcon
+                    text = "Downvote"
+                    onClick = { downvote() }
                 }
-                +"${props.score}"
-                if (props.voteState == VoteState.DOWNVOTED) {
-                    DownvoteActiveIcon {
-                        css {
-                            width = 14.px
-                            height = 15.px
-                        }
+            } else {
+                // Voting
+                div {
+                    css {
+                        display = Display.flex
+                        flexDirection = FlexDirection.row
+                        justifyContent = JustifyContent.center
+                        alignItems = AlignItems.center
+                        padding = 10.px
+                        gap = 12.px
                     }
-                } else {
-                    DownvoteIcon {
-                        css {
-                            width = 14.px
-                            height = 15.px
+                    FooterVoteAction {
+                        icon = if (voteState == VoteState.UPVOTED) {
+                            UpvoteActiveIcon
+                        } else {
+                            UpvoteIcon
                         }
+                        onClick = { upvote() }
+                    }
+
+                    +"${props.commentInfo.likeCount}"
+
+                    FooterVoteAction {
+                        icon = if (voteState == VoteState.DOWNVOTED) {
+                            DownvoteActiveIcon
+                        } else {
+                            DownvoteIcon
+                        }
+                        onClick = { downvote() }
                     }
                 }
             }
         }
     }
 }
+
+external interface CommentHeaderProps : Props {
+    var author: User
+    var timestamp: Int
+    var modified: Int?
+}
+
+val CommentHeader = FC<CommentHeaderProps> { props ->
+    val timeAgo = useTimeAgo(props.timestamp)
+
+    div {
+        css {
+            padding = Padding(15.px, 15.px, 10.px)
+            display = Display.flex
+            flexDirection = FlexDirection.row
+            alignItems = AlignItems.center
+            gap = 8.px
+        }
+
+        // Avatar
+        // TODO: Proper avatar
+        Circle {
+            color = Color("#45AFEB")
+            size = 32.px
+        }
+
+        // Name and time
+        div {
+            val nameColor = Color("#777777")
+            css {
+                padding = Padding(15.px, 15.px, 10.px)
+                display = Display.flex
+                flexDirection = FlexDirection.row
+                alignItems = AlignItems.center
+                padding = 0.px
+                gap = 5.px
+                color = nameColor
+                fontSize = 12.px
+                lineHeight = 14.px
+            }
+            span {
+                css {
+                    fontWeight = 600.unsafeCast<FontWeight>()
+                }
+                +(props.author.nick ?: "Anonymous")
+            }
+            Circle {
+                color = nameColor
+                size = 3.px
+            }
+            span {
+                timeAgo?.let {
+                    val suffix = if (props.modified != null) {
+                        " (edited)"
+                    } else {
+                        ""
+                    }
+                    +"$it$suffix"
+                }
+            }
+        }
+    }
+}
+
+external interface CommentContentsProps : Props {
+    var content: String
+}
+
+val CommentContents = FC<CommentContentsProps> { props ->
+    div {
+        css {
+            padding = Padding(0.px, 15.px)
+            color = Color("#000000")
+            fontSize = 15.px
+            lineHeight = 18.px
+        }
+        TextWithLinks { text = props.content }
+    }
+}
+
 
 external interface CircleProps : PropsWithClassName {
     /** The size of the circle. Defaults to 16px. */
@@ -310,11 +365,15 @@ private val DownvoteActiveIcon = FC<PropsWithClassName> { props ->
 external interface FooterActionProps : Props {
     var text: String?
     var icon: ComponentType<PropsWithClassName>?
+    var onClick: () -> Unit
 }
 
 private val FooterAction = FC<FooterActionProps> { props ->
-    div {
+    button {
         css {
+            all = Globals.unset
+            cursor = Cursor.pointer
+
             display = Display.flex
             flexDirection = FlexDirection.row
             alignItems = AlignItems.center
@@ -332,6 +391,31 @@ private val FooterAction = FC<FooterActionProps> { props ->
         props.text?.let {
             +it
         }
+
+        onClick = { props.onClick() }
     }
 }
 
+external interface FooterVoteActionProps : Props {
+    var icon: ComponentType<PropsWithClassName>?
+    var onClick: () -> Unit
+}
+
+private val FooterVoteAction = FC<FooterActionProps> { props ->
+    button {
+        css {
+            all = Globals.unset
+            cursor = Cursor.pointer
+        }
+        props.icon?.let {
+            +it.create {
+                css {
+                    width = 14.px
+                    height = 15.px
+                }
+            }
+        }
+
+        onClick = { props.onClick() }
+    }
+}
