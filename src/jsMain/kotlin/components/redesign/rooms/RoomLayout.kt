@@ -4,7 +4,6 @@ import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.forms.*
 import components.redesign.questions.QuestionList
-import components.rooms.RoomComments
 import components.rooms.RoomContext
 import components.rooms.RoomMembers
 import csstype.*

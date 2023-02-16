@@ -83,6 +83,10 @@ val Comment = FC<CommentProps> { props ->
             }
             FooterAction {
                 icon = MoreIcon
+                onClick = {
+                    // TODO: Implement when we have a dialog for this
+                    showError?.invoke("More actions are not currently available")
+                }
             }
             // TODO: Implement replies on backend
             /*
