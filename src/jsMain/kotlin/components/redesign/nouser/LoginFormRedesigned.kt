@@ -30,6 +30,13 @@ import tools.confido.refs.ref
 import users.User
 import utils.*
 
+internal fun PropertiesBuilder.loginLinkCss() {
+    color = Color("#DDDDDD80")
+    fontSize = 15.px
+    lineHeight = 18.px
+    fontFamily = FontFamily.sansSerif
+}
+
 enum class LoginMode {
     MagicLink,
     Password,
@@ -70,7 +77,7 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
                 LoginMode.Password -> {
                     Client.sendData("/login", PasswordLogin(trimmedEmail, password), onError = {
                         if (status == HttpStatusCode.Unauthorized) {
-                            passwordError = "Wrong password or email, please try again."
+                            passwordError = "Wrong password or email. Please try again."
                             password = ""
                         }
                     }) {
@@ -97,6 +104,8 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
         span {
             css {
                 display = Display.flex
+                marginTop = 70.px
+                marginBottom = 50.px
             }
 
             smallLogo {}
@@ -117,8 +126,8 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
 
         if (!emailSent) {
             LoginTextInput {
-                placeholder = "Email"
                 id = "email-field"
+                placeholder = "Email"
                 /*
                 helperText = if (emailError != null) {
                     ReactNode(emailError!!)
@@ -141,22 +150,17 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
             }
 
             if (mode == LoginMode.Password) {
-                TextField {
-                    margin = FormControlMargin.normal
-                    variant = FormControlVariant.outlined
-                    fullWidth = true
-                    id = "password-field"
-                    type = InputType.password
-                    label = ReactNode("Password")
-                    value = password
-                    helperText = if (passwordError != null) {
-                        ReactNode(passwordError!!)
-                    } else {
-                        null
+                LoginTextInput {
+                    css {
+                        marginTop = 1.px
                     }
-                    error = passwordError != null
+                    id = "password-field"
+                    placeholder = "Password"
+                    type = InputType.password
+                    value = password
+                    //error = passwordError != null  // TODO(Prin) Can I delete this?
                     onChange = {
-                        password = it.eventValue()
+                        password = it.target.value
                     }
                     onKeyUp = {
                         if (it.key == "Enter") {
@@ -219,7 +223,7 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
             +"Log in"
         }
 
-        if (emailError != null) {
+        if (emailError != null || passwordError != null) {
             span {
                 css {
                     marginTop = 20.px
@@ -236,7 +240,11 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
                     lineHeight = 18.px
                     fontFamily = FontFamily.sansSerif
                 }
-                +emailError!!
+                if (emailError != null) {
+                    +emailError!!
+                } else {
+                    +passwordError!!
+                }
             }
         }
 
@@ -249,9 +257,7 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
                 if (!emailSent) {
                     Link {
                         sx {
-                            color = Color("#DDDDDD80")
-                            fontSize = 15.px
-                            fontFamily = FontFamily.sansSerif
+                            loginLinkCss()
                         }
                         component = button
                         variant = TypographyVariant.body2
@@ -263,6 +269,9 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
                     }
                 } else {
                     Link {
+                        sx {
+                            loginLinkCss()
+                        }
                         component = button
                         variant = TypographyVariant.body2
                         onClick = {
@@ -277,6 +286,9 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
                 }
             } else {
                 Link {
+                    sx {
+                        loginLinkCss()
+                    }
                     component = button
                     variant = TypographyVariant.body2
                     onClick = {
