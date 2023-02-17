@@ -3,6 +3,7 @@ package components.redesign.nouser
 import components.LoginContext
 import components.UserAvatar
 import components.redesign.basic.MainPalette
+import components.redesign.forms.LoginTextInput
 import components.showError
 import components.userListItemText
 import csstype.*
@@ -54,7 +55,7 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
         val trimmedEmail = email.trim()
         val valid = isEmailValid(trimmedEmail)
         if (!valid) {
-            emailError = "This email address is not valid."
+            emailError = "This email you used is not valid."
             return
         }
 
@@ -92,6 +93,7 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
             background = Color("#6733DA")
         }
 
+        // TODO(Prin): Replace with SVG.
         span {
             css {
                 display = Display.flex
@@ -114,15 +116,10 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
         }
 
         if (!emailSent) {
-            TextField {
-                sx {
-                    marginTop = themed(2)
-                }
-                margin = FormControlMargin.normal
-                variant = FormControlVariant.outlined
-                fullWidth = true
+            LoginTextInput {
+                placeholder = "Email"
                 id = "email-field"
-                label = ReactNode("Email")
+                /*
                 helperText = if (emailError != null) {
                     ReactNode(emailError!!)
                 } else {
@@ -131,10 +128,10 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
                         LoginMode.Password -> ReactNode("")
                     }
                 }
-                error = emailError != null
+                 */
                 value = email
                 onChange = {
-                    email = it.eventValue()
+                    email = it.target.value  // TODO(Prin): Is this correct?
                 }
                 onKeyUp = {
                     if (it.key == "Enter") {
@@ -222,6 +219,27 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
             +"Log in"
         }
 
+        if (emailError != null) {
+            span {
+                css {
+                    marginTop = 20.px
+                    marginBottom = 5.px
+                    padding = Padding(10.px, 12.px)
+                    textAlign = TextAlign.center
+                    backgroundColor = Color("#a327d7")  // TODO(Prin): Use palette.
+                    color = Color("#FFFFFF")
+                    borderWidth = 0.px
+                    borderRadius = 5.px
+                    width = 100.pct
+
+                    fontSize = 15.px
+                    lineHeight = 18.px
+                    fontFamily = FontFamily.sansSerif
+                }
+                +emailError!!
+            }
+        }
+
         Box {
             sx {
                 marginTop = themed(1)
@@ -230,6 +248,11 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
             if (mode == LoginMode.MagicLink) {
                 if (!emailSent) {
                     Link {
+                        sx {
+                            color = Color("#DDDDDD80")
+                            fontSize = 15.px
+                            fontFamily = FontFamily.sansSerif
+                        }
                         component = button
                         variant = TypographyVariant.body2
                         onClick = {
