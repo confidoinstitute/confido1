@@ -10,7 +10,6 @@ import csstype.*
 import dom.html.HTMLLIElement
 import emotion.react.css
 import hooks.useCoroutineLock
-import icons.smallLogo
 import io.ktor.client.call.*
 import io.ktor.http.*
 import kotlinx.js.Object
@@ -25,7 +24,6 @@ import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.img
-import react.dom.onChange
 import react.dom.html.ReactHTML.span
 import tools.confido.refs.ref
 import users.User
@@ -67,6 +65,7 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
             emailError = "This email you used is not valid."
             return
         }
+        emailError = null
 
         login {
             when (mode) {
@@ -150,13 +149,15 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
                 }
             }
         } else {
-            Paper {
-                sx {
+            span {
+                css {
                     width = 100.pct
-                    margin = themed(2)
-                    padding = themed(2)
+                    marginTop = 0.px
+                    marginBottom = 20.px
+                    backgroundColor = Color("transparent")
                 }
                 // TODO: Email icon?
+                /*
                 Typography {
                     sx {
                         textAlign = TextAlign.center
@@ -164,17 +165,19 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
                     variant = TypographyVariant.h5
                     +"Confirm your email"
                 }
+                */
                 Typography {
                     sx {
                         textAlign = TextAlign.center
-                        marginTop = themed(2)
+                        marginTop = 12.px
+                        color = Color("#FFFFFF")
                     }
-                    variant = TypographyVariant.body1
                     +"We have sent an email with a login link to"
                 }
                 Typography {
                     sx {
                         textAlign = TextAlign.center
+                        color = Color("#FFFFFF")
                     }
                     variant = TypographyVariant.body1
                     +email
@@ -184,24 +187,27 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
                         textAlign = TextAlign.center
                         marginTop = themed(2)
                         fontSize = FontSize.smaller
-                        color = Color("#999")
+                        color = Color("#FFFFFFB3")  // 70% opacity
                     }
                     variant = TypographyVariant.body2
-                    +"Please check your spam folder in case you didn't get the email."
+                    +"Please check the spam folder in case you didn't find the email."
                 }
             }
         }
 
-        components.redesign.forms.Button {
-            css {
-                marginTop = 12.px
-                width = 100.pct
-                borderRadius = 10.px
+        // Changed the design to hide the button (rather than just disable it) when the email was sent.
+        if (!emailSent) {
+            components.redesign.forms.Button {
+                css {
+                    marginTop = 12.px
+                    width = 100.pct
+                    borderRadius = 10.px
+                }
+                palette = MainPalette.inverted
+                disabled = emailSent || login.running
+                onClick = { attemptLogin() }
+                +"Log in"
             }
-            palette = MainPalette.inverted
-            disabled = emailSent || login.running
-            onClick = { attemptLogin() }
-            +"Log in"
         }
 
         if (emailError != null || passwordError != null) {
