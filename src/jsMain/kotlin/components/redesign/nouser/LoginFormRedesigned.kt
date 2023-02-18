@@ -24,6 +24,7 @@ import payloads.requests.SendMailLink
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.button
+import react.dom.html.ReactHTML.img
 import react.dom.onChange
 import react.dom.html.ReactHTML.span
 import tools.confido.refs.ref
@@ -31,6 +32,7 @@ import users.User
 import utils.*
 
 internal fun PropertiesBuilder.loginLinkCss() {
+    marginTop = 12.px
     color = Color("#DDDDDD80")
     fontSize = 15.px
     lineHeight = 18.px
@@ -100,44 +102,22 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
             background = Color("#6733DA")
         }
 
-        // TODO(Prin): Replace with SVG.
-        span {
+        img {
             css {
-                display = Display.flex
-                marginTop = 70.px
-                marginBottom = 50.px
+                display = Display.block
+                width = 240.px
+                marginTop = 60.px
+                marginRight = AUTO
+                marginBottom = 40.px
+                marginLeft = AUTO
             }
-
-            smallLogo {}
-            span {
-                css {
-                    fontFamily = FontFamily.serif
-                    fontWeight = 600.unsafeCast<FontWeight>()
-                    fontSize = 24.px
-                    lineHeight = 29.px
-                    color = Color("#FFFFFF")
-                    marginLeft = 10.px
-                    // TODO(Prin): Better vertical center alignment!
-                    paddingTop = 14.px
-                }
-                +"Confido"
-            }
+            src = "/static/logo-text-horizontal.svg"
         }
 
         if (!emailSent) {
             LoginTextInput {
                 id = "email-field"
                 placeholder = "Email"
-                /*
-                helperText = if (emailError != null) {
-                    ReactNode(emailError!!)
-                } else {
-                    when (mode) {
-                        LoginMode.MagicLink -> ReactNode("We will send a login link to you.")
-                        LoginMode.Password -> ReactNode("")
-                    }
-                }
-                 */
                 value = email
                 onChange = {
                     email = it.target.value  // TODO(Prin): Is this correct?
@@ -214,6 +194,7 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
 
         components.redesign.forms.Button {
             css {
+                marginTop = 12.px
                 width = 100.pct
                 borderRadius = 10.px
             }
