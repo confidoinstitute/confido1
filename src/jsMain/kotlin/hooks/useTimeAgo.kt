@@ -1,5 +1,6 @@
 package hooks
 
+import kotlinx.coroutines.delay
 import react.useEffect
 import react.useState
 import tools.confido.utils.pluralize
@@ -35,20 +36,14 @@ fun useTimeAgo(timestamp: Int?): String? {
 
     var text by useState<String?>(null)
 
-    useEffect(timestamp) {
-        fun setText() {
-            if (timestamp != null) {
+    useCoroutine(timestamp) {
+        if (timestamp == null)
+            text = null
+        else
+            while (true) {
                 text = format(agoPrefix(timestamp))
-            } else {
-                text = null
+                delay(5000)
             }
-        }
-        setText()
-        val interval = setInterval(::setText, 5000)
-
-        cleanup {
-            clearInterval(interval)
-        }
     }
 
     return text
