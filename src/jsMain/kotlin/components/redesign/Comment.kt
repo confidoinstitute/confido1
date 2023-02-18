@@ -107,7 +107,7 @@ val Comment = FC<CommentProps> { props ->
                 display = Display.flex
                 flexDirection = FlexDirection.row
                 justifyContent = JustifyContent.flexEnd
-                fontWeight = 500.unsafeCast<FontWeight>()
+                fontWeight = integer(500)
                 padding = Padding(0.px, 5.px)
                 gap = 10.px
                 fontSize = 12.px
@@ -212,7 +212,7 @@ val CommentHeader = FC<CommentHeaderProps> { props ->
             }
             span {
                 css {
-                    fontWeight = 600.unsafeCast<FontWeight>()
+                    fontWeight = integer(600)
                 }
                 +(props.author.nick ?: "Anonymous")
             }
