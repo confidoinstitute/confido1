@@ -1,7 +1,9 @@
 package components.redesign.comments
 
+import components.AppStateContext
 import components.redesign.*
 import components.redesign.basic.*
+import components.rooms.RoomContext
 import components.showError
 import csstype.*
 import emotion.react.css
@@ -12,6 +14,7 @@ import react.*
 import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
+import rooms.RoomPermission
 import tools.confido.refs.deref
 import users.User
 import utils.runCoroutine
@@ -26,10 +29,15 @@ external interface CommentProps : Props {
 }
 
 val Comment = FC<CommentProps> { props ->
+    val room = useContext(RoomContext)
+    val (appState, stale) = useContext(AppStateContext)
+
     val comment = props.commentInfo.comment
     val author = comment.user.deref() ?: return@FC
+    val isAuthor = author == appState.session.user
 
     var moreDialogOpen by useState(false)
+    var editDialogOpen by useState(false)
 
     // TODO: backend support for downvotes
     val voteState = if (props.commentInfo.likedByMe) {
@@ -56,16 +64,23 @@ val Comment = FC<CommentProps> { props ->
         Client.send(url, method = HttpMethod.Delete, onError = { showError?.invoke(it) }) {}
     }
 
+    EditCommentDialog {
+        open = editDialogOpen
+        onClose = { editDialogOpen = false }
+        this.comment = comment
+    }
+
     DialogMenu {
         open = moreDialogOpen
         onClose = { moreDialogOpen = false }
-        DialogMenuItem {
-            text = "Edit comment"
-            icon = EditIcon
-            onClick = {
-                // TODO: Implement
-                showError?.invoke("Editing comments is not currently available.")
-                moreDialogOpen = false
+        if (isAuthor) {
+            DialogMenuItem {
+                text = "Edit comment"
+                icon = EditIcon
+                onClick = {
+                    editDialogOpen = true
+                    moreDialogOpen = false
+                }
             }
         }
         DialogMenuItem {
@@ -109,9 +124,13 @@ val Comment = FC<CommentProps> { props ->
                 fontSize = 12.px
                 lineHeight = 14.px
             }
-            FooterAction {
-                icon = MoreIcon
-                onClick = { moreDialogOpen = true }
+
+            val moreDialogVisible = isAuthor || appState.hasPermission(room, RoomPermission.MANAGE_COMMENTS)
+            if (moreDialogVisible) {
+                FooterAction {
+                    icon = MoreIcon
+                    onClick = { moreDialogOpen = true }
+                }
             }
             // TODO: Implement replies on backend
             /*

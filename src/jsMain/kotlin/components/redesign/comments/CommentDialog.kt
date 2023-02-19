@@ -14,6 +14,7 @@ import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.textarea
 import react.useState
+import tools.confido.question.Comment
 import tools.confido.utils.unixNow
 import utils.questionUrl
 import utils.roomUrl
@@ -26,11 +27,24 @@ enum class CommentInputVariant {
 external interface AddCommentDialogProps : Props {
     var open: Boolean
     var onClose: (() -> Unit)?
+    /** The id of the entity containing this comment. Make sure to specify the correct [variant]. */
     var id: String
+    /** The type of the entity containing this comment. */
     var variant: CommentInputVariant
 }
 
+external interface EditCommentDialogProps : Props {
+    var open: Boolean
+    var onClose: (() -> Unit)?
+    var comment: Comment
+}
+
 val AddCommentDialog = FC<AddCommentDialogProps> { props ->
+    if (props.variant == undefined) {
+        console.error("Invalid comment variant")
+        return@FC
+    }
+
     val submit = useCoroutineLock()
     fun createComment(text: String, attachPrediction: Boolean) {
         submit {
@@ -52,16 +66,44 @@ val AddCommentDialog = FC<AddCommentDialogProps> { props ->
     }
 }
 
+val EditCommentDialog = FC<EditCommentDialogProps> { props ->
+    val submit = useCoroutineLock()
+    fun editComment(content: String, attachPrediction: Boolean) {
+        // TODO: Handle attach prediction change
+        submit {
+            val url = "${props.comment.urlPrefix}/edit"
+            Client.sendData(url, content, onError = { showError?.invoke(it) }) { }
+        }
+    }
+
+    CommentDialog {
+        this.open = props.open
+        this.onClose = props.onClose
+        this.onSubmit = ::editComment
+        this.initialContent = props.comment.content
+        this.title = "Editing your comment"
+    }
+}
+
 private external interface CommentDialogProps : Props {
     var open: Boolean
     var onClose: (() -> Unit)?
     var title: String
+    var initialContent: String?
     var onSubmit: ((text: String, attachPrediction: Boolean) -> Unit)?
 }
 
 private val CommentDialog = FC<CommentDialogProps> { props ->
-    var commentText by useState("")
+    val initialContent = props.initialContent ?: ""
+
+    var lastInitialContent by useState(initialContent)
+    var commentContent by useState(initialContent)
     var attachPrediction by useState(false)
+
+    if (initialContent != lastInitialContent) {
+        lastInitialContent = props.initialContent ?: ""
+        commentContent = props.initialContent ?: ""
+    }
 
     DialogCore {
         open = props.open
@@ -96,7 +138,7 @@ private val CommentDialog = FC<CommentDialogProps> { props ->
                     }
                     +"Discard"
                     onClick = {
-                        commentText = ""
+                        commentContent = initialContent
                         props.onClose?.invoke()
                     }
                 }
@@ -120,8 +162,8 @@ private val CommentDialog = FC<CommentDialogProps> { props ->
                     // TODO: Better height scaling, this is just using the first thing that came to mind.
                     height = 40.vh
                 }
-                value = commentText
-                onChange = { e -> commentText = e.target.value }
+                value = commentContent
+                onChange = { e -> commentContent = e.target.value }
             }
 
             Stack {
@@ -148,7 +190,7 @@ private val CommentDialog = FC<CommentDialogProps> { props ->
                 }
                  */
 
-                val buttonDisabled = commentText.isBlank()
+                val buttonDisabled = commentContent.isBlank()
                 button {
                     css {
                         all = Globals.unset
@@ -167,8 +209,8 @@ private val CommentDialog = FC<CommentDialogProps> { props ->
 
                     if (!buttonDisabled) {
                         onClick = {
-                            props.onSubmit?.invoke(commentText, attachPrediction)
-                            commentText = ""
+                            props.onSubmit?.invoke(commentContent, attachPrediction)
+                            commentContent = ""
                             props.onClose?.invoke()
                         }
                     }
