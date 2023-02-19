@@ -148,21 +148,29 @@ private val CommentDialog = FC<CommentDialogProps> { props ->
                 }
                  */
 
+                val buttonDisabled = commentText.isBlank()
                 button {
                     css {
                         all = Globals.unset
-                        cursor = Cursor.pointer
-                        backgroundColor = Color("#6319FF")
+
+                        if (buttonDisabled) {
+                            backgroundColor = Color("#DDDDDD")
+                        } else {
+                            backgroundColor = Color("#6319FF") // primary
+                            cursor = Cursor.pointer
+                        }
                         borderRadius = 20.px
                         padding = Padding(5.px, 12.px)
-                        color = Color("#FFFFFF")
+                            color = Color("#FFFFFF")
                         fontWeight = integer(500)
                     }
 
-                    onClick = {
-                        props.onSubmit?.invoke(commentText, attachPrediction)
-                        commentText = ""
-                        props.onClose?.invoke()
+                    if (!buttonDisabled) {
+                        onClick = {
+                            props.onSubmit?.invoke(commentText, attachPrediction)
+                            commentText = ""
+                            props.onClose?.invoke()
+                        }
                     }
 
                     +"Post"
