@@ -1,12 +1,17 @@
 package components.redesign.questions
 
 import components.AppStateContext
+import components.redesign.BinIcon
 import components.redesign.Comment
+import components.redesign.EditIcon
 import components.redesign.TextWithLinks
-import components.redesign.basic.Stack
+import components.redesign.basic.*
+import components.redesign.forms.TextButton
+import components.showError
 import csstype.*
 import emotion.react.css
 import hooks.useWebSocket
+import io.ktor.http.*
 import payloads.responses.CommentInfo
 import payloads.responses.WSData
 import react.FC
@@ -17,6 +22,9 @@ import react.useContext
 import react.useState
 import tools.confido.question.Question
 import tools.confido.refs.ref
+import utils.questionUrl
+import utils.runCoroutine
+import web.prompts.confirm
 
 external interface QuestionLayoutProps : Props {
     var question: Question
@@ -45,11 +53,31 @@ external interface QuestionCommentSectionProps : Props {
     var question: Question
 }
 
+external interface QuestionQuickSettingsDialogProps : Props {
+    var question: Question
+    var open: Boolean
+    var onClose: (() -> Unit)?
+}
+
 private val bgColor = Color("#f2f2f2")
 
 val QuestionPage = FC<QuestionLayoutProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
-    val prediction = appState.myPredictions[props.question.ref]
+    val myPrediction = appState.myPredictions[props.question.ref]
+
+    var quickSettingsOpen by useState(false)
+
+    QuestionQuickSettingsDialog {
+        question = props.question
+        open = quickSettingsOpen
+        onClose = { quickSettingsOpen = false }
+    }
+
+    // TODO: Replace with a navbar "more" button
+    TextButton {
+        onClick = { quickSettingsOpen = true }
+        +"Open quick settings (will be replaced by a navbar button)"
+    }
 
     Stack {
         QuestionHeader {
@@ -65,7 +93,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
     }
 }
 
-val QuestionEstimateTabButton = FC<QuestionEstimateTabButtonProps> { props ->
+private val QuestionEstimateTabButton = FC<QuestionEstimateTabButtonProps> { props ->
     button {
         css {
             all = Globals.unset
@@ -96,7 +124,7 @@ val QuestionEstimateTabButton = FC<QuestionEstimateTabButtonProps> { props ->
     }
 }
 
-val QuestionEstimateSection = FC<QuestionEstimateSectionProps> { props ->
+private val QuestionEstimateSection = FC<QuestionEstimateSectionProps> { props ->
     // false = your estimate open
     // true = group estimate open
     var groupEstimateOpen by useState(false)
@@ -149,7 +177,7 @@ val QuestionEstimateSection = FC<QuestionEstimateSectionProps> { props ->
     }
 }
 
-val QuestionHeader = FC<QuestionHeaderProps> { props ->
+private val QuestionHeader = FC<QuestionHeaderProps> { props ->
     Stack {
         css {
             padding = Padding(20.px, 15.px, 5.px)
@@ -171,9 +199,9 @@ val QuestionHeader = FC<QuestionHeaderProps> { props ->
 
         // Question status
         // TODO: Implement on backend
-        QuestionStatusLine {
-            text = "Opened 10 feb 2023, 12:00"
-        }
+        //QuestionStatusLine {
+        //    text = "Opened 10 feb 2023, 12:00"
+        //}
         //QuestionStatusLine {
         //    text = "Closing 26 feb 2023, 12:00"
         //}
@@ -198,7 +226,7 @@ val QuestionHeader = FC<QuestionHeaderProps> { props ->
     }
 }
 
-val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
+private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
     val comments = useWebSocket<Map<String, CommentInfo>>("/state${props.question.urlPrefix}/comments")
     Stack {
         css {
@@ -251,7 +279,7 @@ val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
     }
 }
 
-val QuestionStatusLine = FC<QuestionStatusProps> { props ->
+private val QuestionStatusLine = FC<QuestionStatusProps> { props ->
     div {
         css {
             fontFamily = FontFamily.sansSerif
@@ -267,3 +295,69 @@ val QuestionStatusLine = FC<QuestionStatusProps> { props ->
     }
 }
 
+private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props ->
+    fun delete() = runCoroutine {
+        Client.send(
+            questionUrl(props.question.id),
+            HttpMethod.Delete,
+            onError = { showError?.invoke(it) }) {
+            // TODO: Navigate to the room page
+            props.onClose?.invoke()
+        }
+    }
+
+    DialogMenu {
+        open = props.open
+        onClose = { props.onClose?.invoke() }
+        /*
+        DialogMenuItem {
+            text = "Hide"
+            disabled = true
+            onClick = {
+                // TODO: Implement and remove disabled
+            }
+        }
+        DialogMenuItem {
+            text = "Close"
+            disabled = true
+            onClick = {
+                // TODO: Implement and remove disabled
+            }
+        }
+        DialogMenuItem {
+            text = "Resolve"
+            disabled = true
+            onClick = {
+                // TODO: Implement and remove disabled
+            }
+        }
+        DialogMenuSeparator {}
+         */
+        DialogMenuItem {
+            text = "Edit this question"
+            icon = EditIcon
+            disabled = true
+            onClick = {
+                // TODO: Implement and remove disabled
+            }
+        }
+        DialogMenuItem {
+            text = "Delete this question"
+            icon = BinIcon
+            variant = DialogMenuItemVariant.dangerous
+            onClick = {
+                // TODO: Check for confirmation properly
+                if (confirm("Are you sure you want to delete the question? This action is irreversible. Deleting will also result in loss of all predictions made for this question.")) {
+                    delete()
+                }
+            }
+        }
+        /*
+        DialogMenuSeparator {}
+        DialogMenuItem {
+            text = "How to use this page"
+            disabled = true
+        }
+         */
+    }
+}

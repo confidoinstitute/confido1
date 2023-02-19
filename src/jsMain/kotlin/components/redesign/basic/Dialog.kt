@@ -261,6 +261,8 @@ external interface DialogMenuItemProps : Props {
 
     /** Defaults to black. */
     var color: Color?
+    /** Defaults to false. */
+    var disabled: Boolean?
 
     /** Defaults to [DialogMenuItemVariant.normal]. */
     var variant: DialogMenuItemVariant?
@@ -274,6 +276,7 @@ val DialogMenuItem = FC<DialogMenuItemProps> { props ->
         DialogMenuItemVariant.normal -> Color("#000000")
         DialogMenuItemVariant.dangerous -> Color("#ff0000")
     }
+    val disabled = props.disabled ?: false
 
     // We have an extra Stack rather than using the button directly
     // to avoid the padding from being clickable.
@@ -285,7 +288,10 @@ val DialogMenuItem = FC<DialogMenuItemProps> { props ->
         button {
             css {
                 all = Globals.unset
-                cursor = Cursor.pointer
+                if (!disabled) {
+                    cursor = Cursor.pointer
+                }
+                userSelect = None.none
 
                 display = Display.flex
                 flexDirection = FlexDirection.row
@@ -293,6 +299,9 @@ val DialogMenuItem = FC<DialogMenuItemProps> { props ->
                 gap = 10.px
 
                 this.color = color
+                if (disabled) {
+                    this.opacity = number(0.5)
+                }
             }
 
             div {
@@ -318,7 +327,10 @@ val DialogMenuItem = FC<DialogMenuItemProps> { props ->
                 }
                 +props.text
             }
-            onClick = { props.onClick?.invoke() }
+            onClick = {
+                if (!disabled)
+                    props.onClick?.invoke()
+            }
         }
     }
 }
