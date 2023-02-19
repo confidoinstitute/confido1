@@ -6,6 +6,7 @@ import components.redesign.comments.Comment
 import components.redesign.EditIcon
 import components.redesign.TextWithLinks
 import components.redesign.basic.*
+import components.redesign.comments.AddCommentButton
 import components.redesign.comments.AddCommentDialog
 import components.redesign.comments.CommentInputVariant
 import components.redesign.forms.TextButton
@@ -68,19 +69,11 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
     val myPrediction = appState.myPredictions[props.question.ref]
 
     var quickSettingsOpen by useState(false)
-    var addCommentOpen by useState(false)
 
     QuestionQuickSettingsDialog {
         question = props.question
         open = quickSettingsOpen
         onClose = { quickSettingsOpen = false }
-    }
-
-    AddCommentDialog {
-        open = addCommentOpen
-        onClose = { addCommentOpen = false }
-        id = props.question.id
-        variant = CommentInputVariant.QUESTION
     }
 
     // TODO: Replace with a navbar "more" button
@@ -99,11 +92,6 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
         }
         QuestionCommentSection {
             this.question = props.question
-        }
-        // TODO: Replace with a proper UI
-        TextButton {
-            onClick = { addCommentOpen = true }
-            +"Add comment"
         }
     }
 }
@@ -243,6 +231,16 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
 
 private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
     val comments = useWebSocket<Map<String, CommentInfo>>("/state${props.question.urlPrefix}/comments")
+
+    var addCommentOpen by useState(false)
+
+    AddCommentDialog {
+        open = addCommentOpen
+        onClose = { addCommentOpen = false }
+        id = props.question.id
+        variant = CommentInputVariant.QUESTION
+    }
+
     Stack {
         css {
             justifyContent = JustifyContent.spaceBetween
@@ -291,6 +289,10 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
                 // TODO: Proper loading design
                 +"Loading..."
             }
+        }
+
+        AddCommentButton {
+            onClick = { addCommentOpen = true }
         }
     }
 }

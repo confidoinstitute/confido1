@@ -1,5 +1,6 @@
 package components.redesign.rooms
 
+import components.redesign.comments.AddCommentButton
 import components.redesign.comments.AddCommentDialog
 import components.redesign.comments.Comment
 import components.redesign.comments.CommentInputVariant
@@ -58,10 +59,8 @@ val RoomComments = FC<Props> {
             }
         }
 
-        // TODO: Replace with a proper UI
-        TextButton {
+        AddCommentButton {
             onClick = { addCommentOpen = true }
-            +"Add comment"
         }
     }
 }
