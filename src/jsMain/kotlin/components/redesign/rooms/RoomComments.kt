@@ -1,6 +1,6 @@
 package components.redesign.rooms
 
-import components.redesign.Comment
+import components.redesign.comments.Comment
 import components.rooms.RoomContext
 import csstype.*
 import emotion.react.css

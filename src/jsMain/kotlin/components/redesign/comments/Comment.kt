@@ -1,5 +1,6 @@
-package components.redesign
+package components.redesign.comments
 
+import components.redesign.*
 import components.redesign.basic.*
 import components.showError
 import csstype.*

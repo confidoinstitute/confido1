@@ -68,7 +68,7 @@ external interface DialogCoreProps : PropsWithChildren {
     var header: ReactNode
 }
 
-private val DialogCore = FC<DialogCoreProps> { props ->
+val DialogCore = FC<DialogCoreProps> { props ->
     val slideKF = keyframes {
         0.pct {
             transform = translatey(100.pct)

@@ -2,10 +2,12 @@ package components.redesign.questions
 
 import components.AppStateContext
 import components.redesign.BinIcon
-import components.redesign.Comment
+import components.redesign.comments.Comment
 import components.redesign.EditIcon
 import components.redesign.TextWithLinks
 import components.redesign.basic.*
+import components.redesign.comments.AddCommentDialog
+import components.redesign.comments.CommentInputVariant
 import components.redesign.forms.TextButton
 import components.showError
 import csstype.*
@@ -66,11 +68,19 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
     val myPrediction = appState.myPredictions[props.question.ref]
 
     var quickSettingsOpen by useState(false)
+    var addCommentOpen by useState(false)
 
     QuestionQuickSettingsDialog {
         question = props.question
         open = quickSettingsOpen
         onClose = { quickSettingsOpen = false }
+    }
+
+    AddCommentDialog {
+        open = addCommentOpen
+        onClose = { addCommentOpen = false }
+        id = props.question.id
+        variant = CommentInputVariant.QUESTION
     }
 
     // TODO: Replace with a navbar "more" button
@@ -89,6 +99,11 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
         }
         QuestionCommentSection {
             this.question = props.question
+        }
+        // TODO: Replace with a proper UI
+        TextButton {
+            onClick = { addCommentOpen = true }
+            +"Add comment"
         }
     }
 }
