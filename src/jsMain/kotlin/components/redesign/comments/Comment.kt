@@ -262,6 +262,7 @@ val CommentContents = FC<CommentContentsProps> { props ->
         css {
             padding = Padding(0.px, 15.px)
             color = Color("#000000")
+            fontFamily = FontFamily.sansSerif
             fontSize = 15.px
             lineHeight = 18.px
         }
