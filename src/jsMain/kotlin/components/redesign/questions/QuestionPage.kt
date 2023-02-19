@@ -268,6 +268,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
             is WSData -> comments.data.entries.sortedByDescending { it.value.comment.timestamp }.map {
                 Comment {
                     commentInfo = it.value
+                    key = it.key
                 }
             }
 

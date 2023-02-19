@@ -42,6 +42,7 @@ val RoomComments = FC<Props> {
         roomComments.data?.entries?.sortedBy { it.value.comment.timestamp }?.map {
             Comment {
                 this.commentInfo = it.value
+                this.key = it.key
             }
         }
     }

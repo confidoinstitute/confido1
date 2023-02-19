@@ -42,6 +42,7 @@ val QuestionList = FC<QuestionListProps> { props ->
 
         visibleQuestions.map { question ->
             QuestionItem {
+                this.key = question.id
                 this.question = question
                 this.groupPred = groupPreds[question.id]
                 this.onClick = {
