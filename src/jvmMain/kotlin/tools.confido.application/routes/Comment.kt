@@ -77,7 +77,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
                 ?: notFound("No such comment.")
 
             val newContent: String = call.receive()
-            if (newContent.isEmpty()) unauthorized("No comment content.")
+            if (newContent.isEmpty()) badRequest("No comment content.")
 
             if (!room.hasPermission(
                     user,
