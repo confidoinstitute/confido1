@@ -49,48 +49,85 @@ val globalTheme = createTheme(
     }
 )
 
+external interface AppProps : Props {
+    var isLoggedIn: Boolean
+}
+
+val AppLegacy = memo(FC<AppProps> { props ->
+    val isLoggedIn = props.isLoggedIn
+    val isDemo = appConfig.demoMode
+    val layout = if (isLoggedIn) {
+        RootLayout
+    } else {
+        NoUserLayout
+    }
+
+    ThemeProvider {
+        this.theme = globalTheme
+        CssBaseline {}
+        GlobalErrorMessage {
+            BrowserRouter {
+                Routes {
+                    if (isDemo)
+                        Route {
+                            path = "/"
+                            index = true
+                            element = DemoLayout.create {}
+                        }
+                    Route {
+                        path = "/*"
+                        index = !isDemo
+                        element = layout.create {
+                            key = "layout"
+                        }
+                    }
+                    Route {
+                        path = "presenter"
+                        element = PresenterLayout.create()
+                    }
+                }
+            }
+        }
+    }
+})
+
+val AppMobile = memo(FC<AppProps> {props ->
+    val isLoggedIn = props.isLoggedIn
+    val isDemo = appConfig.demoMode
+    val layout = if (isLoggedIn) components.redesign.layout.RootLayout else Fragment
+
+    BrowserRouter {
+        Routes {
+            if (isDemo)
+                Route {
+                    path = "/"
+                    index = true
+                    element = DemoLayout.create {}
+                }
+            Route {
+                path = "/*"
+                index = !isDemo
+                element = layout.create {}
+            }
+        }
+    }
+})
+
 val App = FC<Props> {
     // TODO: initial state from cookie
     // TODO: react to cookie change?
     val sessionCookieExists = document.cookie.contains("session")
     var isLoggedIn by useState(sessionCookieExists)
 
-    CssBaseline {}
+    val mobileFlag = true
+
     LoginContext.Provider {
         value = Login(isLoggedIn) { isLoggedIn = it }
 
-        val isDemo = appConfig.demoMode
-        val layout = if (isLoggedIn) {
-            RootLayout
+        if (mobileFlag) {
+            AppMobile { this.isLoggedIn = isLoggedIn }
         } else {
-            NoUserLayout
-        }
-
-        ThemeProvider {
-            this.theme = globalTheme
-            GlobalErrorMessage {
-                BrowserRouter {
-                    Routes {
-                        if (isDemo)
-                            Route {
-                                path = "/"
-                                index = true
-                                element = DemoLayout.create {}
-                            }
-                        Route {
-                            path = "/*"
-                            index = !isDemo
-                            element = layout.create {
-                                key = "layout"
-                            }
-                        }
-                        Route {
-                            path = "presenter"
-                            element = PresenterLayout.create()
-                        }
-                    }
-                }
-            }
+            AppLegacy { this.isLoggedIn = isLoggedIn }
         }
     }
 }
