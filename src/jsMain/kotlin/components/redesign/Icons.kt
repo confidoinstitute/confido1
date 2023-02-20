@@ -3,6 +3,7 @@ package components.redesign
 import react.FC
 import react.PropsWithClassName
 import react.dom.svg.FillRule
+import react.dom.svg.ReactSVG.circle
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.svg
 import react.dom.svg.StrokeLinecap
@@ -16,6 +17,8 @@ Inclusion could be handled either by
 - ReactNode if we can control sizes somehow
 In either case, we also need to solve how to overwrite colors
 regardless of whether fills or strokes are used.
+
+The icons also have mildly varying sizes.
  */
 
 val ReplyIcon = FC<PropsWithClassName> { props ->
@@ -158,6 +161,82 @@ val SortIcon = FC<PropsWithClassName> { props ->
         }
         path {
             d = "M10 5L10 13L12 13L12 5L14.1677 5C14.5032 5 14.6896 4.61203 14.4801 4.35012L11.3904 0.488043C11.1903 0.23784 10.8097 0.23784 10.6096 0.488043L7.5199 4.35012C7.31038 4.61203 7.49685 5 7.83225 5L10 5Z"
+            fill = color
+        }
+    }
+}
+
+val CloseIcon = FC<PropsWithClassName> { props ->
+    val color = "#DDDDDD"
+    svg {
+        className = props.className
+        width = 17.0
+        height = 16.0
+        viewBox = "0 0 17 16"
+        fill = "none"
+        path {
+            d = "M1 15L15.1642 1"
+            stroke = color
+            strokeWidth = 2.0
+            strokeLinecap = StrokeLinecap.round
+        }
+        path {
+            d = "M0.99984 1L15.1641 15"
+            stroke = color
+            strokeWidth = 2.0
+            strokeLinecap = StrokeLinecap.round
+        }
+    }
+}
+
+val CirclesIcon = FC<PropsWithClassName> { props ->
+    val color = "#555555"
+    svg {
+        className = props.className
+        width = 18.0
+        height = 9.0
+        viewBox = "0 0 18 9"
+        fill = "none"
+        circle {
+            cx = 3.5
+            cy = 4.5
+            r = 3.5
+            fill = color
+        }
+        circle {
+            cx = 13.5
+            cy = 4.5
+            r = 4.5
+            fill = color
+        }
+    }
+}
+
+val SymmetricGaussIcon = FC<PropsWithClassName> { props ->
+    val color = "#555555"
+    svg {
+        className = props.className
+        width = 20.0
+        height = 11.0
+        viewBox = "0 0 20 11"
+        fill = "none"
+        path {
+            d = "M10 0C11.2543 0 12.0668 0.908928 12.8893 2.18446C13.2771 2.78589 13.6506 3.46193 14.0354 4.15867C15.4462 6.71274 17.0107 9.54501 20 10V11H0V10C2.98934 9.54501 4.55381 6.71273 5.96459 4.15867C6.34945 3.46193 6.72287 2.78589 7.11067 2.18446C7.93317 0.908928 8.74567 0 10 0Z"
+            fill = color
+        }
+    }
+}
+
+val AsymmetricGaussIcon = FC<PropsWithClassName> { props ->
+    val color = "#555555"
+    svg {
+        className = props.className
+        width = 20.0
+        height = 11.0
+        viewBox = "0 0 20 11"
+        fill = "none"
+        path {
+            d = "M4.87167 0.713226C3.47733 2.46897 3.34067 9.20824 0 9.93548V11H20V9.93548C11.3793 8.35592 8.4215 0 6.05033 0C5.65483 0 5.30433 0.168371 4.87167 0.713226Z"
             fill = color
         }
     }

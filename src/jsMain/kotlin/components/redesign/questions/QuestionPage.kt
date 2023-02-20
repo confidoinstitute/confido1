@@ -21,6 +21,7 @@ import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
 import react.useContext
 import react.useState
+import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.refs.ref
 import tools.confido.spaces.Value
@@ -54,6 +55,7 @@ external interface QuestionEstimateTabButtonProps : Props {
 
 external interface QuestionCommentSectionProps : Props {
     var question: Question
+    var myPrediction: Prediction?
 }
 
 external interface QuestionQuickSettingsDialogProps : Props {
@@ -93,6 +95,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
         }
         QuestionCommentSection {
             this.question = props.question
+            this.myPrediction = myPrediction
         }
     }
 }
@@ -259,6 +262,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
         onClose = { addCommentOpen = false }
         id = props.question.id
         variant = CommentInputVariant.QUESTION
+        prediction = props.myPrediction
     }
 
     Stack {

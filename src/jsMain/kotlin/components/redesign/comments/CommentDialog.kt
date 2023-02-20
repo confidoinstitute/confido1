@@ -1,5 +1,8 @@
 package components.redesign.comments
 
+import components.redesign.CirclesIcon
+import components.redesign.CloseIcon
+import components.redesign.SymmetricGaussIcon
 import components.redesign.basic.DialogCore
 import components.redesign.basic.Stack
 import components.showError
@@ -11,8 +14,12 @@ import payloads.requests.CreateComment
 import react.*
 import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.textarea
 import tools.confido.question.Comment
+import tools.confido.question.Prediction
+import tools.confido.spaces.BinarySpace
+import tools.confido.spaces.NumericSpace
 import tools.confido.utils.unixNow
 import utils.questionUrl
 import utils.roomUrl
@@ -29,6 +36,7 @@ external interface AddCommentDialogProps : Props {
     var id: String
     /** The type of the entity containing this comment. */
     var variant: CommentInputVariant
+    var prediction: Prediction?
 }
 
 external interface EditCommentDialogProps : Props {
@@ -61,6 +69,9 @@ val AddCommentDialog = FC<AddCommentDialogProps> { props ->
         this.onClose = props.onClose
         this.onSubmit = ::createComment
         this.title = "Writing a new comment"
+        if (props.variant == CommentInputVariant.QUESTION) {
+            this.attachablePrediction = props.prediction
+        }
     }
 }
 
@@ -89,6 +100,34 @@ private external interface CommentDialogProps : Props {
     var title: String
     var initialContent: String?
     var onSubmit: ((text: String, attachPrediction: Boolean) -> Unit)?
+    var attachablePrediction: Prediction?
+}
+
+external interface PredictionAttachmentProps : Props {
+    var prediction: Prediction
+}
+
+private val PredictionAttachment = FC<PredictionAttachmentProps> { props ->
+    val icon = when (props.prediction.dist.space) {
+        BinarySpace -> CirclesIcon
+        // TODO: We also have an asymmetric gauss icon
+        is NumericSpace -> SymmetricGaussIcon
+    }
+
+    Stack {
+        direction = FlexDirection.row
+        css {
+            alignItems = AlignItems.center
+            gap = 5.px
+        }
+        +icon.create()
+        span {
+            css {
+                color = Color("#555555")
+            }
+            +props.prediction.dist.description
+        }
+    }
 }
 
 private val CommentDialog = FC<CommentDialogProps> { props ->
@@ -188,22 +227,56 @@ private val CommentDialog = FC<CommentDialogProps> { props ->
                     lineHeight = 18.px
                 }
 
-                div {
-                    // This just helps justify the "Post" button to the right.
-                    // The "attach estimate" button below will replace it when it's implemented.
+                if (props.attachablePrediction != null) {
+                    if (!attachPrediction) {
+                        button {
+                            css {
+                                all = Globals.unset
+                                cursor = Cursor.pointer
+                                userSelect = None.none
+
+                                fontFamily = FontFamily.sansSerif
+                                fontSize = 15.px
+                                lineHeight = 18.px
+
+                                color = Color("#6319FF") // primary
+                            }
+                            +"Attach your current estimate"
+                            onClick = { attachPrediction = true }
+                        }
+                    } else {
+                        Stack {
+                            direction = FlexDirection.row
+                            css {
+                                alignItems = AlignItems.center
+                                gap = 18.px
+                            }
+
+                            PredictionAttachment {
+                                prediction = props.attachablePrediction!!
+                            }
+                            button {
+                                css {
+                                    all = Globals.unset
+                                    userSelect = None.none
+                                    cursor = Cursor.pointer
+                                }
+
+                                onClick = { attachPrediction = false }
+                                CloseIcon {}
+                            }
+                        }
+                    }
+                } else {
+                    // This is needed to properly justify the "Post" button.
+                    div {}
                 }
-                /*
-                // TODO: Implement estimate attachment (well, rendering it, at least)
-                // TODO: remove the div above
-                button {
-                    +"Attach your current estimate"
-                }
-                 */
 
                 val buttonDisabled = commentContent.isBlank()
                 button {
                     css {
                         all = Globals.unset
+                        userSelect = None.none
 
                         if (buttonDisabled) {
                             backgroundColor = Color("#DDDDDD")
@@ -213,7 +286,7 @@ private val CommentDialog = FC<CommentDialogProps> { props ->
                         }
                         borderRadius = 20.px
                         padding = Padding(5.px, 12.px)
-                            color = Color("#FFFFFF")
+                        color = Color("#FFFFFF")
                         fontWeight = integer(500)
                     }
 
