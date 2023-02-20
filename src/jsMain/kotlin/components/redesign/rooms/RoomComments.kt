@@ -1,20 +1,19 @@
 package components.redesign.rooms
 
+import components.redesign.SortButton
+import components.redesign.basic.Stack
 import components.redesign.comments.AddCommentButton
 import components.redesign.comments.AddCommentDialog
 import components.redesign.comments.Comment
 import components.redesign.comments.CommentInputVariant
-import components.redesign.forms.TextButton
+import components.redesign.forms.Button
 import components.rooms.RoomContext
 import csstype.*
 import emotion.react.css
 import hooks.useWebSocket
 import payloads.responses.CommentInfo
-import react.FC
-import react.Props
+import react.*
 import react.dom.html.ReactHTML.div
-import react.useContext
-import react.useState
 
 val RoomComments = FC<Props> {
     val room = useContext(RoomContext)
@@ -44,6 +43,23 @@ val RoomComments = FC<Props> {
     //    CircularProgress {
     //    }
     //}
+
+    RoomHeader {
+        // TODO: Implement sorting
+        SortButton { }
+
+        Button {
+            css {
+                margin = 0.px
+                padding = 7.px
+                fontSize = 13.px
+                lineHeight = 16.px
+                fontWeight = integer(600)
+            }
+            +"Write a comment"
+            onClick = { addCommentOpen = true }
+        }
+    }
 
     div {
         css {

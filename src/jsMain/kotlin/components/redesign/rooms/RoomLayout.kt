@@ -33,8 +33,18 @@ fun PropertiesBuilder.navQuestionTitle() {
     fontWeight = FontWeight.bold
 }
 
-val RoomHeader = FC<Props> {
+val RoomHeader = FC<PropsWithChildren> { props ->
+    Stack {
+        direction = row
+        css {
+            backgroundColor = Color("#FFFFFF")
+            borderBottom = Border(0.5.px, LineStyle.solid, Color("#CCCCCC"))
+            justifyContent = JustifyContent.spaceBetween
+            padding = Padding(15.px, 14.px, 15.px ,25.px)
+        }
 
+        +props.children
+    }
 }
 
 val RoomLayout = FC<Props> {
