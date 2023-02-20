@@ -1,17 +1,30 @@
 package components.redesign
 
-import components.redesign.basic.Stack
 import csstype.*
 import emotion.react.css
 import react.FC
 import react.Props
+import react.dom.html.ReactHTML.button
 
-// TODO: Implement sorting logic. For now we just always show "Newest first"
+enum class SortType {
+    NEWEST,
+    OLDEST,
+}
 
-val SortButton = FC<Props> {
-    Stack {
-        direction = FlexDirection.row
+external interface SortButtonProps : Props {
+    var sortType: SortType
+    var onChange: ((SortType) -> Unit)?
+}
+
+val SortButton = FC<SortButtonProps> { props ->
+    button {
         css {
+            all = Globals.unset
+            cursor = Cursor.pointer
+            userSelect = None.none
+
+            display = Display.flex
+            flexDirection = FlexDirection.row
             fontFamily = FontFamily.sansSerif
             fontWeight = integer(600)
             fontSize = 13.px
@@ -20,7 +33,20 @@ val SortButton = FC<Props> {
             gap = 7.px
             alignItems = AlignItems.center
         }
+
         SortIcon { }
-        +"Newest first"
+        val text = when (props.sortType) {
+            SortType.NEWEST -> "Newest first"
+            SortType.OLDEST -> "Oldest first"
+        }
+        +text
+
+        onClick = {
+            var newType = when (props.sortType) {
+                SortType.NEWEST -> SortType.OLDEST
+                SortType.OLDEST -> SortType.NEWEST
+            }
+            props.onChange?.invoke(newType)
+        }
     }
 }

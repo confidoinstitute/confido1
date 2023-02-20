@@ -252,6 +252,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
     val comments = useWebSocket<Map<String, CommentInfo>>("/state${props.question.urlPrefix}/comments")
 
     var addCommentOpen by useState(false)
+    var sortType by useState(SortType.NEWEST)
 
     AddCommentDialog {
         open = addCommentOpen
@@ -277,7 +278,10 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
             }
             +"Comments"
         }
-        SortButton { }
+        SortButton {
+            this.sortType = sortType
+            onChange = { sort -> sortType = sort }
+        }
     }
 
     Stack {
@@ -285,11 +289,18 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
             gap = 8.px
         }
 
+
         when (comments) {
-            is WSData -> comments.data.entries.sortedByDescending { it.value.comment.timestamp }.map {
-                Comment {
-                    commentInfo = it.value
-                    key = it.key
+            is WSData -> {
+                val sortedComments = when (sortType) {
+                    SortType.NEWEST -> comments.data.entries.sortedByDescending { it.value.comment.timestamp }
+                    SortType.OLDEST -> comments.data.entries.sortedBy { it.value.comment.timestamp }
+                }
+                sortedComments.map {
+                    Comment {
+                        commentInfo = it.value
+                        key = it.key
+                    }
                 }
             }
 

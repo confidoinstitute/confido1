@@ -1,7 +1,7 @@
 package components.redesign.rooms
 
 import components.redesign.SortButton
-import components.redesign.basic.Stack
+import components.redesign.SortType
 import components.redesign.comments.AddCommentButton
 import components.redesign.comments.AddCommentDialog
 import components.redesign.comments.Comment
@@ -20,6 +20,7 @@ val RoomComments = FC<Props> {
     val roomComments = useWebSocket<Map<String, CommentInfo>>("/state${room.urlPrefix}/comments")
 
     var addCommentOpen by useState(false)
+    var sortType by useState(SortType.NEWEST)
 
     AddCommentDialog {
         open = addCommentOpen
@@ -45,8 +46,10 @@ val RoomComments = FC<Props> {
     //}
 
     RoomHeader {
-        // TODO: Implement sorting
-        SortButton { }
+        SortButton {
+            this.sortType = sortType
+            onChange = { sort -> sortType = sort }
+        }
 
         Button {
             css {
@@ -68,7 +71,13 @@ val RoomComments = FC<Props> {
             gap = 8.px
             marginTop = 8.px
         }
-        roomComments.data?.entries?.sortedByDescending { it.value.comment.timestamp }?.map {
+
+        val sortedComments = when (sortType) {
+            SortType.NEWEST -> roomComments.data?.entries?.sortedByDescending { it.value.comment.timestamp }
+            SortType.OLDEST -> roomComments.data?.entries?.sortedBy { it.value.comment.timestamp }
+        }
+
+        sortedComments?.map {
             Comment {
                 this.commentInfo = it.value
                 this.key = it.key
