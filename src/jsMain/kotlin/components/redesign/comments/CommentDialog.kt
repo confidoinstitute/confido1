@@ -260,6 +260,9 @@ private val CommentDialog = FC<CommentDialogProps> { props ->
                                     all = Globals.unset
                                     userSelect = None.none
                                     cursor = Cursor.pointer
+
+                                    display = Display.flex
+                                    alignItems = AlignItems.center
                                 }
 
                                 onClick = { attachPrediction = false }
