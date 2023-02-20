@@ -10,10 +10,6 @@ import react.dom.html.ReactHTML.h1
 import tools.confido.state.appConfig
 import utils.byTheme
 import utils.themed
-import components.redesign.nouser.*
-import emotion.react.css
-import react.dom.html.ReactHTML.div
-
 
 val LandingPage = FC<Props> {
     if (appConfig.demoMode) {
@@ -28,15 +24,7 @@ val LandingPage = FC<Props> {
             helperText = "Try any account to see Confido from their point of view."
         }
     } else {
-        div {
-            css {
-                display = Display.flex
-                flexDirection = FlexDirection.column
-                // TODO(Prin): Align the whole login screen including the logo to the middle vertically.
-            }
-            LogoWithText {}
-            components.redesign.nouser.LoginForm {}
-        }
+        LoginForm {}
     }
 
     if (appConfig.devMode) {
