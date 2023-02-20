@@ -123,6 +123,7 @@ val LoginForm = FC<LoginFormProps> { props ->
     Stack {
         css {
             width = 100.pct
+            maxWidth = 400.px
             padding = Padding(0.px, 15.px)
             flexDirection = FlexDirection.column
             alignItems = AlignItems.stretch
@@ -153,7 +154,6 @@ val LoginForm = FC<LoginFormProps> { props ->
                             placeholder = "Password"
                             type = InputType.password
                             value = password
-                            //error = passwordError != null  // TODO(Prin) Can I delete this?
                             onChange = {
                                 password = it.target.value
                             }

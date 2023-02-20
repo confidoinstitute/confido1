@@ -14,6 +14,7 @@ import react.router.Routes
 import react.router.dom.BrowserRouter
 import tools.confido.state.SentState
 import tools.confido.state.appConfig
+import web.location.location
 
 val AppStateContext = createContext<ClientAppState>()
 val LoginContext = createContext<Login>()
@@ -94,7 +95,7 @@ val AppLegacy = memo(FC<AppProps> { props ->
 val AppMobile = memo(FC<AppProps> {props ->
     val isLoggedIn = props.isLoggedIn
     val isDemo = appConfig.demoMode
-    val layout = if (isLoggedIn) components.redesign.layout.RootLayout else Fragment
+    val layout = if (isLoggedIn) components.redesign.layout.RootLayout else components.redesign.layout.NoUserLayout
 
     BrowserRouter {
         Routes {
@@ -119,7 +120,7 @@ val App = FC<Props> {
     val sessionCookieExists = document.cookie.contains("session")
     var isLoggedIn by useState(sessionCookieExists)
 
-    val mobileFlag = true
+    val mobileFlag = location.search.contains("mobile")
 
     LoginContext.Provider {
         value = Login(isLoggedIn) { isLoggedIn = it }

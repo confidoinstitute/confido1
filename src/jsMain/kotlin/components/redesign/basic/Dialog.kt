@@ -68,42 +68,24 @@ external interface DialogCoreProps : PropsWithChildren {
     var header: ReactNode
 }
 
+internal val slideKF = keyframes {
+    0.pct {
+        transform = translatey(100.pct)
+    }
+    100.pct {
+        transform = translatey(0.pct)
+    }
+}
+
 val DialogCore = FC<DialogCoreProps> { props ->
-    val slideKF = keyframes {
-        0.pct {
-            transform = translatey(100.pct)
-        }
-        100.pct {
-            transform = translatey(0.pct)
-        }
-    }
-    val fadeKF = keyframes {
-        0.pct {
-            opacity = number(0.0)
-        }
-        100.pct {
-            opacity = number(1.0)
-        }
-    }
 
     if (props.open) {
+        Backdrop {
+            onClick = { props.onClose?.invoke(); it.preventDefault() }
+        }
+
         +createPortal(
             Fragment.create {
-                div {
-                    css {
-                        position = Position.fixed
-                        top = 0.px
-                        width = 100.pct
-                        height = 100.pct
-                        overflow = Overflow.hidden
-                        backgroundColor = rgba(0, 0, 0, 0.5)
-                        zIndex = integer(2000)
-                        animationName = fadeKF
-                        animationDuration = 0.25.s
-                        animationTimingFunction = AnimationTimingFunction.easeOut
-                    }
-                    onClick = { console.log("Backdrop pressed"); props.onClose?.invoke(); it.preventDefault() }
-                }
                 Stack {
                     css {
                         maxHeight = 100.pct
@@ -121,7 +103,7 @@ val DialogCore = FC<DialogCoreProps> { props ->
                             flexBasis = 44.px
                             flexShrink = number(0.0)
                         }
-                        onClick = { console.log("Backdrop pressed"); props.onClose?.invoke(); it.preventDefault() }
+                        onClick = { props.onClose?.invoke(); it.preventDefault() }
                     }
                     Stack {
                         direction = FlexDirection.row
