@@ -144,4 +144,21 @@ val BinIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-
+val SortIcon = FC<PropsWithClassName> { props ->
+    val color = "#888888"
+    svg {
+        className = props.className
+        width = 15.0
+        height = 15.0
+        viewBox = "0 0 15 15"
+        fill = "none"
+        path {
+            d = "M5 10V2H3V10H0.83225C0.496847 10 0.310378 10.388 0.519903 10.6499L3.60957 14.512C3.80973 14.7622 4.19027 14.7622 4.39043 14.512L7.4801 10.6499C7.68962 10.388 7.50315 10 7.16775 10H5Z"
+            fill = color
+        }
+        path {
+            d = "M10 5L10 13L12 13L12 5L14.1677 5C14.5032 5 14.6896 4.61203 14.4801 4.35012L11.3904 0.488043C11.1903 0.23784 10.8097 0.23784 10.6096 0.488043L7.5199 4.35012C7.31038 4.61203 7.49685 5 7.83225 5L10 5Z"
+            fill = color
+        }
+    }
+}

@@ -1,10 +1,8 @@
 package components.redesign.questions
 
 import components.AppStateContext
-import components.redesign.BinIcon
+import components.redesign.*
 import components.redesign.comments.Comment
-import components.redesign.EditIcon
-import components.redesign.TextWithLinks
 import components.redesign.basic.*
 import components.redesign.comments.AddCommentButton
 import components.redesign.comments.AddCommentDialog
@@ -258,18 +256,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
             }
             +"Comments"
         }
-        // TODO: Proper sorting component
-        div {
-            css {
-                fontFamily = FontFamily.sansSerif
-                fontWeight = integer(600)
-                fontSize = 13.px
-                lineHeight = 16.px
-                color = Color("#888888")
-            }
-            // TODO: Icon
-            +"Newest first"
-        }
+        SortButton { }
     }
 
     Stack {
