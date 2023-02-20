@@ -23,6 +23,7 @@ import react.useContext
 import react.useState
 import tools.confido.question.Question
 import tools.confido.refs.ref
+import tools.confido.spaces.Value
 import utils.questionUrl
 import utils.runCoroutine
 import web.prompts.confirm
@@ -34,6 +35,7 @@ external interface QuestionLayoutProps : Props {
 external interface QuestionHeaderProps : Props {
     var text: String
     var description: String
+    var resolution: Value?
 }
 
 external interface QuestionStatusProps : Props {
@@ -84,6 +86,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
         QuestionHeader {
             this.text = props.question.name
             this.description = props.question.description
+            this.resolution = props.question.resolution
         }
         QuestionEstimateSection {
             // TODO: connect to the question
@@ -209,6 +212,24 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
         //QuestionStatusLine {
         //    text = "Resolving 28 feb 2023, 12:00"
         //}
+
+        // Resolution
+        props.resolution?.let {
+            QuestionStatusLine {
+                // TODO: time of resolution (requires backend)
+                text = "Resolved"
+            }
+            div {
+                css {
+                    fontFamily = FontFamily.serif
+                    fontWeight = FontWeight.bold
+                    fontSize = 34.px
+                    lineHeight = 100.pct
+                    color = Color("#00CC2E")
+                }
+                +it.format()
+            }
+        }
 
         // Question description
         div {
