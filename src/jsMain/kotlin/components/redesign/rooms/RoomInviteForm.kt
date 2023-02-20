@@ -3,11 +3,10 @@ package components.redesign.rooms
 import components.AppStateContext
 import components.LoginContext
 import components.RouterLink
-import components.nouser.LoginForm
 import components.redesign.basic.MainPalette
 import components.redesign.basic.TextPalette
 import components.redesign.forms.LoginTextInput
-import components.redesign.nouser.LoginFormRedesigned
+import components.redesign.nouser.LoginForm
 import components.redesign.nouser.LogoWithText
 import components.showError
 import csstype.*
@@ -16,24 +15,18 @@ import io.ktor.client.call.*
 import io.ktor.http.*
 import kotlinx.js.get
 import mui.material.*
-import mui.material.styles.TypographyVariant
 import mui.system.sx
 import payloads.requests.*
 import react.*
-import tools.confido.refs.Ref
-import react.dom.onChange
 import react.router.useParams
 import payloads.responses.InviteStatus
 import react.dom.html.InputType
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.code
-import react.dom.html.ReactHTML.em
-import react.dom.html.ReactHTML.img
 import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
 import react.router.useNavigate
-import rooms.Room
 import tools.confido.refs.eqid
 import tools.confido.utils.TOKEN_LEN
 import utils.*
@@ -234,8 +227,7 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
             }
         }
     } else {
-        // TODO(Prin): Rename back to just LoginForm.
-        LoginFormRedesigned {
+        LoginForm {
             prefilledEmail = email
         }
     }

@@ -23,7 +23,6 @@ import payloads.requests.SendMailLink
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.button
-import react.dom.html.ReactHTML.img
 import react.dom.html.ReactHTML.span
 import tools.confido.refs.ref
 import users.User
@@ -46,7 +45,7 @@ external interface LoginFormProps : Props {
     var prefilledEmail: String?
 }
 
-val LoginFormRedesigned = FC<LoginFormProps> { props ->
+val LoginForm = FC<LoginFormProps> { props ->
     val loginState = useContext(LoginContext)
     var email by useState<String>(props.prefilledEmail ?: "")
     var password by useState<String>("")

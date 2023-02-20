@@ -35,7 +35,7 @@ val LandingPage = FC<Props> {
                 // TODO(Prin): Align the whole login screen including the logo to the middle vertically.
             }
             LogoWithText {}
-            LoginFormRedesigned {}
+            components.redesign.nouser.LoginForm {}
         }
     }
 
