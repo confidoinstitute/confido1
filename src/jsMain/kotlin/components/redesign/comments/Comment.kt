@@ -15,6 +15,8 @@ import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 import rooms.RoomPermission
+import tools.confido.question.Prediction
+import tools.confido.question.QuestionComment
 import tools.confido.refs.deref
 import users.User
 import utils.runCoroutine
@@ -104,12 +106,23 @@ val Comment = FC<CommentProps> { props ->
 
         CommentHeader {
             this.author = author
-            this.timestamp = props.commentInfo.comment.timestamp
-            this.modified = props.commentInfo.comment.modified
+            this.timestamp = comment.timestamp
+            this.modified = comment.modified
         }
 
         CommentContents {
-            this.content = props.commentInfo.comment.content
+            this.content = comment.content
+        }
+
+        when (comment) {
+            is QuestionComment -> {
+                if (comment.prediction != null) {
+                    AttachedPredictionSection {
+                        prediction = comment.prediction
+                    }
+                }
+            }
+            else -> {}
         }
 
         // Actions
@@ -270,6 +283,42 @@ val CommentContents = FC<CommentContentsProps> { props ->
     }
 }
 
+external interface CommentAttachedPredictionProps : Props {
+    var prediction: Prediction
+}
+
+private val AttachedPredictionSection = FC<CommentAttachedPredictionProps> { props ->
+    var expanded by useState(false)
+    if (!expanded) {
+        div {
+            css {
+                padding = Padding(10.px, 15.px)
+                color = Color("#000000")
+                fontFamily = FontFamily.sansSerif
+                fontSize = 15.px
+                lineHeight = 18.px
+            }
+            button {
+                css {
+                    all = Globals.unset
+                    cursor = Cursor.pointer
+
+                    color = Color("#6319FF") // primary
+                }
+                +"See estimate"
+                onClick = { expanded = true }
+            }
+        }
+    } else {
+        div {
+            css {
+                padding = Padding(10.px, 0.px)
+            }
+            // TODO: Show the prediction
+            +"TODO visualise prediction"
+        }
+    }
+}
 
 external interface CircleProps : PropsWithClassName {
     /** The size of the circle. Defaults to 16px. */
