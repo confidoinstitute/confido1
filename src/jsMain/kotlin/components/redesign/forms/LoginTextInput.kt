@@ -9,38 +9,36 @@ import react.dom.html.*
 import react.dom.html.ReactHTML.input
 import react.dom.html.ReactHTML.textarea
 
-val textInputClass = emotion.css.ClassName {
+internal fun PropertiesBuilder.loginTextInputCss() {
     padding = Padding(10.px, 12.px)
-    backgroundColor = Color("#F8F8F8")
+    backgroundColor = Color("#96FFFF33")
+    color = Color("#FFFFFF")
     borderWidth = 0.px
-    borderRadius = 5.px
+    borderRadius = 10.px
     width = 100.pct
 
     fontSize = 17.px
     lineHeight = 20.px
     fontFamily = FontFamily.sansSerif
-    resize = None.none
+    resize = "none".asDynamic()
 
     focus {
         outline = Outline(2.px, LineStyle.solid, MainPalette.primary.color)
     }
 
     placeholder {
-        color = Color("#BBBBBB")
+        color = Color("#FFFFFF80")
     }
 }
 
-val TextInput = FC<InputHTMLAttributes<HTMLInputElement>> {
+val LoginTextInput = FC<InputHTMLAttributes<HTMLInputElement>> {
     input {
         +it
+        onChange
 
-        css(textInputClass, override=it) { }
+        css(it.className) {
+            loginTextInputCss()
+        }
     }
 }
-val MultilineTextInput = FC<TextareaHTMLAttributes<HTMLTextAreaElement>> {
-    textarea {
-        +it
 
-        css(textInputClass, override=it) { }
-    }
-}

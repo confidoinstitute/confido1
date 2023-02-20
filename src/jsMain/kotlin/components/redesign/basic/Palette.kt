@@ -20,9 +20,11 @@ interface PaletteWithText: Palette {
 }
 
 enum class MainPalette(override val color: Color, override val text: TextPalette): PaletteWithText {
+    default(Color("#FFFFFF"), TextPalette.black),
     primary(Color("#6319FF"), TextPalette.white),
     secondary(Color("#00C2FF"), TextPalette.white),
     link(Color("transparent"), TextPalette.action),
+    login(Color("#6733DA"), TextPalette.white),
 }
 
 enum class RoomPalette(override val color: Color, override val text: TextPalette): PaletteWithText {
