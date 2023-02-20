@@ -4,10 +4,7 @@ import components.layout.RootAppBar
 import components.nouser.EmailLogin
 import components.nouser.LandingPage
 import components.profile.VerifyToken
-import components.redesign.rooms.RoomInviteNoUser
-import csstype.Color
-import csstype.pct
-import csstype.px
+import components.rooms.RoomInviteNoUser
 import mui.material.Toolbar
 import mui.system.*
 import react.*
@@ -16,20 +13,15 @@ import react.router.Routes
 import utils.byTheme
 
 val NoUserLayout = FC<Props> {
-    /*
     RootAppBar {
         hasDrawer = false
         hasProfileMenu = false
     }
     Toolbar {}
-     */
     Box {
         sx {
-            margin = 0.px
-            padding = 0.px
-            width = 100.pct
-            height = 100.pct
-            background = Color("#6733DA")  // TODO(Prin): Use a palette.
+            margin = byTheme("auto")
+            maxWidth = byTheme("lg")
         }
         Routes {
             Route {
