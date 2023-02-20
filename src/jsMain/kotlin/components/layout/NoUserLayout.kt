@@ -4,7 +4,7 @@ import components.layout.RootAppBar
 import components.nouser.EmailLogin
 import components.nouser.LandingPage
 import components.profile.VerifyToken
-import components.rooms.RoomInviteNoUser
+import components.redesign.rooms.RoomInviteNoUser
 import csstype.Color
 import csstype.pct
 import csstype.px

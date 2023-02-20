@@ -44,6 +44,7 @@ val RoomInviteNoUser = FC<Props> {
     }
 }
 
+// TODO(Prin): Update usages to use the redesigned version.
 val RoomInviteLoggedIn = FC<Props> {
     RoomInviteCore {
         topAlert = MissingEmailConditionalAlert
