@@ -31,6 +31,7 @@ import react.dom.html.ReactHTML.code
 import react.dom.html.ReactHTML.em
 import react.dom.html.ReactHTML.img
 import react.dom.html.ReactHTML.p
+import react.dom.html.ReactHTML.span
 import react.router.useNavigate
 import rooms.Room
 import tools.confido.refs.eqid
@@ -51,29 +52,54 @@ val RoomInviteLoggedIn = FC<Props> {
         form = RoomInviteFormLoggedIn
     }
 }
+
+internal fun PropertiesBuilder.landingPageInfoTextCss() {
+    padding = Padding(0.px, 12.px)
+    textAlign = TextAlign.center
+    color = TextPalette.white.color
+    fontSize = 14.px
+    fontWeight = integer(400)
+}
+
 external interface InvalidInviteAlertProps: Props {
     var tooShort: Boolean
 }
+
 private val InvalidInviteAlert = FC<InvalidInviteAlertProps> { props->
-    Alert {
-        severity = AlertColor.error
-        AlertTitle {
-            +"Invalid invite link"
+
+    // TODO(Prin): Do not show the logo to users who are already logged in!
+    LogoWithText {
+        css {
+            marginTop = 74.px  // TODO: 90 - 16, accounting for the container padding 16. Also should be dependent on the page height.
         }
-        if(props.tooShort) {
-            +"The invite link "
-            code{+location.href}
-            + " appears too short. Please ensure you have pasted it whole."
-        } else {
-            +"The invite link "
-            code{+location.href}
-            +" is not valid. Please ensure you have pasted it correctly. It may also have been disabled or have expired."
+    }
+
+    span {
+        css {
+            landingPageInfoTextCss()
+        }
+        p {
+            b {
+                +"Invalid invitation link"
+            }
+        }
+        p {
+            +"The invitation link "
+            code { +location.href }
+
+            if (props.tooShort) {
+                +" appears to be incomplete. Please ensure that you have copied the entire link."
+            } else {
+                +" is not valid. Please ensure you have copied it correctly."
+                +" It may also have been disabled or have expired."
+            }
         }
     }
 }
 
 external interface RoomInviteFormProps : Props {
     var roomId: String
+    var roomName: String
     var inviteToken: String
     var allowAnonymous: Boolean
 }
@@ -124,6 +150,23 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
         }
     }
 
+    LogoWithText {
+        css {
+            marginTop = 60.px
+            marginBottom = 30.px
+        }
+    }
+
+    p {
+        css {
+            landingPageInfoTextCss()
+        }
+        +"You have been invited to room "
+        b {
+            +"${props.roomName}."
+        }
+        +" Use your email to log in so that you can come back later."
+    }
 
     if (!loginRequired) {
         LoginTextInput {
@@ -210,6 +253,20 @@ private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
 
     if (alreadyAccepted) {
         navigate(roomUrl(props.roomId))
+    }
+
+    p {
+        css {
+            padding = Padding(0.px, 12.px)
+            textAlign = TextAlign.center
+            color = TextPalette.black.color
+            fontSize = 14.px
+            fontWeight = integer(400)
+        }
+        +"You have been invited to room "
+        b {
+            +"${props.roomName}."
+        }
     }
 
     Button {
@@ -306,32 +363,10 @@ private val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
                 alignItems = AlignItems.center
             }
 
-            // TODO: The logo can't be here, because when the LoginForm is embedded, it's there twice. :thinking:
-            LogoWithText {
-                css {
-                    marginTop = 60.px
-                    marginBottom = 30.px
-                }
-            }
-
             if (inviteStatus?.valid == true) {
-                p {
-                    css {
-                        padding = Padding(0.px, 12.px)
-                        textAlign = TextAlign.center
-                        color = TextPalette.white.color
-                        fontSize = 14.px
-                        fontWeight = integer(400)
-                    }
-                    +"You have been invited to room "
-                    b {
-                        +"${inviteStatus?.roomName}. "
-                    }
-                    +"Use your email to log in so that you can come back later."
-                }
-
                 +props.form.create {
                     this.roomId = inviteStatus!!.roomRef!!.id
+                    this.roomName = inviteStatus!!.roomName!!
                     this.inviteToken = inviteToken
                     this.allowAnonymous = inviteStatus!!.allowAnonymous
                 }
