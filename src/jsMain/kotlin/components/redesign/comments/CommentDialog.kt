@@ -4,16 +4,14 @@ import components.redesign.basic.DialogCore
 import components.redesign.basic.Stack
 import components.showError
 import csstype.*
+import dom.html.HTMLTextAreaElement
 import emotion.react.css
 import hooks.useCoroutineLock
 import payloads.requests.CreateComment
-import react.FC
-import react.Props
-import react.create
+import react.*
 import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.textarea
-import react.useState
 import tools.confido.question.Comment
 import tools.confido.utils.unixNow
 import utils.questionUrl
@@ -100,9 +98,20 @@ private val CommentDialog = FC<CommentDialogProps> { props ->
     var commentContent by useState(initialContent)
     var attachPrediction by useState(false)
 
+    var textareaRef = useRef<HTMLTextAreaElement>(null)
+
     if (initialContent != lastInitialContent) {
         lastInitialContent = props.initialContent ?: ""
         commentContent = props.initialContent ?: ""
+    }
+
+    useEffect {
+        // We cannot just use autofocus on the textarea as we want the cursor
+        // to be positioned after the text when initial content is set.
+        textareaRef.current?.let {
+            it.focus()
+            it.selectionStart = it.value.length;
+        }
     }
 
     DialogCore {
@@ -148,6 +157,7 @@ private val CommentDialog = FC<CommentDialogProps> { props ->
 
         Stack {
             textarea {
+                ref = textareaRef
                 css {
                     border = None.none
                     outline = None.none
