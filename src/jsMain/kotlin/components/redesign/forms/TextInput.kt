@@ -9,7 +9,7 @@ import react.dom.html.*
 import react.dom.html.ReactHTML.input
 import react.dom.html.ReactHTML.textarea
 
-internal fun PropertiesBuilder.textInputCss() {
+val textInputClass = emotion.css.ClassName {
     padding = Padding(10.px, 12.px)
     backgroundColor = Color("#F8F8F8")
     borderWidth = 0.px
@@ -33,19 +33,14 @@ internal fun PropertiesBuilder.textInputCss() {
 val TextInput = FC<InputHTMLAttributes<HTMLInputElement>> {
     input {
         +it
-        onChange
 
-        css(it.className) {
-            textInputCss()
-        }
+        css(textInputClass, override=it) { }
     }
 }
 val MultilineTextInput = FC<TextareaHTMLAttributes<HTMLTextAreaElement>> {
     textarea {
         +it
 
-        css(it.className) {
-            textInputCss()
-        }
+        css(textInputClass, override=it) { }
     }
 }

@@ -200,7 +200,7 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                 width = 100.pct
                 borderRadius = 10.px
             }
-            palette = MainPalette.inverted
+            palette = MainPalette.default
             onClick = { acceptInvite() }
             +"Start forecasting"
         }

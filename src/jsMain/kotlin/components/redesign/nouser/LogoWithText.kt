@@ -2,7 +2,6 @@ package components.redesign.nouser
 
 import components.redesign.basic.*
 import csstype.*
-import emotion.react.*
 import dom.html.*
 import react.*
 import react.dom.html.*
