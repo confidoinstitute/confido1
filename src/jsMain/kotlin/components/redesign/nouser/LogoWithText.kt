@@ -14,9 +14,9 @@ external interface LogoWithTextProps: ImgHTMLAttributes<HTMLElement>, PropsWithP
 val confidoLogoWithTextClass = emotion.css.ClassName {
     display = Display.block
     width = 240.px
-    marginTop = 60.px
+    marginTop = 90.px  // TODO: Reduce after the login screen is aligned vertically to the center.
     marginRight = AUTO
-    marginBottom = 40.px
+    marginBottom = 10.px
     marginLeft = AUTO
 }
 

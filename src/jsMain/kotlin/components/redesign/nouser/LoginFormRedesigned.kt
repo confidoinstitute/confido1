@@ -101,18 +101,6 @@ val LoginFormRedesigned = FC<LoginFormProps> { props ->
             background = Color("#6733DA")
         }
 
-        img {
-            css {
-                display = Display.block
-                width = 240.px
-                marginTop = 60.px
-                marginRight = AUTO
-                marginBottom = 40.px
-                marginLeft = AUTO
-            }
-            src = "/static/logo-text-horizontal.svg"
-        }
-
         if (!emailSent) {
             LoginTextInput {
                 id = "email-field"
