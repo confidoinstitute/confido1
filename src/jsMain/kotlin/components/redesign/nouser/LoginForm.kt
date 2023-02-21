@@ -93,7 +93,7 @@ val LoginForm = FC<LoginFormProps> { props ->
         val trimmedEmail = email.trim()
         val valid = isEmailValid(trimmedEmail)
         if (!valid) {
-            emailError = "This email you used is not valid."
+            emailError = if (trimmedEmail.isBlank()) "Please enter an email address." else "The email you entered is invalid."
             return
         }
         emailError = null
