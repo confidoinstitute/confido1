@@ -1,14 +1,18 @@
 package components.redesign.questions
 
 import components.AppStateContext
+import components.redesign.basic.LinkUnstyled
 import components.redesign.basic.QuestionPalette
 import csstype.*
 import emotion.react.css
 import hooks.useTimeAgo
 import react.*
+import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.br
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
+import react.router.dom.Link
+import react.router.useNavigate
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.distributions.ProbabilityDistribution
@@ -29,7 +33,7 @@ private enum class QuestionState {
 external interface QuestionItemProps : Props {
     var question: Question
     var groupPred: Prediction?
-    var onClick: (() -> Unit)?
+    var href: String?
 }
 
 val QuestionItem = FC<QuestionItemProps> { props ->
@@ -58,8 +62,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
     val predictionAgoText = useTimeAgo(prediction?.ts)
 
-    div {
-        css {
+    Link {
+        css(LinkUnstyled) {
             display = Display.flex;
             flexDirection = FlexDirection.column
             alignItems = AlignItems.flexStart
@@ -67,10 +71,11 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
             background = Color("#FFFFFF")
             borderRadius = 10.px
-            cursor = Cursor.pointer
         }
 
-        onClick = { props.onClick?.invoke() }
+        props.href?.let {
+            to = it
+        }
 
         // Question Status Frame
         div {
