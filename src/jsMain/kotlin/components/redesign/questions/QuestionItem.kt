@@ -84,6 +84,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 flexDirection = FlexDirection.row
                 alignItems = AlignItems.flexStart
                 padding = Padding(0.px, 0.px, 2.px)
+                cursor = Cursor.pointer
             }
             span {
                 css {
