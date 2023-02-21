@@ -144,7 +144,7 @@ private val CommentDialog = FC<CommentDialogProps> { props ->
         commentContent = props.initialContent ?: ""
     }
 
-    useEffect {
+    useEffect(props.open) {
         // We cannot just use autofocus on the textarea as we want the cursor
         // to be positioned after the text when initial content is set.
         textareaRef.current?.let {
