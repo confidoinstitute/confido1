@@ -86,8 +86,8 @@ val RoomComments = FC<Props> {
                 this.key = it.key
             }
         }
-
     }
+
     AddCommentButton {
         onClick = { addCommentOpen = true }
     }

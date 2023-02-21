@@ -86,7 +86,6 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
         onClose = { quickSettingsOpen = false }
     }
 
-    // TODO: Replace with a navbar "more" button
     Stack {
         css {
             flexDirection = FlexDirection.column
@@ -310,9 +309,10 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
 
     Stack {
         css {
+            flexGrow = number(1.0)
+            backgroundColor = Color("#f2f2f2")
             gap = 8.px
         }
-
 
         when (comments) {
             is WSData -> {
