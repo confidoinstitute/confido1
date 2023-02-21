@@ -302,9 +302,11 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
             }
             +"Comments"
         }
-        SortButton {
-            this.sortType = sortType
-            onChange = { sort -> sortType = sort }
+        if (comments.data?.isNotEmpty() == true) {
+            SortButton {
+                this.sortType = sortType
+                onChange = { sort -> sortType = sort }
+            }
         }
     }
 
