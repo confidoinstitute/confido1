@@ -67,6 +67,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
             background = Color("#FFFFFF")
             borderRadius = 10.px
+            cursor = Cursor.pointer
         }
 
         onClick = { props.onClick?.invoke() }
