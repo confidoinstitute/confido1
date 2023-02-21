@@ -21,6 +21,9 @@ enum class WebSocketState {
     STALE,
 }
 
+/**
+ * Connect to the Websocket channel at a given address and receive the continuous data.
+ */
 inline fun <reified T> useWebSocket(address: String, retryDelay: Int = 5000, clearOnStale: Boolean = false): WSResponse<T> {
     var value by useState<WSResponse<T>>(WSLoading())
 

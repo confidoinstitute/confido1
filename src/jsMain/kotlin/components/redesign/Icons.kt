@@ -3,6 +3,7 @@ package components.redesign
 import react.FC
 import react.PropsWithClassName
 import react.dom.svg.FillRule
+import react.dom.svg.ReactSVG
 import react.dom.svg.ReactSVG.circle
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.svg
@@ -238,6 +239,37 @@ val AsymmetricGaussIcon = FC<PropsWithClassName> { props ->
         path {
             d = "M4.87167 0.713226C3.47733 2.46897 3.34067 9.20824 0 9.93548V11H20V9.93548C11.3793 8.35592 8.4215 0 6.05033 0C5.65483 0 5.30433 0.168371 4.87167 0.713226Z"
             fill = color
+        }
+    }
+}
+
+val BackIcon = FC<PropsWithClassName> { props ->
+    svg {
+        className = props.className
+        width = 10.0
+        height = 18.0
+        viewBox = "-1 -1 10 18"
+        strokeLinecap = StrokeLinecap.round
+        strokeWidth = 2.0
+        ReactSVG.path {
+            fill = "transparent"
+            d = "M8,0 L0,8 L8,16"
+        }
+    }
+}
+
+val NavMenuIcon = FC<PropsWithClassName> {props ->
+    svg {
+        className = props.className
+        width = 19.0
+        height = 4.0
+        strokeWidth = 0.0
+        listOf(2.0, 9.5, 17.0).map {
+            circle {
+                cx = it
+                cy = 2.0
+                r = 2.0
+            }
         }
     }
 }

@@ -13,12 +13,25 @@ import csstype.*
 import emotion.react.css
 import hooks.useWebSocket
 import payloads.responses.CommentInfo
+import payloads.responses.WSData
 import react.*
 import react.dom.html.ReactHTML.div
 
-val RoomComments = FC<Props> {
+external interface RoomCommentsProps : Props {
+    var onLoad: (() -> Unit)?
+}
+
+val RoomComments = FC<RoomCommentsProps> {props ->
     val room = useContext(RoomContext)
     val roomComments = useWebSocket<Map<String, CommentInfo>>("/state${room.urlPrefix}/comments")
+
+    var loaded by useState(false)
+    useEffect(roomComments) {
+        if (!loaded && roomComments is WSData) {
+            loaded = true
+            props.onLoad?.invoke()
+        }
+    }
 
     var addCommentOpen by useState(false)
     var sortType by useState(SortType.NEWEST)

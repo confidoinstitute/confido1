@@ -66,6 +66,7 @@ external interface DialogCoreProps : PropsWithChildren {
     var open: Boolean
     var onClose: (() -> Unit)?
     var header: ReactNode
+    var fullSize: Boolean
 }
 
 internal val slideKF = keyframes {
@@ -85,50 +86,54 @@ val DialogCore = FC<DialogCoreProps> { props ->
         }
 
         +createPortal(
-            Fragment.create {
-                Stack {
+            Stack.create {
+                css {
+                    maxHeight = 100.pct
+                    width = 100.pct
+                    zIndex = integer(2100)
+                    position = Position.fixed
+                    bottom = 0.px
+                    animationName = slideKF
+                    animationDuration = 0.25.s
+                    animationTimingFunction = AnimationTimingFunction.easeOut
+                }
+                if (!props.fullSize)
+                div {
                     css {
-                        maxHeight = 100.pct
-                        width = 100.pct
-                        zIndex = integer(2100)
-                        position = Position.fixed
-                        bottom = 0.px
-                        animationName = slideKF
-                        animationDuration = 0.25.s
-                        animationTimingFunction = AnimationTimingFunction.easeOut
+                        flexGrow = number(1.0)
+                        flexBasis = 44.px
+                        flexShrink = number(0.0)
                     }
-                    div {
-                        css {
-                            flexGrow = number(1.0)
-                            flexBasis = 44.px
-                            flexShrink = number(0.0)
-                        }
-                        onClick = { props.onClose?.invoke(); it.preventDefault() }
-                    }
-                    Stack {
-                        direction = FlexDirection.row
-                        css {
-                            alignItems = AlignItems.center
-                            flexShrink = number(0.0)
-                            flexGrow = number(0.0)
-                            backgroundColor = Color("#FFFFFF")
+                    onClick = { props.onClose?.invoke(); it.preventDefault() }
+                }
+                Stack {
+                    direction = FlexDirection.row
+                    css {
+                        alignItems = AlignItems.center
+                        flexShrink = number(0.0)
+                        flexGrow = number(0.0)
+                        backgroundColor = Color("#FFFFFF")
+                        if (!props.fullSize) {
                             borderTopLeftRadius = 10.px
                             borderTopRightRadius = 10.px
-                            minHeight = 12.px
-                            maxHeight = 44.px
-                            fontWeight = FontWeight.bold
                         }
-                        +props.header
+                        minHeight = 12.px
+                        maxHeight = 44.px
+                        fontWeight = FontWeight.bold
                     }
-                    div {
-                        css {
-                            flexShrink = number(1.0)
-                            minHeight = 0.px
-                            overflow = Auto.auto
-                            backgroundColor = Color("#FFFFFF")
+                    +props.header
+                }
+                div {
+                    css {
+                        flexShrink = number(1.0)
+                        minHeight = 0.px
+                        if (props.fullSize) {
+                            flexGrow = number(1.0)
                         }
-                        +props.children
+                        overflow = Auto.auto
+                        backgroundColor = Color("#FFFFFF")
                     }
+                    +props.children
                 }
             }, document.body.asDynamic()
         )

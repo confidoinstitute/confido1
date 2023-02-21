@@ -98,6 +98,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
             background = bgColor
         }
         RoomNavbar {
+            navigateBack = "/room/${room.id}"
             onMenu = {quickSettingsOpen = true}
         }
 

@@ -4,6 +4,7 @@ import components.AppStateContext
 import components.AppStateWebsocketProvider
 import components.nouser.EmailLoginAlreadyLoggedIn
 import components.profile.VerifyToken
+import components.redesign.Dashboard
 import components.redesign.basic.GlobalCss
 import components.redesign.rooms.Room
 import components.redesign.rooms.RoomInviteLoggedIn
@@ -12,14 +13,11 @@ import csstype.Overflow
 import csstype.vh
 import csstype.vw
 import emotion.react.css
-import react.FC
-import react.Props
-import react.create
+import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.main
 import react.router.Route
 import react.router.Routes
-import react.useContext
 
 val RootLayout = FC<Props> {
     AppStateWebsocketProvider {
@@ -29,6 +27,8 @@ val RootLayout = FC<Props> {
 }
 
 private val RootLayoutInner = FC<Props> {
+    val (appState, stale) = useContext(AppStateContext)
+
     GlobalCss {}
     div {
         css {
@@ -40,7 +40,7 @@ private val RootLayoutInner = FC<Props> {
             Route {
                 index = true
                 path = "/"
-                this.element = div.create { +"Welcome to Confido!" }
+                this.element = Dashboard.create()
             }
             Route {
                 path = "room/:roomID/*"
@@ -74,17 +74,17 @@ private val RootLayoutInner = FC<Props> {
                 path = "email_login"
                 this.element = EmailLoginAlreadyLoggedIn.create()
             }
-            /*
             if (appState.session.user?.type?.isProper() == true) {
                 Route {
                     path = "new_room"
-                    this.element = NewRoom.create()
+                    this.element = ReactNode("NEW ROOM HERE")
                 }
             }
             Route {
                 path = "profile"
-                this.element = UserSettings.create()
+                this.element = ReactNode("PROFILE HERE")
             }
+            /*
             if (appState.isAdmin()) {
                 Route {
                     path = "admin/users"

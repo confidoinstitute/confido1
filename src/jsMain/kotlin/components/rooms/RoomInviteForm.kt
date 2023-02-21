@@ -29,6 +29,7 @@ import utils.*
 import web.location.location
 
 val RoomInviteNoUser = FC<Props> {
+    console.log("Room Invite no user")
     RoomInviteCore {
         form = RoomInviteFormNoUser
     }

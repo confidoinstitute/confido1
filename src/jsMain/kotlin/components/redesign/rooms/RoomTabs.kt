@@ -104,6 +104,7 @@ val RoomTabs = FC<RoomTabsProps> { props ->
                     flexGrow = number(1.0)
                 }
                 this.to = to
+                this.replace = true
                 this.active = (to == locationValue)
                 this.onClick = {if (to != locationValue) props.onChange?.invoke()}
                 +label

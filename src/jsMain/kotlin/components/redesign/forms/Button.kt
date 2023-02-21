@@ -66,7 +66,7 @@ val TextButton = FC<TextButtonProps> {props ->
     }
 }
 
-val IconButton = FC<ButtonProps> {props ->
+val IconButton = FC<TextButtonProps> {props ->
     val palette = props.palette ?: TextPalette.black
 
     button {

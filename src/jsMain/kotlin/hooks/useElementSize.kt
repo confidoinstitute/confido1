@@ -10,6 +10,9 @@ data class ElementSize<T: HTMLElement>(
     val height: Double,
 )
 
+/**
+ * Export a referenced element's size (width and height).
+ */
 fun <T: HTMLElement> useElementSize(): ElementSize<T> {
     val ref = useRef<T>()
     var width by useState(0.0)

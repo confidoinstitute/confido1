@@ -33,6 +33,9 @@ fun PropertiesBuilder.navQuestionTitle() {
     fontSize = 17.px
     lineHeight = 21.px
     fontWeight = FontWeight.bold
+    overflow = Overflow.hidden
+    whiteSpace = WhiteSpace.nowrap
+    textOverflow = TextOverflow.ellipsis
 }
 
 val RoomHeader = FC<PropsWithChildren> { props ->
@@ -61,6 +64,17 @@ val RoomLayout = FC<Props> {
     val cutoff = 60 + size.height / 2
 
     var dialogOpen by useState(false)
+
+    fun scrollDownTabs() {
+        tabRef.current?.apply {
+            requestAnimationFrame {
+                scrollIntoView(jso {
+                    if (scrollY < offsetTop)
+                        behavior = ScrollBehavior.smooth
+                })
+            }
+        }
+    }
 
     Dialog {
         open = dialogOpen
@@ -93,6 +107,7 @@ val RoomLayout = FC<Props> {
             height = 100.pct
         }
         RoomNavbar {
+            navigateBack = "/"
             div {
                 css {
                     position = Position.relative
@@ -171,16 +186,7 @@ val RoomLayout = FC<Props> {
                     top = 0.px
                     zIndex = integer(20)
                 }
-                onChange = {
-                    tabRef.current?.apply {
-                        requestAnimationFrame {
-                            scrollIntoView(jso {
-                                if (scrollY < offsetTop)
-                                    behavior = ScrollBehavior.smooth
-                            })
-                        }
-                    }
-                }
+                onChange = ::scrollDownTabs
             }
             main {
                 css {
@@ -201,7 +207,9 @@ val RoomLayout = FC<Props> {
                     if (appState.hasPermission(room, RoomPermission.VIEW_ROOM_COMMENTS))
                         Route {
                             path = "discussion"
-                            this.element = RoomComments.create {}
+                            this.element = RoomComments.create {
+                                onLoad = ::scrollDownTabs
+                            }
                         }
                     if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
                         Route {
