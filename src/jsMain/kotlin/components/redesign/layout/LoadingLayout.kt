@@ -1,12 +1,17 @@
 package components.redesign.layout
 
 import components.NoAppStateProps
+import components.redesign.basic.GlobalCss
+import components.redesign.basic.MainPalette
+import components.redesign.basic.Stack
 import csstype.*
 import emotion.css.keyframes
 import emotion.react.css
 import icons.smallLogo
 import react.FC
+import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.main
 
 internal val rotatingKeyframes = keyframes {
     from {
@@ -18,6 +23,17 @@ internal val rotatingKeyframes = keyframes {
 }
 
 val LoadingLayout = FC<NoAppStateProps> {
+    val palette = MainPalette.login
+    GlobalCss {}
+    main {
+        css {
+            width = 100.vw
+            height = 100.vh
+            overflow = Auto.auto
+            color = palette.text.color
+            backgroundColor = palette.color
+        }
+    }
     div {
         css {
             position = Position.absolute

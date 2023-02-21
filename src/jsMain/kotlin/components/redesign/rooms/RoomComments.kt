@@ -2,6 +2,7 @@ package components.redesign.rooms
 
 import components.redesign.SortButton
 import components.redesign.SortType
+import components.redesign.basic.Stack
 import components.redesign.comments.AddCommentButton
 import components.redesign.comments.AddCommentDialog
 import components.redesign.comments.Comment
@@ -64,12 +65,14 @@ val RoomComments = FC<Props> {
         }
     }
 
-    div {
+    Stack {
         css {
-            display = Display.flex
             flexDirection = FlexDirection.column
             gap = 8.px
-            marginTop = 8.px
+            paddingTop = 8.px
+            paddingBottom = 8.px
+            flexGrow = number(1.0)
+            backgroundColor = Color("#f2f2f2")
         }
 
         val sortedComments = when (sortType) {
@@ -84,8 +87,8 @@ val RoomComments = FC<Props> {
             }
         }
 
-        AddCommentButton {
-            onClick = { addCommentOpen = true }
-        }
+    }
+    AddCommentButton {
+        onClick = { addCommentOpen = true }
     }
 }

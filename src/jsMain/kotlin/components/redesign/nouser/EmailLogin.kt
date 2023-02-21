@@ -4,6 +4,7 @@ import components.LoginContext
 import components.redesign.basic.Alert
 import components.redesign.basic.Backdrop
 import components.redesign.basic.MainPalette
+import components.redesign.basic.Stack
 import components.redesign.forms.Button
 import csstype.*
 import emotion.react.css
@@ -40,22 +41,29 @@ val EmailLogin = FC<Props> {
         Backdrop {
             css { zIndex = integer(42) }
         }
-    }
-
-    if (failed) {
-        Alert {
-            h3 {
-                +"Authentication failed"
+    } else {
+        Stack {
+            css {
+                maxWidth = 400.px
+                padding = Padding(0.px, 15.px)
             }
-            +"The login link is expired or invalid."
-        }
-
-        Button {
-            palette = MainPalette.default
-            onClick = {
-                navigate("/")
+            Alert {
+                h3 {
+                    +"Authentication failed"
+                }
+                +"The login link is expired or invalid."
             }
-            +"Go back"
+
+            Button {
+                palette = MainPalette.default
+                css {
+                    width = 100.pct
+                }
+                onClick = {
+                    navigate("/")
+                }
+                +"Go back"
+            }
         }
     }
 }

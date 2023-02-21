@@ -19,6 +19,7 @@ val AddCommentButton = FC<AddCommentButtonProps> { props ->
             borderTopLeftRadius = 10.px
             borderTopRightRadius = 10.px
             padding = 15.px
+            boxShadow = BoxShadow(0.px, 0.px, 6.px, rgba(0,0,0,0.2))
         }
         button {
             css {
@@ -31,14 +32,10 @@ val AddCommentButton = FC<AddCommentButtonProps> { props ->
                 border = Border(0.5.px, LineStyle.solid, Color("#CCCCCC"))
                 borderRadius = 5.px
                 color = Color("#CCCCCC")
+                padding = Padding(10.px, 12.px)
             }
 
-            div {
-                css {
-                    padding = Padding(10.px, 12.px)
-                }
-                +"Add a comment"
-            }
+            +"Add a comment"
 
             onClick = { props.onClick?.invoke() }
         }

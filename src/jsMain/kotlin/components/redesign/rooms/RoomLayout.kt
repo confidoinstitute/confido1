@@ -16,10 +16,12 @@ import hooks.*
 import kotlinx.js.*
 import react.*
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.main
 import react.router.Route
 import react.router.Routes
 import rooms.RoomPermission
 import tools.confido.refs.deref
+import web.timers.requestAnimationFrame
 
 fun PropertiesBuilder.bigQuestionTitle() {
     fontSize = 26.px
@@ -40,7 +42,7 @@ val RoomHeader = FC<PropsWithChildren> { props ->
             backgroundColor = Color("#FFFFFF")
             borderBottom = Border(0.5.px, LineStyle.solid, Color("#CCCCCC"))
             justifyContent = JustifyContent.spaceBetween
-            padding = Padding(15.px, 14.px, 15.px ,25.px)
+            padding = Padding(15.px, 14.px, 15.px, 15.px)
         }
 
         +props.children
@@ -59,13 +61,6 @@ val RoomLayout = FC<Props> {
     val cutoff = 60 + size.height / 2
 
     var dialogOpen by useState(false)
-
-    Button {
-        onClick = {dialogOpen = true}
-        css {
-            borderRadius = 100.pct
-        }
-    }
 
     Dialog {
         open = dialogOpen
@@ -94,24 +89,10 @@ val RoomLayout = FC<Props> {
         css {
             flexDirection = FlexDirection.column
             position = Position.relative
+            flexGrow = number(1.0)
             height = 100.pct
         }
-        div {
-            css {
-                backgroundColor = palette.color
-                flexBasis = 44.px
-                flexShrink = number(0.0)
-                display = Display.flex
-                flexDirection = row
-                height = 44.px
-                top = 0.px
-                width = 100.pct
-            }
-            div {
-                css {
-                    flexGrow = number(1.0)
-                }
-            }
+        RoomNavbar {
             div {
                 css {
                     position = Position.relative
@@ -124,14 +105,9 @@ val RoomLayout = FC<Props> {
                 }
                 +room.name
             }
-            div {
-                css {
-                    flexGrow = number(1.0)
-                }
-            }
         }
 
-        div {
+        Stack {
             onScroll = { event ->
                 scrollY = event.currentTarget.scrollTop
             }
@@ -193,37 +169,46 @@ val RoomLayout = FC<Props> {
                 css {
                     position = Position.sticky
                     top = 0.px
+                    zIndex = integer(20)
                 }
                 onChange = {
                     tabRef.current?.apply {
-                        scrollIntoView(jso {
-                            if (scrollY < offsetTop)
-                                behavior = ScrollBehavior.smooth
-                        })
+                        requestAnimationFrame {
+                            scrollIntoView(jso {
+                                if (scrollY < offsetTop)
+                                    behavior = ScrollBehavior.smooth
+                            })
+                        }
                     }
                 }
             }
-
-            Routes {
-                if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
-                    Route {
-                        index = true
-                        this.element = QuestionList.create {
-                            questions = room.questions.mapNotNull { it.deref() }
-                            showHiddenQuestions = appState.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
-                            allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
+            main {
+                css {
+                    flexGrow = number(1.0)
+                    display = Display.flex
+                    flexDirection = FlexDirection.column
+                }
+                Routes {
+                    if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
+                        Route {
+                            index = true
+                            this.element = QuestionList.create {
+                                questions = room.questions.mapNotNull { it.deref() }
+                                showHiddenQuestions = appState.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
+                                allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
+                            }
                         }
-                    }
-                if (appState.hasPermission(room, RoomPermission.VIEW_ROOM_COMMENTS))
-                    Route {
-                        path = "discussion"
-                        this.element = RoomComments.create {}
-                    }
-                if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
-                    Route {
-                        path = "members"
-                        this.element = RoomMembers.create()
-                    }
+                    if (appState.hasPermission(room, RoomPermission.VIEW_ROOM_COMMENTS))
+                        Route {
+                            path = "discussion"
+                            this.element = RoomComments.create {}
+                        }
+                    if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
+                        Route {
+                            path = "members"
+                            this.element = RoomMembers.create()
+                        }
+                }
             }
         }
     }

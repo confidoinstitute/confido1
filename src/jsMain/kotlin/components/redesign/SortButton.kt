@@ -1,5 +1,7 @@
 package components.redesign
 
+import components.redesign.basic.createRipple
+import components.redesign.basic.rippleCss
 import csstype.*
 import emotion.react.css
 import react.FC
@@ -29,9 +31,13 @@ val SortButton = FC<SortButtonProps> { props ->
             fontWeight = integer(600)
             fontSize = 13.px
             lineHeight = 16.px
+            padding = Padding(0.px, 10.px)
+            borderRadius = 5.px
             color = Color("#888888")
             gap = 7.px
             alignItems = AlignItems.center
+
+            rippleCss()
         }
 
         SortIcon { }
@@ -42,6 +48,7 @@ val SortButton = FC<SortButtonProps> { props ->
         +text
 
         onClick = {
+            createRipple(it, rgba(0,0,0,0.2))
             var newType = when (props.sortType) {
                 SortType.NEWEST -> SortType.OLDEST
                 SortType.OLDEST -> SortType.NEWEST

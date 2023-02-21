@@ -2,9 +2,11 @@ package components.redesign.layout
 
 import components.nouser.DevModeSection
 import components.nouser.LoginByUserSelectForm
+import components.profile.VerifyToken
 import components.redesign.basic.GlobalCss
 import components.redesign.basic.MainPalette
 import components.redesign.basic.Stack
+import components.redesign.nouser.EmailLogin
 import components.redesign.nouser.LoginForm
 import components.redesign.nouser.RoomInviteNoUser
 import csstype.*
@@ -44,7 +46,7 @@ val NoUserLayout = FC<Props> {
             Route {
                 index = true
                 path = "/email_login"
-                this.element = Fragment.create()
+                this.element = EmailLogin.create()
             }
             Route {
                 path = "/join/:inviteToken"
@@ -52,12 +54,12 @@ val NoUserLayout = FC<Props> {
             }
             Route {
                 path = "password_reset"
-                this.element = Fragment.create {
-                    //url = "/profile/password/reset/finish"
-                    //failureTitle = "Password reset failed"
-                    //successTitle = "Password was reset"
-                    //failureText = "The link is expired or invalid."
-                    //successText = "Your password has been successfully reset. You can log in by e-mail only now."
+                this.element = VerifyToken.create {
+                    url = "/profile/password/reset/finish"
+                    failureTitle = "Password reset failed"
+                    successTitle = "Password was reset"
+                    failureText = "The link is expired or invalid."
+                    successText = "Your password has been successfully reset. You can log in by e-mail only now."
                 }
             }
         }

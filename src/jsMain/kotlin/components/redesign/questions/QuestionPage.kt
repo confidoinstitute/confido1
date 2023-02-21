@@ -8,6 +8,8 @@ import components.redesign.comments.AddCommentButton
 import components.redesign.comments.AddCommentDialog
 import components.redesign.comments.CommentInputVariant
 import components.redesign.forms.TextButton
+import components.redesign.rooms.RoomNavbar
+import components.rooms.RoomContext
 import components.showError
 import csstype.*
 import emotion.react.css
@@ -21,6 +23,7 @@ import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
 import react.useContext
 import react.useState
+import rooms.RoomPermission
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.refs.ref
@@ -68,9 +71,14 @@ private val bgColor = Color("#f2f2f2")
 
 val QuestionPage = FC<QuestionLayoutProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
+    val room = useContext(RoomContext)
     val myPrediction = appState.myPredictions[props.question.ref]
 
     var quickSettingsOpen by useState(false)
+
+    if (!room.hasPermission(appState.session.user, RoomPermission.VIEW_QUESTIONS))
+        // TODO proper no permission page
+        return@FC
 
     QuestionQuickSettingsDialog {
         question = props.question
@@ -79,23 +87,35 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
     }
 
     // TODO: Replace with a navbar "more" button
-    TextButton {
-        onClick = { quickSettingsOpen = true }
-        +"Open quick settings (will be replaced by a navbar button)"
-    }
-
     Stack {
-        QuestionHeader {
-            this.text = props.question.name
-            this.description = props.question.description
-            this.resolution = props.question.resolution
+        css {
+            flexDirection = FlexDirection.column
+            position = Position.relative
+            flexGrow = number(1.0)
+            height = 100.pct
         }
-        QuestionEstimateSection {
-            // TODO: connect to the question
+        RoomNavbar {
+            onMenu = {quickSettingsOpen = true}
         }
-        QuestionCommentSection {
-            this.question = props.question
-            this.myPrediction = myPrediction
+
+        Stack {
+            css {
+                flexGrow = number(1.0)
+                position = Position.relative
+                overflow = Auto.auto
+            }
+            QuestionHeader {
+                this.text = props.question.name
+                this.description = props.question.description
+                this.resolution = props.question.resolution
+            }
+            QuestionEstimateSection {
+                // TODO: connect to the question
+            }
+            QuestionCommentSection {
+                this.question = props.question
+                this.myPrediction = myPrediction
+            }
         }
     }
 }
