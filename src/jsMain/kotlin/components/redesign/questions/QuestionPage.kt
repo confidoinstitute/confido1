@@ -92,6 +92,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
             position = Position.relative
             flexGrow = number(1.0)
             height = 100.pct
+            background = bgColor
         }
         RoomNavbar {
             onMenu = {quickSettingsOpen = true}
@@ -310,7 +311,6 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
     Stack {
         css {
             flexGrow = number(1.0)
-            backgroundColor = Color("#f2f2f2")
             gap = 8.px
         }
 
