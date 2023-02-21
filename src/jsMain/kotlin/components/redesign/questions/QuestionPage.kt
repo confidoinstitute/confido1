@@ -7,7 +7,6 @@ import components.redesign.basic.*
 import components.redesign.comments.AddCommentButton
 import components.redesign.comments.AddCommentDialog
 import components.redesign.comments.CommentInputVariant
-import components.redesign.forms.TextButton
 import components.redesign.rooms.RoomNavbar
 import components.rooms.RoomContext
 import components.showError
@@ -47,7 +46,10 @@ external interface QuestionStatusProps : Props {
 }
 
 external interface QuestionEstimateSectionProps : Props {
-
+    var resolved: Boolean
+    var myPrediction: Prediction?
+    var groupPrediction: Prediction?
+    var numPredictors: Int
 }
 
 external interface QuestionEstimateTabButtonProps : Props {
@@ -73,6 +75,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
     val myPrediction = appState.myPredictions[props.question.ref]
+    val groupPrediction = useWebSocket<Prediction?>("/state${props.question.urlPrefix}/group_pred")
 
     var quickSettingsOpen by useState(false)
 
@@ -109,8 +112,11 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
                 this.description = props.question.description
                 this.resolution = props.question.resolution
             }
-            QuestionEstimateSection {
-                // TODO: connect to the question
+            QuestionPredictionSection {
+                this.resolved = props.question.resolved
+                this.myPrediction = myPrediction
+                this.numPredictors = props.question.numPredictors
+                this.groupPrediction = groupPrediction.data
             }
             QuestionCommentSection {
                 this.question = props.question
@@ -151,10 +157,10 @@ private val QuestionEstimateTabButton = FC<QuestionEstimateTabButtonProps> { pro
     }
 }
 
-private val QuestionEstimateSection = FC<QuestionEstimateSectionProps> { props ->
+private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props ->
     // false = your estimate open
     // true = group estimate open
-    var groupEstimateOpen by useState(false)
+    var groupPredictionOpen by useState(false)
 
     // Tabs
     Stack {
@@ -166,13 +172,13 @@ private val QuestionEstimateSection = FC<QuestionEstimateSectionProps> { props -
         direction = FlexDirection.row
         QuestionEstimateTabButton {
             text = "Your estimate"
-            active = !groupEstimateOpen
-            onClick = { groupEstimateOpen = false }
+            active = !groupPredictionOpen
+            onClick = { groupPredictionOpen = false }
         }
         QuestionEstimateTabButton {
             text = "Group estimate"
-            active = groupEstimateOpen
-            onClick = { groupEstimateOpen = true }
+            active = groupPredictionOpen
+            onClick = { groupPredictionOpen = true }
         }
     }
 
@@ -181,7 +187,7 @@ private val QuestionEstimateSection = FC<QuestionEstimateSectionProps> { props -
             height = 196.px
             backgroundColor = Color("#fff")
         }
-        if (!groupEstimateOpen) {
+        if (!groupPredictionOpen) {
             // TODO: Your estimate
             +"TODO your estimate goes here"
         } else {
@@ -189,17 +195,17 @@ private val QuestionEstimateSection = FC<QuestionEstimateSectionProps> { props -
             +"TODO group estimate goes here"
         }
     }
-    Stack {
-        // TODO: Section describing the estimate
-        css {
-            padding = Padding(25.px, 15.px)
-            gap = 10.px
+    if (groupPredictionOpen) {
+        GroupPredictionDescription {
+            this.prediction = props.groupPrediction
+            this.myPredictionExists = props.myPrediction != null
+            this.resolved = props.resolved
+            this.numPredictors = props.numPredictors
         }
-        div {
-            +"This helpful section describes your estimate or the group estimate and how many people participated."
-        }
-        div {
-            +"This still needs to be implemented."
+    } else {
+        MyPredictionDescription {
+            this.prediction = props.myPrediction
+            this.resolved = props.resolved
         }
     }
 }
