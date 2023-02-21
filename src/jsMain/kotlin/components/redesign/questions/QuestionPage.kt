@@ -333,10 +333,10 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
                 +"Loading..."
             }
         }
+    }
 
-        AddCommentButton {
-            onClick = { addCommentOpen = true }
-        }
+    AddCommentButton {
+        onClick = { addCommentOpen = true }
     }
 }
 

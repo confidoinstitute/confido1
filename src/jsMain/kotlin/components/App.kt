@@ -120,7 +120,7 @@ val App = FC<Props> {
     val sessionCookieExists = document.cookie.contains("session")
     var isLoggedIn by useState(sessionCookieExists)
 
-    val mobileFlag = location.search.contains("mobile")
+    val mobileFlag = location.search.contains("mobile") || (web.storage.localStorage.getItem("mobile") != null)
 
     LoginContext.Provider {
         value = Login(isLoggedIn) { isLoggedIn = it }

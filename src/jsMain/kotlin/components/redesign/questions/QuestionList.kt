@@ -1,6 +1,7 @@
 package components.redesign.questions
 
 import components.questions.QuestionListProps
+import components.redesign.basic.Stack
 import components.rooms.RoomContext
 import csstype.*
 import emotion.react.css
@@ -8,7 +9,6 @@ import hooks.useWebSocket
 import react.FC
 import react.Props
 import react.dom.html.ReactHTML.div
-import react.router.useNavigate
 import react.useContext
 import tools.confido.question.Prediction
 import tools.confido.question.Question
@@ -23,24 +23,19 @@ val QuestionList = FC<QuestionListProps> { props ->
     val groupPredsWS = useWebSocket<Map<String, Prediction?>>("/state${room.urlPrefix}/group_pred")
     val groupPreds = groupPredsWS.data ?: emptyMap()
 
-    val navigate = useNavigate()
-
     val questions = props.questions.reversed()
     val visibleQuestions = if (props.showHiddenQuestions) questions else questions.filter { it.visible }
 
-    div {
+    Stack {
         css {
-            boxSizing = BoxSizing.borderBox
+            flexGrow = number(1.0)
 
-            display = Display.flex;
-            flexDirection = FlexDirection.column
             alignItems = AlignItems.stretch
             padding = 20.px
             gap = 20.px
             width = 100.pct
             position = Position.relative
-
-             backgroundColor = Color("#E6E6E6")
+            backgroundColor = Color("#f2f2f2")
         }
 
         visibleQuestions.map { question ->
