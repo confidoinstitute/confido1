@@ -61,7 +61,7 @@ val RoomNavbar = FC<RoomNavbarProps> { props ->
                         alignItems = AlignItems.center
                         justifyContent = JustifyContent.center
                         "svg" {
-                            asDynamic().fille = palette.text.color
+                            asDynamic().fill = palette.text.color
                             asDynamic().stroke = palette.text.color
                         }
                         rippleCss()
