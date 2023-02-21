@@ -2,10 +2,7 @@ package components.redesign.rooms
 
 import components.AppStateContext
 import components.RouterLink
-import components.redesign.basic.Alert
-import components.redesign.basic.Backdrop
-import components.redesign.basic.Stack
-import components.redesign.basic.TextPalette
+import components.redesign.basic.*
 import components.redesign.forms.Button
 import components.showError
 import csstype.*
@@ -29,25 +26,28 @@ import tools.confido.utils.TOKEN_LEN
 import utils.*
 import web.location.location
 
-// TODO(Prin): Update usages to use the redesigned version.
 val RoomInviteLoggedIn = FC<Props> {
     RoomInviteCore {
         topAlert = MissingEmailConditionalAlert
         form = RoomInviteFormLoggedIn
+        palette = MainPalette.default
     }
 }
 
-external interface InvalidInviteAlertProps: Props {
+external interface InvalidInviteAlertProps: PropsWithPalette<PaletteWithText> {
     var tooShort: Boolean
 }
 
 private val InvalidInviteAlert = FC<InvalidInviteAlertProps> { props->
+    val palette = props.palette ?: MainPalette.login
+
     span {
         css {
             padding = Padding(0.px, 12.px)
             textAlign = TextAlign.center
-            color = TextPalette.white.color
+            color = palette.text.color
             fontSize = 14.px
+            fontFamily = FontFamily.sansSerif
             fontWeight = integer(400)
         }
         p {
@@ -145,7 +145,7 @@ private val MissingEmailConditionalAlert = FC<RoomInviteAlertProps> { props ->
     }
 }
 
-external interface RoomInviteCoreProps : Props {
+external interface RoomInviteCoreProps : PropsWithPalette<PaletteWithText> {
     var topAlert: ComponentType<RoomInviteAlertProps>?
     var form: ComponentType<RoomInviteFormProps>
 }
@@ -192,6 +192,7 @@ internal val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
             } else {
                 InvalidInviteAlert {
                     tooShort = inviteToken.length < TOKEN_LEN && !POTENTIAL_SHORTLINK_RE.matches(inviteToken)
+                    palette = props.palette
                 }
             }
         }
