@@ -20,6 +20,7 @@ val AddCommentButton = FC<AddCommentButtonProps> { props ->
             borderTopRightRadius = 10.px
             padding = 15.px
             boxShadow = BoxShadow(0.px, 0.px, 6.px, rgba(0, 0, 0, 0.2))
+            fontFamily = FontFamily.sansSerif
         }
         button {
             css {
