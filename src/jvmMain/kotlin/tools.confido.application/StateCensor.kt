@@ -68,7 +68,7 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
 
         var ret = q
         // Hide prepared resolutions if question is not set to resolved yet.
-        if (!ret.resolved && !room.hasPermission(user, RoomPermission.VIEW_ALL_RESOLUTIONS)) {
+        if (!ret.resolutionVisible && !room.hasPermission(user, RoomPermission.VIEW_ALL_RESOLUTIONS)) {
             ret = ret.copy(resolution = null)
         }
         return ret
