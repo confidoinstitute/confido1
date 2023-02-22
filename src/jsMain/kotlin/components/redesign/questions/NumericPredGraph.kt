@@ -2,6 +2,7 @@ package components.redesign.questions
 
 import components.questions.ConfidenceColor
 import components.redesign.basic.Stack
+import components.redesign.questions.SpaceZoomManager.Companion.SIDE_PAD
 import csstype.*
 import dom.html.HTMLCanvasElement
 import dom.html.HTMLDivElement
@@ -28,6 +29,37 @@ external interface NumericPredGraphProps : Props {
     var dist: ContinuousProbabilityDistribution?
     var preferredCICenter: Double?
     var width: Double // in CSS logical pixels; only set for NumericPredGraphInner
+    var zoomable: Boolean?
+    var onZoomChange: ((Double, Double)->Unit)?
+}
+
+class SpaceZoomManager(
+        val space: NumericSpace,
+        val viewportWidth: Double,
+        val xZoomFactor: Double = 1.0,
+        val xPan:Double = 0.0
+) {
+    companion object {
+        val SIDE_PAD = 27.0
+    }
+
+    val xScaleUnzoomed = (viewportWidth - 2*SIDE_PAD) / space.size
+    val xScale = xScaleUnzoomed * xZoomFactor
+    val graphFullWidth= space.size * xScale // width of the whole graph, in css pixels, at current zoom
+    val fullWidth = graphFullWidth+ 2*SIDE_PAD // width of the whole graph, in css pixels, at current zoom, including side padding
+    val xPanMax = maxOf(fullWidth - viewportWidth, 0.0)
+    val xPanEffective = minOf(xPan, xPanMax)
+    val leftPadVisible = maxOf(SIDE_PAD - xPanEffective, 0.0)
+    val leftmostGraphPointPx = maxOf(xPanEffective - SIDE_PAD, 0.0) // from left side of full graph area
+    val rightmostGraphPointPx = minOf(xPanEffective + viewportWidth, graphFullWidth)
+    val visibleSubspace = space.subspace(leftmostGraphPointPx/xScale, rightmostGraphPointPx/xScale)
+    val visibleGraphWidth = rightmostGraphPointPx - leftmostGraphPointPx
+
+    //val marks = markSpacing(visibleGraphWidth, visibleSubspace.min, visibleSubspace.max, { visibleSubspace.formatValue(it, false, true) })
+    val marks = markSpacing(graphFullWidth, space.min, space.max, { space.formatValue(it, false, true) })
+        .filter{ it in visibleSubspace.min..visibleSubspace.max }
+
+    fun space2canvasCssPx(x: Double) = (x - visibleSubspace.min)*xScale + leftPadVisible
 }
 
 
@@ -36,7 +68,6 @@ val NumericPredGraphInner = FC<NumericPredGraphProps> { props->
     val GRAPH_TOP_PAD = 33.0
     val GRAPH_HEIGHT = 131.0
     val LABELS_HEIGHT = 24.0
-    val SIDE_PAD = 27.0
     val dist = props.dist
     val canvas = useRef<HTMLCanvasElement>()
     val space = props.space
@@ -58,32 +89,18 @@ val NumericPredGraphInner = FC<NumericPredGraphProps> { props->
     var xZoomFactor by useState(1.0) // 1.0 = maximally unzoomed, always >= 1
     var xPan by useState(0.0) // pan along the x-axis, in CSS logical pixels (0 = leftmost part of graph is visible)
 
-    val xScaleUnzoomed = (logicalWidth - 2*SIDE_PAD) / space.size
-    val xScale = xScaleUnzoomed * xZoomFactor
-    val graphFullWidth= space.size * xScale // width of the whole graph, in physical pixels, at current zoom
-    val fullWidth = graphFullWidth+ 2*SIDE_PAD // width of the whole graph, in physical pixels, at current zoom, including side padding
-    val xPanMax = maxOf(fullWidth - logicalWidth, 0.0)
-    val xPanEffective = minOf(xPan, xPanMax)
-    useEffect(xPan > xPanMax) { if (xPan > xPanMax) xPan = xPanMax}
+    val zoomMgr = SpaceZoomManager(space, logicalWidth, xZoomFactor, xPan)
 
-    val leftPadVisible = maxOf(SIDE_PAD - xPanEffective, 0.0)
+    useEffect(xPan > zoomMgr.xPanMax) { if (xPan > zoomMgr.xPanMax) xPan = zoomMgr.xPanMax}
 
-    val leftmostGraphPointPx = maxOf(xPanEffective - SIDE_PAD, 0.0) // from left side of full graph area
-    val rightmostGraphPointPx = minOf(xPanEffective + logicalWidth, graphFullWidth)
-    val visibleSubspace = space.subspace(leftmostGraphPointPx/xScale, rightmostGraphPointPx/xScale)
-    val visibleGraphWidth = rightmostGraphPointPx - leftmostGraphPointPx
-    val bins = (visibleGraphWidth*dpr).toInt()
-    val binner = Binner(visibleSubspace, bins)
-
-    //val marks = markSpacing(visibleGraphWidth, visibleSubspace.min, visibleSubspace.max, { visibleSubspace.formatValue(it, false, true) })
-    val marks = markSpacing(graphFullWidth, space.min, space.max, { space.formatValue(it, false, true) })
-        .filter{ it in visibleSubspace.min..visibleSubspace.max }
-
-    fun space2canvasCssPx(x: Double) = (x - visibleSubspace.min)*xScale + leftPadVisible
-    fun space2canvasPhysPx(x: Double) = space2canvasCssPx(x)*dpr
+    val bins = (zoomMgr.visibleGraphWidth*dpr).toInt()
+    val binner = Binner(zoomMgr.visibleSubspace, bins)
 
 
-    val discretizedProbs = useMemo(props.dist, bins, visibleSubspace.min, visibleSubspace.max) {
+    fun space2canvasPhysPx(x: Double) = zoomMgr.space2canvasCssPx(x)*dpr
+
+
+    val discretizedProbs = useMemo(props.dist, bins, zoomMgr.visibleSubspace.min, zoomMgr.visibleSubspace.max) {
         binner.binRanges.map { props.dist?.densityBetween(it) ?: 0.0 }
     }
     //val maxDensity = (discretizedProbs.maxOrNull() ?: 1.0)
@@ -101,11 +118,15 @@ val NumericPredGraphInner = FC<NumericPredGraphProps> { props->
 
     val yScale = GRAPH_HEIGHT / maxDensity
 
+    useEffect(xZoomFactor, xPan) {
+        props.onZoomChange?.invoke(xZoomFactor, xPan)
+    }
+
     useLayoutEffect(yTicks, yScale, physicalWidth, physicalHeight) {
         val context = canvas.current?.getContext(RenderingContextId.canvas)
         context?.apply {
             clearRect(0.0, 0.0, physicalWidth, physicalHeight)
-            val left = (leftPadVisible*dpr).toInt()
+            val left = (zoomMgr.leftPadVisible*dpr).toInt()
             yTicks.mapIndexed {index, yTick ->
                 fillStyle = yTick.second
                 fillRect(left+index, (GRAPH_TOP_PAD+GRAPH_HEIGHT)*dpr, 1, -yTick.first*yScale*dpr)
@@ -115,7 +136,7 @@ val NumericPredGraphInner = FC<NumericPredGraphProps> { props->
                 //strokeStyle = yTick.second
                 //stroke()
             }
-            marks.forEach { x->
+            zoomMgr.marks.forEach { x->
                 beginPath()
                 moveTo(space2canvasPhysPx(x), 0)
                 lineTo(space2canvasPhysPx(x), (GRAPH_TOP_PAD + GRAPH_HEIGHT)*dpr)
@@ -149,10 +170,10 @@ val NumericPredGraphInner = FC<NumericPredGraphProps> { props->
                 position = Position.relative
                 fontFamily = FontFamily.sansSerif
             }
-            marks.forEachIndexed {idx, value->
+            zoomMgr.marks.forEachIndexed {idx, value->
                 div {
                     style = jso {
-                        left = space2canvasCssPx(value).px
+                        left = zoomMgr.space2canvasCssPx(value).px
                         top = 50.pct
                     }
                     css {
@@ -183,9 +204,9 @@ val NumericPredGraphInner = FC<NumericPredGraphProps> { props->
             dbg("logicalWidth", logicalWidth)
             dbg("physicalWidth", physicalWidth)
             dbg("xZoomFactor", xZoomFactor)
-            dbg("xScale", xScale.toString())
-            dbg("visibleSpace", "${visibleSubspace.min.toFixed(1)}..${visibleSubspace.max.toFixed(1)}")
-            dbg("marks", marks.map{it.toFixed(0)}.joinToString(","))
+            dbg("xScale", zoomMgr.xScale.toString())
+            dbg("visibleSpace", "${zoomMgr.visibleSubspace.min.toFixed(1)}..${zoomMgr.visibleSubspace.max.toFixed(1)}")
+            dbg("marks", zoomMgr.marks.map{it.toFixed(0)}.joinToString(","))
         }
         Slider {
             min = 1.0
@@ -196,9 +217,9 @@ val NumericPredGraphInner = FC<NumericPredGraphProps> { props->
         }
         Slider {
             min = 0.0
-            max = xPanMax
+            max = zoomMgr.xPanMax
             step = 0.1
-            value = xPanEffective
+            value = zoomMgr.xPanEffective
             onChange = { _, v, _ -> xPan = v as Double }
         }
 

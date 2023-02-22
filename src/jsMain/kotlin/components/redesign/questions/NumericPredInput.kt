@@ -11,6 +11,15 @@ external interface NumericPredInputProps : Props {
     var dist: ContinuousProbabilityDistribution?
 }
 
+external interface NumericPredSliderProps : NumericPredInputProps {
+    var xZoomFactor: Double?
+    var xPan: Double?
+}
+
+val NumericPredSlider = FC<NumericPredSliderProps> {
+
+}
+
 val NumericPredInput = FC<NumericPredInputProps> { props->
     NumericPredGraph {
         space = props.space
