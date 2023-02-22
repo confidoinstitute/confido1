@@ -148,7 +148,7 @@ external interface DashboardDialogProps : Props {
     var onClose: (() -> Unit)?
 }
 
-val DashboardDialog = FC<DashboardDialogProps> {props ->
+val DashboardDialog = FC<DashboardDialogProps> { props ->
     val loginState = useContext(LoginContext)
     val navigate = useNavigate()
 
@@ -158,8 +158,7 @@ val DashboardDialog = FC<DashboardDialogProps> {props ->
 
         DialogMenuItem {
             text = "Log out"
-            icon = EditIcon
-            disabled = false
+            icon = LogoutIcon
             onClick = {
                 runCoroutine {
                     Client.send("/logout", onError = { showError?.invoke(it) }) {
