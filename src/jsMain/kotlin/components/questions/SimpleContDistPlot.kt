@@ -12,7 +12,7 @@ import tools.confido.distributions.ContinuousProbabilityDistribution
 
 data class ConfidenceColor(
     val p: Double,
-    val color: Value,
+    val color: String,
 )
 
 external interface SimpleCondDistPlotProps : Props {
@@ -40,7 +40,7 @@ val SimpleContDistPlot = FC<SimpleCondDistPlotProps> { props ->
     }
     fun barColor(x: Double) = confidenceIntervals.find {
             x in it.first
-        }?.second ?: props.outsideColor ?: Value.of("")
+        }?.second ?: props.outsideColor ?: ""
 
     val yTicks = (0 until bins).map { bin -> discretized.binProbs[bin] to barColor(discretized.binner.binMidpoints[bin]) }
 

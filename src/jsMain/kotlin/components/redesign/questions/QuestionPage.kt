@@ -51,6 +51,7 @@ external interface QuestionStatusProps : Props {
 }
 
 external interface QuestionEstimateSectionProps : Props {
+    var question: Question
     var resolved: Boolean
     var myPrediction: Prediction?
     var groupPrediction: Prediction?
@@ -118,6 +119,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
             }
         }
         QuestionPredictionSection {
+            this.question = props.question
             this.resolved = props.question.resolved
             this.myPrediction = myPrediction
             this.numPredictors = props.question.numPredictors
@@ -188,12 +190,14 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
 
     div {
         css {
-            height = 196.px
+            minHeight = 196.px
             backgroundColor = Color("#fff")
         }
         if (!groupPredictionOpen) {
-            // TODO: Your estimate
-            +"TODO your estimate goes here"
+            PredictionInput {
+                space = props.question.answerSpace
+                dist = props.myPrediction?.dist
+            }
         } else {
             // TODO: Group estimate
             +"TODO group estimate goes here"

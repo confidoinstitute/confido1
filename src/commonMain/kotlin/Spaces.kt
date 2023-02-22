@@ -108,6 +108,15 @@ data class NumericSpace(
 
     val size get() = max - min
 
+    fun subspace(min: Double, max: Double): NumericSpace {
+        if (min < this.min || max > this.max) throw IllegalArgumentException()
+        return this.copy(min = min, max = max)
+    }
+
+    infix fun issubspace(other: NumericSpace): Boolean {
+        return this.min >= other.min && this.max <= other.max && this.representsDays == other.representsDays
+    }
+
     override fun checkValue(value: Double) = value in min..max
 
     override fun formatValue(value: Double, showUnit: Boolean): String {

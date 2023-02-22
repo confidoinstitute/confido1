@@ -48,13 +48,13 @@ val NumericQuestionInput = FC<QuestionInputProps<NumericSpace, ContinuousProbabi
 
     val confidences = useMemo(props.enabled) {
         if (props.enabled) listOf(
-            ConfidenceColor(0.5, "#88d4e7".asValue()),
-            ConfidenceColor(0.7, "#55a3b5".asValue()),
-            ConfidenceColor(0.9, "#675491".asValue()),
+            ConfidenceColor(0.5, "#88d4e7"),
+            ConfidenceColor(0.7, "#55a3b5"),
+            ConfidenceColor(0.9, "#675491"),
         ) else listOf(
-            ConfidenceColor(0.5, "#bfbfbf".asValue()),
-            ConfidenceColor(0.7, "#acacac".asValue()),
-            ConfidenceColor(0.9, "#a0a0a0".asValue()),
+            ConfidenceColor(0.5, "#bfbfbf"),
+            ConfidenceColor(0.7, "#acacac"),
+            ConfidenceColor(0.9, "#a0a0a0"),
         )
     }
 
