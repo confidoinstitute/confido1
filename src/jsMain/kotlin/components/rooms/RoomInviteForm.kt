@@ -105,7 +105,7 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                             loginRequired = true
                         } else {
                             loginState.login()
-                            navigate("/room/${props.roomId}")
+                            navigate(roomUrl(props.roomId))
                         }
                     }
                 }

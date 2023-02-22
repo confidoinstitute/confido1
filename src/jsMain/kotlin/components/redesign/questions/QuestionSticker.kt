@@ -18,7 +18,7 @@ external interface QuestionStickerProps : Props {
 val QuestionSticker = FC<QuestionStickerProps> {props ->
     val palette = RoomPalette.red
     Link {
-        to = "/room/${props.room.id}/question/${props.question.id}"
+        to = props.room.urlPrefix + props.question.urlPrefix
         css {
             width = 144.px
             height = 144.px

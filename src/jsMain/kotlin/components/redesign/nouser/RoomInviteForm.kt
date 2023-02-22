@@ -26,9 +26,19 @@ import utils.roomUrl
 import utils.runCoroutine
 
 val RoomInviteNoUser = FC<Props> {
-    console.log("NO USER CREATE")
-    RoomInviteCore {
-        form = RoomInviteFormNoUser
+    Stack {
+        css {
+            alignItems = AlignItems.center
+        }
+        Stack {
+            css {
+                maxWidth = 400.px
+                alignItems = AlignItems.center
+            }
+            RoomInviteCore {
+                form = RoomInviteFormNoUser
+            }
+        }
     }
 }
 
@@ -72,7 +82,7 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                             loginRequired = true
                         } else {
                             loginState.login()
-                            navigate("/room/${props.roomId}")
+                            navigate(roomUrl(props.roomId))
                         }
                     }
                 }

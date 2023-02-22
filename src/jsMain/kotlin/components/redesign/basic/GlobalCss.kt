@@ -1,11 +1,14 @@
 package components.redesign.basic
 
-import csstype.BoxSizing
-import csstype.px
+import csstype.*
 import emotion.react.styles
 import react.*
 
-val GlobalCss = FC<Props> {
+external interface GlobalCssProps : Props {
+    var backgroundColor: BackgroundColor
+}
+
+val GlobalCss = FC<GlobalCssProps> {props ->
     emotion.react.Global {
         styles {
             "*" {
@@ -14,6 +17,10 @@ val GlobalCss = FC<Props> {
             "html,body" {
                 margin = 0.px
                 padding = 0.px
+                minHeight = 100.vh
+                backgroundColor = props.backgroundColor
+                display = Display.flex
+                flexDirection = FlexDirection.column
             }
         }
     }

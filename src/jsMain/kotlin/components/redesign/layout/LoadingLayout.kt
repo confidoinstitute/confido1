@@ -24,15 +24,8 @@ internal val rotatingKeyframes = keyframes {
 
 val LoadingLayout = FC<NoAppStateProps> {
     val palette = MainPalette.login
-    GlobalCss {}
-    main {
-        css {
-            width = 100.vw
-            height = 100.vh
-            overflow = Auto.auto
-            color = palette.text.color
-            backgroundColor = palette.color
-        }
+    GlobalCss {
+        backgroundColor = palette.color
     }
     div {
         css {

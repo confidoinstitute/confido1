@@ -23,10 +23,11 @@ import react.router.useNavigate
 import react.useContext
 import utils.AUTO
 import utils.buildObject
+import utils.roomUrl
 import web.location.location
 
 const val REQUEST_WORKSPACE_URL = "https://confido.institute/request-a-workspace.html"
-const val DEMO_CONTINUE_URL = "/room/demoroom1"
+const val DEMO_CONTINUE_URL = "/rooms/demoroom1"
 
 val demoTheme = createTheme(
     jso {

@@ -309,7 +309,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
 }
 
 fun inviteRoutes(routing: Routing) = routing.apply {
-    getST("/room/{rID}/invite/{token}") {
+    getST("$roomUrl/invite/{token}") {
         val token = call.parameters["token"] ?: ""
         return@getST call.respondRedirect("/join/${token}")
     }

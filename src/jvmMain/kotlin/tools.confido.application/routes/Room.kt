@@ -131,7 +131,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                             token = generateToken(),
                             user = newUser.ref,
                             expiryTime = expiresAt,
-                            url = "/room/${room.id}",
+                            url = room.urlPrefix,
                             sentToEmail = user.email?.lowercase()
                         )
                         try {

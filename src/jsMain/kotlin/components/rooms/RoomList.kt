@@ -6,6 +6,7 @@ import icons.AddIcon
 import mui.material.*
 import react.*
 import react.router.useLocation
+import utils.roomUrl
 
 external interface RoomListProps : Props {
     var newRoomEnabled: Boolean
@@ -24,7 +25,7 @@ val RoomList = FC<RoomListProps> { props ->
         for (room in appState.rooms.entries) {
             ListItemNavigation {
                 this.key = room.key
-                to = "/room/${room.key}"
+                to = roomUrl(room.key)
                 selected = location.pathname.startsWith(to)
                 onNavigate = props.onNavigate
 

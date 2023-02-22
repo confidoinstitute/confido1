@@ -1,6 +1,7 @@
 package components.redesign.questions
 
 import components.AppStateContext
+import hooks.useDocumentTitle
 import kotlinx.js.get
 import react.FC
 import react.Props

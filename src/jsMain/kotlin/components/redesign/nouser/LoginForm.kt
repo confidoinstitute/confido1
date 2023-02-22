@@ -9,6 +9,7 @@ import components.showError
 import csstype.*
 import emotion.react.css
 import hooks.useCoroutineLock
+import hooks.useDocumentTitle
 import io.ktor.http.*
 import payloads.requests.PasswordLogin
 import payloads.requests.SendMailLink
@@ -78,6 +79,8 @@ external interface LoginFormProps : Props {
 
 val LoginForm = FC<LoginFormProps> { props ->
     val palette = MainPalette.login
+
+    useDocumentTitle("Log In - Confido")
 
     val loginState = useContext(LoginContext)
     var email by useState<String>(props.prefilledEmail ?: "")

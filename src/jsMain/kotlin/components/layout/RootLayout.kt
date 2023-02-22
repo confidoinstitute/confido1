@@ -10,18 +10,32 @@ import components.rooms.NewRoom
 import components.rooms.Room
 import components.rooms.RoomInviteLoggedIn
 import csstype.*
+import kotlinx.js.get
+import kotlinx.js.jso
 import mui.material.*
 import mui.system.*
 import react.*
 import react.dom.html.ReactHTML.main
 import react.router.*
 import utils.byTheme
+import utils.roomUrl
 import utils.themed
 
 val RootLayout = FC<Props> {
     AppStateWebsocketProvider {
         loadingComponent = NoStateLayout
         RootLayoutInner {}
+    }
+}
+
+val RoomRedirect = FC<Props> {
+    val navigate = useNavigate()
+    val location = useLocation().pathname.split('/').drop(2).joinToString("/")
+    console.log("Redirecting to /rooms/$location")
+    useEffect {
+        navigate("/rooms/" + location, jso {
+            replace = true
+        })
     }
 }
 
@@ -80,8 +94,12 @@ private val RootLayoutInner = FC<Props> {
                         this.element = Typography.create { +"Welcome to Confido!" }
                     }
                     Route {
-                        path = "room/:roomID/*"
+                        path = "rooms/:roomID/*"
                         this.element = Room.create()
+                    }
+                    Route {
+                        path = "room/:roomID/*"
+                        this.element = RoomRedirect.create()
                     }
                     Route {
                         path = "/join/:inviteToken"

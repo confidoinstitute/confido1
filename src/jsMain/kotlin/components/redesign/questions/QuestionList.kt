@@ -43,7 +43,7 @@ val QuestionList = FC<QuestionListProps> { props ->
                 this.key = question.id
                 this.question = question
                 this.groupPred = groupPreds[question.id]
-                this.href = "/room/${room.id}/question/${question.id}"
+                this.href = room.urlPrefix+question.urlPrefix
             }
         }
     }

@@ -2,6 +2,7 @@ package components.redesign.rooms
 
 import components.redesign.BackIcon
 import components.redesign.NavMenuIcon
+import components.redesign.basic.PropsWithPalette
 import components.redesign.basic.RoomPalette
 import components.redesign.basic.createRipple
 import components.redesign.basic.rippleCss
@@ -21,27 +22,25 @@ import react.dom.svg.StrokeLinecap
 import react.router.dom.Link
 import react.useContext
 
-external interface RoomNavbarProps : PropsWithChildren {
+external interface RoomNavbarProps : PropsWithChildren, PropsWithPalette<RoomPalette> {
     var navigateBack: String?
     var onMenu: (() -> Unit)?
 }
 
 val RoomNavbar = FC<RoomNavbarProps> { props ->
-    val room = useContext(RoomContext)
-    // TODO connect room palette
-    val palette = RoomPalette.red
+    val palette = props.palette ?: RoomPalette.red
 
-    ReactHTML.div {
+    ReactHTML.nav {
         css {
+            position = Position.fixed
             backgroundColor = palette.color
-            flexBasis = 44.px
-            flexShrink = number(0.0)
             display = Display.flex
             flexDirection = FlexDirection.row
             height = 44.px
             top = 0.px
             width = 100.pct
             padding = Padding(0.px, 4.px)
+            zIndex = integer(20)
         }
         ReactHTML.div {
             css {
@@ -79,10 +78,12 @@ val RoomNavbar = FC<RoomNavbarProps> { props ->
                 justifyContent = JustifyContent.flexEnd
                 alignItems = AlignItems.center
             }
-            IconButton {
-                this.palette = palette.text
-                onClick = { props.onMenu?.invoke() }
-                NavMenuIcon {}
+            props.onMenu?.let {
+                IconButton {
+                    this.palette = palette.text
+                    onClick = { it() }
+                    NavMenuIcon {}
+                }
             }
         }
     }

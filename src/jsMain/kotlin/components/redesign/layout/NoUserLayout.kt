@@ -23,17 +23,15 @@ import tools.confido.state.appConfig
 
 val NoUserLayout = FC<Props> {
     val palette = MainPalette.login
-    GlobalCss {}
+    GlobalCss {
+        backgroundColor = palette.color
+    }
     Stack {
         component = main
         direction = FlexDirection.column
         css {
-            width = 100.vw
-            height = 100.vh
-            overflow = Auto.auto
             alignItems = AlignItems.center
             color = palette.text.color
-            backgroundColor = palette.color
         }
         LogoWithText {}
 

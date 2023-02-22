@@ -12,6 +12,7 @@ import components.rooms.RoomContext
 import components.showError
 import csstype.*
 import emotion.react.css
+import hooks.useDocumentTitle
 import hooks.useWebSocket
 import io.ktor.http.*
 import payloads.responses.CommentInfo
@@ -20,6 +21,7 @@ import react.FC
 import react.Props
 import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.main
 import react.useContext
 import react.useState
 import rooms.RoomPermission
@@ -28,6 +30,7 @@ import tools.confido.question.Question
 import tools.confido.refs.ref
 import tools.confido.spaces.Value
 import utils.questionUrl
+import utils.roomUrl
 import utils.runCoroutine
 import web.prompts.confirm
 
@@ -79,8 +82,10 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
 
     var quickSettingsOpen by useState(false)
 
+    useDocumentTitle("${props.question.name} - Confido")
+
     if (!room.hasPermission(appState.session.user, RoomPermission.VIEW_QUESTIONS))
-        // TODO proper no permission page
+    // TODO proper no permission page
         return@FC
 
     QuestionQuickSettingsDialog {
@@ -89,40 +94,32 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
         onClose = { quickSettingsOpen = false }
     }
 
+    RoomNavbar {
+        navigateBack = room.urlPrefix
+        onMenu = {quickSettingsOpen = true}
+    }
     Stack {
+        component = main
         css {
+            marginTop = 44.px
             flexDirection = FlexDirection.column
-            position = Position.relative
             flexGrow = number(1.0)
-            height = 100.pct
-            background = bgColor
-        }
-        RoomNavbar {
-            navigateBack = "/room/${room.id}"
-            onMenu = {quickSettingsOpen = true}
         }
 
-        Stack {
-            css {
-                flexGrow = number(1.0)
-                position = Position.relative
-                overflow = Auto.auto
-            }
-            QuestionHeader {
-                this.text = props.question.name
-                this.description = props.question.description
-                this.resolution = props.question.resolution
-            }
-            QuestionPredictionSection {
-                this.resolved = props.question.resolved
-                this.myPrediction = myPrediction
-                this.numPredictors = props.question.numPredictors
-                this.groupPrediction = groupPrediction.data
-            }
-            QuestionCommentSection {
-                this.question = props.question
-                this.myPrediction = myPrediction
-            }
+        QuestionHeader {
+            this.text = props.question.name
+            this.description = props.question.description
+            this.resolution = props.question.resolution
+        }
+        QuestionPredictionSection {
+            this.resolved = props.question.resolved
+            this.myPrediction = myPrediction
+            this.numPredictors = props.question.numPredictors
+            this.groupPrediction = groupPrediction.data
+        }
+        QuestionCommentSection {
+            this.question = props.question
+            this.myPrediction = myPrediction
         }
     }
 }

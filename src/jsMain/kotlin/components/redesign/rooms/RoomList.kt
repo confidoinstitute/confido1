@@ -59,7 +59,7 @@ val RoomList = FC<RoomListProps> {props ->
         appState.rooms.map {(id, room) ->
             Link {
                 key = id
-                to = "/room/$id"
+                to = room.urlPrefix
                 onClick = {createRipple(it, Color("#000000"))}
                 css(roomItemCss) {}
                 div {

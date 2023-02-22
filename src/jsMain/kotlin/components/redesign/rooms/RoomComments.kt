@@ -25,14 +25,6 @@ val RoomComments = FC<RoomCommentsProps> {props ->
     val room = useContext(RoomContext)
     val roomComments = useWebSocket<Map<String, CommentInfo>>("/state${room.urlPrefix}/comments")
 
-    var loaded by useState(false)
-    useEffect(roomComments) {
-        if (!loaded && roomComments is WSData) {
-            loaded = true
-            props.onLoad?.invoke()
-        }
-    }
-
     var addCommentOpen by useState(false)
     var sortType by useState(SortType.NEWEST)
 
@@ -97,6 +89,10 @@ val RoomComments = FC<RoomCommentsProps> {props ->
             Comment {
                 this.commentInfo = it.value
                 this.key = it.key
+            }
+        } ?: div {
+            css {
+                height = 100.vh
             }
         }
     }

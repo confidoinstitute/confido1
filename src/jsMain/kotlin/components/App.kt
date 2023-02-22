@@ -3,6 +3,7 @@ package components
 import browser.document
 import components.layout.*
 import csstype.*
+import hooks.useDocumentTitle
 import kotlinx.js.jso
 import mui.material.*
 import mui.material.styles.PaletteColor

@@ -3,6 +3,7 @@ package components.redesign.rooms
 import components.AppStateContext
 import components.redesign.questions.Question
 import components.rooms.RoomContext
+import hooks.useDocumentTitle
 import kotlinx.js.get
 import react.*
 import react.router.Route
@@ -20,13 +21,13 @@ val Room = FC<Props> {
 
         Routes {
             Route {
-                path = "/*"
+                path = "*"
                 index = true
                 this.element = RoomLayout.create()
             }
             if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
                 Route {
-                    path = "/question/:questionID"
+                    path = "questions/:questionID"
                     this.element = Question.create()
                 }
         }

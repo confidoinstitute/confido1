@@ -40,6 +40,12 @@ val Button = FC<ButtonProps> { props ->
         css(confidoButtonClass, override=props) {
             backgroundColor = palette.color
             color = palette.text.color
+
+            disabled {
+                border = Border(5.px, LineStyle.solid, palette.color)
+                color = Color("#FFFFFF")
+                backgroundColor = Color("#DDDDDD")
+            }
         }
     }
 }

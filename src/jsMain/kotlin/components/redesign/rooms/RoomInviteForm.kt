@@ -1,21 +1,23 @@
 package components.redesign.rooms
 
 import components.AppStateContext
-import components.RouterLink
 import components.redesign.basic.*
 import components.redesign.forms.Button
 import components.showError
 import csstype.*
 import emotion.react.css
+import hooks.useDocumentTitle
 import io.ktor.client.call.*
 import io.ktor.http.*
 import kotlinx.js.get
+import kotlinx.js.jso
 import payloads.requests.*
 import react.*
 import react.router.useParams
 import payloads.responses.InviteStatus
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.code
+import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.h3
 import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
@@ -27,10 +29,22 @@ import utils.*
 import web.location.location
 
 val RoomInviteLoggedIn = FC<Props> {
-    RoomInviteCore {
-        topAlert = MissingEmailConditionalAlert
-        form = RoomInviteFormLoggedIn
-        palette = MainPalette.default
+    Stack {
+        css {
+            alignItems = AlignItems.center
+        }
+        Stack {
+            css {
+                marginTop = 64.px
+                maxWidth = 400.px
+                alignItems = AlignItems.center
+            }
+            RoomInviteCore {
+                topAlert = MissingEmailConditionalAlert
+                form = RoomInviteFormLoggedIn
+                palette = MainPalette.default
+            }
+        }
     }
 }
 
@@ -83,12 +97,21 @@ private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
 
     val user = appState.session.user
     val missingRequiredEmail = user != null && user.email == null && !props.allowAnonymous
-    val alreadyAccepted = appState.rooms[props.roomId]?.let { room ->
-        room.members.any { membership -> membership.user eqid appState.session.user }
-    } ?: false
 
-    if (alreadyAccepted) {
-        navigate(roomUrl(props.roomId))
+    useEffectOnce {
+        val alreadyAccepted = appState.rooms[props.roomId]?.let { room ->
+            room.members.any { membership -> membership.user eqid appState.session.user }
+        } ?: false
+
+        if (alreadyAccepted) {
+            navigate(roomUrl(props.roomId), jso {
+                replace = true
+            })
+        }
+    }
+
+    RoomNavbar {
+        navigateBack = "/"
     }
 
     p {
@@ -106,6 +129,9 @@ private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
     }
 
     Button {
+        css {
+            width = 100.pct
+        }
         onClick = {
             val accept = AcceptInvite(props.inviteToken)
             runCoroutine {
@@ -137,6 +163,9 @@ private val MissingEmailConditionalAlert = FC<RoomInviteAlertProps> { props ->
             }
             +"This invite requires you to set an email before accepting. You can do so in "
             Link {
+                css {
+                    color = Globals.inherit
+                }
                 to = "/profile"
                 +"user settings"
             }
@@ -166,34 +195,29 @@ internal val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
         }
     }
 
+    useDocumentTitle("Invitation - Confido")
+
     if (inviteStatus == null)
         Backdrop {
             this.css { this.zIndex = integer(42) }
         }
 
-    Stack {
-        direction = FlexDirection.column
-        css {
-            maxWidth = 400.px
+    if (inviteStatus != null) {
+        +props.topAlert?.create {
+            this.allowAnonymous = inviteStatus!!.allowAnonymous
         }
 
-        if (inviteStatus != null) {
-            +props.topAlert?.create {
+        if (inviteStatus?.valid == true) {
+            props.form {
+                this.roomId = inviteStatus!!.roomRef!!.id
+                this.roomName = inviteStatus!!.roomName!!
+                this.inviteToken = inviteToken
                 this.allowAnonymous = inviteStatus!!.allowAnonymous
             }
-
-            if (inviteStatus?.valid == true) {
-                props.form {
-                    this.roomId = inviteStatus!!.roomRef!!.id
-                    this.roomName = inviteStatus!!.roomName!!
-                    this.inviteToken = inviteToken
-                    this.allowAnonymous = inviteStatus!!.allowAnonymous
-                }
-            } else {
-                InvalidInviteAlert {
-                    tooShort = inviteToken.length < TOKEN_LEN && !POTENTIAL_SHORTLINK_RE.matches(inviteToken)
-                    palette = props.palette
-                }
+        } else {
+            InvalidInviteAlert {
+                tooShort = inviteToken.length < TOKEN_LEN && !POTENTIAL_SHORTLINK_RE.matches(inviteToken)
+                palette = props.palette
             }
         }
     }

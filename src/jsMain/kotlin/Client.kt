@@ -73,9 +73,6 @@ object Client {
 }
 
 fun main() {
-    val container = document.createElement("div")
-    document.body.appendChild(container)
-
     val app = App.create {}
-    createRoot(container).render(app)
+    createRoot(document.body).render(app)
 }
