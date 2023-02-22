@@ -17,6 +17,7 @@ import react.dom.html.*
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
 import utils.*
 
@@ -93,7 +94,7 @@ val LoginForm = FC<LoginFormProps> { props ->
         val trimmedEmail = email.trim()
         val valid = isEmailValid(trimmedEmail)
         if (!valid) {
-            emailError = if (trimmedEmail.isBlank()) "Please enter an email address." else "The email you entered is invalid."
+            emailError = if (trimmedEmail.isBlank()) "Please enter an email address." else "The email address is not valid."
             return
         }
         emailError = null
@@ -201,20 +202,18 @@ val LoginForm = FC<LoginFormProps> { props ->
             }
 
             if (emailError != null || passwordError != null) {
-                div {
+                p {
                     css {
-                        marginTop = 20.px
+                        marginTop = 0.px
                         marginBottom = 5.px
                         padding = Padding(10.px, 12.px)
                         textAlign = TextAlign.center
-                        backgroundColor = Color("#a327d7")  // TODO(Prin): Use palette.
-                        color = Color("#FFFFFF")
-                        borderWidth = 0.px
-                        borderRadius = 5.px
+                        color = Color("#FF7070")  // TODO(Prin): use a palette.
                         width = 100.pct
 
-                        fontSize = 15.px
-                        lineHeight = 18.px
+                        fontSize = 14.px
+                        lineHeight = 17.px
+                        fontWeight = integer(700)
                         fontFamily = FontFamily.sansSerif
                     }
                     +(emailError ?: passwordError ?: "")
