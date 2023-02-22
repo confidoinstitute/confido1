@@ -68,7 +68,7 @@ val Checkbox = FC<CheckboxProps> { props ->
 
                 "input:disabled ~ &" {
                     backgroundColor = Color("#EBEBEB")
-                    cursor = "initial".asDynamic()
+                    cursor = Globals.initial
                 }
             }
         }
@@ -131,7 +131,7 @@ val Switch = FC<CheckboxProps> { props ->
                     height = 32.px
                     borderRadius = 100.pct
                     backgroundColor = Color("#FFFFFF")
-                    content = "\"\"".asDynamic()
+                    content = string("\"\"")
                     position = Position.absolute
                     transitionDuration = 0.4.s
                 }
@@ -145,7 +145,7 @@ val Switch = FC<CheckboxProps> { props ->
 
                 "input:disabled + &" {
                     backgroundColor = Color("#EBEBEB")
-                    cursor = "initial".asDynamic()
+                    cursor = Globals.initial
                 }
             }
         }

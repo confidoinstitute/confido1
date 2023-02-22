@@ -47,7 +47,7 @@ val RadioInput = FC<RadioInputProps> { props ->
 
                 "input:disabled + &" {
                     backgroundColor = Color("#EBEBEB")
-                    cursor = "initial".asDynamic()
+                    cursor = Globals.initial
                 }
 
                 "input:checked,input:disabled + &" {
