@@ -15,7 +15,7 @@ val confidoLogoWithTextClass = emotion.css.ClassName {
     width = 240.px
     marginTop = 90.px  // TODO: Reduce after the login screen is aligned vertically to the center.
     marginRight = AUTO
-    marginBottom = 10.px
+    marginBottom = 30.px
     marginLeft = AUTO
 }
 

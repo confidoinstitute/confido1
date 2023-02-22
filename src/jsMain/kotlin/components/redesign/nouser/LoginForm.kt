@@ -37,7 +37,7 @@ val loginLinkClass = emotion.css.ClassName {
 }
 
 val loginInputClass = emotion.css.ClassName {
-    padding = Padding(10.px, 12.px)
+    padding = Padding(12.px, 12.px)
     backgroundColor = Color("#96FFFF33")
     color = Color("#FFFFFF")
     borderWidth = 0.px
@@ -125,6 +125,7 @@ val LoginForm = FC<LoginFormProps> { props ->
         css {
             width = 100.pct
             maxWidth = 400.px
+            margin = Margin(15.px, 0.px)
             padding = Padding(0.px, 15.px)
             flexDirection = FlexDirection.column
             alignItems = AlignItems.stretch
@@ -190,7 +191,7 @@ val LoginForm = FC<LoginFormProps> { props ->
             if (!emailSent) {
                 components.redesign.forms.Button {
                     css {
-                        marginTop = 12.px
+                        marginTop = 14.px
                         width = 100.pct
                         borderRadius = 10.px
                     }
