@@ -1,7 +1,9 @@
 package components.redesign.questions
 
 import components.questions.ConfidenceColor
+import components.redesign.basic.PropsWithElementSize
 import components.redesign.basic.Stack
+import components.redesign.basic.elementSizeWrapper
 import components.redesign.questions.SpaceZoomManager.Companion.SIDE_PAD
 import csstype.*
 import dom.html.HTMLCanvasElement
@@ -24,11 +26,10 @@ import tools.confido.spaces.Binner
 import tools.confido.spaces.NumericSpace
 import tools.confido.utils.toFixed
 
-external interface NumericPredGraphProps : Props {
+external interface NumericPredGraphProps : PropsWithElementSize {
     var space: NumericSpace
     var dist: ContinuousProbabilityDistribution?
     var preferredCICenter: Double?
-    var width: Double // in CSS logical pixels; only set for NumericPredGraphInner
     var zoomable: Boolean?
     var onZoomChange: ((Double, Double)->Unit)?
 }
@@ -63,7 +64,7 @@ class SpaceZoomManager(
 }
 
 
-val NumericPredGraphInner = FC<NumericPredGraphProps> { props->
+val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps> { props->
     val ABOVE_GRAPH_PAD = 8.0
     val GRAPH_TOP_PAD = 33.0
     val GRAPH_HEIGHT = 131.0
@@ -73,7 +74,7 @@ val NumericPredGraphInner = FC<NumericPredGraphProps> { props->
     val space = props.space
     val dpr = useDPR()
     val desiredLogicalHeight = GRAPH_TOP_PAD + GRAPH_HEIGHT
-    val desiredLogicalWidth = props.width
+    val desiredLogicalWidth = props.elementWidth
     val physicalWidth = (desiredLogicalWidth * dpr).toInt()
     val physicalHeight = (desiredLogicalHeight * dpr).toInt()
     val logicalWidth = physicalWidth.toDouble() / dpr // make sure we have whole number of phyisical pixels
@@ -224,17 +225,4 @@ val NumericPredGraphInner = FC<NumericPredGraphProps> { props->
         }
 
     }
-}
-
-val NumericPredGraph = FC<NumericPredGraphProps> { props->
-    val elementSize = useElementSize<HTMLDivElement>()
-    div {
-        ref = elementSize.ref
-        if (elementSize.width > 0.0) {
-            NumericPredGraphInner {
-                +props
-                width = elementSize.width
-            }
-        }
-    }
-}
+})

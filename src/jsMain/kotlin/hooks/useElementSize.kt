@@ -8,6 +8,7 @@ data class ElementSize<T: HTMLElement>(
     val ref: Ref<T>,
     val width: Double,
     val height: Double,
+    val known: Boolean,
 )
 
 /**
@@ -17,12 +18,14 @@ fun <T: HTMLElement> useElementSize(): ElementSize<T> {
     val ref = useRef<T>()
     var width by useState(0.0)
     var height by useState(0.0)
+    var known by useState(false)
 
     val observer = useMemo {
         ResizeObserver { entries, _ ->
             entries.getOrNull(0)?.let {
                 width = it.contentRect.width
                 height = it.contentRect.height
+                known = true
             }
 
         }
@@ -38,5 +41,5 @@ fun <T: HTMLElement> useElementSize(): ElementSize<T> {
         }
     }
 
-    return ElementSize(ref, width, height)
+    return ElementSize(ref, width, height, known)
 }
