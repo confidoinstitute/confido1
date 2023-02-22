@@ -174,6 +174,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
             padding = 15.px
             background = bgColor
             borderRadius = 5.px
+            flexShrink = number(0.0)
         }
         direction = FlexDirection.row
         QuestionEstimateTabButton {
@@ -192,6 +193,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
         css {
             minHeight = 196.px
             backgroundColor = Color("#fff")
+            flexShrink = number(0.0)
         }
         if (!groupPredictionOpen) {
             PredictionInput {

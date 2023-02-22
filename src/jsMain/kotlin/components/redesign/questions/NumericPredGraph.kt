@@ -41,7 +41,7 @@ val NumericPredGraphInner = FC<NumericPredGraphProps> { props->
     val canvas = useRef<HTMLCanvasElement>()
     val space = props.space
     val dpr = useDPR()
-    val desiredLogicalHeight = GRAPH_TOP_PAD + GRAPH_HEIGHT + LABELS_HEIGHT
+    val desiredLogicalHeight = GRAPH_TOP_PAD + GRAPH_HEIGHT
     val desiredLogicalWidth = props.width
     val physicalWidth = (desiredLogicalWidth * dpr).toInt()
     val physicalHeight = (desiredLogicalHeight * dpr).toInt()
@@ -74,6 +74,13 @@ val NumericPredGraphInner = FC<NumericPredGraphProps> { props->
     val visibleGraphWidth = rightmostGraphPointPx - leftmostGraphPointPx
     val bins = (visibleGraphWidth*dpr).toInt()
     val binner = Binner(visibleSubspace, bins)
+
+    //val marks = markSpacing(visibleGraphWidth, visibleSubspace.min, visibleSubspace.max, { visibleSubspace.formatValue(it, false, true) })
+    val marks = markSpacing(graphFullWidth, space.min, space.max, { space.formatValue(it, false, true) })
+        .filter{ it in visibleSubspace.min..visibleSubspace.max }
+
+    fun space2canvasCssPx(x: Double) = (x - visibleSubspace.min)*xScale + leftPadVisible
+    fun space2canvasPhysPx(x: Double) = space2canvasCssPx(x)*dpr
 
 
     val discretizedProbs = useMemo(props.dist, bins, visibleSubspace.min, visibleSubspace.max) {
@@ -108,17 +115,58 @@ val NumericPredGraphInner = FC<NumericPredGraphProps> { props->
                 //strokeStyle = yTick.second
                 //stroke()
             }
+            marks.forEach { x->
+                beginPath()
+                moveTo(space2canvasPhysPx(x), 0)
+                lineTo(space2canvasPhysPx(x), (GRAPH_TOP_PAD + GRAPH_HEIGHT)*dpr)
+                strokeStyle = "rgba(0,0,0,30%)"
+                stroke()
+            }
         }
     }
 
-    ReactHTML.canvas {
-        style = jso {
-            this.width = logicalWidth.px
-            this.height = logicalHeight.px
+    Stack {
+        ReactHTML.canvas {
+            style = jso {
+                this.width = logicalWidth.px
+                this.height = logicalHeight.px
+            }
+            this.width = physicalWidth.toDouble()
+            this.height = physicalHeight.toDouble()
+            ref = canvas
+            css {
+                marginTop = ABOVE_GRAPH_PAD.px
+            }
         }
-        this.width = physicalWidth.toDouble()
-        this.height = physicalHeight.toDouble()
-        ref = canvas
+        div {
+            css {
+                height = LABELS_HEIGHT.px
+                flexGrow = number(0.0)
+                flexShrink = number(0.0)
+                fontSize = 12.px
+                color = Color("rgba(0,0,0,30%)")
+                lineHeight = 14.52.px
+                position = Position.relative
+                fontFamily = FontFamily.sansSerif
+            }
+            marks.forEachIndexed {idx, value->
+                div {
+                    style = jso {
+                        left = space2canvasCssPx(value).px
+                        top = 50.pct
+                    }
+                    css {
+                        val xtrans = when(idx) {
+                            0 -> max((-50).pct, (-SIDE_PAD).px)
+                            else -> (-50).pct
+                        }
+                        transform = translate(xtrans, (-50).pct)
+                        position = Position.absolute
+                    }
+                    + space.formatValue(value, false, true)
+                }
+            }
+        }
     }
     Stack {
         css(ClassName("debug")) {
@@ -137,6 +185,7 @@ val NumericPredGraphInner = FC<NumericPredGraphProps> { props->
             dbg("xZoomFactor", xZoomFactor)
             dbg("xScale", xScale.toString())
             dbg("visibleSpace", "${visibleSubspace.min.toFixed(1)}..${visibleSubspace.max.toFixed(1)}")
+            dbg("marks", marks.map{it.toFixed(0)}.joinToString(","))
         }
         Slider {
             min = 1.0

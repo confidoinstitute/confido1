@@ -13,7 +13,7 @@ sealed class Space {
     abstract val bins: Int
     abstract fun checkValue(value: Any): Boolean
     abstract fun value2bin(value: Any): Int?
-    abstract fun formatValue(value: Any, showUnit: Boolean = true): String
+    abstract fun formatValue(value: Any, showUnit: Boolean = true, condensed: Boolean = false): String
 }
 
 
@@ -33,12 +33,12 @@ sealed class TypedSpace<T : Any> : Space() {
 
     @Suppress("INAPPLICABLE_JVM_NAME")
     @JvmName("_formatValue")
-    abstract fun formatValue(value : T, showUnit: Boolean = true): String
-    final override fun formatValue(value: Any, showUnit: Boolean): String {
+    abstract fun formatValue(value : T, showUnit: Boolean = true, condensed: Boolean = false): String
+    final override fun formatValue(value: Any, showUnit: Boolean, condensed: Boolean): String {
         if (!checkValue(value)) return "(invalid)"
         try {
             @Suppress("UNCHECKED_CAST")
-            return formatValue(value as T, showUnit)
+            return formatValue(value as T, showUnit, condensed)
         } catch (e: ClassCastException) {
             return "(invalid)"
         }
@@ -63,7 +63,7 @@ object BinarySpace : TypedSpace<Boolean>() {
     override val bins: Int = 2
     override fun checkValue(value: Boolean) = true
 
-    override fun formatValue(value: Boolean, showUnit: Boolean): String =
+    override fun formatValue(value: Boolean, showUnit: Boolean, condensed: Boolean): String =
         if (value) "Yes" else "No" // TODO translations, custom strings
 
     override fun value2bin(value: Boolean): Int? =
@@ -119,11 +119,14 @@ data class NumericSpace(
 
     override fun checkValue(value: Double) = value in min..max
 
-    override fun formatValue(value: Double, showUnit: Boolean): String {
+    override fun formatValue(value: Double, showUnit: Boolean, condensed: Boolean): String {
         if (representsDays) {
             return LocalDate.utcFromUnix(value.toInt()).toString()
         }
-        var r = value.toFixed(decimals)
+        var r = if (condensed)
+                condensedNum(value)
+            else
+                value.toFixed(decimals)
         if (unit != "" && showUnit) r += " $unit"
         return r
     }

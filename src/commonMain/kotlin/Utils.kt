@@ -118,3 +118,21 @@ fun pluralize(word: String, count: Int): String {
         else -> "${word}s"
     }
 }
+
+/// convert a number to string without extra trailing zero decimals
+fun toNiceStr(n: Number, maxDecimals: Int) =
+    when (n) {
+        is Int -> n.toString()
+        else-> n.toDouble().toFixed(maxDecimals).trimEnd('0').trimEnd('.', ',')
+    }
+fun condensedNum(n: Number) =  n.toDouble().let { d->
+    if (d >= 1_000_000_000.0) {
+        toNiceStr(d / 1_000_000_000.0, 1) + "B"
+    } else if (d >= 1_000_000.0) {
+        toNiceStr(d / 1_000_000.0, 1) + "M"
+    } else if (d >= 1000.0) {
+        toNiceStr(d / 1000.0, 1) + "K"
+    } else {
+        toNiceStr(n, 1)
+    }
+}
