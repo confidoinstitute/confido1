@@ -158,11 +158,14 @@ val Comment = FC<CommentProps> { props ->
                     text = "Upvote"
                     onClick = { upvote() }
                 }
+                // TODO: Implement downvotes or remove
+                /*
                 FooterAction {
                     icon = DownvoteIcon
                     text = "Downvote"
                     onClick = { downvote() }
                 }
+                */
             } else {
                 // Voting
                 div {
@@ -185,6 +188,8 @@ val Comment = FC<CommentProps> { props ->
 
                     +"${props.commentInfo.likeCount}"
 
+                    // TODO: Implement downvotes or remove
+                    /*
                     FooterVoteAction {
                         icon = if (voteState == VoteState.DOWNVOTED) {
                             DownvoteActiveIcon
@@ -193,6 +198,7 @@ val Comment = FC<CommentProps> { props ->
                         }
                         onClick = { downvote() }
                     }
+                    */
                 }
             }
         }
