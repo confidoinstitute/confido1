@@ -125,7 +125,7 @@ val App = FC<Props> {
     LoginContext.Provider {
         value = Login(isLoggedIn) { isLoggedIn = it }
 
-        if (mobileFlag) {
+        if (mobileFlag || !isLoggedIn) {
             AppMobile { this.isLoggedIn = isLoggedIn }
         } else {
             AppLegacy { this.isLoggedIn = isLoggedIn }
