@@ -53,18 +53,12 @@ val RoomComments = FC<RoomCommentsProps> {props ->
 
     RoomHeader {
         SortButton {
+            options = listOf(SortType.NEWEST, SortType.OLDEST)
             this.sortType = sortType
             onChange = { sort -> sortType = sort }
         }
 
-        Button {
-            css {
-                margin = 0.px
-                padding = 7.px
-                fontSize = 13.px
-                lineHeight = 16.px
-                fontWeight = integer(600)
-            }
+        RoomHeaderButton {
             +"Write a comment"
             onClick = { addCommentOpen = true }
         }
@@ -83,6 +77,7 @@ val RoomComments = FC<RoomCommentsProps> {props ->
         val sortedComments = when (sortType) {
             SortType.NEWEST -> roomComments.data?.entries?.sortedByDescending { it.value.comment.timestamp }
             SortType.OLDEST -> roomComments.data?.entries?.sortedBy { it.value.comment.timestamp }
+            else -> emptyList()
         }
 
         sortedComments?.map {

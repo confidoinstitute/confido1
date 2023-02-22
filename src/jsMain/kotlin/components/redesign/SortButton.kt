@@ -11,14 +11,22 @@ import react.dom.html.ReactHTML.button
 enum class SortType {
     NEWEST,
     OLDEST,
+    SET_BY_MODERATOR,
 }
 
 external interface SortButtonProps : Props {
     var sortType: SortType
     var onChange: ((SortType) -> Unit)?
+    /**
+     * A list of available sort type options.
+     * Defaults to [SortType.NEWEST], [SortType.OLDEST].
+    */
+    var options: List<SortType>?
 }
 
 val SortButton = FC<SortButtonProps> { props ->
+    val options = props.options ?: listOf(SortType.NEWEST, SortType.OLDEST)
+
     button {
         css {
             all = Globals.unset
@@ -44,15 +52,17 @@ val SortButton = FC<SortButtonProps> { props ->
         val text = when (props.sortType) {
             SortType.NEWEST -> "Newest first"
             SortType.OLDEST -> "Oldest first"
+            SortType.SET_BY_MODERATOR -> "Set by moderator"
         }
         +text
 
         onClick = {
-            createRipple(it, rgba(0,0,0,0.2))
-            var newType = when (props.sortType) {
-                SortType.NEWEST -> SortType.OLDEST
-                SortType.OLDEST -> SortType.NEWEST
-            }
+            createRipple(it, rgba(0, 0, 0, 0.2))
+
+            // This will work if the sort type is not within options as well,
+            // falling back to the first option thanks to indexOf returning -1.
+            val nextIndex = (options.indexOf(props.sortType) + 1) % options.size
+            val newType = options[nextIndex]
             props.onChange?.invoke(newType)
         }
     }

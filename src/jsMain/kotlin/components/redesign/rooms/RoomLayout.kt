@@ -4,7 +4,6 @@ import browser.window
 import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.forms.*
-import components.redesign.questions.QuestionList
 import components.rooms.RoomContext
 import components.rooms.RoomMembers
 import csstype.*
@@ -40,6 +39,19 @@ fun PropertiesBuilder.navQuestionTitle() {
     textOverflow = TextOverflow.ellipsis
 }
 
+val RoomHeaderButton = FC<ButtonProps> { props ->
+    Button {
+        css {
+            margin = 0.px
+            padding = 7.px
+            fontSize = 13.px
+            lineHeight = 16.px
+            fontWeight = integer(600)
+        }
+        +props
+    }
+}
+
 val RoomHeader = FC<PropsWithChildren> { props ->
     Stack {
         direction = row
@@ -48,6 +60,9 @@ val RoomHeader = FC<PropsWithChildren> { props ->
             borderBottom = Border(0.5.px, LineStyle.solid, Color("#CCCCCC"))
             justifyContent = JustifyContent.spaceBetween
             padding = Padding(15.px, 14.px, 15.px, 15.px)
+            position = Position.sticky
+            top = 76.px
+            zIndex = integer(20)
         }
 
         +props.children

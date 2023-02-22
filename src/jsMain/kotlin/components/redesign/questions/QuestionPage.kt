@@ -96,7 +96,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
 
     RoomNavbar {
         navigateBack = room.urlPrefix
-        onMenu = {quickSettingsOpen = true}
+        onMenu = { quickSettingsOpen = true }
     }
     Stack {
         component = main
@@ -308,6 +308,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
         }
         if (comments.data?.isNotEmpty() == true) {
             SortButton {
+                options = listOf(SortType.NEWEST, SortType.OLDEST)
                 this.sortType = sortType
                 onChange = { sort -> sortType = sort }
             }
@@ -325,6 +326,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
                 val sortedComments = when (sortType) {
                     SortType.NEWEST -> comments.data.entries.sortedByDescending { it.value.comment.timestamp }
                     SortType.OLDEST -> comments.data.entries.sortedBy { it.value.comment.timestamp }
+                    else -> emptyList()
                 }
                 sortedComments.map {
                     Comment {
