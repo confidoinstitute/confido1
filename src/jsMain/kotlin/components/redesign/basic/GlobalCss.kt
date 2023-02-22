@@ -18,9 +18,11 @@ val GlobalCss = FC<GlobalCssProps> {props ->
                 margin = 0.px
                 padding = 0.px
                 minHeight = 100.vh
+                width = 100.vw
                 backgroundColor = props.backgroundColor
                 display = Display.flex
                 flexDirection = FlexDirection.column
+                overflowX = Overflow.hidden
             }
         }
     }

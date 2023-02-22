@@ -4,7 +4,9 @@ import browser.document
 import csstype.*
 import dom.html.HTMLDivElement
 import emotion.css.keyframes
+import emotion.react.Global
 import emotion.react.css
+import emotion.react.styles
 import react.FC
 import react.Props
 import react.create
@@ -22,6 +24,13 @@ internal val fadeKF = keyframes {
 }
 
 val Backdrop = FC<HTMLAttributes<HTMLDivElement>> {
+    Global {
+        styles {
+            "body" {
+                overflow = Overflow.hidden
+            }
+        }
+    }
     +createPortal(
     ReactHTML.div.create {
         +it
