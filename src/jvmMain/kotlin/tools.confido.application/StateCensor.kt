@@ -64,8 +64,13 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
     fun censorQuestion(q: Question): Question? {
         val room = state.questionRoom[q.ref]?.deref() ?: return null
         if (!room.hasPermission(user, RoomPermission.VIEW_QUESTIONS)) return null
-        var ret = q
         if (!q.visible && !room.hasPermission(user, RoomPermission.VIEW_HIDDEN_QUESTIONS)) return null
+
+        var ret = q
+        // Hide prepared resolutions if question is not set to resolved yet.
+        if (!ret.resolved && !room.hasPermission(user, RoomPermission.VIEW_ALL_RESOLUTIONS)) {
+            ret = ret.copy(resolution = null)
+        }
         return ret
     }
 
