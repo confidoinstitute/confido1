@@ -110,7 +110,7 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
         div {// signpost stem
             css {
                 position = Position.absolute
-                height = 112.px
+                height = 120.px
                 width = 2.px
                 transform = translatex((-50).pct)
                 backgroundColor = Color(kind.color)
