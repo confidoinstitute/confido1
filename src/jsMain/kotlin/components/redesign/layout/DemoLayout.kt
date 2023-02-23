@@ -2,11 +2,11 @@ package components.redesign.layout
 
 import components.DialogCloseButton
 import components.LoginContext
+import components.redesign.forms.Button
 import components.redesign.nouser.LoginByUserSelectInner
 import csstype.*
 import emotion.react.css
 import kotlinx.js.jso
-import mui.material.Button
 import mui.material.ButtonVariant
 import mui.material.Link
 import mui.material.styles.PaletteColor
@@ -101,21 +101,22 @@ val DemoWelcomeBox = FC<Props> {
         css {
             position = Position.relative
             width = 480.px
-            margin = Margin(30.px, 30.px, 60.px)
-            padding = 50.px
-            borderRadius =  4.px
+            margin = Margin(20.px, 20.px, 60.px)
+            padding = 20.px
+            borderRadius =  10.px
             backgroundColor = Color("#fff")
             boxShadow = BoxShadow(0.px, 0.px, 40.px, 0.px, rgba(0, 0, 0, 0.2))
             fontSize = 16.px
             lineHeight = 25.px
         }
-        DialogCloseButton { onClose = { navigate(DEMO_CONTINUE_URL) } }
+        //DialogCloseButton { onClose = { navigate(DEMO_CONTINUE_URL) } }
         h1 {
             css {
                 marginTop =  0.px
                 marginBottom = 24.px
-                fontSize = 26.px
-                lineHeight = 32.px
+                fontSize = 20.px
+                lineHeight = 24.px
+                textAlign = TextAlign.center
             }
             +"Welcome to Confido Demo!"
         }
@@ -138,7 +139,9 @@ val DemoWelcomeBox = FC<Props> {
                 textAlign = TextAlign.center
             }
             Button {
-                variant = ButtonVariant.contained
+                css {
+                    width = 100.pct
+                }
                 onClick = { navigate(DEMO_CONTINUE_URL) }
                 +"Start testing"
             }
