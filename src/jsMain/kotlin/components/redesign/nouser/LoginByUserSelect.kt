@@ -2,6 +2,7 @@ package components.redesign.nouser
 
 import components.LoginContext
 import components.UserAvatar
+import components.redesign.basic.MainPalette
 import components.showError
 import components.userListItemText
 import csstype.*
@@ -17,7 +18,9 @@ import kotlinx.js.jso
 import mui.material.*
 import mui.system.sx
 import react.*
+import react.dom.html.ButtonType
 import react.dom.html.HTMLAttributes
+import react.dom.html.ReactHTML.input
 import tools.confido.refs.ref
 import users.User
 import utils.*
@@ -88,10 +91,20 @@ val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
         options = users ?: emptyArray()
         renderInput = { params ->
             TextField.create {
+                sx {
+                    input {
+                        color = MainPalette.login.text.color
+                        // TODO: there is fontSize 14 and weight 400 in the design, but the placeholder doesn't fit
+                        fontSize = 13.px
+                        fontWeight = integer(300)
+                        lineHeight = 17.px
+                    }
+                    // TODO(Prin): Style border!
+                }
                 Object.assign(this, params)
                 margin = FormControlMargin.normal
-                placeholder = "User name or e-mail"
-                label = ReactNode("Choose account to see Confido from their view")
+                //placeholder = "User name or e-mail"
+                placeholder = "Choose account to see Confido from their view"
                 helperText = props.helperText?.let { ReactNode(it) }
             }
         }
@@ -112,9 +125,14 @@ val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
         onClose = { _, _ -> open = false }
     }
 
-    Button {
-        variant = ButtonVariant.contained
-        fullWidth = true
+    components.redesign.forms.Button {
+        css {
+            marginTop = 14.px
+            width = 100.pct
+            borderRadius = 10.px
+        }
+        type = ButtonType.submit
+        this.palette = MainPalette.default
         disabled = chosenUser == null || login.running
         onClick = { attemptLogin() }
         +"Log in"

@@ -65,32 +65,23 @@ val demoTheme = createTheme(
 val DemoLoginBox = FC<Props> {
     div {
         css {
-            width = 370.px
+            width = 100.pct
+            maxWidth = 400.px
             margin = Margin(30.px, 30.px, 60.px)
             padding =  Padding(30.px, 30.px)
-            borderRadius = 12.px
-            backgroundColor = Color("white")
-            boxShadow = BoxShadow(0.px, 0.px, 40.px, 0.px, rgba(0, 0, 0, 0.2))
         }
-        img {
-            css {
-                display = Display.block
-                width = 220.px
-                marginRight = AUTO
-                marginBottom = 50.px
-                marginLeft = AUTO
-            }
-            src = "/static/logo-horizontal.png"
-        }
-        h1 {
+
+        p {
             css {
                 marginTop = 0.px
                 marginBottom = (30 - 16).px // vpeca's design has 30px, but the MUI autocomplete has 16px padding in itself
-                fontSize = 26.px
-                lineHeight = 32.px
+                fontSize = 20.px
+                lineHeight = 24.px
                 textAlign = TextAlign.center
+                fontFamily = FontFamily.sansSerif
+                fontWeight = integer(700)
             }
-            +"Try Confido Demo"
+            +"Try Confido demo"
         }
         div {
             css {
@@ -98,31 +89,6 @@ val DemoLoginBox = FC<Props> {
             }
             LoginByUserSelectInner {
                 demoMode = true
-            }
-            p {
-                css {
-                    color = Color("#686868")
-                    fontSize = 12.px
-                    lineHeight = 16.px
-                    textAlign =  TextAlign.center
-                }
-                +"This is a live playground. Do not use for serious purposes – everyone can see the data."
-            }
-        }
-
-        div {
-            css {
-                marginBottom = 21.px
-                fontSize = 14.px
-                lineHeight = 18.px
-                fontWeight = 500 as FontWeight
-                textAlign = TextAlign.center
-            }
-            +"Ready to start using Confido?"
-            br{}
-            Link {
-                href=REQUEST_WORKSPACE_URL
-                +"Request a workspace for free"
             }
         }
     }
