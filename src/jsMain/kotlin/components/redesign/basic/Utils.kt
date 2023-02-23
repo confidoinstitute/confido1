@@ -35,12 +35,13 @@ external interface ElementSizeWrapperProps : PropsWithClassName, HTMLAttributes<
     var filler: FC<*>?
 }
 
-fun <P: PropsWithElementSize> elementSizeWrapper(component: FC<P>): FC<P> {
+fun <P: PropsWithElementSize> elementSizeWrapper(component: FC<P>, className: ClassName?=null): FC<P> {
     return FC {props->
         val elementSize = useElementSize<HTMLDivElement>()
         div {
             //className = props.className
             this.ref = elementSize.ref
+            this.className = className
             if (elementSize.known) {
                 component {
                     key = "comp"

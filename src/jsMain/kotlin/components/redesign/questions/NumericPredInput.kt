@@ -4,6 +4,7 @@ import components.redesign.basic.PropsWithElementSize
 import components.redesign.basic.Stack
 import components.redesign.basic.elementSizeWrapper
 import csstype.*
+import emotion.css.ClassName
 import emotion.react.css
 import react.FC
 import react.Props
@@ -12,6 +13,7 @@ import react.useState
 import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.distributions.TruncatedNormalDistribution
 import tools.confido.spaces.NumericSpace
+import tools.confido.utils.toFixed
 
 
 external interface NumericPredInputProps : Props {
@@ -79,8 +81,9 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
     val zoomMgr = props.zoomManager
     val posPx = zoomMgr.space2canvasCssPx(pos)
     val disabled = props.disabled ?: false
-    val focused by useState(false)
-    val pressed by useState(false)
+    var focused by useState(false)
+    var pressed by useState(false)
+    val signpostVisible = focused || pressed
     val svg = "/static/slider-${kind.name.lowercase()}-${if (disabled) "inactive" else "active"}.svg"
     div {
         css {
@@ -92,11 +95,48 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
             transform = centerOrigin
             backgroundImage = url(svg)
             backgroundPositionX = BackgroundPositionX.center
-            zIndex = integer(if (kind == ThumbKind.Center) 4 else 3)
+            zIndex = integer(if (kind == ThumbKind.Center) 5 else 4)
+            "&:focus" {
+                border = None.none
+            }
         }
         tabIndex = 0 // make focusable
+        onFocus = { focused = true }
+        onBlur = { focused = false }
         onMouseDown = {
 
+        }
+    }
+    if (signpostVisible) {
+        div {// signpost stem
+            css {
+                position = Position.absolute
+                height = 112.px
+                width = 2.px
+                transform = translatex((-50).pct)
+                backgroundColor = Color(kind.color)
+                left = posPx.px
+                bottom = 50.pct
+                zIndex = integer(3)
+            }
+        }
+        div {
+            css {
+                position = Position.absolute
+                transform = translatex((-50).pct)
+                backgroundColor = Color(kind.color)
+                left = posPx.px
+                bottom = 132.px
+                zIndex = integer(4)
+                borderRadius = 5.px
+                padding = Padding(4.px,6.px)
+                fontSize = 20.px
+                lineHeight = 24.px
+                fontFamily = FontFamily.sansSerif
+                fontWeight = integer(700)
+                color = NamedColor.white
+            }
+            +pos.toFixed(2)
         }
     }
 }
@@ -110,8 +150,8 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
             minHeight = 40.px
             flexShrink = number(0.0)
             position = Position.relative
-            overflowX = Overflow.hidden
-            overflowY = Overflow.visible
+            // overflowX = Overflow.hidden // FIXME apparently, this does not work
+            // overflowY = Overflow.visible
         }
         val zoomManager = SpaceZoomManager(props.space, props.elementWidth, props.zoomParams ?: ZoomParams())
         NumericPredSliderTrack {
@@ -140,11 +180,17 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
             }
         }
     }
+}, ClassName {
+    // overflowX = Overflow.hidden // FIXME apparently, this does not work
+    // overflowY = Overflow.visible
 })
 
 val NumericPredInput = FC<NumericPredInputProps> { props->
     var zoomParams by useState(ZoomParams())
     Stack {
+        css {
+            overflowX = Overflow.hidden
+        }
         NumericPredGraph {
             space = props.space
             dist = props.dist
