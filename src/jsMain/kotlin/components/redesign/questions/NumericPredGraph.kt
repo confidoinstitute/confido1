@@ -31,19 +31,25 @@ external interface NumericPredGraphProps : PropsWithElementSize {
     var dist: ContinuousProbabilityDistribution?
     var preferredCICenter: Double?
     var zoomable: Boolean?
-    var onZoomChange: ((Double, Double)->Unit)?
+    var onZoomChange: ((ZoomParams)->Unit)?
 }
 
+data class ZoomParams(
+    val xZoomFactor: Double = 1.0,
+    val xPan: Double = 0.0,
+)
+
 class SpaceZoomManager(
-        val space: NumericSpace,
-        val viewportWidth: Double,
-        val xZoomFactor: Double = 1.0,
-        val xPan:Double = 0.0
+    val space: NumericSpace,
+    val viewportWidth: Double,
+    zoomParams: ZoomParams = ZoomParams(),
 ) {
     companion object {
         val SIDE_PAD = 27.0
     }
 
+    val xZoomFactor = zoomParams.xZoomFactor
+    val xPan = zoomParams.xPan
     val xScaleUnzoomed = (viewportWidth - 2*SIDE_PAD) / space.size
     val xScale = xScaleUnzoomed * xZoomFactor
     val graphFullWidth= space.size * xScale // width of the whole graph, in css pixels, at current zoom
@@ -51,6 +57,9 @@ class SpaceZoomManager(
     val xPanMax = maxOf(fullWidth - viewportWidth, 0.0)
     val xPanEffective = minOf(xPan, xPanMax)
     val leftPadVisible = maxOf(SIDE_PAD - xPanEffective, 0.0)
+    val graphRightInViewport = minOf((graphFullWidth + SIDE_PAD) - xPanEffective, viewportWidth)
+    val rightPadVisible = viewportWidth - graphRightInViewport
+
     val leftmostGraphPointPx = maxOf(xPanEffective - SIDE_PAD, 0.0) // from left side of full graph area
     val rightmostGraphPointPx = minOf(xPanEffective + viewportWidth, graphFullWidth)
     val visibleSubspace = space.subspace(leftmostGraphPointPx/xScale, rightmostGraphPointPx/xScale)
@@ -90,7 +99,7 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps> { props->
     var xZoomFactor by useState(1.0) // 1.0 = maximally unzoomed, always >= 1
     var xPan by useState(0.0) // pan along the x-axis, in CSS logical pixels (0 = leftmost part of graph is visible)
 
-    val zoomMgr = SpaceZoomManager(space, logicalWidth, xZoomFactor, xPan)
+    val zoomMgr = SpaceZoomManager(space, logicalWidth, ZoomParams(xZoomFactor, xPan))
 
     useEffect(xPan > zoomMgr.xPanMax) { if (xPan > zoomMgr.xPanMax) xPan = zoomMgr.xPanMax}
 
@@ -120,7 +129,7 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps> { props->
     val yScale = GRAPH_HEIGHT / maxDensity
 
     useEffect(xZoomFactor, xPan) {
-        props.onZoomChange?.invoke(xZoomFactor, xPan)
+        props.onZoomChange?.invoke(ZoomParams(xZoomFactor, xPan))
     }
 
     useLayoutEffect(yTicks, yScale, physicalWidth, physicalHeight) {
@@ -147,6 +156,41 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps> { props->
         }
     }
 
+    Stack {
+        css(ClassName("debug")) {
+            backgroundColor = Color("#ffee58")
+        }
+        table {
+            css {
+                "th,td" { border = Border(1.px, LineStyle.solid, Color("#333")) }
+                borderCollapse = BorderCollapse.collapse
+            }
+            fun dbg(n: String, v: Any) = tr { td {+n}; td{
+                +(if (v is Double) v.toFixed(1) else v.toString())}}
+            dbg("dpr", dpr)
+            dbg("logicalWidth", logicalWidth)
+            dbg("physicalWidth", physicalWidth)
+            dbg("xZoomFactor", xZoomFactor)
+            dbg("xScale", zoomMgr.xScale.toString())
+            dbg("visibleSpace", "${zoomMgr.visibleSubspace.min.toFixed(1)}..${zoomMgr.visibleSubspace.max.toFixed(1)}")
+            dbg("marks", zoomMgr.marks.map{it.toFixed(0)}.joinToString(","))
+        }
+        Slider {
+            min = 1.0
+            max = 10.0
+            step = 0.1
+            value = xZoomFactor
+            onChange = { _, v, _ -> xZoomFactor = v as Double }
+        }
+        Slider {
+            min = 0.0
+            max = zoomMgr.xPanMax
+            step = 0.1
+            value = zoomMgr.xPanEffective
+            onChange = { _, v, _ -> xPan = v as Double }
+        }
+
+    }
     Stack {
         ReactHTML.canvas {
             style = jso {
@@ -190,39 +234,5 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps> { props->
             }
         }
     }
-    Stack {
-        css(ClassName("debug")) {
-            backgroundColor = Color("#ffee58")
-        }
-        table {
-            css {
-                "th,td" { border = Border(1.px, LineStyle.solid, Color("#333")) }
-                borderCollapse = BorderCollapse.collapse
-            }
-            fun dbg(n: String, v: Any) = tr { td {+n}; td{
-                +(if (v is Double) v.toFixed(1) else v.toString())}}
-            dbg("dpr", dpr)
-            dbg("logicalWidth", logicalWidth)
-            dbg("physicalWidth", physicalWidth)
-            dbg("xZoomFactor", xZoomFactor)
-            dbg("xScale", zoomMgr.xScale.toString())
-            dbg("visibleSpace", "${zoomMgr.visibleSubspace.min.toFixed(1)}..${zoomMgr.visibleSubspace.max.toFixed(1)}")
-            dbg("marks", zoomMgr.marks.map{it.toFixed(0)}.joinToString(","))
-        }
-        Slider {
-            min = 1.0
-            max = 10.0
-            step = 0.1
-            value = xZoomFactor
-            onChange = { _, v, _ -> xZoomFactor = v as Double }
-        }
-        Slider {
-            min = 0.0
-            max = zoomMgr.xPanMax
-            step = 0.1
-            value = zoomMgr.xPanEffective
-            onChange = { _, v, _ -> xPan = v as Double }
-        }
 
-    }
 })
