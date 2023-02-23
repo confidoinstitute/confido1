@@ -107,7 +107,6 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
 
         }
     }
-    if (signpostVisible) {
         div {// signpost stem
             css {
                 position = Position.absolute
@@ -118,12 +117,20 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
                 left = posPx.px
                 bottom = 50.pct
                 zIndex = integer(3)
+                visibility = if (signpostVisible) Visibility.visible else Visibility.hidden
             }
         }
         div {
             css {
                 position = Position.absolute
-                transform = translatex((-50).pct)
+                transform = translatex(
+                    if (posPx <= zoomMgr.viewportWidth / 2)
+                        max((-50).pct, (-posPx).px)
+                    else {
+                        val rightSpace = zoomMgr.viewportWidth - posPx
+                        min((-50).pct, "calc(${rightSpace}px - 100%)".unsafeCast<Length>())
+                    }
+                )
                 backgroundColor = Color(kind.color)
                 left = posPx.px
                 bottom = 132.px
@@ -135,10 +142,10 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
                 fontFamily = FontFamily.sansSerif
                 fontWeight = integer(700)
                 color = NamedColor.white
+                visibility = if (signpostVisible) Visibility.visible else Visibility.hidden
             }
             +pos.toFixed(2)
         }
-    }
 }
 
 
