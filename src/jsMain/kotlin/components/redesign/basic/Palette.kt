@@ -48,3 +48,14 @@ enum class QuestionPalette(override val color: Color): Palette {
 external interface PropsWithPalette<P: Palette>: Props {
     var palette: P?
 }
+
+val RGB_RE = Regex("^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$")
+fun Color.addAlpha(alpha: String): Color {
+    val s = this.toString()
+    val m = RGB_RE.matchEntire(s)
+    if (m == null) return this // cannot handle this color
+    val r = m.groupValues[1].toInt(16)
+    val g = m.groupValues[2].toInt(16)
+    val b = m.groupValues[3].toInt(16)
+    return Color("rgba($r,$g,$b,$alpha)")
+}

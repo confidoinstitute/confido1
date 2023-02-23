@@ -159,7 +159,7 @@ val RoomLayout = FC<Props> {
                 position = Position.fixed
                 width = 100.pct
                 height = 30.px
-                background = linearGradient(stop(palette.color, 0.pct), stop(rgba(0, 0, 0, 0.0), 100.pct))
+                background = linearGradient(stop(palette.color, 0.pct), stop(palette.color.addAlpha("0"), 100.pct))
                 zIndex = integer(1)
             }
         }
