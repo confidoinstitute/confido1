@@ -108,7 +108,7 @@ external interface BinaryPredSliderProps : PredictionInputProps, PropsWithElemen
 }
 val BIN_PRED_SPACE = NumericSpace(0.0, 100.0, unit="%")
 val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
-    val zoomManager = SpaceZoomManager(BIN_PRED_SPACE, props.elementWidth)
+    val zoomMgr = SpaceZoomManager(BIN_PRED_SPACE, props.elementWidth)
     val propProb = (props.dist as? BinaryDistribution)?.yesProb
     var yesProb by useState<Double?>(propProb)
     useEffect(propProb) {
@@ -119,6 +119,38 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
         props.onChange?.invoke(BinaryDistribution(newProb))
         if (isCommit)
             props.onCommit?.invoke(BinaryDistribution(newProb))
+    }
+
+    div {
+        key="percent_labels"
+        css {
+            height = 16.px
+            flexGrow = number(0.0)
+            flexShrink = number(0.0)
+            fontSize = 10.px // TODO: use larger font on desktop
+            color = Color("rgba(0,0,0,30%)")
+            lineHeight = 12.1.px
+            position = Position.relative
+            fontFamily = FontFamily.sansSerif
+            fontWeight = integer(600)
+        }
+        (0..100 step 10).forEachIndexed {idx, value->
+            div {
+                style = jso {
+                    left = zoomMgr.space2canvasCssPx(value.toDouble()).px
+                    top = 50.pct
+                }
+                css {
+                    val xtrans = when(idx) {
+                        0 -> max((-50).pct, (-SpaceZoomManager.SIDE_PAD).px)
+                        else -> (-50).pct
+                    }
+                    transform = translate(xtrans, (-50).pct)
+                    position = Position.absolute
+                }
+                + "${value}%"
+            }
+        }
     }
     div {
         key = "sliderArea"
@@ -147,20 +179,20 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
                 }
                 +"Tap here to create an estimate"// TODO choose "tap"/"click" based on device
                 onClick = { ev ->
-                    val newProb = zoomManager.canvasCssPx2space(ev.nativeEvent.offsetX) / 100.0
+                    val newProb = zoomMgr.canvasCssPx2space(ev.nativeEvent.offsetX) / 100.0
                     update(newProb, true)
                 }
             }
         else {
             SliderTrack {
                 key = "track"
-                this.zoomManager = zoomManager
+                this.zoomManager = zoomMgr
             }
 
             SliderThumb{
                 key = "thumb_center"
                 this.containerElement = props.element
-                this.zoomManager = zoomManager
+                this.zoomManager = zoomMgr
                 kind = ThumbKind.Center
                 pos = 100.0 * yesProb!!
                 onDrag = { pos, isCommit ->
@@ -170,6 +202,43 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
             }
         }
 
+    }
+    div {
+        key="word_labels"
+        css {
+            height = 16.px
+            flexGrow = number(0.0)
+            flexShrink = number(0.0)
+            fontSize = 10.px // TODO: use larger font on desktop
+            color = Color("rgba(0,0,0,30%)")
+            lineHeight = 12.1.px
+            position = Position.relative
+            fontFamily = FontFamily.sansSerif
+            fontWeight = integer(600)
+        }
+        listOf(
+            0 to "No",
+            25 to "Improbable",
+            50 to "Even odds",
+            75 to "Probable",
+            100 to "Yes",
+        ).forEachIndexed {idx, (value, text)->
+            div {
+                style = jso {
+                    left = zoomMgr.space2canvasCssPx(value.toDouble()).px
+                    top = 50.pct
+                }
+                css {
+                    val xtrans = when(idx) {
+                        0 -> max((-50).pct, (-SpaceZoomManager.SIDE_PAD).px)
+                        else -> (-50).pct
+                    }
+                    transform = translate(xtrans, (-50).pct)
+                    position = Position.absolute
+                }
+                + text
+            }
+        }
     }
 })
 

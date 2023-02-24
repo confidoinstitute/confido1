@@ -76,11 +76,11 @@ class SpaceZoomManager(
 }
 
 
+val LABELS_HEIGHT = 24.0
 val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps> { props->
     val ABOVE_GRAPH_PAD = 8.0
     val GRAPH_TOP_PAD = 33.0
     val GRAPH_HEIGHT = 131.0
-    val LABELS_HEIGHT = 24.0
     val dist = props.dist
     val canvas = useRef<HTMLCanvasElement>()
     val space = props.space
