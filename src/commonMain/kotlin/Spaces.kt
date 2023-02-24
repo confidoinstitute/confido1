@@ -109,8 +109,7 @@ data class NumericSpace(
     val size get() = max - min
 
     fun subspace(min: Double, max: Double): NumericSpace {
-        if (min < this.min || max > this.max) throw IllegalArgumentException()
-        return this.copy(min = min, max = max)
+        return this.copy(min = maxOf(this.min,min), max = minOf(this.max,max))
     }
 
     infix fun issubspace(other: NumericSpace): Boolean {
