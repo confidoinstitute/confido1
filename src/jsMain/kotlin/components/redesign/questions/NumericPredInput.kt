@@ -131,6 +131,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
         dist?.let { props.onChange?.invoke(dist) }
     }
     div {
+        key="sliderArea"
         css {
             height = 40.px
             minHeight = 40.px
@@ -193,6 +194,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
             }
         if (center == null) {
             div {
+                key = "setCenter"
                 css {
                     fontFamily = FontFamily.sansSerif
                     fontWeight = integer(600)
@@ -214,6 +216,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
             }
         } else if (dist == null) {
             div {
+                key = "setUncertainty"
                 css {
                     val pxCenter = zoomManager.space2canvasCssPx(center!!)
                     if (pxCenter < props.elementWidth / 2.0)
