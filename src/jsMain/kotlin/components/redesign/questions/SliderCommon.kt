@@ -23,21 +23,12 @@ fun ThumbKind.svg(disabled: Boolean) =
     "/static/slider-${name.lowercase()}-${if (disabled) "inactive" else "active"}.svg"
 
 
-external interface SliderThumbProps : Props {
-    var containerElement: HTMLElement
-    var zoomManager: SpaceZoomManager
-    var pos: Double
-    var onThumbChange: ((Double)->Unit)?
-    var onThumbCommit: ((Double)->Unit)?
-    var disabled: Boolean?
-    var kind: ThumbKind
-}
 private class DragEventManager(
     val container: HTMLElement,
     val draggableRef: RefObject<HTMLElement>,
     var onClick: (()->Unit)? = null,
     var onDragStart: (() -> Unit)? = null,
-    var onDrag: ((Double) -> Unit)? = null,
+    var onDrag: ((Double, Boolean) -> Unit)? = null,
     var onDragEnd: (() -> Unit)? = null,
 ) {
     companion object {
@@ -56,7 +47,7 @@ private class DragEventManager(
         val newPos = clientX - pressOffset - container.getBoundingClientRect().left
         maxDist = maxOf(maxDist, abs(clientX - startClientX))
         if (maxDist >= 3)
-            this.onDrag?.invoke(newPos)
+            this.onDrag?.invoke(newPos, false)
     }
     private fun onWindowMouseMove(ev: org.w3c.dom.events.Event) {
         val mouseEvent = ev as org.w3c.dom.events.MouseEvent
@@ -85,7 +76,7 @@ private class DragEventManager(
         if (maxDist < 3) {
             this.onClick?.invoke()
         } else {
-            this.onDrag?.invoke(newPos)
+            this.onDrag?.invoke(newPos, true)
         }
         this.onDragEnd?.invoke()
     }
@@ -176,7 +167,7 @@ private fun useDragEventManager(
     draggableRef: react.RefObject<HTMLElement>,
     onClick: (() -> Unit)? = null,
     onDragStart: (() -> Unit)? = null,
-    onDrag: ((Double) -> Unit)? = null,
+    onDrag: ((Double, Boolean) -> Unit)? = null,
     onDragEnd: (() -> Unit)? = null,
 ): DragEventManager {
     val mgr = useMemo { DragEventManager(container, draggableRef=draggableRef,
@@ -197,6 +188,16 @@ private fun useDragEventManager(
         }
     }
     return mgr
+}
+external interface SliderThumbProps : Props {
+    var containerElement: HTMLElement
+    var zoomManager: SpaceZoomManager
+    var pos: Double
+    var onDrag: ((Double, Boolean)->Unit)?
+    var onDragEnd: (()->Unit)?
+    var onDragStart: (()->Unit)?
+    var disabled: Boolean?
+    var kind: ThumbKind
 }
 val SliderThumb = FC<SliderThumbProps> {props->
     val pos = props.pos
@@ -219,9 +220,10 @@ val SliderThumb = FC<SliderThumbProps> {props->
                                 thumbRef.current?.focus()
                                 dragFocused = true
                             }
+                            props.onDragStart?.invoke()
                       },
-        onDrag = {props.onThumbChange?.invoke(zoomMgr.canvasCssPx2space(it))},
-        onDragEnd = {pressed=false},
+        onDrag = { pos, isCommit -> props.onDrag?.invoke(zoomMgr.canvasCssPx2space(pos), isCommit)},
+        onDragEnd = {pressed=false },
         onClick = {
             thumbRef.current?.focus()
             dragFocused = false

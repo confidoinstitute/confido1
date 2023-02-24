@@ -6,6 +6,7 @@ import react.Props
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.distributions.ProbabilityDistribution
+import tools.confido.distributions.TruncatedNormalDistribution
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.NumericSpace
 import tools.confido.spaces.Space
@@ -13,14 +14,15 @@ import tools.confido.spaces.Space
 external interface PredictionInputProps : Props {
     var space: Space
     var dist: ProbabilityDistribution?
+    var onChange: ((ProbabilityDistribution) -> Unit)?
+    var onCommit: ((ProbabilityDistribution) -> Unit)?
 }
 
 val PredictionInput = FC<PredictionInputProps> { props->
     val space = props.space
     when (space) {
         is NumericSpace -> NumericPredInput{
-                this.space = space
-                this.dist = props.dist as? ContinuousProbabilityDistribution?
+                +props
             }
         else -> +"Not implemented"
     }

@@ -1,6 +1,8 @@
 package components.redesign.questions
 
 import components.AppStateContext
+import components.questions.PendingPredictionState
+import components.questions.lastCommentSnackTS
 import components.redesign.*
 import components.redesign.comments.Comment
 import components.redesign.basic.*
@@ -12,9 +14,12 @@ import components.rooms.RoomContext
 import components.showError
 import csstype.*
 import emotion.react.css
+import hooks.useDebounce
 import hooks.useDocumentTitle
+import hooks.useOnUnmount
 import hooks.useWebSocket
 import io.ktor.http.*
+import kotlinx.serialization.encodeToString
 import payloads.responses.CommentInfo
 import payloads.responses.WSData
 import react.FC
@@ -26,10 +31,14 @@ import react.router.useNavigate
 import react.useContext
 import react.useState
 import rooms.RoomPermission
+import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.refs.ref
+import tools.confido.serialization.confidoJSON
 import tools.confido.spaces.Value
+import tools.confido.state.enabled
+import tools.confido.utils.unixNow
 import utils.questionUrl
 import utils.roomPalette
 import utils.roomUrl
@@ -166,7 +175,33 @@ private val QuestionEstimateTabButton = FC<QuestionEstimateTabButtonProps> { pro
 private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props ->
     // false = your estimate open
     // true = group estimate open
+    val question = props.question
     var groupPredictionOpen by useState(false)
+
+    var pendingPrediction: ProbabilityDistribution? by useState(null) // to be submitted
+    var predictionPreview: ProbabilityDistribution? by useState(null) // continuously updated preview
+    var pendingPredictionState by useState(PendingPredictionState.NONE)
+
+    useDebounce(5000, pendingPredictionState.toString()) {
+        if (pendingPredictionState in listOf(PendingPredictionState.ACCEPTED, PendingPredictionState.ERROR))
+            pendingPredictionState = PendingPredictionState.NONE
+    }
+
+    useDebounce(1000, confidoJSON.encodeToString(pendingPrediction)) {
+        pendingPrediction?.let { dist ->
+            runCoroutine {
+                pendingPredictionState = PendingPredictionState.SENDING
+                Client.sendData("${question.urlPrefix}/predict", dist, onError = {
+                    pendingPredictionState = PendingPredictionState.ERROR
+                }) {
+                    pendingPredictionState = PendingPredictionState.ACCEPTED
+                }
+                pendingPrediction = null
+            }
+        }
+    }
+    useOnUnmount(pendingPrediction) { runCoroutine { Client.sendData("${question.urlPrefix}/predict", it, onError = {showError?.invoke(it)}) {} } }
+
 
     // Tabs
     Stack {
@@ -198,7 +233,17 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
         if (!groupPredictionOpen) {
             PredictionInput {
                 space = props.question.answerSpace
-                dist = props.myPrediction?.dist
+                this.dist = props.myPrediction?.dist
+                this.onChange = {
+                    pendingPrediction = null
+                    pendingPredictionState = PendingPredictionState.MAKING
+                    predictionPreview = it
+                }
+                this.onCommit = {
+                    console.log("ONCOMMIT")
+                    pendingPrediction = it
+                    predictionPreview = null
+                }
             }
         } else {
             PredictionGraph {
@@ -216,7 +261,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
         }
     } else {
         MyPredictionDescription {
-            this.prediction = props.myPrediction
+            this.dist = predictionPreview ?: pendingPrediction ?: props.myPrediction?.dist
             this.resolved = props.resolved
         }
     }

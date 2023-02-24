@@ -8,12 +8,13 @@ import react.Props
 import react.dom.html.ReactHTML
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ContinuousProbabilityDistribution
+import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.Prediction
 import tools.confido.utils.formatPercent
 
 external interface MyPredictionDescriptionProps : Props {
     var resolved: Boolean
-    var prediction: Prediction?
+    var dist: ProbabilityDistribution?
 }
 
 external interface GroupPredictionDescriptionProps : Props {
@@ -169,7 +170,7 @@ val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
             fontSize = 15.px
             lineHeight = 18.px
         }
-        when (val dist = props.prediction?.dist) {
+        when (val dist = props.dist) {
             is BinaryDistribution -> {
                 var optionColor = noColor
                 var answer = "No"
