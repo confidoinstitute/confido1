@@ -95,24 +95,16 @@ val AppLegacy = memo(FC<AppProps> { props ->
 
 val AppMobile = memo(FC<AppProps> {props ->
     val isLoggedIn = props.isLoggedIn
-    val isDemo = appConfig.demoMode
     val layout = if (!isLoggedIn)
         components.redesign.layout.NoUserLayout
     else
-        if (!isDemo) components.redesign.layout.RootLayout else components.redesign.layout.DemoLayout
+        components.redesign.layout.RootLayout
 
     BrowserRouter {
         Routes {
-            if (isDemo) {
-                Route {
-                    path = "/"
-                    index = true
-                    element = layout.create {}
-                }
-            }
             Route {
                 path = "/*"
-                index = !isDemo
+                index = true
                 element = layout.create {}
             }
         }

@@ -5,6 +5,7 @@ import components.LoginContext
 import components.redesign.forms.Button
 import components.redesign.nouser.LoginByUserSelectInner
 import csstype.*
+import emotion.css.keyframes
 import emotion.react.css
 import kotlinx.js.jso
 import react.FC
@@ -58,20 +59,38 @@ val DemoLoginBox = FC<Props> {
     }
 }
 
-val DemoWelcomeBox = FC<Props> {
-    val navigate = useNavigate()
+external interface DemoWelcomeBoxProps : Props {
+    var dismissDemo: () -> Unit
+}
 
+val demoWelcomeKeyframes = keyframes {
+    from {
+        transform = listOf(translate(-50.pct, -50.pct), scale(0)).joinToString(" ") { it.toString() }.asDynamic()
+    }
+
+    to {
+        transform = listOf(translate(-50.pct, -50.pct), scale(1)).joinToString(" ") { it.toString() }.asDynamic()
+    }
+}
+
+val DemoWelcomeBox = FC<DemoWelcomeBoxProps> {props ->
     div {
         css {
-            position = Position.relative
+            position = Position.absolute
+            left = 50.pct
+            top = 50.pct
+            transform = translate(-50.pct, -50.pct)
             width = 480.px
-            margin = Margin(20.px, 20.px, 60.px)
             padding = 20.px
             borderRadius =  10.px
             backgroundColor = Color("#fff")
             boxShadow = BoxShadow(0.px, 0.px, 40.px, 0.px, rgba(0, 0, 0, 0.2))
             fontSize = 16.px
             lineHeight = 25.px
+            zIndex = integer(2500)
+            animationName = demoWelcomeKeyframes
+            animationDuration = 0.25.s
+            animationTimingFunction = AnimationTimingFunction.easeOut
         }
         //DialogCloseButton { onClose = { navigate(DEMO_CONTINUE_URL) } }
         h1 {
@@ -110,39 +129,9 @@ val DemoWelcomeBox = FC<Props> {
                 css {
                     width = 100.pct
                 }
-                onClick = { navigate(DEMO_CONTINUE_URL) }
+                onClick = { props.dismissDemo() }
                 +"Start testing"
             }
-        }
-    }
-}
-
-val DemoLayout = FC<Props> {
-    val loginState = useContext(LoginContext)
-    div {
-        css {
-            position = Position.absolute
-            top = 0.px
-            left = 0.px
-            width = 100.vw
-            minHeight = 100.vh
-            //backgroundImage = url("/static/demo_bg.jpg")
-            backgroundColor = Color("#00000080")  // black, 50% transparent
-            display = Display.flex
-            justifyContent = JustifyContent.center
-            alignItems = AlignItems.center
-            backgroundPosition = "0 0" as BackgroundPosition
-            backgroundSize = BackgroundSize.cover
-            backgroundRepeat = BackgroundRepeat.noRepeat
-            fontSize = 16.px
-            lineHeight = 25.px
-            fontFamily = FontFamily.sansSerif
-            //fontFamily = "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif" as FontFamily
-        }
-        if (loginState.isLoggedIn) {
-            DemoWelcomeBox {}
-        } else {
-            DemoLoginBox {}
         }
     }
 }

@@ -16,6 +16,7 @@ import react.dom.html.ReactHTML
 
 internal val fadeKF = keyframes {
     0.pct {
+        backdropFilter = None.none
         opacity = number(0.0)
     }
     100.pct {
@@ -34,7 +35,7 @@ val Backdrop = FC<HTMLAttributes<HTMLDivElement>> {
     +createPortal(
     ReactHTML.div.create {
         +it
-        css {
+        css(override=it) {
             position = Position.fixed
             top = 0.px
             width = 100.pct

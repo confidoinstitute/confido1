@@ -1,11 +1,14 @@
 package components.redesign
 
+import browser.window
 import components.AppStateContext
 import components.LoginContext
+import components.redesign.basic.Backdrop
 import components.redesign.basic.DialogMenu
 import components.redesign.basic.DialogMenuItem
 import components.redesign.basic.Stack
 import components.redesign.forms.IconButton
+import components.redesign.layout.DemoWelcomeBox
 import components.redesign.questions.QuestionSticker
 import components.redesign.rooms.RoomList
 import components.showError
@@ -19,6 +22,7 @@ import react.dom.html.ReactHTML.header
 import react.dom.html.ReactHTML.main
 import react.router.useNavigate
 import tools.confido.refs.deref
+import tools.confido.state.appConfig
 import utils.runCoroutine
 
 internal fun ChildrenBuilder.title(text: String) = div {

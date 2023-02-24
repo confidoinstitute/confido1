@@ -1,19 +1,23 @@
 package components.redesign.layout
 
+import browser.window
 import components.AppStateContext
 import components.AppStateWebsocketProvider
 import components.layout.RoomRedirect
 import components.nouser.EmailLoginAlreadyLoggedIn
 import components.profile.VerifyToken
 import components.redesign.Dashboard
+import components.redesign.basic.Backdrop
 import components.redesign.basic.GlobalCss
 import components.redesign.rooms.Room
 import components.redesign.rooms.RoomInviteLoggedIn
 import csstype.*
+import emotion.react.css
 import react.*
 import react.router.Navigate
 import react.router.Route
 import react.router.Routes
+import tools.confido.state.appConfig
 
 val RootLayout = FC<Props> {
     AppStateWebsocketProvider {
@@ -24,6 +28,18 @@ val RootLayout = FC<Props> {
 
 private val RootLayoutInner = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
+
+    var showDemoWelcome by useState(appConfig.demoMode && window.asDynamic().demoDismissed != true)
+
+    if (showDemoWelcome) {
+        Backdrop {
+            css {
+                backdropFilter = blur(10.px)
+                background = None.none
+            }
+        }
+        DemoWelcomeBox { dismissDemo = {showDemoWelcome = false; window.asDynamic().demoDismissed = true}}
+    }
 
     GlobalCss {
         backgroundColor = Color("#F2F2F2")
