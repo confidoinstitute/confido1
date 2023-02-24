@@ -106,6 +106,8 @@ private class DragEventManager(
     var pressType: PressType = PressType.MOUSE
     var pressOffset: Double = 0.0
     var touchId: Double = 0.0
+    var maxDist: Double = 0.0
+    var startPos: Double = 0.0
 
     fun doMove(clientX: Double) {
         if (!pressed) return
@@ -200,7 +202,10 @@ private class DragEventManager(
     }
     fun onTouchStart(event: org.w3c.dom.events.Event) {
         if (pressed) return
-        startDrag(PressType.TOUCH, 0.0)
+        // When using touch, we force offset to be 0, i.e. the thumb will always be centered
+        // under the finger, regardless of where you touched it at the start. That seems more
+        // intuitive.
+        startDrag(PressType.TOUCH, 0.0, )
         touchId = (event as TouchEvent).changedTouches.item(0)?.identifier ?: 0.0
         installWindowListener("touchmove", this::onWindowTouchMove, windowEventOpts)
         installWindowListener("touchend", this::onWindowTouchEnd, windowEventOpts)

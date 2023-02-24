@@ -62,7 +62,7 @@ class SpaceZoomManager(
 
     val leftmostGraphPointPx = maxOf(xPanEffective - SIDE_PAD, 0.0) // from left side of full graph area
     val rightmostGraphPointPx = minOf(xPanEffective + viewportWidth, graphFullWidth)
-    val visibleSubspace = space.subspace(leftmostGraphPointPx/xScale, rightmostGraphPointPx/xScale)
+    val visibleSubspace = space.subspace(space.min + leftmostGraphPointPx/xScale, space.min + rightmostGraphPointPx/xScale)
     val visibleGraphWidth = rightmostGraphPointPx - leftmostGraphPointPx
 
     //val marks = markSpacing(visibleGraphWidth, visibleSubspace.min, visibleSubspace.max, { visibleSubspace.formatValue(it, false, true) })
@@ -174,7 +174,12 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps> { props->
             dbg("xZoomFactor", xZoomFactor)
             dbg("xScale", zoomMgr.xScale.toString())
             dbg("visibleSpace", "${zoomMgr.visibleSubspace.min.toFixed(1)}..${zoomMgr.visibleSubspace.max.toFixed(1)}")
-            dbg("marks", zoomMgr.marks.map{it.toFixed(0)}.joinToString(","))
+            dbg("marks", zoomMgr.marks.map{it.toFixed(1)}.joinToString(","))
+            dbg("leftPadVisible", zoomMgr.leftPadVisible)
+            dbg("graphFullWidth", zoomMgr.graphFullWidth)
+            dbg("fullWidth", zoomMgr.fullWidth)
+            dbg("space.size", zoomMgr.space.size)
+            dbg("graphPointPx", "${zoomMgr.leftmostGraphPointPx.toFixed(1)}..${zoomMgr.rightmostGraphPointPx.toFixed(1)}")
         }
         Slider {
             min = 1.0

@@ -8,9 +8,9 @@ import kotlin.math.floor
 fun roundNumbers() = sequence {
     var base = 1.0
     while (true) {
-        yield(base)
-        yield(2*base)
-        yield(5*base)
+        yield(base / 10.0)
+        yield(2*base / 10.0)
+        yield(5*base / 10.0)
         base *= 10
     }
 }

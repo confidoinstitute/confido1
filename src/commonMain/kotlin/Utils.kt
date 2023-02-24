@@ -122,7 +122,7 @@ fun pluralize(word: String, count: Int): String {
 /// convert a number to string without extra trailing zero decimals
 fun toNiceStr(n: Number, maxDecimals: Int) =
     when (n) {
-        is Int -> n.toString()
+        //is Int -> n.toString() // XXX seems broken
         else-> n.toDouble().toFixed(maxDecimals).trimEnd('0').trimEnd('.', ',')
     }
 fun condensedNum(n: Number) =  n.toDouble().let { d->
