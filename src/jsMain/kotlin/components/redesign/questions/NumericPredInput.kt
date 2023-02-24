@@ -50,11 +50,13 @@ private val NumericPredSliderTrack = FC<NumericPredSliderInternalProps> {props->
             backgroundColor = Color("#4c4c4c")
             borderRadius = 2.px
             position = Position.absolute
-            left = (zoomMgr.leftPadVisible - 2).px
-            right = (zoomMgr.rightPadVisible - 2).px
             top = 50.pct
             transform = translatey((-50).pct)
             zIndex = integer(1)
+        }
+        style = jso {
+            left = (zoomMgr.leftPadVisible - 2).px
+            right = (zoomMgr.rightPadVisible - 2).px
         }
     }
     zoomMgr.marks.forEach {value->
@@ -62,13 +64,16 @@ private val NumericPredSliderTrack = FC<NumericPredSliderInternalProps> {props->
             css {
                 position = Position.absolute
                 top = 50.pct
-                left = zoomMgr.space2canvasCssPx(value).px
                 width = 2.px
                 height = 2.px
                 backgroundColor = NamedColor.white
                 borderRadius = 1.px
                 zIndex = integer(2)
                 transform = centerOrigin
+            }
+
+            style = jso {
+                left = zoomMgr.space2canvasCssPx(value).px
             }
         }
     }
@@ -239,7 +244,6 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
             width = 38.px
             height = 40.px
             top = 50.pct
-            left = posPx.px
             transform = centerOrigin
             backgroundImage = url(svg)
             backgroundPositionX = BackgroundPositionX.center
@@ -250,6 +254,9 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
                 border = None.none
                 outline = None.none
             }
+        }
+        style = jso {
+            left = posPx.px
         }
         tabIndex = 0 // make focusable
         onFocus = { focused = true }
@@ -269,25 +276,18 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
                 width = 2.px
                 transform = translatex((-50).pct)
                 backgroundColor = Color(kind.color)
-                left = posPx.px
                 bottom = 50.pct
                 zIndex = integer(3)
                 visibility = if (signpostVisible) Visibility.visible else Visibility.hidden
+            }
+            style = jso {
+                left = posPx.px
             }
         }
         div {
             css {
                 position = Position.absolute
-                transform = translatex(
-                    if (posPx <= zoomMgr.viewportWidth / 2)
-                        max((-50).pct, (-posPx).px)
-                    else {
-                        val rightSpace = zoomMgr.viewportWidth - posPx
-                        min((-50).pct, "calc(${rightSpace}px - 100%)".unsafeCast<Length>())
-                    }
-                )
                 backgroundColor = Color(kind.color)
-                left = posPx.px
                 bottom = 132.px
                 zIndex = integer(4)
                 borderRadius = 5.px
@@ -298,6 +298,17 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
                 fontWeight = integer(700)
                 color = NamedColor.white
                 visibility = if (signpostVisible) Visibility.visible else Visibility.hidden
+            }
+            style = jso {
+                transform = translatex(
+                    if (posPx <= zoomMgr.viewportWidth / 2)
+                        max((-50).pct, (-posPx).px)
+                    else {
+                        val rightSpace = zoomMgr.viewportWidth - posPx
+                        min((-50).pct, "calc(${rightSpace}px - 100%)".unsafeCast<Length>())
+                    }
+                )
+                left = posPx.px
             }
             +pos.toFixed(2)
         }
