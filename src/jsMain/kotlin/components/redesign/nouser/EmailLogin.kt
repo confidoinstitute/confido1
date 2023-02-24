@@ -1,7 +1,6 @@
 package components.redesign.nouser
 
 import components.LoginContext
-import components.redesign.basic.Alert
 import components.redesign.basic.Backdrop
 import components.redesign.basic.MainPalette
 import components.redesign.basic.Stack
@@ -15,7 +14,10 @@ import react.router.useNavigate
 import utils.themed
 
 import react.FC
-import react.dom.html.ReactHTML.h3
+import react.dom.html.ReactHTML
+import react.dom.html.ReactHTML.b
+import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.p
 import react.router.dom.useSearchParams
 import utils.runCoroutine
 
@@ -47,11 +49,27 @@ val EmailLogin = FC<Props> {
                 maxWidth = 400.px
                 padding = Padding(0.px, 15.px)
             }
-            Alert {
-                h3 {
-                    +"Authentication failed"
+            div {
+                css {
+                    marginBottom = 3.px
+                    padding = Padding(10.px, 12.px)
+                    textAlign = TextAlign.center
+                    color = Color("#FF7070")  // TODO(Prin): use a palette.
+                    width = 100.pct
+
+                    fontSize = 14.px
+                    lineHeight = 17.px
+                    fontWeight = integer(400)
+                    fontFamily = FontFamily.sansSerif
                 }
-                +"The login link is expired or invalid."
+                p {
+                    b {
+                        +"Unable to log in"
+                    }
+                }
+                p {
+                    +"The login link is expired or invalid."
+                }
             }
 
             Button {
