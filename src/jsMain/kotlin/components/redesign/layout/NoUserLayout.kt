@@ -66,16 +66,7 @@ val NoUserLayout = FC<Props> {
 
 val LandingPage = FC<Props> {
     if (appConfig.demoMode) {
-        Typography {
-            align = TypographyAlign.center
-            variant = TypographyVariant.h5
-            component = ReactHTML.h1
-            +"Log in to Confido demo"
-        }
-
-        LoginByUserSelectForm {
-            helperText = "Try any account to see Confido from their point of view."
-        }
+        DemoLoginBox {}
     } else {
         LoginForm {}
     }

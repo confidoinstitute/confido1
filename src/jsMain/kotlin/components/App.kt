@@ -3,7 +3,6 @@ package components
 import browser.document
 import components.layout.*
 import csstype.*
-import hooks.useDocumentTitle
 import kotlinx.js.jso
 import mui.material.*
 import mui.material.styles.PaletteColor
@@ -96,20 +95,16 @@ val AppLegacy = memo(FC<AppProps> { props ->
 
 val AppMobile = memo(FC<AppProps> {props ->
     val isLoggedIn = props.isLoggedIn
-    val isDemo = appConfig.demoMode
-    val layout = if (isLoggedIn) components.redesign.layout.RootLayout else components.redesign.layout.NoUserLayout
+    val layout = if (!isLoggedIn)
+        components.redesign.layout.NoUserLayout
+    else
+        components.redesign.layout.RootLayout
 
     BrowserRouter {
         Routes {
-            if (isDemo)
-                Route {
-                    path = "/"
-                    index = true
-                    element = DemoLayout.create {}
-                }
             Route {
                 path = "/*"
-                index = !isDemo
+                index = true
                 element = layout.create {}
             }
         }
