@@ -126,7 +126,7 @@ private class DragEventManager(
         pressed = false
         anyPressed = false
         console.log("end thumb drag")
-        installWindowListeners(pressType, false)
+        uninstallWindowListeners()
         val newPos = clientX - pressOffset - container.clientLeft
         this.onDrag?.invoke(newPos)
         this.onDragEnd?.invoke(newPos)
@@ -145,19 +145,31 @@ private class DragEventManager(
         ev.stopPropagation()
         ev.preventDefault()
     }
-    fun installWindowListeners(type: PressType, install: Boolean) {
-        val func: (String, ((org.w3c.dom.events.Event)->Unit)?, dynamic)->Unit =
-            if (install) window::addEventListener else window::removeEventListener
-        when (type) {
-            PressType.MOUSE -> {
-                func("mousemove", this::onWindowMouseMove, windowEventOpts)
-                func("mouseup", this::onWindowMouseUp, windowEventOpts)
-            }
-            PressType.TOUCH -> {
-                func("touchmove", this::onWindowTouchMove, windowEventOpts)
-                func("touchend", this::onWindowTouchEnd, windowEventOpts)
-            }
+
+    data class EventListenerSpec(
+        val eventName: String,
+        val handler: ((org.w3c.dom.events.Event)->Unit)?,
+        val options: dynamic,
+    )
+    val installedWindowListeners: MutableSet<EventListenerSpec> = mutableSetOf()
+    fun installWindowListener(
+        eventName: String,
+        handler: ((org.w3c.dom.events.Event)->Unit)?,
+        options: dynamic,
+    ) {
+        // We have to save the exact parameters used to call addEventHandler so that
+        // we can later call removeEventHandler with the same parameters. Especially,
+        // removeEventHandler checks function identity. And Kotlin generates a new
+        // wrapper function each time you reference this::method, so
+        // removeEventHandler(this::method) would never work
+        installedWindowListeners.add(EventListenerSpec(eventName, handler, options))
+        window.addEventListener(eventName, handler, options)
+    }
+    fun uninstallWindowListeners() {
+        installedWindowListeners.forEach {
+            window.removeEventListener(it.eventName, it.handler, it.options)
         }
+        installedWindowListeners.clear()
     }
     fun startDrag(type: PressType, off: Double) {
         if (pressed) return
@@ -169,17 +181,23 @@ private class DragEventManager(
         pressOffset = off
         pressType = type
         console.log("start thumb drag")
-        installWindowListeners(type, true)
         onDragStart?.invoke()
     }
     fun onMouseDown(event: react.dom.events.MouseEvent<HTMLElement,*>) {
         val off = event.nativeEvent.offsetX - (event.target as HTMLElement).clientWidth / 2
         startDrag(PressType.MOUSE, off)
+        installWindowListener("mousemove", this::onWindowMouseMove, windowEventOpts)
+        installWindowListener("mouseup", this::onWindowMouseUp, windowEventOpts)
     }
     fun onTouchStart(event: react.dom.events.TouchEvent<HTMLElement>) {
         if (pressed) return
         startDrag(PressType.TOUCH, 0.0)
         touchId = event.changedTouches.item(0)?.identifier ?: 0.0
+        installWindowListener("touchmove", this::onWindowTouchMove, windowEventOpts)
+        installWindowListener("touchend", this::onWindowTouchEnd, windowEventOpts)
+        (event.target as HTMLElement).focus()
+        event.preventDefault()
+        event.stopPropagation()
     }
 }
 
