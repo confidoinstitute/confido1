@@ -110,7 +110,9 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
         QuestionHeader {
             this.text = props.question.name
             this.description = props.question.description
-            this.resolution = props.question.resolution
+            if (props.question.resolutionVisible) {
+                this.resolution = props.question.resolution
+            }
         }
         QuestionPredictionSection {
             this.resolved = props.question.resolved
