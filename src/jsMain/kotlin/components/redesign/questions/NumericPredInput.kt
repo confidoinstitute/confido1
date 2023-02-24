@@ -5,6 +5,8 @@ import components.redesign.basic.PropsWithElementSize
 import components.redesign.basic.Stack
 import components.redesign.basic.elementSizeWrapper
 import csstype.*
+import dom.events.TouchEvent
+import dom.html.HTMLDivElement
 import dom.html.HTMLElement
 import emotion.css.ClassName
 import emotion.react.css
@@ -196,10 +198,10 @@ private class DragEventManager(
         event.preventDefault()
         event.stopPropagation()
     }
-    fun onTouchStart(event: react.dom.events.TouchEvent<HTMLElement>) {
+    fun onTouchStart(event: org.w3c.dom.events.Event) {
         if (pressed) return
         startDrag(PressType.TOUCH, 0.0)
-        touchId = event.changedTouches.item(0)?.identifier ?: 0.0
+        touchId = (event as TouchEvent).changedTouches.item(0)?.identifier ?: 0.0
         installWindowListener("touchmove", this::onWindowTouchMove, windowEventOpts)
         installWindowListener("touchend", this::onWindowTouchEnd, windowEventOpts)
         (event.target as HTMLElement).focus()
@@ -210,6 +212,7 @@ private class DragEventManager(
 
 private fun useDragEventManager(
     container: HTMLElement,
+    draggableRef: react.RefObject<HTMLElement>,
     onDragStart: (() -> Unit)? = null,
     onDrag: ((Double) -> Unit)? = null,
     onDragEnd: ((Double) -> Unit)? = null,
@@ -219,6 +222,15 @@ private fun useDragEventManager(
         mgr.onDragStart = onDragStart
         mgr.onDrag = onDrag
         mgr.onDragEnd = onDragEnd
+    }
+    // We must use this beacause react's onTouchStart cannot create non-passive listener
+    useEffect(draggableRef.current) {
+        val handler = mgr::onTouchStart
+        val opts = jso<dynamic>{ passive = false }
+        draggableRef.current?.addEventListener("touchstart", handler, opts)
+        cleanup {
+            draggableRef.current?.removeEventListener("touchstart", handler, opts)
+        }
     }
     return mgr
 }
@@ -233,7 +245,9 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
     var pressOffset by useState(0.0)
     val signpostVisible = focused || pressed
     val svg = "/static/slider-${kind.name.lowercase()}-${if (disabled) "inactive" else "active"}.svg"
+    val thumbRef = useRef<HTMLElement>()
     val eventMgr = useDragEventManager(props.element,
+        thumbRef,
         onDragStart = {pressed=true},
         onDrag = {props.onThumbChange?.invoke(zoomMgr.canvasCssPx2space(it))},
         onDragEnd = {pressed=false; props.onThumbCommit?.invoke(zoomMgr.canvasCssPx2space(it))},
@@ -255,6 +269,7 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
                 outline = None.none
             }
         }
+        ref = thumbRef
         style = jso {
             left = posPx.px
         }
@@ -262,7 +277,7 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
         onFocus = { focused = true }
         onBlur = { focused = false }
         onMouseDown = eventMgr::onMouseDown
-        onTouchStart = eventMgr::onTouchStart
+        //onTouchStart = eventMgr::onTouchStart
 
 
         //onTouchStart = { event->
