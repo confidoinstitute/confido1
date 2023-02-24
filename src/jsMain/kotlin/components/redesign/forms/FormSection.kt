@@ -22,6 +22,7 @@ val FormSection = FC<FormSectionProps> { props ->
             fontFamily = FontFamily.sansSerif
             fontSize = 13.px
             lineHeight = 16.px
+            textTransform = TextTransform.uppercase
             padding = Padding(12.px, 15.px)
         }
 

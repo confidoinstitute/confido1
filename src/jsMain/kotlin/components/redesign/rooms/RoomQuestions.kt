@@ -5,6 +5,7 @@ import components.questions.QuestionListProps
 import components.redesign.SortButton
 import components.redesign.SortType
 import components.redesign.basic.Stack
+import components.redesign.questions.CreateQuestionDialog
 import components.redesign.questions.QuestionItem
 import components.rooms.RoomContext
 import csstype.*
@@ -30,6 +31,7 @@ val QuestionList = FC<QuestionListProps> { props ->
     val groupPreds = groupPredsWS.data ?: emptyMap()
 
     var sortType by useState(SortType.SET_BY_MODERATOR)
+    var createQuestionDialogOpen by useState(false)
 
     val questions = when (sortType) {
         SortType.SET_BY_MODERATOR -> props.questions.reversed()
@@ -37,6 +39,12 @@ val QuestionList = FC<QuestionListProps> { props ->
         SortType.OLDEST -> emptyList() // TODO: backend support
     }
     val visibleQuestions = if (props.showHiddenQuestions) questions else questions.filter { it.visible }
+
+
+    CreateQuestionDialog {
+        this.open = createQuestionDialogOpen
+        this.onClose = { createQuestionDialogOpen = false }
+    }
 
     RoomHeader {
         SortButton {
@@ -48,7 +56,7 @@ val QuestionList = FC<QuestionListProps> { props ->
         if (appState.hasPermission(room, RoomPermission.ADD_QUESTION)) {
             RoomHeaderButton {
                 +"Create a question"
-                onClick = { TODO() }
+                onClick = { createQuestionDialogOpen = true }
             }
         }
     }
