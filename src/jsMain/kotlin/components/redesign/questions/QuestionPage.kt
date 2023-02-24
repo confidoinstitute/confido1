@@ -22,6 +22,7 @@ import react.Props
 import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.main
+import react.router.useNavigate
 import react.useContext
 import react.useState
 import rooms.RoomPermission
@@ -365,12 +366,15 @@ private val QuestionStatusLine = FC<QuestionStatusProps> { props ->
 }
 
 private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props ->
+    val room = useContext(RoomContext)
+    val navigate = useNavigate()
+
     fun delete() = runCoroutine {
         Client.send(
             questionUrl(props.question.id),
             HttpMethod.Delete,
             onError = { showError?.invoke(it) }) {
-            // TODO: Navigate to the room page
+            navigate(room.urlPrefix)
             props.onClose?.invoke()
         }
     }
