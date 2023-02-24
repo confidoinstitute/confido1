@@ -98,6 +98,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
     RoomNavbar {
         navigateBack = room.urlPrefix
         onMenu = { quickSettingsOpen = true }
+        +room.name
     }
     Stack {
         component = main

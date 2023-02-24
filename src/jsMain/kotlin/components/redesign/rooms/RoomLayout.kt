@@ -18,6 +18,7 @@ import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.header
 import react.dom.html.ReactHTML.main
+import react.dom.html.ReactHTML.span
 import react.router.Route
 import react.router.Routes
 import rooms.RoomPermission
@@ -28,15 +29,6 @@ fun PropertiesBuilder.bigQuestionTitle() {
     fontSize = 26.px
     lineHeight = 31.px
     fontWeight = FontWeight.bold
-}
-
-fun PropertiesBuilder.navQuestionTitle() {
-    fontSize = 17.px
-    lineHeight = 21.px
-    fontWeight = FontWeight.bold
-    overflow = Overflow.hidden
-    whiteSpace = WhiteSpace.nowrap
-    textOverflow = TextOverflow.ellipsis
 }
 
 val RoomHeaderButton = FC<ButtonProps> { props ->
@@ -131,13 +123,8 @@ val RoomLayout = FC<Props> {
 
     RoomNavbar {
         navigateBack = "/"
-        div {
+        span {
             css {
-                position = Position.relative
-                flexShrink = number(1.0)
-                color = palette.text.color
-                padding = 12.px
-                navQuestionTitle()
                 if (scrollY <= cutoff)
                     visibility = Visibility.hidden
             }

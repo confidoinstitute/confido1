@@ -14,6 +14,7 @@ import emotion.react.css
 import react.FC
 import react.PropsWithChildren
 import react.dom.html.ReactHTML
+import react.dom.html.ReactHTML.div
 import react.dom.svg.ReactSVG
 import react.dom.svg.ReactSVG.circle
 import react.dom.svg.ReactSVG.path
@@ -25,6 +26,9 @@ import react.useContext
 external interface RoomNavbarProps : PropsWithChildren, PropsWithPalette<RoomPalette> {
     var navigateBack: String?
     var onMenu: (() -> Unit)?
+}
+
+fun PropertiesBuilder.navQuestionTitle() {
 }
 
 val RoomNavbar = FC<RoomNavbarProps> { props ->
@@ -70,7 +74,21 @@ val RoomNavbar = FC<RoomNavbarProps> { props ->
                 }
             }
         }
-        +props.children
+        div {
+            css {
+                fontFamily = FontFamily.serif
+                fontSize = 17.px
+                lineHeight = 21.px
+                fontWeight = FontWeight.bold
+                overflow = Overflow.hidden
+                whiteSpace = WhiteSpace.nowrap
+                textOverflow = TextOverflow.ellipsis
+                padding = 12.px
+                flexShrink = number(1.0)
+                color = palette.text.color
+            }
+            +props.children
+        }
         ReactHTML.div {
             css {
                 flexGrow = number(1.0)
