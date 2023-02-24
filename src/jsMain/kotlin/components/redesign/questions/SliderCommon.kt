@@ -9,14 +9,55 @@ import kotlinx.js.asList
 import kotlinx.js.jso
 import react.*
 import react.dom.html.ReactHTML
-import tools.confido.utils.toFixed
 import kotlin.math.abs
 
-enum class ThumbKind(val signpostColor: String?) {
+external interface SliderTrackProps: Props {
+    var zoomManager: SpaceZoomManager
+}
+
+val centerOrigin : Transform = translate((-50).pct, (-50).pct)
+
+val SliderTrack = FC<SliderTrackProps> { props->
+    val zoomMgr = props.zoomManager
+    ReactHTML.div {
+        css {
+            height = 4.px
+            // FIXME: This if from figma. Does it make sense to have alpha here or should it just be gray?
+            backgroundColor = Color("#4c4c4c")
+            borderRadius = 2.px
+            position = Position.absolute
+            top = 50.pct
+            transform = translatey((-50).pct)
+            zIndex = integer(1)
+        }
+        style = jso {
+            left = (zoomMgr.leftPadVisible - 2).px
+            right = (zoomMgr.rightPadVisible - 2).px
+        }
+    }
+    zoomMgr.marks.forEach {value->
+        ReactHTML.div {
+            css {
+                position = Position.absolute
+                top = 50.pct
+                width = 2.px
+                height = 2.px
+                backgroundColor = NamedColor.white
+                borderRadius = 1.px
+                zIndex = integer(2)
+                transform = centerOrigin
+            }
+
+            style = jso {
+                left = zoomMgr.space2canvasCssPx(value).px
+            }
+        }
+    }
+}
+enum class ThumbKind(val signpostColor: String) {
     Left("#0066FF"),
     Center("#00CC2E"),
     Right("#0066FF"),
-    Binary(null), // no signpost
 }
 
 fun ThumbKind.svg(disabled: Boolean) =
@@ -198,6 +239,7 @@ external interface SliderThumbProps : Props {
     var onDragStart: (()->Unit)?
     var disabled: Boolean?
     var kind: ThumbKind
+    var signpostEnabled: Boolean?
 }
 val SliderThumb = FC<SliderThumbProps> {props->
     val pos = props.pos
@@ -261,7 +303,7 @@ val SliderThumb = FC<SliderThumbProps> {props->
         //    event.preventDefault() // do not autogenerate mousedown event (https://stackoverflow.com/a/31210694)
         //}
     }
-    if (kind.signpostColor != null) {
+    if (props.signpostEnabled ?: true) {
         ReactHTML.div {// signpost stem
             css {
                 position = Position.absolute

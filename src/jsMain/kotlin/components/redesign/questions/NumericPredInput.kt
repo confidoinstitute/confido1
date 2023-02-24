@@ -24,49 +24,6 @@ external interface NumericPredSliderProps : NumericPredInputProps, PropsWithElem
     var zoomParams: ZoomParams?
 }
 
-external interface NumericPredSliderInternalProps : NumericPredSliderProps {
-    var zoomManager: SpaceZoomManager
-}
-
-val centerOrigin : Transform = translate((-50).pct, (-50).pct)
-
-private val NumericPredSliderTrack = FC<NumericPredSliderInternalProps> {props->
-    val zoomMgr = props.zoomManager
-    div {
-        css {
-            height = 4.px
-            // FIXME: This if from figma. Does it make sense to have alpha here or should it just be gray?
-            backgroundColor = Color("#4c4c4c")
-            borderRadius = 2.px
-            position = Position.absolute
-            top = 50.pct
-            transform = translatey((-50).pct)
-            zIndex = integer(1)
-        }
-        style = jso {
-            left = (zoomMgr.leftPadVisible - 2).px
-            right = (zoomMgr.rightPadVisible - 2).px
-        }
-    }
-    zoomMgr.marks.forEach {value->
-        div {
-            css {
-                position = Position.absolute
-                top = 50.pct
-                width = 2.px
-                height = 2.px
-                backgroundColor = NamedColor.white
-                borderRadius = 1.px
-                zIndex = integer(2)
-                transform = centerOrigin
-            }
-
-            style = jso {
-                left = zoomMgr.space2canvasCssPx(value).px
-            }
-        }
-    }
-}
 fun binarySearch(initialRange: ClosedFloatingPointRange<Double>, desiredValue: Double, maxSteps: Int, f: (Double) -> Double): ClosedFloatingPointRange<Double> {
     var curRange = initialRange
     fun cmp(x: Double) = desiredValue.compareTo(f(x))
@@ -142,7 +99,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
             // overflowY = Overflow.visible
         }
         if (dist != null)
-            NumericPredSliderTrack {
+            SliderTrack {
                 +props
                 this.zoomManager = zoomManager
             }

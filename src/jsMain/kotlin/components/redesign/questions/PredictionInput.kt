@@ -1,5 +1,6 @@
 package components.redesign.questions
 
+import components.redesign.forms.BinaryPredInput
 import components.redesign.forms.BinaryPrediction
 import react.FC
 import react.Props
@@ -24,6 +25,9 @@ val PredictionInput = FC<PredictionInputProps> { props->
         is NumericSpace -> NumericPredInput{
                 +props
             }
+        is BinarySpace -> BinaryPredInput {
+            +props
+        }
         else -> +"Not implemented"
     }
 }
