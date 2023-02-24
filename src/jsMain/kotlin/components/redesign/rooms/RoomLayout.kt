@@ -214,7 +214,14 @@ val RoomLayout = FC<Props> {
             if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
                 Route {
                     path = "members"
-                    this.element = RoomMembers.create()
+                    this.element = div.create {
+                        css {
+                            flexGrow = number(1.0)
+                            backgroundColor = Color("#FFFFFF")
+                            padding = 20.px
+                        }
+                        RoomMembers {}
+                    }
                 }
         }
     }

@@ -110,6 +110,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
             val dist: ProbabilityDistribution = call.receive()
 
             assertPermission(RoomPermission.SUBMIT_PREDICTION, "You cannot submit a prediction.")
+            if (!question.open) badRequest("You cannot predict to closed questions.")
             if (question.answerSpace != dist.space) badRequest("The answer space is not compatible.")
 
             val pred = Prediction(ts=unixNow(), dist = dist, question = question.ref, user = user.ref)
