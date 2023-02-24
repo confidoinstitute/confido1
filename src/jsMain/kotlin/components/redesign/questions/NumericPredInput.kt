@@ -20,6 +20,7 @@ import tools.confido.utils.mid
 import tools.confido.utils.size
 import tools.confido.utils.toFixed
 import utils.breakLines
+import kotlin.math.abs
 
 
 external interface NumericPredInputProps : Props {
@@ -98,7 +99,6 @@ private class DragEventManager(
         val mouseEvent = ev as org.w3c.dom.events.MouseEvent
         if (!pressed) return
         val newPos = mouseEvent.clientX - pressOffset - container.clientLeft
-        console.log(newPos)
         this.onDrag?.invoke(newPos)
         ev.stopPropagation()
         ev.preventDefault()
@@ -108,7 +108,7 @@ private class DragEventManager(
         if (!pressed) return
         pressed = false
         anyPressed = false
-        console.log("remove handlers")
+        console.log("end thumb drag")
         window.removeEventListener("mousemove", this::onWindowMouseMove, jso{capture=true})
         window.removeEventListener("mouseup", this::onWindowMouseUp, jso{capture=true})
         ev.stopPropagation()
@@ -126,7 +126,7 @@ private class DragEventManager(
         val off = event.nativeEvent.offsetX - (event.target as HTMLDivElement).clientWidth / 2
         console.log(off)
         pressOffset = off
-        console.log("add handlers")
+        console.log("start thumb drag")
         window.addEventListener("mousemove", this::onWindowMouseMove, jso{capture=true})
         window.addEventListener("mouseup", this::onWindowMouseUp, jso{capture=true})
     }
@@ -258,6 +258,8 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
     var center by useState(propDist?.pseudoMean)
     var ciWidth by useState(propDist?.confidenceInterval(0.8)?.size)
     val ciRadius = ciWidth?.let { it / 2.0 }
+    val zoomManager = SpaceZoomManager(props.space, props.elementWidth, props.zoomParams ?: ZoomParams())
+    val minCIRadius = 20.0 / zoomManager.xScale // do not allow the thumbs to overlap too much
     val ci = if (center != null && ciWidth != null) {
         if (center!! + ciRadius!! > space.max) (space.max - ciWidth!!)..space.max
         else if (center!! - ciRadius < space.min) space.min..(space.min + ciWidth!!)
@@ -285,7 +287,6 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
             // overflowX = Overflow.hidden // FIXME apparently, this does not work
             // overflowY = Overflow.visible
         }
-        val zoomManager = SpaceZoomManager(props.space, props.elementWidth, props.zoomParams ?: ZoomParams())
         NumericPredSliderTrack {
             +props
             this.zoomManager = zoomManager
@@ -296,6 +297,17 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                 this.zoomManager = zoomManager
                 kind = ThumbKind.Left
                 pos = ci!!.start
+                onThumbChange = {
+                    center?.let { center->
+                        val effectivePos = minOf(it, center - minCIRadius)
+                        val naturalRadius = center - effectivePos
+                        if (center + naturalRadius > space.max) {
+                            ciWidth = space.max - effectivePos
+                        } else {
+                            ciWidth = 2 * naturalRadius
+                        }
+                    }
+                }
             }
             NumericPredSliderThumb{
                 +props
@@ -309,6 +321,17 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                 this.zoomManager = zoomManager
                 kind = ThumbKind.Right
                 pos = ci!!.endInclusive
+                onThumbChange = {
+                    center?.let { center->
+                        val effectivePos = maxOf(it, center + minCIRadius)
+                        val naturalRadius = effectivePos - center
+                        if (center - naturalRadius < space.min) {
+                            ciWidth = effectivePos - space.min
+                        } else {
+                            ciWidth = 2 * naturalRadius
+                        }
+                    }
+                }
             }
         }
     }
@@ -340,5 +363,6 @@ val NumericPredInput = FC<NumericPredInputProps> { props->
                 previewDist = it
             }
         }
+
     }
 }
