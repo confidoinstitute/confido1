@@ -121,7 +121,7 @@ fun mobileFlag(): Boolean {
     val version = params.get("version")?.let {
         web.storage.localStorage.setItem("layoutVersion", it)
         it
-    } ?: web.storage.localStorage.getItem("layoutVersion") ?: "legacy"
+    } ?: web.storage.localStorage.getItem("layoutVersion") ?: "mobile"
     return version == "mobile"
 }
 
