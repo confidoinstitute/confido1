@@ -217,9 +217,9 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                 css {
                     val pxCenter = zoomManager.space2canvasCssPx(center!!)
                     if (pxCenter < props.elementWidth / 2.0)
-                        paddingLeft = 50.pct
+                        paddingLeft = (pxCenter + 20.0).px
                     else
-                        paddingRight = 50.pct
+                        paddingRight = (props.elementWidth - pxCenter + 20.0).px
                     fontFamily = FontFamily.sansSerif
                     fontWeight = integer(600)
                     fontSize = 15.px
