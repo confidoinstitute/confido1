@@ -70,7 +70,7 @@ class SpaceZoomManager(
         .filter{ it in visibleSubspace.min..visibleSubspace.max }
 
     fun space2canvasCssPx(x: Double) = (x - visibleSubspace.min)*xScale + leftPadVisible
-    fun canvasCssPx2space(x: Double) = (x - leftPadVisible) / xScale + visibleSubspace.min
+    fun canvasCssPx2space(x: Double) = ((x - leftPadVisible) / xScale + visibleSubspace.min).coerceIn(visibleSubspace.min..visibleSubspace.max)
 }
 
 

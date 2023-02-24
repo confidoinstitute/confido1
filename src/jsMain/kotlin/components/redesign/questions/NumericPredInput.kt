@@ -16,7 +16,10 @@ import react.dom.html.ReactHTML.div
 import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.distributions.TruncatedNormalDistribution
 import tools.confido.spaces.NumericSpace
+import tools.confido.utils.mid
+import tools.confido.utils.size
 import tools.confido.utils.toFixed
+import utils.breakLines
 
 
 external interface NumericPredInputProps : Props {
@@ -223,22 +226,48 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
         }
 }
 
+fun binarySearch(initialRange: ClosedFloatingPointRange<Double>, desiredValue: Double, maxSteps: Int, f: (Double) -> Double): ClosedFloatingPointRange<Double> {
+    var curRange = initialRange
+    fun cmp(x: Double) = desiredValue.compareTo(f(x))
+    while (cmp(curRange.endInclusive) == 1) curRange = curRange.start .. (2*curRange.endInclusive)
+    for (step in 1..maxSteps) {
+        val mid = curRange.mid
+        when (cmp(mid)) {
+            0 -> return mid..mid
+            1 -> curRange = mid..curRange.endInclusive // want higher
+            -1 -> curRange = curRange.start..mid // want lower
+        }
+    }
+    return curRange
+}
+fun findDistribution(space: NumericSpace, center: Double, ciWidth: Double): TruncatedNormalDistribution {
+    val pseudoStdev = binarySearch(0.0..ciWidth, ciWidth, 30) {
+        TruncatedNormalDistribution(space, center, it).confidenceInterval(0.8).size
+    }.mid
+    return TruncatedNormalDistribution(space, center, pseudoStdev)
+}
 
 val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
     val space = props.space
     val propDist = props.dist as? TruncatedNormalDistribution
     var center by useState(propDist?.pseudoMean)
-    var stdev by useState(propDist?.pseudoStdev)
+    var ciWidth by useState(propDist?.confidenceInterval(0.8)?.size)
+    val ciRadius = ciWidth?.let { it / 2.0 }
+    val ci = if (center != null && ciWidth != null) {
+        if (center!! + ciRadius!! > space.max) (space.max - ciWidth!!)..space.max
+        else if (center!! - ciRadius < space.min) space.min..(space.min + ciWidth!!)
+        else (center!! - ciRadius)..(center!! + ciRadius)
+    } else null
     useEffect(propDist) {
         propDist?.let {
             center = propDist.pseudoMean
-            stdev = propDist.stdev
+            ciWidth = propDist.confidenceInterval(0.8).size
         }
     }
-    val dist = useMemo(center, stdev) {
-        if (center != null && stdev != null) TruncatedNormalDistribution(space, center!!, stdev!!) else null
+    val dist = useMemo(space, center, ciWidth) {
+        if (center != null && ciWidth != null) findDistribution(space, center!!, ciWidth!!)
+        else null
     }
-    val ci = useMemo(dist) { dist?.confidenceInterval(0.8) }
     div {
         css {
             height = 40.px
@@ -279,6 +308,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
     // overflowX = Overflow.hidden // FIXME apparently, this does not work
     // overflowY = Overflow.visible
 })
+
 
 val NumericPredInput = FC<NumericPredInputProps> { props->
     var zoomParams by useState(ZoomParams())

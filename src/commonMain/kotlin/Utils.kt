@@ -136,3 +136,5 @@ fun condensedNum(n: Number) =  n.toDouble().let { d->
         toNiceStr(n, 1)
     }
 }
+val ClosedRange<Double>.size get() = endInclusive - start
+val ClosedRange<Double>.mid get() = (start + endInclusive)/2.0
