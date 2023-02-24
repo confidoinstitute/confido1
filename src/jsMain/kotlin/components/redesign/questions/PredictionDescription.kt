@@ -84,7 +84,7 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
                 }
                 ReactHTML.div {
                     if (props.resolved) {
-                        +"The group thought there is a "
+                        +"The group thought there was a "
                     } else {
                         +"The group thinks there is a "
                     }

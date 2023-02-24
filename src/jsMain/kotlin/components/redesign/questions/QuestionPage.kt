@@ -120,7 +120,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
         }
         QuestionPredictionSection {
             this.question = props.question
-            this.resolved = props.question.resolved
+            this.resolved = props.question.resolved && props.question.resolutionVisible
             this.myPrediction = myPrediction
             this.numPredictors = props.question.numPredictors
             this.groupPrediction = groupPrediction.data
@@ -201,8 +201,10 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                 dist = props.myPrediction?.dist
             }
         } else {
-            // TODO: Group estimate
-            +"TODO group estimate goes here"
+            PredictionGraph {
+                space = props.question.answerSpace
+                dist = props.groupPrediction?.dist
+            }
         }
     }
     if (groupPredictionOpen) {
