@@ -22,6 +22,7 @@ external interface DialogProps : PropsWithChildren {
     var onClose: (() -> Unit)?
     var title: String
     var action: String
+    var disabledAction: Boolean
     var onAction: (() -> Unit)?
 }
 
@@ -33,6 +34,7 @@ val Dialog = FC<DialogProps> { props ->
             this.onClose = props.onClose
             this.title = props.title
             this.action = props.action
+            this.disabledAction = props.disabledAction
             this.onAction = props.onAction
         }
         +props.children
@@ -154,6 +156,7 @@ val DialogCore = FC<DialogCoreProps> { props ->
 
 external interface DialogHeaderProps : Props {
     var title: String
+    var disabledAction: Boolean
     var action: String
     var onClose: (() -> Unit)?
     var onAction: (() -> Unit)?
@@ -208,6 +211,7 @@ val DialogHeader = FC<DialogHeaderProps> { props ->
             }
             palette = TextPalette.action
             +props.action
+            disabled = props.disabledAction
             onClick = { props.onAction?.invoke() }
         }
     }

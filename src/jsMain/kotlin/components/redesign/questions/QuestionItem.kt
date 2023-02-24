@@ -71,6 +71,10 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
             background = Color("#FFFFFF")
             borderRadius = 10.px
+
+            hover {
+                boxShadow = BoxShadow(0.px, 0.px, 5.px, Color("#CCCCCC"))
+            }
         }
 
         props.href?.let {

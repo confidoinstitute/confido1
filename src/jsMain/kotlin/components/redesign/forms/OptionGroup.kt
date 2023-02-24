@@ -13,6 +13,7 @@ external interface OptionGroupProps<T>: PropsWithClassName {
     var defaultValue: T?
     var value: T?
     var options: List<Pair<T, String>>
+    var disabled: Boolean
     var onChange: ((T) -> Unit)?
 }
 
@@ -54,6 +55,11 @@ val OptionGroupComponent = FC<OptionGroupProps<dynamic>> { props ->
                         color = Color("#000000")
                     } else {
                         color = rgba(0,0,0,0.5)
+                    }
+
+                    if (props.disabled) {
+                        opacity = number(0.3)
+                        filter = saturate(0.1)
                     }
                 }
 

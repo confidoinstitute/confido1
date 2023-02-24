@@ -119,7 +119,7 @@ val Dashboard = FC<Props> {
             direction = FlexDirection.row
             css {
                 gap = 15.px
-                padding = Padding(0.px, 20.px)
+                padding = Padding(5.px, 20.px)
                 overflow = Auto.auto
                 flexShrink = number(0.0)
             }
@@ -127,6 +127,7 @@ val Dashboard = FC<Props> {
             appState.rooms.values.map { room ->
                 room.questions.map { qRef ->
                     qRef.deref()?.let { question ->
+                        if (question.open)
                         QuestionSticker {
                             this.room = room
                             this.question = question

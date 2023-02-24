@@ -4,6 +4,7 @@ import components.redesign.basic.*
 import csstype.*
 import emotion.react.*
 import dom.html.*
+import emotion.styled.styled
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.button
@@ -12,6 +13,7 @@ import react.dom.svg.StrokeLinecap
 
 external interface ButtonProps: ButtonHTMLAttributes<HTMLButtonElement>, PropsWithPalette<PaletteWithText>
 external interface TextButtonProps: ButtonHTMLAttributes<HTMLButtonElement>, PropsWithPalette<TextPalette>
+
 
 val confidoButtonClass = emotion.css.ClassName {
     margin = Margin(10.px, 0.px)
@@ -33,7 +35,7 @@ val Button = FC<ButtonProps> { props ->
         +props
 
         onClick = {
-            createRipple(it, Color("#FFFFFF"))
+            createRipple(it, palette.text.color)
             props.onClick?.invoke(it)
         }
 
@@ -42,9 +44,8 @@ val Button = FC<ButtonProps> { props ->
             color = palette.text.color
 
             disabled {
-                border = Border(5.px, LineStyle.solid, palette.color)
-                color = Color("#FFFFFF")
-                backgroundColor = Color("#DDDDDD")
+                opacity = number(0.3)
+                filter = saturate(0.1)
             }
         }
     }
@@ -63,13 +64,38 @@ val TextButton = FC<TextButtonProps> {props ->
         css(confidoButtonClass, override=props) {
             padding = 8.px
             color = palette.color
-            backgroundColor = rgba(0,0,0,0.0)
+            background = None.none
 
-            "&:hover" {
-                backgroundColor = Color(palette.color.toString() + "10")
+            hover {
+                backgroundColor = palette.hoverColor
+            }
+
+            disabled {
+                opacity = number(0.3)
+                filter = saturate(0.1)
             }
         }
     }
+}
+
+val iconButtonBase = emotion.css.ClassName {
+    display = Display.flex
+    alignItems = AlignItems.center
+    justifyContent = JustifyContent.center
+    width = 30.px
+    height = 30.px
+    padding = 0.px
+    borderRadius = 100.pct
+
+    background = None.none
+    border = None.none
+    cursor = Cursor.pointer
+
+    disabled {
+        opacity = number(0.3)
+        filter = saturate(0.1)
+    }
+
 }
 
 val IconButton = FC<TextButtonProps> {props ->
@@ -77,23 +103,12 @@ val IconButton = FC<TextButtonProps> {props ->
 
     button {
         onClick = { createRipple(it, palette.color); props.onClick?.invoke(it) }
-        css(override = props) {
-            display = Display.flex
-            alignItems = AlignItems.center
-            justifyContent = JustifyContent.center
-            width = 30.px
-            height = 30.px
-            padding = 0.px
-            borderRadius = 100.pct
+        css(iconButtonBase, override = props) {
+            color = palette.color
 
-            background = None.none
-            border = None.none
-            cursor = Cursor.pointer
-
-            "&:hover" {
-                backgroundColor = Color(palette.color.toString() + "10")
+            hover {
+                backgroundColor = palette.hoverColor
             }
-
             "svg" {
                 asDynamic().fill = palette.color
                 asDynamic().stroke = palette.color

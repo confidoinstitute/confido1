@@ -12,6 +12,9 @@ enum class TextPalette(override val color: Color): Palette {
     white(Color("#FFFFFF")),
     black(Color("#000000")),
     action(Color("#631AFF")),
+
+    ;
+    val hoverColor: Color get() = Color(color.toString() + "10")
 }
 
 interface PaletteWithText: Palette {
@@ -23,7 +26,6 @@ enum class MainPalette(override val color: Color, override val text: TextPalette
     default(Color("#FFFFFF"), TextPalette.black),
     primary(Color("#6319FF"), TextPalette.white),
     secondary(Color("#00C2FF"), TextPalette.white),
-    link(Color("transparent"), TextPalette.action),
     login(Color("#6733DA"), TextPalette.white),
 }
 

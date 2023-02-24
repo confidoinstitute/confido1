@@ -45,6 +45,10 @@ val SortButton = FC<SortButtonProps> { props ->
             gap = 7.px
             alignItems = AlignItems.center
 
+            hover {
+                backgroundColor = Color("#88888810")
+            }
+
             rippleCss()
         }
 

@@ -1,6 +1,8 @@
 package components.redesign.basic
 
 import csstype.ClassName
+import csstype.Color
+import csstype.Percentage
 import csstype.PropertiesBuilder
 import dom.html.HTMLDivElement
 import emotion.react.css
@@ -55,4 +57,3 @@ fun <P: PropsWithElementSize> elementSizeWrapper(component: FC<P>, className: Cl
         }
     }
 }
-

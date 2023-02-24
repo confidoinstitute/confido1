@@ -28,6 +28,11 @@ val textInputClass = emotion.css.ClassName {
     placeholder {
         color = Color("#BBBBBB")
     }
+
+    disabled {
+        opacity = number(0.3)
+        filter = saturate(0.1)
+    }
 }
 
 val TextInput = FC<InputHTMLAttributes<HTMLInputElement>> {

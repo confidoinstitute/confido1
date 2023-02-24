@@ -137,7 +137,7 @@ val LoginForm = FC<LoginFormProps> { props ->
         }
 
         Form {
-            onSubmit = ::attemptLogin
+            onSubmit = {attemptLogin()}
             Stack {
                 direction = FlexDirection.column
                 css {

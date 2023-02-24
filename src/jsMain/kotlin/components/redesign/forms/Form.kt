@@ -1,19 +1,16 @@
 package components.redesign.forms
 
+import dom.html.HTMLFormElement
 import react.*
+import react.dom.html.FormHTMLAttributes
 import react.dom.html.ReactHTML.form
 
-external interface FormProps : PropsWithChildren, PropsWithClassName {
-    var onSubmit: (() -> Unit)?
-}
-
-val Form = FC<FormProps> { props ->
+val Form = ForwardRef<HTMLFormElement, FormHTMLAttributes<HTMLFormElement>> { props, fRef ->
     form {
+        +props
         onSubmit = {
-            props.onSubmit?.invoke()
+            props.onSubmit?.invoke(it)
             it.preventDefault()
         }
-
-        +props.children
     }
 }

@@ -10,6 +10,7 @@ import react.dom.html.ReactHTML.span
 external interface FormFieldProps : PropsWithChildren, PropsWithClassName {
     var title: String
     var comment: String
+    var error: String?
     var required: Boolean
 }
 
@@ -59,6 +60,19 @@ val FormField = FC<FormFieldProps> { props ->
                 gap = 10.px
             }
             +props.children
+        }
+
+        // Error area
+        props.error?.let {
+            div {
+                css {
+                    color = Color("#F35454")
+                    fontFamily = FontFamily.sansSerif
+                    fontSize = 12.px
+                    lineHeight = 14.px
+                }
+                +it
+            }
         }
 
         // Comment area

@@ -67,8 +67,8 @@ val Checkbox = FC<CheckboxProps> { props ->
                 }
 
                 "input:disabled ~ &" {
-                    backgroundColor = Color("#EBEBEB")
-                    cursor = Globals.initial
+                    opacity = number(0.3)
+                    filter = saturate(0.1)
                 }
             }
         }
@@ -144,8 +144,8 @@ val Switch = FC<CheckboxProps> { props ->
                 }
 
                 "input:disabled + &" {
-                    backgroundColor = Color("#EBEBEB")
-                    cursor = Globals.initial
+                    opacity = number(0.3)
+                    filter = saturate(0.1)
                 }
             }
         }

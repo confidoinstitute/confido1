@@ -8,9 +8,11 @@ import components.redesign.basic.createRipple
 import components.redesign.basic.rippleCss
 import components.redesign.forms.Button
 import components.redesign.forms.IconButton
+import components.redesign.forms.iconButtonBase
 import components.rooms.RoomContext
 import csstype.*
 import emotion.react.css
+import emotion.styled.styled
 import react.FC
 import react.PropsWithChildren
 import react.dom.html.ReactHTML
@@ -57,13 +59,10 @@ val RoomNavbar = FC<RoomNavbarProps> { props ->
             props.navigateBack?.let {
                 Link {
                     to = it
-                    css {
-                        width = 30.px
-                        height = 30.px
-                        borderRadius = 100.pct
-                        display = Display.flex
-                        alignItems = AlignItems.center
-                        justifyContent = JustifyContent.center
+                    css(iconButtonBase) {
+                        hover {
+                            backgroundColor = palette.text.hoverColor
+                        }
                         "svg" {
                             asDynamic().fill = palette.text.color
                             asDynamic().stroke = palette.text.color

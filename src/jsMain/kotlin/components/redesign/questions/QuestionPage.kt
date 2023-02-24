@@ -17,6 +17,7 @@ import emotion.react.css
 import hooks.useDebounce
 import hooks.useDocumentTitle
 import hooks.useOnUnmount
+import hooks.useEditDialog
 import hooks.useWebSocket
 import io.ktor.http.*
 import kotlinx.serialization.encodeToString
@@ -81,6 +82,8 @@ external interface QuestionCommentSectionProps : Props {
 external interface QuestionQuickSettingsDialogProps : Props {
     var question: Question
     var open: Boolean
+    var canEdit: Boolean
+    var onEdit: (() -> Unit)?
     var onClose: (() -> Unit)?
 }
 
@@ -94,6 +97,8 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
 
     var quickSettingsOpen by useState(false)
 
+    val editDialog = useEditDialog(EditQuestionDialog)
+
     useDocumentTitle("${props.question.name} - Confido")
 
     if (!room.hasPermission(appState.session.user, RoomPermission.VIEW_QUESTIONS))
@@ -103,6 +108,8 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
     QuestionQuickSettingsDialog {
         question = props.question
         open = quickSettingsOpen
+        canEdit = room.hasPermission(appState.session.user, RoomPermission.MANAGE_QUESTIONS)
+        onEdit = { quickSettingsOpen = false; editDialog(props.question) }
         onClose = { quickSettingsOpen = false }
     }
 
@@ -424,6 +431,7 @@ private val QuestionStatusLine = FC<QuestionStatusProps> { props ->
 }
 
 private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props ->
+    val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
     val navigate = useNavigate()
 
@@ -464,22 +472,25 @@ private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> {
         }
         DialogMenuSeparator {}
          */
-        DialogMenuItem {
-            text = "Edit this question"
-            icon = EditIcon
-            disabled = true
-            onClick = {
-                // TODO: Implement and remove disabled
+        if (props.canEdit) {
+            DialogMenuItem {
+                text = "Edit this question"
+                icon = EditIcon
+                disabled = stale
+                onClick = {
+                    props.onEdit?.invoke()
+                }
             }
-        }
-        DialogMenuItem {
-            text = "Delete this question"
-            icon = BinIcon
-            variant = DialogMenuItemVariant.dangerous
-            onClick = {
-                // TODO: Check for confirmation properly
-                if (confirm("Are you sure you want to delete the question? This action is irreversible. Deleting will also result in loss of all predictions made for this question.")) {
-                    delete()
+            DialogMenuItem {
+                text = "Delete this question"
+                icon = BinIcon
+                variant = DialogMenuItemVariant.dangerous
+                disabled = stale
+                onClick = {
+                    // TODO: Check for confirmation properly
+                    if (confirm("Are you sure you want to delete the question? This action is irreversible. Deleting will also result in loss of all predictions made for this question.")) {
+                        delete()
+                    }
                 }
             }
         }
