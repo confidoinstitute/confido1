@@ -39,6 +39,8 @@ import tools.confido.refs.ref
 import tools.confido.serialization.confidoJSON
 import tools.confido.spaces.Value
 import tools.confido.state.enabled
+import tools.confido.utils.capFirst
+import tools.confido.utils.uncapFirst
 import tools.confido.utils.unixNow
 import utils.questionUrl
 import utils.roomPalette
@@ -238,22 +240,59 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
             flexShrink = number(0.0)
         }
         if (!groupPredictionOpen) {
-            PredictionInput {
-                space = props.question.answerSpace
-                this.dist = props.myPrediction?.dist
-                this.onChange = {
-                    pendingPrediction = null
-                    pendingPredictionState = PendingPredictionState.MAKING
-                    predictionPreview = it
+            div {
+                key="myPredictionBox"
+                if (pendingPredictionState != PendingPredictionState.NONE && pendingPredictionState != PendingPredictionState.MAKING) {
+                    div {
+                        key = "submitFeedback"
+                        css {
+                            position = Position.absolute
+                            zIndex = integer(10)
+                            borderRadius = 5.px
+                            left = 8.px
+                            top = 8.px
+                            padding = Padding(4.px, 6.px)
+                            background = rgba(0,0,0, 0.7)
+                            color = NamedColor.white
+                            fontWeight = integer(500)
+                            fontSize = 12.px
+                            lineHeight = 15.px
+                            fontFamily = FontFamily.sansSerif
+                        }
+                        val word = question.predictionTerminology.name.lowercase()
+                        +when (pendingPredictionState) {
+                            PendingPredictionState.MAKING -> "${word.capFirst()} submit pending"
+                            PendingPredictionState.SENDING -> "Submitting ${word.uncapFirst()}..."
+                            PendingPredictionState.ACCEPTED -> "${word.capFirst()} submitted"
+                            PendingPredictionState.ERROR -> "Error submitting ${word.uncapFirst()}"
+                            else->""
+                        }
+                    }
                 }
-                this.onCommit = {
-                    console.log("ONCOMMIT")
-                    pendingPrediction = it
-                    predictionPreview = null
+                css {
+                    position = Position.relative
+                }
+                PredictionInput {
+                    key="predictionInput"
+                    space = props.question.answerSpace
+                    this.dist = props.myPrediction?.dist
+                    this.onChange = {
+                        pendingPrediction = null
+                        console.log("ONCHANGE")
+                        pendingPredictionState = PendingPredictionState.NONE
+                        predictionPreview = it
+                    }
+                    this.onCommit = {
+                        console.log("ONCOMMIT")
+                        pendingPredictionState = PendingPredictionState.MAKING
+                        pendingPrediction = it
+                        predictionPreview = null
+                    }
                 }
             }
         } else {
             PredictionGraph {
+                key = "groupPredictionBox"
                 space = props.question.answerSpace
                 dist = props.groupPrediction?.dist
             }

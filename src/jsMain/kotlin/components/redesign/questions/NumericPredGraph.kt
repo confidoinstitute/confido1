@@ -25,6 +25,8 @@ import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.spaces.Binner
 import tools.confido.spaces.NumericSpace
 import tools.confido.utils.toFixed
+import web.location.location
+import web.url.URL
 
 external interface NumericPredGraphProps : PropsWithElementSize {
     var space: NumericSpace
@@ -156,8 +158,10 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps> { props->
             }
         }
     }
-
+    val params = URL(location.href).searchParams
+    if ((params.get("devtools")?:"") == "1")
     Stack {
+        key="devtools"
         css(ClassName("debug")) {
             backgroundColor = Color("#ffee58")
         }
