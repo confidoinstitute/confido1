@@ -111,6 +111,7 @@ private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
     }
 
     RoomNavbar {
+        palette = roomPalette(props.roomId)
         navigateBack = "/"
     }
 

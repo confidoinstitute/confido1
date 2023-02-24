@@ -31,6 +31,7 @@ import tools.confido.question.Question
 import tools.confido.refs.ref
 import tools.confido.spaces.Value
 import utils.questionUrl
+import utils.roomPalette
 import utils.roomUrl
 import utils.runCoroutine
 import web.prompts.confirm
@@ -96,6 +97,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
     }
 
     RoomNavbar {
+        palette = roomPalette(room.id)
         navigateBack = room.urlPrefix
         onMenu = { quickSettingsOpen = true }
         +room.name

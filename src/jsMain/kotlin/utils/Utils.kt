@@ -1,5 +1,6 @@
 package utils
 
+import components.redesign.basic.RoomPalette
 import csstype.ClassName
 import csstype.Color
 import csstype.PropertiesBuilder
@@ -199,3 +200,12 @@ inline fun runCoroutine(noinline coro: suspend CoroutineScope.() -> Unit) { Coro
 
 fun questionUrl(id: String) = Question.urlPrefix(id)
 fun roomUrl(id: String) = Room.urlPrefix(id)
+
+fun roomPalette(id: String): RoomPalette {
+    val base = id.fold(47) { acc, c ->
+        (acc * 257 + c.code) % 65537
+    }
+    return RoomPalette.values().let {
+        it[base % it.size]
+    }
+}

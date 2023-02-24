@@ -21,6 +21,7 @@ import react.router.Route
 import react.router.Routes
 import rooms.RoomPermission
 import tools.confido.refs.deref
+import utils.roomPalette
 import web.timers.requestAnimationFrame
 
 val RoomHeaderButton = FC<ButtonProps> { props ->
@@ -59,7 +60,7 @@ val RoomLayout = FC<Props> {
 
     val size = useElementSize<HTMLDivElement>()
     val tabRef = useRef<HTMLDivElement>()
-    val palette = RoomPalette.red
+    val palette = roomPalette(room.id)
 
     var scrollY by useState(0.0)
     val cutoff = 60.0 + size.height - 15.0
@@ -114,6 +115,7 @@ val RoomLayout = FC<Props> {
     }
 
     RoomNavbar {
+        this.palette = palette
         navigateBack = "/"
         span {
             css {
@@ -179,6 +181,7 @@ val RoomLayout = FC<Props> {
         }
     }
     RoomTabs {
+        this.palette = palette
         css {
             position = Position.sticky
             top = 44.px

@@ -19,6 +19,7 @@ import react.router.dom.Link
 import react.router.useParams
 import react.useContext
 import rooms.Room
+import utils.roomPalette
 
 external interface RoomListProps : Props {
     var small: Boolean
@@ -64,7 +65,7 @@ val RoomList = FC<RoomListProps> {props ->
                 css(roomItemCss) {}
                 div {
                     css {
-                        backgroundColor = RoomPalette.red.color
+                        backgroundColor = roomPalette(room.id).color
                         borderRadius = 8.px
                         width = iconSize
                         height = iconSize

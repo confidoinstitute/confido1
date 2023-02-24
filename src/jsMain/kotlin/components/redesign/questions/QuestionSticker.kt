@@ -9,6 +9,7 @@ import react.dom.html.ReactHTML.div
 import react.router.dom.Link
 import rooms.Room
 import tools.confido.question.Question
+import utils.roomPalette
 
 external interface QuestionStickerProps : Props {
     var room: Room
@@ -16,7 +17,7 @@ external interface QuestionStickerProps : Props {
 }
 
 val QuestionSticker = FC<QuestionStickerProps> {props ->
-    val palette = RoomPalette.red
+    val palette = roomPalette(props.room.id)
     Link {
         to = props.room.urlPrefix + props.question.urlPrefix
         css {
@@ -27,6 +28,10 @@ val QuestionSticker = FC<QuestionStickerProps> {props ->
             textDecoration = None.none
             overflow = Overflow.hidden
             backgroundColor = Color("#FFFFFF")
+
+            hover {
+                boxShadow = BoxShadow(0.px, 0.px, 5.px, Color("#CCCCCC"))
+            }
         }
         div {
             css {
