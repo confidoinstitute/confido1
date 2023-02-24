@@ -119,12 +119,14 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
         if (center != null && ciWidth != null) findDistribution(space, center!!, ciWidth!!)
         else null
     }
-    useEffect(dist?.pseudoMean, dist?.pseudoStdev, didChange) {
-        if (didChange) dist?.let { props.onChange?.invoke(dist) }
-    }
-    fun commit(newCenter: Double, newCIWidth: Double) {
+    //useEffect(dist?.pseudoMean, dist?.pseudoStdev, didChange) {
+    //    if (didChange) dist?.let { props.onChange?.invoke(dist) }
+    //}
+    fun update(newCenter: Double, newCIWidth: Double, isCommit: Boolean) {
         val newDist = findDistribution(space, newCenter, newCIWidth)
-        props.onCommit?.invoke(newDist)
+        props.onChange?.invoke(newDist)
+        if (isCommit)
+            props.onCommit?.invoke(newDist)
     }
     //useEffect(dist?.pseudoMean, dist?.pseudoStdev, dragging) {
     //    if (!dragging) dist?.let { props.onCommit?.invoke(dist) }
@@ -162,7 +164,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                         }
                         ciWidth = newCIWidth
                         didChange = true
-                        if (isCommit) commit(center, newCIWidth)
+                        update(center, newCIWidth, isCommit)
                     }
                 }
                 onDragStart = { dragging = true }
@@ -180,7 +182,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                 onDrag = { pos, isCommit ->
                     center = pos
                     didChange = true
-                    if (isCommit && ciWidth != null) commit(pos, ciWidth!!)
+                    if (ciWidth != null) update(pos, ciWidth!!, isCommit)
                 }
                 onDragStart = { dragging = true }
                 onDragEnd = { dragging = false }
@@ -203,7 +205,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                         }
                         ciWidth = newCIWidth
                         didChange = true
-                        if (isCommit) commit(center, newCIWidth)
+                        update(center, newCIWidth, isCommit)
                     }
                 }
                 onDragStart = { dragging = true }
@@ -273,7 +275,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                         2 * desiredCIRadius
                     ciWidth = newCIWidth
                     didChange = true
-                    commit(center!!, newCIWidth)
+                    update(center!!, newCIWidth, true)
                 }
             }
 
