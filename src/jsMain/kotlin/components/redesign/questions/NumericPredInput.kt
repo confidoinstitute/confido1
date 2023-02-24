@@ -225,7 +225,20 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
 
 
 val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
-    val dist = props.dist
+    val space = props.space
+    val propDist = props.dist as? TruncatedNormalDistribution
+    var center by useState(propDist?.pseudoMean)
+    var stdev by useState(propDist?.pseudoStdev)
+    useEffect(propDist) {
+        propDist?.let {
+            center = propDist.pseudoMean
+            stdev = propDist.stdev
+        }
+    }
+    val dist = useMemo(center, stdev) {
+        if (center != null && stdev != null) TruncatedNormalDistribution(space, center!!, stdev!!) else null
+    }
+    val ci = useMemo(dist) { dist?.confidenceInterval(0.8) }
     div {
         css {
             height = 40.px
@@ -240,25 +253,25 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
             +props
             this.zoomManager = zoomManager
         }
-        if (dist != null && dist is TruncatedNormalDistribution) {
-            val ci = dist.confidenceInterval(0.8)
+        if (dist != null) {
             NumericPredSliderThumb{
                 +props
                 this.zoomManager = zoomManager
                 kind = ThumbKind.Left
-                pos = ci.start
+                pos = ci!!.start
             }
             NumericPredSliderThumb{
                 +props
                 this.zoomManager = zoomManager
                 kind = ThumbKind.Center
                 pos = dist.pseudoMean
+                onChange = { center = it }
             }
             NumericPredSliderThumb{
                 +props
                 this.zoomManager = zoomManager
                 kind = ThumbKind.Right
-                pos = ci.endInclusive
+                pos = ci!!.endInclusive
             }
         }
     }
