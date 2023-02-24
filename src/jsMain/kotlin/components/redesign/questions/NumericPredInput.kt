@@ -139,11 +139,12 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
             // overflowX = Overflow.hidden // FIXME apparently, this does not work
             // overflowY = Overflow.visible
         }
-        NumericPredSliderTrack {
-            +props
-            this.zoomManager = zoomManager
-        }
-        if (dist != null) {
+        if (dist != null)
+            NumericPredSliderTrack {
+                +props
+                this.zoomManager = zoomManager
+            }
+        if (dist != null)
             SliderThumb{
                 key = "thumb_left"
                 this.containerElement = props.element
@@ -162,14 +163,16 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                     }
                 }
             }
+        if (center != null)
             SliderThumb{
                 key = "thumb_center"
                 this.containerElement = props.element
                 this.zoomManager = zoomManager
                 kind = ThumbKind.Center
-                pos = dist.pseudoMean
+                pos = center!!
                 onThumbChange = { center = it }
             }
+        if (dist != null)
             SliderThumb{
                 key = "thumb_right"
                 this.containerElement = props.element
@@ -188,6 +191,68 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                     }
                 }
             }
+        if (center == null) {
+            div {
+                css {
+                    fontFamily = FontFamily.sansSerif
+                    fontWeight = integer(600)
+                    fontSize = 15.px
+                    lineHeight = 18.px
+                    display = Display.flex
+                    alignItems = AlignItems.center
+                    textAlign = TextAlign.center
+                    justifyContent = JustifyContent.center
+                    color = Color("#6319FF")
+                    flexDirection = FlexDirection.column
+                    height = 100.pct
+                    cursor = Cursor.default
+                }
+                +"Tap here to create an estimate"// TODO choose "tap"/"click" based on device
+                onClick = { ev->
+                    center = zoomManager.canvasCssPx2space(ev.nativeEvent.offsetX)
+                }
+            }
+        } else if (dist == null) {
+            div {
+                css {
+                    val pxCenter = zoomManager.space2canvasCssPx(center!!)
+                    if (pxCenter < props.elementWidth / 2.0)
+                        paddingLeft = 50.pct
+                    else
+                        paddingRight = 50.pct
+                    fontFamily = FontFamily.sansSerif
+                    fontWeight = integer(600)
+                    fontSize = 15.px
+                    lineHeight = 18.px
+                    display = Display.flex
+                    alignItems = AlignItems.center
+                    textAlign = TextAlign.center
+                    justifyContent = JustifyContent.center
+                    color = Color("#6319FF")
+                    flexDirection = FlexDirection.column
+                    height = 100.pct
+                    cursor = Cursor.default
+                }
+                div {
+                    +"Tap here to set uncertainty"// TODO choose "tap"/"click" based on device
+                    css {
+                        paddingLeft = 10.px
+                        paddingRight = 10.px
+                    }
+                }
+                onClick = { ev->
+                    // set ciWidth so that a blue thumb ends up where you clicked
+                    val desiredCIBoundary = zoomManager.canvasCssPx2space(ev.nativeEvent.clientX.toDouble() - props.element.getBoundingClientRect().left)
+                    val desiredCIRadius = abs(center!! - desiredCIBoundary)
+                    if (center!! - desiredCIRadius < space.min)
+                        ciWidth = desiredCIBoundary - space.min
+                    else if (center!! + desiredCIRadius > space.max)
+                        ciWidth = space.max - desiredCIBoundary
+                    else
+                        ciWidth = 2 * desiredCIRadius
+                }
+            }
+
         }
     }
 }, ClassName {
