@@ -16,6 +16,7 @@ import react.router.dom.BrowserRouter
 import tools.confido.state.SentState
 import tools.confido.state.appConfig
 import web.location.location
+import web.url.URL
 
 val AppStateContext = createContext<ClientAppState>()
 val LoginContext = createContext<Login>()
@@ -115,13 +116,22 @@ val AppMobile = memo(FC<AppProps> {props ->
     }
 })
 
+fun mobileFlag(): Boolean {
+    val params = URL(location.href).searchParams
+    val version = params.get("version")?.let {
+        web.storage.localStorage.setItem("layoutVersion", it)
+        it
+    } ?: web.storage.localStorage.getItem("layoutVersion") ?: "legacy"
+    return version == "mobile"
+}
+
 val App = FC<Props> {
     // TODO: initial state from cookie
     // TODO: react to cookie change?
     val sessionCookieExists = document.cookie.contains("session")
     var isLoggedIn by useState(sessionCookieExists)
 
-    val mobileFlag = location.search.contains("mobile") || (web.storage.localStorage.getItem("mobile") != null)
+    val mobileFlag = mobileFlag()
 
     LoginContext.Provider {
         value = Login(isLoggedIn) { isLoggedIn = it }
