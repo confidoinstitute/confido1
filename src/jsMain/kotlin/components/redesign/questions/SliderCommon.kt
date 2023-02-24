@@ -303,7 +303,7 @@ val SliderThumb = FC<SliderThumbProps> {props->
                 )
                 left = posPx.px
             }
-            +pos.toFixed(2)
+            +zoomMgr.space.formatValue(pos)
         }
     }
 }
