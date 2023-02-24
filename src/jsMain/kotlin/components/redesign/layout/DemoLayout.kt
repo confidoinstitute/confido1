@@ -7,12 +7,9 @@ import components.redesign.nouser.LoginByUserSelectInner
 import csstype.*
 import emotion.react.css
 import kotlinx.js.jso
-import mui.material.ButtonVariant
-import mui.material.Link
-import mui.material.styles.PaletteColor
-import mui.material.styles.createTheme
 import react.FC
 import react.Props
+import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.strong
 import react.dom.html.ReactHTML.br
 import react.dom.html.ReactHTML.div
@@ -22,45 +19,12 @@ import react.dom.html.ReactHTML.p
 import react.router.useNavigate
 import react.useContext
 import utils.AUTO
-import utils.buildObject
 import utils.roomUrl
 import web.location.location
 
 const val REQUEST_WORKSPACE_URL = "https://confido.institute/request-a-workspace.html"
 const val DEMO_CONTINUE_URL = "/rooms/demoroom1"
 
-val demoTheme = createTheme(
-    jso {
-        this.palette = jso {
-            this.primary = jso<PaletteColor> {
-                main = Color("#6733da")
-                light = Color("#9e62ff")
-                dark = Color("#2700a7")
-                contrastText = Color("#ffffff")
-            }
-        }
-        components = jso {
-            MuiButton = jso {
-                styleOverrides = jso {
-                    root = jso {
-                        textTransform = "none"
-                        padding = Padding(9.px, 15.px)
-                        fontSize = 16.px
-                        boxShadow = "none"
-                    }
-                }
-            }
-            MuiLink = jso {
-                styleOverrides = jso {
-                    root = jso {
-                        color = "#6b9aff"
-                        textDecorationColor = "#6b9aff"
-                    }
-                }
-            }
-        }
-    }
-)
 
 val DemoLoginBox = FC<Props> {
     div {
@@ -127,7 +91,11 @@ val DemoWelcomeBox = FC<Props> {
         }
         p {
             +"If you want to use the Confido App for real, "
-            Link {
+            a {
+                css {
+                    color = Color("#6B9AFF")
+                    textDecorationColor = Color("#6B9AFF")
+                }
                 href = REQUEST_WORKSPACE_URL
                 +"request your own workspace"
                 }
@@ -151,31 +119,30 @@ val DemoWelcomeBox = FC<Props> {
 
 val DemoLayout = FC<Props> {
     val loginState = useContext(LoginContext)
-    mui.system.ThemeProvider {
-        theme = demoTheme
-        div {
-            css {
-                position = Position.absolute
-                top = 0.px
-                left = 0.px
-                width = 100.vw
-                minHeight = 100.vh
-                backgroundImage = url("/static/demo_bg.jpg")
-                display = Display.flex
-                justifyContent = JustifyContent.center
-                alignItems = AlignItems.center
-                backgroundPosition = "0 0" as BackgroundPosition
-                backgroundSize = BackgroundSize.cover
-                backgroundRepeat = BackgroundRepeat.noRepeat
-                fontSize = 16.px
-                lineHeight = 25.px
-                fontFamily = "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif" as FontFamily
-            }
-            if (loginState.isLoggedIn) {
-                DemoWelcomeBox {}
-            } else {
-                DemoLoginBox {}
-            }
+    div {
+        css {
+            position = Position.absolute
+            top = 0.px
+            left = 0.px
+            width = 100.vw
+            minHeight = 100.vh
+            //backgroundImage = url("/static/demo_bg.jpg")
+            backgroundColor = Color("#00000080")  // black, 50% transparent
+            display = Display.flex
+            justifyContent = JustifyContent.center
+            alignItems = AlignItems.center
+            backgroundPosition = "0 0" as BackgroundPosition
+            backgroundSize = BackgroundSize.cover
+            backgroundRepeat = BackgroundRepeat.noRepeat
+            fontSize = 16.px
+            lineHeight = 25.px
+            fontFamily = FontFamily.sansSerif
+            //fontFamily = "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif" as FontFamily
+        }
+        if (loginState.isLoggedIn) {
+            DemoWelcomeBox {}
+        } else {
+            DemoLoginBox {}
         }
     }
 }
