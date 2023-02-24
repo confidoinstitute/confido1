@@ -29,6 +29,8 @@ external interface NumericPredInputProps : Props {
 
 external interface NumericPredSliderProps : NumericPredInputProps, PropsWithElementSize {
     var zoomParams: ZoomParams?
+    var onChange: ((TruncatedNormalDistribution) -> Unit)?
+    var onCommit: ((TruncatedNormalDistribution) -> Unit)?
 }
 
 external interface NumericPredSliderInternalProps : NumericPredSliderProps {
@@ -77,8 +79,8 @@ private enum class ThumbKind(val color: String) {
 private external interface NumericPredSliderThumbProps: NumericPredSliderInternalProps {
     var kind: ThumbKind
     var pos: Double
-    var onChange: ((Double)->Unit)?
-    var onCommit: ((Double)->Unit)?
+    var onThumbChange: ((Double)->Unit)?
+    var onThumbCommit: ((Double)->Unit)?
     var disabled: Boolean?
 }
 private class DragEventManager(
@@ -154,8 +156,8 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
     val signpostVisible = focused || pressed
     val svg = "/static/slider-${kind.name.lowercase()}-${if (disabled) "inactive" else "active"}.svg"
     val eventMgr = useDragEventManager(props.element,
-        onDrag = {props.onChange?.invoke(zoomMgr.canvasCssPx2space(it))},
-        onDragEnd = {props.onCommit?.invoke(zoomMgr.canvasCssPx2space(it))},
+        onDrag = {props.onThumbChange?.invoke(zoomMgr.canvasCssPx2space(it))},
+        onDragEnd = {props.onThumbCommit?.invoke(zoomMgr.canvasCssPx2space(it))},
         )
     div {
         css {
@@ -229,7 +231,10 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
 fun binarySearch(initialRange: ClosedFloatingPointRange<Double>, desiredValue: Double, maxSteps: Int, f: (Double) -> Double): ClosedFloatingPointRange<Double> {
     var curRange = initialRange
     fun cmp(x: Double) = desiredValue.compareTo(f(x))
-    while (cmp(curRange.endInclusive) == 1) curRange = curRange.start .. (2*curRange.endInclusive)
+    for (step in 1..maxSteps) {
+        if (cmp(curRange.endInclusive) == 1) curRange = curRange.start .. (2*curRange.endInclusive)
+        else break
+    }
     for (step in 1..maxSteps) {
         val mid = curRange.mid
         when (cmp(mid)) {
@@ -268,6 +273,9 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
         if (center != null && ciWidth != null) findDistribution(space, center!!, ciWidth!!)
         else null
     }
+    useEffect(dist?.pseudoMean, dist?.pseudoStdev) {
+        dist?.let { props.onChange?.invoke(dist) }
+    }
     div {
         css {
             height = 40.px
@@ -294,7 +302,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                 this.zoomManager = zoomManager
                 kind = ThumbKind.Center
                 pos = dist.pseudoMean
-                onChange = { center = it }
+                onThumbChange = { center = it }
             }
             NumericPredSliderThumb{
                 +props
@@ -312,18 +320,25 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
 
 val NumericPredInput = FC<NumericPredInputProps> { props->
     var zoomParams by useState(ZoomParams())
+    val propDist = props.dist as? TruncatedNormalDistribution?
+    var previewDist by useState(propDist)
+    useEffect(propDist) { previewDist = propDist }
     Stack {
         css {
             overflowX = Overflow.hidden
         }
         NumericPredGraph {
-            space = props.space
-            dist = props.dist
+            this.space = props.space
+            this.dist = previewDist
             onZoomChange = { zoomParams = it }
         }
         NumericPredSlider {
-            +props
+            this.space = props.space
             this.zoomParams = zoomParams
+            this.dist = props.dist
+            this.onChange = {
+                previewDist = it
+            }
         }
     }
 }
