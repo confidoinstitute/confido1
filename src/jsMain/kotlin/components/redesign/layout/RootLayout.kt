@@ -35,7 +35,6 @@ private val RootLayoutInner = FC<Props> {
         Backdrop {
             css {
                 backdropFilter = blur(10.px)
-                background = None.none
             }
         }
         DemoWelcomeBox { dismissDemo = {showDemoWelcome = false; window.asDynamic().demoDismissed = true}}

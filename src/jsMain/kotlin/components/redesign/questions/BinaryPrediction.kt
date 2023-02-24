@@ -147,7 +147,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
                 }
                 +"Tap here to create an estimate"// TODO choose "tap"/"click" based on device
                 onClick = { ev ->
-                    val newProb = zoomManager.canvasCssPx2space(ev.nativeEvent.offsetX)
+                    val newProb = zoomManager.canvasCssPx2space(ev.nativeEvent.offsetX) / 100.0
                     update(newProb, true)
                 }
             }
