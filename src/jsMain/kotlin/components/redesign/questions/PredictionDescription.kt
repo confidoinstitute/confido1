@@ -9,6 +9,7 @@ import react.dom.html.ReactHTML
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.distributions.ProbabilityDistribution
+import tools.confido.distributions.TruncatedNormalDistribution
 import tools.confido.question.Prediction
 import tools.confido.utils.formatPercent
 
@@ -203,7 +204,7 @@ val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
                 }
             }
 
-            is ContinuousProbabilityDistribution -> {
+            is TruncatedNormalDistribution -> {
                 val medianColor = Color("#00CC2E")
                 val confidenceColor = Color("#00C2FF")
                 val rangeColor = Color("#0066FF")
@@ -215,7 +216,7 @@ val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
                     }
                     ReactHTML.b {
                         css { this.color = medianColor }
-                        +dist.space.formatValue(dist.median)
+                        +dist.space.formatValue(dist.pseudoMean)
                     }
                     +"."
                 }
