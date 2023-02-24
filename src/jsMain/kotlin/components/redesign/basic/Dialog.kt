@@ -189,6 +189,11 @@ val DialogHeader = FC<DialogHeaderProps> { props ->
             flexDirection = FlexDirection.row
         }
         TextButton {
+            css {
+                fontWeight = integer(600)
+                fontSize = 17.px
+                lineHeight = 21.px
+            }
             palette = TextPalette.action
             +props.action
             onClick = { props.onAction?.invoke() }
