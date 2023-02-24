@@ -14,6 +14,8 @@ import react.dom.html.ReactHTML.div
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.svg
 import react.dom.svg.StrokeLinecap
+import web.location.location
+import web.storage.localStorage
 
 external interface DialogProps : PropsWithChildren {
     var open: Boolean
@@ -51,6 +53,16 @@ val DialogMenu = FC<DialogMenuProps> { props ->
         this.onClose = props.onClose
         Stack {
             +props.children
+
+            DialogMenuSeparator {}
+
+            DialogMenuItem {
+                text = "Switch to old UI"
+                onClick = {
+                    localStorage.setItem("layoutVersion","legacy")
+                    location.reload()
+                }
+            }
 
             if (props.hasCloseButton ?: true) {
                 DialogMenuButton {
@@ -275,6 +287,12 @@ val DialogMenuItem = FC<DialogMenuItemProps> { props ->
     Stack {
         css {
             padding = Padding(6.px, 15.px)
+
+            hover {
+                backgroundColor = rgba(0, 0, 0, 0.05)
+            }
+
+            rippleCss()
         }
 
         button {
@@ -320,8 +338,10 @@ val DialogMenuItem = FC<DialogMenuItemProps> { props ->
                 +props.text
             }
             onClick = {
-                if (!disabled)
+                if (!disabled) {
+                    createRipple(it, Color("#999999"))
                     props.onClick?.invoke()
+                }
             }
         }
     }

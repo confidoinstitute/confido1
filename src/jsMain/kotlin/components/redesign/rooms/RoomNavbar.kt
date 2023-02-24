@@ -49,6 +49,7 @@ val RoomNavbar = FC<RoomNavbarProps> { props ->
         ReactHTML.div {
             css {
                 flexGrow = number(1.0)
+                flexBasis = 0.px
                 display = Display.flex
                 justifyContent = JustifyContent.flexStart
                 alignItems = AlignItems.center
@@ -92,6 +93,7 @@ val RoomNavbar = FC<RoomNavbarProps> { props ->
         ReactHTML.div {
             css {
                 flexGrow = number(1.0)
+                flexBasis = 0.px
                 display = Display.flex
                 justifyContent = JustifyContent.flexEnd
                 alignItems = AlignItems.center

@@ -70,6 +70,7 @@ private val RootLayoutInner = FC<Props> {
             path = "email_login"
             this.element = EmailLoginAlreadyLoggedIn.create()
         }
+        /*
         if (appState.session.user?.type?.isProper() == true) {
             Route {
                 path = "new_room"
@@ -80,7 +81,6 @@ private val RootLayoutInner = FC<Props> {
             path = "profile"
             this.element = ReactNode("PROFILE HERE")
         }
-        /*
         if (appState.isAdmin()) {
             Route {
                 path = "admin/users"

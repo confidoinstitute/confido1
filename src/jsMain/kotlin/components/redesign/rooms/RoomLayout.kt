@@ -7,8 +7,6 @@ import components.redesign.forms.*
 import components.rooms.RoomContext
 import components.rooms.RoomMembers
 import csstype.*
-import csstype.FlexDirection.Companion.row
-import csstype.FontFamily.Companion.sansSerif
 import dom.ScrollBehavior
 import dom.html.HTMLDivElement
 import emotion.react.*
@@ -25,12 +23,6 @@ import rooms.RoomPermission
 import tools.confido.refs.deref
 import web.timers.requestAnimationFrame
 
-fun PropertiesBuilder.bigQuestionTitle() {
-    fontSize = 26.px
-    lineHeight = 31.px
-    fontWeight = FontWeight.bold
-}
-
 val RoomHeaderButton = FC<ButtonProps> { props ->
     Button {
         css {
@@ -46,7 +38,7 @@ val RoomHeaderButton = FC<ButtonProps> { props ->
 
 val RoomHeader = FC<PropsWithChildren> { props ->
     Stack {
-        direction = row
+        direction = FlexDirection.row
         css {
             backgroundColor = Color("#FFFFFF")
             borderBottom = Border(0.5.px, LineStyle.solid, Color("#CCCCCC"))
@@ -153,12 +145,14 @@ val RoomLayout = FC<Props> {
         div {
             ref = size.ref
             css {
-                fontFamily = sansSerif
                 marginTop = (60+44).px
                 width = 100.pct
+                fontSize = 26.px
+                lineHeight = 31.px
+                fontWeight = FontWeight.bold
+                fontFamily = FontFamily.serif
                 textAlign = TextAlign.center
                 color = palette.text.color
-                bigQuestionTitle()
             }
             +room.name
         }
@@ -170,7 +164,7 @@ val RoomLayout = FC<Props> {
                 paddingRight = 60.px
                 textAlign = TextAlign.center
                 color = palette.text.color
-                fontFamily = sansSerif
+                fontFamily = FontFamily.sansSerif
                 fontSize = 16.px
                 lineHeight = 19.px
             }
