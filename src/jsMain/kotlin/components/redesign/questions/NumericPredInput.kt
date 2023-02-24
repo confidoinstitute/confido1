@@ -94,9 +94,11 @@ private external interface NumericPredSliderThumbProps: NumericPredSliderInterna
 }
 private class DragEventManager(
     val container: HTMLElement,
+    val draggableRef: RefObject<HTMLElement>,
+    var onClick: (()->Unit)? = null,
     var onDragStart: (() -> Unit)? = null,
     var onDrag: ((Double) -> Unit)? = null,
-    var onDragEnd: ((Double) -> Unit)? = null,
+    var onDragEnd: (() -> Unit)? = null,
 ) {
     companion object {
         var anyPressed: Boolean = false
@@ -107,20 +109,22 @@ private class DragEventManager(
     var pressOffset: Double = 0.0
     var touchId: Double = 0.0
     var maxDist: Double = 0.0
-    var startPos: Double = 0.0
+    var startClientX: Double = 0.0
 
-    fun doMove(clientX: Double) {
+    private fun doMove(clientX: Double) {
         if (!pressed) return
-        val newPos = clientX - pressOffset - container.clientLeft
-        this.onDrag?.invoke(newPos)
+        val newPos = clientX - pressOffset - container.getBoundingClientRect().left
+        maxDist = maxOf(maxDist, abs(clientX - startClientX))
+        if (maxDist >= 3)
+            this.onDrag?.invoke(newPos)
     }
-    fun onWindowMouseMove(ev: org.w3c.dom.events.Event) {
+    private fun onWindowMouseMove(ev: org.w3c.dom.events.Event) {
         val mouseEvent = ev as org.w3c.dom.events.MouseEvent
         doMove(mouseEvent.clientX.toDouble())
         ev.stopPropagation()
         ev.preventDefault()
     }
-    fun onWindowTouchMove(ev: org.w3c.dom.events.Event) {
+    private fun onWindowTouchMove(ev: org.w3c.dom.events.Event) {
         val touchEvent = ev as dom.events.TouchEvent
         val touch = touchEvent.touches.asList().firstOrNull { it.identifier == touchId }
         if (touch != null)
@@ -130,23 +134,28 @@ private class DragEventManager(
     }
     val windowEventOpts = jso<dynamic>{ capture=true; passive=false}
 
-    fun doRelease(clientX: Double) {
+    private fun doRelease(clientX: Double) {
         if (!pressed) return
         pressed = false
         anyPressed = false
-        console.log("end thumb drag")
         uninstallWindowListeners()
-        val newPos = clientX - pressOffset - container.clientLeft
-        this.onDrag?.invoke(newPos)
-        this.onDragEnd?.invoke(newPos)
+        val newPos = clientX - pressOffset - container.getBoundingClientRect().left
+        maxDist = maxOf(maxDist, abs(clientX - startClientX))
+        console.log("end thumb drag $maxDist")
+        if (maxDist < 3) {
+            this.onClick?.invoke()
+        } else {
+            this.onDrag?.invoke(newPos)
+        }
+        this.onDragEnd?.invoke()
     }
-    fun onWindowMouseUp(ev: org.w3c.dom.events.Event) {
+    private fun onWindowMouseUp(ev: org.w3c.dom.events.Event) {
         val mouseEvent = ev as org.w3c.dom.events.MouseEvent
         doRelease(mouseEvent.clientX.toDouble())
         ev.stopPropagation()
         ev.preventDefault()
     }
-    fun onWindowTouchEnd(ev: org.w3c.dom.events.Event) {
+    private fun onWindowTouchEnd(ev: org.w3c.dom.events.Event) {
         val touchEvent = ev as dom.events.TouchEvent
         val touch = ev.changedTouches.asList().firstOrNull { it.identifier == touchId }
         if (touch != null)
@@ -160,8 +169,8 @@ private class DragEventManager(
         val handler: ((org.w3c.dom.events.Event)->Unit)?,
         val options: dynamic,
     )
-    val installedWindowListeners: MutableSet<EventListenerSpec> = mutableSetOf()
-    fun installWindowListener(
+    private val installedWindowListeners: MutableSet<EventListenerSpec> = mutableSetOf()
+    private fun installWindowListener(
         eventName: String,
         handler: ((org.w3c.dom.events.Event)->Unit)?,
         options: dynamic,
@@ -174,17 +183,19 @@ private class DragEventManager(
         installedWindowListeners.add(EventListenerSpec(eventName, handler, options))
         window.addEventListener(eventName, handler, options)
     }
-    fun uninstallWindowListeners() {
+    private fun uninstallWindowListeners() {
         installedWindowListeners.forEach {
             window.removeEventListener(it.eventName, it.handler, it.options)
         }
         installedWindowListeners.clear()
     }
-    fun startDrag(type: PressType, off: Double) {
+    fun startDrag(type: PressType, off: Double, clientX: Double) {
         if (pressed) return
         if (anyPressed) return
         pressed = true
         anyPressed = true
+        startClientX = clientX
+        maxDist = 0.0
         // offset from the center
         console.log(off)
         pressOffset = off
@@ -194,7 +205,7 @@ private class DragEventManager(
     }
     fun onMouseDown(event: react.dom.events.MouseEvent<HTMLElement,*>) {
         val off = event.nativeEvent.offsetX - (event.target as HTMLElement).clientWidth / 2
-        startDrag(PressType.MOUSE, off)
+        startDrag(PressType.MOUSE, off, event.nativeEvent.clientX.toDouble())
         installWindowListener("mousemove", this::onWindowMouseMove, windowEventOpts)
         installWindowListener("mouseup", this::onWindowMouseUp, windowEventOpts)
         event.preventDefault()
@@ -202,14 +213,19 @@ private class DragEventManager(
     }
     fun onTouchStart(event: org.w3c.dom.events.Event) {
         if (pressed) return
-        // When using touch, we force offset to be 0, i.e. the thumb will always be centered
-        // under the finger, regardless of where you touched it at the start. That seems more
-        // intuitive.
-        startDrag(PressType.TOUCH, 0.0, )
-        touchId = (event as TouchEvent).changedTouches.item(0)?.identifier ?: 0.0
+        val draggable = draggableRef.current?:return
+        val touchEvent = (event as TouchEvent)
+        val touch = touchEvent.changedTouches.item(0) ?: return
+        //console.log("TS", touch.clientX, draggable.clientLeft, draggable.getBoundingClientRect().left)
+        //PPdraggable.style.outline="2px solid red"
+        // XXX for some reason, using event.target does not work
+        val br = (event.target as HTMLElement).getBoundingClientRect()
+        val midX = br.left + br.width / 2
+        val off = touch.clientX - midX
+        startDrag(PressType.TOUCH, off, touch.clientX)
+        touchId = touch.identifier
         installWindowListener("touchmove", this::onWindowTouchMove, windowEventOpts)
         installWindowListener("touchend", this::onWindowTouchEnd, windowEventOpts)
-        (event.target as HTMLElement).focus()
         event.preventDefault()
         event.stopPropagation()
     }
@@ -218,12 +234,15 @@ private class DragEventManager(
 private fun useDragEventManager(
     container: HTMLElement,
     draggableRef: react.RefObject<HTMLElement>,
+    onClick: (() -> Unit)? = null,
     onDragStart: (() -> Unit)? = null,
     onDrag: ((Double) -> Unit)? = null,
-    onDragEnd: ((Double) -> Unit)? = null,
+    onDragEnd: (() -> Unit)? = null,
 ): DragEventManager {
-    val mgr = useMemo { DragEventManager(container, onDrag=onDrag, onDragEnd=onDragEnd) }
-    useEffect(onDrag,onDragEnd) {
+    val mgr = useMemo { DragEventManager(container, draggableRef=draggableRef,
+        onClick=onClick, onDragStart=onDragStart, onDrag=onDrag, onDragEnd=onDragEnd) }
+    useEffect(onClick,onDragStart,onDrag,onDragEnd) {
+        mgr.onClick = { console.log("click"); draggableRef.current?.focus(); onClick?.invoke() }
         mgr.onDragStart = onDragStart
         mgr.onDrag = onDrag
         mgr.onDragEnd = onDragEnd
@@ -255,7 +274,7 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
         thumbRef,
         onDragStart = {pressed=true},
         onDrag = {props.onThumbChange?.invoke(zoomMgr.canvasCssPx2space(it))},
-        onDragEnd = {pressed=false; props.onThumbCommit?.invoke(zoomMgr.canvasCssPx2space(it))},
+        onDragEnd = {pressed=false},
         )
     div {
         css {
