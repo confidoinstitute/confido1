@@ -97,7 +97,10 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
             backgroundPositionX = BackgroundPositionX.center
             zIndex = integer(if (kind == ThumbKind.Center) 5 else 4)
             "&:focus" {
+                // some browsers have default styling for focused elements, undo it
+                // (we signal focus by showing the signpost)
                 border = None.none
+                outline = None.none
             }
         }
         tabIndex = 0 // make focusable
