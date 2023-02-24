@@ -5,9 +5,10 @@ import components.redesign.basic.PropsWithElementSize
 import components.redesign.basic.Stack
 import components.redesign.basic.elementSizeWrapper
 import csstype.*
-import dom.html.HTMLDivElement
+import dom.html.HTMLElement
 import emotion.css.ClassName
 import emotion.react.css
+import kotlinx.js.asList
 import kotlinx.js.jso
 import react.*
 import react.dom.events.EventHandler
@@ -85,7 +86,8 @@ private external interface NumericPredSliderThumbProps: NumericPredSliderInterna
     var disabled: Boolean?
 }
 private class DragEventManager(
-    val container: HTMLDivElement,
+    val container: HTMLElement,
+    var onDragStart: (() -> Unit)? = null,
     var onDrag: ((Double) -> Unit)? = null,
     var onDragEnd: ((Double) -> Unit)? = null,
 ) {
@@ -93,52 +95,103 @@ private class DragEventManager(
         var anyPressed: Boolean = false
     }
     var pressed: Boolean = false
+    enum class PressType { MOUSE, TOUCH }
+    var pressType: PressType = PressType.MOUSE
     var pressOffset: Double = 0.0
+    var touchId: Double = 0.0
 
+    fun doMove(clientX: Double) {
+        if (!pressed) return
+        val newPos = clientX - pressOffset - container.clientLeft
+        this.onDrag?.invoke(newPos)
+    }
     fun onWindowMouseMove(ev: org.w3c.dom.events.Event) {
         val mouseEvent = ev as org.w3c.dom.events.MouseEvent
-        if (!pressed) return
-        val newPos = mouseEvent.clientX - pressOffset - container.clientLeft
-        this.onDrag?.invoke(newPos)
+        doMove(mouseEvent.clientX.toDouble())
         ev.stopPropagation()
         ev.preventDefault()
     }
-    fun onWindowMouseUp(ev: org.w3c.dom.events.Event) {
-        val mouseEvent = ev as org.w3c.dom.events.MouseEvent
+    fun onWindowTouchMove(ev: org.w3c.dom.events.Event) {
+        val touchEvent = ev as dom.events.TouchEvent
+        val touch = touchEvent.touches.asList().firstOrNull { it.identifier == touchId }
+        if (touch != null)
+            doMove(touch.clientX)
+        ev.stopPropagation()
+        ev.preventDefault()
+    }
+    val windowEventOpts = jso<dynamic>{ capture=true; passive=false}
+
+    fun doRelease(clientX: Double) {
         if (!pressed) return
         pressed = false
         anyPressed = false
         console.log("end thumb drag")
-        window.removeEventListener("mousemove", this::onWindowMouseMove, jso{capture=true})
-        window.removeEventListener("mouseup", this::onWindowMouseUp, jso{capture=true})
-        ev.stopPropagation()
-        ev.preventDefault()
-        val newPos = mouseEvent.clientX - pressOffset - container.clientLeft
+        installWindowListeners(pressType, false)
+        val newPos = clientX - pressOffset - container.clientLeft
         this.onDrag?.invoke(newPos)
         this.onDragEnd?.invoke(newPos)
     }
-    fun onMouseDown(event: react.dom.events.MouseEvent<HTMLDivElement,*>) {
+    fun onWindowMouseUp(ev: org.w3c.dom.events.Event) {
+        val mouseEvent = ev as org.w3c.dom.events.MouseEvent
+        doRelease(mouseEvent.clientX.toDouble())
+        ev.stopPropagation()
+        ev.preventDefault()
+    }
+    fun onWindowTouchEnd(ev: org.w3c.dom.events.Event) {
+        val touchEvent = ev as dom.events.TouchEvent
+        val touch = ev.changedTouches.asList().firstOrNull { it.identifier == touchId }
+        if (touch != null)
+            doRelease(touch.clientX)
+        ev.stopPropagation()
+        ev.preventDefault()
+    }
+    fun installWindowListeners(type: PressType, install: Boolean) {
+        val func: (String, ((org.w3c.dom.events.Event)->Unit)?, dynamic)->Unit =
+            if (install) window::addEventListener else window::removeEventListener
+        when (type) {
+            PressType.MOUSE -> {
+                func("mousemove", this::onWindowMouseMove, windowEventOpts)
+                func("mouseup", this::onWindowMouseUp, windowEventOpts)
+            }
+            PressType.TOUCH -> {
+                func("touchmove", this::onWindowTouchMove, windowEventOpts)
+                func("touchend", this::onWindowTouchEnd, windowEventOpts)
+            }
+        }
+    }
+    fun startDrag(type: PressType, off: Double) {
         if (pressed) return
         if (anyPressed) return
         pressed = true
         anyPressed = true
         // offset from the center
-        val off = event.nativeEvent.offsetX - (event.target as HTMLDivElement).clientWidth / 2
         console.log(off)
         pressOffset = off
+        pressType = type
         console.log("start thumb drag")
-        window.addEventListener("mousemove", this::onWindowMouseMove, jso{capture=true})
-        window.addEventListener("mouseup", this::onWindowMouseUp, jso{capture=true})
+        installWindowListeners(type, true)
+        onDragStart?.invoke()
+    }
+    fun onMouseDown(event: react.dom.events.MouseEvent<HTMLElement,*>) {
+        val off = event.nativeEvent.offsetX - (event.target as HTMLElement).clientWidth / 2
+        startDrag(PressType.MOUSE, off)
+    }
+    fun onTouchStart(event: react.dom.events.TouchEvent<HTMLElement>) {
+        if (pressed) return
+        startDrag(PressType.TOUCH, 0.0)
+        touchId = event.changedTouches.item(0)?.identifier ?: 0.0
     }
 }
 
 private fun useDragEventManager(
-    container: HTMLDivElement,
+    container: HTMLElement,
+    onDragStart: (() -> Unit)? = null,
     onDrag: ((Double) -> Unit)? = null,
     onDragEnd: ((Double) -> Unit)? = null,
 ): DragEventManager {
     val mgr = useMemo { DragEventManager(container, onDrag=onDrag, onDragEnd=onDragEnd) }
     useEffect(onDrag,onDragEnd) {
+        mgr.onDragStart = onDragStart
         mgr.onDrag = onDrag
         mgr.onDragEnd = onDragEnd
     }
@@ -156,8 +209,9 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
     val signpostVisible = focused || pressed
     val svg = "/static/slider-${kind.name.lowercase()}-${if (disabled) "inactive" else "active"}.svg"
     val eventMgr = useDragEventManager(props.element,
+        onDragStart = {pressed=true},
         onDrag = {props.onThumbChange?.invoke(zoomMgr.canvasCssPx2space(it))},
-        onDragEnd = {props.onThumbCommit?.invoke(zoomMgr.canvasCssPx2space(it))},
+        onDragEnd = {pressed=false; props.onThumbCommit?.invoke(zoomMgr.canvasCssPx2space(it))},
         )
     div {
         css {
@@ -181,6 +235,7 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
         onFocus = { focused = true }
         onBlur = { focused = false }
         onMouseDown = eventMgr::onMouseDown
+        onTouchStart = eventMgr::onTouchStart
 
 
         //onTouchStart = { event->
