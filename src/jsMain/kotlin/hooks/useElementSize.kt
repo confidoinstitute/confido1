@@ -5,7 +5,7 @@ import dom.observers.ResizeObserver
 import react.*
 
 data class ElementSize<T: HTMLElement>(
-    val ref: Ref<T>,
+    val ref: RefObject<T>,
     val width: Double,
     val height: Double,
     val known: Boolean,

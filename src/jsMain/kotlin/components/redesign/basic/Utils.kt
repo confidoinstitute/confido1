@@ -11,7 +11,6 @@ import react.Props
 import react.PropsWithClassName
 import react.dom.html.HTMLAttributes
 import react.dom.html.ReactHTML.div
-import react.useRef
 
 inline fun PropsWithClassName.css(
     vararg classNames: ClassName?,
@@ -27,6 +26,7 @@ inline fun PropsWithClassName.css(
 external interface PropsWithElementSize: Props {
     var elementWidth: Double
     var elementHeight: Double
+    var element: HTMLDivElement
 }
 
 external interface ElementSizeWrapperProps : PropsWithClassName, HTMLAttributes<HTMLDivElement> {
@@ -42,12 +42,14 @@ fun <P: PropsWithElementSize> elementSizeWrapper(component: FC<P>, className: Cl
             //className = props.className
             this.ref = elementSize.ref
             this.className = className
-            if (elementSize.known) {
+            val refCur = elementSize.ref.current
+            if (elementSize.known && refCur != null) {
                 component {
                     key = "comp"
                     +props
                     elementWidth = elementSize.width
                     elementHeight = elementSize.height
+                    element = refCur
                 }
             }
         }

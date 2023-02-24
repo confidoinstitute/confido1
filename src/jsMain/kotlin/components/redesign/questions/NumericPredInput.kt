@@ -1,15 +1,18 @@
 package components.redesign.questions
 
+import browser.window
 import components.redesign.basic.PropsWithElementSize
 import components.redesign.basic.Stack
 import components.redesign.basic.elementSizeWrapper
 import csstype.*
+import dom.html.HTMLDivElement
 import emotion.css.ClassName
 import emotion.react.css
-import react.FC
-import react.Props
+import kotlinx.js.jso
+import react.*
+import react.dom.events.EventHandler
+import react.dom.events.MouseEvent
 import react.dom.html.ReactHTML.div
-import react.useState
 import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.distributions.TruncatedNormalDistribution
 import tools.confido.spaces.NumericSpace
@@ -75,6 +78,67 @@ private external interface NumericPredSliderThumbProps: NumericPredSliderInterna
     var onCommit: ((Double)->Unit)?
     var disabled: Boolean?
 }
+private class DragEventManager(
+    val container: HTMLDivElement,
+    var onDrag: ((Double) -> Unit)? = null,
+    var onDragEnd: ((Double) -> Unit)? = null,
+) {
+    companion object {
+        var anyPressed: Boolean = false
+    }
+    var pressed: Boolean = false
+    var pressOffset: Double = 0.0
+
+    fun onWindowMouseMove(ev: org.w3c.dom.events.Event) {
+        val mouseEvent = ev as org.w3c.dom.events.MouseEvent
+        if (!pressed) return
+        val newPos = mouseEvent.clientX - pressOffset - container.clientLeft
+        console.log(newPos)
+        this.onDrag?.invoke(newPos)
+        ev.stopPropagation()
+        ev.preventDefault()
+    }
+    fun onWindowMouseUp(ev: org.w3c.dom.events.Event) {
+        val mouseEvent = ev as org.w3c.dom.events.MouseEvent
+        if (!pressed) return
+        pressed = false
+        anyPressed = false
+        console.log("remove handlers")
+        window.removeEventListener("mousemove", this::onWindowMouseMove, jso{capture=true})
+        window.removeEventListener("mouseup", this::onWindowMouseUp, jso{capture=true})
+        ev.stopPropagation()
+        ev.preventDefault()
+        val newPos = mouseEvent.clientX - pressOffset - container.clientLeft
+        this.onDrag?.invoke(newPos)
+        this.onDragEnd?.invoke(newPos)
+    }
+    fun onMouseDown(event: react.dom.events.MouseEvent<HTMLDivElement,*>) {
+        if (pressed) return
+        if (anyPressed) return
+        pressed = true
+        anyPressed = true
+        // offset from the center
+        val off = event.nativeEvent.offsetX - (event.target as HTMLDivElement).clientWidth / 2
+        console.log(off)
+        pressOffset = off
+        console.log("add handlers")
+        window.addEventListener("mousemove", this::onWindowMouseMove, jso{capture=true})
+        window.addEventListener("mouseup", this::onWindowMouseUp, jso{capture=true})
+    }
+}
+
+private fun useDragEventManager(
+    container: HTMLDivElement,
+    onDrag: ((Double) -> Unit)? = null,
+    onDragEnd: ((Double) -> Unit)? = null,
+): DragEventManager {
+    val mgr = useMemo { DragEventManager(container, onDrag=onDrag, onDragEnd=onDragEnd) }
+    useEffect(onDrag,onDragEnd) {
+        mgr.onDrag = onDrag
+        mgr.onDragEnd = onDragEnd
+    }
+    return mgr
+}
 private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
     val kind = props.kind
     val pos = props.pos
@@ -83,8 +147,13 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
     val disabled = props.disabled ?: false
     var focused by useState(false)
     var pressed by useState(false)
+    var pressOffset by useState(0.0)
     val signpostVisible = focused || pressed
     val svg = "/static/slider-${kind.name.lowercase()}-${if (disabled) "inactive" else "active"}.svg"
+    val eventMgr = useDragEventManager(props.element,
+        onDrag = {props.onChange?.invoke(zoomMgr.canvasCssPx2space(it))},
+        onDragEnd = {props.onCommit?.invoke(zoomMgr.canvasCssPx2space(it))},
+        )
     div {
         css {
             position = Position.absolute
@@ -106,9 +175,12 @@ private val NumericPredSliderThumb = FC<NumericPredSliderThumbProps> {props->
         tabIndex = 0 // make focusable
         onFocus = { focused = true }
         onBlur = { focused = false }
-        onMouseDown = {
+        onMouseDown = eventMgr::onMouseDown
 
-        }
+
+        //onTouchStart = { event->
+        //    event.preventDefault() // do not autogenerate mousedown event (https://stackoverflow.com/a/31210694)
+        //}
     }
         div {// signpost stem
             css {
