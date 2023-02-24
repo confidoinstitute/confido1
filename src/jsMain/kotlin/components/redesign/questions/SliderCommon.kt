@@ -204,17 +204,28 @@ val SliderThumb = FC<SliderThumbProps> {props->
     val posPx = zoomMgr.space2canvasCssPx(pos)
     val disabled = props.disabled ?: false
     var focused by useState(false)
+    var dragFocused by useState(false)
     var pressed by useState(false)
     var pressOffset by useState(0.0)
-    val signpostVisible = focused || pressed
+    val signpostVisible = (focused  && !dragFocused) || pressed
     val kind = props.kind
     val svg = kind.svg(disabled)
     val thumbRef = useRef<HTMLElement>()
     val eventMgr = useDragEventManager(props.containerElement,
         thumbRef,
-        onDragStart = {pressed=true},
+        onDragStart = {
+                            pressed=true
+                            if (!focused) {
+                                thumbRef.current?.focus()
+                                dragFocused = true
+                            }
+                      },
         onDrag = {props.onThumbChange?.invoke(zoomMgr.canvasCssPx2space(it))},
         onDragEnd = {pressed=false},
+        onClick = {
+            thumbRef.current?.focus()
+            dragFocused = false
+        }
     )
     ReactHTML.div {
         css {
@@ -239,7 +250,7 @@ val SliderThumb = FC<SliderThumbProps> {props->
         }
         tabIndex = 0 // make focusable
         onFocus = { focused = true }
-        onBlur = { focused = false }
+        onBlur = { focused = false; dragFocused = false; }
         onMouseDown = eventMgr::onMouseDown
         //onTouchStart = eventMgr::onTouchStart
 
