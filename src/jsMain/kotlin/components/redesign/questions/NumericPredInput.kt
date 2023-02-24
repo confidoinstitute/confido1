@@ -188,6 +188,8 @@ private class DragEventManager(
         startDrag(PressType.MOUSE, off)
         installWindowListener("mousemove", this::onWindowMouseMove, windowEventOpts)
         installWindowListener("mouseup", this::onWindowMouseUp, windowEventOpts)
+        event.preventDefault()
+        event.stopPropagation()
     }
     fun onTouchStart(event: react.dom.events.TouchEvent<HTMLElement>) {
         if (pressed) return
