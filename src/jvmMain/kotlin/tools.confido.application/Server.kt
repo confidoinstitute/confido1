@@ -51,7 +51,7 @@ val demoMode = System.getenv("CONFIDO_DEMO") == "1"
 fun HTML.index() {
     head {
         title("Confido")
-        meta(name = "viewport", content = "width=device-width, initial-scale=1.0")
+        meta(name = "viewport", content = "width=device-width, initial-scale=1.0,user-scalable=no,maximum-scale=1.0")
         link(rel = "icon", href = "/static/favicon.ico") { sizes = "any" }
         link(rel = "icon", href = "/static/icon.svg", type = "image/svg+xml")
         link(rel = "apple-touch-icon", href = "/static/apple-touch-icon.png")
