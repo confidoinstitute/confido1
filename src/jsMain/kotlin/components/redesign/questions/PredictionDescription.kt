@@ -11,6 +11,9 @@ import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.distributions.TruncatedNormalDistribution
 import tools.confido.question.Prediction
+import tools.confido.question.PredictionTerminology
+import tools.confido.question.aTerm
+import tools.confido.question.term
 import tools.confido.utils.formatPercent
 
 external interface MyPredictionDescriptionProps : Props {
@@ -23,6 +26,7 @@ external interface GroupPredictionDescriptionProps : Props {
     var prediction: Prediction?
     var myPredictionExists: Boolean
     var numPredictors: Int
+    var predictionTerminology: PredictionTerminology
 }
 
 val predictorCountColor = Color("#FF6B00")
@@ -31,6 +35,7 @@ val noColor = Color("#FF5555")
 
 
 val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
+    val predTerm = props.predictionTerminology
     Stack {
         css {
             padding = Padding(25.px, 15.px)
@@ -50,7 +55,7 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
                     css { this.color = predictorCountColor }
                     +"nobody "
                 }
-                +"added an estimate."
+                +"added ${predTerm.aTerm}."
             } else if (props.numPredictors == 1 && props.myPredictionExists) {
                 if (props.resolved) {
                     +"Only"
@@ -61,16 +66,16 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
                     css { this.color = predictorCountColor }
                     +"you "
                 }
-                +"added an estimate."
+                +"added ${predTerm.aTerm}."
             } else {
                 ReactHTML.b {
                     css { this.color = predictorCountColor }
                     +"${props.numPredictors} "
                 }
                 if (props.numPredictors > 1) {
-                    +"people added at least one estimate."
+                    +"people added at least one ${predTerm.term}."
                 } else {
-                    +"person added at least one estimate."
+                    +"person added at least one ${predTerm.term}."
                 }
             }
         }

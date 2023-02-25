@@ -27,6 +27,13 @@ enum class PredictionTerminology {
     ESTIMATE,
 }
 
+val PredictionTerminology.term get() = name.lowercase()
+/// Term with indefinite article in front of it.
+val PredictionTerminology.aTerm get() = when (this) {
+    PredictionTerminology.ANSWER, PredictionTerminology.ESTIMATE -> "an $term"
+    else -> "a $term"
+}
+
 @Serializable
 data class Question(
     @SerialName("_id")

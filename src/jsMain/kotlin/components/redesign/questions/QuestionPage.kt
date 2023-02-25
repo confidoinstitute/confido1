@@ -191,6 +191,8 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
     var predictionPreview: ProbabilityDistribution? by useState(null) // continuously updated preview
     var pendingPredictionState by useState(PendingPredictionState.NONE)
 
+    val predictionTerm = question.predictionTerminology.name.lowercase()
+
     useDebounce(5000, pendingPredictionState.toString()) {
         if (pendingPredictionState in listOf(PendingPredictionState.ACCEPTED, PendingPredictionState.ERROR))
             pendingPredictionState = PendingPredictionState.NONE
@@ -222,12 +224,12 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
         }
         direction = FlexDirection.row
         QuestionEstimateTabButton {
-            text = "Your estimate"
+            text = "Your $predictionTerm"
             active = !groupPredictionOpen
             onClick = { groupPredictionOpen = false }
         }
         QuestionEstimateTabButton {
-            text = "Group estimate"
+            text = "Group $predictionTerm"
             active = groupPredictionOpen
             onClick = { groupPredictionOpen = true }
         }
