@@ -309,6 +309,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
             this.myPredictionExists = props.myPrediction != null
             this.resolved = props.resolved
             this.numPredictors = props.numPredictors
+            this.predictionTerminology = props.question.predictionTerminology
         }
     } else {
         MyPredictionDescription {
