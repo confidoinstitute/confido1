@@ -276,17 +276,20 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     key="predictionInput"
                     space = props.question.answerSpace
                     this.dist = props.myPrediction?.dist
-                    this.onChange = {
-                        pendingPrediction = null
-                        console.log("ONCHANGE")
-                        pendingPredictionState = PendingPredictionState.NONE
-                        predictionPreview = it
-                    }
-                    this.onCommit = {
-                        console.log("ONCOMMIT")
-                        pendingPredictionState = PendingPredictionState.MAKING
-                        pendingPrediction = it
-                        predictionPreview = null
+                    this.disabled = !question.open
+                    if (question.open) {
+                        this.onChange = {
+                            pendingPrediction = null
+                            console.log("ONCHANGE")
+                            pendingPredictionState = PendingPredictionState.NONE
+                            predictionPreview = it
+                        }
+                        this.onCommit = {
+                            console.log("ONCOMMIT")
+                            pendingPredictionState = PendingPredictionState.MAKING
+                            pendingPrediction = it
+                            predictionPreview = null
+                        }
                     }
                 }
             }

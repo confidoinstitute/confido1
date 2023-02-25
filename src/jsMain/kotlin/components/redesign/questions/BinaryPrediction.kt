@@ -110,7 +110,8 @@ val BIN_PRED_SPACE = NumericSpace(0.0, 100.0, unit="%")
 val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
     val zoomMgr = SpaceZoomManager(BIN_PRED_SPACE, props.elementWidth)
     val propProb = (props.dist as? BinaryDistribution)?.yesProb
-    var yesProb by useState<Double?>(propProb)
+    var yesProb by useState(propProb)
+    val disabled = props.disabled?:false
     useEffect(propProb) {
         propProb?.let { yesProb = propProb }
     }
@@ -160,30 +161,31 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
             flexShrink = number(0.0)
             position = Position.relative
         }
-        if (yesProb == null)
-            div {
-                key = "createEstimate"
-                css {
-                    fontFamily = FontFamily.sansSerif
-                    fontWeight = integer(600)
-                    fontSize = 15.px
-                    lineHeight = 18.px
-                    display = Display.flex
-                    alignItems = AlignItems.center
-                    textAlign = TextAlign.center
-                    justifyContent = JustifyContent.center
-                    color = Color("#6319FF")
-                    flexDirection = FlexDirection.column
-                    height = 100.pct
-                    cursor = Cursor.default
+        if (yesProb == null) {
+            if (!disabled)
+                div {
+                    key = "createEstimate"
+                    css {
+                        fontFamily = FontFamily.sansSerif
+                        fontWeight = integer(600)
+                        fontSize = 15.px
+                        lineHeight = 18.px
+                        display = Display.flex
+                        alignItems = AlignItems.center
+                        textAlign = TextAlign.center
+                        justifyContent = JustifyContent.center
+                        color = Color("#6319FF")
+                        flexDirection = FlexDirection.column
+                        height = 100.pct
+                        cursor = Cursor.default
+                    }
+                    +"Tap here to create an estimate"// TODO choose "tap"/"click" based on device
+                    onClick = { ev ->
+                        val newProb = zoomMgr.canvasCssPx2space(ev.nativeEvent.offsetX) / 100.0
+                        update(newProb, true)
+                    }
                 }
-                +"Tap here to create an estimate"// TODO choose "tap"/"click" based on device
-                onClick = { ev ->
-                    val newProb = zoomMgr.canvasCssPx2space(ev.nativeEvent.offsetX) / 100.0
-                    update(newProb, true)
-                }
-            }
-        else {
+        } else {
             SliderTrack {
                 key = "track"
                 this.zoomManager = zoomMgr
@@ -196,9 +198,11 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
                 kind = ThumbKind.Center
                 pos = 100.0 * yesProb!!
                 onDrag = { pos, isCommit ->
+                    if (!disabled)
                     update(pos/100.0, isCommit)
                 }
                 signpostEnabled = false
+                this.disabled = disabled
             }
         }
 
@@ -261,6 +265,7 @@ val BinaryPredInput = FC<PredictionInputProps> {props->
                 props.onChange?.invoke(it)
             }
             this.onCommit = props.onCommit
+            this.disabled = props.disabled
         }
     }
 }

@@ -257,6 +257,7 @@ val SliderThumb = FC<SliderThumbProps> {props->
     val eventMgr = useDragEventManager(props.containerElement,
         thumbRef,
         onDragStart = {
+                            if (disabled) return@useDragEventManager
                             pressed=true
                             if (!focused) {
                                 thumbRef.current?.focus()
@@ -264,9 +265,12 @@ val SliderThumb = FC<SliderThumbProps> {props->
                             }
                             props.onDragStart?.invoke()
                       },
-        onDrag = { pos, isCommit -> props.onDrag?.invoke(zoomMgr.canvasCssPx2space(pos), isCommit)},
+        onDrag = { pos, isCommit ->
+            if (disabled) return@useDragEventManager
+            props.onDrag?.invoke(zoomMgr.canvasCssPx2space(pos), isCommit)},
         onDragEnd = {pressed=false },
         onClick = {
+            if (disabled) return@useDragEventManager
             thumbRef.current?.focus()
             dragFocused = false
         }

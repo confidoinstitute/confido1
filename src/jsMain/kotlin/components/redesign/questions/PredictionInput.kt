@@ -17,6 +17,7 @@ external interface PredictionInputProps : Props {
     var dist: ProbabilityDistribution?
     var onChange: ((ProbabilityDistribution) -> Unit)?
     var onCommit: ((ProbabilityDistribution) -> Unit)?
+    var disabled: Boolean?
 }
 
 val PredictionInput = FC<PredictionInputProps> { props->

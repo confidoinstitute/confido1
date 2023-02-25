@@ -51,6 +51,7 @@ fun findDistribution(space: NumericSpace, center: Double, ciWidth: Double): Trun
 val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
     val space = props.space as NumericSpace
     val propDist = props.dist as? TruncatedNormalDistribution
+    val disabled = props.disabled ?: false
     var center by useState(propDist?.pseudoMean)
     var ciWidth by useState(propDist?.confidenceInterval(0.8)?.size)
     var dragging by useState(false)
@@ -110,6 +111,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                 this.zoomManager = zoomManager
                 kind = ThumbKind.Left
                 pos = ci!!.start
+                this.disabled = disabled
                 onDrag = { pos, isCommit ->
                     center?.let { center->
                         val effectivePos = minOf(pos, center - minCIRadius)
@@ -136,6 +138,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                 this.zoomManager = zoomManager
                 kind = ThumbKind.Center
                 pos = center!!
+                this.disabled = disabled
                 onDrag = { pos, isCommit ->
                     center = pos
                     didChange = true
@@ -151,6 +154,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                 this.zoomManager = zoomManager
                 kind = ThumbKind.Right
                 pos = ci!!.endInclusive
+                this.disabled = disabled
                 onDrag = { pos, isCommit->
                     center?.let { center->
                         val effectivePos = maxOf(pos, center + minCIRadius)
@@ -168,74 +172,77 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                 onDragStart = { dragging = true }
                 onDragEnd = { dragging = false }
             }
-        if (center == null) {
-            div {
-                key = "setCenter"
-                css {
-                    fontFamily = FontFamily.sansSerif
-                    fontWeight = integer(600)
-                    fontSize = 15.px
-                    lineHeight = 18.px
-                    display = Display.flex
-                    alignItems = AlignItems.center
-                    textAlign = TextAlign.center
-                    justifyContent = JustifyContent.center
-                    color = Color("#6319FF")
-                    flexDirection = FlexDirection.column
-                    height = 100.pct
-                    cursor = Cursor.default
-                }
-                +"Tap here to create an estimate"// TODO choose "tap"/"click" based on device
-                onClick = { ev->
-                    center = zoomManager.canvasCssPx2space(ev.nativeEvent.offsetX)
-                    didChange = true
-                }
-            }
-        } else if (dist == null) {
-            div {
-                key = "setUncertainty"
-                css {
-                    val pxCenter = zoomManager.space2canvasCssPx(center!!)
-                    if (pxCenter < props.elementWidth / 2.0)
-                        paddingLeft = (pxCenter + 20.0).px
-                    else
-                        paddingRight = (props.elementWidth - pxCenter + 20.0).px
-                    fontFamily = FontFamily.sansSerif
-                    fontWeight = integer(600)
-                    fontSize = 15.px
-                    lineHeight = 18.px
-                    display = Display.flex
-                    alignItems = AlignItems.center
-                    textAlign = TextAlign.center
-                    justifyContent = JustifyContent.center
-                    color = Color("#6319FF")
-                    flexDirection = FlexDirection.column
-                    height = 100.pct
-                    cursor = Cursor.default
-                }
+        if (!disabled) {
+            if (center == null) {
                 div {
-                    +"Tap here to set uncertainty"// TODO choose "tap"/"click" based on device
+                    key = "setCenter"
                     css {
-                        paddingLeft = 10.px
-                        paddingRight = 10.px
+                        fontFamily = FontFamily.sansSerif
+                        fontWeight = integer(600)
+                        fontSize = 15.px
+                        lineHeight = 18.px
+                        display = Display.flex
+                        alignItems = AlignItems.center
+                        textAlign = TextAlign.center
+                        justifyContent = JustifyContent.center
+                        color = Color("#6319FF")
+                        flexDirection = FlexDirection.column
+                        height = 100.pct
+                        cursor = Cursor.default
+                    }
+                    +"Tap here to create an estimate"// TODO choose "tap"/"click" based on device
+                    onClick = { ev ->
+                        center = zoomManager.canvasCssPx2space(ev.nativeEvent.offsetX)
+                        didChange = true
                     }
                 }
-                onClick = { ev->
-                    // set ciWidth so that a blue thumb ends up where you clicked
-                    val desiredCIBoundary = zoomManager.canvasCssPx2space(ev.nativeEvent.clientX.toDouble() - props.element.getBoundingClientRect().left)
-                    val desiredCIRadius = abs(center!! - desiredCIBoundary)
-                    val newCIWidth = if (center!! - desiredCIRadius < space.min)
-                        desiredCIBoundary - space.min
-                    else if (center!! + desiredCIRadius > space.max)
-                        space.max - desiredCIBoundary
-                    else
-                        2 * desiredCIRadius
-                    ciWidth = newCIWidth
-                    didChange = true
-                    update(center!!, newCIWidth, true)
+            } else if (dist == null) {
+                div {
+                    key = "setUncertainty"
+                    css {
+                        val pxCenter = zoomManager.space2canvasCssPx(center!!)
+                        if (pxCenter < props.elementWidth / 2.0)
+                            paddingLeft = (pxCenter + 20.0).px
+                        else
+                            paddingRight = (props.elementWidth - pxCenter + 20.0).px
+                        fontFamily = FontFamily.sansSerif
+                        fontWeight = integer(600)
+                        fontSize = 15.px
+                        lineHeight = 18.px
+                        display = Display.flex
+                        alignItems = AlignItems.center
+                        textAlign = TextAlign.center
+                        justifyContent = JustifyContent.center
+                        color = Color("#6319FF")
+                        flexDirection = FlexDirection.column
+                        height = 100.pct
+                        cursor = Cursor.default
+                    }
+                    div {
+                        +"Tap here to set uncertainty"// TODO choose "tap"/"click" based on device
+                        css {
+                            paddingLeft = 10.px
+                            paddingRight = 10.px
+                        }
+                    }
+                    onClick = { ev ->
+                        // set ciWidth so that a blue thumb ends up where you clicked
+                        val desiredCIBoundary =
+                            zoomManager.canvasCssPx2space(ev.nativeEvent.clientX.toDouble() - props.element.getBoundingClientRect().left)
+                        val desiredCIRadius = abs(center!! - desiredCIBoundary)
+                        val newCIWidth = if (center!! - desiredCIRadius < space.min)
+                            desiredCIBoundary - space.min
+                        else if (center!! + desiredCIRadius > space.max)
+                            space.max - desiredCIBoundary
+                        else
+                            2 * desiredCIRadius
+                        ciWidth = newCIWidth
+                        didChange = true
+                        update(center!!, newCIWidth, true)
+                    }
                 }
-            }
 
+            }
         }
     }
 }, ClassName {
@@ -259,6 +266,7 @@ val NumericPredInput = FC<NumericPredInputProps> { props->
             onZoomChange = { zoomParams = it }
         }
         NumericPredSlider {
+            this.disabled = props.disabled
             this.space = props.space
             this.zoomParams = zoomParams
             this.dist = props.dist
