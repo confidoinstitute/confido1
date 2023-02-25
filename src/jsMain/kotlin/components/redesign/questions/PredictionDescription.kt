@@ -125,7 +125,7 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
                 }
 
                 val confidence = 0.8
-                val confidenceInterval = dist.confidenceInterval(confidence)
+                val confidenceInterval = dist.confidenceInterval(confidence, preferredCenter = dist.median)
                 ReactHTML.div {
                     if (props.resolved) {
                         +"The group believed with "
