@@ -5,13 +5,16 @@ import components.questions.QuestionListProps
 import components.redesign.SortButton
 import components.redesign.SortType
 import components.redesign.basic.Stack
-import components.redesign.questions.EditQuestionDialog
+import components.redesign.questions.dialog.EditQuestionDialog
 import components.redesign.questions.QuestionItem
+import components.redesign.questions.dialog.AddQuestionPresetDialog
+import components.redesign.questions.dialog.QuestionPreset
 import components.rooms.RoomContext
 import csstype.*
 import emotion.react.css
 import hooks.useEditDialog
 import hooks.useWebSocket
+import kotlinx.js.jso
 import react.FC
 import react.Props
 import react.useContext
@@ -40,7 +43,22 @@ val QuestionList = FC<QuestionListProps> { props ->
     }
     val visibleQuestions = if (props.showHiddenQuestions) questions else questions.filter { it.visible }
 
-    val editQuestionDialog = useEditDialog(EditQuestionDialog)
+    var preset by useState(QuestionPreset.NONE)
+    var presetOpen by useState(false)
+
+    val editQuestionDialog = useEditDialog(EditQuestionDialog, jso {
+        this.preset = preset
+    })
+
+    fun addQuestion() {
+        presetOpen = true
+    }
+
+    AddQuestionPresetDialog {
+        open = presetOpen
+        onClose = {presetOpen = false}
+        onPreset = {preset = it; editQuestionDialog(null)}
+    }
 
     RoomHeader {
         SortButton {
@@ -52,7 +70,7 @@ val QuestionList = FC<QuestionListProps> { props ->
         if (appState.hasPermission(room, RoomPermission.ADD_QUESTION)) {
             RoomHeaderButton {
                 +"Create a question"
-                onClick = { editQuestionDialog(null) }
+                onClick = { addQuestion() }
             }
         }
     }

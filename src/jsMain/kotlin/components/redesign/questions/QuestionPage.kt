@@ -2,13 +2,14 @@ package components.redesign.questions
 
 import components.AppStateContext
 import components.questions.PendingPredictionState
-import components.questions.lastCommentSnackTS
 import components.redesign.*
 import components.redesign.comments.Comment
 import components.redesign.basic.*
 import components.redesign.comments.AddCommentButton
 import components.redesign.comments.AddCommentDialog
 import components.redesign.comments.CommentInputVariant
+import components.redesign.questions.dialog.EditQuestionDialog
+import components.redesign.questions.dialog.QuestionPreset
 import components.redesign.rooms.RoomNavbar
 import components.rooms.RoomContext
 import components.showError
@@ -20,6 +21,7 @@ import hooks.useOnUnmount
 import hooks.useEditDialog
 import hooks.useWebSocket
 import io.ktor.http.*
+import kotlinx.js.jso
 import kotlinx.serialization.encodeToString
 import payloads.responses.CommentInfo
 import payloads.responses.WSData
@@ -38,13 +40,10 @@ import tools.confido.question.Question
 import tools.confido.refs.ref
 import tools.confido.serialization.confidoJSON
 import tools.confido.spaces.Value
-import tools.confido.state.enabled
 import tools.confido.utils.capFirst
 import tools.confido.utils.uncapFirst
-import tools.confido.utils.unixNow
 import utils.questionUrl
 import utils.roomPalette
-import utils.roomUrl
 import utils.runCoroutine
 import web.prompts.confirm
 
@@ -99,7 +98,9 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
 
     var quickSettingsOpen by useState(false)
 
-    val editDialog = useEditDialog(EditQuestionDialog)
+    val editDialog = useEditDialog(EditQuestionDialog, jso {
+        preset = QuestionPreset.NONE
+    })
 
     useDocumentTitle("${props.question.name} - Confido")
 

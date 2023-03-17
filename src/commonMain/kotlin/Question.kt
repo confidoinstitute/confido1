@@ -21,17 +21,28 @@ data class Prediction (
     val dist: ProbabilityDistribution,
 ): HasId
 
-enum class PredictionTerminology {
+interface Terminology {
+    abstract val name: String
+
+    val term get() = name.lowercase()
+    val aTerm get() = "a $term"
+    val plural get() = "${term}s"
+}
+enum class PredictionTerminology: Terminology {
     PREDICTION,
     ANSWER,
-    ESTIMATE,
+    ESTIMATE;
+
+    override val aTerm get() = when (this) {
+        PredictionTerminology.ANSWER, PredictionTerminology.ESTIMATE -> "an $term"
+        else -> "a $term"
+    }
 }
 
-val PredictionTerminology.term get() = name.lowercase()
-/// Term with indefinite article in front of it.
-val PredictionTerminology.aTerm get() = when (this) {
-    PredictionTerminology.ANSWER, PredictionTerminology.ESTIMATE -> "an $term"
-    else -> "a $term"
+enum class GroupTerminology: Terminology {
+    GROUP,
+    CROWD,
+    TEAM;
 }
 
 @Serializable
@@ -42,11 +53,14 @@ data class Question(
     val answerSpace: Space,
     val description: String = "",
     val predictionTerminology: PredictionTerminology = PredictionTerminology.PREDICTION,
+    val groupTerminology: GroupTerminology = GroupTerminology.GROUP,
     val visible: Boolean = true,
     val open: Boolean = true, // submitting predictions allowed
     val groupPredVisible: Boolean = false,
     val resolutionVisible: Boolean = false,
     val resolution: Value? = null,
+    val allowComments: Boolean = true,
+    val sensitive: Boolean = false,
 ) : ImmediateDerefEntity, HasUrlPrefix {
     init {
         if (resolution != null) {

@@ -12,8 +12,6 @@ import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.distributions.TruncatedNormalDistribution
 import tools.confido.question.Prediction
 import tools.confido.question.PredictionTerminology
-import tools.confido.question.aTerm
-import tools.confido.question.term
 import tools.confido.utils.formatPercent
 
 external interface MyPredictionDescriptionProps : Props {
