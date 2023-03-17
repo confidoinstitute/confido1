@@ -8,9 +8,12 @@ import components.nouser.EmailLoginAlreadyLoggedIn
 import components.profile.VerifyToken
 import components.redesign.Dashboard
 import components.redesign.basic.Backdrop
+import components.redesign.basic.BackdropProvider
 import components.redesign.basic.GlobalCss
+import components.redesign.basic.GlobalErrorMessage
 import components.redesign.rooms.Room
 import components.redesign.rooms.RoomInviteLoggedIn
+import components.showError
 import csstype.*
 import emotion.react.css
 import react.*
@@ -30,12 +33,10 @@ private val RootLayoutInner = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
 
     var showDemoWelcome by useState(appConfig.demoMode && window.asDynamic().demoDismissed != true)
-
-    if (showDemoWelcome) {
-        Backdrop {
-            css {
-                backdropFilter = blur(10.px)
-            }
+    Backdrop {
+        this.`in` = showDemoWelcome
+        css {
+            backdropFilter = blur(10.px)
         }
         DemoWelcomeBox { dismissDemo = {showDemoWelcome = false; window.asDynamic().demoDismissed = true}}
     }
@@ -43,49 +44,51 @@ private val RootLayoutInner = FC<Props> {
     GlobalCss {
         backgroundColor = Color("#F2F2F2")
     }
-    Routes {
-        Route {
-            index = true
-            path = "/"
-            this.element = Dashboard.create()
-        }
-        Route {
-            path = "rooms/:roomID/*"
-            this.element = Room.create()
-        }
-        Route {
-            path = "room/:roomID/*"
-            this.element = RoomRedirect.create()
-        }
-        Route {
-            path = "/join/:inviteToken"
-            this.element = RoomInviteLoggedIn.create()
-        }
-        Route {
-            path = "email_verify"
-            this.element = VerifyToken.create {
-                url = "/profile/email/verify"
-                failureTitle = "Email verification failed"
-                successTitle = "Email verification success"
-                failureText = "The verification link is expired or invalid."
-                successText = "Your email address has been successfully verified."
+    GlobalErrorMessage {}
+    BackdropProvider {
+        Routes {
+            Route {
+                index = true
+                path = "/"
+                this.element = Dashboard.create()
             }
-        }
-        Route {
-            path = "password_reset"
-            this.element = VerifyToken.create {
-                url = "/profile/password/reset/finish"
-                failureTitle = "Password reset failed"
-                successTitle = "Password was reset"
-                failureText = "The link is expired or invalid."
-                successText = "Your password has been successfully reset. You can log in by e-mail only now."
+            Route {
+                path = "rooms/:roomID/*"
+                this.element = Room.create()
             }
-        }
-        Route {
-            path = "email_login"
-            this.element = EmailLoginAlreadyLoggedIn.create()
-        }
-        /*
+            Route {
+                path = "room/:roomID/*"
+                this.element = RoomRedirect.create()
+            }
+            Route {
+                path = "/join/:inviteToken"
+                this.element = RoomInviteLoggedIn.create()
+            }
+            Route {
+                path = "email_verify"
+                this.element = VerifyToken.create {
+                    url = "/profile/email/verify"
+                    failureTitle = "Email verification failed"
+                    successTitle = "Email verification success"
+                    failureText = "The verification link is expired or invalid."
+                    successText = "Your email address has been successfully verified."
+                }
+            }
+            Route {
+                path = "password_reset"
+                this.element = VerifyToken.create {
+                    url = "/profile/password/reset/finish"
+                    failureTitle = "Password reset failed"
+                    successTitle = "Password was reset"
+                    failureText = "The link is expired or invalid."
+                    successText = "Your password has been successfully reset. You can log in by e-mail only now."
+                }
+            }
+            Route {
+                path = "email_login"
+                this.element = EmailLoginAlreadyLoggedIn.create()
+            }
+            /*
         if (appState.session.user?.type?.isProper() == true) {
             Route {
                 path = "new_room"
@@ -103,5 +106,6 @@ private val RootLayoutInner = FC<Props> {
             }
         }
          */
+        }
     }
 }

@@ -198,10 +198,9 @@ internal val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
 
     useDocumentTitle("Invitation - Confido")
 
-    if (inviteStatus == null)
-        Backdrop {
-            this.css { this.zIndex = integer(42) }
-        }
+    Backdrop {
+        this.`in` = inviteStatus == null
+    }
 
     if (inviteStatus != null) {
         +props.topAlert?.create {

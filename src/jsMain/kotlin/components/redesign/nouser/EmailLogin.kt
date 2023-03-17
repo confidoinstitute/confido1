@@ -39,11 +39,10 @@ val EmailLogin = FC<Props> {
         }
     }
 
-    if (!failed) {
-        Backdrop {
-            css { zIndex = integer(42) }
-        }
-    } else {
+    Backdrop {
+        this.`in` = !failed
+    }
+    if (failed) {
         Stack {
             css {
                 maxWidth = 400.px

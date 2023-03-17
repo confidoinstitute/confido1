@@ -3,7 +3,10 @@ package components.redesign.basic
 import browser.document
 import components.redesign.forms.IconButton
 import components.redesign.forms.TextButton
+import components.redesign.transitions.Slide
+import components.redesign.transitions.SlideDirection
 import csstype.*
+import dom.html.HTMLElement
 import emotion.css.keyframes
 import emotion.react.css
 import react.*
@@ -17,7 +20,7 @@ import react.dom.svg.StrokeLinecap
 import web.location.location
 import web.storage.localStorage
 
-external interface DialogProps : PropsWithChildren {
+external interface DialogProps : PropsWithChildren, PropsWithRef<HTMLElement> {
     var open: Boolean
     var onClose: (() -> Unit)?
     var title: String
@@ -26,8 +29,9 @@ external interface DialogProps : PropsWithChildren {
     var onAction: (() -> Unit)?
 }
 
-val Dialog = FC<DialogProps> { props ->
+val Dialog = ForwardRef<HTMLElement, DialogProps> { props, fRef ->
     DialogCore {
+        ref = fRef
         open = props.open
         onClose = props.onClose
         header = DialogHeader.create {
@@ -41,7 +45,7 @@ val Dialog = FC<DialogProps> { props ->
     }
 }
 
-external interface DialogMenuProps : PropsWithChildren {
+external interface DialogMenuProps : PropsWithChildren, PropsWithRef<HTMLElement> {
     var open: Boolean
     var onClose: (() -> Unit)?
 
@@ -49,8 +53,9 @@ external interface DialogMenuProps : PropsWithChildren {
     var hasCloseButton: Boolean?
 }
 
-val DialogMenu = FC<DialogMenuProps> { props ->
+val DialogMenu = ForwardRef<HTMLElement, DialogMenuProps> { props, fRef ->
     DialogCore {
+        this.ref = fRef
         this.open = props.open
         this.onClose = props.onClose
         Stack {
@@ -76,7 +81,7 @@ val DialogMenu = FC<DialogMenuProps> { props ->
     }
 }
 
-external interface DialogCoreProps : PropsWithChildren {
+external interface DialogCoreProps : PropsWithChildren, PropsWithRef<HTMLElement> {
     var open: Boolean
     var onClose: (() -> Unit)?
     var header: ReactNode
@@ -93,23 +98,28 @@ internal val slideKF = keyframes {
 }
 
 val DialogCore = FC<DialogCoreProps> { props ->
-
-    if (props.open) {
-        Backdrop {
-            onClick = { props.onClose?.invoke(); it.preventDefault() }
-        }
-
-        +createPortal(
+    val setBackground = useContext(BackdropContext)
+    val nodeRef = useRef<HTMLElement>()
+    useEffect(props.open) {
+        setBackground(props.open)
+    }
+    Slide {
+        appear = true
+        `in` = props.open
+        mountOnEnter = true
+        unmountOnExit = true
+        direction = SlideDirection.up
+        timeout = 250
+        this.nodeRef = nodeRef
+        Fragment { +createPortal(
             Stack.create {
+                ref = nodeRef
                 css {
-                    maxHeight = 100.pct
+                    height = 100.pct
                     width = 100.pct
                     zIndex = integer(2100)
                     position = Position.fixed
                     bottom = 0.px
-                    animationName = slideKF
-                    animationDuration = 0.25.s
-                    animationTimingFunction = AnimationTimingFunction.easeOut
                 }
                 if (!props.fullSize)
                 div {
@@ -150,7 +160,7 @@ val DialogCore = FC<DialogCoreProps> { props ->
                     +props.children
                 }
             }, document.body.asDynamic()
-        )
+        )}
     }
 }
 

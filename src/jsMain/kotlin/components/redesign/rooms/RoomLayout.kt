@@ -91,29 +91,6 @@ val RoomLayout = FC<Props> {
         }
     }
 
-    Dialog {
-        open = dialogOpen
-        onClose = {dialogOpen = false}
-        title = "Do something with room"
-        action = "Do it"
-
-        Form {
-            FormSection {
-                title = "SOMETHING"
-                FormField {
-                    title = "Name"
-                    required = true
-                    comment = "Name of something, I don't know."
-                    TextInput {}
-                }
-            }
-
-            Button {
-                +"DO IT"
-            }
-        }
-    }
-
     RoomNavbar {
         this.palette = palette
         navigateBack = "/"
