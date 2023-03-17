@@ -106,6 +106,8 @@ kotlin {
                 implementation(npm("@dnd-kit/modifiers", "6.0.0"))
                 implementation(npm("@dnd-kit/sortable", "7.0.1"))
                 implementation(npm("qrcode.react", "3.1.0"))
+                // Transitions
+                implementation(npm("react-transition-group","4.4.5"))
             }
         }
     }
