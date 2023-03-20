@@ -56,7 +56,7 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
                 +"added ${predTerm.aTerm}."
             } else if (props.numPredictors == 1 && props.myPredictionExists) {
                 if (props.resolved) {
-                    +"Only"
+                    +"Only "
                 } else {
                     +"only "
                 }
