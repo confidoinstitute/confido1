@@ -3,6 +3,7 @@ package components.redesign.comments
 import components.AppStateContext
 import components.redesign.*
 import components.redesign.basic.*
+import components.redesign.forms.ButtonBase
 import components.rooms.RoomContext
 import components.showError
 import csstype.*
@@ -378,16 +379,18 @@ external interface FooterActionProps : Props {
 }
 
 private val FooterAction = FC<FooterActionProps> { props ->
-    button {
+    ButtonBase {
         css {
-            all = Globals.unset
-            cursor = Cursor.pointer
-
+            background = None.none
             display = Display.flex
             flexDirection = FlexDirection.row
             alignItems = AlignItems.center
             gap = 8.px
             padding = 10.px
+
+            ".ripple" {
+                backgroundColor = Color("#000000")
+            }
         }
         props.icon?.let {
             +it.create {

@@ -8,6 +8,9 @@ import components.redesign.basic.*
 import components.redesign.comments.AddCommentButton
 import components.redesign.comments.AddCommentDialog
 import components.redesign.comments.CommentInputVariant
+import components.redesign.forms.ButtonBase
+import components.redesign.forms.ButtonBaseProps
+import components.redesign.forms.ButtonProps
 import components.redesign.questions.dialog.EditQuestionDialog
 import components.redesign.questions.dialog.QuestionPreset
 import components.redesign.rooms.RoomNavbar
@@ -15,6 +18,7 @@ import components.rooms.RoomContext
 import components.showError
 import csstype.*
 import emotion.react.css
+import emotion.styled.styled
 import hooks.useDebounce
 import hooks.useDocumentTitle
 import hooks.useOnUnmount
@@ -69,10 +73,8 @@ external interface QuestionEstimateSectionProps : Props {
     var numPredictors: Int
 }
 
-external interface QuestionEstimateTabButtonProps : Props {
-    var text: String
+external interface QuestionEstimateTabButtonProps : ButtonBaseProps {
     var active: Boolean
-    var onClick: (() -> Unit)?
 }
 
 external interface QuestionCommentSectionProps : Props {
@@ -151,34 +153,31 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
     }
 }
 
-private val QuestionEstimateTabButton = FC<QuestionEstimateTabButtonProps> { props ->
-    button {
-        css {
-            all = Globals.unset
-            cursor = Cursor.pointer
+private val QuestionEstimateTabButton = button.styled<QuestionEstimateTabButtonProps> { props, _ ->
+    all = Globals.unset
+    cursor = Cursor.pointer
 
-            borderRadius = 10.px
-            padding = Padding(12.px, 10.px)
+    borderRadius = 10.px
+    padding = Padding(12.px, 10.px)
 
-            flexGrow = number(1.0)
-            textAlign = TextAlign.center
+    flexGrow = number(1.0)
+    textAlign = TextAlign.center
 
-            fontFamily = FontFamily.sansSerif
-            fontSize = 17.px
-            lineHeight = 21.px
+    fontFamily = FontFamily.sansSerif
+    fontSize = 17.px
+    lineHeight = 21.px
 
-            if (props.active) {
-                backgroundColor = Color("#FFFFFF")
-                color = Color("#000000")
-                fontWeight = integer(500)
-            } else {
-                color = Color("rgba(0, 0, 0, 0.5)")
-                fontWeight = FontWeight.normal
-            }
-        }
-        onClick = { props.onClick?.invoke() }
+    hover {
+        backgroundColor = Color("#DDDDDD")
+    }
 
-        +props.text
+    if (props.active) {
+        backgroundColor = Color("#FFFFFF")
+        color = Color("#000000")
+        fontWeight = integer(500)
+    } else {
+        color = Color("rgba(0, 0, 0, 0.5)")
+        fontWeight = FontWeight.normal
     }
 }
 
@@ -225,12 +224,12 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
         }
         direction = FlexDirection.row
         QuestionEstimateTabButton {
-            text = "Your $predictionTerm"
+            +"Your $predictionTerm"
             active = !groupPredictionOpen
             onClick = { groupPredictionOpen = false }
         }
         QuestionEstimateTabButton {
-            text = "Group $predictionTerm"
+            +"Group $predictionTerm"
             active = groupPredictionOpen
             onClick = { groupPredictionOpen = true }
         }

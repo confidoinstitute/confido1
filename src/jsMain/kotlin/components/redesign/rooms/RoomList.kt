@@ -1,15 +1,12 @@
 package components.redesign.rooms
 
 import components.AppStateContext
-import components.redesign.basic.RoomPalette
-import components.redesign.basic.Stack
-import components.redesign.basic.createRipple
-import components.redesign.basic.rippleCss
+import components.redesign.basic.*
 import csstype.*
 import emotion.react.css
+import emotion.styled.styled
 import react.FC
 import react.Props
-import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 import react.dom.svg.ReactSVG
@@ -26,7 +23,7 @@ external interface RoomListProps : Props {
     var canCreate: Boolean
 }
 
-val roomItemCss = emotion.css.ClassName {
+val RoomLink = Link.withRipple().styled {_, _ ->
     display = Display.flex
     flexDirection = FlexDirection.row
     gap = 12.px
@@ -58,11 +55,9 @@ val RoomList = FC<RoomListProps> {props ->
     Stack {
         direction = FlexDirection.column
         appState.rooms.map {(id, room) ->
-            Link {
+            RoomLink {
                 key = id
                 to = room.urlPrefix
-                onClick = {createRipple(it, Color("#000000"))}
-                css(roomItemCss) {}
                 div {
                     css {
                         backgroundColor = roomPalette(room.id).color
@@ -78,11 +73,9 @@ val RoomList = FC<RoomListProps> {props ->
             }
         }
         if (props.canCreate)
-            Link {
-                css(roomItemCss) {}
+            RoomLink {
                 key = "::new_room"
                 to = "/new_room"
-                onClick = {createRipple(it, Color("#000000"))}
                 div {
                     css {
                         border = Border(1.px, LineStyle.solid, Color("#BBBBBB"))

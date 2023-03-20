@@ -2,13 +2,10 @@ package components.redesign.rooms
 
 import components.redesign.BackIcon
 import components.redesign.NavMenuIcon
-import components.redesign.basic.PropsWithPalette
-import components.redesign.basic.RoomPalette
-import components.redesign.basic.createRipple
-import components.redesign.basic.rippleCss
+import components.redesign.basic.*
 import components.redesign.forms.Button
 import components.redesign.forms.IconButton
-import components.redesign.forms.iconButtonBase
+import components.redesign.forms.IconLink
 import components.rooms.RoomContext
 import csstype.*
 import emotion.react.css
@@ -23,6 +20,7 @@ import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.svg
 import react.dom.svg.StrokeLinecap
 import react.router.dom.Link
+import react.router.dom.LinkProps
 import react.useContext
 
 external interface RoomNavbarProps : PropsWithChildren, PropsWithPalette<RoomPalette> {
@@ -57,19 +55,9 @@ val RoomNavbar = FC<RoomNavbarProps> { props ->
                 alignItems = AlignItems.center
             }
             props.navigateBack?.let {
-                Link {
+                IconLink {
+                    this.palette = palette.text
                     to = it
-                    css(iconButtonBase) {
-                        hover {
-                            backgroundColor = palette.text.hoverColor
-                        }
-                        "svg" {
-                            asDynamic().fill = palette.text.color
-                            asDynamic().stroke = palette.text.color
-                        }
-                        rippleCss()
-                    }
-                    onClick = { createRipple(it, palette.text.color) }
                     BackIcon { }
                 }
             }

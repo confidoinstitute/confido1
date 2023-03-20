@@ -3,11 +3,15 @@ package components.redesign.nouser
 import components.LoginContext
 import components.redesign.basic.MainPalette
 import components.redesign.basic.Stack
+import components.redesign.basic.css
 import components.redesign.forms.Form
+import components.redesign.forms.TextButton
 import components.redesign.forms.TextInput
 import components.showError
 import csstype.*
+import dom.html.HTMLInputElement
 import emotion.react.css
+import emotion.styled.styled
 import hooks.useCoroutineLock
 import hooks.useDocumentTitle
 import io.ktor.http.*
@@ -17,12 +21,12 @@ import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.button
-import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.input
 import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
 import utils.*
 
-val loginLinkClass = emotion.css.ClassName {
+val LoginLinkButton = button.styled { props, theme ->
     marginTop = 12.px
     color = Color("#DDDDDD80")
     background = None.none
@@ -37,24 +41,30 @@ val loginLinkClass = emotion.css.ClassName {
     }
 }
 
-val loginInputClass = emotion.css.ClassName {
+external interface LoginInputProps : InputHTMLAttributes<HTMLInputElement> {
+    var error: Boolean
+}
+
+val LoginInput = input.styled<LoginInputProps> {props, _ ->
     padding = Padding(12.px, 12.px)
     backgroundColor = Color("#96FFFF33")
     color = Color("#FFFFFF")
-    borderWidth = 0.px
+    if (props.error)
+        border = Border(1.px, LineStyle.solid, Color("transparent"))
+    else
+        borderWidth = 0.px
     borderRadius = 0.px
     width = 100.pct
 
     fontSize = 17.px
     lineHeight = 20.px
     fontFamily = FontFamily.sansSerif
-    resize = None.none
 
-    firstChild {
+    firstOfType {
         borderTopLeftRadius = 10.px
         borderTopRightRadius = 10.px
     }
-    lastChild {
+    lastOfType {
         borderBottomLeftRadius = 10.px
         borderBottomRightRadius = 10.px
     }
@@ -83,8 +93,8 @@ val LoginForm = FC<LoginFormProps> { props ->
     useDocumentTitle("Log In - Confido")
 
     val loginState = useContext(LoginContext)
-    var email by useState<String>(props.prefilledEmail ?: "")
-    var password by useState<String>("")
+    var email by useState(props.prefilledEmail ?: "")
+    var password by useState("")
 
     var mode by useState(LoginMode.MagicLink)
     var emailSent by useState(false)
@@ -144,8 +154,8 @@ val LoginForm = FC<LoginFormProps> { props ->
                     gap = 1.px
                 }
                 if (!emailSent) {
-                    TextInput {
-                        className = loginInputClass
+                    LoginInput {
+                        error = emailError != null
                         placeholder = "Email"
                         value = email
                         onChange = {
@@ -154,14 +164,30 @@ val LoginForm = FC<LoginFormProps> { props ->
                     }
 
                     if (mode == LoginMode.Password) {
-                        TextInput {
-                            className = loginInputClass
+                        LoginInput {
+                            error = passwordError != null
                             placeholder = "Password"
                             type = InputType.password
                             value = password
                             onChange = {
                                 password = it.target.value
                             }
+                        }
+                    }
+
+                    if (emailError != null || passwordError != null) {
+                        p {
+                            css {
+                                marginTop = 6.px
+                                color = Color("#F35454")
+                                width = 100.pct
+
+                                fontSize = 12.px
+                                lineHeight = 15.px
+                                fontWeight = integer(400)
+                                fontFamily = FontFamily.sansSerif
+                            }
+                            +(emailError ?: passwordError ?: "")
                         }
                     }
                 } else {
@@ -204,31 +230,11 @@ val LoginForm = FC<LoginFormProps> { props ->
                     +"Log in"
                 }
             }
-
-            if (emailError != null || passwordError != null) {
-                p {
-                    css {
-                        marginTop = 0.px
-                        marginBottom = 5.px
-                        padding = Padding(10.px, 12.px)
-                        textAlign = TextAlign.center
-                        color = Color("#FF7070")  // TODO(Prin): use a palette.
-                        width = 100.pct
-
-                        fontSize = 14.px
-                        lineHeight = 17.px
-                        fontWeight = integer(700)
-                        fontFamily = FontFamily.sansSerif
-                    }
-                    +(emailError ?: passwordError ?: "")
-                }
-            }
         }
 
         if (mode == LoginMode.MagicLink) {
             if (!emailSent) {
-                button {
-                    className = loginLinkClass
+                LoginLinkButton {
                     onClick = {
                         mode = LoginMode.Password
                         emailError = null
@@ -236,8 +242,7 @@ val LoginForm = FC<LoginFormProps> { props ->
                     +"Log in with a password"
                 }
             } else {
-                button {
-                    className = loginLinkClass
+                LoginLinkButton {
                     onClick = {
                         emailSent = false
                         password = ""
@@ -249,8 +254,7 @@ val LoginForm = FC<LoginFormProps> { props ->
                 }
             }
         } else {
-            button {
-                className = loginLinkClass
+            LoginLinkButton {
                 onClick = {
                     mode = LoginMode.MagicLink
                     password = ""

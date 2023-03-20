@@ -1,6 +1,7 @@
 package components.redesign.basic
 
 import browser.document
+import components.redesign.forms.ButtonBase
 import components.redesign.forms.IconButton
 import components.redesign.forms.TextButton
 import components.redesign.transitions.Slide
@@ -9,6 +10,7 @@ import csstype.*
 import dom.html.HTMLElement
 import emotion.css.keyframes
 import emotion.react.css
+import emotion.styled.styled
 import react.*
 import react.dom.createPortal
 import react.dom.html.ReactHTML
@@ -73,7 +75,7 @@ val DialogMenu = ForwardRef<HTMLElement, DialogMenuProps> { props, fRef ->
 
             if (props.hasCloseButton ?: true) {
                 DialogMenuButton {
-                    text = "Close"
+                    +"Close"
                     onClick = { props.onClose?.invoke() }
                 }
             }
@@ -198,6 +200,7 @@ val DialogHeader = FC<DialogHeaderProps> { props ->
         css {
             flexShrink = number(1.0)
             fontFamily = FontFamily.sansSerif
+            fontWeight = integer(600)
             fontSize = 17.px
             lineHeight = 21.px
             whiteSpace = WhiteSpace.nowrap
@@ -246,31 +249,28 @@ external interface DialogMenuButtonProps : Props {
     var text: String
 }
 
-val DialogMenuButton = FC<DialogMenuButtonProps> { props ->
-    Stack {
-        css {
-            padding = 15.px
-        }
-        button {
-            css {
-                all = Globals.unset
-                cursor = Cursor.pointer
+val DialogMenuButton = ButtonBase.styled { _, _ ->
 
-                border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))
-                borderRadius = 5.px
-                padding = 10.px
-                alignSelf = AlignSelf.stretch
+    border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))
+    margin = 15.px
+    padding = 10.px
+    alignSelf = AlignSelf.stretch
 
-                fontFamily = FontFamily.sansSerif
-                fontStyle = FontStyle.normal
-                fontSize = 17.px
-                lineHeight = 20.px
-                color = Color("#999999")
-                textAlign = TextAlign.center
-            }
-            onClick = { props.onClick?.invoke() }
-            +props.text
-        }
+    fontFamily = FontFamily.sansSerif
+    fontStyle = FontStyle.normal
+    fontWeight = integer(400)
+    fontSize = 17.px
+    lineHeight = 20.px
+    color = Color("#999999")
+    backgroundColor = Color("#FFFFFF")
+    textAlign = TextAlign.center
+
+    hover {
+        backgroundColor = Color("#FBFBFB")
+    }
+
+    ".ripple" {
+        backgroundColor = Color("#999999")
     }
 }
 

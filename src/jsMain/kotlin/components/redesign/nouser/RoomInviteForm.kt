@@ -15,8 +15,10 @@ import payloads.requests.AcceptInviteAndCreateUser
 import react.FC
 import react.Props
 import react.dom.html.InputType
+import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
 import react.router.useNavigate
 import react.useContext
@@ -111,8 +113,12 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                 css {
                     gap = 1.px
                 }
-                TextInput {
-                    className = loginInputClass
+                LoginInput {
+                    css {
+                        if (emailError != null) {
+                            border = Border(1.px, LineStyle.solid, Color("#F35454"))
+                        }
+                    }
                     type = InputType.email
                     required = emailRequired
                     value = email
@@ -128,12 +134,27 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                     }
                 }
 
-                TextInput {
-                    className = loginInputClass
+                LoginInput {
                     placeholder = "Name (optional)"
                     value = name
                     onChange = {
                         name = it.target.value
+                    }
+                }
+
+                if (emailError != null) {
+                    p {
+                        css {
+                            marginTop = 6.px
+                            color = Color("#F35454")
+                            width = 100.pct
+
+                            fontSize = 12.px
+                            lineHeight = 15.px
+                            fontWeight = integer(400)
+                            fontFamily = FontFamily.sansSerif
+                        }
+                        +(emailError ?: "")
                     }
                 }
             }
@@ -146,12 +167,6 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                 this.palette = MainPalette.default
                 onClick = { acceptInvite() }
                 +"Start forecasting"
-            }
-
-            if (emailError != null) {
-                Alert {
-                    +emailError!!
-                }
             }
         } else {
             LoginForm {

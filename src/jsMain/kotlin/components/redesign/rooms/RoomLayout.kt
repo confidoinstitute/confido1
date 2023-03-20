@@ -10,6 +10,7 @@ import csstype.*
 import dom.ScrollBehavior
 import dom.html.HTMLDivElement
 import emotion.react.*
+import emotion.styled.styled
 import hooks.*
 import kotlinx.js.*
 import react.*
@@ -24,17 +25,12 @@ import tools.confido.refs.deref
 import utils.roomPalette
 import web.timers.requestAnimationFrame
 
-val RoomHeaderButton = FC<ButtonProps> { props ->
-    Button {
-        css {
-            margin = 0.px
-            padding = 7.px
-            fontSize = 13.px
-            lineHeight = 16.px
-            fontWeight = integer(600)
-        }
-        +props
-    }
+val RoomHeaderButton = Button.styled {_, _ ->
+        margin = 0.px
+        padding = 7.px
+        fontSize = 13.px
+        lineHeight = 16.px
+        fontWeight = integer(600)
 }
 
 val RoomHeader = FC<PropsWithChildren> { props ->
