@@ -1,16 +1,15 @@
 package components.redesign.basic
 
-import browser.document
-import components.redesign.transitions.Fade
+import browser.*
+import components.redesign.transitions.*
 import csstype.*
-import dom.html.HTMLDivElement
-import emotion.react.Global
-import emotion.react.styles
+import dom.html.*
+import emotion.react.*
 import react.*
-import react.dom.createPortal
-import react.dom.html.HTMLAttributes
+import react.dom.*
+import react.dom.html.*
 import react.dom.html.ReactHTML.div
-import utils.except
+import utils.*
 
 external interface BackdropProps: HTMLAttributes<HTMLDivElement> {
     var appear: Boolean?

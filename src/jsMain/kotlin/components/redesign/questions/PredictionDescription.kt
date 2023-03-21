@@ -1,18 +1,13 @@
 package components.redesign.questions
 
-import components.redesign.basic.Stack
+import components.redesign.basic.*
 import csstype.*
-import emotion.react.css
-import react.FC
-import react.Props
-import react.dom.html.ReactHTML
-import tools.confido.distributions.BinaryDistribution
-import tools.confido.distributions.ContinuousProbabilityDistribution
-import tools.confido.distributions.ProbabilityDistribution
-import tools.confido.distributions.TruncatedNormalDistribution
-import tools.confido.question.Prediction
-import tools.confido.question.PredictionTerminology
-import tools.confido.utils.formatPercent
+import emotion.react.*
+import react.*
+import react.dom.html.*
+import tools.confido.distributions.*
+import tools.confido.question.*
+import tools.confido.utils.*
 
 external interface MyPredictionDescriptionProps : Props {
     var resolved: Boolean
@@ -40,7 +35,7 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
             gap = 10.px
             color = Color("#222222")
             fontWeight = integer(500)
-            fontFamily = FontFamily.sansSerif
+            fontFamily = sansSerif
             fontSize = 15.px
             lineHeight = 18.px
         }
@@ -170,7 +165,7 @@ val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
             gap = 10.px
             color = Color("#222222")
             fontWeight = integer(500)
-            fontFamily = FontFamily.sansSerif
+            fontFamily = sansSerif
             fontSize = 15.px
             lineHeight = 18.px
         }

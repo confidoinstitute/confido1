@@ -1,11 +1,9 @@
 package components.redesign.questions.dialog
 
-import components.redesign.forms.RadioGroup
-import components.redesign.forms.TextInput
-import kotlinx.datetime.LocalDate
-import react.FC
-import react.Props
-import react.dom.html.InputType
+import components.redesign.forms.*
+import kotlinx.datetime.*
+import react.*
+import react.dom.html.*
 
 external interface NumericValueEntryProps : Props {
     var placeholder: String

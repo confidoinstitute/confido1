@@ -1,12 +1,9 @@
 package components.redesign
 
-import components.SplitLinkPart
-import components.splitLinks
-import react.FC
-import react.Props
-import react.dom.html.AnchorTarget
+import components.*
+import react.*
+import react.dom.html.*
 import react.dom.html.ReactHTML.a
-import react.useMemo
 
 external interface TextWithLinksProps : Props {
     var text: String

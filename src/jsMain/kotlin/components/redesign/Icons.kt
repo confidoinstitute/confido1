@@ -1,14 +1,10 @@
 package components.redesign
 
-import react.FC
-import react.PropsWithClassName
-import react.dom.svg.FillRule
-import react.dom.svg.ReactSVG
+import react.*
+import react.dom.svg.*
 import react.dom.svg.ReactSVG.circle
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.svg
-import react.dom.svg.StrokeLinecap
-import react.dom.svg.StrokeLinejoin
 
 /*
 TODO: This needs to be revamped to be easier to use.
@@ -168,7 +164,6 @@ val SortIcon = FC<PropsWithClassName> { props ->
 }
 
 val CloseIcon = FC<PropsWithClassName> { props ->
-    val color = "#DDDDDD"
     svg {
         className = props.className
         width = 17.0
@@ -177,13 +172,11 @@ val CloseIcon = FC<PropsWithClassName> { props ->
         fill = "none"
         path {
             d = "M1 15L15.1642 1"
-            stroke = color
             strokeWidth = 2.0
             strokeLinecap = StrokeLinecap.round
         }
         path {
             d = "M0.99984 1L15.1641 15"
-            stroke = color
             strokeWidth = 2.0
             strokeLinecap = StrokeLinecap.round
         }

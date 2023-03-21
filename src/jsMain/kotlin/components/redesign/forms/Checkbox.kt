@@ -2,9 +2,9 @@ package components.redesign.forms
 
 import components.redesign.basic.*
 import csstype.*
+import dom.html.*
 import emotion.react.*
 import kotlinx.js.*
-import dom.html.*
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.input

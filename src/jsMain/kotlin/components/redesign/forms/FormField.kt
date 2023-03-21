@@ -30,14 +30,14 @@ val FormField = FC<FormFieldProps> { props ->
             direction = FlexDirection.row
             css(notesClass) {
                 gap = 7.px
-                fontFamily = FontFamily.sansSerif
+                fontFamily = sansSerif
                 fontSize = 14.px
                 lineHeight = 17.px
             }
 
             span {
                 css {
-                    fontWeight = FontWeight.bolder
+                    fontWeight = integer(500)
                     flexGrow = number(1.0)
                 }
                 +props.title
@@ -67,7 +67,7 @@ val FormField = FC<FormFieldProps> { props ->
             div {
                 css {
                     color = Color("#F35454")
-                    fontFamily = FontFamily.sansSerif
+                    fontFamily = sansSerif
                     fontSize = 12.px
                     lineHeight = 14.px
                 }
@@ -79,7 +79,7 @@ val FormField = FC<FormFieldProps> { props ->
         div {
             css {
                 color = Color("#AAAAAA")
-                fontFamily = FontFamily.sansSerif
+                fontFamily = sansSerif
                 fontSize = 12.px
                 lineHeight = 14.px
             }

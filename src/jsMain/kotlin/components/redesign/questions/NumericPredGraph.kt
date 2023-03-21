@@ -1,32 +1,26 @@
 package components.redesign.questions
 
-import components.questions.ConfidenceColor
-import components.redesign.basic.PropsWithElementSize
+import components.questions.*
+import components.redesign.basic.*
 import components.redesign.basic.Stack
-import components.redesign.basic.elementSizeWrapper
 import components.redesign.questions.SpaceZoomManager.Companion.SIDE_PAD
 import csstype.*
-import dom.html.HTMLCanvasElement
-import dom.html.HTMLDivElement
-import dom.html.RenderingContextId
-import emotion.react.css
-import hooks.useDPR
-import hooks.useElementSize
-import kotlinx.js.jso
-import mui.material.Slider
+import dom.html.*
+import emotion.react.*
+import hooks.*
+import kotlinx.js.*
+import mui.material.*
 import react.*
-import react.dom.html.ReactHTML
+import react.dom.html.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.table
 import react.dom.html.ReactHTML.td
 import react.dom.html.ReactHTML.tr
-import space.kscience.dataforge.values.Value
-import tools.confido.distributions.ContinuousProbabilityDistribution
-import tools.confido.spaces.Binner
-import tools.confido.spaces.NumericSpace
-import tools.confido.utils.toFixed
-import web.location.location
-import web.url.URL
+import tools.confido.distributions.*
+import tools.confido.spaces.*
+import tools.confido.utils.*
+import web.location.*
+import web.url.*
 
 external interface NumericPredGraphProps : PropsWithElementSize {
     var space: NumericSpace
@@ -223,7 +217,7 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps> { props->
                 color = Color("rgba(0,0,0,30%)")
                 lineHeight = 14.52.px
                 position = Position.relative
-                fontFamily = FontFamily.sansSerif
+                fontFamily = sansSerif
             }
             zoomMgr.marks.forEachIndexed {idx, value->
                 div {

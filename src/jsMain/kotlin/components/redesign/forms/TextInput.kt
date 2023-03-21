@@ -2,7 +2,6 @@ package components.redesign.forms
 
 import components.redesign.basic.*
 import csstype.*
-import emotion.react.*
 import dom.html.*
 import react.*
 import react.dom.html.*
@@ -18,7 +17,7 @@ val textInputClass = emotion.css.ClassName {
 
     fontSize = 17.px
     lineHeight = 20.px
-    fontFamily = FontFamily.sansSerif
+    fontFamily = sansSerif
     resize = None.none
 
     focus {

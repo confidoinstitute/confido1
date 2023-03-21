@@ -1,18 +1,17 @@
 package components.redesign.rooms
 
-import components.AppStateContext
+import components.*
 import components.redesign.basic.*
-import components.rooms.RoomContext
+import components.rooms.*
 import csstype.*
+import dom.html.*
 import emotion.react.*
 import kotlinx.js.*
-import dom.html.*
 import react.*
 import react.dom.html.ReactHTML.div
-import react.router.dom.Link
-import react.router.dom.LinkProps
-import react.router.useLocation
-import rooms.RoomPermission
+import react.router.*
+import react.router.dom.*
+import rooms.*
 
 external interface RoomTabsProps : PropsWithPalette<RoomPalette>, PropsWithClassName {
     var onChange: (() -> Unit)?
@@ -59,8 +58,8 @@ val RoomTab = ForwardRef<HTMLAnchorElement, RoomTabProps> { props, fRef ->
             lineHeight = 16.px
             fontSize = 13.px
             textAlign = TextAlign.center
-            fontFamily = FontFamily.sansSerif
-            fontWeight = FontWeight.bolder
+            fontFamily = sansSerif
+            fontWeight = integer(600)
             textDecoration = None.none
         }
     }

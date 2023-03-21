@@ -1,17 +1,15 @@
 package components.redesign.basic
 
 import csstype.*
-import dom.Element
+import dom.*
+import dom.html.*
 import emotion.css.*
 import kotlinx.browser.*
-import dom.html.*
-import emotion.react.css
-import kotlinx.js.asList
+import kotlinx.js.*
 import react.*
 import react.dom.events.*
-import react.dom.events.MouseEvent
-import react.dom.html.HTMLAttributes
-import utils.except
+import react.dom.html.*
+import utils.*
 import kotlin.math.*
 
 internal val rippleKeyframes = keyframes {
@@ -33,8 +31,10 @@ internal fun rippleClass(rippleColor: Color) = ClassName {
 }
 
 fun PropertiesBuilder.rippleCss() {
-    position = Position.relative
-    overflow = Overflow.hidden
+    "&&" {
+        position = Position.relative
+        overflow = Overflow.hidden
+    }
 }
 
 fun <T: Element, E: NativeMouseEvent> createRipple(event: MouseEvent<T, E>, rippleColor: Color? = null) {

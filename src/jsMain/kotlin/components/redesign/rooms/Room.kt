@@ -1,15 +1,12 @@
 package components.redesign.rooms
 
-import components.AppStateContext
-import components.redesign.questions.Question
-import components.rooms.RoomContext
-import hooks.useDocumentTitle
-import kotlinx.js.get
+import components.*
+import components.redesign.questions.*
+import components.rooms.*
+import kotlinx.js.*
 import react.*
-import react.router.Route
-import react.router.Routes
-import react.router.useParams
-import rooms.RoomPermission
+import react.router.*
+import rooms.*
 
 val Room = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)

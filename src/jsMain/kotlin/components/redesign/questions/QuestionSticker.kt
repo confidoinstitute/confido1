@@ -1,15 +1,14 @@
 package components.redesign.questions
 
-import components.redesign.basic.RoomPalette
+import components.redesign.basic.*
 import csstype.*
-import emotion.react.css
-import react.FC
-import react.Props
+import emotion.react.*
+import react.*
 import react.dom.html.ReactHTML.div
-import react.router.dom.Link
-import rooms.Room
-import tools.confido.question.Question
-import utils.roomPalette
+import react.router.dom.*
+import rooms.*
+import tools.confido.question.*
+import utils.*
 
 external interface QuestionStickerProps : Props {
     var room: Room
@@ -35,8 +34,8 @@ val QuestionSticker = FC<QuestionStickerProps> {props ->
         }
         div {
             css {
-                fontFamily = FontFamily.sansSerif
-                fontWeight = FontWeight.bold
+                fontFamily = sansSerif
+                fontWeight = integer(600)
                 fontSize = 13.px
                 lineHeight = 36.px
                 overflow = Overflow.hidden
@@ -51,7 +50,7 @@ val QuestionSticker = FC<QuestionStickerProps> {props ->
         div {
             css {
                 fontFamily = FontFamily.serif
-                fontWeight = FontWeight.bold
+                fontWeight = integer(700)
                 fontSize = 14.px
                 lineHeight = 16.px
                 overflow = Overflow.hidden

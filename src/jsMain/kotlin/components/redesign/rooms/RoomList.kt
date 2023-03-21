@@ -1,34 +1,29 @@
 package components.redesign.rooms
 
-import components.AppStateContext
+import components.*
 import components.redesign.basic.*
 import csstype.*
-import emotion.react.css
-import emotion.styled.styled
-import react.FC
-import react.Props
+import emotion.react.*
+import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
-import react.dom.svg.ReactSVG
-import react.dom.svg.ReactSVG.path
+import react.dom.svg.*
 import react.dom.svg.ReactSVG.svg
-import react.router.dom.Link
-import react.router.useParams
-import react.useContext
-import rooms.Room
-import utils.roomPalette
+import react.router.*
+import react.router.dom.*
+import utils.*
 
 external interface RoomListProps : Props {
     var small: Boolean
     var canCreate: Boolean
 }
 
-val RoomLink = Link.withRipple().styled {_, _ ->
+private val RoomLink = Link.withRipple().withStyle {
     display = Display.flex
     flexDirection = FlexDirection.row
     gap = 12.px
     textDecoration = None.none
-    fontFamily = FontFamily.sansSerif
+    fontFamily = sansSerif
     alignItems = AlignItems.center
     fontSize = 15.px
     lineHeight = 17.px
@@ -42,8 +37,6 @@ val RoomLink = Link.withRipple().styled {_, _ ->
     hover {
         backgroundColor = rgba(0,0,0, 0.05)
     }
-
-    rippleCss()
 }
 
 val RoomList = FC<RoomListProps> {props ->

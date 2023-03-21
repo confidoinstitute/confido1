@@ -1,20 +1,15 @@
 package components.redesign.questions
 
-import components.redesign.basic.PropsWithElementSize
-import components.redesign.basic.Stack
-import components.redesign.basic.elementSizeWrapper
+import components.redesign.basic.*
 import csstype.*
-import emotion.css.ClassName
-import emotion.react.css
-import kotlinx.js.jso
+import emotion.css.*
+import emotion.react.*
 import react.*
 import react.dom.html.ReactHTML.div
-import tools.confido.distributions.ContinuousProbabilityDistribution
-import tools.confido.distributions.TruncatedNormalDistribution
-import tools.confido.spaces.NumericSpace
-import tools.confido.utils.mid
-import tools.confido.utils.size
-import kotlin.math.abs
+import tools.confido.distributions.*
+import tools.confido.spaces.*
+import tools.confido.utils.*
+import kotlin.math.*
 
 
 external interface NumericPredInputProps : PredictionInputProps {
@@ -177,7 +172,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                 div {
                     key = "setCenter"
                     css {
-                        fontFamily = FontFamily.sansSerif
+                        fontFamily = sansSerif
                         fontWeight = integer(600)
                         fontSize = 15.px
                         lineHeight = 18.px
@@ -205,7 +200,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                             paddingLeft = (pxCenter + 20.0).px
                         else
                             paddingRight = (props.elementWidth - pxCenter + 20.0).px
-                        fontFamily = FontFamily.sansSerif
+                        fontFamily = sansSerif
                         fontWeight = integer(600)
                         fontSize = 15.px
                         lineHeight = 18.px

@@ -1,15 +1,15 @@
 package components.redesign.questions
 
-import browser.window
+import browser.*
+import components.redesign.basic.*
 import csstype.*
-import dom.events.TouchEvent
-import dom.html.HTMLElement
-import emotion.react.css
-import kotlinx.js.asList
-import kotlinx.js.jso
+import dom.events.*
+import dom.html.*
+import emotion.react.*
+import kotlinx.js.*
 import react.*
-import react.dom.html.ReactHTML
-import kotlin.math.abs
+import react.dom.html.*
+import kotlin.math.*
 
 external interface SliderTrackProps: Props {
     var zoomManager: SpaceZoomManager
@@ -333,7 +333,7 @@ val SliderThumb = FC<SliderThumbProps> {props->
                 padding = Padding(4.px, 6.px)
                 fontSize = 20.px
                 lineHeight = 24.px
-                fontFamily = FontFamily.sansSerif
+                fontFamily = sansSerif
                 fontWeight = integer(700)
                 color = NamedColor.white
                 visibility = if (signpostVisible) Visibility.visible else Visibility.hidden

@@ -2,11 +2,10 @@ package components.redesign.forms
 
 import components.redesign.basic.*
 import csstype.*
-import emotion.react.*
 import dom.html.*
+import emotion.react.*
 import react.*
 import react.dom.html.*
-import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.input
 import react.dom.html.ReactHTML.label
 import react.dom.html.ReactHTML.span

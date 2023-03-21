@@ -1,16 +1,9 @@
 package components.redesign.questions
 
-import components.redesign.forms.BinaryPredInput
-import components.redesign.forms.BinaryPrediction
-import react.FC
-import react.Props
-import tools.confido.distributions.BinaryDistribution
-import tools.confido.distributions.ContinuousProbabilityDistribution
-import tools.confido.distributions.ProbabilityDistribution
-import tools.confido.distributions.TruncatedNormalDistribution
-import tools.confido.spaces.BinarySpace
-import tools.confido.spaces.NumericSpace
-import tools.confido.spaces.Space
+import components.redesign.forms.*
+import react.*
+import tools.confido.distributions.*
+import tools.confido.spaces.*
 
 external interface PredictionInputProps : Props {
     var space: Space

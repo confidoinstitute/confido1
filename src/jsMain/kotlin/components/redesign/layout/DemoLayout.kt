@@ -1,27 +1,17 @@
 package components.redesign.layout
 
-import components.DialogCloseButton
-import components.LoginContext
-import components.redesign.forms.Button
-import components.redesign.nouser.LoginByUserSelectInner
+import components.redesign.basic.*
+import components.redesign.forms.*
+import components.redesign.nouser.*
 import csstype.*
-import emotion.css.keyframes
-import emotion.react.css
-import kotlinx.js.jso
-import react.FC
-import react.Props
+import emotion.css.*
+import emotion.react.*
+import react.*
 import react.dom.html.ReactHTML.a
-import react.dom.html.ReactHTML.strong
-import react.dom.html.ReactHTML.br
 import react.dom.html.ReactHTML.div
-import react.dom.html.ReactHTML.img
 import react.dom.html.ReactHTML.h1
 import react.dom.html.ReactHTML.p
-import react.router.useNavigate
-import react.useContext
-import utils.AUTO
-import utils.roomUrl
-import web.location.location
+import react.dom.html.ReactHTML.strong
 
 const val REQUEST_WORKSPACE_URL = "https://confido.institute/request-a-workspace.html"
 const val DEMO_CONTINUE_URL = "/rooms/demoroom1"
@@ -43,7 +33,7 @@ val DemoLoginBox = FC<Props> {
                 fontSize = 20.px
                 lineHeight = 24.px
                 textAlign = TextAlign.center
-                fontFamily = FontFamily.sansSerif
+                fontFamily = sansSerif
                 fontWeight = integer(700)
             }
             +"Try Confido demo"

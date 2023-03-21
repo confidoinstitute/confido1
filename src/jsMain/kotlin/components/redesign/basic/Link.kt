@@ -1,8 +1,7 @@
 package components.redesign.basic
 
-import csstype.Color
-import csstype.None
-import emotion.css.ClassName
+import csstype.*
+import emotion.css.*
 
 // helper to undo usual browser link styling
 val LinkUnstyled = ClassName {

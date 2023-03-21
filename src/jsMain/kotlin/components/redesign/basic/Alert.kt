@@ -1,10 +1,10 @@
 package components.redesign.basic
 
 import csstype.*
-import dom.html.HTMLDivElement
-import emotion.react.css
-import react.FC
-import react.dom.html.HTMLAttributes
+import dom.html.*
+import emotion.react.*
+import react.*
+import react.dom.html.*
 import react.dom.html.ReactHTML.div
 
 val Alert = FC<HTMLAttributes<HTMLDivElement>> {
@@ -23,7 +23,7 @@ val Alert = FC<HTMLAttributes<HTMLDivElement>> {
 
             fontSize = 15.px
             lineHeight = 18.px
-            fontFamily = FontFamily.sansSerif
+            fontFamily = sansSerif
         }
     }
 }

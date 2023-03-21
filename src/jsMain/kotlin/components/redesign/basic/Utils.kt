@@ -1,18 +1,14 @@
 package components.redesign.basic
 
-import csstype.ClassName
-import csstype.Color
-import csstype.Percentage
-import csstype.PropertiesBuilder
-import dom.html.HTMLDivElement
-import emotion.react.css
-import emotion.css.ClassName
-import hooks.useElementSize
-import react.FC
-import react.Props
-import react.PropsWithClassName
-import react.dom.html.HTMLAttributes
+import csstype.*
+import dom.html.*
+import emotion.css.*
+import emotion.react.*
+import hooks.*
+import react.*
+import react.dom.html.*
 import react.dom.html.ReactHTML.div
+import utils.*
 
 inline fun PropsWithClassName.css(
     vararg classNames: ClassName?,
@@ -54,6 +50,15 @@ fun <P: PropsWithElementSize> elementSizeWrapper(component: FC<P>, className: Cl
                     element = refCur
                 }
             }
+        }
+    }
+}
+
+fun <P: PropsWithClassName> ElementType<P>.withStyle(vararg except: String, block: PropertiesBuilder.(P) -> Unit) = FC<P> {props ->
+    this@withStyle {
+        +props.except(*except)
+        css(override = props) {
+            block(props)
         }
     }
 }

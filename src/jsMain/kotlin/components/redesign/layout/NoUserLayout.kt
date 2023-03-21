@@ -1,25 +1,17 @@
 package components.redesign.layout
 
 import components.nouser.DevModeSection
-import components.nouser.LoginByUserSelectForm
-import components.profile.VerifyToken
-import components.redesign.basic.GlobalCss
-import components.redesign.basic.MainPalette
-import components.redesign.basic.Stack
+import components.profile.*
+import components.redesign.basic.*
+import components.redesign.nouser.*
 import components.redesign.nouser.EmailLogin
 import components.redesign.nouser.LoginForm
-import components.redesign.nouser.RoomInviteNoUser
 import csstype.*
-import emotion.react.css
-import mui.material.Typography
-import mui.material.TypographyAlign
-import mui.material.styles.TypographyVariant
+import emotion.react.*
 import react.*
-import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.main
-import react.router.Route
-import react.router.Routes
-import tools.confido.state.appConfig
+import react.router.*
+import tools.confido.state.*
 
 val NoUserLayout = FC<Props> {
     val palette = MainPalette.login

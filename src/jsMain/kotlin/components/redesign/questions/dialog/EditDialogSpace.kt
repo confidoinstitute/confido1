@@ -1,16 +1,11 @@
 package components.redesign.questions.dialog
 
 import components.redesign.forms.*
-import kotlinx.datetime.LocalDate
-import react.FC
-import react.Props
-import react.dom.html.InputType
-import react.useEffect
-import react.useState
-import tools.confido.spaces.BinarySpace
-import tools.confido.spaces.NumericSpace
-import tools.confido.spaces.Space
-import tools.confido.utils.fromUnix
+import kotlinx.datetime.*
+import react.*
+import react.dom.html.*
+import tools.confido.spaces.*
+import tools.confido.utils.*
 
 internal enum class AnswerSpaceError {
     INVALID,

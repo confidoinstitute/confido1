@@ -1,34 +1,26 @@
 package components.redesign
 
-import browser.window
-import components.AppStateContext
-import components.LoginContext
-import components.redesign.basic.Backdrop
-import components.redesign.basic.DialogMenu
-import components.redesign.basic.DialogMenuItem
-import components.redesign.basic.Stack
-import components.redesign.forms.IconButton
-import components.redesign.layout.DemoWelcomeBox
-import components.redesign.questions.QuestionSticker
-import components.redesign.rooms.RoomList
-import components.showError
+import Client
+import components.*
+import components.redesign.basic.*
+import components.redesign.forms.*
+import components.redesign.questions.*
+import components.redesign.rooms.*
 import csstype.*
-import emotion.react.css
-import hooks.useDocumentTitle
-import icons.Feedback
+import emotion.react.*
+import hooks.*
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.header
 import react.dom.html.ReactHTML.main
-import react.router.useNavigate
-import tools.confido.refs.deref
-import tools.confido.state.appConfig
-import utils.runCoroutine
+import react.router.*
+import tools.confido.refs.*
+import utils.*
 
 internal fun ChildrenBuilder.title(text: String) = div {
     css {
         padding = Padding(24.px, 20.px, 0.px)
-        fontFamily = FontFamily.sansSerif
+        fontFamily = sansSerif
         fontSize = 14.px
         lineHeight = 17.px
         color = Color("#999999")
@@ -80,8 +72,8 @@ val Dashboard = FC<Props> {
                 }
                 div {
                     css {
-                        fontFamily = FontFamily.sansSerif
-                        fontWeight = FontWeight.bold
+                        fontFamily = sansSerif
+                        fontWeight = integer(600)
                         fontSize = 15.px
                         lineHeight = 18.px
                         color = Color("#222222")
@@ -90,7 +82,7 @@ val Dashboard = FC<Props> {
                 }
                 div {
                     css {
-                        fontFamily = FontFamily.sansSerif
+                        fontFamily = sansSerif
                         fontSize = 15.px
                         lineHeight = 18.px
                         color = Color("#777777")

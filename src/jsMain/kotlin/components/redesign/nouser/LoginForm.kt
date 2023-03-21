@@ -1,39 +1,31 @@
 package components.redesign.nouser
 
-import components.LoginContext
-import components.redesign.basic.MainPalette
-import components.redesign.basic.Stack
-import components.redesign.basic.css
-import components.redesign.forms.Form
-import components.redesign.forms.TextButton
-import components.redesign.forms.TextInput
-import components.showError
+import Client
+import components.*
+import components.redesign.basic.*
+import components.redesign.forms.*
 import csstype.*
-import dom.html.HTMLInputElement
-import emotion.react.css
-import emotion.styled.styled
-import hooks.useCoroutineLock
-import hooks.useDocumentTitle
+import dom.html.*
+import emotion.react.*
+import hooks.*
 import io.ktor.http.*
-import payloads.requests.PasswordLogin
-import payloads.requests.SendMailLink
+import payloads.requests.*
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.b
-import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.input
 import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
 import utils.*
 
-val LoginLinkButton = button.styled { props, theme ->
+val LoginLinkButton = ButtonBase.withStyle {
     marginTop = 12.px
     color = Color("#DDDDDD80")
     background = None.none
     border = None.none
     fontSize = 15.px
     lineHeight = 18.px
-    fontFamily = FontFamily.sansSerif
+    fontFamily = sansSerif
     cursor = Cursor.pointer
 
     hover {
@@ -45,7 +37,7 @@ external interface LoginInputProps : InputHTMLAttributes<HTMLInputElement> {
     var error: Boolean
 }
 
-val LoginInput = input.styled<LoginInputProps> {props, _ ->
+val LoginInput = input.withStyle<LoginInputProps> {props ->
     padding = Padding(12.px, 12.px)
     backgroundColor = Color("#96FFFF33")
     color = Color("#FFFFFF")
@@ -58,7 +50,7 @@ val LoginInput = input.styled<LoginInputProps> {props, _ ->
 
     fontSize = 17.px
     lineHeight = 20.px
-    fontFamily = FontFamily.sansSerif
+    fontFamily = sansSerif
 
     firstOfType {
         borderTopLeftRadius = 10.px
@@ -143,7 +135,7 @@ val LoginForm = FC<LoginFormProps> { props ->
             flexDirection = FlexDirection.column
             alignItems = AlignItems.stretch
             textAlign = TextAlign.center
-            fontFamily = FontFamily.sansSerif
+            fontFamily = sansSerif
         }
 
         Form {
@@ -185,7 +177,7 @@ val LoginForm = FC<LoginFormProps> { props ->
                                 fontSize = 12.px
                                 lineHeight = 15.px
                                 fontWeight = integer(400)
-                                fontFamily = FontFamily.sansSerif
+                                fontFamily = sansSerif
                             }
                             +(emailError ?: passwordError ?: "")
                         }

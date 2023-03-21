@@ -11,6 +11,7 @@ interface Palette {
 enum class TextPalette(override val color: Color): Palette {
     white(Color("#FFFFFF")),
     black(Color("#000000")),
+    gray(Color("#DDDDDD")),
     action(Color("#631AFF")),
 
     ;

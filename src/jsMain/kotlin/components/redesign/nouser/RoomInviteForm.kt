@@ -1,31 +1,20 @@
 package components.redesign.nouser
 
-import components.LoginContext
-import components.redesign.basic.Alert
-import components.redesign.basic.MainPalette
-import components.redesign.basic.Stack
-import components.redesign.forms.TextInput
-import components.redesign.rooms.RoomInviteCore
-import components.redesign.rooms.RoomInviteFormProps
-import components.showError
+import Client
+import components.*
+import components.redesign.basic.*
+import components.redesign.rooms.*
 import csstype.*
-import emotion.react.css
+import emotion.react.*
 import io.ktor.client.call.*
-import payloads.requests.AcceptInviteAndCreateUser
-import react.FC
-import react.Props
-import react.dom.html.InputType
-import react.dom.html.ReactHTML
+import payloads.requests.*
+import react.*
+import react.dom.html.*
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.p
-import react.dom.html.ReactHTML.span
-import react.router.useNavigate
-import react.useContext
-import react.useState
-import utils.isEmailValid
-import utils.roomUrl
-import utils.runCoroutine
+import react.router.*
+import utils.*
 
 val RoomInviteNoUser = FC<Props> {
     Stack {
@@ -97,7 +86,7 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
             color = palette.text.color
             textAlign = TextAlign.center
             fontSize = 14.px
-            fontFamily = FontFamily.sansSerif
+            fontFamily = sansSerif
             gap = 12.px
         }
         div {
@@ -152,7 +141,7 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                             fontSize = 12.px
                             lineHeight = 15.px
                             fontWeight = integer(400)
-                            fontFamily = FontFamily.sansSerif
+                            fontFamily = sansSerif
                         }
                         +(emailError ?: "")
                     }

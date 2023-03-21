@@ -5,7 +5,6 @@ import csstype.*
 import emotion.react.*
 import react.*
 import react.dom.html.*
-import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.input
 import react.dom.html.ReactHTML.label
 
@@ -42,7 +41,7 @@ val OptionGroupComponent = FC<OptionGroupProps<dynamic>> { props ->
                 key = optionStr
                 css {
                     flexGrow = number(1.0)
-                    fontFamily = FontFamily.sansSerif
+                    fontFamily = sansSerif
                     textAlign = TextAlign.center
                     fontSize = 17.px
                     lineHeight = 20.px

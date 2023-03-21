@@ -1,9 +1,8 @@
 package components.redesign.questions
 
 import kotlinx.datetime.*
-import utils.linearSpace
-import kotlin.math.ceil
-import kotlin.math.floor
+import utils.*
+import kotlin.math.*
 
 fun roundNumbers() = sequence {
     var base = 1.0

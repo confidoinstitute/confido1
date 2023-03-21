@@ -2,15 +2,12 @@ package components.redesign.forms
 
 import components.redesign.basic.*
 import csstype.*
-import emotion.react.*
 import dom.html.*
+import emotion.react.*
 import react.*
 import react.dom.html.*
-import react.dom.html.ReactHTML.col
 import react.dom.html.ReactHTML.div
-import react.dom.html.ReactHTML.input
 import react.dom.html.ReactHTML.label
-import react.dom.html.ReactHTML.span
 
 external interface FormSwitchProps : InputHTMLAttributes<HTMLInputElement>, PropsWithPalette<Palette> {
     var component: FC<CheckboxProps>?
@@ -35,7 +32,7 @@ val FormSwitch = FC<FormSwitchProps> { props ->
                 css {
                     if (props.disabled == true)
                         color = Color("#DDDDDD")
-                    fontFamily = FontFamily.sansSerif
+                    fontFamily = sansSerif
                     fontSize = 18.px
                     flexGrow = number(1.0)
                 }
@@ -50,7 +47,7 @@ val FormSwitch = FC<FormSwitchProps> { props ->
         div {
             css {
                 color = Color("#AAAAAA")
-                fontFamily = FontFamily.sansSerif
+                fontFamily = sansSerif
                 fontSize = 12.px
                 lineHeight = 14.px
             }

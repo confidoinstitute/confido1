@@ -1,27 +1,26 @@
 package components.redesign.comments
 
-import components.AppStateContext
+import Client
+import components.*
 import components.redesign.*
+import components.redesign.TextWithLinks
 import components.redesign.basic.*
-import components.redesign.forms.ButtonBase
-import components.rooms.RoomContext
-import components.showError
+import components.redesign.forms.*
+import components.rooms.*
 import csstype.*
-import emotion.react.css
-import hooks.useTimeAgo
+import emotion.react.*
+import hooks.*
 import io.ktor.http.*
-import payloads.responses.CommentInfo
+import payloads.responses.*
 import react.*
 import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
-import rooms.RoomPermission
-import tools.confido.question.Prediction
-import tools.confido.question.QuestionComment
-import tools.confido.refs.deref
-import users.User
-import utils.runCoroutine
-import utils.toDateTime
+import rooms.*
+import tools.confido.question.*
+import tools.confido.refs.*
+import users.*
+import utils.*
 
 private enum class VoteState {
     NO_VOTE, UPVOTED, DOWNVOTED,
@@ -102,7 +101,7 @@ val Comment = FC<CommentProps> { props ->
             display = Display.flex
             flexDirection = FlexDirection.column
             background = Color("#FFFFFF")
-            fontFamily = FontFamily.sansSerif
+            fontFamily = sansSerif
         }
 
         CommentHeader {
@@ -282,7 +281,7 @@ val CommentContents = FC<CommentContentsProps> { props ->
         css {
             padding = Padding(0.px, 15.px)
             color = Color("#000000")
-            fontFamily = FontFamily.sansSerif
+            fontFamily = sansSerif
             fontSize = 15.px
             lineHeight = 18.px
         }
@@ -301,7 +300,7 @@ private val AttachedPredictionSection = FC<CommentAttachedPredictionProps> { pro
             css {
                 padding = Padding(10.px, 15.px)
                 color = Color("#000000")
-                fontFamily = FontFamily.sansSerif
+                fontFamily = sansSerif
                 fontSize = 15.px
                 lineHeight = 18.px
             }

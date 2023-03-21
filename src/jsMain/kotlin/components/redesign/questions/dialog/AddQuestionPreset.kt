@@ -1,17 +1,11 @@
 package components.redesign.questions.dialog
 
-import components.redesign.basic.Dialog
-import components.redesign.basic.DialogProps
-import components.redesign.basic.Stack
-import components.redesign.basic.TextPalette
-import components.redesign.forms.Button
-import components.redesign.forms.TextButton
+import components.redesign.basic.*
+import components.redesign.forms.*
 import csstype.*
-import emotion.react.css
-import react.FC
-import react.Props
+import emotion.react.*
+import react.*
 import react.dom.html.ReactHTML.div
-import utils.except
 
 enum class QuestionPreset(val title: String, val subtitle: String) {
     FORECASTING("Forecasting question", "Correct answer will be known in the future"),
@@ -35,7 +29,7 @@ var AddQuestionPresetDialog = FC<AddQuestionPresetDialogProps> { props ->
             css {
                 backgroundColor = Color("#f2f2f2")
                 padding = 15.px
-                fontFamily = FontFamily.sansSerif
+                fontFamily = sansSerif
                 color = rgba(0,0,0,0.3)
                 fontSize = 14.px
                 lineHeight = 17.px
@@ -50,16 +44,14 @@ var AddQuestionPresetDialog = FC<AddQuestionPresetDialogProps> { props ->
                 +"What kind of question are you planning to ask?"
             }
             QuestionPreset.values().map {preset ->
-                TextButton {
-                    palette = TextPalette.black
+                Button {
                     css {
-                        backgroundColor = Color("#ffffff")
                         padding = 18.px
                         borderRadius = 10.px
                         margin = 0.px
-                        fontFamily = FontFamily.sansSerif
                         alignItems = AlignItems.center
                     }
+                    palette = MainPalette.default
                     onClick = {props.onPreset?.invoke(preset); props.onClose?.invoke() }
                     Stack {
                         div {

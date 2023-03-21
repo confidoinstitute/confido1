@@ -1,16 +1,14 @@
 package components.redesign.rooms
 
-import browser.window
-import components.AppStateContext
+import browser.*
+import components.*
 import components.redesign.basic.*
 import components.redesign.forms.*
-import components.rooms.RoomContext
-import components.rooms.RoomMembers
+import components.rooms.*
 import csstype.*
 import dom.ScrollBehavior
-import dom.html.HTMLDivElement
+import dom.html.*
 import emotion.react.*
-import emotion.styled.styled
 import hooks.*
 import kotlinx.js.*
 import react.*
@@ -18,14 +16,13 @@ import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.header
 import react.dom.html.ReactHTML.main
 import react.dom.html.ReactHTML.span
-import react.router.Route
-import react.router.Routes
-import rooms.RoomPermission
-import tools.confido.refs.deref
-import utils.roomPalette
-import web.timers.requestAnimationFrame
+import react.router.*
+import rooms.*
+import tools.confido.refs.*
+import utils.*
+import web.timers.*
 
-val RoomHeaderButton = Button.styled {_, _ ->
+val RoomHeaderButton = Button.withStyle {
         margin = 0.px
         padding = 7.px
         fontSize = 13.px
@@ -124,7 +121,7 @@ val RoomLayout = FC<Props> {
                 width = 100.pct
                 fontSize = 26.px
                 lineHeight = 31.px
-                fontWeight = FontWeight.bold
+                fontWeight = integer(700)
                 fontFamily = FontFamily.serif
                 textAlign = TextAlign.center
                 color = palette.text.color
@@ -139,7 +136,7 @@ val RoomLayout = FC<Props> {
                 paddingRight = 60.px
                 textAlign = TextAlign.center
                 color = palette.text.color
-                fontFamily = FontFamily.sansSerif
+                fontFamily = sansSerif
                 fontSize = 16.px
                 lineHeight = 19.px
             }

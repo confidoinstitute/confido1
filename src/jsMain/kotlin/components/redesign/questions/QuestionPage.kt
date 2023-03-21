@@ -1,55 +1,39 @@
 package components.redesign.questions
 
-import components.AppStateContext
+import Client
+import components.*
 import components.questions.PendingPredictionState
 import components.redesign.*
-import components.redesign.comments.Comment
+import components.redesign.TextWithLinks
 import components.redesign.basic.*
-import components.redesign.comments.AddCommentButton
-import components.redesign.comments.AddCommentDialog
+import components.redesign.comments.*
+import components.redesign.comments.Comment
 import components.redesign.comments.CommentInputVariant
-import components.redesign.forms.ButtonBase
-import components.redesign.forms.ButtonBaseProps
-import components.redesign.forms.ButtonProps
+import components.redesign.forms.*
+import components.redesign.questions.dialog.*
 import components.redesign.questions.dialog.EditQuestionDialog
-import components.redesign.questions.dialog.QuestionPreset
-import components.redesign.rooms.RoomNavbar
-import components.rooms.RoomContext
-import components.showError
+import components.redesign.rooms.*
+import components.rooms.*
 import csstype.*
-import emotion.react.css
-import emotion.styled.styled
-import hooks.useDebounce
-import hooks.useDocumentTitle
-import hooks.useOnUnmount
-import hooks.useEditDialog
-import hooks.useWebSocket
+import emotion.react.*
+import hooks.*
 import io.ktor.http.*
-import kotlinx.js.jso
-import kotlinx.serialization.encodeToString
-import payloads.responses.CommentInfo
-import payloads.responses.WSData
-import react.FC
-import react.Props
-import react.dom.html.ReactHTML.button
+import kotlinx.js.*
+import kotlinx.serialization.*
+import payloads.responses.*
+import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.main
-import react.router.useNavigate
-import react.useContext
-import react.useState
-import rooms.RoomPermission
-import tools.confido.distributions.ProbabilityDistribution
-import tools.confido.question.Prediction
-import tools.confido.question.Question
-import tools.confido.refs.ref
-import tools.confido.serialization.confidoJSON
-import tools.confido.spaces.Value
-import tools.confido.utils.capFirst
-import tools.confido.utils.uncapFirst
-import utils.questionUrl
-import utils.roomPalette
-import utils.runCoroutine
-import web.prompts.confirm
+import react.router.*
+import rooms.*
+import tools.confido.distributions.*
+import tools.confido.question.*
+import tools.confido.refs.*
+import tools.confido.serialization.*
+import tools.confido.spaces.*
+import tools.confido.utils.*
+import utils.*
+import web.prompts.*
 
 external interface QuestionLayoutProps : Props {
     var question: Question
@@ -153,7 +137,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
     }
 }
 
-private val QuestionEstimateTabButton = button.styled<QuestionEstimateTabButtonProps> { props, _ ->
+private val QuestionEstimateTabButton = ButtonBase.withStyle<QuestionEstimateTabButtonProps>("active") { props ->
     all = Globals.unset
     cursor = Cursor.pointer
 
@@ -163,21 +147,21 @@ private val QuestionEstimateTabButton = button.styled<QuestionEstimateTabButtonP
     flexGrow = number(1.0)
     textAlign = TextAlign.center
 
-    fontFamily = FontFamily.sansSerif
+    fontFamily = sansSerif
     fontSize = 17.px
     lineHeight = 21.px
-
-    hover {
-        backgroundColor = Color("#DDDDDD")
-    }
 
     if (props.active) {
         backgroundColor = Color("#FFFFFF")
         color = Color("#000000")
         fontWeight = integer(500)
     } else {
+        hover {
+            backgroundColor = Color("#DDDDDD")
+        }
+
         color = Color("rgba(0, 0, 0, 0.5)")
-        fontWeight = FontWeight.normal
+        fontWeight = integer(400)
     }
 }
 
@@ -259,7 +243,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                             fontWeight = integer(500)
                             fontSize = 12.px
                             lineHeight = 15.px
-                            fontFamily = FontFamily.sansSerif
+                            fontFamily = sansSerif
                         }
                         val word = question.predictionTerminology.name.lowercase()
                         +when (pendingPredictionState) {
@@ -331,7 +315,7 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
         div {
             css {
                 fontFamily = FontFamily.serif
-                fontWeight = FontWeight.bold
+                fontWeight = integer(700)
                 fontSize = 34.px
                 lineHeight = 105.pct
                 color = Color("#000000")
@@ -373,7 +357,7 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
         div {
             css {
                 padding = Padding(10.px, 0.px, 0.px)
-                fontFamily = FontFamily.sansSerif
+                fontFamily = sansSerif
                 fontSize = 15.px
                 lineHeight = 18.px
                 color = Color("#000000")
@@ -410,7 +394,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
         div {
             css {
                 textTransform = TextTransform.uppercase
-                fontFamily = FontFamily.sansSerif
+                fontFamily = sansSerif
                 fontSize = 13.px
                 lineHeight = 16.px
                 color = Color("#777777")
@@ -462,8 +446,8 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
 private val QuestionStatusLine = FC<QuestionStatusProps> { props ->
     div {
         css {
-            fontFamily = FontFamily.sansSerif
-            fontWeight = FontWeight.bold
+            fontFamily = sansSerif
+            fontWeight = integer(700)
             fontSize = 12.px
             lineHeight = 15.px
             color = Color("rgba(0, 0, 0, 0.3)")

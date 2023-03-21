@@ -3,14 +3,14 @@ package components.redesign.forms
 import components.redesign.basic.*
 import components.redesign.questions.*
 import csstype.*
-import dom.html.HTMLElement
+import dom.html.*
 import emotion.react.*
 import hooks.*
 import kotlinx.js.*
 import react.*
 import react.dom.html.ReactHTML.div
-import tools.confido.distributions.BinaryDistribution
-import tools.confido.spaces.NumericSpace
+import tools.confido.distributions.*
+import tools.confido.spaces.*
 import kotlin.math.*
 
 external interface BinaryPredictionProps : Props {
@@ -27,7 +27,7 @@ fun ChildrenBuilder.proportionalCircle(text: String, color: Color, prob: Double?
             alignItems = AlignItems.center
             justifyContent = JustifyContent.center
             this.color = Color("#FFFFFF")
-            fontFamily = FontFamily.sansSerif
+            fontFamily = sansSerif
             width = size.px
             height = size.px
         }
@@ -63,7 +63,7 @@ fun ChildrenBuilder.proportionalCircle(text: String, color: Color, prob: Double?
                 if (scalar >= 0.3) {
                     div {
                         css {
-                            fontWeight = FontWeight.bold
+                            fontWeight = integer(700)
                             fontSize = 50.px
                             lineHeight = 60.px
                         }
@@ -71,7 +71,7 @@ fun ChildrenBuilder.proportionalCircle(text: String, color: Color, prob: Double?
                     }
                     div {
                         css {
-                            fontWeight = FontWeight.bold
+                            fontWeight = integer(600)
                             fontSize = 30.px
                             lineHeight = 35.px
                         }
@@ -132,7 +132,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
             color = Color("rgba(0,0,0,30%)")
             lineHeight = 12.1.px
             position = Position.relative
-            fontFamily = FontFamily.sansSerif
+            fontFamily = sansSerif
             fontWeight = integer(600)
         }
         (0..100 step 10).forEachIndexed {idx, value->
@@ -166,7 +166,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
                 div {
                     key = "createEstimate"
                     css {
-                        fontFamily = FontFamily.sansSerif
+                        fontFamily = sansSerif
                         fontWeight = integer(600)
                         fontSize = 15.px
                         lineHeight = 18.px
@@ -217,7 +217,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
             color = Color("rgba(0,0,0,30%)")
             lineHeight = 12.1.px
             position = Position.relative
-            fontFamily = FontFamily.sansSerif
+            fontFamily = sansSerif
             fontWeight = integer(600)
         }
         listOf(

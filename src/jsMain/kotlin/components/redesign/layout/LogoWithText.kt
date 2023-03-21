@@ -6,7 +6,7 @@ import dom.html.*
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.img
-import utils.AUTO
+import utils.*
 
 external interface LogoWithTextProps: ImgHTMLAttributes<HTMLElement>, PropsWithPalette<PaletteWithText>
 

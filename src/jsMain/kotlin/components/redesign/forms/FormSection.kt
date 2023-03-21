@@ -19,7 +19,7 @@ val FormSection = FC<FormSectionProps> { props ->
             borderTopWidth = 0.5.px
             borderBottomWidth = 0.5.px
 
-            fontFamily = FontFamily.sansSerif
+            fontFamily = sansSerif
             fontSize = 13.px
             lineHeight = 16.px
             textTransform = TextTransform.uppercase

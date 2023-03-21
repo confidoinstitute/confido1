@@ -3,18 +3,17 @@ package components.redesign.forms
 import components.redesign.basic.*
 import csstype.*
 import dom.html.*
-import emotion.styled.styled
-import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.button
-import react.router.dom.Link
-import react.router.dom.LinkProps
+import react.router.dom.*
 
 typealias ButtonBaseProps = ButtonHTMLAttributes<HTMLButtonElement>
 external interface ButtonProps: ButtonBaseProps, PropsWithPalette<PaletteWithText>
 external interface TextButtonProps: ButtonBaseProps, PropsWithPalette<TextPalette>
 
-val ButtonBase = button.withRipple().styled {props, theme ->
+val ButtonBase = button.withRipple().withStyle {
+    all = Globals.unset
+
     cursor = Cursor.pointer
     border = None.none
     borderRadius = 5.px
@@ -25,14 +24,15 @@ val ButtonBase = button.withRipple().styled {props, theme ->
     }
 }
 
-val Button = ButtonBase.styled<ButtonProps> {props, _ ->
+val Button = ButtonBase.withStyle<ButtonProps>("palette") {props ->
     val palette = props.palette ?: MainPalette.primary
 
     backgroundColor = palette.color
     color = palette.text.color
 
-    fontWeight = FontWeight.bolder
-    fontFamily = FontFamily.sansSerif
+    textAlign = TextAlign.center
+    fontWeight = integer(500)
+    fontFamily = sansSerif
     fontSize = 18.px
     lineHeight = 21.px
 
@@ -44,11 +44,12 @@ val Button = ButtonBase.styled<ButtonProps> {props, _ ->
     }
 }
 
-val TextButton = ButtonBase.styled<TextButtonProps> {props, _ ->
+val TextButton = ButtonBase.withStyle<TextButtonProps>("palette") {props ->
     val palette = props.palette ?: TextPalette.action
 
-    fontWeight = FontWeight.bolder
-    fontFamily = FontFamily.sansSerif
+    textAlign = TextAlign.center
+    fontWeight = integer(500)
+    fontFamily = sansSerif
     fontSize = 18.px
     lineHeight = 21.px
 
@@ -100,7 +101,7 @@ fun PropertiesBuilder.iconButton(palette: TextPalette) {
     }
 }
 
-val IconButton = ButtonBase.styled<TextButtonProps> {props, _ ->
+val IconButton = ButtonBase.withStyle<TextButtonProps>("palette") {props ->
     val palette = props.palette ?: TextPalette.black
 
     iconButton(palette)
@@ -108,7 +109,7 @@ val IconButton = ButtonBase.styled<TextButtonProps> {props, _ ->
 
 external interface IconLinkProps: LinkProps, PropsWithPalette<TextPalette>
 
-val IconLink = Link.withRipple().styled<IconLinkProps> {props, _ ->
+val IconLink = Link.withRipple().withStyle<IconLinkProps>("palette") {props ->
     val palette = props.palette ?: TextPalette.black
 
     iconButton(palette)

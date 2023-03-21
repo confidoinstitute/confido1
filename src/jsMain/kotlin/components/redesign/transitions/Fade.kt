@@ -1,13 +1,8 @@
 package components.redesign.transitions
 
 import csstype.*
-import emotion.react.Global
-import emotion.react.css
-import emotion.react.styles
-import ext.reacttransitiongroup.CSSTransition
-import ext.reacttransitiongroup.TransitionProps
-import react.FC
-import react.PropsWithChildren
+import ext.reacttransitiongroup.*
+import react.*
 
 val Fade = FC<TransitionProps> {props ->
     val className = emotion.css.ClassName {

@@ -1,11 +1,8 @@
 package components.redesign.transitions
 
 import csstype.*
-import emotion.react.Global
-import emotion.react.styles
-import ext.reacttransitiongroup.CSSTransition
-import ext.reacttransitiongroup.TransitionProps
-import react.FC
+import ext.reacttransitiongroup.*
+import react.*
 
 enum class SlideDirection {
     up,

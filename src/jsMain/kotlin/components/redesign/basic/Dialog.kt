@@ -1,26 +1,21 @@
 package components.redesign.basic
 
-import browser.document
-import components.redesign.forms.ButtonBase
-import components.redesign.forms.IconButton
-import components.redesign.forms.TextButton
-import components.redesign.transitions.Slide
-import components.redesign.transitions.SlideDirection
+import browser.*
+import components.redesign.forms.*
+import components.redesign.transitions.*
 import csstype.*
-import dom.html.HTMLElement
-import emotion.css.keyframes
-import emotion.react.css
-import emotion.styled.styled
+import dom.html.*
+import emotion.react.*
 import react.*
-import react.dom.createPortal
-import react.dom.html.ReactHTML
+import react.dom.*
+import react.dom.html.*
 import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
+import react.dom.svg.*
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.svg
-import react.dom.svg.StrokeLinecap
-import web.location.location
-import web.storage.localStorage
+import web.location.*
+import web.storage.*
 
 external interface DialogProps : PropsWithChildren, PropsWithRef<HTMLElement> {
     var open: Boolean
@@ -73,8 +68,31 @@ val DialogMenu = ForwardRef<HTMLElement, DialogMenuProps> { props, fRef ->
                 }
             }
 
-            if (props.hasCloseButton ?: true) {
-                DialogMenuButton {
+            if (props.hasCloseButton != false) {
+                ButtonBase {
+                    css {
+                        border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))
+                        margin = 15.px
+                        padding = 10.px
+                        alignSelf = AlignSelf.stretch
+
+                        fontFamily = sansSerif
+                        fontStyle = FontStyle.normal
+                        fontWeight = integer(400)
+                        fontSize = 17.px
+                        lineHeight = 20.px
+                        color = Color("#999999")
+                        backgroundColor = Color("#FFFFFF")
+                        textAlign = TextAlign.center
+
+                        hover {
+                            backgroundColor = Color("#FBFBFB")
+                        }
+
+                        ".ripple" {
+                            backgroundColor = Color("#999999")
+                        }
+                    }
                     +"Close"
                     onClick = { props.onClose?.invoke() }
                 }
@@ -88,15 +106,6 @@ external interface DialogCoreProps : PropsWithChildren, PropsWithRef<HTMLElement
     var onClose: (() -> Unit)?
     var header: ReactNode
     var fullSize: Boolean
-}
-
-internal val slideKF = keyframes {
-    0.pct {
-        transform = translatey(100.pct)
-    }
-    100.pct {
-        transform = translatey(0.pct)
-    }
 }
 
 val DialogCore = FC<DialogCoreProps> { props ->
@@ -145,7 +154,7 @@ val DialogCore = FC<DialogCoreProps> { props ->
                         }
                         minHeight = 12.px
                         maxHeight = 44.px
-                        fontWeight = FontWeight.bold
+                        fontWeight = integer(600)
                     }
                     +props.header
                 }
@@ -199,7 +208,7 @@ val DialogHeader = FC<DialogHeaderProps> { props ->
     div {
         css {
             flexShrink = number(1.0)
-            fontFamily = FontFamily.sansSerif
+            fontFamily = sansSerif
             fontWeight = integer(600)
             fontSize = 17.px
             lineHeight = 21.px
@@ -241,36 +250,6 @@ val DialogMenuSeparator = FC<DialogMenuItemProps> { props ->
             border = None.none
             borderBottom = Border(0.5.px, LineStyle.solid, Color("#DDDDDD"))
         }
-    }
-}
-
-external interface DialogMenuButtonProps : Props {
-    var onClick: (() -> Unit)?
-    var text: String
-}
-
-val DialogMenuButton = ButtonBase.styled { _, _ ->
-
-    border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))
-    margin = 15.px
-    padding = 10.px
-    alignSelf = AlignSelf.stretch
-
-    fontFamily = FontFamily.sansSerif
-    fontStyle = FontStyle.normal
-    fontWeight = integer(400)
-    fontSize = 17.px
-    lineHeight = 20.px
-    color = Color("#999999")
-    backgroundColor = Color("#FFFFFF")
-    textAlign = TextAlign.center
-
-    hover {
-        backgroundColor = Color("#FBFBFB")
-    }
-
-    ".ripple" {
-        backgroundColor = Color("#999999")
     }
 }
 
@@ -346,7 +325,7 @@ val DialogMenuItem = FC<DialogMenuItemProps> { props ->
                 css {
                     fontSize = 17.px
                     lineHeight = 20.px
-                    fontFamily = FontFamily.sansSerif
+                    fontFamily = sansSerif
                     flexGrow = number(1.0)
                 }
                 +props.text

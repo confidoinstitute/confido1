@@ -1,23 +1,16 @@
 package components.redesign.questions.dialog
 
-import components.AppStateContext
-import components.redesign.basic.Dialog
-import components.redesign.basic.Stack
+import Client
+import components.*
+import components.redesign.basic.*
 import components.redesign.forms.*
-import components.redesign.forms.Button
-import components.rooms.RoomContext
-import components.showError
+import components.rooms.*
 import csstype.*
-import emotion.react.css
-import hooks.EditEntityDialogProps
-import hooks.useCoroutineLock
-import payloads.requests.EditQuestion
-import payloads.requests.EditQuestionComplete
+import emotion.react.*
+import hooks.*
+import payloads.requests.*
 import react.*
-import space.kscience.dataforge.values.asValue
-import tools.confido.question.GroupTerminology
-import tools.confido.question.PredictionTerminology
-import tools.confido.question.Question
+import tools.confido.question.*
 import tools.confido.spaces.*
 
 external interface EditQuestionDialogProps : EditEntityDialogProps<Question> {

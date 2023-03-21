@@ -1,25 +1,20 @@
 package components.redesign.nouser
 
-import components.LoginContext
-import components.redesign.basic.Backdrop
-import components.redesign.basic.MainPalette
-import components.redesign.basic.Stack
-import components.redesign.forms.Button
+import Client
+import components.*
+import components.redesign.basic.*
+import components.redesign.forms.*
 import csstype.*
-import emotion.react.css
+import emotion.react.*
 import io.ktor.client.call.*
 import payloads.requests.*
 import react.*
-import react.router.useNavigate
-import utils.themed
-
-import react.FC
-import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.p
-import react.router.dom.useSearchParams
-import utils.runCoroutine
+import react.router.*
+import react.router.dom.*
+import utils.*
 
 val EmailLogin = FC<Props> {
     val loginState = useContext(LoginContext)
@@ -59,7 +54,7 @@ val EmailLogin = FC<Props> {
                     fontSize = 14.px
                     lineHeight = 17.px
                     fontWeight = integer(400)
-                    fontFamily = FontFamily.sansSerif
+                    fontFamily = sansSerif
                 }
                 p {
                     b {

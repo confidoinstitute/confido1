@@ -1,34 +1,17 @@
 package components.redesign.rooms
 
-import components.redesign.BackIcon
-import components.redesign.NavMenuIcon
+import components.redesign.*
 import components.redesign.basic.*
-import components.redesign.forms.Button
-import components.redesign.forms.IconButton
-import components.redesign.forms.IconLink
-import components.rooms.RoomContext
+import components.redesign.forms.*
 import csstype.*
-import emotion.react.css
-import emotion.styled.styled
-import react.FC
-import react.PropsWithChildren
-import react.dom.html.ReactHTML
+import emotion.react.*
+import react.*
+import react.dom.html.*
 import react.dom.html.ReactHTML.div
-import react.dom.svg.ReactSVG
-import react.dom.svg.ReactSVG.circle
-import react.dom.svg.ReactSVG.path
-import react.dom.svg.ReactSVG.svg
-import react.dom.svg.StrokeLinecap
-import react.router.dom.Link
-import react.router.dom.LinkProps
-import react.useContext
 
 external interface RoomNavbarProps : PropsWithChildren, PropsWithPalette<RoomPalette> {
     var navigateBack: String?
     var onMenu: (() -> Unit)?
-}
-
-fun PropertiesBuilder.navQuestionTitle() {
 }
 
 val RoomNavbar = FC<RoomNavbarProps> { props ->
@@ -67,7 +50,7 @@ val RoomNavbar = FC<RoomNavbarProps> { props ->
                 fontFamily = FontFamily.serif
                 fontSize = 17.px
                 lineHeight = 21.px
-                fontWeight = FontWeight.bold
+                fontWeight = integer(700)
                 overflow = Overflow.hidden
                 whiteSpace = WhiteSpace.nowrap
                 textOverflow = TextOverflow.ellipsis
@@ -95,4 +78,3 @@ val RoomNavbar = FC<RoomNavbarProps> { props ->
         }
     }
 }
-

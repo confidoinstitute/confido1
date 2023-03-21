@@ -1,27 +1,19 @@
 package components.redesign.questions
 
-import components.AppStateContext
-import components.redesign.basic.LinkUnstyled
-import components.redesign.basic.QuestionPalette
+import components.*
+import components.redesign.basic.*
 import csstype.*
-import emotion.react.css
-import hooks.useTimeAgo
+import emotion.react.*
+import hooks.*
 import react.*
-import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.br
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
-import react.router.dom.Link
-import react.router.useNavigate
-import tools.confido.distributions.BinaryDistribution
-import tools.confido.distributions.ContinuousProbabilityDistribution
-import tools.confido.distributions.ProbabilityDistribution
-import tools.confido.question.Prediction
-import tools.confido.question.PredictionTerminology
-import tools.confido.question.Question
-import tools.confido.refs.ref
-import tools.confido.utils.pluralize
-import tools.confido.utils.toFixed
+import react.router.dom.*
+import tools.confido.distributions.*
+import tools.confido.question.*
+import tools.confido.refs.*
+import tools.confido.utils.*
 
 private enum class QuestionState {
     OPEN,
@@ -92,21 +84,22 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             }
             span {
                 css {
-                    textTransform = TextTransform.uppercase
-                    fontFamily = FontFamily.sansSerif
+                    fontFamily = sansSerif
                     fontStyle = FontStyle.normal
-                    fontWeight = FontWeight.bold
+                    fontWeight = integer(600)
                     fontSize = 11.px
                     lineHeight = 13.px
-                    color = palette.color
-                    opacity = number(0.5)
+                    backgroundColor = palette.color
+                    color = Color("#FFFFFF")
+                    padding = Padding(3.px, 7.px)
+                    borderRadius = 20.px
                 }
 
                 val stateLabel = when (questionState) {
-                    QuestionState.OPEN -> "OPEN"
-                    QuestionState.CLOSED -> "CLOSED"
-                    QuestionState.RESOLVED -> "RESOLVED"
-                    QuestionState.ANNULLED -> "ANNULLED"
+                    QuestionState.OPEN -> "Open"
+                    QuestionState.CLOSED -> "Closed"
+                    QuestionState.RESOLVED -> "Resolved"
+                    QuestionState.ANNULLED -> "Annulled"
                 }
                 +stateLabel
                 // TODO: append ", closing in X hours" | ", closing in X days" if scheduled to close
@@ -158,12 +151,11 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 }
                 span {
                     css {
-                        fontFamily = FontFamily.sansSerif
+                        fontFamily = sansSerif
                         fontStyle = FontStyle.normal
-                        fontWeight = FontWeight.bold
+                        fontWeight = integer(700)
                         fontSize = 14.px
                         lineHeight = 17.px
-                        color = palette.color
                     }
 
                     +"${props.question.numPredictors} ${pluralize(predictionTerm, props.question.numPredictors)}"
@@ -183,9 +175,9 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 // Value Frame
                 div {
                     css {
-                        fontFamily = FontFamily.sansSerif
+                        fontFamily = sansSerif
                         fontStyle = FontStyle.normal
-                        fontWeight = FontWeight.bold
+                        fontWeight = integer(700)
                         fontSize = 28.px
                         lineHeight = 33.px
                         color = palette.color
@@ -248,13 +240,12 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 // Label Frame
                 div {
                     css {
-                        fontFamily = FontFamily.sansSerif
+                        fontFamily = sansSerif
                         fontStyle = FontStyle.normal
-                        fontWeight = FontWeight.bold
+                        fontWeight = integer(700)
                         fontSize = 11.px
                         lineHeight = 13.px
                         color = palette.color
-                        opacity = number(0.5)
                         textAlign = TextAlign.right
                         alignSelf = AlignSelf.baseline
                         width = 100.pct

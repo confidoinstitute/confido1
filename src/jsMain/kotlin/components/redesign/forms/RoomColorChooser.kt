@@ -19,8 +19,8 @@ val RoomColorChooser = FC<RoomColorChooserProps> { props ->
         }
         div {
             css {
-                fontFamily = FontFamily.sansSerif
-                fontWeight = FontWeight.bolder
+                fontFamily = sansSerif
+                fontWeight = integer(500)
                 fontSize = 14.px
                 lineHeight = 17.px
             }

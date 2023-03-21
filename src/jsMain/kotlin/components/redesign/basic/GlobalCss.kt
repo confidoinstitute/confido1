@@ -1,15 +1,18 @@
 package components.redesign.basic
 
 import csstype.*
-import emotion.react.styles
+import emotion.react.*
 import react.*
 
 external interface GlobalCssProps : Props {
     var backgroundColor: BackgroundColor
 }
 
+val sansSerif = string("Inter, sans-serif")
+val serif = string("serif")
+
 val GlobalCss = FC<GlobalCssProps> {props ->
-    emotion.react.Global {
+    Global {
         styles {
             "*" {
                 boxSizing = BoxSizing.borderBox

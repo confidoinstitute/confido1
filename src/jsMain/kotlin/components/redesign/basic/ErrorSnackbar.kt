@@ -1,15 +1,14 @@
 package components.redesign.basic
 
-import components.redesign.transitions.Slide
-import components.redesign.transitions.SlideDirection
-import components.showError
+import components.*
+import components.redesign.transitions.*
 import csstype.*
-import dom.html.HTMLDivElement
-import emotion.react.css
+import dom.html.*
+import emotion.react.*
 import react.*
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
-import web.timers.setTimeout
+import web.timers.*
 import kotlin.time.Duration.Companion.seconds
 
 val GlobalErrorMessage = FC<PropsWithChildren> {
@@ -80,7 +79,7 @@ val GlobalErrorMessage = FC<PropsWithChildren> {
 
                             backgroundColor = Color("#000000")
                             color = Color("#FFFFFF")
-                            fontFamily = FontFamily.sansSerif
+                            fontFamily = sansSerif
 
                         }
                         b {+"Error: "}

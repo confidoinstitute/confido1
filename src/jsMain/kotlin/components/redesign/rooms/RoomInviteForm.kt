@@ -1,32 +1,29 @@
 package components.redesign.rooms
 
-import components.AppStateContext
+import Client
+import components.*
 import components.redesign.basic.*
-import components.redesign.forms.Button
-import components.showError
+import components.redesign.forms.*
 import csstype.*
-import emotion.react.css
-import hooks.useDocumentTitle
+import emotion.react.*
+import hooks.*
 import io.ktor.client.call.*
 import io.ktor.http.*
-import kotlinx.js.get
-import kotlinx.js.jso
+import kotlinx.js.*
 import payloads.requests.*
+import payloads.responses.*
 import react.*
-import react.router.useParams
-import payloads.responses.InviteStatus
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.code
-import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.h3
 import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
-import react.router.dom.Link
-import react.router.useNavigate
-import tools.confido.refs.eqid
-import tools.confido.utils.TOKEN_LEN
+import react.router.*
+import react.router.dom.*
+import tools.confido.refs.*
+import tools.confido.utils.*
 import utils.*
-import web.location.location
+import web.location.*
 
 val RoomInviteLoggedIn = FC<Props> {
     Stack {
@@ -61,7 +58,7 @@ private val InvalidInviteAlert = FC<InvalidInviteAlertProps> { props->
             textAlign = TextAlign.center
             color = palette.text.color
             fontSize = 14.px
-            fontFamily = FontFamily.sansSerif
+            fontFamily = sansSerif
             fontWeight = integer(400)
         }
         p {

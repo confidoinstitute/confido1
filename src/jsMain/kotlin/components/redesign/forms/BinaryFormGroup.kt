@@ -34,7 +34,7 @@ val BinaryFormField = FC<BinaryFormFieldProps> { props ->
         }
         ReactHTML.span {
             css {
-                fontFamily = FontFamily.sansSerif
+                fontFamily = sansSerif
                 fontSize = 17.px
                 lineHeight = 21.px
                 if (props.disabled) {
@@ -59,7 +59,7 @@ val BinaryFormGroup = FC<BinaryFormGroupProps> { props ->
         }
         ReactHTML.div {
             css {
-                fontFamily = FontFamily.sansSerif
+                fontFamily = sansSerif
                 fontSize = 18.px
                 lineHeight = 21.px
                 flexGrow = number(1.0)

@@ -1,26 +1,19 @@
 package components.redesign.layout
 
-import browser.window
-import components.AppStateContext
-import components.AppStateWebsocketProvider
-import components.layout.RoomRedirect
-import components.nouser.EmailLoginAlreadyLoggedIn
-import components.profile.VerifyToken
-import components.redesign.Dashboard
-import components.redesign.basic.Backdrop
-import components.redesign.basic.BackdropProvider
-import components.redesign.basic.GlobalCss
+import browser.*
+import components.*
+import components.layout.*
+import components.nouser.*
+import components.profile.*
+import components.redesign.*
+import components.redesign.basic.*
 import components.redesign.basic.GlobalErrorMessage
-import components.redesign.rooms.Room
-import components.redesign.rooms.RoomInviteLoggedIn
-import components.showError
+import components.redesign.rooms.*
 import csstype.*
-import emotion.react.css
+import emotion.react.*
 import react.*
-import react.router.Navigate
-import react.router.Route
-import react.router.Routes
-import tools.confido.state.appConfig
+import react.router.*
+import tools.confido.state.*
 
 val RootLayout = FC<Props> {
     AppStateWebsocketProvider {
