@@ -60,7 +60,7 @@ val RoomLayout = FC<Props> {
 
     var dialogOpen by useState(false)
 
-    useDocumentTitle("${room.name} - Confido")
+    useDocumentTitle(room.name)
 
     fun scrollDownTabs() {
         tabRef.current?.apply {

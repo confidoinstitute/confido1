@@ -88,7 +88,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
         preset = QuestionPreset.NONE
     })
 
-    useDocumentTitle("${props.question.name} - Confido")
+    useDocumentTitle(props.question.name)
 
     if (!room.hasPermission(appState.session.user, RoomPermission.VIEW_QUESTIONS))
     // TODO proper no permission page

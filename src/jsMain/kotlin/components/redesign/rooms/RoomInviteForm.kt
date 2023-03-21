@@ -193,7 +193,7 @@ internal val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
         }
     }
 
-    useDocumentTitle("Invitation - Confido")
+    useDocumentTitle("Invitation")
 
     Backdrop {
         this.`in` = inviteStatus == null

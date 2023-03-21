@@ -31,7 +31,7 @@ internal fun ChildrenBuilder.title(text: String) = div {
 val Dashboard = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
 
-    useDocumentTitle("Confido")
+    useDocumentTitleRaw("Confido")
 
     var dialogOpen by useState(false)
     DashboardDialog {

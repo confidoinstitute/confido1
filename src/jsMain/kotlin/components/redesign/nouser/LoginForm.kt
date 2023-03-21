@@ -82,7 +82,7 @@ external interface LoginFormProps : Props {
 val LoginForm = FC<LoginFormProps> { props ->
     val palette = MainPalette.login
 
-    useDocumentTitle("Log In - Confido")
+    useDocumentTitle("Log In")
 
     val loginState = useContext(LoginContext)
     var email by useState(props.prefilledEmail ?: "")
