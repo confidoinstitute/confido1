@@ -6,6 +6,7 @@ import components.redesign.*
 import components.redesign.TextWithLinks
 import components.redesign.basic.*
 import components.redesign.forms.*
+import components.redesign.questions.PredictionGraph
 import components.rooms.*
 import csstype.*
 import emotion.react.*
@@ -118,6 +119,7 @@ val Comment = FC<CommentProps> { props ->
             is QuestionComment -> {
                 if (comment.prediction != null) {
                     AttachedPredictionSection {
+                        key = comment.id
                         prediction = comment.prediction
                     }
                 }
@@ -320,8 +322,11 @@ private val AttachedPredictionSection = FC<CommentAttachedPredictionProps> { pro
             css {
                 padding = Padding(10.px, 0.px)
             }
-            // TODO: Show the prediction
-            +"TODO visualise prediction"
+            PredictionGraph {
+                key = "${props.key}-vis"
+                space = props.prediction.dist.space
+                dist = props.prediction.dist
+            }
         }
     }
 }
