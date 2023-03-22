@@ -384,3 +384,48 @@ val UnhideIcon = FC<PropsWithClassName> { props ->
         }
     }
 }
+
+val LockIcon = FC<PropsWithClassName> { props ->
+    val color = "black"
+    svg {
+        className = props.className
+        width = 30.0
+        height = 30.0
+        viewBox = "0 0 30 30"
+        fill = "none"
+
+        path {
+            d = "M17.5 12.5V10.5C17.5 9.11929 16.3807 8 15 8C13.6193 8 12.5 9.11929 12.5 10.5V12.5"
+            stroke = color
+            strokeWidth = 1.2
+        }
+        path {
+            d = "M10 13C10 12.7239 10.2239 12.5 10.5 12.5H19.5C19.7761 12.5 20 12.7239 20 13V20C20 20.2761 19.7761 20.5 19.5 20.5H10.5C10.2239 20.5 10 20.2761 10 20V13Z"
+            stroke = color
+            strokeWidth = 1.2
+            strokeLinejoin = StrokeLinejoin.round
+        }
+    }
+}
+
+val UnlockIcon = FC<PropsWithClassName> { props ->
+    val color = "black"
+    svg {
+        className = props.className
+        width = 30.0
+        height = 30.0
+        viewBox = "0 0 30 30"
+        fill = "none"
+
+        path {
+            d = "M11.9 10C11.9 10.3314 12.1686 10.6 12.5 10.6C12.8314 10.6 13.1 10.3314 13.1 10H11.9ZM13.1 10C13.1 8.95066 13.9507 8.1 15 8.1V6.9C13.2879 6.9 11.9 8.28792 11.9 10H13.1ZM15 8.1C16.0493 8.1 16.9 8.95066 16.9 10H18.1C18.1 8.28792 16.7121 6.9 15 6.9V8.1ZM16.9 10V12.5H18.1V10H16.9Z"
+            fill = color
+        }
+        path {
+            d = "M10 13C10 12.7239 10.2239 12.5 10.5 12.5H19.5C19.7761 12.5 20 12.7239 20 13V20C20 20.2761 19.7761 20.5 19.5 20.5H10.5C10.2239 20.5 10 20.2761 10 20V13Z"
+            stroke = color
+            strokeWidth = 1.2
+            strokeLinejoin = StrokeLinejoin.round
+        }
+    }
+}

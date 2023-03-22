@@ -497,10 +497,18 @@ private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> {
             }
         }
         DialogMenuItem {
-            text = "Close"
-            disabled = true
+            text = if (props.question.open) { "Close" } else { "Open" }
+            icon = if (props.question.open) { LockIcon } else { UnlockIcon }
             onClick = {
-                // TODO: Implement and remove disabled
+                runCoroutine {
+                    val edit: EditQuestion = EditQuestionFlag(EditQuestionFieldType.OPEN, !props.question.open)
+                    Client.sendData(
+                        "${props.question.urlPrefix}/edit",
+                        edit,
+                        onError = { showError?.invoke(it) }) {
+                        props.onClose?.invoke()
+                    }
+                }
             }
         }
         DialogMenuItem {
