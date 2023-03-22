@@ -480,6 +480,7 @@ private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> {
     DialogMenu {
         open = props.open
         onClose = { props.onClose?.invoke() }
+        headerText = "Quick settings"
         DialogMenuItem {
             // TODO: Better text for "Unhide". Using something like "Show" would not make it clear what this button does (i.e. the question is currently hidden).
             text = if (props.question.visible) { "Hide" } else { "Unhide" }
