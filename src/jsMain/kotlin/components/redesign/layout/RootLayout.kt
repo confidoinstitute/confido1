@@ -23,8 +23,6 @@ val RootLayout = FC<Props> {
 }
 
 private val RootLayoutInner = FC<Props> {
-    val (appState, stale) = useContext(AppStateContext)
-
     var showDemoWelcome by useState(appConfig.demoMode && window.asDynamic().demoDismissed != true)
     Backdrop {
         this.`in` = showDemoWelcome

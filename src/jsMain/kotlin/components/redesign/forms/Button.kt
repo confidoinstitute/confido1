@@ -13,6 +13,8 @@ external interface TextButtonProps: ButtonBaseProps, PropsWithPalette<TextPalett
 
 val ButtonBase = button.withRipple().withStyle {
     all = Globals.unset
+    boxSizing = BoxSizing.borderBox
+    userSelect = None.none
 
     cursor = Cursor.pointer
     border = None.none

@@ -37,14 +37,11 @@ external interface LoginInputProps : InputHTMLAttributes<HTMLInputElement> {
     var error: Boolean
 }
 
-val LoginInput = input.withStyle<LoginInputProps> {props ->
+val LoginInput = input.withStyle<LoginInputProps>("error") {props ->
     padding = Padding(12.px, 12.px)
     backgroundColor = Color("#96FFFF33")
     color = Color("#FFFFFF")
-    if (props.error)
-        border = Border(1.px, LineStyle.solid, Color("transparent"))
-    else
-        borderWidth = 0.px
+    border = Border(1.px, LineStyle.solid, if (props.error) Color("#F35454") else Color("transparent"))
     borderRadius = 0.px
     width = 100.pct
 
