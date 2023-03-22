@@ -281,8 +281,10 @@ val DialogMenuItem = FC<DialogMenuItemProps> { props ->
         css {
             padding = Padding(6.px, 15.px)
 
-            hover {
-                backgroundColor = rgba(0, 0, 0, 0.05)
+            if (!disabled) {
+                hover {
+                    backgroundColor = rgba(0, 0, 0, 0.05)
+                }
             }
 
             rippleCss()

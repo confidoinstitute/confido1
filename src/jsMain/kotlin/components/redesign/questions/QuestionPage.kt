@@ -20,6 +20,9 @@ import hooks.*
 import io.ktor.http.*
 import kotlinx.js.*
 import kotlinx.serialization.*
+import payloads.requests.EditQuestion
+import payloads.requests.EditQuestionFieldType
+import payloads.requests.EditQuestionFlag
 import payloads.responses.*
 import react.*
 import react.dom.html.ReactHTML.div
@@ -477,12 +480,20 @@ private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> {
     DialogMenu {
         open = props.open
         onClose = { props.onClose?.invoke() }
-        /*
         DialogMenuItem {
-            text = "Hide"
-            disabled = true
+            // TODO: Better text for "Unhide". Using something like "Show" would not make it clear what this button does (i.e. the question is currently hidden).
+            text = if (props.question.visible) { "Hide" } else { "Unhide" }
+            icon = if (props.question.visible) { HideIcon } else { UnhideIcon }
             onClick = {
-                // TODO: Implement and remove disabled
+                runCoroutine {
+                    val edit: EditQuestion = EditQuestionFlag(EditQuestionFieldType.VISIBLE, !props.question.visible)
+                    Client.sendData(
+                        "${props.question.urlPrefix}/edit",
+                        edit,
+                        onError = { showError?.invoke(it) }) {
+                        props.onClose?.invoke()
+                    }
+                }
             }
         }
         DialogMenuItem {
@@ -500,7 +511,6 @@ private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> {
             }
         }
         DialogMenuSeparator {}
-         */
         if (props.canEdit) {
             DialogMenuItem {
                 text = "Edit this question"

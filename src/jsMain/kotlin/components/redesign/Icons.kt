@@ -326,3 +326,61 @@ val SettingsIcon = FC<PropsWithClassName> { props ->
         }
     }
 }
+
+val HideIcon = FC<PropsWithClassName> { props ->
+    val color = "black"
+    svg {
+        className = props.className
+        width = 30.0
+        height = 30.0
+        viewBox = "0 0 30 30"
+        fill = "none"
+        path {
+            d = "M15 9.59998C11 9.59998 7.59998 12 5.59998 15C7.59998 18 11 20.4 15 20.4C19 20.4 22.4 18 24.4 15C22.4 12 19 9.59998 15 9.59998Z"
+            stroke = color
+            strokeWidth = 1.2
+            strokeLinejoin = StrokeLinejoin.round
+        }
+
+        circle {
+            cx = 15.0
+            cy = 15.0
+            r = 3.5
+            stroke = color
+            strokeWidth = 1.2
+        }
+
+        path {
+            d = "M8.5 8.5L21.5 21.5"
+            stroke = color
+            strokeWidth = 1.2
+            strokeLinejoin = StrokeLinejoin.round
+            strokeLinecap = StrokeLinecap.round
+        }
+    }
+}
+
+val UnhideIcon = FC<PropsWithClassName> { props ->
+    val color = "black"
+    svg {
+        className = props.className
+        width = 30.0
+        height = 30.0
+        viewBox = "0 0 30 30"
+        fill = "none"
+        path {
+            d = "M15 9.59998C11 9.59998 7.59998 12 5.59998 15C7.59998 18 11 20.4 15 20.4C19 20.4 22.4 18 24.4 15C22.4 12 19 9.59998 15 9.59998Z"
+            stroke = color
+            strokeWidth = 1.2
+            strokeLinejoin = StrokeLinejoin.round
+        }
+
+        circle {
+            cx = 15.0
+            cy = 15.0
+            r = 3.5
+            stroke = color
+            strokeWidth = 1.2
+        }
+    }
+}
