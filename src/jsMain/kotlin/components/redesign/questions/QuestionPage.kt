@@ -474,6 +474,8 @@ private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> {
     val room = useContext(RoomContext)
     val navigate = useNavigate()
 
+    val editLock = useCoroutineLock()
+
     fun delete() = runCoroutine {
         Client.send(
             questionUrl(props.question.id),
@@ -492,14 +494,14 @@ private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> {
             // TODO: Better text for "Unhide". Using something like "Show" would not make it clear what this button does (i.e. the question is currently hidden).
             text = if (props.question.visible) { "Hide" } else { "Unhide" }
             icon = if (props.question.visible) { HideIcon } else { UnhideIcon }
+            disabled = editLock.running
             onClick = {
-                runCoroutine {
+                editLock {
                     val edit: EditQuestion = EditQuestionFlag(EditQuestionFieldType.VISIBLE, !props.question.visible)
                     Client.sendData(
                         "${props.question.urlPrefix}/edit",
                         edit,
                         onError = { showError?.invoke(it) }) {
-                        props.onClose?.invoke()
                     }
                 }
             }
@@ -507,14 +509,14 @@ private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> {
         DialogMenuItem {
             text = if (props.question.open) { "Close" } else { "Open" }
             icon = if (props.question.open) { LockIcon } else { UnlockIcon }
+            disabled = editLock.running
             onClick = {
-                runCoroutine {
+                editLock {
                     val edit: EditQuestion = EditQuestionFlag(EditQuestionFieldType.OPEN, !props.question.open)
                     Client.sendData(
                         "${props.question.urlPrefix}/edit",
                         edit,
                         onError = { showError?.invoke(it) }) {
-                        props.onClose?.invoke()
                     }
                 }
             }
