@@ -28,6 +28,11 @@ external interface QuestionItemProps : Props {
     var href: String?
 }
 
+external interface StatusChipProps : Props {
+    var text: String
+    var color: Color
+}
+
 val QuestionItem = FC<QuestionItemProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     val prediction = appState.myPredictions[props.question.ref]
@@ -74,35 +79,28 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         }
 
         // Question Status Frame
-        div {
+        Stack {
+            direction = FlexDirection.row
             css {
-                display = Display.flex;
-                flexDirection = FlexDirection.row
-                alignItems = AlignItems.flexStart
                 padding = Padding(0.px, 0.px, 2.px)
-                cursor = Cursor.pointer
+                gap = 5.px
             }
-            span {
-                css {
-                    fontFamily = sansSerif
-                    fontStyle = FontStyle.normal
-                    fontWeight = integer(600)
-                    fontSize = 11.px
-                    lineHeight = 13.px
-                    backgroundColor = palette.color
-                    color = Color("#FFFFFF")
-                    padding = Padding(3.px, 7.px)
-                    borderRadius = 20.px
-                }
 
-                val stateLabel = when (questionState) {
+            StatusChip {
+                color = palette.color
+                text = when (questionState) {
                     QuestionState.OPEN -> "Open"
                     QuestionState.CLOSED -> "Closed"
                     QuestionState.RESOLVED -> "Resolved"
                     QuestionState.ANNULLED -> "Annulled"
                 }
-                +stateLabel
-                // TODO: append ", closing in X hours" | ", closing in X days" if scheduled to close
+            }
+
+            if (!props.question.visible) {
+                StatusChip {
+                    color = Color("#ADBDC2")
+                    text = "Hidden"
+                }
             }
         }
 
@@ -279,3 +277,21 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         }
     }
 }
+
+private val StatusChip = FC<StatusChipProps> { props ->
+    span {
+        css {
+            fontFamily = sansSerif
+            fontStyle = FontStyle.normal
+            fontWeight = integer(600)
+            fontSize = 11.px
+            lineHeight = 13.px
+            backgroundColor = props.color
+            color = Color("#FFFFFF")
+            padding = Padding(3.px, 7.px)
+            borderRadius = 20.px
+        }
+        +props.text
+    }
+}
+
