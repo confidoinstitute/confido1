@@ -102,12 +102,16 @@ kotlin {
                 // Plotly
                 implementation("space.kscience:plotlykt-core:0.5.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+                // DND Kit
                 implementation(npm("@dnd-kit/core", "6.0.5"))
                 implementation(npm("@dnd-kit/modifiers", "6.0.0"))
                 implementation(npm("@dnd-kit/sortable", "7.0.1"))
+                // QR codes
                 implementation(npm("qrcode.react", "3.1.0"))
                 // Transitions
                 implementation(npm("react-transition-group","4.4.5"))
+                // Helmet
+                implementation(npm("react-helmet", "6.1.0"))
             }
         }
     }
