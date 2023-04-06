@@ -18,15 +18,24 @@ external interface RoomListProps : Props {
     var canCreate: Boolean
 }
 
-private val RoomLink = Link.withRipple().withStyle {
+external interface RoomLinkProps : LinkProps {
+    var small: Boolean
+}
+
+private val RoomLink = Link.withRipple().withStyle<RoomLinkProps>("small") {props ->
     display = Display.flex
     flexDirection = FlexDirection.row
     gap = 12.px
     textDecoration = None.none
     fontFamily = sansSerif
     alignItems = AlignItems.center
-    fontSize = 15.px
-    lineHeight = 17.px
+    if (props.small) {
+        fontSize = 15.px
+        lineHeight = 17.px
+    } else {
+        fontSize = 18.px
+        lineHeight = 20.px
+    }
     color = Color("#222222")
     padding = Padding(10.px, 20.px)
     margin = 0.px
@@ -51,6 +60,7 @@ val RoomList = FC<RoomListProps> {props ->
             RoomLink {
                 key = id
                 to = room.urlPrefix
+                small = props.small
                 div {
                     css {
                         backgroundColor = roomPalette(room.id).color
@@ -69,6 +79,7 @@ val RoomList = FC<RoomListProps> {props ->
             RoomLink {
                 key = "::new_room"
                 to = "/new_room"
+                small = props.small
                 div {
                     css {
                         border = Border(1.px, LineStyle.solid, Color("#BBBBBB"))

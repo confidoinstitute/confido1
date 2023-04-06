@@ -115,7 +115,7 @@ val DemoLoginBox = FC<Props> {
                 marginBottom = 21.px
                 fontSize = 14.px
                 lineHeight = 18.px
-                fontWeight = 500 as FontWeight
+                fontWeight = integer(500)
                 textAlign = TextAlign.center
             }
             +"Ready to start using Confido?"

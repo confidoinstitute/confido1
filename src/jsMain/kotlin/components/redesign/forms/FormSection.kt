@@ -10,7 +10,7 @@ external interface FormSectionProps : PropsWithChildren, PropsWithClassName {
     var title: String
 }
 
-val FormSection = FC<FormSectionProps> { props ->
+val FormDivider = FC<PropsWithChildren> {
     div {
         css {
             backgroundColor = Color("#F2F2F2")
@@ -25,7 +25,12 @@ val FormSection = FC<FormSectionProps> { props ->
             textTransform = TextTransform.uppercase
             padding = Padding(12.px, 15.px)
         }
+        +it.children
+    }
+}
 
+val FormSection = FC<FormSectionProps> { props ->
+    FormDivider {
         +props.title
     }
     Stack {

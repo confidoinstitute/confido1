@@ -2,9 +2,10 @@ package components.redesign.rooms
 
 import browser.*
 import components.*
+import components.redesign.Header
 import components.redesign.basic.*
 import components.redesign.forms.*
-import components.rooms.*
+import components.rooms.RoomContext
 import csstype.*
 import dom.ScrollBehavior
 import dom.html.*
@@ -60,7 +61,10 @@ val RoomLayout = FC<Props> {
 
     var dialogOpen by useState(false)
 
-    useDocumentTitle(room.name)
+    Header {
+        title = room.name
+        appBarColor = palette.color
+    }
 
     fun scrollDownTabs() {
         tabRef.current?.apply {
@@ -122,7 +126,7 @@ val RoomLayout = FC<Props> {
                 fontSize = 26.px
                 lineHeight = 31.px
                 fontWeight = integer(700)
-                fontFamily = FontFamily.serif
+                fontFamily = serif
                 textAlign = TextAlign.center
                 color = palette.text.color
             }
@@ -184,14 +188,7 @@ val RoomLayout = FC<Props> {
             if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
                 Route {
                     path = "members"
-                    this.element = div.create {
-                        css {
-                            flexGrow = number(1.0)
-                            backgroundColor = Color("#FFFFFF")
-                            padding = 20.px
-                        }
-                        RoomMembers {}
-                    }
+                    this.element = RoomMembers.create()
                 }
         }
     }

@@ -2,11 +2,13 @@ package components.redesign.nouser
 
 import Client
 import components.*
+import components.redesign.Header
 import components.redesign.basic.*
 import components.redesign.forms.*
 import csstype.*
 import dom.html.*
 import emotion.react.*
+import ext.helmet.Helmet
 import hooks.*
 import io.ktor.http.*
 import payloads.requests.*
@@ -16,6 +18,7 @@ import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.input
 import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
+import react.dom.html.ReactHTML.title
 import utils.*
 
 val LoginLinkButton = ButtonBase.withStyle {
@@ -79,7 +82,10 @@ external interface LoginFormProps : Props {
 val LoginForm = FC<LoginFormProps> { props ->
     val palette = MainPalette.login
 
-    useDocumentTitle("Log In")
+    Header {
+        title = "Log In"
+        appBarColor = Color("#6733DA")
+    }
 
     val loginState = useContext(LoginContext)
     var email by useState(props.prefilledEmail ?: "")

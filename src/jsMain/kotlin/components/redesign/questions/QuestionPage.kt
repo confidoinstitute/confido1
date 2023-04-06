@@ -91,7 +91,10 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
         preset = QuestionPreset.NONE
     })
 
-    useDocumentTitle(props.question.name)
+    Header {
+        title = props.question.name
+        appBarColor = roomPalette(room.id).color
+    }
 
     if (!room.hasPermission(appState.session.user, RoomPermission.VIEW_QUESTIONS))
     // TODO proper no permission page
@@ -153,6 +156,10 @@ private val QuestionEstimateTabButton = ButtonBase.withStyle<QuestionEstimateTab
     fontFamily = sansSerif
     fontSize = 17.px
     lineHeight = 21.px
+
+    ".ripple" {
+        backgroundColor = Color("#DDDDDD")
+    }
 
     if (props.active) {
         backgroundColor = Color("#FFFFFF")
@@ -317,7 +324,7 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
         // Question text
         div {
             css {
-                fontFamily = FontFamily.serif
+                fontFamily = serif
                 fontWeight = integer(700)
                 fontSize = 34.px
                 lineHeight = 105.pct
@@ -346,7 +353,7 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
             }
             div {
                 css {
-                    fontFamily = FontFamily.serif
+                    fontFamily = serif
                     fontWeight = FontWeight.bold
                     fontSize = 34.px
                     lineHeight = 100.pct

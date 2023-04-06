@@ -2,7 +2,9 @@ package components
 
 import browser.document
 import components.layout.*
+import components.redesign.Header
 import csstype.*
+import ext.helmet.Helmet
 import kotlinx.js.jso
 import mui.material.*
 import mui.material.styles.PaletteColor
@@ -127,6 +129,10 @@ val App = FC<Props> {
     var isLoggedIn by useState(sessionCookieExists)
 
     val mobileFlag = mobileFlag()
+
+    Header {
+        title = ""
+    }
 
     LoginContext.Provider {
         value = Login(isLoggedIn) { isLoggedIn = it }

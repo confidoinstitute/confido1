@@ -18,6 +18,8 @@ external interface OptionGroupProps<T>: PropsWithClassName {
 
 inline fun <reified T> OptionGroup() = OptionGroupComponent as FC<OptionGroupProps<T>>
 
+private val RippleLabel = label.withRipple()
+
 val OptionGroupComponent = FC<OptionGroupProps<dynamic>> { props ->
     var currentValue by useState<dynamic>(props.defaultValue)
     val realValue = props.value ?: currentValue
@@ -37,7 +39,7 @@ val OptionGroupComponent = FC<OptionGroupProps<dynamic>> { props ->
             val optionStr = option.toString()
             val checked = realValue == option
 
-            label {
+            RippleLabel {
                 key = optionStr
                 css {
                     flexGrow = number(1.0)
@@ -54,6 +56,10 @@ val OptionGroupComponent = FC<OptionGroupProps<dynamic>> { props ->
                         color = Color("#000000")
                     } else {
                         color = rgba(0,0,0,0.5)
+                    }
+
+                    ".ripple" {
+                        backgroundColor = Color("#000000")
                     }
 
                     if (props.disabled) {

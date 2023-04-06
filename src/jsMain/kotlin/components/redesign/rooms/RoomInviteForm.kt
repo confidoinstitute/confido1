@@ -2,6 +2,7 @@ package components.redesign.rooms
 
 import Client
 import components.*
+import components.redesign.Header
 import components.redesign.basic.*
 import components.redesign.forms.*
 import csstype.*
@@ -193,7 +194,9 @@ internal val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
         }
     }
 
-    useDocumentTitle("Invitation")
+    Header {
+        title = "Invitation"
+    }
 
     Backdrop {
         this.`in` = inviteStatus == null

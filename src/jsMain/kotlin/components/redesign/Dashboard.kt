@@ -13,7 +13,10 @@ import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.header
 import react.dom.html.ReactHTML.main
+import react.dom.html.ReactHTML.option
 import react.router.*
+import rooms.Owner
+import rooms.RoomMembership
 import tools.confido.refs.*
 import utils.*
 
@@ -47,7 +50,7 @@ val Dashboard = FC<Props> {
             top = 0.px
             display = Display.flex
             alignItems = AlignItems.center
-            gap = 6.px
+            gap = 9.px
             padding = Padding(0.px, 20.px)
             flexShrink = number(0.0)
             backgroundColor = Color("#F2F2F2")
@@ -57,7 +60,7 @@ val Dashboard = FC<Props> {
                 css {
                     width = 36.px
                     height = 36.px
-                    borderRadius = 8.px
+                    borderRadius = 50.pct
                     backgroundColor = utils.stringToColor(user.id)
                     flexShrink = number(0.0)
                 }
