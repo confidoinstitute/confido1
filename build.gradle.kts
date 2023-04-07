@@ -160,4 +160,24 @@ tasks.named<JavaExec>("run") {
     classpath(tasks.named<Jar>("jvmJar"))
 }
 
+
+
+val hotpatch by tasks.registering {
+    doLast {
+        println("HOTPATCH")
+        exec {
+            commandLine("./hotpatch_websocket_close.js")
+        }
+    }
+}
+
+
+listOf("jsProductionExecutableCompileSync", "jsDevelopmentExecutableCompileSync").forEach {
+
+    tasks.named(it) {
+        finalizedBy(hotpatch) 
+    }
+}
+
+
 //tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> { kotlinOptions.languageVersion = "1.8" }
