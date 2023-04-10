@@ -204,3 +204,16 @@ fun condensedNum(n: Number) =  n.toDouble().let { d->
 }
 val ClosedRange<Double>.size get() = endInclusive - start
 val ClosedRange<Double>.mid get() = (start + endInclusive)/2.0
+
+inline fun <T1, R> multilet(x: T1, body: (T1)->R) =  body(x)
+inline fun <T1, T2, R> multilet(a1: T1, a2: T2, body: (T1, T2)->R) =  body(a1, a2)
+inline fun <T1, T2, T3, R> multilet(a1: T1, a2: T2, a3: T3, body: (T1, T2, T3)->R)
+        =  body(a1, a2, a3)
+inline fun <T1, T2, T3, T4, R> multilet(a1: T1, a2: T2, a3: T3, a4: T4, body: (T1, T2, T3, T4)->R)
+        =  body(a1, a2, a3, a4)
+inline fun <T1: Any, R:Any> multiletNotNull(x: T1?, body: (T1)->R?) = if (x != null) body(x) else null
+inline fun <T1: Any, T2: Any, R:Any> multiletNotNull(a1: T1?, a2: T2?, body: (T1, T2)->R?) = if (a1 != null && a2 != null) body(a1, a2) else null
+inline fun <T1: Any, T2: Any, T3: Any, R:Any> multiletNotNull(a1: T1?, a2: T2?, a3: T3?, body: (T1, T2, T3)->R?)
+    = if (a1 != null && a2 != null && a3 != null) body(a1, a2, a3) else null
+inline fun <T1: Any, T2: Any, T3: Any, T4: Any, R:Any> multiletNotNull(a1: T1?, a2: T2?, a3: T3?, a4: T4?, body: (T1, T2, T3, T4)->R?)
+        = if (a1 != null && a2 != null && a3 != null && a4 != null) body(a1, a2, a3, a4) else null
