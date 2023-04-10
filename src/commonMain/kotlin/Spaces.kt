@@ -108,6 +108,8 @@ data class NumericSpace(
 
     val size get() = max - min
 
+    val range get() = min..max
+
     fun subspace(min: Double, max: Double): NumericSpace {
         return this.copy(min = maxOf(this.min,min), max = minOf(this.max,max))
     }

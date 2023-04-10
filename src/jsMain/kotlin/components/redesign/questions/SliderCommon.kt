@@ -6,23 +6,29 @@ import csstype.*
 import dom.events.*
 import dom.html.*
 import emotion.react.*
+import hooks.combineRefs
+import hooks.useEventListener
+import hooks.useRefEffect
 import kotlinx.js.*
 import react.*
 import react.dom.html.*
+import tools.confido.utils.toFixed
+import utils.panzoom1d.PZState
 import kotlin.math.*
 
 external interface SliderTrackProps: Props {
-    var zoomManager: SpaceZoomManager
+    var zoomState: PZState
+    var marks: List<Double>?
 }
 
 val centerOrigin : Transform = translate((-50).pct, (-50).pct)
 
-val SliderTrack = FC<SliderTrackProps> { props->
-    val zoomMgr = props.zoomManager
+val SliderTrack = FC<SliderTrackProps>("SliderTrack") { props->
+    val zoomState = props.zoomState
+    val marks = props.marks ?: emptyList()
     ReactHTML.div {
         css {
             height = 4.px
-            // FIXME: This if from figma. Does it make sense to have alpha here or should it just be gray?
             backgroundColor = Color("#4c4c4c")
             borderRadius = 2.px
             position = Position.absolute
@@ -31,11 +37,11 @@ val SliderTrack = FC<SliderTrackProps> { props->
             zIndex = integer(1)
         }
         style = jso {
-            left = (zoomMgr.leftPadVisible - 2).px
-            right = (zoomMgr.rightPadVisible - 2).px
+            left = (zoomState.leftPadVisible - 2).px
+            right = (zoomState.rightPadVisible - 2).px
         }
     }
-    zoomMgr.marks.forEach {value->
+    marks.forEach {value->
         ReactHTML.div {
             css {
                 position = Position.absolute
@@ -49,7 +55,7 @@ val SliderTrack = FC<SliderTrackProps> { props->
             }
 
             style = jso {
-                left = zoomMgr.space2canvasCssPx(value).px
+                left = zoomState.contentToViewport(value).px
             }
         }
     }
@@ -64,9 +70,9 @@ fun ThumbKind.svg(disabled: Boolean) =
     "/static/slider-${name.lowercase()}-${if (disabled) "inactive" else "active"}.svg"
 
 
-private class DragEventManager(
+private class DragEventManager<T: HTMLElement>(
     val container: HTMLElement,
-    val draggableRef: RefObject<HTMLElement>,
+    val draggableRef: RefObject<T>,
     var onClick: (()->Unit)? = null,
     var onDragStart: (() -> Unit)? = null,
     var onDrag: ((Double, Boolean) -> Unit)? = null,
@@ -175,9 +181,12 @@ private class DragEventManager(
         console.log("start thumb drag")
         onDragStart?.invoke()
     }
-    fun onMouseDown(event: react.dom.events.MouseEvent<HTMLElement,*>) {
-        val off = event.nativeEvent.offsetX - (event.target as HTMLElement).clientWidth / 2
-        startDrag(PressType.MOUSE, off, event.nativeEvent.clientX.toDouble())
+    fun onMouseDown(event: org.w3c.dom.events.Event) {
+        console.log("mousedown1")
+        event as org.w3c.dom.events.MouseEvent
+        console.log("mousedown2")
+        val off = event.offsetX - (event.target as HTMLElement).clientWidth / 2
+        startDrag(PressType.MOUSE, off, event.clientX.toDouble())
         installWindowListener("mousemove", this::onWindowMouseMove, windowEventOpts)
         installWindowListener("mouseup", this::onWindowMouseUp, windowEventOpts)
         event.preventDefault()
@@ -185,10 +194,8 @@ private class DragEventManager(
     }
     fun onTouchStart(event: org.w3c.dom.events.Event) {
         if (pressed) return
-        val draggable = draggableRef.current?:return
         val touchEvent = (event as TouchEvent)
         val touch = touchEvent.changedTouches.item(0) ?: return
-        //console.log("TS", touch.clientX, draggable.clientLeft, draggable.getBoundingClientRect().left)
         //PPdraggable.style.outline="2px solid red"
         // XXX for some reason, using event.target does not work
         val br = (event.target as HTMLElement).getBoundingClientRect()
@@ -203,14 +210,14 @@ private class DragEventManager(
     }
 }
 
-private fun useDragEventManager(
+private fun <T: HTMLElement> useDraggable(
     container: HTMLElement,
-    draggableRef: react.RefObject<HTMLElement>,
     onClick: (() -> Unit)? = null,
     onDragStart: (() -> Unit)? = null,
     onDrag: ((Double, Boolean) -> Unit)? = null,
     onDragEnd: (() -> Unit)? = null,
-): DragEventManager {
+): MutableRefObject<T> {
+    val draggableRef = useRef<T>()
     val mgr = useMemo { DragEventManager(container, draggableRef=draggableRef,
         onClick=onClick, onDragStart=onDragStart, onDrag=onDrag, onDragEnd=onDragEnd) }
     useEffect(onClick,onDragStart,onDrag,onDragEnd) {
@@ -219,20 +226,17 @@ private fun useDragEventManager(
         mgr.onDrag = onDrag
         mgr.onDragEnd = onDragEnd
     }
-    // We must use this beacause react's onTouchStart cannot create non-passive listener
-    useEffect(draggableRef.current) {
-        val handler = mgr::onTouchStart
-        val opts = jso<dynamic>{ passive = false }
-        draggableRef.current?.addEventListener("touchstart", handler, opts)
-        cleanup {
-            draggableRef.current?.removeEventListener("touchstart", handler, opts)
-        }
-    }
-    return mgr
+    val ref = combineRefs(
+        draggableRef,
+        useEventListener("mousedown", callback =  mgr::onMouseDown, passive = false, preventDefault = true),
+        useEventListener("touchstart", callback =  mgr::onTouchStart, passive = false, preventDefault = true),
+    )
+    return ref
 }
 external interface SliderThumbProps : Props {
     var containerElement: HTMLElement
-    var zoomManager: SpaceZoomManager
+    var formatSignpost: ((Double)->String)?
+    var zoomState: PZState
     var pos: Double
     var onDrag: ((Double, Boolean)->Unit)?
     var onDragEnd: (()->Unit)?
@@ -241,10 +245,10 @@ external interface SliderThumbProps : Props {
     var kind: ThumbKind
     var signpostEnabled: Boolean?
 }
-val SliderThumb = FC<SliderThumbProps> {props->
+val SliderThumb = FC<SliderThumbProps>("SliderThumb") {props->
     val pos = props.pos
-    val zoomMgr = props.zoomManager
-    val posPx = zoomMgr.space2canvasCssPx(pos)
+    val zoomState = props.zoomState
+    val posPx = zoomState.contentToViewport(pos)
     val disabled = props.disabled ?: false
     var focused by useState(false)
     var dragFocused by useState(false)
@@ -253,11 +257,11 @@ val SliderThumb = FC<SliderThumbProps> {props->
     val signpostVisible = (focused  && !dragFocused) || pressed
     val kind = props.kind
     val svg = kind.svg(disabled)
-    val thumbRef = useRef<HTMLElement>()
-    val eventMgr = useDragEventManager(props.containerElement,
-        thumbRef,
+    val thumbRef = useRef<HTMLDivElement>()
+
+    val dragRE = useDraggable<HTMLDivElement>(props.containerElement,
         onDragStart = {
-                            if (disabled) return@useDragEventManager
+                            if (disabled) return@useDraggable
                             pressed=true
                             if (!focused) {
                                 thumbRef.current?.focus()
@@ -266,11 +270,11 @@ val SliderThumb = FC<SliderThumbProps> {props->
                             props.onDragStart?.invoke()
                       },
         onDrag = { pos, isCommit ->
-            if (disabled) return@useDragEventManager
-            props.onDrag?.invoke(zoomMgr.canvasCssPx2space(pos), isCommit)},
+            if (disabled) return@useDraggable
+            props.onDrag?.invoke(zoomState.viewportToContent(pos), isCommit)},
         onDragEnd = {pressed=false },
         onClick = {
-            if (disabled) return@useDragEventManager
+            if (disabled) return@useDraggable
             thumbRef.current?.focus()
             dragFocused = false
         }
@@ -292,15 +296,13 @@ val SliderThumb = FC<SliderThumbProps> {props->
                 outline = None.none
             }
         }
-        ref = thumbRef
+        ref = combineRefs(thumbRef, dragRE)
         style = jso {
             left = posPx.px
         }
         tabIndex = 0 // make focusable
         onFocus = { focused = true }
         onBlur = { focused = false; dragFocused = false; }
-        onMouseDown = eventMgr::onMouseDown
-        //onTouchStart = eventMgr::onTouchStart
 
 
         //onTouchStart = { event->
@@ -340,16 +342,16 @@ val SliderThumb = FC<SliderThumbProps> {props->
             }
             style = jso {
                 transform = translatex(
-                    if (posPx <= zoomMgr.viewportWidth / 2)
+                    if (posPx <= zoomState.params.viewportWidth / 2)
                         max((-50).pct, (-posPx).px)
                     else {
-                        val rightSpace = zoomMgr.viewportWidth - posPx
+                        val rightSpace = zoomState.params.viewportWidth - posPx
                         min((-50).pct, "calc(${rightSpace}px - 100%)".unsafeCast<Length>())
                     }
                 )
                 left = posPx.px
             }
-            +zoomMgr.space.formatValue(pos)
+            +(props.formatSignpost ?: {it.toFixed(1)})(pos)
         }
     }
 }

@@ -1,12 +1,12 @@
 package utils
 
 import components.redesign.basic.RoomPalette
-import csstype.ClassName
 import csstype.Color
-import csstype.PropertiesBuilder
-import emotion.css.ClassName
-import emotion.css.cx
-import emotion.react.css
+import dom.events.Touch
+import dom.events.TouchEvent
+import dom.events.TouchList
+import dom.html.HTMLElement
+import org.w3c.dom.events.Event
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -14,12 +14,15 @@ import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
+import kotlinx.js.WeakMap
+import kotlinx.js.get
 import kotlinx.js.jso
-import react.PropsWithClassName
+import react.useEffect
+import react.useMemo
+import react.useState
 import rooms.Room
 import tools.confido.question.Question
-import tools.confido.refs.Ref
-import tools.confido.utils.compareTo
+import tools.confido.utils.*
 import web.location.location
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.js.Date
@@ -210,3 +213,18 @@ fun roomPalette(id: String): RoomPalette {
         it[base % it.size]
     }
 }
+
+private val oidMap = WeakMap<Any, Int>()
+private var oidMax = 0
+
+/**
+ * Generate unique integer determining object's identity, like python's id() function.
+ * https://stackoverflow.com/questions/2020670/javascript-object-id/35306050#35306050
+ */
+fun objectId(obj: Any) =
+    oidMap[obj] ?: run {
+        oidMax += 1
+        val newId = oidMax
+        oidMap[obj] = newId
+        newId
+    }

@@ -11,6 +11,8 @@ import react.*
 import react.dom.html.ReactHTML.div
 import tools.confido.distributions.*
 import tools.confido.spaces.*
+import utils.panzoom1d.PZParams
+import utils.panzoom1d.PZState
 import kotlin.math.*
 
 external interface BinaryPredictionProps : Props {
@@ -108,7 +110,8 @@ external interface BinaryPredSliderProps : PredictionInputProps, PropsWithElemen
 }
 val BIN_PRED_SPACE = NumericSpace(0.0, 100.0, unit="%")
 val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
-    val zoomMgr = SpaceZoomManager(BIN_PRED_SPACE, props.elementWidth)
+    val zoomParams = PZParams(viewportWidth = props.elementWidth, contentDomain = 0.0..100.0)
+    val zoomState = PZState(zoomParams)
     val propProb = (props.dist as? BinaryDistribution)?.yesProb
     var yesProb by useState(propProb)
     val disabled = props.disabled?:false
@@ -138,12 +141,12 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
         (0..100 step 10).forEachIndexed {idx, value->
             div {
                 style = jso {
-                    left = zoomMgr.space2canvasCssPx(value.toDouble()).px
+                    left = zoomState.contentToViewport(value.toDouble()).px
                     top = 50.pct
                 }
                 css {
                     val xtrans = when(idx) {
-                        0 -> max((-50).pct, (-SpaceZoomManager.SIDE_PAD).px)
+                        0 -> max((-50).pct, (-SIDE_PAD).px)
                         else -> (-50).pct
                     }
                     transform = translate(xtrans, (-50).pct)
@@ -181,20 +184,20 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
                     }
                     +"Tap here to create an estimate"// TODO choose "tap"/"click" based on device
                     onClick = { ev ->
-                        val newProb = zoomMgr.canvasCssPx2space(ev.nativeEvent.offsetX) / 100.0
+                        val newProb = zoomState.viewportToContent(ev.nativeEvent.offsetX) / 100.0
                         update(newProb, true)
                     }
                 }
         } else {
             SliderTrack {
                 key = "track"
-                this.zoomManager = zoomMgr
+                marks = (0..100 step 10).map{ it.toDouble() }
             }
 
             SliderThumb{
                 key = "thumb_center"
                 this.containerElement = props.element
-                this.zoomManager = zoomMgr
+                this.zoomState = zoomState
                 kind = ThumbKind.Center
                 pos = 100.0 * yesProb!!
                 onDrag = { pos, isCommit ->
@@ -229,12 +232,12 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
         ).forEachIndexed {idx, (value, text)->
             div {
                 style = jso {
-                    left = zoomMgr.space2canvasCssPx(value.toDouble()).px
+                    left = zoomState.contentToViewport(value.toDouble()).px
                     top = 50.pct
                 }
                 css {
                     val xtrans = when(idx) {
-                        0 -> max((-50).pct, (-SpaceZoomManager.SIDE_PAD).px)
+                        0 -> max((-50).pct, (-SIDE_PAD).px)
                         else -> (-50).pct
                     }
                     transform = translate(xtrans, (-50).pct)

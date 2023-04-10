@@ -9,6 +9,8 @@ import react.dom.html.ReactHTML.div
 import tools.confido.distributions.*
 import tools.confido.spaces.*
 import tools.confido.utils.*
+import utils.panzoom1d.PZParams
+import utils.panzoom1d.PZState
 import kotlin.math.*
 
 
@@ -16,7 +18,8 @@ external interface NumericPredInputProps : PredictionInputProps {
 }
 
 external interface NumericPredSliderProps : NumericPredInputProps, PropsWithElementSize {
-    var zoomParams: ZoomParams?
+    var zoomState: PZState
+    var marks: List<Double>
 }
 
 fun binarySearch(initialRange: ClosedFloatingPointRange<Double>, desiredValue: Double, maxSteps: Int, f: (Double) -> Double): ClosedFloatingPointRange<Double> {
@@ -43,16 +46,16 @@ fun findDistribution(space: NumericSpace, center: Double, ciWidth: Double): Trun
     return TruncatedNormalDistribution(space, center, pseudoStdev)
 }
 
-val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
+val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPredSlider") { props->
     val space = props.space as NumericSpace
+    val zoomState = props.zoomState
     val propDist = props.dist as? TruncatedNormalDistribution
     val disabled = props.disabled ?: false
     var center by useState(propDist?.pseudoMean)
     var ciWidth by useState(propDist?.confidenceInterval(0.8)?.size)
     var dragging by useState(false)
     val ciRadius = ciWidth?.let { it / 2.0 }
-    val zoomManager = SpaceZoomManager(space, props.elementWidth, props.zoomParams ?: ZoomParams())
-    val minCIRadius = 20.0 / zoomManager.xScale // do not allow the thumbs to overlap too much
+    val minCIRadius = props.zoomState.paperToContent(20.0) // do not allow the thumbs to overlap too much
     val ci = if (center != null && ciWidth != null) {
         if (center!! + ciRadius!! > space.max) (space.max - ciWidth!!)..space.max
         else if (center!! - ciRadius < space.min) space.min..(space.min + ciWidth!!)
@@ -97,13 +100,14 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
         if (dist != null)
             SliderTrack {
                 +props
-                this.zoomManager = zoomManager
+                this.marks = props.marks
             }
         if (dist != null)
             SliderThumb{
                 key = "thumb_left"
                 this.containerElement = props.element
-                this.zoomManager = zoomManager
+                this.zoomState = zoomState
+                this.formatSignpost = { v -> space.formatValue(v) }
                 kind = ThumbKind.Left
                 pos = ci!!.start
                 this.disabled = disabled
@@ -130,7 +134,8 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
             SliderThumb{
                 key = "thumb_center"
                 this.containerElement = props.element
-                this.zoomManager = zoomManager
+                this.zoomState = zoomState
+                this.formatSignpost = { v -> space.formatValue(v) }
                 kind = ThumbKind.Center
                 pos = center!!
                 this.disabled = disabled
@@ -146,7 +151,8 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
             SliderThumb{
                 key = "thumb_right"
                 this.containerElement = props.element
-                this.zoomManager = zoomManager
+                this.zoomState = zoomState
+                this.formatSignpost = { v -> space.formatValue(v) }
                 kind = ThumbKind.Right
                 pos = ci!!.endInclusive
                 this.disabled = disabled
@@ -187,7 +193,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                     }
                     +"Tap here to create an estimate"// TODO choose "tap"/"click" based on device
                     onClick = { ev ->
-                        center = zoomManager.canvasCssPx2space(ev.nativeEvent.offsetX)
+                        center = props.zoomState.viewportToContent(ev.nativeEvent.offsetX)
                         didChange = true
                     }
                 }
@@ -195,7 +201,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                 div {
                     key = "setUncertainty"
                     css {
-                        val pxCenter = zoomManager.space2canvasCssPx(center!!)
+                        val pxCenter = props.zoomState.contentToViewport(center!!)
                         if (pxCenter < props.elementWidth / 2.0)
                             paddingLeft = (pxCenter + 20.0).px
                         else
@@ -223,7 +229,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
                     onClick = { ev ->
                         // set ciWidth so that a blue thumb ends up where you clicked
                         val desiredCIBoundary =
-                            zoomManager.canvasCssPx2space(ev.nativeEvent.clientX.toDouble() - props.element.getBoundingClientRect().left)
+                            props.zoomState.viewportToContent(ev.nativeEvent.clientX.toDouble() - props.element.getBoundingClientRect().left)
                         val desiredCIRadius = abs(center!! - desiredCIBoundary)
                         val newCIWidth = if (center!! - desiredCIRadius < space.min)
                             desiredCIBoundary - space.min
@@ -246,8 +252,9 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps> { props->
 })
 
 
-val NumericPredInput = FC<NumericPredInputProps> { props->
-    var zoomParams by useState(ZoomParams())
+val NumericPredInput = FC<NumericPredInputProps>("NumericPredInput") { props->
+    var zoomState by useState<PZState>()
+    var marks by useState(emptyList<Double>())
     val propDist = props.dist as? TruncatedNormalDistribution?
     var previewDist by useState(propDist)
     useEffect(propDist?.pseudoMean, propDist?.pseudoStdev) { previewDist = propDist }
@@ -258,12 +265,16 @@ val NumericPredInput = FC<NumericPredInputProps> { props->
         NumericPredGraph {
             this.space = props.space as NumericSpace
             this.dist = previewDist
-            onZoomChange = { zoomParams = it }
+            onZoomChange = { newZoomState, newMarks ->
+                console.log("OZC")
+                zoomState = newZoomState; marks = newMarks; }
         }
+        if (zoomState != null)
         NumericPredSlider {
             this.disabled = props.disabled
             this.space = props.space
-            this.zoomParams = zoomParams
+            this.marks = marks
+            this.zoomState = zoomState!!
             this.dist = props.dist
             this.onChange = {
                 previewDist = it as TruncatedNormalDistribution
@@ -271,6 +282,5 @@ val NumericPredInput = FC<NumericPredInputProps> { props->
             }
             this.onCommit = props.onCommit
         }
-
     }
 }
