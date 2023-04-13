@@ -9,7 +9,7 @@ external interface GlobalCssProps : Props {
 }
 
 val sansSerif = string("Inter, sans-serif")
-val serif = string("serif")
+val serif = string("TeX Gyre Pagella, serif")
 
 val GlobalCss = FC<GlobalCssProps> {props ->
     Global {

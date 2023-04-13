@@ -429,3 +429,18 @@ val UnlockIcon = FC<PropsWithClassName> { props ->
         }
     }
 }
+
+val InviteLinkIcon = FC<PropsWithClassName> { props ->
+    val color = "white"
+    svg {
+        className = props.className
+        width = 32.0
+        height = 32.0
+        viewBox = "0 0 32 32"
+
+        path {
+            d = "M 10 11 C 7.2504084 11 5 13.250451 5 16 C 5 18.749549 7.2504084 21 10 21 L 14 21 L 14 19 L 10 19 C 8.3313116 19 7 17.668651 7 16 C 7 14.331349 8.3313116 13 10 13 L 14 13 L 14 11 L 10 11 z M 18 11 L 18 13 L 22 13 C 23.668639 13 25 14.331361 25 16 C 25 17.668639 23.668639 19 22 19 L 18 19 L 18 21 L 22 21 C 24.749561 21 27 18.749561 27 16 C 27 13.250439 24.749561 11 22 11 L 18 11 z M 11 15 L 11 17 L 21 17 L 21 15 L 11 15 z "
+            fill = color
+        }
+    }
+}

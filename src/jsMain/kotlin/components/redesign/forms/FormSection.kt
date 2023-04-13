@@ -7,7 +7,7 @@ import react.*
 import react.dom.html.ReactHTML.div
 
 external interface FormSectionProps : PropsWithChildren, PropsWithClassName {
-    var title: String
+    var title: String?
 }
 
 val FormDivider = FC<PropsWithChildren> {
@@ -30,8 +30,10 @@ val FormDivider = FC<PropsWithChildren> {
 }
 
 val FormSection = FC<FormSectionProps> { props ->
-    FormDivider {
-        +props.title
+    props.title?.let {
+        FormDivider {
+            +it
+        }
     }
     Stack {
         direction = FlexDirection.column

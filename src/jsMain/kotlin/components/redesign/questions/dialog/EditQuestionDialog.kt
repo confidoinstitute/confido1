@@ -10,6 +10,7 @@ import emotion.react.*
 import hooks.*
 import payloads.requests.*
 import react.*
+import react.dom.html.ButtonType
 import tools.confido.question.*
 import tools.confido.spaces.*
 
@@ -25,10 +26,10 @@ internal enum class QuestionType {
 
 internal val Space.questionType: QuestionType
     get() =
-    when(this) {
-        BinarySpace -> QuestionType.BINARY
-        is NumericSpace -> if (representsDays) QuestionType.DATE else QuestionType.NUMERIC
-    }
+        when(this) {
+            BinarySpace -> QuestionType.BINARY
+            is NumericSpace -> if (representsDays) QuestionType.DATE else QuestionType.NUMERIC
+        }
 
 internal enum class GroupPredictionVisibility {
     EVERYONE,
@@ -146,6 +147,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         onAction = { submitQuestion() }
 
         Form {
+            onSubmit = { submitQuestion() }
             FormSection {
                 title = "Question"
                 FormField {
@@ -199,41 +201,41 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 }
             }
             if (props.preset != QuestionPreset.SENSITIVE)
-            FormSection {
-                title = "Anchoring"
-                RadioGroup<GroupPredictionVisibility>()() {
-                    title = "Group answer visible to"
-                    options = listOf(
-                        GroupPredictionVisibility.EVERYONE to "all room members",
-                        // TODO: Backend support
-                        //GroupPredictionVisibility.ANSWERED to "those who answered",
-                        GroupPredictionVisibility.MODERATOR_ONLY to "moderators only",
-                    )
-                    value = groupPredictionVisibility
-                    onChange = { visibility -> groupPredictionVisibility = visibility }
+                FormSection {
+                    title = "Anchoring"
+                    RadioGroup<GroupPredictionVisibility>()() {
+                        title = "Group answer visible to"
+                        options = listOf(
+                            GroupPredictionVisibility.EVERYONE to "all room members",
+                            // TODO: Backend support
+                            //GroupPredictionVisibility.ANSWERED to "those who answered",
+                            GroupPredictionVisibility.MODERATOR_ONLY to "moderators only",
+                        )
+                        value = groupPredictionVisibility
+                        onChange = { visibility -> groupPredictionVisibility = visibility }
+                    }
                 }
-            }
 
             if (props.preset == QuestionPreset.NONE)
-            FormSection {
-                title = "Terminology"
-                RadioGroup<PredictionTerminology>()() {
-                    title = "Call answers"
-                    options = PredictionTerminology.values().map {
-                        it to "\"${it.plural}\""
+                FormSection {
+                    title = "Terminology"
+                    RadioGroup<PredictionTerminology>()() {
+                        title = "Call answers"
+                        options = PredictionTerminology.values().map {
+                            it to "\"${it.plural}\""
+                        }
+                        value = predictionTerminology
+                        onChange = {term -> predictionTerminology = term}
                     }
-                    value = predictionTerminology
-                    onChange = {term -> predictionTerminology = term}
-                }
-                RadioGroup<GroupTerminology>()() {
-                    title = "Call group"
-                    options = GroupTerminology.values().map {
-                        it to "\"${it.plural}\""
+                    RadioGroup<GroupTerminology>()() {
+                        title = "Call group"
+                        options = GroupTerminology.values().map {
+                            it to "\"${it.plural}\""
+                        }
+                        value = groupTerminology
+                        onChange = {term -> groupTerminology = term}
                     }
-                    value = groupTerminology
-                    onChange = {term -> groupTerminology = term}
                 }
-            }
 
             FormSection {
                 title = "Visibility"
@@ -258,24 +260,23 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                     }
                 }
                 if (props.preset != QuestionPreset.SENSITIVE)
-                FormSwitch {
-                    label = "Sensitive"
-                    comment = if (isSensitive) {
-                        "Moderators will not be able to see individual answers."
-                    } else {
-                        "Moderators will be able to see individual answers."
+                    FormSwitch {
+                        label = "Sensitive"
+                        comment = if (isSensitive) {
+                            "Moderators will not be able to see individual answers."
+                        } else {
+                            "Moderators will be able to see individual answers."
+                        }
+                        checked = isSensitive
+                        onChange = { e -> isSensitive = e.target.checked }
                     }
-                    checked = isSensitive
-                    onChange = { e -> isSensitive = e.target.checked }
-                }
             }
 
             Stack {
-                css {
-                    padding = Padding(20.px, 20.px, 10.px)
-                }
                 Button {
+                    type = ButtonType.submit
                     css {
+                        margin = Margin(20.px, 20.px, 10.px)
                         fontWeight = integer(500)
                     }
                     if (props.entity != null)
@@ -283,9 +284,6 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                     else
                         +"Create question"
                     disabled = (stale || !questionValid)
-                    onClick = {
-                        submitQuestion()
-                    }
                 }
             }
         }

@@ -1,7 +1,11 @@
 package components.redesign.rooms
 
+import browser.window
 import components.AppStateContext
+import components.redesign.InviteLinkIcon
 import components.redesign.NavMenuIcon
+import components.redesign.SortButton
+import components.redesign.SortType
 import components.redesign.basic.Stack
 import components.redesign.basic.TextPalette
 import components.redesign.basic.sansSerif
@@ -9,17 +13,30 @@ import components.redesign.forms.FormDivider
 import components.redesign.forms.FormSection
 import components.redesign.forms.IconButton
 import components.redesign.forms.Select
+import components.redesign.rooms.dialog.AddMemberDialog
+import components.redesign.rooms.dialog.EditInviteDialog
+import components.redesign.rooms.dialog.InvitationQuickSettingsDialog
+import components.redesign.rooms.dialog.MemberQuickSettingsDialog
 import components.rooms.RoomContext
 import components.showError
 import csstype.*
 import emotion.react.css
+import hooks.useCoroutineLock
+import hooks.useEditDialog
+import io.ktor.client.request.*
+import io.ktor.http.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import payloads.requests.AddedExistingMember
 import payloads.requests.AddedMember
+import payloads.requests.DeleteInvite
 import react.FC
 import react.Props
 import react.dom.html.ReactHTML
+import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.option
 import react.useContext
+import react.useState
 import rooms.*
 import tools.confido.refs.deref
 import tools.confido.refs.eqid
@@ -28,17 +45,42 @@ import tools.confido.state.SentState
 import tools.confido.state.appConfig
 import utils.runCoroutine
 import utils.stringToColor
+import web.location.location
+import web.navigator.navigator
+import kotlin.coroutines.EmptyCoroutineContext
 
 fun canChangeRole(appState: SentState, room: Room, role: RoomRole) =
     canChangeRole(room.userRole(appState.session.user), role)
 
 val RoomMembers = FC<Props> {
+    val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
 
     val groupedMembership = room.members.groupBy {
         it.invitedVia ?: if (it.user.deref()?.type?.isProper()?:false) "internal" else "guest"
     }
     val invitations = room.inviteLinks.associateWith { groupedMembership[it.id] }
+
+    val editInviteLinkDialog = useEditDialog(EditInviteDialog)
+
+    var addMemberOpen by useState(false)
+    AddMemberDialog {
+        open = addMemberOpen
+        onClose = {addMemberOpen = false}
+    }
+
+    RoomHeader {
+        if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS)) {
+            RoomHeaderButton {
+                +"Create an invitation link"
+                onClick = { editInviteLinkDialog(null) }
+            }
+            RoomHeaderButton {
+                +"Add member"
+                onClick = { addMemberOpen = true }
+            }
+        }
+    }
 
     groupedMembership["internal"]?.let {
         FormDivider { +"Users from this organization" }
@@ -74,9 +116,15 @@ val RoomMembers = FC<Props> {
                     key = "invitation__" + invitation.token
                     this.invitation = invitation
                     this.members = maybeMembers
-                    //this.onEditDialog = { editInviteLink = it ; editInviteLinkOpen = true }
+                    this.onEditDialog = { editInviteLinkDialog(it) }
                 }
             }
+        }
+    }
+    div {
+        css {
+            flexGrow = number(1.0)
+            backgroundColor = Color("#ffffff")
         }
     }
 }
@@ -91,12 +139,25 @@ val RoomMember = FC<RoomMemberProps> {props ->
     val room = useContext(RoomContext)
     val user = props.membership.user.deref() ?: return@FC
 
+    var dialogOpen by useState(false)
 
     fun memberRoleChange(role: RoomRole) = runCoroutine {
         Client.sendData("${room.urlPrefix}/members/add", AddedExistingMember(props.membership.user, role) as AddedMember, onError = { showError?.invoke(it)}) {}
     }
-    fun canChangeSelf() =
-        (!(user eqid appState.session.user) || appState.isAdmin())
+    fun canChangeSelf() = (!(user eqid appState.session.user) || appState.isAdmin())
+
+    fun memberDelete() = runCoroutine {
+        Client.httpClient.delete("${room.urlPrefix}/members/${user.id}")
+    }
+
+    MemberQuickSettingsDialog {
+        open = dialogOpen
+        name = user.nick ?: "Anonymous user"
+        hasEmail = user.email != null
+        onClose = { dialogOpen = false }
+        onMail = { window.open("mailto:${user.email}", "_blank") }
+        onDelete = ::memberDelete
+    }
 
     Stack {
         direction = FlexDirection.row
@@ -149,6 +210,9 @@ val RoomMember = FC<RoomMemberProps> {props ->
         }
         IconButton {
             this.palette = TextPalette.black
+            onClick = {
+                dialogOpen = true
+            }
             NavMenuIcon {}
         }
     }
@@ -166,6 +230,24 @@ val InvitationMembers = FC<InvitationMembersProps> { props ->
 
     val active = props.invitation.canJoin && props.invitation.canAccess
 
+    var dialogOpen by useState(false)
+    val delete = useCoroutineLock()
+    fun deleteInviteLink(keepMembers: Boolean) = delete {
+        val i = props.invitation
+        Client.sendData("${room.urlPrefix}/invite", DeleteInvite(i.id, keepMembers), method = HttpMethod.Delete, onError = {showError?.invoke(it)}) { }
+    }
+
+    InvitationQuickSettingsDialog {
+        open = dialogOpen
+        hasUsers = props.members?.isNotEmpty() == true
+        onClose = { dialogOpen = false }
+        onCopy = {
+            val url = props.invitation.link(location.origin, room)
+            navigator.clipboard.writeText(url)
+        }
+        onEdit = { props.onEditDialog?.invoke(props.invitation) }
+        onDelete = { deleteInviteLink(it) }
+    }
 
     Stack {
         direction = FlexDirection.column
@@ -180,7 +262,6 @@ val InvitationMembers = FC<InvitationMembersProps> { props ->
                 gap = 10.px
             }
             ReactHTML.div {
-                // TODO link icons
                 css {
                     width = 32.px
                     height = 32.px
@@ -188,6 +269,8 @@ val InvitationMembers = FC<InvitationMembersProps> { props ->
                     backgroundColor = Color("#F61E4B")
                     flexShrink = number(0.0)
                 }
+                if (active)
+                    InviteLinkIcon {}
             }
             Stack {
                 css {
@@ -205,6 +288,8 @@ val InvitationMembers = FC<InvitationMembersProps> { props ->
                         lineHeight = 15.px
                     }
                     +props.invitation.description
+                    if (!active)
+                        +" (inactive)"
                 }
                 ReactHTML.div {
                     css {
@@ -215,10 +300,14 @@ val InvitationMembers = FC<InvitationMembersProps> { props ->
                     }
                     // TODO Pluralize
                     +"${props.members?.size ?: 0} members"
+                    if (!props.invitation.canAccess) {
+                        +" (cannot access)"
+                    }
                 }
             }
             IconButton {
                 this.palette = TextPalette.black
+                onClick = { dialogOpen = true }
                 NavMenuIcon {}
             }
         }

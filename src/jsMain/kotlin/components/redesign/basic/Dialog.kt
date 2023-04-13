@@ -24,6 +24,7 @@ external interface DialogProps : PropsWithChildren, PropsWithRef<HTMLElement> {
     var action: String
     var disabledAction: Boolean
     var onAction: (() -> Unit)?
+    var fullSize: Boolean
 }
 
 val Dialog = ForwardRef<HTMLElement, DialogProps> { props, fRef ->
@@ -31,6 +32,7 @@ val Dialog = ForwardRef<HTMLElement, DialogProps> { props, fRef ->
         ref = fRef
         open = props.open
         onClose = props.onClose
+        fullSize = props.fullSize
         header = DialogHeader.create {
             this.onClose = props.onClose
             this.title = props.title
@@ -49,9 +51,11 @@ external interface DialogMenuProps : PropsWithChildren, PropsWithRef<HTMLElement
 
     /** Defaults to true. */
     var hasCloseButton: Boolean?
+    var showOldUI: Boolean?
 }
 
 val DialogMenu = ForwardRef<HTMLElement, DialogMenuProps> { props, fRef ->
+    val showOldUI = props.showOldUI ?: true
     DialogCore {
         this.ref = fRef
         this.open = props.open
@@ -73,13 +77,15 @@ val DialogMenu = ForwardRef<HTMLElement, DialogMenuProps> { props, fRef ->
 
             +props.children
 
-            DialogMenuSeparator {}
+            if (showOldUI) {
+                DialogMenuSeparator {}
 
-            DialogMenuItem {
-                text = "Switch to old UI"
-                onClick = {
-                    localStorage.setItem("layoutVersion","legacy")
-                    location.reload()
+                DialogMenuItem {
+                    text = "Switch to old UI"
+                    onClick = {
+                        localStorage.setItem("layoutVersion", "legacy")
+                        location.reload()
+                    }
                 }
             }
 

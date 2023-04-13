@@ -103,6 +103,7 @@ val Switch = FC<CheckboxProps> { props ->
             height = 36.px
             display = Display.inlineBlock
             position = Position.relative
+            flexShrink = number(0.0)
         }
         input {
             +props
