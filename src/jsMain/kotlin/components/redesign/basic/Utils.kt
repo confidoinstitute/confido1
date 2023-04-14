@@ -25,6 +25,7 @@ external interface PropsWithElementSize: Props {
     var elementWidth: Double
     var elementHeight: Double
     var element: HTMLDivElement
+    var elementRef: RefObject<HTMLDivElement>
 }
 
 external interface ElementSizeWrapperProps : PropsWithClassName, HTMLAttributes<HTMLDivElement> {
@@ -33,8 +34,8 @@ external interface ElementSizeWrapperProps : PropsWithClassName, HTMLAttributes<
     var filler: FC<*>?
 }
 
-fun <P: PropsWithElementSize> elementSizeWrapper(component: FC<P>, className: ClassName?=null): FC<P> {
-    return FC {props->
+fun <P: PropsWithElementSize> elementSizeWrapper(component: FC<P>,  className: ClassName?=null, displayName: String?=null): FC<P> {
+    return FC(displayName ?: component.displayName?.let{ it + "ESW" } ?: "ElementSizeWrapper" ) {props->
         val elementSize = useElementSize<HTMLDivElement>()
         div {
             //className = props.className

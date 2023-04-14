@@ -15,7 +15,6 @@ data class ElementSize<T: HTMLElement>(
  * Export a referenced element's size (width and height).
  */
 fun <T: HTMLElement> useElementSize(): ElementSize<T> {
-    val ref = useRef<T>()
     var width by useState(0.0)
     var height by useState(0.0)
     var known by useState(false)
@@ -31,10 +30,8 @@ fun <T: HTMLElement> useElementSize(): ElementSize<T> {
         }
     }
 
-    useEffect(ref.current) {
-        ref.current?.let {
-            observer.observe(it)
-        }
+    val ref = useRefEffect<T> {
+        observer.observe(current)
 
         cleanup {
             observer.disconnect()
