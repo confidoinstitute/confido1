@@ -8,7 +8,7 @@ for fn in build/js/packages/confido1/kotlin/ktor-ktor-client-core-js-ir.js \
             build/js/packages/confido1/kotlin/kotlin_io_ktor_ktor_client_core.js \
 ; do
 
-    if [[ -f "$fn" ]]; then
+    if [[ -f "$fn" ]] && grep -qE 'close\(Codes_INTERNAL_ERROR_getInstance\(\).[a-zA-Z0-9_$]+(\(\))?' "$fn"; then
         echo >&2 "HOTPATCH $fn"
         sed -i -re 's#close\(Codes_INTERNAL_ERROR_getInstance\(\).[a-zA-Z0-9_$]+(\(\))?#close(1000#g' "$fn"
     fi
