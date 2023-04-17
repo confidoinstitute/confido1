@@ -9,6 +9,7 @@ import components.redesign.basic.*
 import components.redesign.comments.*
 import components.redesign.comments.Comment
 import components.redesign.comments.CommentInputVariant
+import components.redesign.feedback.*
 import components.redesign.forms.*
 import components.redesign.questions.dialog.*
 import components.redesign.questions.dialog.EditQuestionDialog
@@ -486,13 +487,6 @@ private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> {
         }
     }
 
-    var feedbackOpen by useState(false)
-    FeedbackDialog {
-        open = feedbackOpen
-        onClose = { feedbackOpen = false }
-        feedbackContext = FeedbackContext(props.question.name, web.location.location.pathname)
-    }
-
     DialogMenu {
         open = props.open
         onClose = { props.onClose?.invoke() }
@@ -559,11 +553,9 @@ private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> {
             }
         }
         DialogMenuSeparator {}
-        DialogMenuItem {
-            text = "Give feedback"
-            icon = FeedbackIcon
+        FeedbackMenuItem {
+            pageName = props.question.name
             onClick = {
-                feedbackOpen = true
                 props.onClose?.invoke()
             }
         }

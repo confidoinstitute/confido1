@@ -3,6 +3,7 @@ package components.redesign
 import Client
 import components.*
 import components.redesign.basic.*
+import components.redesign.feedback.FeedbackMenuItem
 import components.redesign.forms.*
 import components.redesign.questions.*
 import components.redesign.rooms.*
@@ -166,6 +167,13 @@ val DashboardDialog = FC<DashboardDialogProps> { props ->
                         loginState.logout()
                     }
                 }
+            }
+        }
+        DialogMenuSeparator {}
+        FeedbackMenuItem {
+            pageName = "Dashboard"
+            onClick = {
+                props.onClose?.invoke()
             }
         }
     }

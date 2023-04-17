@@ -1,4 +1,4 @@
-package components.redesign
+package components.redesign.feedback
 
 import components.redesign.basic.Dialog
 import components.redesign.forms.*
@@ -16,10 +16,10 @@ external interface FeedbackDialogProps : Props {
     var open: Boolean
     var onClose: (() -> Unit)?
     /** Optional. The feedback dialog will offer an option to include this context if not null. */
-    var feedbackContext: FeedbackContext?
+    var page: FeedbackPage?
 }
 
-data class FeedbackContext(
+data class FeedbackPage(
     /** A user-facing name of the page this feedback relates to. */
     val pageName: String,
     /** The path name (HTML DOM Location pathname) of the page this feedback relates to. */
@@ -43,13 +43,13 @@ private val FullWidthSelect = Select.styled { _, _ ->
 val FeedbackDialog = FC<FeedbackDialogProps> { props ->
     var feedbackText by useState("")
     var sendTo by useState(SendFeedbackTo.CONFIDO_DEVELOPERS)
-    var connectToPage by useState(props.feedbackContext != null)
+    var connectToPage by useState(true)
 
     val sendingLock = useCoroutineLock()
 
     fun send() {
         val pathname = if (connectToPage) {
-            props.feedbackContext?.pathName
+            props.page?.pathName
         } else {
             null
         }
@@ -107,11 +107,10 @@ val FeedbackDialog = FC<FeedbackDialogProps> { props ->
                 }
             }
 
-            props.feedbackContext?.let { context ->
+            props.page?.let { context ->
                 FormSwitch {
                     label = "Connect feedback to page"
-                    comment =
-                        "The recipient of the feedback will know that you are referring to the page “${context.pageName}”."
+                    comment = "The recipient of the feedback will know that you are referring to the page “${context.pageName}”."
                     checked = connectToPage
                     onChange = { e -> connectToPage = e.target.checked }
                 }
