@@ -486,6 +486,13 @@ private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> {
         }
     }
 
+    var feedbackOpen by useState(false)
+    FeedbackDialog {
+        open = feedbackOpen
+        onClose = { feedbackOpen = false }
+        feedbackContext = FeedbackContext(props.question.name, web.location.location.pathname)
+    }
+
     DialogMenu {
         open = props.open
         onClose = { props.onClose?.invoke() }
@@ -551,8 +558,16 @@ private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> {
                 }
             }
         }
-        /*
         DialogMenuSeparator {}
+        DialogMenuItem {
+            text = "Give feedback"
+            icon = FeedbackIcon
+            onClick = {
+                feedbackOpen = true
+                props.onClose?.invoke()
+            }
+        }
+        /*
         DialogMenuItem {
             text = "How to use this page"
             disabled = true

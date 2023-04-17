@@ -444,3 +444,22 @@ val InviteLinkIcon = FC<PropsWithClassName> { props ->
         }
     }
 }
+
+val FeedbackIcon = FC<PropsWithClassName> { props ->
+    val color = "black"
+    svg {
+        className = props.className
+        width = 30.0
+        height = 30.0
+        viewBox = "0 0 30 30"
+        fill = "none"
+
+        path {
+            d = "M11.5 23.0343V20.5H10C8.89543 20.5 8 19.6046 8 18.5V11.5C8 10.3954 8.89543 9.5 10 9.5H20C21.1046 9.5 22 10.3954 22 11.5V18.5C22 19.6046 21.1046 20.5 20 20.5H15L12.1828 23.3172C11.9309 23.5691 11.5 23.3907 11.5 23.0343Z"
+            stroke = color
+            strokeWidth = 1.2
+            strokeLinejoin = StrokeLinejoin.round
+        }
+    }
+}
+
