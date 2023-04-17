@@ -362,8 +362,7 @@ val DialogMenuItem = FC<DialogMenuItemProps> { props ->
 }
 
 val DialogMenuNav = FC<DialogMenuNavProps> { props ->
-    val variant = props.variant ?: DialogMenuItemVariant.normal
-    val color = when (variant) {
+    val color = when (props.variant ?: DialogMenuItemVariant.normal) {
         DialogMenuItemVariant.normal -> Color("#000000")
         DialogMenuItemVariant.dangerous -> Color("#ff0000")
     }

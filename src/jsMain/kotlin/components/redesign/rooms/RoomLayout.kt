@@ -194,8 +194,11 @@ val RoomLayout = FC<Props> {
                 fontFamily = sansSerif
                 fontSize = 16.px
                 lineHeight = 19.px
+                whiteSpace = WhiteSpace.preLine
             }
-            +room.description
+            TextWithLinks {
+                text = room.description
+            }
         }
         div {
             css {

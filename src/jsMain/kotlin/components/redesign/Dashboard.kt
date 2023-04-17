@@ -155,10 +155,10 @@ val DashboardDialog = FC<DashboardDialogProps> { props ->
         open = props.open
         onClose = { props.onClose?.invoke() }
 
-        DialogMenuItem {
-            text = "User settings"
+        DialogMenuNav {
+            text = "User settings?"
             icon = SettingsIcon
-            onClick = { navigate("/profile") }
+            this.navigate = "/profile"
         }
 
         DialogMenuItem {
