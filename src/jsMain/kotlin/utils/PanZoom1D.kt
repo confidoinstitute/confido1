@@ -1,5 +1,6 @@
 package utils.panzoom1d
 
+import dom.events.WheelEvent
 import dom.html.HTMLElement
 import hooks.*
 import io.ktor.util.*
@@ -20,21 +21,30 @@ data class PZParams(
     val contentWidth get() = contentDomain.size
     val paperWidthUnzoomed by lazy { (viewportWidth - 2* sidePad) }
 
-    // Given a list of two (contentX, viewportX) mappings, find zoom state that
-    // fit these mappings.
-    fun solve(contentCoords: List2<Double>, viewportCoords: List2<Double>): PZState {
+    /**
+     * Given a zoom level and a mapping content coord -> viewport coord, return
+     * a PZState with the given zoom and a pan consistent with that mapping (if possible).
+     */
+    fun solveZoomMap(zoom: Double, contentX: Double, viewportX: Double): PZState {
+        val protoState = PZState(this, zoom, 0.0)
+        val paperX = contentToRelative(contentX) * protoState.paperWidth
+        val pan = (paperX - viewportX).coerceIn(protoState.panRange)
+        return PZState(this, zoom, pan)
+    }
+
+    /** Given a list of two (contentX, viewportX) mappings, find zoom state that
+     * fit these mappings.
+     */
+    fun solveMapMap(contentCoords: List2<Double>, viewportCoords: List2<Double>): PZState {
         val contentDist = abs(contentCoords.e2 - contentCoords.e1)
         val viewportDist = abs(viewportCoords.e2 - viewportCoords.e1)
         val paperDist = viewportDist // same scale
         // Firstly, determine zoom
         val paperDistUnzoomed = contentDist / contentWidth * paperWidthUnzoomed
         val zoom = (paperDist / paperDistUnzoomed).coerceIn(1.0..maxZoom)
-        val paperWidth = paperWidthUnzoomed * zoom
         val c1 = contentCoords.min()
-        val p1 = contentToRelative(c1) * paperWidth
         val v1 = viewportCoords.min()
-        val pan = (p1 - v1).coerceIn(-sidePad, paperWidth + sidePad - viewportWidth)
-        return PZState(this, zoom, pan)
+        return solveZoomMap(zoom, c1, v1)
     }
 
     fun contentToRelative(contentX: Double) = (contentX - contentDomain.start) / contentWidth
@@ -89,7 +99,7 @@ open class PZController(var params: PZParams, initialState: PZState = PZState(pa
             _, newPinch, commit ->
 
             val newFingerViewportX = newPinch.touchCoords.map { it.e1 }
-            val newState = params.solve(startFingerContentX, newFingerViewportX)
+            val newState = params.solveMapMap(startFingerContentX, newFingerViewportX)
             state = newState
         }
     }
@@ -102,6 +112,15 @@ open class PZController(var params: PZParams, initialState: PZState = PZState(pa
             val newState = state.copy(pan = newPan)
             state = newState
         }
+    }
+
+    fun onWheel(ev: org.w3c.dom.events.Event) {
+        ev as WheelEvent
+        val mouseContent = state.viewportToContent(ev.offsetX)
+        val zoomDelta = kotlin.math.exp(ev.deltaY * -0.01)
+        val newZoom = (state.zoom * zoomDelta).coerceIn(1.0..params.maxZoom)
+        val newState = params.solveZoomMap(newZoom, mouseContent, ev.offsetX)
+        state = newState
     }
 
     fun updateParams(newParams: PZParams) {
@@ -127,6 +146,7 @@ fun <T:HTMLElement> usePanZoom(params: PZParams, initialState: PZState = PZState
     val refEffect = combineRefs<T>(
         usePinch(ctl::onPinchStart),
         usePan(ctl::onPanStart),
+        useEventListener("wheel", callback = ctl::onWheel, passive = false, preventDefault = true),
     )
     return refEffect to zoomState
 }
