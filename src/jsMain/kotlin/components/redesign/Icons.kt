@@ -268,7 +268,7 @@ val NavMenuIcon = FC<PropsWithClassName> { props ->
 }
 
 val LogoutIcon = FC<PropsWithClassName> { props ->
-    val color = "black"
+    val color = "#FF0000"
     svg {
         className = props.className
         width = 19.0

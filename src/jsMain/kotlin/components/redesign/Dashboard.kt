@@ -157,6 +157,7 @@ val DashboardDialog = FC<DashboardDialogProps> { props ->
         DialogMenuItem {
             text = "Log out"
             icon = LogoutIcon
+            variant = DialogMenuItemVariant.dangerous
             onClick = {
                 runCoroutine {
                     Client.send("/logout", onError = { showError?.invoke(it) }) {
