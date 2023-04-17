@@ -80,15 +80,14 @@ data class PZState(
     val maxPan by lazy { maxOf(paperWidth + params.sidePad - params.viewportWidth, minPan) }
     val panRange by lazy { minPan..maxPan }
 
-    val panEffective by lazy { minOf(pan, maxPan) }
+    val panEffective by lazy { pan.coerceIn(panRange) }
     val leftPadVisible by lazy { maxOf(- panEffective, 0.0) }
-    val contentRightInViewport by lazy { minOf(paperWidth - panEffective, params.viewportWidth) }
-    val rightPadVisible by lazy { params.viewportWidth - contentRightInViewport }
+    val rightPadVisible by lazy { maxOf(params.viewportWidth - (paperWidth - panEffective), 0.0) }
 
     val leftmostContentPointPx by lazy { maxOf(panEffective - params.sidePad, 0.0) } // from left side of full content area
     val rightmostContentPointPx by lazy { minOf(panEffective + params.viewportWidth, paperWidth) }
     val visibleContentRange by lazy { viewportToContent(0.0)..viewportToContent(params.viewportWidth) }
-    val visibleContentWidth by lazy { rightmostContentPointPx - leftmostContentPointPx }
+    val visibleContentWidth by lazy { params.viewportWidth - leftPadVisible - rightPadVisible }
 }
 
 open class PZController(var params: PZParams, initialState: PZState = PZState(params), var onChange: ((PZState) -> Unit)?) {
