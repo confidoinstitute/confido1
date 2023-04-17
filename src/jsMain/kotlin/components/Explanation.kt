@@ -12,6 +12,9 @@ external interface ExplanationProps : PropsWithChildren {
     var title: String
 }
 
+/**
+ * A footnote-like element that can add a dialog with lengthy explanation of an UI element
+ */
 val Explanation = FC<ExplanationProps> {props ->
     var explanationOpen by useState(false)
 

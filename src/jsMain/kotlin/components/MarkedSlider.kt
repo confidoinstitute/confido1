@@ -26,6 +26,12 @@ external interface MarkedSliderProps : SliderProps {
     var preciseInputForm: FC<PreciseInputFormProps>
 }
 
+/**
+ * Wrapper for a MUI slider for prediction input. It handles the following in addition to regular slider:
+ * - automatically puts marks in reaction to the slider's range and available space
+ * - when prediction is not made, tells user to make one
+ * - adds a precise input button
+ */
 val MarkedSlider = FC<MarkedSliderProps> { props ->
     val sliderSize = useElementSize<HTMLSpanElement>()
 

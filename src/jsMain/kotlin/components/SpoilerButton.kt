@@ -6,7 +6,9 @@ import react.Fragment
 import react.PropsWithChildren
 import react.useState
 
-
+/**
+ * Hide the content until an user explicitly asks to see it
+ */
 val SpoilerButton = FC<PropsWithChildren> { props ->
     var shown by useState(false)
 

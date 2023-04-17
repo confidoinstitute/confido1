@@ -34,6 +34,9 @@ external interface PlotlyProps : Props {
     var fixupLayout: ((dynamic) -> Unit)?
 }
 
+/**
+ * An ugly wrapper for the Plotly.kt Kotlin library
+ */
 val ReactPlotly = FC<PlotlyProps> {props ->
     val container = useRef<HTMLDivElement>(null)
 
