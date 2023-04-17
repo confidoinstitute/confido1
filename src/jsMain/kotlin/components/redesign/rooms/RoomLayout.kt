@@ -1,10 +1,10 @@
 package components.redesign.rooms
 
-import browser.*
-import components.*
-import components.redesign.Header
+import browser.window
+import components.AppStateContext
+import components.redesign.*
 import components.redesign.basic.*
-import components.redesign.forms.*
+import components.redesign.forms.Button
 import components.rooms.RoomContext
 import csstype.*
 import dom.ScrollBehavior
@@ -61,6 +61,44 @@ val RoomLayout = FC<Props> {
 
     var dialogOpen by useState(false)
 
+    DialogMenu {
+        open = dialogOpen
+        onClose = { dialogOpen = false }
+
+        /*
+        // TODO: Permissions
+        DialogMenuItem {
+            text = "Change settings of this room"
+            icon = EditIcon
+            disabled = true
+        }
+
+        // TODO: Verify permissions (copied from before redesign)
+        if (appState.hasAnyPermission(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)) {
+            DialogMenuItem {
+                text = "Export questions to CSV"
+                disabled = true
+            }
+        }
+
+        // TODO: Permissions
+        DialogMenuItem {
+            text = "Delete this room"
+            variant = DialogMenuItemVariant.dangerous
+            icon = BinIcon
+            disabled = true
+        }
+
+        // TODO: Only show if there is something to separate
+        DialogMenuSeparator {}
+         */
+
+        DialogMenuCommonActions {
+            pageName = room.name
+            onClose = { dialogOpen = false }
+        }
+    }
+
     Header {
         title = room.name
         appBarColor = palette.color
@@ -97,6 +135,9 @@ val RoomLayout = FC<Props> {
                     visibility = Visibility.hidden
             }
             +room.name
+        }
+        onMenu = {
+            dialogOpen = true
         }
     }
     Stack {

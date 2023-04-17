@@ -553,17 +553,9 @@ private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> {
             }
         }
         DialogMenuSeparator {}
-        FeedbackMenuItem {
+        DialogMenuCommonActions {
             pageName = props.question.name
-            onClick = {
-                props.onClose?.invoke()
-            }
+            onClose = props.onClose
         }
-        /*
-        DialogMenuItem {
-            text = "How to use this page"
-            disabled = true
-        }
-         */
     }
 }

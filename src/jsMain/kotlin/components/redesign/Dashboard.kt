@@ -14,12 +14,9 @@ import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.header
 import react.dom.html.ReactHTML.main
-import react.dom.html.ReactHTML.option
-import react.router.*
-import rooms.Owner
-import rooms.RoomMembership
-import tools.confido.refs.*
-import utils.*
+import react.router.useNavigate
+import tools.confido.refs.deref
+import utils.runCoroutine
 
 internal fun ChildrenBuilder.title(text: String) = div {
     css {
@@ -170,11 +167,9 @@ val DashboardDialog = FC<DashboardDialogProps> { props ->
             }
         }
         DialogMenuSeparator {}
-        FeedbackMenuItem {
+        DialogMenuCommonActions {
             pageName = "Dashboard"
-            onClick = {
-                props.onClose?.invoke()
-            }
+            onClose = props.onClose
         }
     }
 }

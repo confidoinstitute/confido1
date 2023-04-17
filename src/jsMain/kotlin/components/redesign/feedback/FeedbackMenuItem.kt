@@ -8,7 +8,7 @@ external interface FeedbackMenuItemProps : Props {
     /**
      * A user-facing name of the page this feedback relates to.
      *
-     * Optional. When not provided, the feedback dialog will have an option to attach the page name.
+     * Optional. When not provided, the feedback dialog will not have an option to attach the page name.
      */
     var pageName: String?
     var onClick: (() -> Unit)?

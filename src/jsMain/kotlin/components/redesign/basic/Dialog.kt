@@ -1,6 +1,7 @@
 package components.redesign.basic
 
 import browser.*
+import components.redesign.feedback.FeedbackMenuItem
 import components.redesign.forms.*
 import components.redesign.transitions.*
 import csstype.*
@@ -51,11 +52,9 @@ external interface DialogMenuProps : PropsWithChildren, PropsWithRef<HTMLElement
 
     /** Defaults to true. */
     var hasCloseButton: Boolean?
-    var showOldUI: Boolean?
 }
 
 val DialogMenu = ForwardRef<HTMLElement, DialogMenuProps> { props, fRef ->
-    val showOldUI = props.showOldUI ?: true
     DialogCore {
         this.ref = fRef
         this.open = props.open
@@ -77,17 +76,7 @@ val DialogMenu = ForwardRef<HTMLElement, DialogMenuProps> { props, fRef ->
 
             +props.children
 
-            if (showOldUI) {
-                DialogMenuSeparator {}
 
-                DialogMenuItem {
-                    text = "Switch to old UI"
-                    onClick = {
-                        localStorage.setItem("layoutVersion", "legacy")
-                        location.reload()
-                    }
-                }
-            }
 
             if (props.hasCloseButton != false) {
                 ButtonBase {
@@ -363,3 +352,39 @@ val DialogMenuItem = FC<DialogMenuItemProps> { props ->
     }
 }
 
+external interface DialogMenuCommonActionsProps : Props {
+    /**
+     * A user-facing name of the page, for the feedback dialog.
+     *
+     * Optional. When not provided, the feedback dialog will not have an option to attach the page name.
+     */
+    var pageName: String
+    /** Triggered when any of the actions closes the dialog. */
+    var onClose: (() -> Unit)?
+}
+
+val DialogMenuCommonActions = FC<DialogMenuCommonActionsProps> { props ->
+    FeedbackMenuItem {
+        pageName = props.pageName
+        onClick = {
+            props.onClose?.invoke()
+        }
+    }
+    /*
+    DialogMenuItem {
+        text = "How to use this page"
+        disabled = true
+    }
+    DialogMenuItem {
+        text = "About Confido"
+        disabled = true
+    }
+     */
+    DialogMenuItem {
+        text = "Switch to old UI"
+        onClick = {
+            localStorage.setItem("layoutVersion", "legacy")
+            location.reload()
+        }
+    }
+}

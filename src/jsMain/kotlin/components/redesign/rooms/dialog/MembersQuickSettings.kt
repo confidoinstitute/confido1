@@ -40,7 +40,6 @@ val MemberQuickSettingsDialog = FC<MemberQuickSettingsDialogProps> {props ->
     DialogMenu {
         open = props.open
         onClose = { props.onClose?.invoke() }
-        showOldUI = false
 
         if (props.hasEmail)
             DialogMenuItem {
@@ -75,8 +74,6 @@ val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {prop
         open = props.open && !deleting
         onClose = { deleting = false; props.onClose?.invoke() }
         headerText = "Invitation link settings"
-        showOldUI = false
-
         DialogMenuItem {
             text = "Copy link"
             // TODO icon
@@ -115,7 +112,6 @@ val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {prop
         open = props.open && deleting
         onClose = { deleting = false; props.onClose?.invoke() }
         headerText = "Delete invitation link"
-        showOldUI = false
         div {
             css {
                 fontSize = 14.px
