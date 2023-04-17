@@ -137,6 +137,7 @@ val Dashboard = FC<Props> {
         title("Rooms")
 
         RoomList {
+            canCreate = appState.session.user?.type?.isProper() ?: false
         }
     }
 }

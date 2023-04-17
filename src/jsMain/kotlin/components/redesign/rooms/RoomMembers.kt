@@ -4,13 +4,10 @@ import browser.window
 import components.AppStateContext
 import components.redesign.InviteLinkIcon
 import components.redesign.NavMenuIcon
-import components.redesign.SortButton
-import components.redesign.SortType
 import components.redesign.basic.Stack
 import components.redesign.basic.TextPalette
 import components.redesign.basic.sansSerif
 import components.redesign.forms.FormDivider
-import components.redesign.forms.FormSection
 import components.redesign.forms.IconButton
 import components.redesign.forms.Select
 import components.redesign.rooms.dialog.AddMemberDialog
@@ -25,8 +22,6 @@ import hooks.useCoroutineLock
 import hooks.useEditDialog
 import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import payloads.requests.AddedExistingMember
 import payloads.requests.AddedMember
 import payloads.requests.DeleteInvite
@@ -47,7 +42,6 @@ import utils.runCoroutine
 import utils.stringToColor
 import web.location.location
 import web.navigator.navigator
-import kotlin.coroutines.EmptyCoroutineContext
 
 fun canChangeRole(appState: SentState, room: Room, role: RoomRole) =
     canChangeRole(room.userRole(appState.session.user), role)
@@ -154,6 +148,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
         open = dialogOpen
         name = user.nick ?: "Anonymous user"
         hasEmail = user.email != null
+        canDelete = canChangeSelf() && appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS) == true
         onClose = { dialogOpen = false }
         onMail = { window.open("mailto:${user.email}", "_blank") }
         onDelete = ::memberDelete
@@ -205,7 +200,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
         MemberRoleSelect {
             value = props.membership.role
             isGuest = !user.type.isProper()
-            disabled = props.disabled
+            disabled = props.disabled || !canChangeSelf()
             onChange = ::memberRoleChange
         }
         IconButton {
@@ -342,6 +337,7 @@ val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
     val canChange = canChangeRole(appState, room, props.value)
+
     Select {
         value = props.value.id
         disabled = props.disabled || stale || !canChange

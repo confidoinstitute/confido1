@@ -19,6 +19,7 @@ external interface MemberQuickSettingsDialogProps : Props {
     var open: Boolean
     var hasEmail: Boolean
     var name: String
+    var canDelete: Boolean
     var onClose: (() -> Unit)?
     var onMail: (() -> Unit)?
     var onDelete: (() -> Unit)?
@@ -35,7 +36,6 @@ external interface InvitationQuickSettingsDialogProps : Props {
 
 val MemberQuickSettingsDialog = FC<MemberQuickSettingsDialogProps> {props ->
     val (appState, stale) = useContext(AppStateContext)
-    val room = useContext(RoomContext)
 
     DialogMenu {
         open = props.open
@@ -51,7 +51,7 @@ val MemberQuickSettingsDialog = FC<MemberQuickSettingsDialogProps> {props ->
                 }
             }
 
-        if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
+        if (props.canDelete)
         DialogMenuItem {
             text = "Remove ${props.name} from this room"
             // TODO icon
@@ -60,6 +60,7 @@ val MemberQuickSettingsDialog = FC<MemberQuickSettingsDialogProps> {props ->
                 props.onClose?.invoke()
                 props.onDelete?.invoke()
             }
+            disabled = stale
         }
     }
 }

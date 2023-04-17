@@ -21,7 +21,7 @@ external interface AddQuestionPresetDialogProps : Props {
     var onPreset: ((QuestionPreset) -> Unit)?
 }
 
-var AddQuestionPresetDialog = FC<AddQuestionPresetDialogProps> { props ->
+val AddQuestionPresetDialog = FC<AddQuestionPresetDialogProps> { props ->
     Dialog {
         +props
         title = "Choose question template"

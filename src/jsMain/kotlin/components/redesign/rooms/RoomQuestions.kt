@@ -49,7 +49,7 @@ val QuestionList = FC<QuestionListProps> { props ->
     AddQuestionPresetDialog {
         open = presetOpen
         onClose = {presetOpen = false}
-        onPreset = {preset = it; editQuestionDialog(null)}
+        onPreset = {preset = it; presetOpen = false; editQuestionDialog(null)}
     }
 
     RoomHeader {

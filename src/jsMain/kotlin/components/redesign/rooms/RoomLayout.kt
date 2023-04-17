@@ -5,6 +5,7 @@ import components.AppStateContext
 import components.redesign.*
 import components.redesign.basic.*
 import components.redesign.forms.Button
+import components.redesign.rooms.dialog.EditRoomSettingsDialog
 import components.rooms.RoomContext
 import csstype.*
 import dom.ScrollBehavior
@@ -60,19 +61,29 @@ val RoomLayout = FC<Props> {
     val cutoff = 60.0 + size.height - 15.0
 
     var dialogOpen by useState(false)
+    var editOpen by useState(false)
+    
+    EditRoomSettingsDialog {
+        open = editOpen
+        onClose = { editOpen = false }
+    }
 
     DialogMenu {
         open = dialogOpen
         onClose = { dialogOpen = false }
 
-        /*
-        // TODO: Permissions
-        DialogMenuItem {
-            text = "Change settings of this room"
-            icon = EditIcon
-            disabled = true
+        var separate = false
+        
+        if (appState.hasPermission(room, RoomPermission.ROOM_OWNER)) {
+            DialogMenuItem {
+                text = "Change settings of this room"
+                icon = EditIcon
+                onClick = { editOpen = true; dialogOpen = false }
+            }
+            separate = true
         }
 
+        /*
         // TODO: Verify permissions (copied from before redesign)
         if (appState.hasAnyPermission(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)) {
             DialogMenuItem {
@@ -88,10 +99,9 @@ val RoomLayout = FC<Props> {
             icon = BinIcon
             disabled = true
         }
-
-        // TODO: Only show if there is something to separate
-        DialogMenuSeparator {}
          */
+
+        if (separate) DialogMenuSeparator {}
 
         DialogMenuCommonActions {
             pageName = room.name

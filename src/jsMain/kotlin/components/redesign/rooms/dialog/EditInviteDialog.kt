@@ -146,7 +146,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                         fontWeight = integer(500)
                     }
                     if (props.entity != null)
-                        +"Edit invite link"
+                        +"Save"
                     else
                         +"Create invite link"
                     disabled = (stale)

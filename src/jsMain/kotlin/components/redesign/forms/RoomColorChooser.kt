@@ -7,7 +7,7 @@ import react.*
 import react.dom.html.ReactHTML.div
 
 external interface RoomColorChooserProps : Props {
-    var palette: RoomPalette
+    var palette: RoomPalette?
     var onChange: ((RoomPalette) -> Unit)?
 }
 

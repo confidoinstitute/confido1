@@ -24,6 +24,7 @@ val RootLayout = FC<Props> {
 }
 
 private val RootLayoutInner = FC<Props> {
+    val (appState, _) = useContext(AppStateContext)
     var showDemoWelcome by useState(appConfig.demoMode && window.asDynamic().demoDismissed != true)
     Backdrop {
         this.`in` = showDemoWelcome
@@ -81,13 +82,13 @@ private val RootLayoutInner = FC<Props> {
                     path = "email_login"
                     this.element = EmailLoginAlreadyLoggedIn.create()
                 }
-                /*
                 if (appState.session.user?.type?.isProper() == true) {
                     Route {
                         path = "new_room"
-                        this.element = ReactNode("NEW ROOM HERE")
+                        this.element = CreateRoom.create()
                     }
                 }
+                /*
                 Route {
                     path = "profile"
                     this.element = ReactNode("PROFILE HERE")
