@@ -1,5 +1,6 @@
 package hooks
 
+import dom.events.MouseEvent
 import dom.events.PointerEvent
 import dom.html.HTMLElement
 import react.MutableRefObject
@@ -7,7 +8,7 @@ import react.useMemo
 import tools.confido.utils.List2
 import tools.confido.utils.multiletNotNull
 
-val PointerEvent.offsetPos get() = List2(offsetX, offsetY)
+val MouseEvent.offsetPos get() = List2(offsetX, offsetY)
 
 class PanController(var startHandler: PanStartHandler) {
     // pointer id -> last known position
@@ -29,6 +30,7 @@ class PanController(var startHandler: PanStartHandler) {
     fun startPan(pos: List2<Double>) {
         if (panOrigin != null) return
         panOrigin = pos
+        panLast = pos
         updateHandler = startHandler?.invoke(pos)
     }
     fun endPan() {
