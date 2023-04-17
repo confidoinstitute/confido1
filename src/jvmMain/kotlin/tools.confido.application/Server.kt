@@ -58,6 +58,11 @@ fun HTML.index() {
         link(rel = "manifest", href = "static/manifest.webmanifest")
     }
     body {
+        script {
+            attributes["crossorigin"] = ""
+            // TODO make configurable via environment
+            src = "https://polyfill.x.confido.tools/api/polyfill?features=pointer-event,resize-observer"
+        }
         script(type="text/javascript") { unsafe { +"bundleVer= '${jsHash}'" } }
         script(type="text/javascript") { unsafe { +"appConfigVer= '${appConfigHash}'" } }
         script(type="text/javascript") { unsafe { +"appConfig= ${Json.encodeToString(appConfig)}" } }
