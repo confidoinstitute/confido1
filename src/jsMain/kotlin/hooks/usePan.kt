@@ -19,7 +19,10 @@ class PanController(var startHandler: PanStartHandler) {
     fun onPointerChange(ev: org.w3c.dom.events.Event) {
         ev as PointerEvent
         val down = ev.type == "pointerdown"
-        if (down) activePointers[ev.pointerId] = ev.offsetPos
+        if (down)  {
+            activePointers[ev.pointerId] = ev.offsetPos
+            (ev.target as? HTMLElement)?.setPointerCapture(ev.pointerId)
+        }
         else activePointers.remove(ev.pointerId)
         if (activePointers.size == 1) {
             startPan(activePointers.values.first())
