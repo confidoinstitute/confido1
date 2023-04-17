@@ -110,7 +110,7 @@ external interface BinaryPredSliderProps : PredictionInputProps, PropsWithElemen
 }
 val BIN_PRED_SPACE = NumericSpace(0.0, 100.0, unit="%")
 val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
-    val zoomParams = PZParams(viewportWidth = props.elementWidth, contentDomain = 0.0..100.0)
+    val zoomParams = PZParams(viewportWidth = props.elementWidth, contentDomain = 0.0..100.0, sidePad = SIDE_PAD)
     val zoomState = PZState(zoomParams)
     val propProb = (props.dist as? BinaryDistribution)?.yesProb
     var yesProb by useState(propProb)
@@ -192,6 +192,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
             SliderTrack {
                 key = "track"
                 marks = (0..100 step 10).map{ it.toDouble() }
+                this.zoomState = zoomState
             }
 
             SliderThumb{
