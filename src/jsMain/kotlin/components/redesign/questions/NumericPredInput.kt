@@ -100,7 +100,6 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
         if (dist != null)
             SliderTrack {
                 +props
-                this.marks = props.marks
             }
         if (dist != null)
             SliderThumb{
