@@ -66,7 +66,10 @@ data class PZState(
     fun contentToViewport(contentX: Double) = paperToViewport(contentToPaper(contentX))
 
     val paperWidth by lazy { params.paperWidthUnzoomed * zoom } // width of the whole content, in css pixels, at current zoom
-    val maxPan by lazy { maxOf(paperWidth + params.sidePad - params.viewportWidth, 0.0) }
+    val minPan by lazy { -params.sidePad }
+    val maxPan by lazy { maxOf(paperWidth + params.sidePad - params.viewportWidth, minPan) }
+    val panRange by lazy { minPan..maxPan }
+
     val panEffective by lazy { minOf(pan, maxPan) }
     val leftPadVisible by lazy { maxOf(- panEffective, 0.0) }
     val contentRightInViewport by lazy { minOf(paperWidth - panEffective, params.viewportWidth) }
@@ -87,6 +90,16 @@ open class PZController(var params: PZParams, initialState: PZState = PZState(pa
 
             val newFingerViewportX = newPinch.touchCoords.map { it.e1 }
             val newState = params.solve(startFingerContentX, newFingerViewportX)
+            state = newState
+        }
+    }
+
+    fun onPanStart(startPos: List2<Double>): PanUpdateHandler {
+        val startState = state
+        return { _, newPos, commit ->
+            val newPan = (startState.pan + (startPos[0] - newPos[0])).coerceIn(state.panRange)
+
+            val newState = state.copy(pan = newPan)
             state = newState
         }
     }
@@ -113,7 +126,7 @@ fun <T:HTMLElement> usePanZoom(params: PZParams, initialState: PZState = PZState
     }
     val refEffect = combineRefs<T>(
         usePinch(ctl::onPinchStart),
-        // TODO pan
+        usePan(ctl::onPanStart),
     )
     return refEffect to zoomState
 }
