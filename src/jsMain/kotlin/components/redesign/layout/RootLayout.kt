@@ -1,14 +1,16 @@
 package components.redesign.layout
 
 import browser.*
-import components.*
-import components.layout.*
-import components.nouser.*
-import components.profile.*
+import components.AppStateContext
+import components.AppStateWebsocketProvider
+import components.layout.RoomRedirect
+import components.nouser.EmailLoginAlreadyLoggedIn
 import components.redesign.*
 import components.redesign.basic.*
 import components.redesign.basic.GlobalErrorMessage
 import components.redesign.feedback.FeedbackProvider
+import components.redesign.profile.UserProfile
+import components.redesign.profile.VerifyToken
 import components.redesign.rooms.*
 import csstype.*
 import emotion.react.*
@@ -88,11 +90,11 @@ private val RootLayoutInner = FC<Props> {
                         this.element = CreateRoom.create()
                     }
                 }
-                /*
                 Route {
                     path = "profile"
-                    this.element = ReactNode("PROFILE HERE")
+                    this.element = UserProfile.create()
                 }
+                /*
                 if (appState.isAdmin()) {
                     Route {
                         path = "admin/users"

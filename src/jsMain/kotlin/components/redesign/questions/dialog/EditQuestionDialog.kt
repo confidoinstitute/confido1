@@ -280,7 +280,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                         fontWeight = integer(500)
                     }
                     if (props.entity != null)
-                        +"Edit question"
+                        +"Save"
                     else
                         +"Create question"
                     disabled = (stale || !questionValid)

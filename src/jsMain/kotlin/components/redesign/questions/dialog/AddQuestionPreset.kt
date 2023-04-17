@@ -52,7 +52,7 @@ val AddQuestionPresetDialog = FC<AddQuestionPresetDialogProps> { props ->
                         alignItems = AlignItems.center
                     }
                     palette = MainPalette.default
-                    onClick = {props.onPreset?.invoke(preset); props.onClose?.invoke() }
+                    onClick = { props.onPreset?.invoke(preset) }
                     Stack {
                         div {
                             css {

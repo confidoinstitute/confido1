@@ -15,6 +15,7 @@ import react.dom.html.ReactHTML.div
 import react.dom.svg.*
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.svg
+import react.router.dom.Link
 import web.location.*
 import web.storage.*
 
@@ -121,8 +122,12 @@ external interface DialogCoreProps : PropsWithChildren, PropsWithRef<HTMLElement
 val DialogCore = FC<DialogCoreProps> { props ->
     val setBackground = useContext(BackdropContext)
     val nodeRef = useRef<HTMLElement>()
+    val dialogId = useId()
     useEffect(props.open) {
-        setBackground(props.open)
+        if (props.open) setBackground.add(dialogId) else setBackground.del(dialogId)
+        cleanup {
+            setBackground.del(dialogId)
+        }
     }
     Slide {
         appear = true
@@ -277,6 +282,10 @@ external interface DialogMenuItemProps : Props {
     var icon: ComponentType<PropsWithClassName>?
 }
 
+external interface DialogMenuNavProps : DialogMenuItemProps {
+    var navigate: String
+}
+
 val DialogMenuItem = FC<DialogMenuItemProps> { props ->
     val variant = props.variant ?: DialogMenuItemVariant.normal
     val color = when (variant) {
@@ -348,6 +357,76 @@ val DialogMenuItem = FC<DialogMenuItemProps> { props ->
                     props.onClick?.invoke()
                 }
             }
+        }
+    }
+}
+
+val DialogMenuNav = FC<DialogMenuNavProps> { props ->
+    val variant = props.variant ?: DialogMenuItemVariant.normal
+    val color = when (variant) {
+        DialogMenuItemVariant.normal -> Color("#000000")
+        DialogMenuItemVariant.dangerous -> Color("#ff0000")
+    }
+    val disabled = props.disabled ?: false
+
+    // We have an extra Stack rather than using the button directly
+    // to avoid the padding from being clickable.
+    Stack {
+        css {
+            padding = Padding(6.px, 15.px)
+
+            if (!disabled) {
+                hover {
+                    backgroundColor = rgba(0, 0, 0, 0.05)
+                }
+            }
+
+            rippleCss()
+        }
+
+        Link {
+            css {
+                all = Globals.unset
+                if (!disabled) {
+                    cursor = Cursor.pointer
+                }
+                userSelect = None.none
+
+                display = Display.flex
+                flexDirection = FlexDirection.row
+                alignItems = AlignItems.center
+                gap = 10.px
+
+                this.color = color
+                if (disabled) {
+                    this.opacity = number(0.5)
+                }
+            }
+
+            div {
+                css {
+                    flex = None.none
+                    display = Display.flex
+                    justifyContent = JustifyContent.center
+                    alignItems = AlignItems.center
+                    height = 30.px
+                    width = 30.px
+                }
+                props.icon?.let {
+                    +it.create()
+                }
+            }
+
+            div {
+                css {
+                    fontSize = 17.px
+                    lineHeight = 20.px
+                    fontFamily = sansSerif
+                    flexGrow = number(1.0)
+                }
+                +props.text
+            }
+            to = props.navigate
         }
     }
 }

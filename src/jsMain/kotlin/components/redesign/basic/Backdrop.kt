@@ -16,16 +16,26 @@ external interface BackdropProps: HTMLAttributes<HTMLDivElement> {
     var `in`: Boolean
 }
 
-val BackdropContext = createContext<StateSetter<Boolean>>()
+class BackdropCounter(val add: (String) -> Unit, val del: (String) -> Unit)
+
+val BackdropContext = createContext<BackdropCounter>()
 
 val BackdropProvider = FC<PropsWithChildren> {
-    val (shown, setShown) = useState(false)
+    val (counter, setCounter) = useState(setOf<String>())
+
+    val counterSetter = useMemo {
+        BackdropCounter(
+            add = { id -> setCounter { it.plus(id) } },
+            del = { id -> setCounter { it.minus(id) } },
+        )
+    }
+
     Backdrop {
         appear = false
-        this.`in` = shown
+        this.`in` = counter.isNotEmpty()
     }
     BackdropContext.Provider {
-        value = setShown
+        value = counterSetter
         +it.children
     }
 }

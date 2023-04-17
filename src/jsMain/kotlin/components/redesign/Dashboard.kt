@@ -156,6 +156,12 @@ val DashboardDialog = FC<DashboardDialogProps> { props ->
         onClose = { props.onClose?.invoke() }
 
         DialogMenuItem {
+            text = "User settings"
+            icon = SettingsIcon
+            onClick = { navigate("/profile") }
+        }
+
+        DialogMenuItem {
             text = "Log out"
             icon = LogoutIcon
             variant = DialogMenuItemVariant.dangerous
