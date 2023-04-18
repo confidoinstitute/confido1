@@ -136,6 +136,9 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps>("NumericPred
             css {
                 marginTop = ABOVE_GRAPH_PAD.px
                 touchAction = None.none
+                "&" {
+                    touchAction = TouchAction.panY
+                }
             }
         }
         div {

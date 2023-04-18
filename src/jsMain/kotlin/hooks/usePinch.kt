@@ -55,6 +55,7 @@ class PinchController(var startHandler: PinchStartHandler) {
             this.lastState = state
             this.touchIds = touchIds
             this.updateHandler = this.startHandler(state)
+            e.preventDefault()
         }
     }
     fun onTouchMove(e: Event) {
@@ -69,6 +70,7 @@ class PinchController(var startHandler: PinchStartHandler) {
             val newState = PinchState(e.target as HTMLElement, sortedTouches)
             this.updateHandler?.invoke(startState, newState, false)
             lastState = newState
+            e.preventDefault()
         }
     }
 }
@@ -81,7 +83,7 @@ fun <T:HTMLElement> usePinch(handler: PinchStartHandler): MutableRefObject<T> {
     val ctl = useMemo{ PinchController(handler) }
     ctl.startHandler = handler // must update handler to reflect captured variables
     return combineRefs(
-        useEventListener("touchstart", "touchend", passive=false, callback = ctl::onTouchChange, preventDefault = true),
-        useEventListener("touchmove", passive=false, callback = ctl::onTouchMove, preventDefault = true),
+        useEventListener("touchstart", "touchend", passive=false, callback = ctl::onTouchChange),
+        useEventListener("touchmove", passive=false, callback = ctl::onTouchMove),
     )
 }
