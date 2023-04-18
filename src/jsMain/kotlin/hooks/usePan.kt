@@ -65,7 +65,7 @@ fun <T: HTMLElement> usePan(handler: PanStartHandler): MutableRefObject<T> {
     val ctl = useMemo{ PanController(handler) }
     ctl.startHandler = handler // must update handler to reflect captured variables
     return combineRefs(
-        useEventListener("pointerdown", "pointerup", "pointercancel", passive=false, callback = ctl::onPointerChange, preventDefault = true),
-        useEventListener("pointermove", passive=false, callback = ctl::onPointerMove, preventDefault = true),
+        useEventListener("pointerdown", "pointerup", "pointercancel", passive=false, callback = ctl::onPointerChange),
+        useEventListener("pointermove", passive=false, callback = ctl::onPointerMove),
     )
 }
