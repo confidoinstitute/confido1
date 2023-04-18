@@ -7,6 +7,7 @@ import react.MutableRefObject
 import react.useMemo
 import tools.confido.utils.List2
 import tools.confido.utils.multiletNotNull
+import web.events.Event
 
 val MouseEvent.offsetPos get() = List2(offsetX, offsetY)
 
@@ -16,7 +17,7 @@ class PanController(var startHandler: PanStartHandler) {
     var panOrigin: List2<Double>? = null
     var panLast: List2<Double>? = null
     var updateHandler: PanUpdateHandler? = null
-    fun onPointerChange(ev: org.w3c.dom.events.Event) {
+    fun onPointerChange(ev: Event) {
         ev as PointerEvent
         val down = ev.type == "pointerdown"
         if (down)  {
@@ -43,7 +44,7 @@ class PanController(var startHandler: PanStartHandler) {
         panOrigin = null
         updateHandler = null
     }
-    fun onPointerMove(ev: org.w3c.dom.events.Event) {
+    fun onPointerMove(ev: Event) {
         ev as PointerEvent
         if (ev.pointerId !in activePointers) return
         activePointers[ev.pointerId] = ev.offsetPos

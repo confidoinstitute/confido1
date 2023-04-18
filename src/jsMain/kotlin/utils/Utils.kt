@@ -6,7 +6,7 @@ import dom.events.Touch
 import dom.events.TouchEvent
 import dom.events.TouchList
 import dom.html.HTMLElement
-import org.w3c.dom.events.Event
+import dom.html.Window
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -23,6 +23,8 @@ import react.useState
 import rooms.Room
 import tools.confido.question.Question
 import tools.confido.utils.*
+import web.events.Event
+import web.events.LegacyEvent
 import web.location.location
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.js.Date
@@ -228,3 +230,12 @@ fun objectId(obj: Any) =
         oidMap[obj] = newId
         newId
     }
+
+/**
+ * A variant of the addEventListener function that allows callbacks that take the
+ * new web.events.Event types instead of the legacy org.w3c.dom.events.Event
+ */
+fun Window.addEventListener(type: String, callback: (Event)->Unit, options: dynamic = jso<dynamic>()) =
+    addEventListener(type, callback.unsafeCast<(LegacyEvent)->Unit>(), options)
+fun Window.removeEventListener(type: String, callback: (Event)->Unit, options: dynamic = jso<dynamic>()) =
+    removeEventListener(type, callback.unsafeCast<(LegacyEvent)->Unit>(), options)

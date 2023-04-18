@@ -1,11 +1,14 @@
 package hooks
 
 import browser.window
+import dom.events.MouseEvent
 import dom.events.TouchEvent
 import dom.html.HTMLElement
 import kotlinx.js.asList
 import kotlinx.js.jso
 import react.*
+import utils.*
+import web.events.Event
 import kotlin.math.abs
 
 private class DragEventManager<T: HTMLElement>(
@@ -34,13 +37,13 @@ private class DragEventManager<T: HTMLElement>(
         if (maxDist >= 3)
             this.onDrag?.invoke(newPos, false)
     }
-    private fun onWindowMouseMove(ev: org.w3c.dom.events.Event) {
-        val mouseEvent = ev as org.w3c.dom.events.MouseEvent
+    private fun onWindowMouseMove(ev: Event) {
+        val mouseEvent = ev as MouseEvent
         doMove(mouseEvent.clientX.toDouble())
         ev.stopPropagation()
         ev.preventDefault()
     }
-    private fun onWindowTouchMove(ev: org.w3c.dom.events.Event) {
+    private fun onWindowTouchMove(ev: Event) {
         val touchEvent = ev as dom.events.TouchEvent
         val touch = touchEvent.touches.asList().firstOrNull { it.identifier == touchId }
         if (touch != null)
@@ -65,13 +68,13 @@ private class DragEventManager<T: HTMLElement>(
         }
         this.onDragEnd?.invoke()
     }
-    private fun onWindowMouseUp(ev: org.w3c.dom.events.Event) {
-        val mouseEvent = ev as org.w3c.dom.events.MouseEvent
+    private fun onWindowMouseUp(ev: Event) {
+        val mouseEvent = ev as MouseEvent
         doRelease(mouseEvent.clientX.toDouble())
         ev.stopPropagation()
         ev.preventDefault()
     }
-    private fun onWindowTouchEnd(ev: org.w3c.dom.events.Event) {
+    private fun onWindowTouchEnd(ev: Event) {
         val touchEvent = ev as dom.events.TouchEvent
         val touch = ev.changedTouches.asList().firstOrNull { it.identifier == touchId }
         if (touch != null)
@@ -82,13 +85,13 @@ private class DragEventManager<T: HTMLElement>(
 
     data class EventListenerSpec(
         val eventName: String,
-        val handler: ((org.w3c.dom.events.Event)->Unit)?,
+        val handler: ((Event)->Unit),
         val options: dynamic,
     )
     private val installedWindowListeners: MutableSet<EventListenerSpec> = mutableSetOf()
     private fun installWindowListener(
         eventName: String,
-        handler: ((org.w3c.dom.events.Event)->Unit)?,
+        handler: ((Event)->Unit),
         options: dynamic,
     ) {
         // We have to save the exact parameters used to call addEventHandler so that
@@ -119,9 +122,9 @@ private class DragEventManager<T: HTMLElement>(
         console.log("start thumb drag")
         onDragStart?.invoke()
     }
-    fun onMouseDown(event: org.w3c.dom.events.Event) {
+    fun onMouseDown(event: Event) {
         console.log("mousedown1")
-        event as org.w3c.dom.events.MouseEvent
+        event as MouseEvent
         console.log("mousedown2")
         val off = event.offsetX - (event.target as HTMLElement).clientWidth / 2
         startDrag(PressType.MOUSE, off, event.clientX.toDouble())
@@ -130,7 +133,7 @@ private class DragEventManager<T: HTMLElement>(
         event.preventDefault()
         event.stopPropagation()
     }
-    fun onTouchStart(event: org.w3c.dom.events.Event) {
+    fun onTouchStart(event: Event) {
         if (pressed) return
         val touchEvent = (event as TouchEvent)
         val touch = touchEvent.changedTouches.item(0) ?: return

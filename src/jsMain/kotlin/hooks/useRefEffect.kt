@@ -87,7 +87,7 @@ fun <T: Any> combineRefs(builder: MutableList<MutableRefObject<in T>>.()->Unit) 
 fun <T: HTMLElement> useEventListener(vararg types: String,
                                       capture: Boolean? = null, passive: Boolean? = null,
                                       preventDefault:Boolean = false,
-                                      callback: (org.w3c.dom.events.Event)->Unit): MutableRefObject<T> {
+                                      callback: (web.events.Event)->Unit): MutableRefObject<T> {
     val callbackHolder = useRef(callback)
     callbackHolder.current = callback
     return useRefEffect {
@@ -96,7 +96,7 @@ fun <T: HTMLElement> useEventListener(vararg types: String,
             passive?.let { this.passive = it }
         }
         val effectiveCallback = { event: org.w3c.dom.events.Event ->
-            callbackHolder.current?.invoke(event)
+            callbackHolder.current?.invoke(event as web.events.Event)
             if (preventDefault) event.preventDefault()
             Unit
         }

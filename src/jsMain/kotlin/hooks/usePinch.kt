@@ -5,7 +5,7 @@ import dom.events.TouchEvent
 import dom.events.TouchList
 import dom.html.HTMLElement
 import kotlinx.js.get
-import org.w3c.dom.events.Event
+import web.events.Event
 import react.MutableRefObject
 import react.useMemo
 import tools.confido.utils.*
