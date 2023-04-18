@@ -135,7 +135,7 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps>("NumericPred
             ref = canvas
             css {
                 marginTop = ABOVE_GRAPH_PAD.px
-                touchAction = None.none
+                touchAction = None.none // fallback for browsers that do not support pan-y
                 "&" {
                     touchAction = TouchAction.panY
                 }

@@ -57,7 +57,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
     var ciWidth by useState(propDist?.confidenceInterval(0.8)?.size)
     var dragging by useState(false)
     val ciRadius = ciWidth?.let { it / 2.0 }
-    val minCIRadius = props.zoomState.paperToContent(20.0) // do not allow the thumbs to overlap too much
+    val minCIRadius = props.zoomState.paperDistToContent(20.0) // do not allow the thumbs to overlap too much
     val ci = if (center != null && ciWidth != null) {
         if (center!! + ciRadius!! > space.max) (space.max - ciWidth!!)..space.max
         else if (center!! - ciRadius < space.min) space.min..(space.min + ciWidth!!)
@@ -147,6 +147,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
                         } else {
                              2 * naturalRadius
                         }
+                        console.log("pos=$pos effectivePos=$effectivePos center=$center minCIradius=$minCIRadius newCIWidth=$newCIWidth")
                         ciWidth = newCIWidth
                         didChange = true
                         update(center, newCIWidth, isCommit)

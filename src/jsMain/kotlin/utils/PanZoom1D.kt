@@ -68,6 +68,9 @@ data class PZState(
         (viewportX + panEffective).coerceIn(0.0, paperWidth)
     fun paperToViewport(paperX: Double) =
         (paperX - panEffective).coerceIn(0.0, params.viewportWidth)
+
+    fun paperDistToContent(paperX: Double) =
+        (paperX / paperWidth * params.contentWidth).coerceIn(0.0, params.contentWidth)
     fun paperToContent(paperX: Double) =
         (paperX / paperWidth * params.contentWidth + params.contentDomain.start).coerceIn(params.contentDomain)
     fun contentToPaper(contentX: Double) =
