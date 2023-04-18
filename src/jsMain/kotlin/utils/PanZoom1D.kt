@@ -84,8 +84,6 @@ data class PZState(
     val leftPadVisible by lazy { maxOf(- panEffective, 0.0) }
     val rightPadVisible by lazy { maxOf(params.viewportWidth - (paperWidth - panEffective), 0.0) }
 
-    val leftmostContentPointPx by lazy { maxOf(panEffective - params.sidePad, 0.0) } // from left side of full content area
-    val rightmostContentPointPx by lazy { minOf(panEffective + params.viewportWidth, paperWidth) }
     val visibleContentRange by lazy { viewportToContent(0.0)..viewportToContent(params.viewportWidth) }
     val visibleContentWidth by lazy { params.viewportWidth - leftPadVisible - rightPadVisible }
 }
@@ -116,7 +114,7 @@ open class PZController(var params: PZParams, initialState: PZState = PZState(pa
     fun onWheel(ev: org.w3c.dom.events.Event) {
         ev as WheelEvent
         val mouseContent = state.viewportToContent(ev.offsetX)
-        val zoomDelta = kotlin.math.exp(ev.deltaY * -0.01)
+        val zoomDelta = kotlin.math.exp(ev.deltaY * -0.005)
         val newZoom = (state.zoom * zoomDelta).coerceIn(1.0..params.maxZoom)
         val newState = params.solveZoomMap(newZoom, mouseContent, ev.offsetX)
         state = newState
