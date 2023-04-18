@@ -24,7 +24,7 @@ fun markSpacing(width: Double, start: Double, end: Double, formatter: ((value: N
 
     val markBase = roundNumbers().takeWhile{it <= range}.find {step ->
         val lastMark = floor(end / step) * step
-        (width / (range / step) >= strLength(lastMark) * 6 + 8)
+        (width / (range / step) >= strLength(lastMark) * 8 + 8)
     } ?: return emptyList()
 
     var firstMark = ceil(start / markBase) * markBase
