@@ -2,7 +2,8 @@ package components.redesign.forms
 
 import components.redesign.basic.*
 import csstype.*
-import emotion.react.*
+import emotion.react.css
+import hooks.*
 import react.*
 import react.dom.html.ReactHTML.div
 
@@ -30,6 +31,7 @@ val FormDivider = FC<PropsWithChildren> {
 }
 
 val FormSection = FC<FormSectionProps> { props ->
+    val theme = useTheme()
     props.title?.let {
         FormDivider {
             +it
@@ -38,7 +40,7 @@ val FormSection = FC<FormSectionProps> { props ->
     Stack {
         direction = FlexDirection.column
         css {
-            backgroundColor = Color("#FFFFFF")
+            backgroundColor = theme.colors.form.background
             gap = 20.px
             padding = 20.px
         }

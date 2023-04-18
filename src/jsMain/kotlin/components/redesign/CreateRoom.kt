@@ -47,8 +47,11 @@ val CreateRoom = FC<Props> {
         onAction = ::createRoom
     }
 
-    RoomSettings {
-        onChange = {baseInfo = it}
-        onSubmit = ::createRoom
+    ThemeProvider {
+        theme = { theme -> theme.copy(colors = theme.colors.copy(form = AltFormColors)) }
+        RoomSettings {
+            onChange = { baseInfo = it }
+            onSubmit = ::createRoom
+        }
     }
 }

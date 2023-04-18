@@ -1,5 +1,6 @@
 package components.redesign.feedback
 
+import components.redesign.*
 import components.redesign.basic.Dialog
 import components.redesign.forms.*
 import components.showError
@@ -68,58 +69,62 @@ val FeedbackDialog = FC<FeedbackDialogProps> { props ->
         }
     }
 
-    Dialog {
-        open = props.open
-        onClose = props.onClose
-        onAction = ::send
-        fullSize = true
-        title = "Send feedback"
-        action = "Send"
-        disabledAction = sendingLock.running
+    ThemeProvider {
+        theme = { it.copy(colors = it.colors.copy(form = AltFormColors)) }
+        Dialog {
+            open = props.open
+            onClose = props.onClose
+            onAction = ::send
+            fullSize = true
+            title = "Send feedback"
+            action = "Send"
+            disabledAction = sendingLock.running
 
-        FormSection {
-            FormField {
-                title = "Your feedback"
-                MultilineTextInput {
-                    css {
-                        height = 8.em
+            FormSection {
+                FormField {
+                    title = "Your feedback"
+                    MultilineTextInput {
+                        css {
+                            height = 8.em
+                        }
+                        placeholder = "Write your feedback"
+                        value = feedbackText
+                        disabled = sendingLock.running
+                        onChange = { e -> feedbackText = e.target.value }
                     }
-                    placeholder = "Write your feedback"
-                    value = feedbackText
-                    disabled = sendingLock.running
-                    onChange = { e -> feedbackText = e.target.value }
                 }
-            }
 
-            FormField {
-                title = "Send to"
-                FullWidthSelect {
-                    value = sendTo.value
-                    onChange = { e ->
-                        sendTo = SendFeedbackTo.findByValue(e.target.value) ?: SendFeedbackTo.CONFIDO_DEVELOPERS
-                    }
-                    listOf(SendFeedbackTo.CONFIDO_DEVELOPERS).map { to ->
-                        option {
-                            value = to.value
-                            +to.optionName
+                FormField {
+                    title = "Send to"
+                    FullWidthSelect {
+                        value = sendTo.value
+                        onChange = { e ->
+                            sendTo = SendFeedbackTo.findByValue(e.target.value) ?: SendFeedbackTo.CONFIDO_DEVELOPERS
+                        }
+                        listOf(SendFeedbackTo.CONFIDO_DEVELOPERS).map { to ->
+                            option {
+                                value = to.value
+                                +to.optionName
+                            }
                         }
                     }
                 }
-            }
 
-            props.page?.let { context ->
-                FormSwitch {
-                    label = "Connect feedback to page"
-                    comment = "The recipient of the feedback will know that you are referring to the page “${context.pageName}”."
-                    checked = connectToPage
-                    onChange = { e -> connectToPage = e.target.checked }
+                props.page?.let { context ->
+                    FormSwitch {
+                        label = "Connect feedback to page"
+                        comment =
+                            "The recipient of the feedback will know that you are referring to the page “${context.pageName}”."
+                        checked = connectToPage
+                        onChange = { e -> connectToPage = e.target.checked }
+                    }
                 }
-            }
 
-            Button {
-                +"Send"
-                onClick = { send() }
-                disabled = sendingLock.running
+                Button {
+                    +"Send"
+                    onClick = { send() }
+                    disabled = sendingLock.running
+                }
             }
         }
     }

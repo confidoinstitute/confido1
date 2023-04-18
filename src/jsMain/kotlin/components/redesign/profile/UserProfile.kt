@@ -1,6 +1,7 @@
 package components.redesign.profile
 
 import components.AppStateContext
+import components.redesign.*
 import components.redesign.basic.Alert
 import components.redesign.basic.PageHeader
 import components.redesign.basic.Stack
@@ -87,106 +88,109 @@ val UserProfile = FC<Props> {
         action = "Save"
     }
 
-    Form {
-        onSubmit = {
-            editProfile()
-        }
-        FormSection {
-            FormField {
-                title = "Display nickname"
-                required = true
-                TextInput {
-                    name = "nick"
-                    value = nick
-                    onChange = {nick = it.target.value}
-                }
-                comment = if (editResult?.nickChanged == true)
-                    "Nickname was set."
-                else
-                    "Your nickname may appear whenever you comment or answer questions. You can change it at any time."
+    ThemeProvider {
+        theme = { theme -> theme.copy(colors = theme.colors.copy(form = AltFormColors)) }
+        Form {
+            onSubmit = {
+                editProfile()
             }
-
-            if (user?.emailVerified == false)
-                Alert {
-                    +"Your email is not verified!"
+            FormSection {
+                FormField {
+                    title = "Display nickname"
+                    required = true
+                    TextInput {
+                        name = "nick"
+                        value = nick
+                        onChange = { nick = it.target.value }
+                    }
+                    comment = if (editResult?.nickChanged == true)
+                        "Nickname was set."
+                    else
+                        "Your nickname may appear whenever you comment or answer questions. You can change it at any time."
                 }
 
-            FormField {
-                title = "E-mail address"
-                required = true
-                TextInput {
-                    name = "email"
-                    value = email
-                    type = InputType.email
-                    onChange = {email = it.target.value}
-                }
-                error = editResult?.emailError
-                comment = if (editResult?.emailChanged == true)
-                    "We sent you a verification e-mail, please check your inbox and verify your e-mail."
-                else
-                    "This email address is used for logging into your account and may be shown to other members of the organization."
-            }
-
-            FormField {
-                title = "Password"
-                Stack {
-                    css {
-                        width = 100.pct
-                        gap = 7.px
+                if (user?.emailVerified == false)
+                    Alert {
+                        +"Your email is not verified!"
                     }
 
-                    if (appState.myPasswordIsSet)
-                        TextInput {
-                            name = "old_password"
-                            type = InputType.password
-                            placeholder = "Old password"
-                            value = oldPassword
-                            onChange = {oldPassword = it.target.value}
+                FormField {
+                    title = "E-mail address"
+                    required = true
+                    TextInput {
+                        name = "email"
+                        value = email
+                        type = InputType.email
+                        onChange = { email = it.target.value }
+                    }
+                    error = editResult?.emailError
+                    comment = if (editResult?.emailChanged == true)
+                        "We sent you a verification e-mail, please check your inbox and verify your e-mail."
+                    else
+                        "This email address is used for logging into your account and may be shown to other members of the organization."
+                }
+
+                FormField {
+                    title = "Password"
+                    Stack {
+                        css {
+                            width = 100.pct
+                            gap = 7.px
                         }
-                    TextInput {
-                        name = "new_password"
-                        type = InputType.password
-                        placeholder = "New password"
-                        value = newPassword
-                        onChange = {newPassword = it.target.value}
-                    }
-                    TextInput {
-                        name = "confirm_password"
-                        type = InputType.password
-                        placeholder = "Confirm new password"
-                        value = confirmPassword
-                        onChange = {confirmPassword = it.target.value}
-                    }
-                    if (appState.myPasswordIsSet && !passwordReset)
-                        TextButton {
-                            type = ButtonType.button
-                            css {
-                                margin = 0.px
+
+                        if (appState.myPasswordIsSet)
+                            TextInput {
+                                name = "old_password"
+                                type = InputType.password
+                                placeholder = "Old password"
+                                value = oldPassword
+                                onChange = { oldPassword = it.target.value }
                             }
-                            onClick = {resetPassword()}
-                            +"Reset password"
+                        TextInput {
+                            name = "new_password"
+                            type = InputType.password
+                            placeholder = "New password"
+                            value = newPassword
+                            onChange = { newPassword = it.target.value }
                         }
-                }
-                error = editResult?.passwordError
-                comment = if (!appState.myPasswordIsSet)
-                    "Your password is not set."
-                else if (passwordReset)
-                    "Password reset request was sent."
-                else if (editResult?.passwordChanged == true)
-                    "Password was set."
-                else ""
-            }
-
-            Stack {
-                Button {
-                    type = ButtonType.submit
-                    css {
-                        display = Display.block
-                        margin = Margin(20.px, 20.px, 10.px)
-                        fontWeight = integer(500)
+                        TextInput {
+                            name = "confirm_password"
+                            type = InputType.password
+                            placeholder = "Confirm new password"
+                            value = confirmPassword
+                            onChange = { confirmPassword = it.target.value }
+                        }
+                        if (appState.myPasswordIsSet && !passwordReset)
+                            TextButton {
+                                type = ButtonType.button
+                                css {
+                                    margin = 0.px
+                                }
+                                onClick = { resetPassword() }
+                                +"Reset password"
+                            }
                     }
-                    +"Edit profile"
-                    disabled = (stale || edit.running)
+                    error = editResult?.passwordError
+                    comment = if (!appState.myPasswordIsSet)
+                        "Your password is not set."
+                    else if (passwordReset)
+                        "Password reset request was sent."
+                    else if (editResult?.passwordChanged == true)
+                        "Password was set."
+                    else ""
+                }
+
+                Stack {
+                    Button {
+                        type = ButtonType.submit
+                        css {
+                            display = Display.block
+                            margin = Margin(20.px, 20.px, 10.px)
+                            fontWeight = integer(500)
+                        }
+                        +"Edit profile"
+                        disabled = (stale || edit.running)
+                    }
                 }
             }
         }

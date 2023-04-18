@@ -13,15 +13,18 @@ import components.redesign.profile.UserProfile
 import components.redesign.profile.VerifyToken
 import components.redesign.rooms.*
 import csstype.*
-import emotion.react.*
+import emotion.react.css
 import react.*
 import react.router.*
 import tools.confido.state.*
 
 val RootLayout = FC<Props> {
-    AppStateWebsocketProvider {
-        loadingComponent = LoadingLayout
-        RootLayoutInner {}
+    ThemeProvider {
+        theme = { _ -> DefaultTheme }
+        AppStateWebsocketProvider {
+            loadingComponent = LoadingLayout
+            RootLayoutInner {}
+        }
     }
 }
 
