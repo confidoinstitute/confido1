@@ -2,8 +2,10 @@ package components.redesign.questions
 
 import components.redesign.basic.*
 import csstype.*
+import dom.html.HTMLDivElement
 import emotion.css.*
 import emotion.react.*
+import hooks.usePureClick
 import react.*
 import react.dom.html.ReactHTML.div
 import tools.confido.distributions.*
@@ -75,15 +77,41 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
         if (center != null && ciWidth != null) findDistribution(space, center!!, ciWidth!!)
         else null
     }
-    //useEffect(dist?.pseudoMean, dist?.pseudoStdev, didChange) {
-    //    if (didChange) dist?.let { props.onChange?.invoke(dist) }
-    //}
     fun update(newCenter: Double, newCIWidth: Double, isCommit: Boolean) {
         val newDist = findDistribution(space, newCenter, newCIWidth)
         props.onChange?.invoke(newDist)
         if (isCommit)
             props.onCommit?.invoke(newDist)
     }
+    val createEstimateRE = usePureClick<HTMLDivElement> { ev->
+        if (center == null) {
+            center = props.zoomState.viewportToContent(ev.offsetX)
+            didChange = true
+        }
+    }
+    val setUncertaintyRE = usePureClick<HTMLDivElement> { ev->
+        // set ciWidth so that a blue thumb ends up where you clicked
+        console.log("zs=${props.zoomState} center=${center}")
+        if(dist == null) {
+            center?.let {center->
+                val desiredCIBoundary =
+                    props.zoomState.viewportToContent(ev.clientX.toDouble() - props.element.getBoundingClientRect().left)
+                val desiredCIRadius = abs(center - desiredCIBoundary)
+                val newCIWidth = if (center - desiredCIRadius < space.min)
+                    desiredCIBoundary - space.min
+                else if (center + desiredCIRadius > space.max)
+                    space.max - desiredCIBoundary
+                else
+                    2 * desiredCIRadius
+                ciWidth = newCIWidth
+                didChange = true
+                update(center, newCIWidth, true)
+            }
+        }
+    }
+    //useEffect(dist?.pseudoMean, dist?.pseudoStdev, didChange) {
+    //    if (didChange) dist?.let { props.onChange?.invoke(dist) }
+    //}
     //useEffect(dist?.pseudoMean, dist?.pseudoStdev, dragging) {
     //    if (!dragging) dist?.let { props.onCommit?.invoke(dist) }
     //}
@@ -191,10 +219,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
                         cursor = Cursor.default
                     }
                     +"Tap here to create an estimate"// TODO choose "tap"/"click" based on device
-                    onClick = { ev ->
-                        center = props.zoomState.viewportToContent(ev.nativeEvent.offsetX)
-                        didChange = true
-                    }
+                    ref = createEstimateRE
                 }
             } else if (dist == null) {
                 div {
@@ -225,21 +250,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
                             paddingRight = 10.px
                         }
                     }
-                    onClick = { ev ->
-                        // set ciWidth so that a blue thumb ends up where you clicked
-                        val desiredCIBoundary =
-                            props.zoomState.viewportToContent(ev.nativeEvent.clientX.toDouble() - props.element.getBoundingClientRect().left)
-                        val desiredCIRadius = abs(center!! - desiredCIBoundary)
-                        val newCIWidth = if (center!! - desiredCIRadius < space.min)
-                            desiredCIBoundary - space.min
-                        else if (center!! + desiredCIRadius > space.max)
-                            space.max - desiredCIBoundary
-                        else
-                            2 * desiredCIRadius
-                        ciWidth = newCIWidth
-                        didChange = true
-                        update(center!!, newCIWidth, true)
-                    }
+                    ref = setUncertaintyRE
                 }
 
             }
