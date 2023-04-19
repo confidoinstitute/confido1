@@ -137,9 +137,12 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
             this.numPredictors = props.question.numPredictors
             this.groupPrediction = groupPrediction.data
         }
-        QuestionCommentSection {
-            this.question = props.question
-            this.myPrediction = myPrediction
+        if (props.question.allowComments && appState.hasPermission(room, RoomPermission.VIEW_QUESTION_COMMENTS)) {
+            QuestionCommentSection {
+                this.question = props.question
+                this.myPrediction = myPrediction
+                this.allowAddingComment = appState.hasPermission(room, RoomPermission.POST_QUESTION_COMMENT) && props.question.allowComments
+            }
         }
     }
 }
@@ -443,14 +446,22 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
             }
 
             else -> {
-                // TODO: Proper loading design
-                +"Loading..."
+                div {
+                    css {
+                        padding = Padding(5.px, 15.px)
+                        fontFamily = sansSerif
+                        fontSize = 15.px
+                    }
+                    +"Loading the discussion..."
+                }
             }
         }
     }
 
-    AddCommentButton {
-        onClick = { addCommentOpen = true }
+    if (props.allowAddingComment) {
+        AddCommentButton {
+            onClick = { addCommentOpen = true }
+        }
     }
 }
 

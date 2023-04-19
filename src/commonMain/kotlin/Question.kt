@@ -55,7 +55,8 @@ data class Question(
     val predictionTerminology: PredictionTerminology = PredictionTerminology.PREDICTION,
     val groupTerminology: GroupTerminology = GroupTerminology.GROUP,
     val visible: Boolean = true,
-    val open: Boolean = true, // submitting predictions allowed
+    /** Submitting predictions allowed */
+    val open: Boolean = true,
     val groupPredVisible: Boolean = false,
     val resolutionVisible: Boolean = false,
     val resolution: Value? = null,
