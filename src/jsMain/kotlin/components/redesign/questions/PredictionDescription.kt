@@ -5,6 +5,8 @@ import csstype.*
 import emotion.react.*
 import react.*
 import react.dom.html.*
+import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.b
 import tools.confido.distributions.*
 import tools.confido.question.*
 import tools.confido.utils.*
@@ -26,27 +28,32 @@ val predictorCountColor = Color("#FF6B00")
 val yesColor = Color("#00CC2E")
 val noColor = Color("#FF5555")
 
+val descriptionClass = emotion.css.ClassName {
+    padding = Padding(25.px, 15.px)
+    gap = 10.px
+    color = Color("#222222")
+    fontWeight = integer(500)
+    fontFamily = sansSerif
+    fontSize = 15.px
+    lineHeight = 18.px
+}
 
 val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
     val predTerm = props.predictionTerminology
     Stack {
-        css {
-            padding = Padding(25.px, 15.px)
-            gap = 10.px
-            color = Color("#222222")
-            fontWeight = integer(500)
-            fontFamily = sansSerif
-            fontSize = 15.px
-            lineHeight = 18.px
-        }
-        ReactHTML.div {
+        css(descriptionClass) {}
+        div {
             if (!props.resolved) {
                 +"So far, "
             }
             if (props.numPredictors == 0) {
-                ReactHTML.b {
+                b {
                     css { this.color = predictorCountColor }
-                    +"nobody "
+                    if (props.resolved) {
+                        +"Nobody "
+                    } else {
+                        +"nobody "
+                    }
                 }
                 +"added ${predTerm.aTerm}."
             } else if (props.numPredictors == 1 && props.myPredictionExists) {
@@ -55,13 +62,13 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
                 } else {
                     +"only "
                 }
-                ReactHTML.b {
+                b {
                     css { this.color = predictorCountColor }
                     +"you "
                 }
                 +"added ${predTerm.aTerm}."
             } else {
-                ReactHTML.b {
+                b {
                     css { this.color = predictorCountColor }
                     +"${props.numPredictors} "
                 }
@@ -82,13 +89,13 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
                     answer = "Yes"
                     prob = dist.yesProb
                 }
-                ReactHTML.div {
+                div {
                     if (props.resolved) {
                         +"The group thought there was a "
                     } else {
                         +"The group thinks there is a "
                     }
-                    ReactHTML.b {
+                    b {
                         css { this.color = optionColor }
                         +"${formatPercent(prob, space = false)} "
                     }
@@ -97,7 +104,7 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
                     } else {
                         +"chance that the answer is "
                     }
-                    ReactHTML.b {
+                    b {
                         css { this.color = optionColor }
                         +answer
                     }
@@ -109,13 +116,13 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
                 val medianColor = Color("#00CC2E")
                 val confidenceColor = Color("#00C2FF")
                 val rangeColor = Color("#0066FF")
-                ReactHTML.div {
+                div {
                     if (props.resolved) {
                         +"The median estimate of the answer was "
                     } else {
                         +"The median estimate of the answer is "
                     }
-                    ReactHTML.b {
+                    b {
                         css { this.color = medianColor }
                         +dist.space.formatValue(dist.median)
                     }
@@ -124,13 +131,13 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
 
                 val confidence = 0.8
                 val confidenceInterval = dist.confidenceInterval(confidence, preferredCenter = dist.median)
-                ReactHTML.div {
+                div {
                     if (props.resolved) {
                         +"The group believed with "
                     } else {
                         +"The group believes with "
                     }
-                    ReactHTML.b {
+                    b {
                         css { this.color = confidenceColor }
                         +"${formatPercent(confidence, space = false)} "
                     }
@@ -139,20 +146,17 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
                     } else {
                         +"confidence that the answer is between "
                     }
-                    ReactHTML.b {
+                    b {
                         css { this.color = rangeColor }
                         +"${dist.space.formatValue(confidenceInterval.start)} "
                     }
                     +"and "
-                    ReactHTML.b {
+                    b {
                         css { this.color = rangeColor }
                         +dist.space.formatValue(confidenceInterval.endInclusive)
                     }
                     +"."
                 }
-            }
-
-            else -> {
             }
         }
     }
@@ -160,15 +164,7 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
 
 val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
     Stack {
-        css {
-            padding = Padding(25.px, 15.px)
-            gap = 10.px
-            color = Color("#222222")
-            fontWeight = integer(500)
-            fontFamily = sansSerif
-            fontSize = 15.px
-            lineHeight = 18.px
-        }
+        css(descriptionClass) {}
         when (val dist = props.dist) {
             is BinaryDistribution -> {
                 var optionColor = noColor
@@ -247,9 +243,6 @@ val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
                     }
                     +"."
                 }
-            }
-
-            else -> {
             }
         }
     }
