@@ -47,9 +47,7 @@ internal val EditQuestionDialogResolution = FC<EditQuestionDialogResolutionProps
 
     useEffect(props.value) {
         if (questionType == null) {
-            binaryResolution = null
-            numericResolution = null
-            dateResolution = null
+            return@useEffect
         }
         when (val value = props.value) {
             is BinaryValue -> binaryResolution = value.value
