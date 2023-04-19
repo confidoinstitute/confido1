@@ -9,7 +9,6 @@ import components.redesign.basic.*
 import components.redesign.comments.*
 import components.redesign.comments.Comment
 import components.redesign.comments.CommentInputVariant
-import components.redesign.feedback.*
 import components.redesign.forms.*
 import components.redesign.questions.dialog.*
 import components.redesign.questions.dialog.EditQuestionDialog
@@ -59,6 +58,7 @@ external interface QuestionEstimateSectionProps : Props {
     var myPrediction: Prediction?
     var groupPrediction: Prediction?
     var numPredictors: Int
+    var hasPredictPermission: Boolean
 }
 
 external interface QuestionEstimateTabButtonProps : ButtonBaseProps {
@@ -68,6 +68,7 @@ external interface QuestionEstimateTabButtonProps : ButtonBaseProps {
 external interface QuestionCommentSectionProps : Props {
     var question: Question
     var myPrediction: Prediction?
+    var allowAddingComment: Boolean
 }
 
 external interface QuestionQuickSettingsDialogProps : Props {
@@ -136,6 +137,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
             this.myPrediction = myPrediction
             this.numPredictors = props.question.numPredictors
             this.groupPrediction = groupPrediction.data
+            this.hasPredictPermission = appState.hasPermission(room, RoomPermission.SUBMIT_PREDICTION)
         }
         if (props.question.allowComments && appState.hasPermission(room, RoomPermission.VIEW_QUESTION_COMMENTS)) {
             QuestionCommentSection {
@@ -179,10 +181,32 @@ private val QuestionEstimateTabButton = ButtonBase.withStyle<QuestionEstimateTab
     }
 }
 
+private val PredictionOverlay = FC<PropsWithChildren> { props ->
+    div {
+        css {
+            zIndex = integer(10)
+            position = Position.absolute
+            top = 0.px
+            left = 0.px
+            width = 100.pct
+            height = 100.pct
+            backgroundColor = rgba(255, 255, 255, 0.75)
+            fontFamily = sansSerif
+            padding = Padding(52.px, 44.px)
+            textAlign = TextAlign.center
+            color = Color("#555555")
+            display = Display.flex
+            alignItems = AlignItems.center
+            justifyContent = JustifyContent.center
+        }
+        +props.children
+    }
+}
+
 private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props ->
+    val question = props.question
     // false = your estimate open
     // true = group estimate open
-    val question = props.question
     var groupPredictionOpen by useState(false)
 
     var pendingPrediction: ProbabilityDistribution? by useState(null) // to be submitted
@@ -272,32 +296,80 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                 css {
                     position = Position.relative
                 }
-                PredictionInput {
-                    key="predictionInput"
-                    space = props.question.answerSpace
-                    this.dist = props.myPrediction?.dist
-                    this.disabled = !question.open
-                    if (question.open) {
-                        this.onChange = {
-                            pendingPrediction = null
-                            console.log("ONCHANGE")
-                            pendingPredictionState = PendingPredictionState.NONE
-                            predictionPreview = it
+                if (question.open || props.myPrediction != null) {
+                    PredictionInput {
+                        key = "predictionInput"
+                        space = props.question.answerSpace
+                        this.dist = props.myPrediction?.dist
+                        this.disabled = !question.open || !props.hasPredictPermission
+                        if (question.open) {
+                            this.onChange = {
+                                pendingPrediction = null
+                                console.log("ONCHANGE")
+                                pendingPredictionState = PendingPredictionState.NONE
+                                predictionPreview = it
+                            }
+                            this.onCommit = {
+                                console.log("ONCOMMIT")
+                                pendingPredictionState = PendingPredictionState.MAKING
+                                pendingPrediction = it
+                                predictionPreview = null
+                            }
                         }
-                        this.onCommit = {
-                            console.log("ONCOMMIT")
-                            pendingPredictionState = PendingPredictionState.MAKING
-                            pendingPrediction = it
-                            predictionPreview = null
+                    }
+                    if (!props.hasPredictPermission) {
+                        PredictionOverlay {
+                            +when (props.question.predictionTerminology) {
+                                PredictionTerminology.PREDICTION -> "You are not allowed to make predictions with your role."
+                                PredictionTerminology.ANSWER -> "You are not allowed to answer with your role."
+                                PredictionTerminology.ESTIMATE -> "You are not allowed to make estimates with your role."
+                            }
+                        }
+                    }
+                } else {
+                    // The question is closed and no prediction has been made.
+                    // We show just the graph instead of a disabled input with a slider.
+                    PredictionGraph {
+                        key = "groupPredictionBox"
+                        space = props.question.answerSpace
+                        dist = null
+                    }
+                    PredictionOverlay {
+                        +when (props.question.predictionTerminology) {
+                            PredictionTerminology.PREDICTION -> "You did not make any predictions."
+                            PredictionTerminology.ANSWER -> "You did not answer this question."
+                            PredictionTerminology.ESTIMATE -> "You did not make any estimates."
                         }
                     }
                 }
             }
         } else {
-            PredictionGraph {
-                key = "groupPredictionBox"
-                space = props.question.answerSpace
-                dist = props.groupPrediction?.dist
+            div {
+                css {
+                    position = Position.relative
+                }
+                PredictionGraph {
+                    key = "groupPredictionBox"
+                    space = props.question.answerSpace
+                    dist = props.groupPrediction?.dist
+                }
+                if (props.numPredictors == 0) {
+                    PredictionOverlay {
+                        if (props.question.open) {
+                            +when (props.question.predictionTerminology) {
+                                PredictionTerminology.PREDICTION -> "There are no predictions yet."
+                                PredictionTerminology.ANSWER -> "There are no answers yet."
+                                PredictionTerminology.ESTIMATE -> "There are no estimates yet."
+                            }
+                        } else {
+                            +when (props.question.predictionTerminology) {
+                                PredictionTerminology.PREDICTION -> "No predictions were made."
+                                PredictionTerminology.ANSWER -> "No answers were made."
+                                PredictionTerminology.ESTIMATE -> "No estimates were made."
+                            }
+                        }
+                    }
+                }
             }
         }
     }
