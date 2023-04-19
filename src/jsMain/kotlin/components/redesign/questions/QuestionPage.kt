@@ -358,11 +358,12 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     space = props.question.answerSpace
                     dist = props.groupPrediction?.dist
                 }
-                if (question.groupPredictionVisibility == GroupPredictionVisibility.ANSWERED && props.myPrediction == null) {
+                val canViewAll = appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+                if (question.groupPredictionVisibility == GroupPredictionVisibility.ANSWERED && props.myPrediction == null && !canViewAll) {
                     PredictionOverlay {
                         +"You will be able to see the group $predictionTerm once you add your own."
                     }
-                } else if (question.groupPredictionVisibility == GroupPredictionVisibility.MODERATOR_ONLY && !appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)) {
+                } else if (question.groupPredictionVisibility == GroupPredictionVisibility.MODERATOR_ONLY && !canViewAll) {
                     PredictionOverlay {
                         +"The group $predictionTerm is hidden."
                     }
