@@ -205,9 +205,9 @@ private val PredictionOverlay = FC<PropsWithChildren> { props ->
 
 private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props ->
     val question = props.question
-    // false = your estimate open
-    // true = group estimate open
-    var groupPredictionOpen by useState(false)
+    // false = your estimate open, true = group estimate open
+    // Open group prediction by default. If the user has no permission to predict, your estimate tab is not useful.
+    var groupPredictionOpen by useState(!props.hasPredictPermission)
 
     var pendingPrediction: ProbabilityDistribution? by useState(null) // to be submitted
     var predictionPreview: ProbabilityDistribution? by useState(null) // continuously updated preview
