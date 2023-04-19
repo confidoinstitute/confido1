@@ -68,7 +68,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
                     serverState.questionManager.modifyEntity(ref) {
                         when (editQuestion.fieldType) {
                             EditQuestionFieldType.VISIBLE ->
-                                it.copy(visible = editQuestion.value, open = it.open && editQuestion.value)
+                                it.copy(visible = editQuestion.value)
                             EditQuestionFieldType.OPEN ->
                                 it.copy(open = editQuestion.value)
                             EditQuestionFieldType.GROUP_PRED_VISIBLE ->
