@@ -46,6 +46,7 @@ external interface QuestionHeaderProps : Props {
     var text: String
     var description: String
     var resolution: Value?
+    var isHidden: Boolean
 }
 
 external interface QuestionStatusProps : Props {
@@ -129,6 +130,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
             if (props.question.resolutionVisible) {
                 this.resolution = props.question.resolution
             }
+            this.isHidden = !props.question.visible
         }
         QuestionPredictionSection {
             this.question = props.question
@@ -428,11 +430,19 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
         //}
 
         // Resolution
-        props.resolution?.let {
+        if (props.resolution != null) {
             QuestionStatusLine {
                 // TODO: time of resolution (requires backend)
                 text = "Resolved"
             }
+        }
+        if (props.isHidden) {
+            QuestionStatusLine {
+                text = "This question is hidden from participants"
+            }
+        }
+
+        props.resolution?.let {
             div {
                 css {
                     fontFamily = serif
