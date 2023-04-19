@@ -61,7 +61,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
     Link {
         css(LinkUnstyled) {
-            display = Display.flex;
+            display = Display.flex
             flexDirection = FlexDirection.column
             alignItems = AlignItems.flexStart
             padding = Padding(9.px, 16.px)
@@ -107,7 +107,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         // Question Frame
         div {
             css {
-                display = Display.flex;
+                display = Display.flex
                 flexDirection = FlexDirection.row
                 alignItems = AlignItems.flexStart
                 padding = Padding(0.px, 0.px, 4.px)
@@ -127,7 +127,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         // "Footer" Frame
         div {
             css {
-                display = Display.flex;
+                display = Display.flex
                 flexDirection = FlexDirection.row
                 alignItems = AlignItems.flexEnd
                 justifyContent = JustifyContent.spaceBetween
@@ -140,7 +140,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             // Answers Frame
             div {
                 css {
-                    display = Display.flex;
+                    display = Display.flex
                     flexDirection = FlexDirection.row
                     alignItems = AlignItems.baseline
                     flex = None.none
@@ -163,7 +163,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             // Estimate Frame
             div {
                 css {
-                    display = Display.flex;
+                    display = Display.flex
                     flexDirection = FlexDirection.column
                     alignItems = AlignItems.flexStart
 
@@ -262,7 +262,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                             if (props.question.numPredictions == 0) {
                                 +"be the first to answer!"
                             } else {
-                                if (props.question.groupPredVisible) {
+                                if (props.question.groupPredictionVisibility == GroupPredictionVisibility.ANSWERED) {
                                     +"answer to see the group $predictionTerm"
                                 } else {
                                     +"add your $predictionTerm"

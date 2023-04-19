@@ -15,6 +15,7 @@ import payloads.responses.*
 import rooms.*
 import tools.confido.application.*
 import tools.confido.application.sessions.*
+import tools.confido.question.GroupPredictionVisibility
 import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.state.*
@@ -206,10 +207,18 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
     }
     getWS("/state$roomUrl/group_pred") {
         withRoom {
-            val canViewPred = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+            val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
 
             val groupPreds = room.questions.associateWith { ref ->
-                if (canViewPred || ref.deref()?.groupPredVisible == true) serverState.groupPred[ref] else null
+                val lastPrediction = serverState.userPred[ref]?.get(user.ref)
+                val canView = when (ref.deref()?.groupPredictionVisibility) {
+                    GroupPredictionVisibility.EVERYONE -> true
+                    GroupPredictionVisibility.ANSWERED -> lastPrediction != null
+                    GroupPredictionVisibility.MODERATOR_ONLY -> false
+                    null -> false
+                }
+
+                if (canViewAll || canView) serverState.groupPred[ref] else null
             }
             groupPreds
         }

@@ -45,6 +45,48 @@ enum class GroupTerminology: Terminology {
     TEAM;
 }
 
+enum class GroupPredictionVisibility: Terminology {
+    EVERYONE,
+    ANSWERED,
+    MODERATOR_ONLY;
+
+    val groupPredVisible get() = when (this) {
+        EVERYONE -> true
+        ANSWERED -> true
+        MODERATOR_ONLY -> false
+    }
+
+    val groupPredRequirePrediction get() = when (this) {
+        EVERYONE -> false
+        ANSWERED -> true
+        MODERATOR_ONLY -> false
+    }
+
+    companion object {
+        internal fun fromBooleans(
+            groupPredVisible: Boolean, groupPredRequirePrediction: Boolean
+        ): GroupPredictionVisibility = when (groupPredVisible) {
+            true -> when (groupPredRequirePrediction) {
+                true -> ANSWERED
+                false -> EVERYONE
+            }
+
+            false -> MODERATOR_ONLY
+        }
+    }
+
+    /**
+     * Currently, this enum wraps two different booleans within the entity.
+     * This is a convenience function that sets both of them.
+     */
+    fun apply(question: Question): Question {
+        return question.copy(
+            groupPredVisible = groupPredVisible,
+            groupPredRequirePrediction = groupPredRequirePrediction
+        )
+    }
+}
+
 @Serializable
 data class Question(
     @SerialName("_id")
@@ -57,7 +99,18 @@ data class Question(
     val visible: Boolean = true,
     /** Submitting predictions allowed */
     val open: Boolean = true,
+    /**
+     * This value should be interpreted through [groupPredictionVisibility]
+     * which also includes the effects of [groupPredRequirePrediction].
+     */
+    @Deprecated("Use groupPredictionVisibility instead.")
     val groupPredVisible: Boolean = false,
+    /**
+     * This value should be interpreted through [groupPredictionVisibility]
+     * which also includes the effects of [groupPredVisible].
+     */
+    @Deprecated("Use groupPredictionVisibility instead.")
+    val groupPredRequirePrediction: Boolean = false,
     val resolutionVisible: Boolean = false,
     val resolution: Value? = null,
     val allowComments: Boolean = true,
@@ -72,6 +125,10 @@ data class Question(
     val resolved : Boolean get() = resolution != null
     val numPredictions get() = globalState.predictionCount[ref] ?: 0
     val numPredictors get() = globalState.predictorCount[ref] ?: 0
+
+    @Suppress("DEPRECATION")
+    val groupPredictionVisibility: GroupPredictionVisibility
+        get() = GroupPredictionVisibility.fromBooleans(groupPredVisible, groupPredRequirePrediction)
 
     override val urlPrefix get() = urlPrefix(id)
     companion object {

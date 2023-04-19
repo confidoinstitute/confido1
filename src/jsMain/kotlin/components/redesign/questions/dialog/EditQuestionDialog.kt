@@ -31,12 +31,6 @@ internal val Space.questionType: QuestionType
             is NumericSpace -> if (representsDays) QuestionType.DATE else QuestionType.NUMERIC
         }
 
-internal enum class GroupPredictionVisibility {
-    EVERYONE,
-    ANSWERED,
-    MODERATOR_ONLY,
-}
-
 internal enum class QuestionStatus {
     OPEN,
     CLOSED,
@@ -69,9 +63,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     var resolutionValid: Boolean by useState(false)
 
     // ANCHORING
-    var groupPredictionVisibility by useState {
-        if (props.entity?.groupPredVisible != true) GroupPredictionVisibility.MODERATOR_ONLY else GroupPredictionVisibility.EVERYONE
-    }
+    var groupPredictionVisibility by useState(props.entity?.groupPredictionVisibility ?: GroupPredictionVisibility.ANSWERED)
 
     // LANGUAGE
     var predictionTerminology by useState {
@@ -116,11 +108,8 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
             resolutionVisible = questionStatus == QuestionStatus.RESOLVED,
             resolution = resolution,
             // ANCHORING
-            groupPredVisible = when (groupPredictionVisibility) {
-                GroupPredictionVisibility.EVERYONE -> true
-                GroupPredictionVisibility.ANSWERED -> TODO() // No backend support
-                GroupPredictionVisibility.MODERATOR_ONLY -> false
-            },
+            groupPredVisible = groupPredictionVisibility.groupPredVisible,
+            groupPredRequirePrediction = groupPredictionVisibility.groupPredRequirePrediction,
             // TERMINOLOGY
             predictionTerminology = predictionTerminology,
             groupTerminology = groupTerminology,
@@ -207,8 +196,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                         title = "Group answer visible to"
                         options = listOf(
                             GroupPredictionVisibility.EVERYONE to "all room members",
-                            // TODO: Backend support
-                            //GroupPredictionVisibility.ANSWERED to "those who answered",
+                            GroupPredictionVisibility.ANSWERED to "those who answered",
                             GroupPredictionVisibility.MODERATOR_ONLY to "moderators only",
                         )
                         value = groupPredictionVisibility

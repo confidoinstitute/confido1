@@ -154,9 +154,18 @@ fun questionRoutes(routing: Routing) = routing.apply {
     // View group predictions
     getWS("/state$questionUrl/group_pred") {
         withQuestion {
-            if (!(room.hasPermission(user, RoomPermission.VIEW_QUESTIONS) && question.groupPredVisible)
-                && !room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
-            )
+            assertPermission(RoomPermission.VIEW_QUESTIONS, "You cannot view this group prediction.")
+
+            val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+            val lastPrediction = serverState.userPred[ref]?.get(user.ref)
+            val canView = when (ref.deref()?.groupPredictionVisibility) {
+                GroupPredictionVisibility.EVERYONE -> true
+                GroupPredictionVisibility.ANSWERED -> lastPrediction != null
+                GroupPredictionVisibility.MODERATOR_ONLY -> false
+                null -> false
+            }
+
+            if (!(canViewAll || canView))
                 unauthorized("You cannot view this group prediction.")
 
             serverState.groupPred[question.ref]?.let {

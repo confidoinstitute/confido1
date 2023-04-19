@@ -58,7 +58,6 @@ external interface QuestionEstimateSectionProps : Props {
     var myPrediction: Prediction?
     var groupPrediction: Prediction?
     var numPredictors: Int
-    var hasPredictPermission: Boolean
 }
 
 external interface QuestionEstimateTabButtonProps : ButtonBaseProps {
@@ -137,7 +136,6 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
             this.myPrediction = myPrediction
             this.numPredictors = props.question.numPredictors
             this.groupPrediction = groupPrediction.data
-            this.hasPredictPermission = appState.hasPermission(room, RoomPermission.SUBMIT_PREDICTION)
         }
         if (props.question.allowComments && appState.hasPermission(room, RoomPermission.VIEW_QUESTION_COMMENTS)) {
             QuestionCommentSection {
@@ -204,16 +202,21 @@ private val PredictionOverlay = FC<PropsWithChildren> { props ->
 }
 
 private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props ->
+    val (appState, stale) = useContext(AppStateContext)
+    val room = useContext(RoomContext)
+    val hasPredictPermission = appState.hasPermission(room, RoomPermission.SUBMIT_PREDICTION)
+
     val question = props.question
     // false = your estimate open, true = group estimate open
     // Open group prediction by default. If the user has no permission to predict, your estimate tab is not useful.
-    var groupPredictionOpen by useState(!props.hasPredictPermission)
+    var groupPredictionOpen by useState(!hasPredictPermission)
 
     var pendingPrediction: ProbabilityDistribution? by useState(null) // to be submitted
     var predictionPreview: ProbabilityDistribution? by useState(null) // continuously updated preview
     var pendingPredictionState by useState(PendingPredictionState.NONE)
 
-    val predictionTerm = question.predictionTerminology.name.lowercase()
+    val predictionTerm = question.predictionTerminology.term
+    val predictionTerms = question.predictionTerminology.plural
 
     useDebounce(5000, pendingPredictionState.toString()) {
         if (pendingPredictionState in listOf(PendingPredictionState.ACCEPTED, PendingPredictionState.ERROR))
@@ -299,12 +302,12 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
 
                 // We render the prediction input even when the question is closed as long as a prediction
                 // has been made, this allows the user to see the ranges selected on the slider.
-                if ((question.open || props.myPrediction != null) && props.hasPredictPermission) {
+                if ((question.open || props.myPrediction != null) && hasPredictPermission) {
                     PredictionInput {
                         key = "predictionInput"
                         space = props.question.answerSpace
                         this.dist = props.myPrediction?.dist
-                        this.disabled = !question.open || !props.hasPredictPermission
+                        this.disabled = !question.open || !hasPredictPermission
                         if (question.open) {
                             this.onChange = {
                                 pendingPrediction = null
@@ -329,7 +332,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                         dist = null
                     }
                     PredictionOverlay {
-                        if (!props.hasPredictPermission) {
+                        if (!hasPredictPermission) {
                             +when (props.question.predictionTerminology) {
                                 PredictionTerminology.PREDICTION -> "You are not allowed to make predictions with your role."
                                 PredictionTerminology.ANSWER -> "You are not allowed to answer with your role."
@@ -355,20 +358,20 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     space = props.question.answerSpace
                     dist = props.groupPrediction?.dist
                 }
-                if (props.numPredictors == 0) {
+                if (question.groupPredictionVisibility == GroupPredictionVisibility.ANSWERED && props.myPrediction == null) {
+                    PredictionOverlay {
+                        +"You will be able to see the group $predictionTerm once you add your own."
+                    }
+                } else if (question.groupPredictionVisibility == GroupPredictionVisibility.MODERATOR_ONLY && !appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)) {
+                    PredictionOverlay {
+                        +"The group $predictionTerm is hidden."
+                    }
+                } else if (props.numPredictors == 0) {
                     PredictionOverlay {
                         if (props.question.open) {
-                            +when (props.question.predictionTerminology) {
-                                PredictionTerminology.PREDICTION -> "There are no predictions yet."
-                                PredictionTerminology.ANSWER -> "There are no answers yet."
-                                PredictionTerminology.ESTIMATE -> "There are no estimates yet."
-                            }
+                            +"There are no $predictionTerms yet."
                         } else {
-                            +when (props.question.predictionTerminology) {
-                                PredictionTerminology.PREDICTION -> "No predictions were made."
-                                PredictionTerminology.ANSWER -> "No answers were made."
-                                PredictionTerminology.ESTIMATE -> "No estimates were made."
-                            }
+                            +"No $predictionTerms were made."
                         }
                     }
                 }
