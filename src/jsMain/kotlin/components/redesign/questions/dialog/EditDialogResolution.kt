@@ -116,7 +116,7 @@ internal val EditQuestionDialogResolution = FC<EditQuestionDialogResolutionProps
             else if (dateError)
                 error = "This is not a valid date."
             else if (!props.valid)
-                error = "This resolution is not within bounds of the answer space."
+                error = "This resolution is not within the answer range."
             if (props.value != null) {
                 if (props.status != QuestionStatus.RESOLVED)
                     comment = "Will be shown to room members when the status is changed to Resolved."
