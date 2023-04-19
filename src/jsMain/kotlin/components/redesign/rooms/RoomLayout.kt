@@ -140,11 +140,8 @@ val RoomLayout = FC<Props> {
         this.palette = palette
         navigateBack = "/"
         span {
-            css {
-                if (scrollY <= cutoff)
-                    visibility = Visibility.hidden
-            }
-            +room.name
+            if (scrollY > cutoff)
+                +room.name
         }
         onMenu = {
             dialogOpen = true
