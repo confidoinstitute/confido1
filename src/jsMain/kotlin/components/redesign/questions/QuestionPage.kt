@@ -367,7 +367,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     }
                 } else if (question.groupPredictionVisibility == GroupPredictionVisibility.MODERATOR_ONLY && !canViewAll) {
                     PredictionOverlay {
-                        +"The group $predictionTerm is hidden."
+                        +"The group $predictionTerm is currently only visible to moderators."
                     }
                 } else if (props.numPredictors == 0) {
                     PredictionOverlay {
