@@ -296,7 +296,10 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                 css {
                     position = Position.relative
                 }
-                if (question.open || props.myPrediction != null) {
+
+                // We render the prediction input even when the question is closed as long as a prediction
+                // has been made, this allows the user to see the ranges selected on the slider.
+                if ((question.open || props.myPrediction != null) && props.hasPredictPermission) {
                     PredictionInput {
                         key = "predictionInput"
                         space = props.question.answerSpace
@@ -317,17 +320,8 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                             }
                         }
                     }
-                    if (!props.hasPredictPermission) {
-                        PredictionOverlay {
-                            +when (props.question.predictionTerminology) {
-                                PredictionTerminology.PREDICTION -> "You are not allowed to make predictions with your role."
-                                PredictionTerminology.ANSWER -> "You are not allowed to answer with your role."
-                                PredictionTerminology.ESTIMATE -> "You are not allowed to make estimates with your role."
-                            }
-                        }
-                    }
                 } else {
-                    // The question is closed and no prediction has been made.
+                    // The question is closed and no prediction has been made, or the user has no permission to predict at all.
                     // We show just the graph instead of a disabled input with a slider.
                     PredictionGraph {
                         key = "groupPredictionBox"
@@ -335,10 +329,18 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                         dist = null
                     }
                     PredictionOverlay {
-                        +when (props.question.predictionTerminology) {
-                            PredictionTerminology.PREDICTION -> "You did not make any predictions."
-                            PredictionTerminology.ANSWER -> "You did not answer this question."
-                            PredictionTerminology.ESTIMATE -> "You did not make any estimates."
+                        if (!props.hasPredictPermission) {
+                            +when (props.question.predictionTerminology) {
+                                PredictionTerminology.PREDICTION -> "You are not allowed to make predictions with your role."
+                                PredictionTerminology.ANSWER -> "You are not allowed to answer with your role."
+                                PredictionTerminology.ESTIMATE -> "You are not allowed to make estimates with your role."
+                            }
+                        } else {
+                            +when (props.question.predictionTerminology) {
+                                PredictionTerminology.PREDICTION -> "You did not make any predictions."
+                                PredictionTerminology.ANSWER -> "You did not answer this question."
+                                PredictionTerminology.ESTIMATE -> "You did not make any estimates."
+                            }
                         }
                     }
                 }
