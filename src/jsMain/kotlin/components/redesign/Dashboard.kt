@@ -5,6 +5,7 @@ import components.*
 import components.redesign.basic.*
 import components.redesign.feedback.FeedbackMenuItem
 import components.redesign.forms.*
+import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.*
 import components.redesign.rooms.*
 import csstype.*
@@ -31,6 +32,7 @@ internal fun ChildrenBuilder.title(text: String) = div {
 
 val Dashboard = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
+    val layoutMode = useContext(LayoutModeContext)
 
     useDocumentTitleRaw("Confido")
 
@@ -42,59 +44,68 @@ val Dashboard = FC<Props> {
 
     header {
         css {
-            width = 100.pct
-            height = 60.px
-            position = Position.fixed
-            top = 0.px
             display = Display.flex
-            alignItems = AlignItems.center
-            gap = 9.px
-            padding = Padding(0.px, 20.px)
+            justifyContent = JustifyContent.center
             flexShrink = number(0.0)
+            height = 60.px
+            width = 100.pct
+            top = 0.px
+            position = Position.fixed
             backgroundColor = Color("#F2F2F2")
         }
-        appState.session.user?.let { user ->
-            div {
-                css {
-                    width = 36.px
-                    height = 36.px
-                    borderRadius = 50.pct
-                    backgroundColor = utils.stringToColor(user.id)
-                    flexShrink = number(0.0)
-                }
+
+        div {
+            css {
+                height = 60.px
+                display = Display.flex
+                alignItems = AlignItems.center
+                gap = 9.px
+                padding = Padding(0.px, 20.px)
+                width = layoutMode.contentWidth
             }
-            Stack {
-                css {
-                    flexGrow = number(1.0)
-                    flexShrink = number(1.0)
-                    overflow = Overflow.hidden
-                    textOverflow = TextOverflow.ellipsis
-                    whiteSpace = WhiteSpace.nowrap
-                }
+            appState.session.user?.let { user ->
                 div {
                     css {
-                        fontFamily = sansSerif
-                        fontWeight = integer(600)
-                        fontSize = 15.px
-                        lineHeight = 18.px
-                        color = Color("#222222")
+                        width = 36.px
+                        height = 36.px
+                        borderRadius = 50.pct
+                        backgroundColor = utils.stringToColor(user.id)
+                        flexShrink = number(0.0)
                     }
-                    +(user.nick ?: "Anonymous user")
                 }
-                div {
+                Stack {
                     css {
-                        fontFamily = sansSerif
-                        fontSize = 15.px
-                        lineHeight = 18.px
-                        color = Color("#777777")
+                        flexGrow = number(1.0)
+                        flexShrink = number(1.0)
+                        overflow = Overflow.hidden
+                        textOverflow = TextOverflow.ellipsis
+                        whiteSpace = WhiteSpace.nowrap
                     }
-                    +(user.email ?: "")
+                    div {
+                        css {
+                            fontFamily = sansSerif
+                            fontWeight = integer(600)
+                            fontSize = 15.px
+                            lineHeight = 18.px
+                            color = Color("#222222")
+                        }
+                        +(user.nick ?: "Anonymous user")
+                    }
+                    div {
+                        css {
+                            fontFamily = sansSerif
+                            fontSize = 15.px
+                            lineHeight = 18.px
+                            color = Color("#777777")
+                        }
+                        +(user.email ?: "")
+                    }
                 }
-            }
-            IconButton {
-                NavMenuIcon {}
-                onClick = {
-                    dialogOpen = true
+                IconButton {
+                    NavMenuIcon {}
+                    onClick = {
+                        dialogOpen = true
+                    }
                 }
             }
         }
@@ -108,6 +119,8 @@ val Dashboard = FC<Props> {
             flexDirection = FlexDirection.column
             overflow = Auto.auto
             gap = 12.px
+            width = layoutMode.contentWidth
+            alignSelf = AlignSelf.center
         }
 
         title("Recently opened")

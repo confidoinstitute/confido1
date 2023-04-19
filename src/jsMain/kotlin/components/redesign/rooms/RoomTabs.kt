@@ -2,6 +2,8 @@ package components.redesign.rooms
 
 import components.*
 import components.redesign.basic.*
+import components.redesign.layout.LayoutMode
+import components.redesign.layout.LayoutModeContext
 import components.rooms.*
 import csstype.*
 import dom.html.*
@@ -88,19 +90,21 @@ val RoomTabs = FC<RoomTabsProps> { props ->
     val room = useContext(RoomContext)
     val location = useLocation()
     val locationValue = location.pathname.split('/').getOrNull(3) ?: ""
+    val layoutMode = useContext(LayoutModeContext)
 
     Stack {
         direction = FlexDirection.row
         css(props.className) {
             padding = Padding(0.px, 10.px)
             backgroundColor = palette.color
+            justifyContent = JustifyContent.center
         }
 
         fun tab(to: String, label: String) {
             RoomTab {
                 this.palette = palette
                 css {
-                    flexGrow = number(1.0)
+                    flexGrow = if (layoutMode == LayoutMode.PHONE) number(1.0) else number(0.0)
                 }
                 this.to = to
                 this.replace = true

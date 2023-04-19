@@ -6,6 +6,8 @@ import components.redesign.basic.*
 import components.redesign.comments.*
 import components.redesign.comments.Comment
 import components.redesign.comments.CommentInputVariant
+import components.redesign.layout.LayoutMode
+import components.redesign.layout.LayoutModeContext
 import components.rooms.*
 import csstype.*
 import emotion.react.*
@@ -18,6 +20,7 @@ import rooms.*
 val RoomComments = FC<Props> {
     val (appState, _) = useContext(AppStateContext)
     val room = useContext(RoomContext)
+    val layoutMode = useContext(LayoutModeContext)
     val roomComments = useWebSocket<Map<String, CommentInfo>>("/state${room.urlPrefix}/comments")
 
     var addCommentOpen by useState(false)
@@ -61,6 +64,9 @@ val RoomComments = FC<Props> {
             paddingBottom = 8.px
             flexGrow = number(1.0)
             backgroundColor = Color("#f2f2f2")
+            maxWidth = layoutMode.contentWidth
+            marginLeft = Auto.auto
+            marginRight = Auto.auto
         }
         when (roomComments) {
             is WSData -> {

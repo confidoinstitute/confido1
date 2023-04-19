@@ -4,6 +4,8 @@ import components.*
 import components.questions.QuestionListProps
 import components.redesign.*
 import components.redesign.basic.*
+import components.redesign.layout.LayoutMode
+import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.*
 import components.redesign.questions.dialog.*
 import components.rooms.*
@@ -25,6 +27,7 @@ val QuestionList = FC<QuestionListProps> { props ->
     val room = useContext(RoomContext)
     val groupPredsWS = useWebSocket<Map<String, Prediction?>>("/state${room.urlPrefix}/group_pred")
     val groupPreds = groupPredsWS.data ?: emptyMap()
+    val layoutMode = useContext(LayoutModeContext)
 
     var sortType by useState(SortType.SET_BY_MODERATOR)
 
@@ -72,9 +75,11 @@ val QuestionList = FC<QuestionListProps> { props ->
             flexGrow = number(1.0)
 
             alignItems = AlignItems.stretch
-            padding = 20.px
+            padding = if (layoutMode >= LayoutMode.TABLET) Padding(20.px, 0.px) else 20.px
             gap = 20.px
-            width = 100.pct
+            maxWidth = layoutMode.contentWidth
+            marginLeft = Auto.auto
+            marginRight = Auto.auto
             position = Position.relative
             backgroundColor = Color("#f2f2f2")
         }

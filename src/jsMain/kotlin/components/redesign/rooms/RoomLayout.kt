@@ -5,6 +5,8 @@ import components.AppStateContext
 import components.redesign.*
 import components.redesign.basic.*
 import components.redesign.forms.Button
+import components.redesign.layout.LayoutMode
+import components.redesign.layout.LayoutModeContext
 import components.redesign.rooms.dialog.EditRoomSettingsDialog
 import components.rooms.RoomContext
 import csstype.*
@@ -33,19 +35,27 @@ val RoomHeaderButton = Button.withStyle {
 }
 
 val RoomHeader = FC<PropsWithChildren> { props ->
+    val layoutMode = useContext(LayoutModeContext)
     Stack {
         direction = FlexDirection.row
         css {
             backgroundColor = Color("#FFFFFF")
             borderBottom = Border(0.5.px, LineStyle.solid, Color("#CCCCCC"))
-            justifyContent = JustifyContent.spaceBetween
             padding = Padding(15.px, 14.px, 15.px, 15.px)
             position = Position.sticky
             top = 76.px
             zIndex = integer(20)
+            justifyContent = JustifyContent.center
         }
 
-        +props.children
+        Stack {
+            direction = FlexDirection.row
+            css {
+                width = layoutMode.contentWidth
+                justifyContent = JustifyContent.spaceBetween
+            }
+            +props.children
+        }
     }
 }
 

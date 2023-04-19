@@ -10,6 +10,7 @@ import components.redesign.basic.sansSerif
 import components.redesign.forms.FormDivider
 import components.redesign.forms.IconButton
 import components.redesign.forms.Select
+import components.redesign.layout.LayoutModeContext
 import components.redesign.rooms.dialog.AddMemberDialog
 import components.redesign.rooms.dialog.EditInviteDialog
 import components.redesign.rooms.dialog.InvitationQuickSettingsDialog
@@ -49,6 +50,7 @@ fun canChangeRole(appState: SentState, room: Room, role: RoomRole) =
 val RoomMembers = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
+    val layoutMode = useContext(LayoutModeContext)
 
     val groupedMembership = room.members.groupBy {
         it.invitedVia ?: if (it.user.deref()?.type?.isProper()?:false) "internal" else "guest"
@@ -76,49 +78,58 @@ val RoomMembers = FC<Props> {
         }
     }
 
-    groupedMembership["internal"]?.let {
-        FormDivider { +"Users from this organization" }
-        Stack {
-            css { gap = 10.px; padding = 15.px; backgroundColor = Color("#FFFFFF") }
-            it.map {
-                RoomMember {
-                    disabled = false
-                    membership = it
-                }
-            }
-        }
-    }
-    groupedMembership["guest"]?.let {
-        FormDivider {+"Temporary guests" }
-        Stack {
-            css { gap = 10.px }
-            css { gap = 10.px; padding = 15.px; backgroundColor = Color("#FFFFFF") }
-            it.map {
-                RoomMember {
-                    disabled = false
-                    membership = it
-                }
-            }
-        }
-    }
-    if (invitations.isNotEmpty()) {
-        FormDivider { +"Invitation links" }
-        invitations.entries.sortedBy { it.key.createdAt }.map { (invitation, maybeMembers) ->
-            Stack {
-                css { gap = 10.px; padding = 15.px; backgroundColor = Color("#FFFFFF") }
-                InvitationMembers {
-                    key = "invitation__" + invitation.token
-                    this.invitation = invitation
-                    this.members = maybeMembers
-                    this.onEditDialog = { editInviteLinkDialog(it) }
-                }
-            }
-        }
-    }
-    div {
+    Stack {
         css {
             flexGrow = number(1.0)
-            backgroundColor = Color("#ffffff")
+            width = layoutMode.contentWidth
+            marginLeft = Auto.auto
+            marginRight = Auto.auto
+
+        }
+        groupedMembership["internal"]?.let {
+            FormDivider { +"Users from this organization" }
+            Stack {
+                css { gap = 10.px; padding = 15.px; backgroundColor = Color("#FFFFFF") }
+                it.map {
+                    RoomMember {
+                        disabled = false
+                        membership = it
+                    }
+                }
+            }
+        }
+        groupedMembership["guest"]?.let {
+            FormDivider {+"Temporary guests" }
+            Stack {
+                css { gap = 10.px }
+                css { gap = 10.px; padding = 15.px; backgroundColor = Color("#FFFFFF") }
+                it.map {
+                    RoomMember {
+                        disabled = false
+                        membership = it
+                    }
+                }
+            }
+        }
+        if (invitations.isNotEmpty()) {
+            FormDivider { +"Invitation links" }
+            invitations.entries.sortedBy { it.key.createdAt }.map { (invitation, maybeMembers) ->
+                Stack {
+                    css { gap = 10.px; padding = 15.px; backgroundColor = Color("#FFFFFF") }
+                    InvitationMembers {
+                        key = "invitation__" + invitation.token
+                        this.invitation = invitation
+                        this.members = maybeMembers
+                        this.onEditDialog = { editInviteLinkDialog(it) }
+                    }
+                }
+            }
+        }
+        div {
+            css {
+                flexGrow = number(1.0)
+                backgroundColor = Color("#ffffff")
+            }
         }
     }
 }

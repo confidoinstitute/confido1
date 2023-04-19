@@ -10,6 +10,8 @@ import components.redesign.comments.*
 import components.redesign.comments.Comment
 import components.redesign.comments.CommentInputVariant
 import components.redesign.forms.*
+import components.redesign.layout.LayoutMode
+import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.dialog.*
 import components.redesign.questions.dialog.EditQuestionDialog
 import components.redesign.rooms.*
@@ -86,6 +88,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
     val room = useContext(RoomContext)
     val myPrediction = appState.myPredictions[props.question.ref]
     val groupPrediction = useWebSocket<Prediction?>("/state${props.question.urlPrefix}/group_pred")
+    val layoutMode = useContext(LayoutModeContext)
 
     var quickSettingsOpen by useState(false)
 
@@ -122,6 +125,9 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
             marginTop = 44.px
             flexDirection = FlexDirection.column
             flexGrow = number(1.0)
+            width = layoutMode.contentWidth
+            marginLeft = Auto.auto
+            marginRight = Auto.auto
         }
 
         QuestionHeader {
