@@ -31,6 +31,19 @@ data class QuestionContext(val inUser: User?, val question: Question) {
     fun assertPermission(permission: RoomPermission, message: String) {
         if (!room.hasPermission(user, permission)) unauthorized(message)
     }
+
+    fun assertGroupPredictionAccess(message: String) {
+        val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+        val lastPrediction = serverState.userPred[ref]?.get(user.ref)
+        val canView = when (ref.deref()?.groupPredictionVisibility) {
+            GroupPredictionVisibility.EVERYONE -> true
+            GroupPredictionVisibility.ANSWERED -> lastPrediction != null
+            GroupPredictionVisibility.MODERATOR_ONLY -> false
+            null -> false
+        }
+
+        if (!(canViewAll || canView)) unauthorized(message)
+    }
 }
 
 suspend fun <T> RouteBody.withQuestion(body: suspend QuestionContext.() -> T): T {
@@ -124,6 +137,8 @@ fun questionRoutes(routing: Routing) = routing.apply {
     // Get question updates
     getST("$questionUrl/updates") {
         val updates = withQuestion {
+            assertGroupPredictionAccess("You cannot view this group prediction.")
+
             val updates = serverState.groupPredHistManager.query(ref).map {
                 when (val dist = it.dist) {
                     is BinaryDistribution -> DistributionUpdate(
@@ -155,18 +170,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
     getWS("/state$questionUrl/group_pred") {
         withQuestion {
             assertPermission(RoomPermission.VIEW_QUESTIONS, "You cannot view this group prediction.")
-
-            val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
-            val lastPrediction = serverState.userPred[ref]?.get(user.ref)
-            val canView = when (ref.deref()?.groupPredictionVisibility) {
-                GroupPredictionVisibility.EVERYONE -> true
-                GroupPredictionVisibility.ANSWERED -> lastPrediction != null
-                GroupPredictionVisibility.MODERATOR_ONLY -> false
-                null -> false
-            }
-
-            if (!(canViewAll || canView))
-                unauthorized("You cannot view this group prediction.")
+            assertGroupPredictionAccess("You cannot view this group prediction.")
 
             serverState.groupPred[question.ref]?.let {
                 it
