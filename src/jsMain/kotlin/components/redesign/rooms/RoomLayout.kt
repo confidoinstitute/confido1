@@ -180,6 +180,7 @@ val RoomLayout = FC<Props> {
                 fontFamily = serif
                 textAlign = TextAlign.center
                 color = palette.text.color
+                padding = Padding(0.px, 10.px)
             }
             +room.name
         }
