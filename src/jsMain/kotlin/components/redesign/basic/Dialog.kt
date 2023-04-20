@@ -243,6 +243,9 @@ val DialogMenuSeparator = FC<DialogMenuItemProps> { props ->
             margin = Margin(15.px, 0.px)
             border = None.none
             borderBottom = Border(0.5.px, LineStyle.solid, Color("#DDDDDD"))
+            "& + &" {
+                display = None.none
+            }
         }
     }
 }
