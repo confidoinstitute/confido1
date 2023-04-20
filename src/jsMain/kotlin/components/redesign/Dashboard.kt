@@ -35,8 +35,6 @@ val Dashboard = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
     val layoutMode = useContext(LayoutModeContext)
 
-    useDocumentTitleRaw("Confido")
-
     var dialogOpen by useState(false)
     DashboardDialog {
         open = dialogOpen
