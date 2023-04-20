@@ -19,7 +19,7 @@ val RoomNavbar = FC<RoomNavbarProps> { props ->
 
     ReactHTML.nav {
         css {
-            position = Position.fixed
+            position = Position.sticky
             backgroundColor = palette.color
             display = Display.flex
             flexDirection = FlexDirection.row

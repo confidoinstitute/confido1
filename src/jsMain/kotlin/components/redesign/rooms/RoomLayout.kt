@@ -145,117 +145,121 @@ val RoomLayout = FC<Props> {
         }
     }
 
-    RoomNavbar {
-        this.palette = palette
-        navigateBack = "/"
-        span {
-            if (scrollY > cutoff)
-                +room.name
-        }
-        onMenu = {
-            dialogOpen = true
-        }
-    }
-    Stack {
-        component = header
-        css {
-            backgroundColor = palette.color
-            flexDirection = FlexDirection.column
-            height = 100.pct
-            paddingBottom = 32.px
-        }
+    Sidebar {
+        // TODO: connect
+        open = true
 
-        div {
-            css {
-                top = 44.px
-                position = Position.fixed
-                width = 100.pct
-                height = 30.px
-                background = linearGradient(stop(palette.color, 0.pct), stop(palette.color.addAlpha("0"), 100.pct))
-                zIndex = integer(1)
+        RoomNavbar {
+            this.palette = palette
+            navigateBack = "/"
+            span {
+                if (scrollY > cutoff)
+                    +room.name
+            }
+            onMenu = {
+                dialogOpen = true
             }
         }
-        div {
-            ref = size.ref
+        Stack {
+            component = header
             css {
-                marginTop = (60+44).px
-                width = 100.pct
-                fontSize = 26.px
-                lineHeight = 31.px
-                fontWeight = integer(700)
-                fontFamily = serif
-                textAlign = TextAlign.center
-                color = palette.text.color
-                padding = Padding(0.px, 10.px)
+                backgroundColor = palette.color
+                flexDirection = FlexDirection.column
+                paddingBottom = 32.px
             }
-            +room.name
-        }
-        div {
-            css {
-                paddingTop = 18.px
-                paddingBottom = 100.px
-                paddingLeft = 60.px
-                paddingRight = 60.px
-                textAlign = TextAlign.center
-                color = palette.text.color
-                fontFamily = sansSerif
-                fontSize = 16.px
-                lineHeight = 19.px
-                whiteSpace = WhiteSpace.preLine
-            }
-            ShowMoreText {
-                lines = 5
-                more = ReactNode("See more")
-                less = ReactNode("")
-                TextWithLinks {
-                    text = room.description
+
+            div {
+                css {
+                    top = 44.px
+                    position = Position.fixed
+                    width = 100.pct
+                    height = 30.px
+                    background = linearGradient(stop(palette.color, 0.pct), stop(palette.color.addAlpha("0"), 100.pct))
+                    zIndex = integer(1)
                 }
             }
-        }
-        div {
-            css {
-                position = Position.relative
-                top = (-44).px
+            div {
+                ref = size.ref
+                css {
+                    marginTop = (60+44).px
+                    width = 100.pct
+                    fontSize = 26.px
+                    lineHeight = 31.px
+                    fontWeight = integer(700)
+                    fontFamily = serif
+                    textAlign = TextAlign.center
+                    color = palette.text.color
+                    padding = Padding(0.px, 10.px)
+                }
+                +room.name
             }
-            ref = tabRef
-        }
-    }
-    RoomTabs {
-        this.palette = palette
-        css {
-            position = Position.sticky
-            top = 44.px
-            marginTop = -32.px
-            zIndex = integer(20)
-        }
-        onChange = ::scrollDownTabs
-    }
-    main {
-        css {
-            flexGrow = number(1.0)
-            display = Display.flex
-            flexDirection = FlexDirection.column
-        }
-        Routes {
-            if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
-                Route {
-                    index = true
-                    this.element = QuestionList.create {
-                        questions = room.questions.mapNotNull { it.deref() }
-                        showHiddenQuestions = appState.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
-                        allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
+            div {
+                css {
+                    paddingTop = 18.px
+                    paddingBottom = 100.px
+                    paddingLeft = 60.px
+                    paddingRight = 60.px
+                    textAlign = TextAlign.center
+                    color = palette.text.color
+                    fontFamily = sansSerif
+                    fontSize = 16.px
+                    lineHeight = 19.px
+                    whiteSpace = WhiteSpace.preLine
+                }
+                ShowMoreText {
+                    lines = 5
+                    more = ReactNode("See more")
+                    less = ReactNode("")
+                    TextWithLinks {
+                        text = room.description
                     }
                 }
-            if (appState.hasPermission(room, RoomPermission.VIEW_ROOM_COMMENTS))
-                Route {
-                    path = "discussion"
-                    this.element = RoomComments.create()
+            }
+            div {
+                css {
+                    position = Position.relative
+                    top = (-44).px
                 }
-            if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
-                Route {
-                    path = "members"
-                    this.element = RoomMembers.create()
-                }
+                ref = tabRef
+            }
+        }
+        RoomTabs {
+            this.palette = palette
+            css {
+                position = Position.sticky
+                top = 44.px
+                marginTop = -32.px
+                zIndex = integer(20)
+            }
+            onChange = ::scrollDownTabs
+        }
+        main {
+            css {
+                flexGrow = number(1.0)
+                display = Display.flex
+                flexDirection = FlexDirection.column
+            }
+            Routes {
+                if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
+                    Route {
+                        index = true
+                        this.element = QuestionList.create {
+                            questions = room.questions.mapNotNull { it.deref() }
+                            showHiddenQuestions = appState.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
+                            allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
+                        }
+                    }
+                if (appState.hasPermission(room, RoomPermission.VIEW_ROOM_COMMENTS))
+                    Route {
+                        path = "discussion"
+                        this.element = RoomComments.create()
+                    }
+                if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
+                    Route {
+                        path = "members"
+                        this.element = RoomMembers.create()
+                    }
+            }
         }
     }
 }

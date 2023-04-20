@@ -18,6 +18,7 @@ import react.dom.html.ReactHTML.header
 import react.dom.html.ReactHTML.main
 import react.router.useNavigate
 import tools.confido.refs.deref
+import users.User
 import utils.runCoroutine
 
 internal fun ChildrenBuilder.title(text: String, sidePad: Length) = div {
@@ -29,6 +30,57 @@ internal fun ChildrenBuilder.title(text: String, sidePad: Length) = div {
         color = Color("#999999")
     }
     +text
+}
+
+external interface WorkspaceFrameProps : PropsWithClassName {
+    var user: User
+}
+
+val WorkspaceFrame = FC<WorkspaceFrameProps> { props ->
+    Stack {
+        direction = FlexDirection.row
+        css(props.className) {
+            alignItems = AlignItems.center
+            gap = 9.px
+        }
+        div {
+            css {
+                width = 36.px
+                height = 36.px
+                borderRadius = 50.pct
+                backgroundColor = utils.stringToColor(props.user.id)
+                flexShrink = number(0.0)
+            }
+        }
+        Stack {
+            css {
+                flexGrow = number(1.0)
+                flexShrink = number(1.0)
+                overflow = Overflow.hidden
+                textOverflow = TextOverflow.ellipsis
+                whiteSpace = WhiteSpace.nowrap
+            }
+            div {
+                css {
+                    fontFamily = sansSerif
+                    fontWeight = integer(600)
+                    fontSize = 15.px
+                    lineHeight = 18.px
+                    color = Color("#222222")
+                }
+                +(props.user.nick ?: "Anonymous user")
+            }
+            div {
+                css {
+                    fontFamily = sansSerif
+                    fontSize = 15.px
+                    lineHeight = 18.px
+                    color = Color("#777777")
+                }
+                +(props.user.email ?: "")
+            }
+        }
+    }
 }
 
 val Dashboard = FC<Props> {
@@ -58,47 +110,16 @@ val Dashboard = FC<Props> {
                 height = 60.px
                 display = Display.flex
                 alignItems = AlignItems.center
-                gap = 9.px
                 padding = Padding(0.px, layoutMode.contentSidePad)
                 width = layoutMode.contentWidth
             }
             appState.session.user?.let { user ->
-                div {
-                    css {
-                        width = 36.px
-                        height = 36.px
-                        borderRadius = 50.pct
-                        backgroundColor = utils.stringToColor(user.id)
-                        flexShrink = number(0.0)
-                    }
-                }
-                Stack {
+                WorkspaceFrame {
                     css {
                         flexGrow = number(1.0)
                         flexShrink = number(1.0)
-                        overflow = Overflow.hidden
-                        textOverflow = TextOverflow.ellipsis
-                        whiteSpace = WhiteSpace.nowrap
                     }
-                    div {
-                        css {
-                            fontFamily = sansSerif
-                            fontWeight = integer(600)
-                            fontSize = 15.px
-                            lineHeight = 18.px
-                            color = Color("#222222")
-                        }
-                        +(user.nick ?: "Anonymous user")
-                    }
-                    div {
-                        css {
-                            fontFamily = sansSerif
-                            fontSize = 15.px
-                            lineHeight = 18.px
-                            color = Color("#777777")
-                        }
-                        +(user.email ?: "")
-                    }
+                    this.user = user
                 }
                 IconButton {
                     NavMenuIcon {}
