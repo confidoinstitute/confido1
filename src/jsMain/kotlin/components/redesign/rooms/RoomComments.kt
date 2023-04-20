@@ -102,8 +102,16 @@ val RoomComments = FC<Props> {
     }
 
     if (appState.hasPermission(room, RoomPermission.POST_ROOM_COMMENT)) {
-        AddCommentButton {
-            onClick = { addCommentOpen = true }
+        div {
+            css {
+                width = layoutMode.contentWidth
+                marginLeft = Auto.auto
+                marginRight = Auto.auto
+            }
+            AddCommentButton {
+                onClick = { addCommentOpen = true }
+
+            }
         }
     }
 }
