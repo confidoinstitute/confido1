@@ -120,15 +120,8 @@ external interface DialogCoreProps : PropsWithChildren, PropsWithRef<HTMLElement
 }
 
 val DialogCore = FC<DialogCoreProps> { props ->
-    val setBackground = useContext(BackdropContext)
     val nodeRef = useRef<HTMLElement>()
-    val dialogId = useId()
-    useEffect(props.open) {
-        if (props.open) setBackground.add(dialogId) else setBackground.del(dialogId)
-        cleanup {
-            setBackground.del(dialogId)
-        }
-    }
+    useBackdrop(props.open)
     Slide {
         appear = true
         `in` = props.open

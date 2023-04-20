@@ -74,3 +74,14 @@ val Backdrop = FC<BackdropProps> {props ->
             }
         }, document.body.asDynamic())
 }
+
+fun useBackdrop(open: Boolean) {
+    val setBackground = useContext(BackdropContext)
+    val dialogId = useId()
+    useEffect(open) {
+        if (open) setBackground.add(dialogId) else setBackground.del(dialogId)
+        cleanup {
+            setBackground.del(dialogId)
+        }
+    }
+}
