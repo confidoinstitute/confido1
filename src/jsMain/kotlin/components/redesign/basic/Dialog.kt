@@ -49,7 +49,6 @@ val Dialog = ForwardRef<HTMLElement, DialogProps> { props, fRef ->
 external interface DialogMenuProps : PropsWithChildren, PropsWithRef<HTMLElement> {
     var open: Boolean
     var onClose: (() -> Unit)?
-    var headerText: String?
 
     /** Defaults to true. */
     var hasCloseButton: Boolean?
@@ -61,19 +60,6 @@ val DialogMenu = ForwardRef<HTMLElement, DialogMenuProps> { props, fRef ->
         this.open = props.open
         this.onClose = props.onClose
         Stack {
-            props.headerText?.let {
-                div {
-                    css {
-                        color = Color("#BBBBBB")
-                        fontSize = 14.px
-                        lineHeight = 17.px
-                        fontWeight = integer(500)
-                        fontFamily = sansSerif
-                        padding = Padding(0.px, 15.px, 8.px)
-                    }
-                    +it
-                }
-            }
 
             +props.children
 
@@ -258,6 +244,24 @@ val DialogMenuSeparator = FC<DialogMenuItemProps> { props ->
             border = None.none
             borderBottom = Border(0.5.px, LineStyle.solid, Color("#DDDDDD"))
         }
+    }
+}
+
+external interface DialogMenuHeaderProps: PropsWithClassName {
+    var text: String
+}
+
+val DialogMenuHeader = FC<DialogMenuHeaderProps> { props->
+    div {
+        css(override=props) {
+            color = Color("#BBBBBB")
+            fontSize = 14.px
+            lineHeight = 17.px
+            fontWeight = integer(500)
+            fontFamily = sansSerif
+            padding = Padding(0.px, 15.px, 8.px)
+        }
+        +props.text
     }
 }
 

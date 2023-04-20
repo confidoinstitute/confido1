@@ -3,6 +3,7 @@ package components.redesign.rooms.dialog
 import components.AppStateContext
 import components.redesign.EditIcon
 import components.redesign.basic.DialogMenu
+import components.redesign.basic.DialogMenuHeader
 import components.redesign.basic.DialogMenuItem
 import components.redesign.basic.DialogMenuItemVariant
 import components.rooms.RoomContext
@@ -74,7 +75,9 @@ val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {prop
     DialogMenu {
         open = props.open && !deleting
         onClose = { deleting = false; props.onClose?.invoke() }
-        headerText = "Invitation link settings"
+        DialogMenuHeader {
+            text = "Invitation link settings"
+        }
         DialogMenuItem {
             text = "Copy link"
             // TODO icon
@@ -112,7 +115,9 @@ val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {prop
     DialogMenu {
         open = props.open && deleting
         onClose = { deleting = false; props.onClose?.invoke() }
-        headerText = "Delete invitation link"
+        DialogMenuHeader {
+            text = "Delete invitation link"
+        }
         div {
             css {
                 fontSize = 14.px
