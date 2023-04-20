@@ -54,7 +54,11 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
     val propDist = props.dist as? TruncatedNormalDistribution
     val disabled = props.disabled ?: false
     var center by useState(propDist?.pseudoMean)
-    var ciWidth by useState(propDist?.confidenceInterval(0.8)?.size)
+    // For CIWidth -> 0.8 this converges to uniform distribution
+    //     CIWidth > 0.8 there is no solution (the distribution would need to be convex) and distribution search
+    //     diverges, returns astronomically large stdev and creates weird artivacts
+    val maxCIWidth = 0.798 * space.size
+    var ciWidth by useState(propDist?.confidenceInterval(0.8)?.size?.coerceIn(0.0..maxCIWidth))
     var dragging by useState(false)
     val ciRadius = ciWidth?.let { it / 2.0 }
     val minCIRadius = props.zoomState.paperDistToContent(20.0) // do not allow the thumbs to overlap too much
@@ -78,7 +82,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
         else null
     }
     fun update(newCenter: Double, newCIWidth: Double, isCommit: Boolean) {
-        val newDist = findDistribution(space, newCenter, newCIWidth)
+        val newDist = findDistribution(space, newCenter, newCIWidth.coerceIn(0.0..maxCIWidth))
         props.onChange?.invoke(newDist)
         if (isCommit)
             props.onCommit?.invoke(newDist)
@@ -97,12 +101,12 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
                 val desiredCIBoundary =
                     props.zoomState.viewportToContent(ev.clientX.toDouble() - props.element.getBoundingClientRect().left)
                 val desiredCIRadius = abs(center - desiredCIBoundary)
-                val newCIWidth = if (center - desiredCIRadius < space.min)
+                val newCIWidth = (if (center - desiredCIRadius < space.min)
                     desiredCIBoundary - space.min
                 else if (center + desiredCIRadius > space.max)
                     space.max - desiredCIBoundary
                 else
-                    2 * desiredCIRadius
+                    2 * desiredCIRadius).coerceIn(0.0..maxCIWidth)
                 ciWidth = newCIWidth
                 didChange = true
                 update(center, newCIWidth, true)
@@ -142,11 +146,11 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
                     center?.let { center->
                         val effectivePos = minOf(pos, center - minCIRadius)
                         val naturalRadius = center - effectivePos
-                        val newCIWidth = if (center + naturalRadius > space.max) {
+                        val newCIWidth = (if (center + naturalRadius > space.max) {
                              space.max - effectivePos
                         } else {
                              2 * naturalRadius
-                        }
+                        }).coerceIn(0.0..maxCIWidth)
                         console.log("pos=$pos effectivePos=$effectivePos center=$center minCIradius=$minCIRadius newCIWidth=$newCIWidth")
                         ciWidth = newCIWidth
                         didChange = true
@@ -188,11 +192,11 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
                     center?.let { center->
                         val effectivePos = maxOf(pos, center + minCIRadius)
                         val naturalRadius = effectivePos - center
-                        val newCIWidth = if (center - naturalRadius < space.min) {
+                        val newCIWidth = (if (center - naturalRadius < space.min) {
                             effectivePos - space.min
                         } else {
                              2 * naturalRadius
-                        }
+                        }).coerceIn(0.0..maxCIWidth)
                         ciWidth = newCIWidth
                         didChange = true
                         update(center, newCIWidth, isCommit)
