@@ -60,7 +60,7 @@ val DialogMenu = ForwardRef<HTMLElement, DialogMenuProps> { props, fRef ->
         this.open = props.open
         this.onClose = props.onClose
         Stack {
-
+            div { className = ClassName("dialogmenu-start") }
             +props.children
 
 
@@ -243,6 +243,9 @@ val DialogMenuSeparator = FC<DialogMenuItemProps> { props ->
             margin = Margin(15.px, 0.px)
             border = None.none
             borderBottom = Border(0.5.px, LineStyle.solid, Color("#DDDDDD"))
+            ".dialogmenu-start + &" {
+                display = None.none
+            }
             "& + &" {
                 display = None.none
             }
