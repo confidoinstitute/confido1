@@ -18,6 +18,7 @@ import components.redesign.rooms.*
 import components.rooms.*
 import csstype.*
 import emotion.react.*
+import ext.showmoretext.ShowMoreText
 import hooks.*
 import io.ktor.http.*
 import kotlinx.js.*
@@ -29,6 +30,7 @@ import payloads.responses.*
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.main
+import react.dom.html.ReactHTML.span
 import react.router.*
 import rooms.*
 import tools.confido.distributions.*
@@ -405,6 +407,15 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
     }
 }
 
+private val ShortenedTextExpanderClass = emotion.css.ClassName {
+    textDecoration = None.none
+    color = MainPalette.primary.color
+    cursor = Cursor.pointer
+    hover {
+        filter = brightness(50.pct)
+    }
+}
+
 private val QuestionHeader = FC<QuestionHeaderProps> { props ->
     val layoutMode = useContext(LayoutModeContext)
     Stack {
@@ -473,9 +484,15 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
                 lineHeight = 18.px
                 color = Color("#000000")
             }
-            // TODO: clamp and show "See more" if text too long
-            TextWithLinks {
-                text = props.description
+            ShowMoreText {
+                lines = 3
+                anchorClass = ShortenedTextExpanderClass
+                more = ReactNode("See more")
+                less = ReactNode("")
+
+                TextWithLinks {
+                    text = props.description
+                }
             }
         }
     }
