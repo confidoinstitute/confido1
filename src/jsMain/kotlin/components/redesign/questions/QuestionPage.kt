@@ -211,6 +211,7 @@ private val PredictionOverlay = FC<PropsWithChildren> { props ->
 
 private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
+    val layoutMode = useContext(LayoutModeContext)
     val room = useContext(RoomContext)
     val hasPredictPermission = appState.hasPermission(room, RoomPermission.SUBMIT_PREDICTION)
 
@@ -250,7 +251,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
     // Tabs
     Stack {
         css {
-            padding = 15.px
+            padding = if (layoutMode >= LayoutMode.TABLET) Padding(15.px, 0.px) else 15.px
             background = bgColor
             borderRadius = 5.px
             flexShrink = number(0.0)
@@ -404,9 +405,10 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
 }
 
 private val QuestionHeader = FC<QuestionHeaderProps> { props ->
+    val layoutMode = useContext(LayoutModeContext)
     Stack {
         css {
-            padding = Padding(20.px, 15.px, 5.px)
+            padding = Padding(20.px, if (layoutMode >= LayoutMode.TABLET) 0.px else 15.px, 5.px)
             gap = 4.px
             background = bgColor
         }
