@@ -79,6 +79,7 @@ val Checkbox = FC<CheckboxProps> { props ->
                 left = 8.px
                 top = 9.px
                 opacity = number(0.0)
+                cursor = Cursor.pointer
                 transition = 0.1.s
                 "input:checked ~ &" {
                     opacity = number(1.0)
