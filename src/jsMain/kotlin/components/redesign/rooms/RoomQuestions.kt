@@ -75,6 +75,7 @@ val QuestionList = FC<QuestionListProps> { props ->
             flexGrow = number(1.0)
 
             alignItems = AlignItems.stretch
+            width = 100.pct
             padding = if (layoutMode >= LayoutMode.TABLET) Padding(20.px, 0.px) else 20.px
             gap = 20.px
             maxWidth = layoutMode.contentWidth

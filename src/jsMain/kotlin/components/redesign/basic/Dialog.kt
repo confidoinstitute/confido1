@@ -3,6 +3,8 @@ package components.redesign.basic
 import browser.*
 import components.redesign.feedback.FeedbackMenuItem
 import components.redesign.forms.*
+import components.redesign.layout.LayoutMode
+import components.redesign.layout.LayoutModeContext
 import components.redesign.transitions.*
 import csstype.*
 import dom.html.*
@@ -107,6 +109,7 @@ external interface DialogCoreProps : PropsWithChildren, PropsWithRef<HTMLElement
 
 val DialogCore = FC<DialogCoreProps> { props ->
     val nodeRef = useRef<HTMLElement>()
+    val layoutMode = useContext(LayoutModeContext)
     useBackdrop(props.open)
     Slide {
         appear = true
@@ -125,6 +128,11 @@ val DialogCore = FC<DialogCoreProps> { props ->
                     zIndex = integer(2100)
                     position = Position.fixed
                     bottom = 0.px
+                    if (layoutMode >= LayoutMode.TABLET) {
+                        width = 640.px
+                        marginLeft = "calc((100vw - 640px) / 2)" as Length
+                        marginRight = "calc((100vw - 640px) / 2)" as Length
+                    }
                 }
                 if (!props.fullSize)
                 div {
@@ -161,8 +169,31 @@ val DialogCore = FC<DialogCoreProps> { props ->
                         }
                         overflow = Auto.auto
                         backgroundColor = Color("#FFFFFF")
+
                     }
                     +props.children
+                }
+                if (!props.fullSize && layoutMode >= LayoutMode.TABLET) {
+
+                    div {
+                        css {
+                            borderBottomLeftRadius = 10.px
+                            borderBottomRightRadius = 10.px
+                            paddingBottom = 10.px
+                            flexBasis = 10.px
+                            flexGrow = number(0.0)
+                            flexShrink = number(0.0)
+                            backgroundColor = Color("#FFFFFF")
+                        }
+                    }
+                    div {
+                        css {
+                            flexGrow = number(1.0)
+                            flexBasis = 44.px
+                            flexShrink = number(0.0)
+                        }
+                        onClick = { props.onClose?.invoke(); it.preventDefault() }
+                    }
                 }
             }, document.body.asDynamic()
         )}
