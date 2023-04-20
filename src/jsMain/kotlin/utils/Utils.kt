@@ -207,15 +207,6 @@ inline fun runCoroutine(noinline coro: suspend CoroutineScope.() -> Unit) { Coro
 fun questionUrl(id: String) = Question.urlPrefix(id)
 fun roomUrl(id: String) = Room.urlPrefix(id)
 
-fun roomPalette(id: String): RoomPalette {
-    val base = id.fold(47) { acc, c ->
-        (acc * 257 + c.code) % 65537
-    }
-    return RoomPalette.values().let {
-        it[base % it.size]
-    }
-}
-
 private val oidMap = WeakMap<Any, Int>()
 private var oidMax = 0
 

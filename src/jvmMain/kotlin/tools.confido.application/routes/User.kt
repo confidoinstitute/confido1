@@ -392,7 +392,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
     // Verify that this invitation is still valid
     getST("/join/{token}/check") {
         suspend fun invalid() {
-            call.respond(HttpStatusCode.OK, InviteStatus(false, null, null, false))
+            call.respond(HttpStatusCode.OK, InviteStatus(false, null, null, null, false))
         }
 
         val token = call.parameters["token"] ?: return@getST invalid()
@@ -408,7 +408,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         val room = serverState.rooms.values.firstOrNull { it.inviteLinks.any(linkMatch) } ?: return@getST invalid()
         val invite = room.inviteLinks.find(linkMatch) ?: return@getST invalid()
 
-        call.respond(HttpStatusCode.OK, InviteStatus(true, room.name, room.ref, invite.allowAnonymous))
+        call.respond(HttpStatusCode.OK, InviteStatus(true, room.name, room.ref, room.color, invite.allowAnonymous))
     }
     // Create an invitation link
     postST("$roomUrl/invites/create") {

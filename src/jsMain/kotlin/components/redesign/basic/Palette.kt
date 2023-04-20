@@ -2,6 +2,7 @@ package components.redesign.basic
 
 import csstype.*
 import react.*
+import rooms.RoomColor
 
 interface Palette {
     val color: Color
@@ -61,4 +62,17 @@ fun Color.addAlpha(alpha: String): Color {
     val g = m.groupValues[2].toInt(16)
     val b = m.groupValues[3].toInt(16)
     return Color("rgba($r,$g,$b,$alpha)")
+}
+
+val RoomColor.palette: RoomPalette get() {
+    return when (this) {
+        RoomColor.RED -> RoomPalette.red
+        RoomColor.ORANGE -> RoomPalette.orange
+        RoomColor.YELLOW -> RoomPalette.yellow
+        RoomColor.GREEN -> RoomPalette.green
+        RoomColor.CYAN -> RoomPalette.cyan
+        RoomColor.BLUE -> RoomPalette.blue
+        RoomColor.MAGENTA -> RoomPalette.magenta
+        RoomColor.GRAY -> RoomPalette.gray
+    }
 }

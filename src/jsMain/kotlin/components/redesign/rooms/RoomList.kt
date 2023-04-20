@@ -68,7 +68,7 @@ val RoomList = FC<RoomListProps> {props ->
                 small = props.small
                 div {
                     css {
-                        backgroundColor = roomPalette(room.id).color
+                        backgroundColor = room.color.palette.color
                         borderRadius = 8.px
                         width = iconSize
                         height = iconSize

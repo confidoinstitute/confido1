@@ -5,10 +5,11 @@ import csstype.*
 import emotion.react.*
 import react.*
 import react.dom.html.ReactHTML.div
+import rooms.RoomColor
 
 external interface RoomColorChooserProps : Props {
-    var palette: RoomPalette?
-    var onChange: ((RoomPalette) -> Unit)?
+    var color: RoomColor?
+    var onChange: ((RoomColor) -> Unit)?
 }
 
 val RoomColorChooser = FC<RoomColorChooserProps> { props ->
@@ -33,12 +34,12 @@ val RoomColorChooser = FC<RoomColorChooserProps> { props ->
                 gap = 15.px
             }
 
-            RoomPalette.values().map { palette ->
+            RoomColor.values().map { color ->
                 Checkbox {
-                    this.palette = palette
-                    checked = props.palette == palette
+                    this.palette = color.palette
+                    checked = props.color == color
                     alwaysColorBackground = true
-                    onChange = { props.onChange?.invoke(palette) }
+                    onChange = { props.onChange?.invoke(color) }
                 }
             }
         }

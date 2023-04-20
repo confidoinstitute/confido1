@@ -1,10 +1,7 @@
 package components.rooms
 
 import components.AppStateContext
-import components.ClientAppState
-import csstype.AlignItems
 import csstype.JustifyContent
-import csstype.Margin
 import mui.material.*
 import mui.system.responsive
 import mui.system.sx
@@ -14,9 +11,9 @@ import react.dom.html.ButtonType
 import react.dom.html.ReactHTML.form
 import react.dom.onChange
 import rooms.Room
+import rooms.RoomColor
 import utils.byTheme
 import utils.eventValue
-import utils.themed
 
 external interface RoomInfoFormProps : Props {
     var room: Room?
@@ -35,6 +32,7 @@ val RoomInfoForm = FC<RoomInfoFormProps> { props ->
     var errorName by useState(false)
     var inputName by useState(props.room?.name ?: "")
     var inputDescription by useState(props.room?.description ?: "")
+    var inputColor by useState(props.room?.color ?: RoomColor.GRAY)
 
     form {
         onSubmit = {
@@ -42,7 +40,7 @@ val RoomInfoForm = FC<RoomInfoFormProps> { props ->
             if (!editMode && inputName.isEmpty()) {
                 errorName = true
             } else {
-                props.onSubmit?.invoke(BaseRoomInformation(inputName, inputDescription))
+                props.onSubmit?.invoke(BaseRoomInformation(inputName, inputDescription, inputColor))
             }
         }
 

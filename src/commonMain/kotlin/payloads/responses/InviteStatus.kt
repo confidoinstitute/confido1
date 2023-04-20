@@ -2,6 +2,7 @@ package payloads.responses
 
 import kotlinx.serialization.Serializable
 import rooms.Room
+import rooms.RoomColor
 import tools.confido.refs.Ref
 
 /**
@@ -16,5 +17,6 @@ data class InviteStatus(
     val valid: Boolean,
     val roomName: String?,
     val roomRef: Ref<Room>?,
+    val roomColor: RoomColor?,
     val allowAnonymous: Boolean,
 )

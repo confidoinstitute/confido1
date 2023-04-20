@@ -8,7 +8,6 @@ import react.dom.html.ReactHTML.div
 import react.router.dom.*
 import rooms.*
 import tools.confido.question.*
-import utils.*
 
 external interface QuestionStickerProps : Props {
     var room: Room
@@ -16,7 +15,7 @@ external interface QuestionStickerProps : Props {
 }
 
 val QuestionSticker = FC<QuestionStickerProps> {props ->
-    val palette = roomPalette(props.room.id)
+    val palette = props.room.color.palette
     Link {
         to = props.room.urlPrefix + props.question.urlPrefix
         css {

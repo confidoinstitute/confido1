@@ -89,6 +89,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
     val myPrediction = appState.myPredictions[props.question.ref]
     val groupPrediction = useWebSocket<Prediction?>("/state${props.question.urlPrefix}/group_pred")
     val layoutMode = useContext(LayoutModeContext)
+    val roomPalette = room.color.palette
 
     var quickSettingsOpen by useState(false)
 
@@ -98,7 +99,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
 
     Header {
         title = props.question.name
-        appBarColor = roomPalette(room.id).color
+        appBarColor = roomPalette.color
     }
 
     if (!room.hasPermission(appState.session.user, RoomPermission.VIEW_QUESTIONS))
@@ -114,7 +115,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
     }
 
     RoomNavbar {
-        palette = roomPalette(room.id)
+        palette = roomPalette
         navigateBack = room.urlPrefix
         onMenu = { quickSettingsOpen = true }
         +room.name
@@ -513,6 +514,10 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
         }
         if (comments.data?.isNotEmpty() == true) {
             SortButton {
+                css {
+                    paddingTop = 0.px
+                    paddingBottom = 0.px
+                }
                 options = listOf(SortType.NEWEST, SortType.OLDEST)
                 this.sortType = sortType
                 onChange = { sort -> sortType = sort }

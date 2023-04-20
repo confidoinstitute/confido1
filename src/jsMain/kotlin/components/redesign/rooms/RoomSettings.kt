@@ -9,7 +9,7 @@ import payloads.requests.BaseRoomInformation
 import react.*
 import react.dom.html.ButtonType
 import rooms.Room
-import utils.roomPalette
+import rooms.RoomColor
 
 external interface RoomSettingsProps : Props {
     var room: Room?
@@ -22,12 +22,13 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
 
     var name by useState(props.room?.name ?: "")
     var description by useState(props.room?.description ?: "")
+    var color by useState(props.room?.color ?: RoomColor.values().random())
 
-    useEffect(name, description) {
+    useEffect(name, description, color) {
         if (name.isEmpty())
             props.onChange?.invoke(null)
         else
-            props.onChange?.invoke(BaseRoomInformation(name, description))
+            props.onChange?.invoke(BaseRoomInformation(name, description, color))
     }
 
     Form {
@@ -41,7 +42,7 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                 TextInput {
                     placeholder = "Enter the room name"
                     value = name
-                    onChange = {name = it.target.value}
+                    onChange = { name = it.target.value }
                 }
             }
             FormField {
@@ -49,12 +50,13 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                 MultilineTextInput {
                     placeholder = "Explain what the questions in this room will be about"
                     value = description
-                    onChange = {description = it.target.value}
+                    onChange = { description = it.target.value }
                 }
                 comment = "The description should contain all resolution criteria."
             }
             RoomColorChooser {
-                palette = props.room?.id?.let {roomPalette(it)}
+                this.color = color
+                this.onChange = { color = it }
             }
             Stack {
                 Button {

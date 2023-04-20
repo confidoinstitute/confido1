@@ -5,7 +5,6 @@ import components.AppStateContext
 import components.redesign.*
 import components.redesign.basic.*
 import components.redesign.forms.Button
-import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.rooms.dialog.EditRoomSettingsDialog
 import components.rooms.RoomContext
@@ -23,7 +22,6 @@ import react.dom.html.ReactHTML.span
 import react.router.*
 import rooms.*
 import tools.confido.refs.*
-import utils.*
 import web.timers.*
 
 val RoomHeaderButton = Button.withStyle {
@@ -65,7 +63,7 @@ val RoomLayout = FC<Props> {
 
     val size = useElementSize<HTMLDivElement>()
     val tabRef = useRef<HTMLDivElement>()
-    val palette = roomPalette(room.id)
+    val palette = room.color.palette
 
     var scrollY by useState(0.0)
     val cutoff = 60.0 + size.height - 15.0

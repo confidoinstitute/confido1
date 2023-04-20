@@ -55,7 +55,8 @@ fun roomRoutes(routing: Routing) = routing.apply {
                 Room(
                     id = "", name = information.name, description = information.description,
                     createdAt = Clock.System.now(), questions = emptyList(),
-                    members = listOf(myMembership), inviteLinks = emptyList()
+                    members = listOf(myMembership), inviteLinks = emptyList(),
+                    color = information.color
                 )
             )
         }
@@ -72,7 +73,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
             val roomName = information.name.ifEmpty {room.name}
 
             serverState.roomManager.modifyEntity(room.ref) {
-                it.copy(name = roomName, description = information.description)
+                it.copy(name = roomName, description = information.description, color = information.color)
             }
         }
 

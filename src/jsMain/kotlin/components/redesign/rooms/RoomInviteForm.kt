@@ -7,7 +7,6 @@ import components.redesign.basic.*
 import components.redesign.forms.*
 import csstype.*
 import emotion.react.*
-import hooks.*
 import io.ktor.client.call.*
 import io.ktor.http.*
 import kotlinx.js.*
@@ -21,6 +20,7 @@ import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
 import react.router.*
 import react.router.dom.*
+import rooms.RoomColor
 import tools.confido.refs.*
 import tools.confido.utils.*
 import utils.*
@@ -84,6 +84,7 @@ private val InvalidInviteAlert = FC<InvalidInviteAlertProps> { props->
 external interface RoomInviteFormProps : Props {
     var roomId: String
     var roomName: String
+    var roomColor: RoomColor
     var inviteToken: String
     var allowAnonymous: Boolean
 }
@@ -109,7 +110,7 @@ private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
     }
 
     RoomNavbar {
-        palette = roomPalette(props.roomId)
+        palette = props.roomColor.palette
         navigateBack = "/"
     }
 
@@ -188,7 +189,7 @@ internal val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
 
     useEffectOnce {
         runCoroutine {
-            Client.send("/join/$inviteToken/check", method= HttpMethod.Get, onError = {showError?.invoke(it)}) {
+            Client.send("/join/$inviteToken/check", method = HttpMethod.Get, onError = { showError?.invoke(it) }) {
                 inviteStatus = body()
             }
         }
@@ -202,17 +203,18 @@ internal val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
         this.`in` = inviteStatus == null
     }
 
-    if (inviteStatus != null) {
+    inviteStatus?.let { status ->
         +props.topAlert?.create {
-            this.allowAnonymous = inviteStatus!!.allowAnonymous
+            this.allowAnonymous = status.allowAnonymous
         }
 
-        if (inviteStatus?.valid == true) {
+        if (status.valid) {
             props.form {
-                this.roomId = inviteStatus!!.roomRef!!.id
-                this.roomName = inviteStatus!!.roomName!!
+                this.roomId = status.roomRef!!.id
+                this.roomName = status.roomName!!
+                this.roomColor = status.roomColor!!
                 this.inviteToken = inviteToken
-                this.allowAnonymous = inviteStatus!!.allowAnonymous
+                this.allowAnonymous = status.allowAnonymous
             }
         } else {
             InvalidInviteAlert {

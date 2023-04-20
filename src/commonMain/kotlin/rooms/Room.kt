@@ -21,8 +21,8 @@ data class Room(
     val questions: List<Ref<Question>> = emptyList(),
     val members: List<RoomMembership> = emptyList(),
     val inviteLinks: List<InviteLink> = emptyList(),
+    val color: RoomColor = colorFromId(id),
 ) : ImmediateDerefEntity, HasUrlPrefix {
-
     fun findLink(id: String?): InviteLink? {
         if (id == null || id == "") {
             return null
@@ -56,7 +56,28 @@ data class Room(
 
     companion object {
         fun urlPrefix(id: String) = "/rooms/$id"
+
+        private fun colorFromId(id: String): RoomColor {
+            val base = id.fold(47) { acc, c ->
+                (acc * 257 + c.code) % 65537
+            }
+            return RoomColor.values().let {
+                it[base % it.size]
+            }
+        }
     }
+}
+
+@Serializable
+enum class RoomColor {
+    RED,
+    ORANGE,
+    YELLOW,
+    GREEN,
+    CYAN,
+    BLUE,
+    MAGENTA,
+    GRAY,
 }
 
 @Serializable
