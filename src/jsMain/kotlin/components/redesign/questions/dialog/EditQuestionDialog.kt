@@ -47,7 +47,6 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     // ANSWER
     var answerSpace: Space? by useState(props.entity?.answerSpace ?: BinarySpace)
     var answerSpaceValid: Boolean by useState(false)
-    var unit by useState("")
 
     // RESOLUTION
     var questionStatus by useState {
@@ -168,8 +167,6 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                     answerSpace = null
                     answerSpaceValid = false
                 }
-                this.unit = unit
-                onUnitChange = {unit = it}
             }
 
             EditQuestionDialogResolution {

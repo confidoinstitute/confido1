@@ -16,9 +16,6 @@ internal external interface EditQuestionDialogSpaceProps : Props {
     var space: Space?
     var onChange: (Space) -> Unit
     var onError: () -> Unit
-
-    var unit: String
-    var onUnitChange: (String) -> Unit
 }
 
 internal val EditQuestionDialogSpace = FC<EditQuestionDialogSpaceProps> { props ->
@@ -26,6 +23,7 @@ internal val EditQuestionDialogSpace = FC<EditQuestionDialogSpaceProps> { props 
     var maxValue by useState("")
     var minDateValue by useState("")
     var maxDateValue by useState("")
+    var unit by useState("")
 
     var error: AnswerSpaceError? by useState(null)
 
@@ -42,6 +40,7 @@ internal val EditQuestionDialogSpace = FC<EditQuestionDialogSpaceProps> { props 
                 val nSpace = outSpace as NumericSpace
                 minValue = nSpace.min.toString()
                 maxValue = nSpace.max.toString()
+                unit = nSpace.unit
             }
             QuestionType.DATE -> {
                 val dSpace = outSpace as NumericSpace
@@ -51,7 +50,7 @@ internal val EditQuestionDialogSpace = FC<EditQuestionDialogSpaceProps> { props 
         }
     }
 
-    useEffect(questionType, minValue, maxValue, minDateValue, maxDateValue) {
+    useEffect(questionType, minValue, maxValue, minDateValue, maxDateValue, unit) {
         console.log("Space input update")
         error = null
         when (questionType) {
@@ -64,7 +63,7 @@ internal val EditQuestionDialogSpace = FC<EditQuestionDialogSpaceProps> { props 
                         error = AnswerSpaceError.BAD_RANGE
                         props.onError()
                     } else {
-                        val space = NumericSpace(min, max)
+                        val space = NumericSpace(min, max, unit = unit)
                         props.onChange(space)
                     }
                 } catch (e: NumberFormatException) {
@@ -146,8 +145,8 @@ internal val EditQuestionDialogSpace = FC<EditQuestionDialogSpaceProps> { props 
                     comment = "Use short singular form (e.g. km, MWh)."
                     TextInput {
                         placeholder = "Enter the unit"
-                        value = props.unit
-                        onChange = { e -> props.onUnitChange(e.target.value) }
+                        value = unit
+                        onChange = { e -> unit = e.target.value }
                     }
                 }
             }
