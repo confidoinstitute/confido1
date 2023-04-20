@@ -134,10 +134,10 @@ val DialogCore = FC<DialogCoreProps> { props ->
                         marginRight = "calc((100vw - 640px) / 2)" as Length
                     }
                 }
-                if (!props.fullSize)
+                if (!props.fullSize || layoutMode >= LayoutMode.TABLET)
                 div {
                     css {
-                        flexGrow = number(1.0)
+                        flexGrow = number(if (props.fullSize) 0.0 else 1.0)
                         flexBasis = 44.px
                         flexShrink = number(0.0)
                     }
@@ -150,7 +150,7 @@ val DialogCore = FC<DialogCoreProps> { props ->
                         flexShrink = number(0.0)
                         flexGrow = number(0.0)
                         backgroundColor = Color("#FFFFFF")
-                        if (!props.fullSize) {
+                        if (!props.fullSize  || layoutMode >= LayoutMode.TABLET) {
                             borderTopLeftRadius = 10.px
                             borderTopRightRadius = 10.px
                         }
@@ -173,7 +173,7 @@ val DialogCore = FC<DialogCoreProps> { props ->
                     }
                     +props.children
                 }
-                if (!props.fullSize && layoutMode >= LayoutMode.TABLET) {
+                if (!props.fullSize || layoutMode >= LayoutMode.TABLET) {
 
                     div {
                         css {
@@ -188,7 +188,7 @@ val DialogCore = FC<DialogCoreProps> { props ->
                     }
                     div {
                         css {
-                            flexGrow = number(1.0)
+                            flexGrow = number(if (props.fullSize) 0.0 else 1.0)
                             flexBasis = 44.px
                             flexShrink = number(0.0)
                         }
