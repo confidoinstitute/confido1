@@ -12,7 +12,13 @@ enum class QuestionPreset(val title: String, val subtitle: String) {
     KNOWLEDGE("Knowledge question", "Correct answer is known in the present"),
     BELIEF("Implicit belief question", "Not intended to be resolved"),
     SENSITIVE("Sensitive question", "Answers are anonymous"),
-    NONE("No template", "Create question from scratch"),
+    NONE("No template", "Create question from scratch");
+
+    fun isAvailable(): Boolean {
+        // Currently, Sensitive is not fully implemented.
+        // We can remove this function once it is finished.
+        return this != SENSITIVE
+    }
 }
 
 external interface AddQuestionPresetDialogProps : Props {
@@ -43,7 +49,7 @@ val AddQuestionPresetDialog = FC<AddQuestionPresetDialogProps> { props ->
                 }
                 +"What kind of question are you planning to ask?"
             }
-            QuestionPreset.values().map {preset ->
+            QuestionPreset.values().filter { it.isAvailable() }.map { preset ->
                 Button {
                     css {
                         padding = 18.px

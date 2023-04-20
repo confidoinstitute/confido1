@@ -247,6 +247,8 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                         "No room member can comment on the question."
                     }
                 }
+                // TODO: Re-enable once sensitivity is implemented fully.
+                /*
                 if (props.preset != QuestionPreset.SENSITIVE)
                     FormSwitch {
                         label = "Sensitive"
@@ -258,6 +260,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                         checked = isSensitive
                         onChange = { e -> isSensitive = e.target.checked }
                     }
+                */
             }
 
             Stack {
