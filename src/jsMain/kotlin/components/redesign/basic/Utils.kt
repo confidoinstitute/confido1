@@ -1,5 +1,7 @@
 package components.redesign.basic
 
+import components.redesign.layout.LayoutMode
+import components.redesign.layout.LayoutModeContext
 import csstype.*
 import dom.html.*
 import emotion.css.*
@@ -60,6 +62,16 @@ fun <P: PropsWithClassName> ElementType<P>.withStyle(vararg except: String, bloc
         +props.except(*except)
         css(override = props) {
             block(props)
+        }
+    }
+}
+// seems Kotlin does cannot distinguish between these two overloads so naming it differently
+fun <P: PropsWithClassName> ElementType<P>.withStyleLM(vararg except: String, block: PropertiesBuilder.(P, LayoutMode) -> Unit) = FC<P> { props ->
+    val layoutMode = useContext(LayoutModeContext)
+    this@withStyleLM {
+        +props.except(*except)
+        css(override = props) {
+            block(props, layoutMode)
         }
     }
 }
