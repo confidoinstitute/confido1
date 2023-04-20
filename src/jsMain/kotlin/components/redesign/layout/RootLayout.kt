@@ -29,10 +29,10 @@ val RootLayout = FC<Props> {
     }
 }
 
-enum class LayoutMode(val contentWidth: Length) {
-    PHONE(100.pct),
-    TABLET(640.px),
-    DESKTOP(640.px),
+enum class LayoutMode(val contentWidth: Length, val contentSidePad: Length) {
+    PHONE(100.pct, 20.px),
+    TABLET(640.px, 0.px),
+    DESKTOP(640.px, 0.px),
 }
 
 val LayoutModeContext = createContext<LayoutMode>()

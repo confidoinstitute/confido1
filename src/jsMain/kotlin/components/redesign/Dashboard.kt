@@ -5,6 +5,7 @@ import components.*
 import components.redesign.basic.*
 import components.redesign.feedback.FeedbackMenuItem
 import components.redesign.forms.*
+import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.*
 import components.redesign.rooms.*
@@ -19,9 +20,9 @@ import react.router.useNavigate
 import tools.confido.refs.deref
 import utils.runCoroutine
 
-internal fun ChildrenBuilder.title(text: String) = div {
+internal fun ChildrenBuilder.title(text: String, sidePad: Length) = div {
     css {
-        padding = Padding(24.px, 20.px, 0.px)
+        padding = Padding(24.px, sidePad, 0.px)
         fontFamily = sansSerif
         fontSize = 14.px
         lineHeight = 17.px
@@ -60,7 +61,7 @@ val Dashboard = FC<Props> {
                 display = Display.flex
                 alignItems = AlignItems.center
                 gap = 9.px
-                padding = Padding(0.px, 20.px)
+                padding = Padding(0.px, layoutMode.contentSidePad)
                 width = layoutMode.contentWidth
             }
             appState.session.user?.let { user ->
@@ -120,16 +121,19 @@ val Dashboard = FC<Props> {
             overflow = Auto.auto
             gap = 12.px
             width = layoutMode.contentWidth
+            overflow = Overflow.visible
             alignSelf = AlignSelf.center
         }
 
-        title("Recently opened")
+        title("Recently opened", layoutMode.contentSidePad)
 
         Stack {
             direction = FlexDirection.row
             css {
-                gap = 15.px
-                padding = Padding(5.px, 20.px)
+                // On desktop layout, ensure a whole number of tiles (4) fit into the 640px
+                // container
+                gap = if (layoutMode >= LayoutMode.TABLET) 21.px else 15.px
+                padding = Padding(5.px, layoutMode.contentSidePad)
                 overflow = Auto.auto
                 flexShrink = number(0.0)
             }
@@ -147,7 +151,7 @@ val Dashboard = FC<Props> {
             }
         }
 
-        title("Rooms")
+        title("Rooms", layoutMode.contentSidePad)
 
         RoomList {
             canCreate = appState.session.user?.type?.isProper() ?: false

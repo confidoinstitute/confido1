@@ -2,6 +2,8 @@ package components.redesign.rooms
 
 import components.*
 import components.redesign.basic.*
+import components.redesign.layout.LayoutMode
+import components.redesign.layout.LayoutModeContext
 import csstype.*
 import emotion.react.*
 import react.*
@@ -22,7 +24,7 @@ external interface RoomLinkProps : LinkProps {
     var small: Boolean
 }
 
-private val RoomLink = Link.withRipple().withStyle<RoomLinkProps>("small") {props ->
+private val RoomLink = Link.withRipple().withStyleLM<RoomLinkProps>("small") {props, layoutMode ->
     display = Display.flex
     flexDirection = FlexDirection.row
     gap = 12.px
@@ -37,10 +39,12 @@ private val RoomLink = Link.withRipple().withStyle<RoomLinkProps>("small") {prop
         lineHeight = 20.px
     }
     color = Color("#222222")
-    padding = Padding(10.px, 20.px)
-    margin = 0.px
+    padding = Padding(10.px, if (layoutMode == LayoutMode.PHONE) 20.px else 10.px)
+    margin = if (layoutMode == LayoutMode.PHONE)  0.px else Margin(0.px, (-10).px)
     background = None.none
     border = None.none
+    // On mobile it goes to the edge od the screen so no rounding
+    borderRadius = if (layoutMode == LayoutMode.PHONE) 0.px else 5.px
     cursor = Cursor.pointer
 
     hover {
@@ -51,6 +55,7 @@ private val RoomLink = Link.withRipple().withStyle<RoomLinkProps>("small") {prop
 val RoomList = FC<RoomListProps> {props ->
     val (appState, stale) = useContext(AppStateContext)
     val location = useParams()
+    val layoutMode = useContext(LayoutModeContext)
 
     val iconSize = if(props.small) 36.px else 48.px
 
