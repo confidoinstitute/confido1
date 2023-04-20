@@ -12,7 +12,7 @@ enum class SortType {
     SET_BY_MODERATOR,
 }
 
-external interface SortButtonProps : Props {
+external interface SortButtonProps : PropsWithClassName {
     var sortType: SortType
     var onChange: ((SortType) -> Unit)?
     /**
@@ -26,7 +26,7 @@ val SortButton = FC<SortButtonProps> { props ->
     val options = props.options ?: listOf(SortType.NEWEST, SortType.OLDEST)
 
     ButtonBase {
-        css {
+        css(override = props.className) {
             display = Display.flex
             flexDirection = FlexDirection.row
             fontFamily = sansSerif
