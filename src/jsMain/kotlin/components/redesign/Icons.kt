@@ -4,6 +4,7 @@ import react.*
 import react.dom.svg.*
 import react.dom.svg.ReactSVG.circle
 import react.dom.svg.ReactSVG.path
+import react.dom.svg.ReactSVG.rect
 import react.dom.svg.ReactSVG.svg
 
 /*
@@ -463,3 +464,62 @@ val FeedbackIcon = FC<PropsWithClassName> { props ->
     }
 }
 
+val MailIcon = FC<PropsWithClassName> { props ->
+    val color = "black"
+    svg {
+        className = props.className
+        width = 30.0
+        height = 30.0
+        viewBox = "0 0 30 30"
+        fill = "none"
+        rect {
+            x = 6.0
+            y = 9.0
+            width = 18.0
+            height = 12.0
+            rx = 1.0
+            stroke = color
+            strokeWidth = 1.2
+        }
+
+        path {
+            d = "M6.5 9.5L13.972 16.5324C14.5495 17.076 15.4505 17.076 16.028 16.5324L23.5 9.5"
+            stroke = color
+            strokeWidth = 1.2
+        }
+        path {
+            d = "M6.5 20.5L12.5 15"
+            stroke = color
+            strokeWidth = 1.2
+        }
+        path {
+            d = "M23.5 20.5L17.5 15"
+            stroke = color
+            strokeWidth = 1.2
+        }
+    }
+}
+
+val CopyIcon = FC<PropsWithClassName> { props ->
+    val color = "black"
+    svg {
+        className = props.className
+        width = 30.0
+        height = 30.0
+        viewBox = "0 0 30 30"
+        fill = "none"
+        path {
+            d = "M11 9.5C11 9.22386 11.2239 9 11.5 9H20.5C20.7761 9 21 9.22386 21 9.5V22.5C21 22.7761 20.7761 23 20.5 23H11.5C11.2239 23 11 22.7761 11 22.5V9.5Z"
+            stroke = color
+            strokeWidth = 1.2
+            strokeLinejoin = StrokeLinejoin.round
+        }
+        path {
+            d = "M17.5 6.5H9C8.72386 6.5 8.5 6.72386 8.5 7V19.5"
+            stroke = color
+            strokeWidth = 1.2
+            strokeLinejoin = StrokeLinejoin.round
+            strokeLinecap = StrokeLinecap.round
+        }
+    }
+}

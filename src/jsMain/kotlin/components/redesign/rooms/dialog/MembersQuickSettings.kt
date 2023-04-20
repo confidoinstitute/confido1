@@ -1,7 +1,7 @@
 package components.redesign.rooms.dialog
 
 import components.AppStateContext
-import components.redesign.EditIcon
+import components.redesign.*
 import components.redesign.basic.DialogMenu
 import components.redesign.basic.DialogMenuHeader
 import components.redesign.basic.DialogMenuItem
@@ -44,8 +44,8 @@ val MemberQuickSettingsDialog = FC<MemberQuickSettingsDialogProps> {props ->
 
         if (props.hasEmail)
             DialogMenuItem {
-                text = "Write an e-mail to ${props.name}"
-                // TODO icon
+                text = "Write an email to ${props.name}"
+                icon = MailIcon
                 onClick = {
                     props.onClose?.invoke()
                     props.onMail?.invoke()
@@ -55,7 +55,7 @@ val MemberQuickSettingsDialog = FC<MemberQuickSettingsDialogProps> {props ->
         if (props.canDelete)
         DialogMenuItem {
             text = "Remove ${props.name} from this room"
-            // TODO icon
+            icon = LogoutIcon
             variant = DialogMenuItemVariant.dangerous
             onClick = {
                 props.onClose?.invoke()
@@ -80,7 +80,7 @@ val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {prop
         }
         DialogMenuItem {
             text = "Copy link"
-            // TODO icon
+            icon = CopyIcon
             disabled = stale
             onClick = {
                 props.onClose?.invoke()
@@ -98,7 +98,7 @@ val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {prop
         }
         DialogMenuItem {
             text = "Delete this invitation link"
-            // TODO icon
+            icon = BinIcon
             disabled = stale
             variant = DialogMenuItemVariant.dangerous
             onClick = {
