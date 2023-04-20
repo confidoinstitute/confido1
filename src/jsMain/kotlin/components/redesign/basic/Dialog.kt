@@ -110,6 +110,7 @@ external interface DialogCoreProps : PropsWithChildren, PropsWithRef<HTMLElement
 val DialogCore = FC<DialogCoreProps> { props ->
     val nodeRef = useRef<HTMLElement>()
     val layoutMode = useContext(LayoutModeContext)
+    val theme = hooks.useTheme()
     useBackdrop(props.open)
     Slide {
         appear = true
@@ -168,7 +169,7 @@ val DialogCore = FC<DialogCoreProps> { props ->
                             flexGrow = number(1.0)
                         }
                         overflow = Auto.auto
-                        backgroundColor = Color("#FFFFFF")
+                        backgroundColor = theme.colors.form.background //Color("#FFFFFF")
 
                     }
                     +props.children
@@ -183,7 +184,7 @@ val DialogCore = FC<DialogCoreProps> { props ->
                             flexBasis = 10.px
                             flexGrow = number(0.0)
                             flexShrink = number(0.0)
-                            backgroundColor = Color("#FFFFFF")
+                            backgroundColor =  theme.colors.form.background //Color("#FFFFFF")
                         }
                     }
                     div {
