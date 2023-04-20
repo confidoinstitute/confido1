@@ -110,14 +110,14 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 display = Display.flex
                 flexDirection = FlexDirection.row
                 alignItems = AlignItems.flexStart
-                padding = Padding(0.px, 0.px, 4.px)
+                padding = Padding(8.px, 0.px)
             }
             span {
                 css {
                     fontFamily = serif
                     fontWeight = integer(700)
-                    fontSize = 24.px
-                    lineHeight = 29.px
+                    fontSize = 30.px
+                    lineHeight = 105.pct
                     color = Color("#000000")
                 }
                 +props.question.name
@@ -175,7 +175,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     css {
                         fontFamily = sansSerif
                         fontStyle = FontStyle.normal
-                        fontWeight = integer(700)
+                        fontWeight = integer(800)
                         fontSize = 28.px
                         lineHeight = 33.px
                         color = palette.color
