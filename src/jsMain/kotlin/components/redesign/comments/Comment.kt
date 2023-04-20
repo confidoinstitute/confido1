@@ -228,7 +228,7 @@ val CommentHeader = FC<CommentHeaderProps> { props ->
         // Avatar
         // TODO: Proper avatar
         Circle {
-            color = Color("#45AFEB")
+            color = stringToColor(props.author.id)
             size = 32.px
         }
 
