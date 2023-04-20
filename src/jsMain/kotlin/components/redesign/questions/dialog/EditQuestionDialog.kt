@@ -131,7 +131,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         open = props.open
         onClose = props.onClose
         title = if (props.entity != null) "Edit this question" else "Create a question"
-        action = if (props.entity != null) "Edit" else "Create"
+        action = if (props.entity != null) "Save" else "Create"
         disabledAction = (stale || !questionValid)
         onAction = { submitQuestion() }
 
@@ -218,7 +218,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                     RadioGroup<GroupTerminology>()() {
                         title = "Call group"
                         options = GroupTerminology.values().map {
-                            it to "\"${it.plural}\""
+                            it to "\"${it.term}\""
                         }
                         value = groupTerminology
                         onChange = {term -> groupTerminology = term}
