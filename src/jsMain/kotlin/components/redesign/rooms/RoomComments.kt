@@ -67,6 +67,7 @@ val RoomComments = FC<Props> {
             maxWidth = layoutMode.contentWidth
             marginLeft = Auto.auto
             marginRight = Auto.auto
+            width = 100.pct
         }
         when (roomComments) {
             is WSData -> {
