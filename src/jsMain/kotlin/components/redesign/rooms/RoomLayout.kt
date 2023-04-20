@@ -12,6 +12,7 @@ import csstype.*
 import dom.ScrollBehavior
 import dom.html.*
 import emotion.react.*
+import ext.showmoretext.ShowMoreText
 import hooks.*
 import kotlinx.js.*
 import react.*
@@ -202,8 +203,13 @@ val RoomLayout = FC<Props> {
                 lineHeight = 19.px
                 whiteSpace = WhiteSpace.preLine
             }
-            TextWithLinks {
-                text = room.description
+            ShowMoreText {
+                lines = 5
+                more = ReactNode("See more")
+                less = ReactNode("")
+                TextWithLinks {
+                    text = room.description
+                }
             }
         }
         div {
