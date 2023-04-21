@@ -37,6 +37,7 @@ external interface WorkspaceFrameProps : PropsWithClassName {
 }
 
 val WorkspaceFrame = FC<WorkspaceFrameProps> { props ->
+    val layoutMode = useContext(LayoutModeContext)
     Stack {
         direction = FlexDirection.row
         css(props.className) {
@@ -73,8 +74,13 @@ val WorkspaceFrame = FC<WorkspaceFrameProps> { props ->
             div {
                 css {
                     fontFamily = sansSerif
-                    fontSize = 15.px
-                    lineHeight = 18.px
+                    if (layoutMode == LayoutMode.PHONE) {
+                        fontSize = 15.px
+                        lineHeight = 18.px
+                    } else {
+                        fontSize = 10.px
+                        lineHeight = 12.px
+                    }
                     color = Color("#777777")
                 }
                 +(props.user.email ?: "")
