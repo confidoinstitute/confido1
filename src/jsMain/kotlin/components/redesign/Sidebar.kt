@@ -72,7 +72,7 @@ val Sidebar = FC<SidebarProps> { props ->
         css {
             backgroundColor = Color("#FFFFFF")
             width = offset
-            transition = transitionTime
+            transition = Transition(ident("width"), transitionTime, 0.s)
             zIndex = integer(100)
             gap = 30.px
             padding = if (props.open == true) {
