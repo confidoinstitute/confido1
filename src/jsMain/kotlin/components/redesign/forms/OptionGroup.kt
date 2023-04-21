@@ -75,7 +75,13 @@ val OptionGroupComponent = FC<OptionGroupProps<dynamic>> { props ->
                     css {
                         display = None.none
                     }
-                    onChange = { currentValue = option; props.onChange?.invoke(option) }
+                    disabled = props.disabled
+                    onChange = {
+                        if (!props.disabled) {
+                            currentValue = option
+                            props.onChange?.invoke(option)
+                        }
+                    }
                 }
                 +label
             }
