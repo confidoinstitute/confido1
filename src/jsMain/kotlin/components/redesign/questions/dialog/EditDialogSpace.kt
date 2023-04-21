@@ -124,7 +124,7 @@ internal val EditQuestionDialogSpace = FC<EditQuestionDialogSpaceProps> { props 
                 FormField {
                     title = "Range"
                     comment =
-                        "We recommend setting a range wide enough to cover unlikely/unexpected but possible outcomes."
+                        "We recommend setting a range wide enough to cover unlikely/unexpected but possible outcomes. The range cannot be changed later."
                         //"Set range only if the answers out of it do not make sense (e.g. a negative duration of an event). In other cases, we recommend leaving them blank."
                     TextInput {
                         placeholder = "Min"
@@ -154,7 +154,8 @@ internal val EditQuestionDialogSpace = FC<EditQuestionDialogSpaceProps> { props 
                 FormField {
                     title = "Range"
                     comment =
-                        "Set range only if the answers out of it do not make sense (e.g. a negative duration of an event). In other cases, we recommend leaving them blank."
+                        "We recommend setting a range wide enough to cover unlikely/unexpected but possible outcomes. The range cannot be changed later."
+                        //"Set range only if the answers out of it do not make sense (e.g. a negative duration of an event). In other cases, we recommend leaving them blank."
                     TextInput {
                         placeholder = "Min"
                         type = InputType.date
