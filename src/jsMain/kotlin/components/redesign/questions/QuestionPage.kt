@@ -279,7 +279,6 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
 
     div {
         css {
-            minHeight = 196.px
             backgroundColor = Color("#fff")
             flexShrink = number(0.0)
         }
