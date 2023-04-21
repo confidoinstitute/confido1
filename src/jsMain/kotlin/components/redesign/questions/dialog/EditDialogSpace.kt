@@ -93,7 +93,13 @@ internal val EditQuestionDialogSpace = FC<EditQuestionDialogSpaceProps> { props 
     fun FormFieldProps.answerSpaceError() {
         when (error) {
             AnswerSpaceError.INVALID -> this.error = "The given range is invalid."
-            AnswerSpaceError.BAD_RANGE -> this.error = "The range must cover non-empty interval."
+            AnswerSpaceError.BAD_RANGE -> {
+                if (questionType == QuestionType.DATE) {
+                    this.error = "The range interval must be non-empty. Make sure the second date is later than the first one."
+                } else {
+                    this.error = "The range interval must be non-empty. Make sure the second value is larger than the first one."
+                }
+            }
             null -> {}
         }
     }
