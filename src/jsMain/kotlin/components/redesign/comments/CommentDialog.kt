@@ -100,33 +100,6 @@ private external interface CommentDialogProps : Props {
     var attachablePrediction: Prediction?
 }
 
-external interface PredictionAttachmentProps : Props {
-    var prediction: Prediction
-}
-
-private val PredictionAttachment = FC<PredictionAttachmentProps> { props ->
-    val icon = when (props.prediction.dist.space) {
-        BinarySpace -> CirclesIcon
-        // TODO: We also have an asymmetric gauss icon
-        is NumericSpace -> SymmetricGaussIcon
-    }
-
-    Stack {
-        direction = FlexDirection.row
-        css {
-            alignItems = AlignItems.center
-            gap = 5.px
-        }
-        +icon.create()
-        span {
-            css {
-                color = Color("#555555")
-            }
-            +props.prediction.dist.description
-        }
-    }
-}
-
 private val CommentDialog = FC<CommentDialogProps> { props ->
     val initialContent = props.initialContent ?: ""
 
