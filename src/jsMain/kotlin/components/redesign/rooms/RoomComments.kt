@@ -72,6 +72,7 @@ val RoomComments = FC<Props> {
             maxWidth = layoutMode.contentWidth
             backgroundColor = Color("#f2f2f2")
             gap = 27.px
+            flexGrow = number(1.0)
         }
 
         if (layoutMode != LayoutMode.PHONE) {
