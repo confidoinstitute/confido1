@@ -1,6 +1,7 @@
 package components.redesign.basic
 
 import browser.*
+import components.redesign.SidebarContext
 import components.redesign.feedback.FeedbackMenuItem
 import components.redesign.forms.*
 import components.redesign.layout.LayoutMode
@@ -110,6 +111,16 @@ external interface DialogCoreProps : PropsWithChildren, PropsWithRef<HTMLElement
 val DialogCore = FC<DialogCoreProps> { props ->
     val nodeRef = useRef<HTMLElement>()
     val layoutMode = useContext(LayoutModeContext)
+    val sidebarState = useContext(SidebarContext)
+
+    // This can be null in case we are not within a layout that has a sidebar.
+    @Suppress("SENSELESS_COMPARISON")
+    val sidebarOffset = if (sidebarState != null) {
+        sidebarState.marginOffset
+    } else {
+        0.px
+    }
+
     val theme = hooks.useTheme()
     useBackdrop(props.open)
     Slide {
@@ -131,8 +142,8 @@ val DialogCore = FC<DialogCoreProps> { props ->
                     bottom = 0.px
                     if (layoutMode >= LayoutMode.TABLET) {
                         width = 640.px
-                        marginLeft = "calc((100vw - 640px) / 2)" as Length
-                        marginRight = "calc((100vw - 640px) / 2)" as Length
+                        marginLeft = "calc((100vw - 640px - $sidebarOffset) / 2)" as Length
+                        marginRight = "calc((100vw - 640px - $sidebarOffset) / 2)" as Length
                     }
                 }
                 if (!props.fullSize || layoutMode >= LayoutMode.TABLET)

@@ -20,6 +20,7 @@ import react.router.dom.Link
 
 external interface SidebarProps : PropsWithChildren {
     var open: Boolean?
+    var width: Length
 }
 
 class SidebarState internal constructor(
@@ -35,6 +36,13 @@ class SidebarState internal constructor(
         setState(false)
     }
 
+    val marginOffset
+        get(): Length = if (isOpen) {
+            280.px
+        } else {
+            0.px
+        }
+
     fun toggle() {
         setState(!isOpen)
     }
@@ -48,11 +56,13 @@ val SidebarLayout = FC<Props> {
 
     val isAvailable = layoutMode != LayoutMode.PHONE
 
+    val state = SidebarState(open, isAvailable) { setOpen(it) }
     Sidebar {
         this.open = open && isAvailable
+        this.width = state.marginOffset
     }
     SidebarContext.Provider {
-        value = SidebarState(open, isAvailable) { setOpen(it) }
+        value = state
         Outlet {}
     }
 }
@@ -64,11 +74,7 @@ val Sidebar = FC<SidebarProps> { props ->
     Stack {
         component = aside
         val transitionTime = 0.5.s
-        val offset = if (props.open == true) {
-            280.px
-        } else {
-            0.px
-        }
+        val offset = props.width
         css {
             backgroundColor = Color("#FFFFFF")
             width = offset
