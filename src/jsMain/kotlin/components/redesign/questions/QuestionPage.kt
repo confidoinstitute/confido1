@@ -660,6 +660,7 @@ private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> {
                     }
                 }
             }
+            /*
             DialogMenuItem {
                 text = "Resolve"
                 disabled = true
@@ -667,6 +668,7 @@ private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> {
                     // TODO: Implement and remove disabled
                 }
             }
+             */
             DialogMenuSeparator {}
             DialogMenuItem {
                 text = "Edit this question"
