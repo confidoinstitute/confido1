@@ -6,31 +6,25 @@ import components.redesign.*
 import components.redesign.basic.*
 import components.redesign.forms.*
 import csstype.*
-import dom.html.*
 import emotion.react.*
 import hooks.*
 import payloads.requests.*
 import react.*
 import react.dom.html.*
-import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
-import react.dom.html.ReactHTML.span
-import react.dom.html.ReactHTML.textarea
 import tools.confido.question.*
-import tools.confido.spaces.*
 import tools.confido.utils.*
 import utils.*
 
 external interface AddCommentFieldProps : Props {
     /** The id of the entity containing this comment. Make sure to specify the correct [variant]. */
     var id: String
-
     /** The type of the entity containing this comment. */
     var variant: CommentInputVariant
     var prediction: Prediction?
 }
 
-val AddCommentField = FC<AddCommentDialogProps> { props ->
+val AddCommentField = FC<AddCommentFieldProps> { props ->
     if (props.variant == undefined) {
         console.error("Invalid comment variant")
         return@FC
@@ -41,9 +35,9 @@ val AddCommentField = FC<AddCommentDialogProps> { props ->
 
     val submit = useCoroutineLock()
 
-    fun createComment(text: String, attachPrediction: Boolean) {
+    fun createComment() {
         submit {
-            val createdComment = CreateComment(unixNow(), text, attachPrediction)
+            val createdComment = CreateComment(unixNow(), commentText, attachPrediction)
             val url = when (props.variant) {
                 CommentInputVariant.QUESTION -> "${questionUrl(props.id)}/comments/add"
                 CommentInputVariant.ROOM -> "${roomUrl(props.id)}/comments/add"
@@ -51,6 +45,7 @@ val AddCommentField = FC<AddCommentDialogProps> { props ->
 
             Client.sendData(url, createdComment, onError = { showError?.invoke(it) }) {
                 commentText = ""
+                attachPrediction = false
             }
         }
     }
@@ -127,7 +122,7 @@ val AddCommentField = FC<AddCommentDialogProps> { props ->
                 }
                 onClick = {
                     if (commentText.isNotBlank()) {
-                        createComment(commentText, attachPrediction)
+                        createComment()
                     }
                 }
 
