@@ -527,6 +527,7 @@ val CopyIcon = FC<PropsWithClassName> { props ->
 val SidebarIcon = FC<PropsWithClassName> { props ->
     svg {
         className = props.className
+        shapeRendering = "crispEdges"
         width = 30.0
         height = 30.0
         viewBox = "0 0 30 30"

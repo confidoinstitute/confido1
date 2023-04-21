@@ -86,6 +86,7 @@ val Sidebar = FC<SidebarProps> { props ->
             bottom = 0.px
             flexShrink = number(0.0)
             overflowX = Overflow.hidden
+            boxShadow = BoxShadow(0.px, 0.px, 20.px, rgba(0, 0, 0, 0.2))
         }
         Global {
             this.styles {
