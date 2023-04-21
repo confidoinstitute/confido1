@@ -185,7 +185,7 @@ val DialogCore = FC<DialogCoreProps> { props ->
                     }
                     +props.children
                 }
-                if (!props.fullSize || layoutMode >= LayoutMode.TABLET) {
+                if (layoutMode >= LayoutMode.TABLET) {
 
                     div {
                         css {
@@ -207,7 +207,7 @@ val DialogCore = FC<DialogCoreProps> { props ->
                         onClick = { props.onClose?.invoke(); it.preventDefault() }
                     }
                 }
-            }, document.body.asDynamic()
+            }, document.body
         )}
     }
 }

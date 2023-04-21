@@ -41,9 +41,10 @@ private val RootLayoutInner = FC<Props> {
     val (appState, _) = useContext(AppStateContext)
     val layoutMode = useBreakpoints(LayoutMode.PHONE to 740, LayoutMode.TABLET to 1020, default =LayoutMode.DESKTOP)
     val location = useLocation()
+    val prevLocation = useRef("")
     // Do not preserve scroll position when navigating between pages (e.g. room<->question)
-    useEffect(location, layoutMode.ordinal) {
-        window.scrollTo(0, 0);
+    useEffect(location.pathname, layoutMode.ordinal) {
+        window.scrollTo(0, 0)
     }
     var showDemoWelcome by useState(appConfig.demoMode && window.asDynamic().demoDismissed != true)
     LayoutModeContext.Provider {
