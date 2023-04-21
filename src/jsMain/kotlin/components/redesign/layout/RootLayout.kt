@@ -69,51 +69,54 @@ private val RootLayoutInner = FC<Props> {
                         this.element = Dashboard.create()
                     }
                     Route {
-                        path = "rooms/:roomID/*"
-                        this.element = Room.create()
-                    }
-                    Route {
-                        path = "room/:roomID/*"
-                        this.element = RoomRedirect.create()
-                    }
-                    Route {
-                        path = "/join/:inviteToken"
-                        this.element = RoomInviteLoggedIn.create()
-                    }
-                    Route {
-                        path = "email_verify"
-                        this.element = VerifyToken.create {
-                            url = "/profile/email/verify"
-                            failureTitle = "Email verification failed"
-                            successTitle = "Email verification success"
-                            failureText = "The verification link is expired or invalid."
-                            successText = "Your email address has been successfully verified."
-                        }
-                    }
-                    Route {
-                        path = "password_reset"
-                        this.element = VerifyToken.create {
-                            url = "/profile/password/reset/finish"
-                            failureTitle = "Password reset failed"
-                            successTitle = "Password was reset"
-                            failureText = "The link is expired or invalid."
-                            successText =
-                                "Your password has been successfully reset. You can log in by e-mail only now."
-                        }
-                    }
-                    Route {
-                        path = "email_login"
-                        this.element = EmailLoginAlreadyLoggedIn.create()
-                    }
-                    if (appState.session.user?.type?.isProper() == true) {
+                        this.element = SidebarLayout.create()
                         Route {
-                            path = "new_room"
-                            this.element = CreateRoom.create()
+                            path = "rooms/:roomID/*"
+                            this.element = Room.create()
                         }
-                    }
-                    Route {
-                        path = "profile"
-                        this.element = UserProfile.create()
+                        Route {
+                            path = "room/:roomID/*"
+                            this.element = RoomRedirect.create()
+                        }
+                        Route {
+                            path = "/join/:inviteToken"
+                            this.element = RoomInviteLoggedIn.create()
+                        }
+                        Route {
+                            path = "email_verify"
+                            this.element = VerifyToken.create {
+                                url = "/profile/email/verify"
+                                failureTitle = "Email verification failed"
+                                successTitle = "Email verification success"
+                                failureText = "The verification link is expired or invalid."
+                                successText = "Your email address has been successfully verified."
+                            }
+                        }
+                        Route {
+                            path = "password_reset"
+                            this.element = VerifyToken.create {
+                                url = "/profile/password/reset/finish"
+                                failureTitle = "Password reset failed"
+                                successTitle = "Password was reset"
+                                failureText = "The link is expired or invalid."
+                                successText =
+                                    "Your password has been successfully reset. You can log in by e-mail only now."
+                            }
+                        }
+                        Route {
+                            path = "email_login"
+                            this.element = EmailLoginAlreadyLoggedIn.create()
+                        }
+                        if (appState.session.user?.type?.isProper() == true) {
+                            Route {
+                                path = "new_room"
+                                this.element = CreateRoom.create()
+                            }
+                        }
+                        Route {
+                            path = "profile"
+                            this.element = UserProfile.create()
+                        }
                     }
                     /*
                 if (appState.isAdmin()) {
