@@ -69,7 +69,7 @@ val AddCommentField = FC<AddCommentDialogProps> { props ->
             direction = FlexDirection.row
             css {
                 flexGrow = number(1.0)
-                padding = Padding(5.px, 6.px, 5.px, 15.px)
+                padding = Padding(5.px, 6.px, 5.px, 6.px)
                 justifyContent = JustifyContent.spaceBetween
                 fontFamily = sansSerif
                 fontSize = 15.px

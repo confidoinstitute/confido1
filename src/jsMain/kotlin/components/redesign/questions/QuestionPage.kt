@@ -505,6 +505,7 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
 
 private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
     val comments = useWebSocket<Map<String, CommentInfo>>("/state${props.question.urlPrefix}/comments")
+    val layoutMode = useContext(LayoutModeContext)
 
     var addCommentOpen by useState(false)
     var sortType by useState(SortType.NEWEST)
@@ -517,32 +518,71 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
         prediction = props.myPrediction
     }
 
-    Stack {
-        css {
-            justifyContent = JustifyContent.spaceBetween
-            padding = Padding(12.px, 13.px, 13.px, 15.px)
-            backgroundColor = bgColor
-        }
-        direction = FlexDirection.row
-        div {
+    if (layoutMode == LayoutMode.PHONE) {
+        Stack {
             css {
-                textTransform = TextTransform.uppercase
-                fontFamily = sansSerif
-                fontSize = 13.px
-                lineHeight = 16.px
-                color = Color("#777777")
+                justifyContent = JustifyContent.spaceBetween
+                padding = Padding(12.px, 13.px, 13.px, 15.px)
+                backgroundColor = bgColor
             }
-            +"Comments"
-        }
-        if (comments.data?.isNotEmpty() == true) {
-            SortButton {
+            direction = FlexDirection.row
+            // TODO: This type of heading is also similar to the room members page.
+            // TODO: We can likely make a RoomHeading that switches its look automatically.
+            div {
                 css {
-                    paddingTop = 0.px
-                    paddingBottom = 0.px
+                    textTransform = TextTransform.uppercase
+                    fontFamily = sansSerif
+                    fontSize = 13.px
+                    lineHeight = 16.px
+                    color = Color("#777777")
                 }
-                options = listOf(SortType.NEWEST, SortType.OLDEST)
-                this.sortType = sortType
-                onChange = { sort -> sortType = sort }
+                +"Comments"
+            }
+            if (comments.data?.isNotEmpty() == true) {
+                SortButton {
+                    css {
+                        paddingTop = 0.px
+                        paddingBottom = 0.px
+                    }
+                    options = listOf(SortType.NEWEST, SortType.OLDEST)
+                    this.sortType = sortType
+                    onChange = { sort -> sortType = sort }
+                }
+            }
+        }
+    } else {
+        Stack {
+            css {
+                gap = 27.px
+                marginBottom = 27.px
+            }
+            Stack {
+                direction = FlexDirection.row
+                css {
+                    justifyContent = JustifyContent.spaceBetween
+                }
+                RoomHeading {
+                    +"Comments"
+                }
+                if (comments.data?.isNotEmpty() == true) {
+                    SortButton {
+                        css {
+                            paddingTop = 0.px
+                            paddingBottom = 0.px
+                            height = 29.px
+                            alignSelf = AlignSelf.end
+                        }
+                        options = listOf(SortType.NEWEST, SortType.OLDEST)
+                        this.sortType = sortType
+                        onChange = { sort -> sortType = sort }
+                    }
+                }
+            }
+
+            AddCommentField {
+                id = props.question.id
+                variant = CommentInputVariant.QUESTION
+                prediction = props.myPrediction
             }
         }
     }
@@ -551,6 +591,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
         css {
             flexGrow = number(1.0)
             gap = 8.px
+            marginBottom = 44.px
         }
 
         when (comments) {
@@ -581,7 +622,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
         }
     }
 
-    if (props.allowAddingComment) {
+    if (layoutMode == LayoutMode.PHONE && props.allowAddingComment) {
         AddCommentButton {
             onClick = { addCommentOpen = true }
         }
