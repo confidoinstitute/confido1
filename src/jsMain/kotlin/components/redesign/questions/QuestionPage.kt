@@ -32,6 +32,7 @@ import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.main
 import react.dom.html.ReactHTML.span
 import react.router.*
+import react.router.dom.Link
 import rooms.*
 import tools.confido.distributions.*
 import tools.confido.question.*
@@ -120,7 +121,11 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
         palette = roomPalette
         navigateBack = room.urlPrefix
         onMenu = { quickSettingsOpen = true }
-        +room.name
+        Link {
+            className = LinkUnstyled
+            to = room.urlPrefix
+            +room.name
+        }
     }
     Stack {
         component = main
