@@ -22,6 +22,7 @@ external interface RoomListProps : Props {
 
 external interface RoomLinkProps : LinkProps {
     var small: Boolean
+    var active: Boolean
 }
 
 private val RoomLink = Link.withRipple().withStyleLM<RoomLinkProps>("small") {props, layoutMode ->
@@ -47,6 +48,11 @@ private val RoomLink = Link.withRipple().withStyleLM<RoomLinkProps>("small") {pr
     borderRadius = if (layoutMode == LayoutMode.PHONE) 0.px else 5.px
     cursor = Cursor.pointer
 
+    if (props.active) {
+        backgroundColor = Color("#F2F2F2")
+        borderRadius = 12.px
+    }
+
     hover {
         backgroundColor = rgba(0,0,0, 0.05)
     }
@@ -54,7 +60,7 @@ private val RoomLink = Link.withRipple().withStyleLM<RoomLinkProps>("small") {pr
 
 val RoomList = FC<RoomListProps> {props ->
     val (appState, stale) = useContext(AppStateContext)
-    val location = useParams()
+    val location = useLocation()
     val layoutMode = useContext(LayoutModeContext)
 
     val iconSize = if(props.small) 36.px else 48.px
@@ -78,6 +84,7 @@ val RoomList = FC<RoomListProps> {props ->
                 span {
                     +room.name
                 }
+                active = location.pathname.startsWith(room.urlPrefix)
             }
         }
         if (props.canCreate)
