@@ -15,6 +15,7 @@ external interface RoomNavbarProps : PropsWithChildren, PropsWithPalette<RoomPal
 }
 
 val RoomNavbar = FC<RoomNavbarProps> { props ->
+    val sidebar = useContext(SidebarContext)
     val palette = props.palette ?: RoomPalette.red
 
     ReactHTML.nav {
@@ -37,11 +38,19 @@ val RoomNavbar = FC<RoomNavbarProps> { props ->
                 justifyContent = JustifyContent.flexStart
                 alignItems = AlignItems.center
             }
-            props.navigateBack?.let {
-                IconLink {
+            if (sidebar.isAvailable) {
+                IconButton {
                     this.palette = palette.text
-                    to = it
-                    BackIcon { }
+                    onClick = { sidebar.toggle() }
+                    SidebarIcon { }
+                }
+            } else {
+                props.navigateBack?.let {
+                    IconLink {
+                        this.palette = palette.text
+                        to = it
+                        BackIcon { }
+                    }
                 }
             }
         }

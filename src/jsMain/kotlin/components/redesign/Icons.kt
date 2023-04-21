@@ -523,3 +523,21 @@ val CopyIcon = FC<PropsWithClassName> { props ->
         }
     }
 }
+
+val SidebarIcon = FC<PropsWithClassName> { props ->
+    svg {
+        className = props.className
+        width = 30.0
+        height = 30.0
+        viewBox = "0 0 30 30"
+        fill = "none"
+        for (y in listOf(8.0, 14.0, 20.0)) {
+            rect {
+                x = 5.0
+                this.y = y
+                width = 20.0
+                height = 2.0
+            }
+        }
+    }
+}

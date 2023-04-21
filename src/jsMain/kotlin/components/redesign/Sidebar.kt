@@ -26,6 +26,7 @@ external interface SidebarProps : PropsWithChildren {
 
 class SidebarState internal constructor(
     val isOpen: Boolean,
+    val isAvailable: Boolean,
     val setState: (Boolean) -> Unit,
 ) {
     fun open() {
@@ -47,11 +48,13 @@ val SidebarLayout = FC<Props> {
     val layoutMode = useContext(LayoutModeContext)
     val (open, setOpen) = useState(true)
 
+    val isAvailable = layoutMode != LayoutMode.PHONE
+
     Sidebar {
-        this.open = open && layoutMode != LayoutMode.PHONE
+        this.open = open && isAvailable
     }
     SidebarContext.Provider {
-        value = SidebarState(open) { setOpen(it) }
+        value = SidebarState(open, isAvailable) { setOpen(it) }
         Outlet {}
     }
 }
