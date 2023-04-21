@@ -16,7 +16,7 @@ import react.*
 external interface FeedbackDialogProps : Props {
     var open: Boolean
     var onClose: (() -> Unit)?
-    /** Optional. The feedback dialog will offer an option to include this context if not null. */
+    /** Optional. The feedback dialog will mention this name of this page if not null. */
     var page: FeedbackPage?
 }
 
@@ -110,14 +110,15 @@ val FeedbackDialog = FC<FeedbackDialogProps> { props ->
                     }
                 }
 
-                props.page?.let { context ->
-                    FormSwitch {
-                        label = "Connect feedback to page"
-                        comment =
-                            "The recipient of the feedback will know that you are referring to the page “${context.pageName}”."
-                        checked = connectToPage
-                        onChange = { e -> connectToPage = e.target.checked }
+                FormSwitch {
+                    label = "Connect feedback to page"
+                    props.page?.let { context ->
+                        comment = "The recipient of the feedback will know that you are referring to the page “${context.pageName}”."
+                    } ?: run {
+                        comment = "The recipient of the feedback will know that you are referring to your currently open page."
                     }
+                    checked = connectToPage
+                    onChange = { e -> connectToPage = e.target.checked }
                 }
 
                 Button {
