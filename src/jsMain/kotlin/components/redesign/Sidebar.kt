@@ -37,7 +37,7 @@ class SidebarState internal constructor(
     }
 
     val marginOffset
-        get(): Length = if (isOpen) {
+        get(): Length = if (isOpen && isAvailable) {
             280.px
         } else {
             0.px
