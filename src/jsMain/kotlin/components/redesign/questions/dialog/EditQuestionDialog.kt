@@ -47,6 +47,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     // ANSWER
     var answerSpace: Space? by useState(props.entity?.answerSpace ?: BinarySpace)
     var answerSpaceValid: Boolean by useState(false)
+    val answerSpaceReadOnly by useState(props.entity?.answerSpace != null && props.entity?.numPredictions != 0)
 
     // RESOLUTION
     var questionStatus by useState {
@@ -162,6 +163,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
 
             EditQuestionDialogSpace {
                 space = answerSpace
+                readOnly = answerSpaceReadOnly
                 onChange = { answerSpace = it; answerSpaceValid = true }
                 onError = {
                     answerSpace = null

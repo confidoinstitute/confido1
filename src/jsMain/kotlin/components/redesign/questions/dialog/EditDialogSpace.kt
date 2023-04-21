@@ -16,6 +16,7 @@ internal external interface EditQuestionDialogSpaceProps : Props {
     var space: Space?
     var onChange: (Space) -> Unit
     var onError: () -> Unit
+    var readOnly: Boolean?
 }
 
 internal val EditQuestionDialogSpace = FC<EditQuestionDialogSpaceProps> { props ->
@@ -27,6 +28,7 @@ internal val EditQuestionDialogSpace = FC<EditQuestionDialogSpaceProps> { props 
 
     var error: AnswerSpaceError? by useState(null)
 
+    val readOnly = props.readOnly ?: false
     val outSpace = props.space
     var questionType by useState(outSpace?.questionType ?: QuestionType.BINARY)
 
@@ -117,6 +119,7 @@ internal val EditQuestionDialogSpace = FC<EditQuestionDialogSpaceProps> { props 
                 defaultValue = QuestionType.BINARY
                 value = questionType
                 onChange = { type -> questionType = type }
+                disabled = readOnly
             }
             comment = when (questionType) {
                 QuestionType.BINARY -> "The question asks whether something is true."
@@ -137,12 +140,14 @@ internal val EditQuestionDialogSpace = FC<EditQuestionDialogSpaceProps> { props 
                         type = InputType.number
                         value = minValue
                         onChange = { e -> minValue = e.target.value }
+                        disabled = readOnly
                     }
                     TextInput {
                         placeholder = "Max"
                         type = InputType.number
                         value = maxValue
                         onChange = { e -> maxValue = e.target.value }
+                        disabled = readOnly
                     }
                     answerSpaceError()
                 }
@@ -153,6 +158,7 @@ internal val EditQuestionDialogSpace = FC<EditQuestionDialogSpaceProps> { props 
                         placeholder = "Enter the unit"
                         value = unit
                         onChange = { e -> unit = e.target.value }
+                        disabled = readOnly
                     }
                 }
             }
@@ -167,12 +173,14 @@ internal val EditQuestionDialogSpace = FC<EditQuestionDialogSpaceProps> { props 
                         type = InputType.date
                         value = minDateValue
                         onChange = { e -> minDateValue = e.target.value }
+                        disabled = readOnly
                     }
                     TextInput {
                         placeholder = "Max"
                         type = InputType.date
                         value = maxDateValue
                         onChange = { e -> maxDateValue = e.target.value }
+                        disabled = readOnly
                     }
                     answerSpaceError()
                 }
