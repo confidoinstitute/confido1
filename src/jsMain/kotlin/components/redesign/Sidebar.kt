@@ -17,6 +17,7 @@ import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.img
 import react.router.Outlet
 import react.router.dom.Link
+import react.router.useLocation
 
 external interface SidebarProps : PropsWithChildren {
     var open: Boolean?
@@ -26,6 +27,7 @@ external interface SidebarProps : PropsWithChildren {
 class SidebarState internal constructor(
     val isOpen: Boolean,
     val isAvailable: Boolean,
+    var layoutMode: LayoutMode,
     val setState: (Boolean) -> Unit,
 ) {
     fun open() {
@@ -46,6 +48,10 @@ class SidebarState internal constructor(
     fun toggle() {
         setState(!isOpen)
     }
+    
+    fun closeIfTablet() {
+        if (layoutMode == LayoutMode.TABLET) close()
+    }
 }
 
 val SidebarContext = createContext<SidebarState>()
@@ -53,16 +59,34 @@ val SidebarContext = createContext<SidebarState>()
 val SidebarLayout = FC<Props> {
     val layoutMode = useContext(LayoutModeContext)
     val (open, setOpen) = useState(true)
+    val location = useLocation()
+
+    useBackdrop(open && layoutMode == LayoutMode.TABLET) { setOpen(false) }
+
+
+    useEffect(location) {
+        // close overlay sidebar after navigation
+        if (layoutMode == LayoutMode.TABLET) setOpen(false)
+    }
 
     val isAvailable = layoutMode != LayoutMode.PHONE
 
-    val state = SidebarState(open, isAvailable) { setOpen(it) }
-    Sidebar {
-        this.open = open && isAvailable
-        this.width = state.marginOffset
+    val state = SidebarState(open, isAvailable, layoutMode) { setOpen(it) }
+
+    useEffect(layoutMode.ordinal) {
+        state.layoutMode = layoutMode
+        setOpen(when (layoutMode) {
+            LayoutMode.PHONE -> false
+            LayoutMode.TABLET -> false
+            LayoutMode.DESKTOP -> true
+        })
     }
     SidebarContext.Provider {
         value = state
+        Sidebar {
+            this.open = open && isAvailable
+            this.width = state.marginOffset
+        }
         Outlet {}
     }
 }
@@ -79,7 +103,7 @@ val Sidebar = FC<SidebarProps> { props ->
             backgroundColor = Color("#FFFFFF")
             width = offset
             //transition = Transition(ident("width"), transitionTime, 0.s)
-            zIndex = integer(100)
+            zIndex = integer(if (layoutMode == LayoutMode.TABLET) 2050 else 100)
             gap = 30.px
             padding = if (props.open == true) {
                 15.px
@@ -97,6 +121,7 @@ val Sidebar = FC<SidebarProps> { props ->
         Global {
             this.styles {
                 "body" {
+                    if (layoutMode == LayoutMode.DESKTOP)
                     marginLeft = offset
                     //transition = Transition(ident("margin-left"), transitionTime, 0.s)
                 }
@@ -162,6 +187,7 @@ private val SidebarAction = FC<SidebarActionProps> { props ->
     // We have an extra Stack rather than using the button directly
     // to avoid the padding from being clickable.
     val disabled = props.disabled ?: false
+    val sidebarState = useContext(SidebarContext)
     Stack {
         css {
             padding = Padding(6.px, 8.px)
@@ -221,6 +247,7 @@ private val SidebarAction = FC<SidebarActionProps> { props ->
             onClick = {
                 if (!disabled) {
                     createRipple(it, Color("#999999"))
+                    sidebarState.closeIfTablet()
                     props.onClick?.invoke()
                 }
             }
