@@ -54,7 +54,12 @@ private val RootLayoutInner = FC<Props> {
             css {
                 backdropFilter = blur(10.px)
             }
-            onClick = {  showDemoWelcome = false; window.asDynamic().demoDismissed = true  }
+            onClick = {
+                if (it.target == it.currentTarget) {
+                    showDemoWelcome = false
+                    window.asDynamic().demoDismissed = true
+                }
+            }
             DemoWelcomeBox { dismissDemo = { showDemoWelcome = false; window.asDynamic().demoDismissed = true } }
         }
 

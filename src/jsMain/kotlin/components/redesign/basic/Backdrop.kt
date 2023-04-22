@@ -36,6 +36,8 @@ val BackdropProvider = FC<PropsWithChildren> {
         appear = false
         this.`in` = counter.isNotEmpty()
         onClick = {
+            // click directly on backdrop, not descendants
+            if (it.target == it.currentTarget)
             counter.entries.forEach { it.value?.invoke() }
         }
     }
