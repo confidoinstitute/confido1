@@ -10,22 +10,24 @@ import react.dom.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.div
 import utils.*
+import web.events.Event
 
 external interface BackdropProps: HTMLAttributes<HTMLDivElement> {
     var appear: Boolean?
     var `in`: Boolean
 }
 
-class BackdropCounter(val add: (String) -> Unit, val del: (String) -> Unit)
+typealias BackdropClickHandler = ()->Unit
+class BackdropCounter(val add: (String, BackdropClickHandler?) -> Unit, val del: (String) -> Unit)
 
 val BackdropContext = createContext<BackdropCounter>()
 
 val BackdropProvider = FC<PropsWithChildren> {
-    val (counter, setCounter) = useState(setOf<String>())
+    val (counter, setCounter) = useState(mapOf<String, BackdropClickHandler?>())
 
     val counterSetter = useMemo {
         BackdropCounter(
-            add = { id -> setCounter { it.plus(id) } },
+            add = { id, onClick -> setCounter { it.plus(id to onClick) } },
             del = { id -> setCounter { it.minus(id) } },
         )
     }
@@ -33,6 +35,9 @@ val BackdropProvider = FC<PropsWithChildren> {
     Backdrop {
         appear = false
         this.`in` = counter.isNotEmpty()
+        onClick = {
+            counter.entries.forEach { it.value?.invoke() }
+        }
     }
     BackdropContext.Provider {
         value = counterSetter
@@ -75,11 +80,11 @@ val Backdrop = FC<BackdropProps> {props ->
         }, document.body.asDynamic())
 }
 
-fun useBackdrop(open: Boolean) {
+fun useBackdrop(open: Boolean, onClick: BackdropClickHandler? = null) {
     val setBackground = useContext(BackdropContext)
     val dialogId = useId()
-    useEffect(open) {
-        if (open) setBackground.add(dialogId) else setBackground.del(dialogId)
+    useEffect(open, onClick) {
+        if (open) setBackground.add(dialogId, onClick) else setBackground.del(dialogId)
         cleanup {
             setBackground.del(dialogId)
         }
