@@ -91,8 +91,16 @@ fun questionRoutes(routing: Routing) = routing.apply {
                         }
                     }
                 }
-                is EditQuestionComplete ->
-                    serverState.questionManager.replaceEntity(editQuestion.question.copy(id=question.id))
+                is EditQuestionComplete -> {
+                    serverState.withTransaction {
+                        serverState.questionManager.modifyEntity(ref) {
+                            if (question.numPredictions > 0 && question.answerSpace != editQuestion.question.answerSpace) {
+                                badRequest("Cannot change answer space of a question with predictions.")
+                            }
+                            editQuestion.question.copy(id = question.id)
+                        }
+                    }
+                }
             }
         }
         TransientData.refreshAllWebsockets()
