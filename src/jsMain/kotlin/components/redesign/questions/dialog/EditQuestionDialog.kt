@@ -60,7 +60,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         } ?: QuestionStatus.OPEN
     }
     var resolution: Value? by useState(props.entity?.resolution)
-    var resolutionValid: Boolean by useState(false)
+    var resolutionValid: Boolean by useState(true)
 
     // ANCHORING
     var groupPredictionVisibility by useState(props.entity?.groupPredictionVisibility ?: GroupPredictionVisibility.ANSWERED)
