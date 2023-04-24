@@ -1,4 +1,4 @@
-package components.redesign.questions
+package components.redesign.questions.predictions
 
 import kotlinx.datetime.*
 import utils.*
@@ -22,7 +22,7 @@ fun markSpacing(width: Double, start: Double, end: Double, formatter: ((value: N
 
     fun strLength(x: Double) = (formatter?:{it.toString()})(x).length
 
-    val markBase = roundNumbers().takeWhile{it <= range}.find {step ->
+    val markBase = roundNumbers().takeWhile{it <= range}.find { step ->
         val lastMark = floor(end / step) * step
         (width / (range / step) >= strLength(lastMark) * 8 + 8)
     } ?: return emptyList()

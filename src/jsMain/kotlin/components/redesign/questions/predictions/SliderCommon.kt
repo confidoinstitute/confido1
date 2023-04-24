@@ -1,4 +1,4 @@
-package components.redesign.questions
+package components.redesign.questions.predictions
 
 import browser.*
 import components.redesign.basic.*
@@ -83,7 +83,7 @@ external interface SliderThumbProps : Props {
     var kind: ThumbKind
     var signpostEnabled: Boolean?
 }
-val SliderThumb = FC<SliderThumbProps>("SliderThumb") {props->
+val SliderThumb = FC<SliderThumbProps>("SliderThumb") { props->
     val pos = props.pos
     val zoomState = props.zoomState
     val posPx = zoomState.contentToViewport(pos)

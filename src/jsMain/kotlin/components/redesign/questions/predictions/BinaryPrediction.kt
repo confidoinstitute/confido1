@@ -1,4 +1,4 @@
-package components.redesign.forms
+package components.redesign.questions.predictions
 
 import components.redesign.basic.*
 import components.redesign.questions.*
@@ -86,7 +86,7 @@ fun ChildrenBuilder.proportionalCircle(text: String, color: Color, prob: Double?
     }
 }
 
-val BinaryPrediction = FC<BinaryPredictionProps> {props ->
+val BinaryPrediction = FC<BinaryPredictionProps> { props ->
     val realSize = useElementSize<HTMLElement>()
 
     val baseHeight = props.baseHeight ?: 145.px
@@ -250,7 +250,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
     }
 })
 
-val BinaryPredInput = FC<PredictionInputProps> {props->
+val BinaryPredInput = FC<PredictionInputProps> { props->
     val propProb = (props.dist as? BinaryDistribution)?.yesProb
     var previewProb by useState(propProb)
     useEffect(propProb) { previewProb = propProb }

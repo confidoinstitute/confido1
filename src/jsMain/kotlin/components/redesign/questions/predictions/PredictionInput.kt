@@ -1,4 +1,4 @@
-package components.redesign.questions
+package components.redesign.questions.predictions
 
 import components.redesign.forms.*
 import react.*
@@ -30,7 +30,7 @@ external interface PredictionGraphProps : Props {
     var space: Space
     var dist: ProbabilityDistribution?
 }
-val PredictionGraph = FC<PredictionGraphProps> {props->
+val PredictionGraph = FC<PredictionGraphProps> { props->
     val space = props.space
     when (space) {
         is NumericSpace -> NumericPredGraph{

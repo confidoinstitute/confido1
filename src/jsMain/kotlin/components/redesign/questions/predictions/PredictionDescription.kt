@@ -1,4 +1,4 @@
-package components.redesign.questions
+package components.redesign.questions.predictions
 
 import components.redesign.basic.*
 import csstype.*

@@ -1,8 +1,9 @@
-package components.redesign.questions
+package components.redesign.questions.predictions
 
 import components.questions.*
 import components.redesign.basic.*
 import components.redesign.basic.Stack
+import components.redesign.questions.predictions.markSpacing
 import csstype.*
 import dom.html.*
 import emotion.react.*
