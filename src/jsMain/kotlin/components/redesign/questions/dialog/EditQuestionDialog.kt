@@ -171,23 +171,29 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 }
             }
 
-            EditQuestionDialogResolution {
-                this.preset = props.preset
-                status = questionStatus
-                onStatusChange = {questionStatus = it}
+            // TODO properly
+            if (props.preset != QuestionPreset.SENSITIVE && props.preset != QuestionPreset.BELIEF)
+                FormSection {
+                    title = "Resolution"
+                    EditQuestionDialogResolution {
+                        this.preset = props.preset
+                        status = questionStatus
+                        onStatusChange = { questionStatus = it }
 
-                space = answerSpace
-                value = resolution
-                valid = resolutionValid
-                this.onChange = {
-                    resolution = it
-                    resolutionValid = true
+                        space = answerSpace
+                        value = resolution
+                        valid = resolutionValid
+                        this.onChange = {
+                            resolution = it
+                            resolutionValid = true
+                        }
+                        this.onError = {
+                            resolution = null
+                            resolutionValid = false
+                        }
+                    }
                 }
-                this.onError = {
-                    resolution = null
-                    resolutionValid = false
-                }
-            }
+
             if (props.preset != QuestionPreset.SENSITIVE)
                 FormSection {
                     title = "Anchoring"

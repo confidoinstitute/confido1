@@ -24,18 +24,12 @@ import csstype.*
 import emotion.react.*
 import ext.showmoretext.ShowMoreText
 import hooks.*
-import io.ktor.http.*
 import kotlinx.js.*
 import kotlinx.serialization.*
-import payloads.requests.EditQuestion
-import payloads.requests.EditQuestionFieldType
-import payloads.requests.EditQuestionFlag
 import payloads.responses.*
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.main
-import react.dom.html.ReactHTML.span
-import react.router.*
 import react.router.dom.Link
 import rooms.*
 import tools.confido.distributions.*
@@ -45,7 +39,6 @@ import tools.confido.serialization.*
 import tools.confido.spaces.*
 import tools.confido.utils.*
 import utils.*
-import web.prompts.*
 
 external interface QuestionLayoutProps : Props {
     var question: Question
@@ -80,14 +73,6 @@ external interface QuestionCommentSectionProps : Props {
     var allowAddingComment: Boolean
 }
 
-external interface QuestionQuickSettingsDialogProps : Props {
-    var question: Question
-    var open: Boolean
-    var canEdit: Boolean
-    var onEdit: (() -> Unit)?
-    var onClose: (() -> Unit)?
-}
-
 private val bgColor = Color("#f2f2f2")
 
 val QuestionPage = FC<QuestionLayoutProps> { props ->
@@ -99,6 +84,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
     val roomPalette = room.color.palette
 
     var quickSettingsOpen by useState(false)
+    var resolutionDialogOpen by useState(false)
 
     val editDialog = useEditDialog(EditQuestionDialog, jso {
         preset = QuestionPreset.NONE
@@ -118,7 +104,14 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
         open = quickSettingsOpen
         canEdit = room.hasPermission(appState.session.user, RoomPermission.MANAGE_QUESTIONS)
         onEdit = { quickSettingsOpen = false; editDialog(props.question) }
+        onOpenResolution = { quickSettingsOpen = false; resolutionDialogOpen = true; }
         onClose = { quickSettingsOpen = false }
+    }
+
+    QuestionResolveDialog {
+        open = resolutionDialogOpen
+        question = props.question
+        onClose = { resolutionDialogOpen = false }
     }
 
     RoomNavbar {
@@ -648,97 +641,3 @@ private val QuestionStatusLine = FC<QuestionStatusProps> { props ->
     }
 }
 
-private val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props ->
-    val (appState, stale) = useContext(AppStateContext)
-    val room = useContext(RoomContext)
-    val navigate = useNavigate()
-
-    val editLock = useCoroutineLock()
-
-    fun delete() = runCoroutine {
-        Client.send(
-            questionUrl(props.question.id),
-            HttpMethod.Delete,
-            onError = { showError?.invoke(it) }) {
-            navigate(room.urlPrefix)
-            props.onClose?.invoke()
-        }
-    }
-
-    DialogMenu {
-        open = props.open
-        onClose = { props.onClose?.invoke() }
-
-        if (props.canEdit) {
-            DialogMenuHeader {
-                text = "Quick settings"
-            }
-            DialogMenuItem {
-                // TODO: Better text for "Unhide". Using something like "Show" would not make it clear what this button does (i.e. the question is currently hidden).
-                text = if (props.question.visible) { "Hide" } else { "Unhide" }
-                icon = if (props.question.visible) { HideIcon } else { UnhideIcon }
-                disabled = editLock.running
-                onClick = {
-                    editLock {
-                        val edit: EditQuestion = EditQuestionFlag(EditQuestionFieldType.VISIBLE, !props.question.visible)
-                        Client.sendData(
-                            "${props.question.urlPrefix}/edit",
-                            edit,
-                            onError = { showError?.invoke(it) }) {
-                        }
-                    }
-                }
-            }
-            DialogMenuItem {
-                text = if (props.question.open) { "Close" } else { "Open" }
-                icon = if (props.question.open) { LockIcon } else { UnlockIcon }
-                disabled = editLock.running
-                onClick = {
-                    editLock {
-                        val edit: EditQuestion = EditQuestionFlag(EditQuestionFieldType.OPEN, !props.question.open)
-                        Client.sendData(
-                            "${props.question.urlPrefix}/edit",
-                            edit,
-                            onError = { showError?.invoke(it) }) {
-                        }
-                    }
-                }
-            }
-            /*
-            DialogMenuItem {
-                text = "Resolve"
-                disabled = true
-                onClick = {
-                    // TODO: Implement and remove disabled
-                }
-            }
-             */
-            DialogMenuSeparator {}
-            DialogMenuItem {
-                text = "Edit this question"
-                icon = EditIcon
-                disabled = stale
-                onClick = {
-                    props.onEdit?.invoke()
-                }
-            }
-            DialogMenuItem {
-                text = "Delete this question"
-                icon = BinIcon
-                variant = DialogMenuItemVariant.dangerous
-                disabled = stale
-                onClick = {
-                    // TODO: Check for confirmation properly
-                    if (confirm("Are you sure you want to delete the question? This action is irreversible. Deleting will also result in loss of all predictions made for this question.")) {
-                        delete()
-                    }
-                }
-            }
-        }
-        DialogMenuSeparator {}
-        DialogMenuCommonActions {
-            pageName = props.question.name
-            onClose = props.onClose
-        }
-    }
-}

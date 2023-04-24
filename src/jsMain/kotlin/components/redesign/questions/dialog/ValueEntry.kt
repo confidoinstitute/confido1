@@ -7,12 +7,14 @@ import react.dom.html.*
 
 external interface NumericValueEntryProps : Props {
     var placeholder: String
+    var required: Boolean?
     var value: Double?
     var onChange: ((Double?) -> Unit)?
 }
 
 external interface DateValueEntryProps : Props {
     var placeholder: String
+    var required: Boolean?
     var value: LocalDate?
     var onChange: ((LocalDate?) -> Unit)?
     var onError: (() -> Unit)?
@@ -28,6 +30,7 @@ internal val NumericValueEntry = FC<NumericValueEntryProps> { props ->
         step = 0.1
         value = props.value ?: ""
         placeholder = props.placeholder
+        required = props.required
         onChange = { event ->
             val value = event.target.valueAsNumber
             if (!value.isNaN()) {
@@ -45,6 +48,7 @@ internal val DateValueEntry = FC<DateValueEntryProps> { props ->
         max = props.max
         value = props.value ?: ""
         placeholder = props.placeholder
+        required = props.required
         onChange = { event ->
             val date = try {
                 val value = event.target.value
@@ -63,19 +67,28 @@ internal val DateValueEntry = FC<DateValueEntryProps> { props ->
 
 external interface BinaryValueEntryProps : Props {
     var value: Boolean?
+    var required: Boolean?
     var onChange: ((Boolean?) -> Unit)?
 }
 
 internal val BinaryValueEntry = FC<BinaryValueEntryProps> { props ->
     // TODO: Styled Select instead of this
     val selectedValue = props.value
+    val required = props.required ?: false
 
     RadioGroup<Boolean?>()() {
-        options = listOf(
-            null to "Not resolved",
-            false to "No",
-            true to "Yes"
-        )
+        options = if (required) {
+            listOf(
+                false to "No",
+                true to "Yes"
+            )
+        } else {
+            listOf(
+                null to "Not resolved",
+                false to "No",
+                true to "Yes"
+            )
+        }
         value = selectedValue
         onChange = { value -> props.onChange?.invoke(value) }
     }
