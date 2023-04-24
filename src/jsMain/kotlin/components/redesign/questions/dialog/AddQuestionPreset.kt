@@ -6,13 +6,14 @@ import csstype.*
 import emotion.react.*
 import react.*
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.span
 
-enum class QuestionPreset(val title: String, val subtitle: String) {
-    FORECASTING("Forecasting question", "Correct answer will be known in the future"),
-    KNOWLEDGE("Knowledge question", "Correct answer is known in the present"),
-    BELIEF("Implicit belief question", "Not intended to be resolved"),
-    SENSITIVE("Sensitive question", "Answers are anonymous"),
-    NONE("No template", "Create question from scratch");
+enum class QuestionPreset(val title: String, val subtitle: String, val emoji: String) {
+    FORECASTING("Forecasting question", "Correct answer will be known in the future", "\uD83D\uDD2E"),
+    KNOWLEDGE("Knowledge question", "Correct answer is known in the present", "\uD83D\uDCD6"),
+    BELIEF("Implicit belief question", "Not intended to be resolved", "\uD83D\uDCAD"),
+    SENSITIVE("Sensitive question", "Answers are anonymous", "\uD83D\uDD12"),
+    NONE("No template", "Create question from scratch", "");
 
     fun isAvailable(): Boolean {
         // Currently, Sensitive is not fully implemented.
@@ -60,21 +61,37 @@ val AddQuestionPresetDialog = FC<AddQuestionPresetDialogProps> { props ->
                     palette = MainPalette.default
                     onClick = { props.onPreset?.invoke(preset) }
                     Stack {
-                        div {
-                            css {
-                                fontWeight = integer(600)
-                                fontSize = 24.px
-                                lineHeight = 29.px
-                            }
-                            +preset.title
+                        direction = FlexDirection.row
+                        css {
+                            alignItems = AlignItems.center
+                            justifyContent = JustifyContent.center
+                            gap = 17.px
                         }
-                        div {
+                        span {
                             css {
-                                fontWeight = integer(400)
-                                fontSize = 12.px
-                                lineHeight = 15.px
+                                fontSize = 30.px
+                                lineHeight = 36.px
                             }
-                            +preset.subtitle
+                            +preset.emoji
+                        }
+
+                        Stack {
+                            div {
+                                css {
+                                    fontWeight = integer(600)
+                                    fontSize = 24.px
+                                    lineHeight = 29.px
+                                }
+                                +preset.title
+                            }
+                            div {
+                                css {
+                                    fontWeight = integer(400)
+                                    fontSize = 12.px
+                                    lineHeight = 15.px
+                                }
+                                +preset.subtitle
+                            }
                         }
                     }
                 }
