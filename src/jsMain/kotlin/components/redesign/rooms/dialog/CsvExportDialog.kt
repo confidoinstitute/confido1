@@ -109,7 +109,11 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
                     Stack {
                         if (layoutMode >= LayoutMode.TABLET) {
                             direction = FlexDirection.row
-                            
+                            css {
+                                justifyContent = JustifyContent.spaceBetween
+                                flexWrap = FlexWrap.wrap
+                                alignItems = AlignItems.flexStart
+                            }
                         } else {
                             direction = FlexDirection.column
                         }
