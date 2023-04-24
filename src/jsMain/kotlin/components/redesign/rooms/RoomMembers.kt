@@ -10,6 +10,7 @@ import components.redesign.basic.sansSerif
 import components.redesign.forms.FormDivider
 import components.redesign.forms.IconButton
 import components.redesign.forms.Select
+import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.rooms.dialog.AddMemberDialog
 import components.redesign.rooms.dialog.EditInviteDialog
@@ -78,6 +79,8 @@ val RoomMembers = FC<Props> {
         }
     }
 
+    val bgColor = if (layoutMode == LayoutMode.PHONE) { Color("#FFFFFF") } else { null }
+
     Stack {
         css {
             flexGrow = number(1.0)
@@ -89,7 +92,7 @@ val RoomMembers = FC<Props> {
         groupedMembership["internal"]?.let {
             DividerHeading { text = "Users from this organization" }
             Stack {
-                css { gap = 10.px; padding = 15.px; backgroundColor = Color("#FFFFFF") }
+                css { gap = 10.px; padding = 15.px; backgroundColor = bgColor }
                 it.map {
                     RoomMember {
                         disabled = false
@@ -102,7 +105,7 @@ val RoomMembers = FC<Props> {
             DividerHeading { text = "Temporary guests" }
             Stack {
                 css { gap = 10.px }
-                css { gap = 10.px; padding = 15.px; backgroundColor = Color("#FFFFFF") }
+                css { gap = 10.px; padding = 15.px; backgroundColor = bgColor }
                 it.map {
                     RoomMember {
                         disabled = false
@@ -115,7 +118,7 @@ val RoomMembers = FC<Props> {
             DividerHeading { text = "Invitation links" }
             invitations.entries.sortedBy { it.key.createdAt }.map { (invitation, maybeMembers) ->
                 Stack {
-                    css { gap = 10.px; padding = 15.px; backgroundColor = Color("#FFFFFF") }
+                    css { gap = 10.px; padding = 15.px; backgroundColor = bgColor }
                     InvitationMembers {
                         key = "invitation__" + invitation.token
                         this.invitation = invitation
@@ -128,7 +131,7 @@ val RoomMembers = FC<Props> {
         div {
             css {
                 flexGrow = number(1.0)
-                backgroundColor = Color("#ffffff")
+                backgroundColor = bgColor
             }
         }
     }
