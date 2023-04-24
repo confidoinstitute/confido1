@@ -6,6 +6,7 @@ import components.redesign.*
 import components.redesign.basic.*
 import components.redesign.forms.Button
 import components.redesign.layout.LayoutModeContext
+import components.redesign.rooms.dialog.CsvExportDialog
 import components.redesign.rooms.dialog.EditRoomSettingsDialog
 import components.rooms.RoomContext
 import csstype.*
@@ -71,25 +72,33 @@ val RoomLayout = FC<Props> {
 
     var dialogOpen by useState(false)
     var editOpen by useState(false)
+    var exportOpen by useState(false)
     
     EditRoomSettingsDialog {
         open = editOpen
         onClose = { editOpen = false }
+    }
+    CsvExportDialog {
+        open = exportOpen
+        onClose = { exportOpen = false }
     }
 
     DialogMenu {
         open = dialogOpen
         onClose = { dialogOpen = false }
 
-        var separate = false
-        
         if (appState.hasPermission(room, RoomPermission.ROOM_OWNER)) {
             DialogMenuItem {
                 text = "Change settings of this room"
                 icon = EditIcon
                 onClick = { editOpen = true; dialogOpen = false }
             }
-            separate = true
+        }
+        if (appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)) {
+            DialogMenuItem {
+                text = "Export to CSV..."
+                onClick = { exportOpen = true; dialogOpen = false }
+            }
         }
 
         /*
@@ -110,7 +119,7 @@ val RoomLayout = FC<Props> {
         }
          */
 
-        if (separate) DialogMenuSeparator {}
+        DialogMenuSeparator {}
 
         DialogMenuCommonActions {
             pageName = room.name
