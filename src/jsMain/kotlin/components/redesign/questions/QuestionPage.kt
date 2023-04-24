@@ -514,31 +514,20 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
         prediction = props.myPrediction
     }
 
-    if (layoutMode == LayoutMode.PHONE) {
-        Stack {
-            css {
-                justifyContent = JustifyContent.spaceBetween
-                padding = Padding(12.px, 13.px, 13.px, 15.px)
-                backgroundColor = bgColor
+    Stack {
+        css {
+            gap = 27.px
+            if (layoutMode >= LayoutMode.TABLET) {
+                marginBottom = 27.px
             }
-            direction = FlexDirection.row
-            // TODO: This type of heading is also similar to the room members page.
-            // TODO: We can likely make a RoomHeading that switches its look automatically.
-            div {
-                css {
-                    textTransform = TextTransform.uppercase
-                    fontFamily = sansSerif
-                    fontSize = 13.px
-                    lineHeight = 16.px
-                    color = Color("#777777")
-                }
-                +"Comments"
-            }
+        }
+
+        DividerHeading {
+            text = "Comments"
             if (comments.data?.isNotEmpty() == true) {
                 SortButton {
                     css {
-                        paddingTop = 0.px
-                        paddingBottom = 0.px
+                        alignSelf = AlignSelf.end
                     }
                     options = listOf(SortType.NEWEST, SortType.OLDEST)
                     this.sortType = sortType
@@ -546,35 +535,8 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
                 }
             }
         }
-    } else {
-        Stack {
-            css {
-                gap = 27.px
-                marginBottom = 27.px
-            }
-            Stack {
-                direction = FlexDirection.row
-                css {
-                    justifyContent = JustifyContent.spaceBetween
-                }
-                RoomHeading {
-                    +"Comments"
-                }
-                if (comments.data?.isNotEmpty() == true) {
-                    SortButton {
-                        css {
-                            paddingTop = 0.px
-                            paddingBottom = 0.px
-                            height = 29.px
-                            alignSelf = AlignSelf.end
-                        }
-                        options = listOf(SortType.NEWEST, SortType.OLDEST)
-                        this.sortType = sortType
-                        onChange = { sort -> sortType = sort }
-                    }
-                }
-            }
 
+        if (layoutMode >= LayoutMode.TABLET) {
             AddCommentField {
                 id = props.question.id
                 variant = CommentInputVariant.QUESTION

@@ -87,7 +87,7 @@ val RoomMembers = FC<Props> {
 
         }
         groupedMembership["internal"]?.let {
-            FormDivider { +"Users from this organization" }
+            DividerHeading { text = "Users from this organization" }
             Stack {
                 css { gap = 10.px; padding = 15.px; backgroundColor = Color("#FFFFFF") }
                 it.map {
@@ -99,7 +99,7 @@ val RoomMembers = FC<Props> {
             }
         }
         groupedMembership["guest"]?.let {
-            FormDivider {+"Temporary guests" }
+            DividerHeading { text = "Temporary guests" }
             Stack {
                 css { gap = 10.px }
                 css { gap = 10.px; padding = 15.px; backgroundColor = Color("#FFFFFF") }
@@ -112,7 +112,7 @@ val RoomMembers = FC<Props> {
             }
         }
         if (invitations.isNotEmpty()) {
-            FormDivider { +"Invitation links" }
+            DividerHeading { text = "Invitation links" }
             invitations.entries.sortedBy { it.key.createdAt }.map { (invitation, maybeMembers) ->
                 Stack {
                     css { gap = 10.px; padding = 15.px; backgroundColor = Color("#FFFFFF") }

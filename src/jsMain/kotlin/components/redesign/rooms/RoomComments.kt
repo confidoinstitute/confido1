@@ -15,21 +15,7 @@ import hooks.*
 import payloads.responses.*
 import react.*
 import react.dom.html.ReactHTML.div
-import react.dom.html.ReactHTML.span
 import rooms.*
-
-val RoomHeading = FC<PropsWithChildren> { props ->
-    span {
-        css {
-            marginTop = 40.px
-            fontFamily = sansSerif
-            fontWeight = integer(600)
-            fontSize = 24.px
-            lineHeight = 29.px
-        }
-        +props.children
-    }
-}
 
 val RoomComments = FC<Props> {
     val (appState, _) = useContext(AppStateContext)
@@ -75,11 +61,12 @@ val RoomComments = FC<Props> {
             flexGrow = number(1.0)
         }
 
-        if (layoutMode != LayoutMode.PHONE) {
-            RoomHeading {
-                +"Room discussion"
-            }
+        DividerHeading {
+            hiddenOnPhone = true
+            text = "Room discussion"
+        }
 
+        if (layoutMode != LayoutMode.PHONE) {
             if (appState.hasPermission(room, RoomPermission.POST_ROOM_COMMENT)) {
                 AddCommentField {
                     id = room.id
