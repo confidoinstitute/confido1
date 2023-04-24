@@ -9,6 +9,9 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import tools.confido.refs.ImmediateDerefEntity
+import tools.confido.refs.Ref
+import tools.confido.refs.deref
 import kotlin.js.JsName
 import kotlin.jvm.JvmName
 import kotlin.math.roundToInt
@@ -217,3 +220,5 @@ inline fun <T1: Any, T2: Any, T3: Any, R:Any> multiletNotNull(a1: T1?, a2: T2?, 
     = if (a1 != null && a2 != null && a3 != null) body(a1, a2, a3) else null
 inline fun <T1: Any, T2: Any, T3: Any, T4: Any, R:Any> multiletNotNull(a1: T1?, a2: T2?, a3: T3?, a4: T4?, body: (T1, T2, T3, T4)->R?)
         = if (a1 != null && a2 != null && a3 != null && a4 != null) body(a1, a2, a3, a4) else null
+
+inline fun <reified T: ImmediateDerefEntity> Iterable<Ref<T>>.forEachDeref(body: (T)->Unit) = forEach { it.deref()?.let { body(it) } }
