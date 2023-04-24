@@ -122,7 +122,9 @@ val DialogCore = FC<DialogCoreProps> { props ->
     }
 
     val theme = hooks.useTheme()
-    useBackdrop(props.open)
+    useBackdrop(props.open) {
+        props.onClose?.invoke()
+    }
     Slide {
         appear = true
         `in` = props.open
@@ -153,7 +155,6 @@ val DialogCore = FC<DialogCoreProps> { props ->
                         flexBasis = 44.px
                         flexShrink = number(0.0)
                     }
-                    onClick = { props.onClose?.invoke(); it.preventDefault() }
                 }
                 Stack {
                     direction = FlexDirection.row
@@ -204,7 +205,6 @@ val DialogCore = FC<DialogCoreProps> { props ->
                             flexBasis = 44.px
                             flexShrink = number(0.0)
                         }
-                        onClick = { props.onClose?.invoke(); it.preventDefault() }
                     }
                 }
             }, document.body
