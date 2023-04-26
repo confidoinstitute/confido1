@@ -326,6 +326,7 @@ private val AttachedPredictionSection = FC<CommentAttachedPredictionProps> { pro
                 key = "${props.key}-vis"
                 space = props.prediction.dist.space
                 dist = props.prediction.dist
+                isGroup = false
             }
         }
     }

@@ -3,31 +3,23 @@ package components.redesign.questions.predictions
 import components.questions.*
 import components.redesign.basic.*
 import components.redesign.basic.Stack
-import components.redesign.questions.predictions.markSpacing
 import csstype.*
 import dom.html.*
 import emotion.react.*
 import hooks.*
 import kotlinx.js.*
-import mui.material.*
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.div
-import react.dom.html.ReactHTML.table
-import react.dom.html.ReactHTML.td
-import react.dom.html.ReactHTML.tr
 import tools.confido.distributions.*
 import tools.confido.spaces.*
-import tools.confido.utils.*
 import utils.panzoom1d.PZParams
 import utils.panzoom1d.PZState
 import utils.panzoom1d.usePanZoom
-import web.location.*
-import web.url.*
 
-external interface NumericPredGraphProps : PropsWithElementSize {
-    var space: NumericSpace
-    var dist: ContinuousProbabilityDistribution?
+external interface NumericPredGraphProps : PropsWithElementSize, BasePredictionGraphProps {
+    override var space: NumericSpace
+    override var dist: ContinuousProbabilityDistribution?
     var preferredCICenter: Double?
     var zoomable: Boolean?
     var onZoomChange: ((PZState, List<Double>)->Unit)? // args: zoom state & visible marks

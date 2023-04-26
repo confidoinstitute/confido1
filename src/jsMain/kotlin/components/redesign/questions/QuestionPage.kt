@@ -321,6 +321,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                         space = props.question.answerSpace
                         this.dist = props.myPrediction?.dist
                         this.disabled = !question.open || !hasPredictPermission
+                        this.question = question
                         if (question.open) {
                             this.onChange = {
                                 pendingPrediction = null
@@ -343,6 +344,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                         key = "groupPredictionBox"
                         space = props.question.answerSpace
                         dist = null
+                        isGroup = false
                     }
                     PredictionOverlay {
                         if (!hasPredictPermission) {
@@ -370,6 +372,8 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     key = "groupPredictionBox"
                     space = props.question.answerSpace
                     dist = props.groupPrediction?.dist
+                    isGroup = true
+                    this.question = props.question
                 }
                 val canViewAll = appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
                 if (question.groupPredictionVisibility == GroupPredictionVisibility.ANSWERED && props.myPrediction == null && !canViewAll) {

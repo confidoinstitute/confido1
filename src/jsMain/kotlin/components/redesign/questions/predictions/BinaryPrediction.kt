@@ -15,8 +15,9 @@ import utils.panzoom1d.PZParams
 import utils.panzoom1d.PZState
 import kotlin.math.*
 
-external interface BinaryPredictionProps : Props {
-    var yesProb: Double?
+external interface BinaryPredictionProps : Props, BasePredictionGraphProps {
+    override var dist: BinaryDistribution?
+    override var space: BinarySpace
     var baseHeight: Length?
 }
 
@@ -101,8 +102,8 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
             justifyContent = JustifyContent.center
             alignItems = AlignItems.center
         }
-        proportionalCircle("No", Color("#FF5555"), props.yesProb?.let {1 - it}, size = circleSize)
-        proportionalCircle("Yes", Color("#00CC2E"), props.yesProb, size = circleSize)
+        proportionalCircle("No", Color("#FF5555"), props.dist?.yesProb?.let {1 - it}, size = circleSize)
+        proportionalCircle("Yes", Color("#00CC2E"), props.dist?.yesProb, size = circleSize)
     }
 }
 
@@ -251,21 +252,24 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
 })
 
 val BinaryPredInput = FC<PredictionInputProps> { props->
-    val propProb = (props.dist as? BinaryDistribution)?.yesProb
-    var previewProb by useState(propProb)
-    useEffect(propProb) { previewProb = propProb }
+    val propDist = (props.dist as? BinaryDistribution)
+    var previewDist by useState(propDist)
+    useEffect(propDist?.yesProb) { previewDist = propDist }
     Stack {
         css {
             overflowX = Overflow.hidden
         }
         BinaryPrediction {
-            this.yesProb = previewProb
+            this.dist = previewDist
+            this.question = props.question
+            this.isInput = true
+            this.isGroup = false
         }
         BinaryPredSlider {
             this.space = props.space
             this.dist = props.dist
             this.onChange = {
-                previewProb = (it as BinaryDistribution).yesProb
+                previewDist = (it as BinaryDistribution)
                 props.onChange?.invoke(it)
             }
             this.onCommit = props.onCommit

@@ -280,6 +280,9 @@ val NumericPredInput = FC<NumericPredInputProps>("NumericPredInput") { props->
         NumericPredGraph {
             this.space = props.space as NumericSpace
             this.dist = previewDist
+            this.question = props.question
+            this.isInput = true
+            this.isGroup = false
             onZoomChange = { newZoomState, newMarks ->
                 console.log("OZC")
                 zoomState = newZoomState; marks = newMarks; }
