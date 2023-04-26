@@ -13,7 +13,6 @@ import react.dom.svg.*
 import react.dom.svg.ReactSVG.svg
 import react.router.*
 import react.router.dom.*
-import utils.*
 
 external interface RoomListProps : Props {
     var small: Boolean
@@ -22,7 +21,7 @@ external interface RoomListProps : Props {
 
 external interface RoomLinkProps : LinkProps {
     var small: Boolean
-    var active: Boolean
+    var highlighted: Boolean
 }
 
 private val RoomLink = Link.withRipple().withStyleLM<RoomLinkProps>("small") {props, layoutMode ->
@@ -48,7 +47,7 @@ private val RoomLink = Link.withRipple().withStyleLM<RoomLinkProps>("small") {pr
     borderRadius = if (layoutMode == LayoutMode.PHONE) 0.px else 5.px
     cursor = Cursor.pointer
 
-    if (props.active) {
+    if (props.highlighted) {
         backgroundColor = Color("#F2F2F2")
         borderRadius = 12.px
     }
@@ -75,6 +74,7 @@ val RoomList = FC<RoomListProps> {props ->
                 key = id
                 to = room.urlPrefix
                 small = props.small
+                highlighted = location.pathname.startsWith(to)
                 div {
                     css {
                         backgroundColor = room.color.palette.color
@@ -87,7 +87,6 @@ val RoomList = FC<RoomListProps> {props ->
                 span {
                     +room.name
                 }
-                active = location.pathname.startsWith(room.urlPrefix)
             }
         }
         if (props.canCreate)
@@ -95,6 +94,7 @@ val RoomList = FC<RoomListProps> {props ->
                 key = "::new_room"
                 to = "/new_room"
                 small = props.small
+                highlighted = location.pathname.startsWith(to)
                 div {
                     css {
                         border = Border(1.px, LineStyle.solid, Color("#BBBBBB"))

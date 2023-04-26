@@ -507,6 +507,8 @@ val DialogMenuCommonActions = FC<DialogMenuCommonActionsProps> { props ->
         }
     }
     /*
+    When implementing these, see also the Sidebar, this is duplicated there.
+
     DialogMenuItem {
         text = "How to use this page"
         disabled = true

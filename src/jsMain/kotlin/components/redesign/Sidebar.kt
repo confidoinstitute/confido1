@@ -139,6 +139,7 @@ val Sidebar = FC<SidebarProps> { props ->
             }
             title("Rooms", layoutMode.contentSidePad)
             RoomList {
+                canCreate = appState.session.user?.type?.isProper() ?: false
                 small = true
             }
         }
@@ -148,6 +149,8 @@ val Sidebar = FC<SidebarProps> { props ->
             }
             FeedbackSidebarAction {}
             /*
+            When implementing these, see also the DialogMenuCommonActions, this is duplicated there.
+
             SidebarAction {
                 text = "How to use this page"
                 disabled = true
