@@ -59,7 +59,7 @@ fun <P: PropsWithElementSize> elementSizeWrapper(component: FC<P>,  className: C
 
 fun <P: PropsWithClassName> ElementType<P>.withStyle(vararg except: String, block: PropertiesBuilder.(P) -> Unit) = FC<P> {props ->
     this@withStyle {
-        +props.except(*except)
+        +props.except("className", *except)
         css(override = props) {
             block(props)
         }

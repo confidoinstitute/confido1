@@ -118,6 +118,14 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps>("NumericPred
     }
     Stack {
         ref = panZoomRE.unsafeCast<Ref<HTMLElement>>()
+        css {
+            position = Position.relative
+        }
+        GraphButtons {
+            isGroup = props.isGroup
+            isInput = props.isInput
+            question = props.question
+        }
         ReactHTML.canvas {
             style = jso {
                 this.width = logicalWidth.px

@@ -95,6 +95,15 @@ val AppLegacy = memo(FC<AppProps> { props ->
     }
 })
 
+val PresenterWrapper = FC<Props> {
+
+    ThemeProvider {
+        this.theme = globalTheme
+        CssBaseline {}
+        PresenterLayout {}
+    }
+}
+
 val AppMobile = memo(FC<AppProps> {props ->
     val isLoggedIn = props.isLoggedIn
     val layout = if (!isLoggedIn)
@@ -108,6 +117,10 @@ val AppMobile = memo(FC<AppProps> {props ->
                 path = "/*"
                 index = true
                 element = layout.create {}
+            }
+            Route {
+                path = "presenter"
+                element = PresenterWrapper.create()
             }
         }
     }

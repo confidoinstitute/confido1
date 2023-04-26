@@ -9,6 +9,7 @@ import components.redesign.*
 import components.redesign.basic.*
 import components.redesign.basic.GlobalErrorMessage
 import components.redesign.feedback.FeedbackProvider
+import components.redesign.presenter.PresenterControllerProvider
 import components.redesign.profile.UserProfile
 import components.redesign.profile.VerifyToken
 import components.redesign.rooms.*
@@ -68,73 +69,73 @@ private val RootLayoutInner = FC<Props> {
         }
         GlobalErrorMessage {}
         BackdropProvider {
-            FeedbackProvider {
-                Routes {
+        FeedbackProvider {
+        PresenterControllerProvider {
+            Routes {
+                Route {
+                    index = true
+                    path = "/"
+                    this.element = Dashboard.create()
+                }
+                Route {
+                    this.element = SidebarLayout.create()
                     Route {
-                        index = true
-                        path = "/"
-                        this.element = Dashboard.create()
+                        path = "rooms/:roomID/*"
+                        this.element = Room.create()
                     }
                     Route {
-                        this.element = SidebarLayout.create()
-                        Route {
-                            path = "rooms/:roomID/*"
-                            this.element = Room.create()
-                        }
-                        Route {
-                            path = "room/:roomID/*"
-                            this.element = RoomRedirect.create()
-                        }
-                        Route {
-                            path = "/join/:inviteToken"
-                            this.element = RoomInviteLoggedIn.create()
-                        }
-                        Route {
-                            path = "email_verify"
-                            this.element = VerifyToken.create {
-                                url = "/profile/email/verify"
-                                failureTitle = "Email verification failed"
-                                successTitle = "Email verification success"
-                                failureText = "The verification link is expired or invalid."
-                                successText = "Your email address has been successfully verified."
-                            }
-                        }
-                        Route {
-                            path = "password_reset"
-                            this.element = VerifyToken.create {
-                                url = "/profile/password/reset/finish"
-                                failureTitle = "Password reset failed"
-                                successTitle = "Password was reset"
-                                failureText = "The link is expired or invalid."
-                                successText =
-                                    "Your password has been successfully reset. You can log in by e-mail only now."
-                            }
-                        }
-                        Route {
-                            path = "email_login"
-                            this.element = EmailLoginAlreadyLoggedIn.create()
-                        }
-                        if (appState.session.user?.type?.isProper() == true) {
-                            Route {
-                                path = "new_room"
-                                this.element = CreateRoom.create()
-                            }
-                        }
-                        Route {
-                            path = "profile"
-                            this.element = UserProfile.create()
+                        path = "room/:roomID/*"
+                        this.element = RoomRedirect.create()
+                    }
+                    Route {
+                        path = "/join/:inviteToken"
+                        this.element = RoomInviteLoggedIn.create()
+                    }
+                    Route {
+                        path = "email_verify"
+                        this.element = VerifyToken.create {
+                            url = "/profile/email/verify"
+                            failureTitle = "Email verification failed"
+                            successTitle = "Email verification success"
+                            failureText = "The verification link is expired or invalid."
+                            successText = "Your email address has been successfully verified."
                         }
                     }
-                    /*
-                if (appState.isAdmin()) {
                     Route {
-                        path = "admin/users"
-                        this.element = AdminView.create()
+                        path = "password_reset"
+                        this.element = VerifyToken.create {
+                            url = "/profile/password/reset/finish"
+                            failureTitle = "Password reset failed"
+                            successTitle = "Password was reset"
+                            failureText = "The link is expired or invalid."
+                            successText =
+                                "Your password has been successfully reset. You can log in by e-mail only now."
+                        }
+                    }
+                    Route {
+                        path = "email_login"
+                        this.element = EmailLoginAlreadyLoggedIn.create()
+                    }
+                    if (appState.session.user?.type?.isProper() == true) {
+                        Route {
+                            path = "new_room"
+                            this.element = CreateRoom.create()
+                        }
+                    }
+                    Route {
+                        path = "profile"
+                        this.element = UserProfile.create()
                     }
                 }
-                 */
-                }
+                /*
+        if (appState.isAdmin()) {
+            Route {
+                path = "admin/users"
+                this.element = AdminView.create()
             }
         }
+         */
+            }
+        } } }
     }
 }
