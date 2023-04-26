@@ -36,7 +36,7 @@ val RoomInformation = FC<Props> {
     val editRoom: ((BaseRoomInformation) -> Unit) = useMemo(room) {
         { information ->
             edit {
-                Client.sendData("${room.urlPrefix}/edit", information, onError = { showError?.invoke(it) }) {
+                Client.sendData("${room.urlPrefix}/edit", information, onError = { showError(it) }) {
                     editMode = false
                 }
             }

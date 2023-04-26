@@ -60,7 +60,7 @@ val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
         }
 
         runCoroutine {
-            Client.send("/login_users", HttpMethod.Get, onError = {showError?.invoke(it)}) {
+            Client.send("/login_users", HttpMethod.Get, onError = {showError(it)}) {
                 val availableUsers: ReadonlyArray<User> = body()
                 // Required for the autocomplete groupBy
                 availableUsers.sortBy { it.type }
@@ -77,7 +77,7 @@ val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
     val autocomplete: FC<AutocompleteProps<User>> = Autocomplete
     fun attemptLogin() = login {
         chosenUser?.let {
-            Client.sendData("/login_users", it.ref, onError = { showError?.invoke(it) }) {
+            Client.sendData("/login_users", it.ref, onError = { showError(it) }) {
                 loginState.login()
             }
         }

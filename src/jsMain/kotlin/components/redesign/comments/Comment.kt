@@ -53,18 +53,18 @@ val Comment = FC<CommentProps> { props ->
         runCoroutine {
             val url = "${comment.urlPrefix}/like"
             val newState = voteState != VoteState.UPVOTED
-            Client.sendData(url, newState, onError = { showError?.invoke(it) }) {}
+            Client.sendData(url, newState, onError = { showError(it) }) {}
         }
     }
 
     // TODO: Implement on backend
     fun downvote() {
-        showError?.invoke("Downvoting is not currently available")
+        showError("Downvoting is not currently available")
     }
 
     fun delete() = runCoroutine {
         val url = comment.urlPrefix
-        Client.send(url, method = HttpMethod.Delete, onError = { showError?.invoke(it) }) {}
+        Client.send(url, method = HttpMethod.Delete, onError = { showError(it) }) {}
     }
 
     EditCommentDialog {

@@ -238,15 +238,15 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         )
 
         if (props.entity == null) {
-            Client.sendData("${room.urlPrefix}/questions/add", question, onError = {showError?.invoke(it)}) {props.onClose?.invoke()}
+            Client.sendData("${room.urlPrefix}/questions/add", question, onError = {showError(it)}) {props.onClose?.invoke()}
         } else {
             val editQuestion: EditQuestion = EditQuestionComplete(question)
-            Client.sendData("${questionUrl(id)}/edit", editQuestion, onError = {showError?.invoke(it)}) {props.onClose?.invoke()}
+            Client.sendData("${questionUrl(id)}/edit", editQuestion, onError = {showError(it)}) {props.onClose?.invoke()}
         }
     }
 
     fun deleteQuestion() = delete {
-        Client.send("${questionUrl(id)}", HttpMethod.Delete, onError = {showError?.invoke(it)}) { props.onClose?.invoke() }
+        Client.send("${questionUrl(id)}", HttpMethod.Delete, onError = {showError(it)}) { props.onClose?.invoke() }
     }
 
     val answerSpaceType = when(val space = answerSpace) {

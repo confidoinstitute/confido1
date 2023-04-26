@@ -20,7 +20,7 @@ external interface PresenterButtonProps : Props {
 }
 
 suspend fun setPresenterView(view: PresenterView) {
-    Client.sendData("/presenter/set", view, onError = {showError?.invoke(it)}) {}
+    Client.sendData("/presenter/set", view, onError = {showError(it)}) {}
 }
 
 enum class  PresenterButtonState {

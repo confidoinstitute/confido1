@@ -60,7 +60,7 @@ val FeedbackDialog = FC<FeedbackDialogProps> { props ->
                     Client.send("/feedback", req = {
                         this.parameter("url", pathname ?: "not provided")
                         setBody(feedbackText)
-                    }, onError = { showError?.invoke(it) }) {
+                    }, onError = { showError(it) }) {
                         feedbackText = ""
                         props.onClose?.invoke()
                     }

@@ -214,7 +214,7 @@ val UserInviteForm = FC<Props> {
                         }
                         null -> null
                     }?.let { addedMember -> runCoroutine {
-                        Client.sendData("${room.urlPrefix}/members/add", addedMember, onError = {showError?.invoke(it)}) {}
+                        Client.sendData("${room.urlPrefix}/members/add", addedMember, onError = {showError(it)}) {}
                     } }
                 }
                 chosenUsers = emptyArray()

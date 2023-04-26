@@ -105,7 +105,7 @@ val Comment = FC<CommentProps> { props ->
 
     fun deleteComment() = runCoroutine {
         val url = comment.urlPrefix
-        Client.send(url, method = HttpMethod.Delete, onError = {showError?.invoke(it)}) {}
+        Client.send(url, method = HttpMethod.Delete, onError = {showError(it)}) {}
     }
 
     fun editCommentMode() {
@@ -117,7 +117,7 @@ val Comment = FC<CommentProps> { props ->
 
     fun editComment() = editSubmit {
         val url = "${comment.urlPrefix}/edit"
-        Client.sendData(url, editContent, onError = {showError?.invoke(it)}) { editMode = false }
+        Client.sendData(url, editContent, onError = {showError(it)}) { editMode = false }
     }
 
     val liked = props.commentInfo.likedByMe
@@ -234,7 +234,7 @@ val Comment = FC<CommentProps> { props ->
                 disabled = stale
                 onClick = {runCoroutine {
                     val url = "${comment.urlPrefix}/like"
-                    Client.sendData(url, !liked, onError = {showError?.invoke(it)}) {}
+                    Client.sendData(url, !liked, onError = {showError(it)}) {}
                 }
                 }
             }
@@ -273,7 +273,7 @@ val CommentInput = FC<CommentInputProps> { props ->
                     CommentInputVariant.ROOM -> "${roomUrl(props.id)}/comments/add"
                 }
 
-                Client.sendData(url, createdComment, onError = {showError?.invoke(it)}) {
+                Client.sendData(url, createdComment, onError = {showError(it)}) {
                     content = ""
                     props.onSubmit?.invoke(createdComment)
                 }

@@ -209,7 +209,7 @@ val DashboardDialog = FC<DashboardDialogProps> { props ->
             variant = DialogMenuItemVariant.dangerous
             onClick = {
                 runCoroutine {
-                    Client.send("/logout", onError = { showError?.invoke(it) }) {
+                    Client.send("/logout", onError = { showError(it) }) {
                         navigate("/")
                         loginState.logout()
                     }

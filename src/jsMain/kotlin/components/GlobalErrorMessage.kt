@@ -1,52 +1,61 @@
 package components
 
-import csstype.ms
 import mui.material.AlertColor
 import mui.material.SnackbarCloseReason
 import react.*
 import web.timers.setTimeout
 import kotlin.time.Duration.Companion.milliseconds
 
-var showError: ((String) -> Unit)? = null
+enum class MessageType { SUCCESS, INFO, WARNING, ERROR }
+data class Message(val text: String, val type: MessageType = MessageType.INFO)
+
+var showMessage: ((Message) -> Unit) = {}
+fun showError(msg: String) = showMessage(Message(msg, MessageType.ERROR))
+
+
 
 val GlobalErrorMessage = FC<PropsWithChildren> {
 
     var errorOpen by useState(false)
-    var errorMessage by useState("")
+    var currentMsg by useState<Message>()
 
-    var queuedErrors by useState(emptyList<String>())
+    var queuedMsgs by useState(emptyList<Message>())
 
     useEffectOnce {
-        if (showError != null)
-            console.error("There can be only one GlobalErrorMessage component!")
-
-        showError = { message ->
+        showMessage = { message ->
             console.log("Queueing error", message)
-            queuedErrors = queuedErrors + listOf(message)
+            queuedMsgs = queuedMsgs + listOf(message)
         }
 
         cleanup {
-            showError = null
+            showMessage = {}
         }
     }
 
-    useEffect(queuedErrors, errorOpen) {
-        if (!errorOpen && queuedErrors.isNotEmpty()) {
+    useEffect(queuedMsgs, errorOpen) {
+        if (!errorOpen && queuedMsgs.isNotEmpty()) {
             setTimeout(100.milliseconds) {
                 errorOpen = true
-                errorMessage = queuedErrors[0]
-                queuedErrors = queuedErrors.drop(1)
+                currentMsg = queuedMsgs[0]
+                queuedMsgs = queuedMsgs.drop(1)
             }
         }
     }
 
 
-    AlertSnackbar {
-        severity = AlertColor.error
-        open = errorOpen
-        autoHideDuration = 6000
-        onClose = {_, reason -> if (reason != SnackbarCloseReason.clickaway) errorOpen = false}
-        +errorMessage
+    currentMsg?.let { msg ->
+        AlertSnackbar {
+            severity = when (msg.type) {
+                MessageType.ERROR -> AlertColor.error
+                MessageType.SUCCESS -> AlertColor.success
+                MessageType.INFO -> AlertColor.info
+                MessageType.WARNING -> AlertColor.warning
+            }
+            open = errorOpen
+            autoHideDuration = 6000
+            onClose = { _, reason -> if (reason != SnackbarCloseReason.clickaway) errorOpen = false }
+            +msg.text
+        }
     }
     Fragment {
         +it.children

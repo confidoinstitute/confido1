@@ -150,7 +150,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
     var dialogOpen by useState(false)
 
     fun memberRoleChange(role: RoomRole) = runCoroutine {
-        Client.sendData("${room.urlPrefix}/members/add", AddedExistingMember(props.membership.user, role) as AddedMember, onError = { showError?.invoke(it)}) {}
+        Client.sendData("${room.urlPrefix}/members/add", AddedExistingMember(props.membership.user, role) as AddedMember, onError = { showError(it)}) {}
     }
     fun canChangeSelf() = (!(user eqid appState.session.user) || appState.isAdmin())
 
@@ -243,7 +243,7 @@ val InvitationMembers = FC<InvitationMembersProps> { props ->
     val delete = useCoroutineLock()
     fun deleteInviteLink(keepMembers: Boolean) = delete {
         val i = props.invitation
-        Client.sendData("${room.urlPrefix}/invite", DeleteInvite(i.id, keepMembers), method = HttpMethod.Delete, onError = {showError?.invoke(it)}) { }
+        Client.sendData("${room.urlPrefix}/invite", DeleteInvite(i.id, keepMembers), method = HttpMethod.Delete, onError = {showError(it)}) { }
     }
 
     InvitationQuickSettingsDialog {

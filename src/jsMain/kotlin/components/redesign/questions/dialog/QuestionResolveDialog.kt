@@ -35,7 +35,7 @@ val QuestionResolveDialog = FC<QuestionResolveDialogProps> { props ->
             Client.sendData(
                 "${props.question.urlPrefix}/edit",
                 editQuestion,
-                onError = { showError?.invoke(it) }) {
+                onError = { showError(it) }) {
                 props.onClose?.invoke()
             }
         }

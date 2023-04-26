@@ -13,36 +13,33 @@ import kotlin.time.Duration.Companion.seconds
 
 val GlobalErrorMessage = FC<PropsWithChildren> {
 
-    var errorRef = useRef<HTMLDivElement>()
-    var errorOpen by useState(false)
-    var errorMessage by useState<String?>(null)
+    val ref = useRef<HTMLDivElement>()
+    var isOpen by useState(false)
+    var currentMsg by useState<Message?>(null)
 
-    val (queuedErrors, setQueuedErrors) = useState(emptyList<String>())
+    val (queuedMsgs, setQueuedMsgs) = useState(emptyList<Message>())
 
     useEffectOnce {
-        if (showError != null)
-            console.error("There can be only one GlobalErrorMessage component!")
-
-        showError = { message ->
+        showMessage = { message ->
             console.log("Queueing error", message)
-            setQueuedErrors {
+            setQueuedMsgs {
                 it + listOf(message)
             }
-            console.log("Queue contains", queuedErrors.toTypedArray())
+            console.log("Queue contains", queuedMsgs.toTypedArray())
         }
 
         cleanup {
-            showError = null
+            showMessage = {}
         }
     }
 
-    useEffect(queuedErrors, errorMessage) {
-        if (errorMessage == null && queuedErrors.isNotEmpty()) {
-            console.log("Queue contains", queuedErrors.toTypedArray())
-            console.log("Popping error", queuedErrors[0])
-            errorOpen = true
-            errorMessage = queuedErrors[0]
-            setQueuedErrors {
+    useEffect(queuedMsgs, currentMsg) {
+        if (currentMsg == null && queuedMsgs.isNotEmpty()) {
+            console.log("Queue contains", queuedMsgs.toTypedArray())
+            console.log("Popping msg", queuedMsgs[0])
+            isOpen = true
+            currentMsg = queuedMsgs[0]
+            setQueuedMsgs {
                 it.drop(1)
             }
         }
@@ -50,19 +47,19 @@ val GlobalErrorMessage = FC<PropsWithChildren> {
 
     Slide {
         this.direction = SlideDirection.up
-        this.nodeRef = errorRef
-        this.`in` = errorOpen
+        this.nodeRef = ref
+        this.`in` = isOpen
         timeout = 100
         onEntered = { _, _ ->
-            setTimeout(5.seconds) { errorOpen = false }
+            setTimeout(5.seconds) { isOpen = false }
         }
         onExited = { _, _ ->
-            errorMessage = null
+            currentMsg = null
         }
         Fragment {
-            errorMessage?.let {
+            currentMsg?.let {
                 div {
-                    ref = errorRef
+                    this.ref = ref
                     css {
                         position = Position.fixed
                         width = 100.pct
@@ -82,8 +79,9 @@ val GlobalErrorMessage = FC<PropsWithChildren> {
                             fontFamily = sansSerif
 
                         }
-                        b {+"Error: "}
-                        +it
+                        if (it.type == MessageType.ERROR)
+                            b {+"Error: "}
+                        +it.text
                     }
                 }
             }

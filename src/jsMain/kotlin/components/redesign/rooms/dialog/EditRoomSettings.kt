@@ -21,7 +21,7 @@ val EditRoomSettingsDialog = FC<DialogCoreProps> { props ->
     var baseInfo by useState<BaseRoomInformation?>(null)
 
     fun editRoom() = runCoroutine {
-        Client.sendData("${room.urlPrefix}/edit", baseInfo, onError = { showError?.invoke(it) }) { props.onClose?.invoke() }
+        Client.sendData("${room.urlPrefix}/edit", baseInfo, onError = { showError(it) }) { props.onClose?.invoke() }
     }
 
     Dialog {

@@ -74,7 +74,7 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
             Client.sendData("/users/$url", user, req = {
                 if (invite)
                     this.parameter("invite", 1)
-            }, onError = {showError?.invoke(it)}) {
+            }, onError = {showError(it)}) {
                 props.onClose?.invoke()
             }
         }
@@ -245,7 +245,7 @@ val AdminView = FC<Props> {
                                 onClick = {
                                     activate {
                                         if (!isSelf) {
-                                            Client.sendData("/users/edit", user.copy(active = !user.active), onError = {showError?.invoke(it)}) {}
+                                            Client.sendData("/users/edit", user.copy(active = !user.active), onError = {showError(it)}) {}
                                         }
                                     }
                                 }

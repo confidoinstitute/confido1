@@ -135,7 +135,7 @@ private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
         onClick = {
             val accept = AcceptInvite(props.inviteToken)
             runCoroutine {
-                Client.sendData("${roomUrl(props.roomId)}/invite/accept", accept, onError = { showError?.invoke(it) }) {
+                Client.sendData("${roomUrl(props.roomId)}/invite/accept", accept, onError = { showError(it) }) {
                     navigate(roomUrl(props.roomId))
                 }
             }
@@ -189,7 +189,7 @@ internal val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
 
     useEffectOnce {
         runCoroutine {
-            Client.send("/join/$inviteToken/check", method = HttpMethod.Get, onError = { showError?.invoke(it) }) {
+            Client.send("/join/$inviteToken/check", method = HttpMethod.Get, onError = { showError(it) }) {
                 inviteStatus = body()
             }
         }

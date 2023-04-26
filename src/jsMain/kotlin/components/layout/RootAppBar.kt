@@ -173,7 +173,7 @@ val ProfileMenu = FC<Props> {
             }
             onClick = {
                 runCoroutine {
-                    Client.send("/logout", onError = { showError?.invoke(it) }) {
+                    Client.send("/logout", onError = { showError(it) }) {
                         navigate("/")
                         loginState.logout()
                     }

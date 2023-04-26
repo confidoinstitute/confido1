@@ -32,7 +32,7 @@ val CreateRoom = FC<Props> {
 
     fun createRoom() = create {
         baseInfo?.let {
-            Client.sendData("/rooms/add", it, onError = { showError?.invoke(it) }) {
+            Client.sendData("/rooms/add", it, onError = { showError(it) }) {
                 val roomId: String = body()
                 navigate(roomUrl(roomId))
             }

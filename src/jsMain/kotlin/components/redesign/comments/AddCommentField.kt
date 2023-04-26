@@ -43,7 +43,7 @@ val AddCommentField = FC<AddCommentFieldProps> { props ->
                 CommentInputVariant.ROOM -> "${roomUrl(props.id)}/comments/add"
             }
 
-            Client.sendData(url, createdComment, onError = { showError?.invoke(it) }) {
+            Client.sendData(url, createdComment, onError = { showError(it) }) {
                 commentText = ""
                 attachPrediction = false
             }

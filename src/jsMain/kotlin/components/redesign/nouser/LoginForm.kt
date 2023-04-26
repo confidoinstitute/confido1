@@ -110,7 +110,7 @@ val LoginForm = FC<LoginFormProps> { props ->
         login {
             when (mode) {
                 LoginMode.MagicLink -> {
-                    Client.sendData("/login_email/create", SendMailLink(trimmedEmail, "/"), onError = {showError?.invoke(it)}) {
+                    Client.sendData("/login_email/create", SendMailLink(trimmedEmail, "/"), onError = {showError(it)}) {
                         emailSent = true
                     }
                 }

@@ -37,7 +37,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
     fun submitInviteLink() = submit {
         if (i == null) {
             val invite = CreateNewInvite(description, role, anonymous)
-            Client.sendData("${room.urlPrefix}/invites/create", invite, onError = { showError?.invoke(it)}) {
+            Client.sendData("${room.urlPrefix}/invites/create", invite, onError = { showError(it)}) {
                 props.onClose?.invoke()
             }
         } else {
@@ -47,7 +47,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                 allowAnonymous = anonymous,
                 state = linkState,
             )
-            Client.sendData("${room.urlPrefix}/invites/edit", invite, onError = { showError?.invoke(it)}) {
+            Client.sendData("${room.urlPrefix}/invites/edit", invite, onError = { showError(it)}) {
                 props.onClose?.invoke()
             }
         }

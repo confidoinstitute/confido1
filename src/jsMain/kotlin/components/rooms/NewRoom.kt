@@ -23,7 +23,7 @@ val NewRoom = FC<Props> {
     val create = useCoroutineLock()
 
     fun createRoom(information: BaseRoomInformation) = create {
-        Client.sendData("/rooms/add", information, onError = {showError?.invoke(it)}) {
+        Client.sendData("/rooms/add", information, onError = {showError(it)}) {
             val roomId: String = body()
             navigate(roomUrl(roomId))
         }

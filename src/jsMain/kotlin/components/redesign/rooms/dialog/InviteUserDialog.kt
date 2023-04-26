@@ -39,7 +39,7 @@ internal val AddMemberItem = FC<AddMemberItemProps> {props ->
         console.log(member)
         member?.let { addedMember -> runCoroutine {
             console.log("Adding user")
-            Client.sendData("${room.urlPrefix}/members/add", addedMember, onError = {showError?.invoke(it)}) {}
+            Client.sendData("${room.urlPrefix}/members/add", addedMember, onError = {showError(it)}) {}
         } }
     }
 

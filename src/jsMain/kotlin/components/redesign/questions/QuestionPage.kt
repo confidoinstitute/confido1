@@ -250,7 +250,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
             }
         }
     }
-    useOnUnmount(pendingPrediction) { runCoroutine { Client.sendData("${question.urlPrefix}/predict", it, onError = {showError?.invoke(it)}) {} } }
+    useOnUnmount(pendingPrediction) { runCoroutine { Client.sendData("${question.urlPrefix}/predict", it, onError = {showError(it)}) {} } }
 
 
     // Tabs

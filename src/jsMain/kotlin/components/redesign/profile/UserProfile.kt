@@ -43,7 +43,7 @@ val UserProfile = FC<Props> {
     val edit = useCoroutineLock()
 
     fun resetPassword() = runCoroutine {
-        Client.send("/profile/password/reset", onError = { showError?.invoke(it) }) { passwordReset = true }
+        Client.send("/profile/password/reset", onError = { showError(it) }) { passwordReset = true }
         oldPassword = ""
         newPassword = ""
         confirmPassword = ""
@@ -77,7 +77,7 @@ val UserProfile = FC<Props> {
                 nick, email,
                 if (appState.myPasswordIsSet) oldPassword else null,
                 newPassword.ifEmpty { null }),
-            onError = {showError?.invoke(it)}) {
+            onError = {showError(it)}) {
             editResult = body()
         }
     }

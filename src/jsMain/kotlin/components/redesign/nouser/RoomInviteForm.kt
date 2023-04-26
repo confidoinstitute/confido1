@@ -66,7 +66,7 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                             name.trim().ifEmpty { null },
                             userMail
                         ),
-                        onError = { showError?.invoke(it) }
+                        onError = { showError(it) }
                     ) {
                         if (body()) {
                             // We need to log in.

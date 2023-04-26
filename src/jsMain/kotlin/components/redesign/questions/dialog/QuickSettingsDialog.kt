@@ -34,7 +34,7 @@ val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props -
         Client.send(
             questionUrl(props.question.id),
             HttpMethod.Delete,
-            onError = { showError?.invoke(it) }) {
+            onError = { showError(it) }) {
             navigate(room.urlPrefix)
             props.onClose?.invoke()
         }
@@ -61,7 +61,7 @@ val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props -
                         Client.sendData(
                             "${props.question.urlPrefix}/edit",
                             edit,
-                            onError = { showError?.invoke(it) }) {
+                            onError = { showError(it) }) {
                         }
                     }
                 }
@@ -76,7 +76,7 @@ val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props -
                         Client.sendData(
                             "${props.question.urlPrefix}/edit",
                             edit,
-                            onError = { showError?.invoke(it) }) {
+                            onError = { showError(it) }) {
                         }
                     }
                 }
