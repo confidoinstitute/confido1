@@ -10,18 +10,18 @@ import web.timers.setInterval
 
 private fun agoPrefix(timestamp: Int): String {
     return when (val diff = unixNow() - timestamp) {
-        in 0..120 -> "$diff ${pluralize("second", diff)}"
+        in 0..120 -> pluralize("second", diff, includeCount = true)
         in 120..7200 -> {
             val minutes = diff / 60
-            "$minutes ${pluralize("minute", minutes)}"
+            pluralize("minute", minutes, includeCount = true)
         }
         in 7200..172800 -> {
             val hours = diff / 3600
-            "$hours ${pluralize("hour", hours)}"
+            pluralize("hour", hours, includeCount = true)
         }
         else -> {
             val days = diff / 86400
-            "$days ${pluralize("day", days)}"
+            pluralize("day", days, includeCount = true)
         }
     }
 }

@@ -23,7 +23,7 @@ external interface DividerBarProps : PropsWithChildren {
 /**
  * A heading which changes to a divider bar on mobile.
  *
- * The children are placed on the right of the heading.
+ * The children are placed to the right of the heading.
  */
 val DividerHeading = FC<DividerHeadingProps> { props ->
     val layoutMode = useContext(LayoutModeContext)

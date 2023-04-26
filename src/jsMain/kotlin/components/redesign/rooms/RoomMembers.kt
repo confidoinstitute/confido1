@@ -40,6 +40,7 @@ import tools.confido.refs.eqid
 import tools.confido.state.FeatureFlag
 import tools.confido.state.SentState
 import tools.confido.state.appConfig
+import tools.confido.utils.pluralize
 import utils.runCoroutine
 import utils.stringToColor
 import web.location.location
@@ -307,8 +308,8 @@ val InvitationMembers = FC<InvitationMembersProps> { props ->
                         lineHeight = 15.px
                         color = rgba(0, 0, 0, 0.5)
                     }
-                    // TODO Pluralize
-                    +"${props.members?.size ?: 0} members"
+                    val count = props.members?.size ?: 0
+                    +pluralize("member", count, includeCount = true)
                     if (!props.invitation.canAccess) {
                         +" (cannot access)"
                     }

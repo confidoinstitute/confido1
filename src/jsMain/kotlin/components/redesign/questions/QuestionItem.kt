@@ -156,7 +156,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                         lineHeight = 17.px
                     }
 
-                    +"${props.question.numPredictors} ${pluralize(predictionTerm, props.question.numPredictors)}"
+                    +pluralize(predictionTerm, props.question.numPredictors, includeCount = true)
                 }
             }
 

@@ -181,10 +181,21 @@ interface HasUrlPrefix {
 
 const val TOKEN_LEN = 32
 
-fun pluralize(word: String, count: Int): String {
-    return when (count) {
+/**
+ * Conditionally pluralizes a word based on a count.
+ * Uses simple logic, verify that the output is correct in case of irregularly pluralized words.
+ *
+ * If [includeCount] is true, it will prepend the count to the pluralized word, separated with a space.
+ */
+fun pluralize(word: String, count: Int, includeCount: Boolean = false): String {
+    val suffix = when (count) {
         1 -> word
         else -> "${word}s"
+    }
+    return if (includeCount) {
+        "$count $suffix"
+    } else {
+        suffix
     }
 }
 
