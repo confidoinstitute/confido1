@@ -33,6 +33,7 @@ val BackdropProvider = FC<PropsWithChildren> {
     }
 
     Backdrop {
+        key = "backdrop"
         appear = false
         this.`in` = counter.isNotEmpty()
         onClick = {

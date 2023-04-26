@@ -144,8 +144,11 @@ val DialogCore = FC<DialogCoreProps> { props ->
                     bottom = 0.px
                     if (layoutMode >= LayoutMode.TABLET) {
                         width = 640.px
-                        marginLeft = "calc((100vw - 640px - $sidebarOffset) / 2)" as Length
-                        marginRight = "calc((100vw - 640px - $sidebarOffset) / 2)" as Length
+                        left = "calc((100vw - 640px + $sidebarOffset) / 2)" as Length
+                        right = "calc((100vw - 640px - $sidebarOffset) / 2)" as Length
+                    } else {
+                        left = 0.px
+                        right = 0.px
                     }
                 }
                 if (!props.fullSize || layoutMode >= LayoutMode.TABLET)
@@ -155,6 +158,7 @@ val DialogCore = FC<DialogCoreProps> { props ->
                         flexBasis = 44.px
                         flexShrink = number(0.0)
                     }
+                    onClick = { props.onClose?.invoke() }
                 }
                 Stack {
                     direction = FlexDirection.row
@@ -173,15 +177,21 @@ val DialogCore = FC<DialogCoreProps> { props ->
                     }
                     +props.header
                 }
-                div {
+                Stack {
                     css {
                         flexShrink = number(1.0)
                         minHeight = 0.px
+                        justifyContent = JustifyContent.flexStart
                         if (props.fullSize) {
                             flexGrow = number(1.0)
                         }
                         overflow = Auto.auto
                         backgroundColor = theme.colors.form.background //Color("#FFFFFF")
+                        "p" {
+                            fontFamily = sansSerif
+                            margin = Margin(10.px, 20.px)
+                            flexGrow = number(0.0)
+                        }
 
                     }
                     +props.children
@@ -198,6 +208,7 @@ val DialogCore = FC<DialogCoreProps> { props ->
                             flexShrink = number(0.0)
                             backgroundColor =  theme.colors.form.background //Color("#FFFFFF")
                         }
+                        onClick = { props.onClose?.invoke() }
                     }
                     div {
                         css {
@@ -205,6 +216,7 @@ val DialogCore = FC<DialogCoreProps> { props ->
                             flexBasis = 44.px
                             flexShrink = number(0.0)
                         }
+                        onClick = { props.onClose?.invoke() }
                     }
                 }
             }, document.body
@@ -511,4 +523,11 @@ val DialogMenuCommonActions = FC<DialogMenuCommonActionsProps> { props ->
             location.reload()
         }
     }
+}
+
+val DialogMainButton = Button.withStyle {
+    display = Display.block
+    margin = Margin(20.px, 20.px, 10.px)
+    fontWeight = integer(500)
+    alignSelf = AlignSelf.stretch
 }
