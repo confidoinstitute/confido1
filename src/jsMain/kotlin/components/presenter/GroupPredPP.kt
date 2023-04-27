@@ -2,6 +2,7 @@ package components.presenter
 
 import components.DistributionPlot
 import components.GroupPredictions
+import components.redesign.questions.predictions.BinaryPrediction
 import csstype.*
 import dom.html.HTML.div
 import dom.html.HTML.h4
@@ -18,6 +19,7 @@ import mui.system.sx
 import payloads.responses.WSData
 import react.FC
 import react.dom.html.ReactHTML.div
+import tools.confido.distributions.BinaryDistribution
 import tools.confido.question.Prediction
 import tools.confido.refs.deref
 import tools.confido.state.GroupPredPV
@@ -47,15 +49,25 @@ val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
                     flexGrow = number(1.0)
                 }
                 response.data?.dist?.let {
-                    DistributionPlot {
-                        distribution = it
-                        fontSize = 32.0
+                    if (it is BinaryDistribution) {
+                        BinaryPrediction {
+                            baseHeight = 50.vh
+                            dist = it
+                            isGroup = true
+                            interactive = false
+                        }
+                    } else {
+                        DistributionPlot {
+                            distribution = it
+                            fontSize = 32.0
+                        }
                     }
                 } ?: Typography {
                     variant = TypographyVariant.h4
                     +"Nobody has yet answered."
                 }
             }
+            if (response.data?.dist !is BinaryDistribution)
             Typography {
                 variant = TypographyVariant.h2
                 response.data?.dist?.let{
