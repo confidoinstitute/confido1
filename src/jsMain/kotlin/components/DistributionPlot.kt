@@ -6,7 +6,9 @@ import react.FC
 import react.Props
 import space.kscience.plotly.layout
 import space.kscience.plotly.models.Bar
+import space.kscience.plotly.models.Color
 import space.kscience.plotly.models.Pie
+import space.kscience.plotly.models.color
 import tools.confido.distributions.*
 import tools.confido.spaces.Binner
 import utils.toIsoDateTime
@@ -52,6 +54,7 @@ val DistributionPlot = FC<DistributionPlotProps> { props ->
                     offset = 0
                     hoverinfo = "x"
                     y.set(discretizedDistribution.binProbs)
+                    marker.color("#3055F1")
                 }
             )
             props.fontSize?.let {fontSize ->
