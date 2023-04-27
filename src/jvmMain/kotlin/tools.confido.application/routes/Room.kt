@@ -163,6 +163,21 @@ fun roomRoutes(routing: Routing) = routing.apply {
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
+    deleteST(roomUrl) {
+        withRoom {
+            assertPermission(RoomPermission.ROOM_OWNER, "You cannot delete this room.")
+            serverState.withTransaction {
+                for (question in room.questions) {
+                    serverState.questionManager.deleteEntity(question)
+                }
+
+                serverState.roomManager.deleteEntity(room)
+            }
+        }
+
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
     // Remove a room's member
     deleteST("$roomUrl/members/{cID}") {
         withRoom {

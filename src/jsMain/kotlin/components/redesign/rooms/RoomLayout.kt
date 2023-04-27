@@ -9,12 +9,14 @@ import components.redesign.layout.LayoutModeContext
 import components.redesign.rooms.dialog.CsvExportDialog
 import components.redesign.rooms.dialog.EditRoomSettingsDialog
 import components.rooms.RoomContext
+import components.showError
 import csstype.*
 import dom.ScrollBehavior
 import dom.html.*
 import emotion.react.*
 import ext.showmoretext.ShowMoreText
 import hooks.*
+import io.ktor.http.*
 import kotlinx.js.*
 import react.*
 import react.dom.html.ReactHTML.div
@@ -24,6 +26,10 @@ import react.dom.html.ReactHTML.span
 import react.router.*
 import rooms.*
 import tools.confido.refs.*
+import utils.questionUrl
+import utils.roomUrl
+import utils.runCoroutine
+import web.prompts.confirm
 import web.timers.*
 
 val RoomHeaderButton = Button.withStyle {
@@ -62,6 +68,7 @@ val RoomHeader = FC<PropsWithChildren> { props ->
 val RoomLayout = FC<Props> {
     val (appState, _) = useContext(AppStateContext)
     val room = useContext(RoomContext)
+    val navigate = useNavigate()
 
     val size = useElementSize<HTMLDivElement>()
     val tabRef = useRef<HTMLDivElement>()
@@ -73,7 +80,16 @@ val RoomLayout = FC<Props> {
     var dialogOpen by useState(false)
     var editOpen by useState(false)
     var exportOpen by useState(false)
-    
+
+    fun delete() = runCoroutine {
+        Client.send(
+            roomUrl(room.id),
+            HttpMethod.Delete,
+            onError = { showError(it) }) {
+            navigate("/")
+        }
+    }
+
     EditRoomSettingsDialog {
         open = editOpen
         onClose = { editOpen = false }
@@ -101,23 +117,19 @@ val RoomLayout = FC<Props> {
             }
         }
 
-        /*
-        // TODO: Verify permissions (copied from before redesign)
-        if (appState.hasAnyPermission(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)) {
+        if (appState.hasPermission(room, RoomPermission.ROOM_OWNER)) {
             DialogMenuItem {
-                text = "Export questions to CSV"
-                disabled = true
+                text = "Delete this room"
+                variant = DialogMenuItemVariant.dangerous
+                icon = BinIcon
+                onClick = {
+                    // TODO: Check for confirmation properly
+                    if (confirm("Are you sure you want to delete the room? This action is irreversible. Deleting will also result in loss of all questions, predictions, and discussions made in this room.")) {
+                        delete()
+                    }
+                }
             }
         }
-
-        // TODO: Permissions
-        DialogMenuItem {
-            text = "Delete this room"
-            variant = DialogMenuItemVariant.dangerous
-            icon = BinIcon
-            disabled = true
-        }
-         */
 
         DialogMenuSeparator {}
 
