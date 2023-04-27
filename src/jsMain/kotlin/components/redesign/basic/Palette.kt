@@ -12,6 +12,7 @@ interface Palette {
 enum class TextPalette(override val color: Color): Palette {
     white(Color("#FFFFFF")),
     black(Color("#000000")),
+    almostBlack(Color("#222222")),
     gray(Color("#DDDDDD")),
     action(Color("#631AFF")),
 
@@ -33,12 +34,12 @@ enum class MainPalette(override val color: Color, override val text: TextPalette
 
 enum class RoomPalette(override val color: Color, override val text: TextPalette): PaletteWithText {
     red(Color("#F61E4B"), TextPalette.white),
-    orange(Color("#FF6B00"), TextPalette.white),
-    yellow(Color("#FFCA0F"), TextPalette.black),
+    orange(Color("#FF8E3C"), TextPalette.white),
+    yellow(Color("#FFD600"), TextPalette.almostBlack),
     green(Color("#00CA39"), TextPalette.white),
-    cyan(Color("#47DEFF"), TextPalette.black),
-    blue(Color("#0058DC"), TextPalette.white),
-    magenta(Color("#BB0092"), TextPalette.white),
+    cyan(Color("#5FE0FF"), TextPalette.almostBlack),
+    blue(Color("#3055F1"), TextPalette.white),
+    magenta(Color("#AF66E1"), TextPalette.white),
     gray(Color("#505050"), TextPalette.white),
 }
 
