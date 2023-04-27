@@ -101,9 +101,14 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
             height = baseHeight
             justifyContent = JustifyContent.center
             alignItems = AlignItems.center
+            position = Position.relative
         }
         proportionalCircle("No", Color("#FF5555"), props.dist?.yesProb?.let {1 - it}, size = circleSize)
         proportionalCircle("Yes", Color("#00CC2E"), props.dist?.yesProb, size = circleSize)
+        if (props.interactive?:true)
+        GraphButtons {
+            +props
+        }
     }
 }
 

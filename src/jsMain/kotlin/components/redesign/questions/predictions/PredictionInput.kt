@@ -37,6 +37,7 @@ external interface BasePredictionGraphProps {
     var isGroup: Boolean
     var isInput: Boolean?
     var question: Question?
+    var interactive: Boolean? // =true
 }
 external interface PredictionGraphProps : Props, BasePredictionGraphProps {
     override var space: Space

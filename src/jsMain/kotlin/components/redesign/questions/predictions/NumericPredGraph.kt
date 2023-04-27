@@ -121,10 +121,9 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps>("NumericPred
         css {
             position = Position.relative
         }
+        if (props.interactive?:true)
         GraphButtons {
-            isGroup = props.isGroup
-            isInput = props.isInput
-            question = props.question
+            +props
         }
         ReactHTML.canvas {
             style = jso {

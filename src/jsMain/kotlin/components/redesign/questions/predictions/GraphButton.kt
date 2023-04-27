@@ -14,9 +14,11 @@ import react.FC
 import react.Props
 import react.PropsWithChildren
 import react.useContext
+import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.refs.ref
+import tools.confido.spaces.Space
 import tools.confido.state.GroupPredPV
 
 val GraphButton = Button.withStyle {
@@ -59,12 +61,14 @@ val GraphPresenterButton = FC<GraphPresenterButtonProps> { props->
 }
 
 external interface GraphButtonsProps : Props, BasePredictionGraphProps {
+    override var dist: ProbabilityDistribution?
+    override var space: Space
 }
 
 val GraphButtons = FC<GraphButtonsProps>("GraphButtons") { props->
     val layoutMode = useContext(LayoutModeContext)
     GraphButtonContainer {
-        if (props.isGroup && layoutMode >= LayoutMode.TABLET) {
+        if (props.isGroup && layoutMode >= LayoutMode.TABLET && props.dist != null) {
             props.question?.let { GraphPresenterButton { question = it } }
         }
     }
