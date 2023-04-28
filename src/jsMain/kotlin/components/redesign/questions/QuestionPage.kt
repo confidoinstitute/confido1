@@ -204,7 +204,10 @@ private val QuestionEstimateTabButton = ButtonBase.withStyle<QuestionEstimateTab
     }
 }
 
-private val PredictionOverlay = FC<PropsWithChildren> { props ->
+external interface PredictionOverlayProps: PropsWithChildren {
+    var dimBackground: Boolean?
+}
+val PredictionOverlay = FC<PredictionOverlayProps> { props ->
     div {
         css {
             zIndex = integer(10)
@@ -213,6 +216,7 @@ private val PredictionOverlay = FC<PropsWithChildren> { props ->
             left = 0.px
             width = 100.pct
             height = 100.pct
+            if (props.dimBackground ?: true)
             backgroundColor = rgba(255, 255, 255, 0.75)
             fontFamily = sansSerif
             padding = Padding(52.px, 44.px)
@@ -221,6 +225,7 @@ private val PredictionOverlay = FC<PropsWithChildren> { props ->
             display = Display.flex
             alignItems = AlignItems.center
             justifyContent = JustifyContent.center
+            pointerEvents = None.none
         }
         +props.children
     }

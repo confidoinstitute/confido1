@@ -1,6 +1,7 @@
 package components.redesign.questions.predictions
 
 import components.redesign.basic.*
+import components.redesign.questions.PredictionOverlay
 import csstype.*
 import dom.html.HTMLDivElement
 import emotion.css.*
@@ -9,6 +10,7 @@ import hooks.usePureClick
 import react.*
 import react.dom.html.ReactHTML.div
 import tools.confido.distributions.*
+import tools.confido.question.PredictionTerminology
 import tools.confido.spaces.*
 import tools.confido.utils.*
 import utils.panzoom1d.PZParams
@@ -19,9 +21,13 @@ import kotlin.math.*
 external interface NumericPredInputProps : PredictionInputProps {
 }
 
+typealias SimulateClickRef = react.MutableRefObject<(Double)->Unit>
 external interface NumericPredSliderProps : NumericPredInputProps, PropsWithElementSize {
     var zoomState: PZState
     var marks: List<Double>
+    // Fired when only a center is set up but not yet a full distribution
+    var onCenterChange: ((Double)->Unit)?
+    var simulateClickRef: SimulateClickRef?
 }
 
 fun binarySearch(initialRange: ClosedFloatingPointRange<Double>, desiredValue: Double, maxSteps: Int, f: (Double) -> Double): ClosedFloatingPointRange<Double> {
@@ -62,6 +68,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
     var dragging by useState(false)
     val ciRadius = ciWidth?.let { it / 2.0 }
     val minCIRadius = props.zoomState.paperDistToContent(20.0) // do not allow the thumbs to overlap too much
+    val predictionTerminology = props.question?.predictionTerminology ?: PredictionTerminology.ANSWER
     val ci = if (center != null && ciWidth != null) {
         if (center!! + ciRadius!! > space.max) (space.max - ciWidth!!)..space.max
         else if (center!! - ciRadius < space.min) space.min..(space.min + ciWidth!!)
@@ -89,17 +96,15 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
     }
     val createEstimateRE = usePureClick<HTMLDivElement> { ev->
         if (center == null) {
-            center = props.zoomState.viewportToContent(ev.offsetX)
+            val newCenter = props.zoomState.viewportToContent(ev.offsetX)
+            props.onCenterChange?.invoke(newCenter)
+            center = newCenter
             didChange = true
         }
     }
-    val setUncertaintyRE = usePureClick<HTMLDivElement> { ev->
-        // set ciWidth so that a blue thumb ends up where you clicked
-        console.log("zs=${props.zoomState} center=${center}")
-        if(dist == null) {
-            center?.let {center->
-                val desiredCIBoundary =
-                    props.zoomState.viewportToContent(ev.clientX.toDouble() - props.element.getBoundingClientRect().left)
+    fun setCIBoundary(desiredCIBoundary: Double) {
+        if (dist == null) {
+            center?.let { center ->
                 val desiredCIRadius = abs(center - desiredCIBoundary)
                 val newCIWidth = (if (center - desiredCIRadius < space.min)
                     desiredCIBoundary - space.min
@@ -113,6 +118,18 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
             }
         }
     }
+    val setUncertaintyRE = usePureClick<HTMLDivElement> { ev->
+        // set ciWidth so that a blue thumb ends up where you clicked
+        console.log("zs=${props.zoomState} center=${center}")
+        val desiredCIBoundary =
+            props.zoomState.viewportToContent(ev.clientX.toDouble() - props.element.getBoundingClientRect().left)
+        setCIBoundary(desiredCIBoundary)
+    }
+    fun simulateClick(spaceX: Double) {
+        if (center == null) center = spaceX
+        else if (dist == null) setCIBoundary(spaceX)
+    }
+    props.simulateClickRef?.let { it.current = ::simulateClick }
     //useEffect(dist?.pseudoMean, dist?.pseudoStdev, didChange) {
     //    if (didChange) dist?.let { props.onChange?.invoke(dist) }
     //}
@@ -175,6 +192,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
                     center = pos
                     didChange = true
                     if (ciWidth != null) update(pos, ciWidth!!, isCommit)
+                    else props.onCenterChange?.invoke(pos)
                 }
                 onDragStart = { dragging = true }
                 onDragEnd = { dragging = false }
@@ -223,7 +241,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
                         height = 100.pct
                         cursor = Cursor.default
                     }
-                    +"Tap here to create an estimate"// TODO choose "tap"/"click" based on device
+                    +"Tap here to create ${predictionTerminology.aTerm}"// TODO choose "tap"/"click" based on device
                     ref = createEstimateRE
                 }
             } else if (dist == null) {
@@ -272,20 +290,42 @@ val NumericPredInput = FC<NumericPredInputProps>("NumericPredInput") { props->
     var marks by useState(emptyList<Double>())
     val propDist = props.dist as? TruncatedNormalDistribution?
     var previewDist by useState(propDist)
+    var didSetCenter by useState(false)
+    val simulateClickRef = useRef<(Double)->Unit>()
+    val predictionTerminology = props.question?.predictionTerminology ?: PredictionTerminology.ANSWER
     useEffect(propDist?.pseudoMean, propDist?.pseudoStdev) { previewDist = propDist }
     Stack {
         css {
             overflowX = Overflow.hidden
         }
-        NumericPredGraph {
-            this.space = props.space as NumericSpace
-            this.dist = previewDist
-            this.question = props.question
-            this.isInput = true
-            this.isGroup = false
-            onZoomChange = { newZoomState, newMarks ->
-                console.log("OZC")
-                zoomState = newZoomState; marks = newMarks; }
+        div {
+            css { position = Position.relative }
+            NumericPredGraph {
+                this.space = props.space as NumericSpace
+                this.dist = previewDist
+                this.question = props.question
+                this.isInput = true
+                this.isGroup = false
+                this.dimLines = (previewDist == null)
+                this.onGraphClick = { spaceX, relY ->
+                    console.log("OGC $spaceX $relY ${simulateClickRef.current}")
+                    if (relY >= 2.0/3.0)
+                    simulateClickRef.current?.invoke(spaceX)
+                }
+                onZoomChange = { newZoomState, newMarks ->
+                    console.log("OZC")
+                    zoomState = newZoomState; marks = newMarks; }
+            }
+            // Hide the overlay when a center is set, otherwise it overlays the center signpost if you try to move
+            // the center thumb before setting uncertainty.
+            if (previewDist == null && !didSetCenter)
+            PredictionOverlay {
+                // Cannot use dimBackground because it would dim the axis labels, which are important when creating
+                // a prediction. Instead, we use NumericPredGraphProps.dimLines to dim the vertical lines only but
+                // not the labels.
+                dimBackground = false
+                +"Click below to create ${predictionTerminology.aTerm}. You can also zoom the graph using two fingers or the mouse wheel."
+            }
         }
         if (zoomState != null)
         NumericPredSlider {
@@ -298,7 +338,10 @@ val NumericPredInput = FC<NumericPredInputProps>("NumericPredInput") { props->
                 previewDist = it as TruncatedNormalDistribution
                 props.onChange?.invoke(it)
             }
+            this.onCenterChange = { didSetCenter = true }
             this.onCommit = props.onCommit
+            this.question = props.question
+            this.simulateClickRef = simulateClickRef
         }
     }
 }

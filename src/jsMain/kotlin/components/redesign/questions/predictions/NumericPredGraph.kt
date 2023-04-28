@@ -23,6 +23,8 @@ external interface NumericPredGraphProps : PropsWithElementSize, BasePredictionG
     var preferredCICenter: Double?
     var zoomable: Boolean?
     var onZoomChange: ((PZState, List<Double>)->Unit)? // args: zoom state & visible marks
+    var dimLines: Boolean?
+    var onGraphClick: ((xSpace: Double, yRel: Double) -> Unit)?
 }
 
 
@@ -48,6 +50,14 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps>("NumericPred
 
     val zoomParams = PZParams(contentDomain = space.range, viewportWidth = props.elementWidth, sidePad = SIDE_PAD)
     val (panZoomRE, zoomState) = usePanZoom<HTMLDivElement>(zoomParams)
+    val clickRE = usePureClick<HTMLDivElement> { ev->
+        val rect = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
+        val x = ev.clientX - rect.left
+        val xSp = zoomState.viewportToContent(x.toDouble())
+        val y = ev.clientY - rect.top
+        val yRel = y / rect.height
+        props.onGraphClick?.invoke(xSp, yRel)
+    }
     val visibleSubspace = useMemo(space.min, space.max, zoomState.visibleContentRange.start, zoomState.visibleContentRange.endInclusive) {
         space.subspace(zoomState.visibleContentRange.start, zoomState.visibleContentRange.endInclusive)
     }
@@ -111,13 +121,13 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps>("NumericPred
                 beginPath()
                 moveTo(space2canvasPhysPx(x), 0)
                 lineTo(space2canvasPhysPx(x), (GRAPH_TOP_PAD + GRAPH_HEIGHT)*dpr)
-                strokeStyle = "rgba(0,0,0,30%)"
+                strokeStyle = "rgba(0,0,0,${if (props.dimLines?:false) 15 else 30}%)"
                 stroke()
             }
         }
     }
     Stack {
-        ref = panZoomRE.unsafeCast<Ref<HTMLElement>>()
+        ref = combineRefs(panZoomRE, clickRE).unsafeCast<Ref<HTMLElement>>()
         css {
             position = Position.relative
         }

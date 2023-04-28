@@ -10,6 +10,7 @@ import kotlinx.js.*
 import react.*
 import react.dom.html.ReactHTML.div
 import tools.confido.distributions.*
+import tools.confido.question.PredictionTerminology
 import tools.confido.spaces.*
 import utils.panzoom1d.PZParams
 import utils.panzoom1d.PZState
@@ -116,6 +117,7 @@ external interface BinaryPredSliderProps : PredictionInputProps, PropsWithElemen
 }
 val BIN_PRED_SPACE = NumericSpace(0.0, 100.0, unit="%")
 val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
+    val predictionTerminology = props.question?.predictionTerminology ?: PredictionTerminology.ANSWER
     val zoomParams = PZParams(viewportWidth = props.elementWidth, contentDomain = 0.0..100.0, sidePad = SIDE_PAD)
     val zoomState = PZState(zoomParams)
     val propProb = (props.dist as? BinaryDistribution)?.yesProb
@@ -130,7 +132,19 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
         if (isCommit)
             props.onCommit?.invoke(BinaryDistribution(newProb))
     }
+    val clickRE = usePureClick<HTMLDivElement> { ev->
 
+        if (yesProb == null) {
+            val rect = (ev.currentTarget as HTMLElement).getBoundingClientRect()
+            val x = ev.clientX - rect.left
+            val newProb = zoomState.viewportToContent(x) / 100.0
+            update(newProb, true)
+        }
+    }
+
+    div {
+
+        ref = clickRE
     div {
         key="percent_labels"
         css {
@@ -188,11 +202,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
                         height = 100.pct
                         cursor = Cursor.default
                     }
-                    +"Tap here to create an estimate"// TODO choose "tap"/"click" based on device
-                    onClick = { ev ->
-                        val newProb = zoomState.viewportToContent(ev.nativeEvent.offsetX) / 100.0
-                        update(newProb, true)
-                    }
+                    +"Tap here to create an ${predictionTerminology.aTerm}"// TODO choose "tap"/"click" based on device
                 }
         } else {
             SliderTrack {
@@ -254,21 +264,32 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
             }
         }
     }
+    }
 })
 
 val BinaryPredInput = FC<PredictionInputProps> { props->
     val propDist = (props.dist as? BinaryDistribution)
     var previewDist by useState(propDist)
+    val predictionTerminology = props.question?.predictionTerminology ?: PredictionTerminology.ANSWER
     useEffect(propDist?.yesProb) { previewDist = propDist }
     Stack {
         css {
             overflowX = Overflow.hidden
         }
-        BinaryPrediction {
-            this.dist = previewDist
-            this.question = props.question
-            this.isInput = true
-            this.isGroup = false
+        div {
+            css { position = Position.relative }
+            BinaryPrediction {
+                this.dist = previewDist
+                this.question = props.question
+                this.isInput = true
+                this.isGroup = false
+            }
+            if (previewDist == null) {
+                PredictionOverlay {
+                    +"Click below to create ${predictionTerminology.aTerm}"
+                    dimBackground = false
+                }
+            }
         }
         BinaryPredSlider {
             this.space = props.space
