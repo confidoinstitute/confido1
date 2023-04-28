@@ -18,28 +18,30 @@ import react.dom.html.ButtonType
 import react.dom.html.InputType
 import react.dom.html.ReactHTML.i
 import react.dom.html.ReactHTML.option
+import react.dom.html.ReactHTML.p
 import rooms.ExportHistory
 import rooms.RoomPermission
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.refs.deref
+import tools.confido.refs.ref
 import tools.confido.spaces.NumericSpace
 import tools.confido.utils.forEachDeref
 
 external  interface  CsvExportDialogProps : Props {
     var open: Boolean
     var onClose: (()->Unit)?
+    var question: Question?
 }
 val CsvExportDialog = FC<CsvExportDialogProps> {props->
     val (appState,stale) = useContext(AppStateContext)
     var exportWhat by useState("predictions")
     val room = useContext(RoomContext)
-    var question by useState<Ref<Question>>()
     var individual by useState(false)
     var exportHistory by useState(ExportHistory.LAST)
     var bucketsStr by useState("32")
     var buckets by useState(32)
-    val selectedQuestions = if (question == null) room.questions else listOf(question!!)
+    val selectedQuestions = props.question?.let { listOf(it.ref) } ?: room.questions
     val layoutMode = useContext(LayoutModeContext)
 
     val selectedNumeric = useMemo(selectedQuestions) {
@@ -56,6 +58,7 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
     val href = "/export.csv?${params.formUrlEncode()}"
 
     fun doExport() {
+        console.log("DO EXPORT $href")
         val link = document.createElement("a").unsafeCast<HTMLAnchorElement>()
         link.href = href
         link.download = "export.csv"
@@ -68,31 +71,18 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
         action = "Export"
         onAction = { doExport() }
 
+        p {
+            if (props.question == null) {
+                +"Exporting all questions in room "
+                i { +room.name }
+            } else {
+                +"Exporting question "
+                i { +props.question!!.name }
+            }
+        }
         Form {
             onSubmit = { doExport() }
             FormSection {
-                FormField {
-                    title = "Question to export"
-                    Select {
-                        css {
-                            width = important(100.pct)
-                        }
-                        value = question ?: ""
-                        onChange = { event ->
-                            question = event.target.value.ifEmpty { null }?.let { Ref(it) }
-                        }
-                        option {
-                            +"(All questions)"
-                            value = ""
-                        }
-                        room.questions.reversed().forEachDeref {
-                            option {
-                                +it.name
-                                value = it.id
-                            }
-                        }
-                    }
-                }
                 FormField {
                     title = "Export"
                     OptionGroup<String>()() {
@@ -143,12 +133,12 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
                         FormField {
                             title = "Bucket count"
                             comment =
-                                "Answer range for each numeric question will be split into this many equal-sized buckets and a probability will be included for each bucket. In addition, a mean and standard deviation for the original distribution will be included."
+                                "Answer range${ if (selectedQuestions.size > 1) " for each numeric question" else ""} will be split into this many equal-sized buckets and a probability will be included for each bucket. In addition, a mean and standard deviation for the original distribution will be included."
                             //"Set range only if the answers out of it do not make sense (e.g. a negative duration of an event). In other cases, we recommend leaving them blank."
                             TextInput {
                                 type = InputType.number
                                 value = bucketsStr
-                                onChange = { e -> bucketsStr = e.target.value }
+                                onChange = { e -> bucketsStr = e.target.value; buckets = e.target.value.toIntOrNull() ?: 32 }
                             }
                         }
                     }

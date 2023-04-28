@@ -19,6 +19,7 @@ external interface QuestionQuickSettingsDialogProps : Props {
     var open: Boolean
     var canEdit: Boolean
     var onOpenResolution: (() -> Unit)?
+    var onExport: (() -> Unit)?
     var onEdit: (() -> Unit)?
     var onClose: (() -> Unit)?
 }
@@ -100,6 +101,10 @@ val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props -
                 onClick = {
                     props.onEdit?.invoke()
                 }
+            }
+            DialogMenuItem {
+                text = "Export to CSV..."
+                onClick = { props.onExport?.invoke() }
             }
             DialogMenuItem {
                 text = "Delete this question"

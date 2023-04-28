@@ -19,6 +19,7 @@ import components.redesign.questions.predictions.MyPredictionDescription
 import components.redesign.questions.predictions.PredictionGraph
 import components.redesign.questions.predictions.PredictionInput
 import components.redesign.rooms.*
+import components.redesign.rooms.dialog.CsvExportDialog
 import components.rooms.*
 import csstype.*
 import emotion.react.*
@@ -85,6 +86,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
 
     var quickSettingsOpen by useState(false)
     var resolutionDialogOpen by useState(false)
+    var csvDialogOpen by useState(false)
 
     val editDialog = useEditDialog(EditQuestionDialog, jso {
         preset = QuestionPreset.NONE
@@ -105,13 +107,23 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
         canEdit = room.hasPermission(appState.session.user, RoomPermission.MANAGE_QUESTIONS)
         onEdit = { quickSettingsOpen = false; editDialog(props.question) }
         onOpenResolution = { quickSettingsOpen = false; resolutionDialogOpen = true; }
+        onExport = { quickSettingsOpen = false; csvDialogOpen = true; }
         onClose = { quickSettingsOpen = false }
+        key="QuickSettingsDialog"
     }
 
     QuestionResolveDialog {
         open = resolutionDialogOpen
         question = props.question
         onClose = { resolutionDialogOpen = false }
+        key = "ResolveDialog"
+    }
+
+    CsvExportDialog {
+        key = "CsvExportDialog"
+        question = props.question
+        open = csvDialogOpen
+        onClose = { csvDialogOpen = false }
     }
 
     RoomNavbar {
