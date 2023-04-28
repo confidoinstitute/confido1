@@ -9,6 +9,7 @@ import space.kscience.plotly.layout
 import space.kscience.plotly.models.*
 import tools.confido.distributions.*
 import tools.confido.spaces.Binner
+import tools.confido.spaces.NumericSpace
 import utils.toIsoDateTime
 
 external interface DistributionPlotProps : Props {
@@ -76,8 +77,11 @@ val DistributionPlot = FC<DistributionPlotProps> { props ->
                     val nlines = mutableMapOf<XAnchor, Int>()
 
                     fun addLine(x: Double, clr: String, text: String) {
+                        val xPlotly = if ((props.distribution.space as? NumericSpace)?.representsDays ?: false)
+                            space.kscience.dataforge.values.StringValue(x.toIsoDateTime())
+                        else plotlyVal(x)
                         annot.add(Text().apply {
-                            this.x = plotlyVal(x)
+                            this.x = xPlotly
                             y = plotlyVal(maxProb)
                             val lineNo = annot.size
                             this.ay = plotlyVal( - lineNo * (props.fontSize?:24.0)*1.25)
@@ -95,8 +99,8 @@ val DistributionPlot = FC<DistributionPlotProps> { props ->
                         })
 
                         shp.add(Shape().apply {
-                            x0 = plotlyVal(x)
-                            x1 = plotlyVal(x)
+                            x0 = xPlotly
+                            x1 = xPlotly
                             y0 = plotlyVal(0)
                             y1 = plotlyVal(maxProb)
                             line {

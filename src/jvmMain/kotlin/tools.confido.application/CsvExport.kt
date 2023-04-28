@@ -88,7 +88,7 @@ class PredictionExport  (
         val numericQuestions = questions.filter { it.answerSpace is NumericSpace }
         if (numericQuestions.size == 1) {
             val space = (numericQuestions[0].answerSpace as NumericSpace).copy(bins = buckets)
-            space.binner.binRanges.mapIndexed { idx,it -> "bucket${idx+1}_${it.start}-${it.endExclusive}" }
+            space.binner.binRanges.mapIndexed { idx,it -> "bucket${idx+1}_${exportValue(space,it.start)}-${exportValue(space,it.endExclusive)}" }
         } else {
             (1..buckets).map { "bucket$it" }
         }
@@ -120,8 +120,7 @@ class PredictionExport  (
         if (prediction.dist is ContinuousProbabilityDistribution && (user == null || prediction.dist !is TruncatedNormalDistribution)) {
             val discretized = prediction.dist.discretize(buckets)
             bucketNames.zip(discretized.binProbs).map { (name, prob) ->
-                val density = prob / discretized.binner.binSize
-                ret[name] = density.toFixed(4)
+                ret[name] = prob.toString()
             }
         }
 
