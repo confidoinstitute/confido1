@@ -19,6 +19,7 @@ import kotlin.math.*
 external interface BinaryPredictionProps : Props, BasePredictionGraphProps {
     override var dist: BinaryDistribution?
     override var space: BinarySpace
+    override var resolution: BinaryValue?
     var baseHeight: Length?
 }
 
@@ -104,8 +105,10 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
             alignItems = AlignItems.center
             position = Position.relative
         }
-        proportionalCircle("No", Color("#FF5555"), props.dist?.yesProb?.let {1 - it}, size = circleSize)
-        proportionalCircle("Yes", Color("#00CC2E"), props.dist?.yesProb, size = circleSize)
+        val noColor = if (props.resolution?.value == true) { Color("#BBBBBB") } else { Color("#FF5555") }
+        val yesColor = if (props.resolution?.value == false) { Color("#BBBBBB") } else { Color("#00CC2E") }
+        proportionalCircle("No", noColor, props.dist?.yesProb?.let {1 - it}, size = circleSize)
+        proportionalCircle("Yes", yesColor, props.dist?.yesProb, size = circleSize)
         if (props.interactive?:true)
         GraphButtons {
             +props
@@ -281,6 +284,7 @@ val BinaryPredInput = FC<PredictionInputProps> { props->
             BinaryPrediction {
                 this.dist = previewDist
                 this.question = props.question
+                this.resolution = props.resolution as BinaryValue?
                 this.isInput = true
                 this.isGroup = false
             }

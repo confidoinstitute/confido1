@@ -20,6 +20,7 @@ import utils.panzoom1d.usePanZoom
 external interface NumericPredGraphProps : PropsWithElementSize, BasePredictionGraphProps {
     override var space: NumericSpace
     override var dist: ContinuousProbabilityDistribution?
+    override var resolution: NumericValue?
     var preferredCICenter: Double?
     var zoomable: Boolean?
     var onZoomChange: ((PZState, List<Double>)->Unit)? // args: zoom state & visible marks

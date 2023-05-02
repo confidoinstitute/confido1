@@ -304,6 +304,7 @@ val NumericPredInput = FC<NumericPredInputProps>("NumericPredInput") { props->
                 this.space = props.space as NumericSpace
                 this.dist = previewDist
                 this.question = props.question
+                this.resolution = props.resolution as NumericValue?
                 this.isInput = true
                 this.isGroup = false
                 this.dimLines = (previewDist == null)

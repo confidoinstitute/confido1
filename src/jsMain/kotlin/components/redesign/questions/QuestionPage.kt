@@ -58,7 +58,7 @@ external interface QuestionStatusProps : Props {
 
 external interface QuestionEstimateSectionProps : Props {
     var question: Question
-    var resolved: Boolean
+    var resolution: Value?
     var myPrediction: Prediction?
     var groupPrediction: Prediction?
     var numPredictors: Int
@@ -157,7 +157,9 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
         }
         QuestionPredictionSection {
             this.question = props.question
-            this.resolved = props.question.resolved && props.question.resolutionVisible
+            if (props.question.resolved && props.question.resolutionVisible) {
+                this.resolution = props.question.resolution
+            }
             this.myPrediction = myPrediction
             this.numPredictors = props.question.numPredictors
             this.groupPrediction = groupPrediction.data
@@ -339,6 +341,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                         this.dist = props.myPrediction?.dist
                         this.disabled = !question.open || !hasPredictPermission
                         this.question = question
+                        this.resolution = question.resolution
                         if (question.open) {
                             this.onChange = {
                                 pendingPrediction = null
@@ -389,6 +392,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     key = "groupPredictionBox"
                     space = props.question.answerSpace
                     dist = props.groupPrediction?.dist
+                    resolution = props.resolution
                     isGroup = true
                     this.question = props.question
                 }
@@ -417,14 +421,14 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
         GroupPredictionDescription {
             this.prediction = props.groupPrediction
             this.myPredictionExists = props.myPrediction != null
-            this.resolved = props.resolved
+            this.resolved = props.resolution != null
             this.numPredictors = props.numPredictors
             this.predictionTerminology = props.question.predictionTerminology
         }
     } else {
         MyPredictionDescription {
             this.dist = predictionPreview ?: pendingPrediction ?: props.myPrediction?.dist
-            this.resolved = props.resolved
+            this.resolved = props.resolution != null
         }
     }
 }

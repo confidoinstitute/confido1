@@ -11,6 +11,7 @@ import tools.confido.spaces.*
 external interface PredictionInputProps : Props {
     var space: Space
     var dist: ProbabilityDistribution?
+    var resolution: Value?
     var question: Question?
     var onChange: ((ProbabilityDistribution) -> Unit)?
     var onCommit: ((ProbabilityDistribution) -> Unit)?
@@ -20,7 +21,7 @@ external interface PredictionInputProps : Props {
 val PredictionInput = FC<PredictionInputProps> { props->
     val space = props.space
     when (space) {
-        is NumericSpace -> NumericPredInput{
+        is NumericSpace -> NumericPredInput {
                 +props
             }
         is BinarySpace -> BinaryPredInput {
@@ -34,19 +35,23 @@ external interface BasePredictionGraphProps {
     // HACK: Need 'val' here to allow subclasses to narrow down the type
     val space: Space
     val dist: ProbabilityDistribution?
+    val resolution: Value?
     var isGroup: Boolean
     var isInput: Boolean?
     var question: Question?
     var interactive: Boolean? // =true
 }
+
 external interface PredictionGraphProps : Props, BasePredictionGraphProps {
     override var space: Space
     override var dist: ProbabilityDistribution?
+    override var resolution: Value?
 }
+
 val PredictionGraph = FC<PredictionGraphProps>("PredictionGraph") { props->
     val space = props.space
     when (space) {
-        is NumericSpace -> NumericPredGraph{
+        is NumericSpace -> NumericPredGraph {
             +props
             this.preferredCICenter = this.dist?.median
         }
@@ -54,5 +59,4 @@ val PredictionGraph = FC<PredictionGraphProps>("PredictionGraph") { props->
             +props
         }
     }
-
 }
