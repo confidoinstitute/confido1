@@ -62,8 +62,6 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                 Button {
                     type = ButtonType.submit
                     css {
-                        display = Display.block
-                        margin = Margin(20.px, 20.px, 10.px)
                         fontWeight = integer(500)
                     }
                     if (props.room != null)
