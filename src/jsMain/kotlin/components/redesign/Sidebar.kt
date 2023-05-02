@@ -96,10 +96,8 @@ val SidebarLayout = FC<Props> {
 
     useEffect {
         sidebarState.setAvailableState(true)
-        console.log("is available")
         cleanup {
             sidebarState.setAvailableState(false)
-            console.log("is no longer available")
         }
     }
 
