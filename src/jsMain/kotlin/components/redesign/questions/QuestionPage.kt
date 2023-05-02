@@ -496,10 +496,10 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
                     fontSize = 34.px
                     lineHeight = 100.pct
                     // The "No" resolution value uses a red color. All other resolutions are green.
-                    color = if (it.value == true) {
-                        Color("#00CC2E")
-                    } else {
+                    color = if (it.value == false) {
                         Color("#FF5555")
+                    } else {
+                        Color("#00CC2E")
                     }
                 }
                 +it.format()
