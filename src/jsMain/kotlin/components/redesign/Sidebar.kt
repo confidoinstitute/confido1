@@ -26,17 +26,21 @@ external interface SidebarProps : PropsWithChildren {
 
 class SidebarState internal constructor(
     val isOpen: Boolean,
-    val isAvailable: Boolean,
+    val isAvailableInLayout: Boolean,
+    val isAvailableInPage: Boolean,
     var layoutMode: LayoutMode,
-    val setState: (Boolean) -> Unit,
+    val setOpenState: (Boolean) -> Unit,
+    val setAvailableState: (Boolean) -> Unit,
 ) {
     fun open() {
-        setState(true)
+        setOpenState(true)
     }
 
     fun close() {
-        setState(false)
+        setOpenState(false)
     }
+
+    val isAvailable get() = isAvailableInPage && isAvailableInLayout
 
     val marginOffset
         get(): Length = if (isOpen && isAvailable) {
@@ -46,7 +50,7 @@ class SidebarState internal constructor(
         }
 
     fun toggle() {
-        setState(!isOpen)
+        setOpenState(!isOpen)
     }
     
     fun closeIfTablet() {
@@ -59,6 +63,7 @@ val SidebarContext = createContext<SidebarState>()
 val SidebarStateProvider = FC<PropsWithChildren> { props ->
     val layoutMode = useContext(LayoutModeContext)
     val (open, setOpen) = useState(true)
+    val (availableInPage, setAvailableInPage) = useState(false)
     val location = useLocation()
 
     useBackdrop(open && layoutMode == LayoutMode.TABLET) { setOpen(false) }
@@ -70,7 +75,7 @@ val SidebarStateProvider = FC<PropsWithChildren> { props ->
 
     val isAvailable = layoutMode != LayoutMode.PHONE
 
-    val state = SidebarState(open, isAvailable, layoutMode) { setOpen(it) }
+    val state = SidebarState(open, isAvailable, availableInPage, layoutMode, { setOpen(it) }, { setAvailableInPage(it) })
 
     useEffect(layoutMode.ordinal) {
         state.layoutMode = layoutMode
@@ -88,6 +93,15 @@ val SidebarStateProvider = FC<PropsWithChildren> { props ->
 
 val SidebarLayout = FC<Props> {
     val sidebarState = useContext(SidebarContext)
+
+    useEffect {
+        sidebarState.setAvailableState(true)
+        console.log("is available")
+        cleanup {
+            sidebarState.setAvailableState(false)
+            console.log("is no longer available")
+        }
+    }
 
     Sidebar {
         this.open = sidebarState.isOpen && sidebarState.isAvailable
