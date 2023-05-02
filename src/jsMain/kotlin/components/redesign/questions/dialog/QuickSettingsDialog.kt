@@ -30,6 +30,7 @@ val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props -
     val navigate = useNavigate()
 
     val editLock = useCoroutineLock()
+    var deleteConfirmOpen by useState(false)
 
     fun delete() = runCoroutine {
         Client.send(
@@ -43,6 +44,14 @@ val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props -
 
     // TODO: Permissions
     // TODO: Should we allow reopening resolved questions?
+
+    ConfirmDialog {
+        open = deleteConfirmOpen
+        onClose = { deleteConfirmOpen = false }
+        title = "Delete this question?"
+        +"This will result in loss of all ${props.question.predictionTerminology.plural} made for “${props.question.name}”. This action cannot be undone."
+        onConfirm = ::delete
+    }
 
     DialogMenu {
         open = props.open
@@ -112,10 +121,8 @@ val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props -
                 variant = DialogMenuItemVariant.dangerous
                 disabled = stale
                 onClick = {
-                    // TODO: Check for confirmation properly
-                    if (confirm("Are you sure you want to delete the question? This action is irreversible. Deleting will also result in loss of all predictions made for this question.")) {
-                        delete()
-                    }
+                    props.onClose?.invoke()
+                    deleteConfirmOpen = true
                 }
             }
             DialogMenuSeparator {}

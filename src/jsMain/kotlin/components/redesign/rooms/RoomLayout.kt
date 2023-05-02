@@ -26,10 +26,8 @@ import react.dom.html.ReactHTML.span
 import react.router.*
 import rooms.*
 import tools.confido.refs.*
-import utils.questionUrl
 import utils.roomUrl
 import utils.runCoroutine
-import web.prompts.confirm
 import web.timers.*
 
 val RoomHeaderButton = Button.withStyle {
@@ -80,6 +78,7 @@ val RoomLayout = FC<Props> {
     var dialogOpen by useState(false)
     var editOpen by useState(false)
     var exportOpen by useState(false)
+    var deleteConfirmOpen by useState(false)
 
     fun delete() = runCoroutine {
         Client.send(
@@ -97,6 +96,14 @@ val RoomLayout = FC<Props> {
     CsvExportDialog {
         open = exportOpen
         onClose = { exportOpen = false }
+    }
+
+    ConfirmDialog {
+        open = deleteConfirmOpen
+        onClose = { deleteConfirmOpen = false }
+        title = "Delete this room?"
+        +"This will result in loss of all questions, predictions, and discussions made in “${room.name}”. This action cannot be undone."
+        onConfirm = ::delete
     }
 
     DialogMenu {
@@ -123,10 +130,8 @@ val RoomLayout = FC<Props> {
                 variant = DialogMenuItemVariant.dangerous
                 icon = BinIcon
                 onClick = {
-                    // TODO: Check for confirmation properly
-                    if (confirm("Are you sure you want to delete the room? This action is irreversible. Deleting will also result in loss of all questions, predictions, and discussions made in this room.")) {
-                        delete()
-                    }
+                    dialogOpen = false
+                    deleteConfirmOpen = true
                 }
             }
         }
