@@ -56,13 +56,12 @@ class SidebarState internal constructor(
 
 val SidebarContext = createContext<SidebarState>()
 
-val SidebarLayout = FC<Props> {
+val SidebarStateProvider = FC<PropsWithChildren> { props ->
     val layoutMode = useContext(LayoutModeContext)
     val (open, setOpen) = useState(true)
     val location = useLocation()
 
     useBackdrop(open && layoutMode == LayoutMode.TABLET) { setOpen(false) }
-
 
     useEffect(location) {
         // close overlay sidebar after navigation
@@ -83,12 +82,18 @@ val SidebarLayout = FC<Props> {
     }
     SidebarContext.Provider {
         value = state
-        Sidebar {
-            this.open = open && isAvailable
-            this.width = state.marginOffset
-        }
-        Outlet {}
+        +props.children
     }
+}
+
+val SidebarLayout = FC<Props> {
+    val sidebarState = useContext(SidebarContext)
+
+    Sidebar {
+        this.open = sidebarState.isOpen && sidebarState.isAvailable
+        this.width = sidebarState.marginOffset
+    }
+    Outlet {}
 }
 
 val Sidebar = FC<SidebarProps> { props ->

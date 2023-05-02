@@ -69,6 +69,7 @@ private val RootLayoutInner = FC<Props> {
         }
         GlobalErrorMessage {}
         BackdropProvider {
+        SidebarStateProvider {
         FeedbackProvider {
         PresenterControllerProvider {
             Routes {
@@ -136,6 +137,6 @@ private val RootLayoutInner = FC<Props> {
         }
          */
             }
-        } } }
+        } } } }
     }
 }
