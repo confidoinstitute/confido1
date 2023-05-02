@@ -112,6 +112,7 @@ val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props -
                 }
             }
             DialogMenuItem {
+                icon = ExportIcon
                 text = "Export to CSV..."
                 onClick = { props.onExport?.invoke() }
             }

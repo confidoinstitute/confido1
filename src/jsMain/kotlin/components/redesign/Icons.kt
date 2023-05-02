@@ -555,3 +555,20 @@ val PresenterIcon = FC<PropsWithClassName> { props ->
         }
     }
 }
+
+val ExportIcon = FC<PropsWithClassName> { props ->
+    svg {
+        className = props.className
+        width = 30.0
+        height = 30.0
+        viewBox = "0 0 30 30"
+        fill = "none"
+        path {
+            d = "M15 6.5L15 17M15 6.5L12 9.5M15 6.5L18 9.5M12.5 12.5L9.5 12.5L9.5 22.5L20.5 22.5L20.5 12.5L17.5 12.5"
+            stroke = "currentcolor"
+            strokeWidth = 1.2
+            strokeLinejoin = StrokeLinejoin.round
+            strokeLinecap = StrokeLinecap.round
+        }
+    }
+}

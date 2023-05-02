@@ -119,6 +119,7 @@ val RoomLayout = FC<Props> {
         }
         if (appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)) {
             DialogMenuItem {
+                icon = ExportIcon
                 text = "Export to CSV..."
                 onClick = { exportOpen = true; dialogOpen = false }
             }
