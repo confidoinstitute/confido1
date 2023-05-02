@@ -25,13 +25,16 @@ val RoomColorChooser = FC<RoomColorChooserProps> { props ->
                 fontSize = 14.px
                 lineHeight = 17.px
             }
-            +"Colour"
+            +"Color"
         }
         Stack {
             direction = FlexDirection.row
             css {
                 justifyContent = JustifyContent.center
                 gap = 15.px
+                backgroundColor = Color("#FFFFFF")
+                padding = 5.px
+                borderRadius = 8.px
             }
 
             RoomColor.values().map { color ->

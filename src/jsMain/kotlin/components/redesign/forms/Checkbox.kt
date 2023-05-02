@@ -22,7 +22,6 @@ val Checkbox = FC<CheckboxProps> { props ->
     val checkboxRef = useRef<HTMLInputElement>()
 
     val checked = checkboxRef.current?.checked ?: false
-    console.log(checked)
 
     label {
         css {
