@@ -1,5 +1,6 @@
 package components.redesign
 
+import browser.window
 import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.feedback.FeedbackContext
@@ -18,6 +19,7 @@ import react.dom.html.ReactHTML.img
 import react.router.Outlet
 import react.router.dom.Link
 import react.router.useLocation
+import tools.confido.state.appConfig
 
 external interface SidebarProps : PropsWithChildren {
     var open: Boolean?
@@ -276,17 +278,29 @@ private val SidebarAction = FC<SidebarActionProps> { props ->
 }
 
 private val SidebarHeader = FC<Props> {
-    Link {
+    Stack {
+        direction = FlexDirection.row
         css {
-            display = Display.flex
+            gap = 5.px
             justifyContent = JustifyContent.center
         }
-        to = "/"
-        img {
+        Link {
             css {
-                height = 40.px
+                display = Display.flex
+                justifyContent = JustifyContent.center
             }
-            src = "/static/sidebar_logo.svg"
+            to = "/"
+            img {
+                css {
+                    height = 40.px
+                }
+                src = "/static/sidebar_logo.svg"
+            }
+        }
+        if (appConfig.demoMode) {
+            DemoPill {
+                small = true
+            }
         }
     }
 }

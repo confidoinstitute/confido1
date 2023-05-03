@@ -15,8 +15,10 @@ import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.header
 import react.dom.html.ReactHTML.img
 import react.dom.html.ReactHTML.main
+import react.dom.html.ReactHTML.span
 import react.router.useNavigate
 import tools.confido.refs.deref
+import tools.confido.state.appConfig
 import users.User
 import utils.runCoroutine
 
@@ -93,6 +95,33 @@ external interface DashboardHeaderProps : Props {
     var onAccountDialogOpen: (() -> Unit)?
 }
 
+external interface DemoPillProps : Props {
+    var small: Boolean?
+}
+
+val DemoPill = FC<DemoPillProps> { props ->
+    val small = props.small ?: false
+    span {
+        css {
+            fontFamily = sansSerif
+            if (small) {
+                fontSize = 13.px
+                lineHeight = 16.px
+            } else {
+                fontSize = 14.px
+                lineHeight = 17.px
+            }
+            fontWeight = integer(600)
+            borderRadius = 20.px
+            backgroundColor = RoomPalette.red.color
+            color = RoomPalette.red.text.color
+            padding = Padding(3.px, 7.px)
+            alignSelf = AlignSelf.start
+        }
+        +"DEMO"
+    }
+}
+
 val DesktopHeader = FC<DashboardHeaderProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     val layoutMode = useContext(LayoutModeContext)
@@ -117,11 +146,17 @@ val DesktopHeader = FC<DashboardHeaderProps> { props ->
                 width = layoutMode.contentWidth
             }
 
-            img {
-                css {
-                    height = 60.px
+            Stack {
+                direction = FlexDirection.row
+                img {
+                    css {
+                        height = 60.px
+                    }
+                    src = "/static/sidebar_logo.svg"
                 }
-                src = "/static/sidebar_logo.svg"
+                if (appConfig.demoMode) {
+                    DemoPill {}
+                }
             }
 
             appState.session.user?.let { user ->
