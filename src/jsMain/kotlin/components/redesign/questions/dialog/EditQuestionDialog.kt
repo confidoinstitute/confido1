@@ -31,12 +31,6 @@ internal val Space.questionType: QuestionType
             is NumericSpace -> if (representsDays) QuestionType.DATE else QuestionType.NUMERIC
         }
 
-internal enum class QuestionStatus {
-    OPEN,
-    CLOSED,
-    RESOLVED,
-}
-
 val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
@@ -53,11 +47,11 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     var questionStatus by useState {
         props.entity?.let {
             when {
-                it.resolved && it.resolutionVisible -> QuestionStatus.RESOLVED
-                it.open -> QuestionStatus.OPEN
-                else -> QuestionStatus.CLOSED
+                it.resolved && it.resolutionVisible -> QuestionState.RESOLVED
+                it.open -> QuestionState.OPEN
+                else -> QuestionState.CLOSED
             }
-        } ?: QuestionStatus.OPEN
+        } ?: QuestionState.OPEN
     }
     var resolution: Value? by useState(props.entity?.resolution)
     var resolutionValid: Boolean by useState(true)
@@ -98,14 +92,15 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         if (!questionValid) return@submit
         val question = tools.confido.question.Question(
             id = props.entity?.id ?: "",
+            stateHistory = props.entity?.stateHistory ?: emptyList(),
             // QUESTION
             name = questionTitle,
             description = questionDescription,
             // ANSWER
             answerSpace = answerSpace!!,
             // RESOLUTION
-            open = questionStatus == QuestionStatus.OPEN,
-            resolutionVisible = questionStatus == QuestionStatus.RESOLVED,
+            open = questionStatus == QuestionState.OPEN,
+            resolutionVisible = questionStatus == QuestionState.RESOLVED,
             resolution = resolution,
             // ANCHORING
             groupPredVisible = groupPredictionVisibility.groupPredVisible,
@@ -177,8 +172,8 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                     title = "Resolution"
                     EditQuestionDialogResolution {
                         this.preset = props.preset
-                        status = questionStatus
-                        onStatusChange = { questionStatus = it }
+                        state = questionStatus
+                        onStateChange = { questionStatus = it }
 
                         space = answerSpace
                         value = resolution

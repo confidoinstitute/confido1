@@ -13,6 +13,7 @@ import react.Props
 import react.dom.html.ButtonType
 import react.useState
 import tools.confido.question.Question
+import tools.confido.question.QuestionState
 import tools.confido.spaces.Value
 
 
@@ -26,10 +27,10 @@ val QuestionResolveDialog = FC<QuestionResolveDialogProps> { props ->
     var resolution by useState<Value?>(null)
     var resolutionValid by useState(false)
 
-    var submitLock = useCoroutineLock()
+    val submitLock = useCoroutineLock()
 
     fun resolve() {
-        val question = props.question.copy(resolution = resolution, resolutionVisible = true, open = false)
+        val question = props.question.copy(resolution = resolution).withState(QuestionState.RESOLVED)
         val editQuestion: EditQuestion = EditQuestionComplete(question)
         submitLock {
             Client.sendData(
@@ -52,7 +53,7 @@ val QuestionResolveDialog = FC<QuestionResolveDialogProps> { props ->
             onSubmit = { resolve() }
             FormSection {
                 EditQuestionDialogResolution {
-                    status = QuestionStatus.RESOLVED
+                    state = QuestionState.RESOLVED
                     space = props.question.answerSpace
                     value = resolution
                     valid = resolutionValid

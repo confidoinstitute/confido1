@@ -25,6 +25,9 @@ import csstype.*
 import emotion.react.*
 import ext.showmoretext.ShowMoreText
 import hooks.*
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.js.*
 import kotlinx.serialization.*
 import payloads.responses.*
@@ -49,11 +52,14 @@ external interface QuestionHeaderProps : Props {
     var text: String
     var description: String
     var resolution: Value?
+    var questionState: QuestionState
     var isHidden: Boolean
+    var stateHistory: List<QuestionStateChange>
 }
 
 external interface QuestionStatusProps : Props {
     var text: String
+    var time: Instant?
 }
 
 external interface QuestionEstimateSectionProps : Props {
@@ -149,6 +155,8 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
 
         QuestionHeader {
             this.text = props.question.name
+            this.questionState = props.question.state
+            this.stateHistory = props.question.stateHistory
             this.description = props.question.description
             if (props.question.resolutionVisible) {
                 this.resolution = props.question.resolution
@@ -464,7 +472,7 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
         }
 
         // Question status
-        // TODO: Implement on backend
+        // TODO: Implement scheduled transitions on backend
         //QuestionStatusLine {
         //    text = "Opened 10 feb 2023, 12:00"
         //}
@@ -474,20 +482,25 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
         //QuestionStatusLine {
         //    text = "Resolving 28 feb 2023, 12:00"
         //}
-
-        // Resolution
-        if (props.resolution != null) {
-            QuestionStatusLine {
-                // TODO: time of resolution (requires backend)
-                text = "Resolved"
+        QuestionStatusLine {
+            text = when (props.questionState) {
+                QuestionState.OPEN -> "Opened"
+                QuestionState.CLOSED -> "Closed"
+                QuestionState.RESOLVED -> "Resolved"
+                QuestionState.ANNULLED -> "Annulled"
+            }
+            props.stateHistory.filter { it.newState == props.questionState }.maxByOrNull { it.at }?.let {
+                time = it.at
             }
         }
+
         if (props.isHidden) {
             QuestionStatusLine {
                 text = "This question is hidden from participants"
             }
         }
 
+        // Resolution
         props.resolution?.let {
             div {
                 css {
@@ -630,6 +643,16 @@ private val QuestionStatusLine = FC<QuestionStatusProps> { props ->
             textTransform = TextTransform.uppercase
         }
         +props.text
+        props.time?.let {
+            val localTime = it.toLocalDateTime(TimeZone.currentSystemDefault())
+            val day = localTime.dayOfMonth
+            val month = localTime.month.name.substring(0, 4);
+            val year = localTime.year
+            val hour = localTime.hour
+            val minute = localTime.minute.toString().padStart(2, '0')
+            // TODO: 12-hour time?
+            +" $day $month $year, $hour:$minute"
+        }
     }
 }
 

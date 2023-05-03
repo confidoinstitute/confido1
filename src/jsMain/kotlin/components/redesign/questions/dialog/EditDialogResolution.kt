@@ -3,14 +3,15 @@ package components.redesign.questions.dialog
 import components.redesign.forms.*
 import kotlinx.datetime.*
 import react.*
+import tools.confido.question.QuestionState
 import tools.confido.spaces.*
 import tools.confido.utils.*
 
 internal external interface EditQuestionDialogResolutionProps : Props {
     var preset: QuestionPreset?
-    var status: QuestionStatus
+    var state: QuestionState
     /** Optional. In case this is null, the status section will not be shown. */
-    var onStatusChange: ((QuestionStatus) -> Unit)?
+    var onStateChange: ((QuestionState) -> Unit)?
     var valueRequired: Boolean?
     var space: Space?
     var value: Value?
@@ -61,23 +62,24 @@ internal val EditQuestionDialogResolution = FC<EditQuestionDialogResolutionProps
         }
     }
 
-    if (props.onStatusChange != null) {
+    if (props.onStateChange != null) {
         FormField {
             title = "Status"
-            OptionGroup<QuestionStatus>()() {
+            OptionGroup<QuestionState>()() {
                 options = listOf(
-                    QuestionStatus.OPEN to "Open",
-                    QuestionStatus.CLOSED to "Closed",
-                    QuestionStatus.RESOLVED to "Resolved"
+                    QuestionState.OPEN to "Open",
+                    QuestionState.CLOSED to "Closed",
+                    QuestionState.RESOLVED to "Resolved"
                 )
-                defaultValue = QuestionStatus.OPEN
-                value = props.status
-                onChange = { props.onStatusChange?.invoke(it) }
+                defaultValue = QuestionState.OPEN
+                value = props.state
+                onChange = { props.onStateChange?.invoke(it) }
             }
-            comment = when (props.status) {
-                QuestionStatus.OPEN -> "The question is open to answers."
-                QuestionStatus.CLOSED -> "Room members cannot add new estimates or update them."
-                QuestionStatus.RESOLVED -> "Room members cannot update estimates and the resolution is shown."
+            comment = when (props.state) {
+                QuestionState.OPEN -> "The question is open to answers."
+                QuestionState.CLOSED -> "Room members cannot add new estimates or update them."
+                QuestionState.RESOLVED -> "Room members cannot update estimates and the resolution is shown."
+                QuestionState.ANNULLED -> "Room members cannot update estimates or update them."
             }
         }
     }
@@ -119,7 +121,7 @@ internal val EditQuestionDialogResolution = FC<EditQuestionDialogResolutionProps
         else if (!props.valid)
             error = "This resolution is not within the answer range."
         if (props.value != null) {
-            if (props.status != QuestionStatus.RESOLVED)
+            if (props.state != QuestionState.RESOLVED)
                 comment = "Will be shown to room members when the status is changed to Resolved."
             else
                 comment = "Will be shown to room members."

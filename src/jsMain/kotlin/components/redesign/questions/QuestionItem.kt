@@ -15,13 +15,6 @@ import tools.confido.question.*
 import tools.confido.refs.*
 import tools.confido.utils.*
 
-private enum class QuestionState {
-    OPEN,
-    CLOSED,
-    RESOLVED,
-    ANNULLED,
-}
-
 external interface QuestionItemProps : Props {
     var question: Question
     var groupPred: Prediction?
@@ -37,13 +30,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     val prediction = appState.myPredictions[props.question.ref]
 
-    var questionState = QuestionState.OPEN
-    if (!props.question.open)
-        questionState = QuestionState.CLOSED
-    if (props.question.resolved && props.question.resolutionVisible)
-        questionState = QuestionState.RESOLVED
+    val questionState = props.question.state
 
-    // TODO: Backend support for Annulled state.
     val palette = when (questionState) {
         QuestionState.OPEN -> QuestionPalette.open
         QuestionState.CLOSED -> QuestionPalette.closed

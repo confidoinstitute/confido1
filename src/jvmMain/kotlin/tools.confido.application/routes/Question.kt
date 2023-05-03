@@ -6,6 +6,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
+import kotlinx.datetime.Clock
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.encodeToByteArray
 import payloads.requests.*
@@ -59,7 +60,13 @@ fun questionRoutes(routing: Routing) = routing.apply {
         withRoom {
             assertPermission(RoomPermission.ADD_QUESTION, "You cannot add questions.")
 
-            val q: Question = call.receive()
+            var q: Question = call.receive()
+            // Add the initial state to the history if it has not been added already.
+            if (q.stateHistory.isEmpty()) {
+                q = q.copy(stateHistory = listOf(QuestionStateChange(q.state, Clock.System.now(), user.ref)))
+            }
+            q = q.copy(author = user.ref)
+
             serverState.withTransaction {
                 val question = serverState.questionManager.insertEntity(q)
                 serverState.roomManager.modifyEntity(room.ref) {
@@ -97,10 +104,29 @@ fun questionRoutes(routing: Routing) = routing.apply {
                             if (question.numPredictions > 0 && question.answerSpace != editQuestion.question.answerSpace) {
                                 badRequest("Cannot change answer space of a question with predictions.")
                             }
-                            editQuestion.question.copy(id = question.id)
+
+                            // If withState wasn't used, this will fill in the history automatically.
+                            val newHistory = if (question.state != editQuestion.question.state && editQuestion.question.stateHistory.lastOrNull()?.newState != editQuestion.question.state) {
+                                question.stateHistory + QuestionStateChange(editQuestion.question.state, Clock.System.now(), user.ref)
+                            } else {
+                                question.stateHistory
+                            }
+                            editQuestion.question.copy(id = question.id, stateHistory = newHistory)
                         }
                     }
                 }
+            }
+        }
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
+    postST("$questionUrl/state") {
+        withQuestion {
+            val newState: QuestionState = call.receive()
+            assertPermission(RoomPermission.MANAGE_QUESTIONS, "You cannot edit this question.")
+            serverState.questionManager.modifyEntity(ref) {
+                val newHistory = question.stateHistory + QuestionStateChange(newState, Clock.System.now(), user.ref)
+                it.withState(newState).copy(stateHistory = newHistory)
             }
         }
         TransientData.refreshAllWebsockets()

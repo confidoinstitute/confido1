@@ -77,22 +77,32 @@ val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props -
                 }
             }
             DialogMenuItem {
-                text = if (props.question.open) { "Close" } else { "Open" }
+                text = when (props.question.state) {
+                    QuestionState.OPEN -> "Close"
+                    QuestionState.CLOSED -> "Open"
+                    QuestionState.RESOLVED -> "Reopen"
+                    QuestionState.ANNULLED -> "Reopen"
+                }
                 icon = if (props.question.open) { LockIcon } else { UnlockIcon }
                 disabled = editLock.running
                 onClick = {
                     editLock {
-                        val edit: EditQuestion = EditQuestionFlag(EditQuestionFieldType.OPEN, !props.question.open)
+                        val newState: QuestionState = when (props.question.state) {
+                            QuestionState.OPEN -> QuestionState.CLOSED
+                            QuestionState.CLOSED -> QuestionState.OPEN
+                            QuestionState.RESOLVED -> QuestionState.OPEN
+                            QuestionState.ANNULLED -> QuestionState.OPEN
+                        }
                         Client.sendData(
-                            "${props.question.urlPrefix}/edit",
-                            edit,
+                            "${props.question.urlPrefix}/state",
+                            newState,
                             onError = { showError(it) }) {
                         }
                     }
                 }
             }
             DialogMenuItem {
-                text = if (props.question.resolved) {
+                text = if (props.question.state == QuestionState.RESOLVED) {
                     "Change resolution"
                 } else {
                     "Resolve"
