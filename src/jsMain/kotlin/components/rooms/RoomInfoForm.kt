@@ -33,6 +33,7 @@ val RoomInfoForm = FC<RoomInfoFormProps> { props ->
     var inputName by useState(props.room?.name ?: "")
     var inputDescription by useState(props.room?.description ?: "")
     var inputColor by useState(props.room?.color ?: RoomColor.GRAY)
+    var inputIcon by useState(props.room?.icon)
 
     form {
         onSubmit = {
@@ -40,7 +41,7 @@ val RoomInfoForm = FC<RoomInfoFormProps> { props ->
             if (!editMode && inputName.isEmpty()) {
                 errorName = true
             } else {
-                props.onSubmit?.invoke(BaseRoomInformation(inputName, inputDescription, inputColor))
+                props.onSubmit?.invoke(BaseRoomInformation(inputName, inputDescription, inputColor, inputIcon))
             }
         }
 

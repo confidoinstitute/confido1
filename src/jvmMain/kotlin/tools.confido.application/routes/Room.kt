@@ -26,6 +26,7 @@ import users.UserType
 import kotlin.time.Duration.Companion.days
 
 val roomUrl = Room.urlPrefix("{rID}")
+val iconNames = iconDir?.listFiles()?.filter { it.isFile }?.map { it.name }?.sorted() ?: emptyList()
 
 data class RoomContext(val inUser: User?, val room: Room) {
     val user: User by lazy { inUser ?: unauthorized("Not logged in.") }
@@ -44,6 +45,10 @@ suspend fun <T> RouteBody.withRoom(body: suspend RoomContext.() -> T): T {
 }
 
 fun roomRoutes(routing: Routing) = routing.apply {
+    getST("/rooms/icons") {
+        // Icon names are only loaded when the application is started.
+        call.respond(HttpStatusCode.OK, iconNames)
+    }
     // Create a room
     postST("/rooms/add") {
         val room = withUser {
@@ -56,7 +61,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                     id = "", name = information.name, description = information.description,
                     createdAt = Clock.System.now(), questions = emptyList(),
                     members = listOf(myMembership), inviteLinks = emptyList(),
-                    color = information.color
+                    color = information.color, icon = information.icon,
                 )
             )
         }
@@ -73,7 +78,12 @@ fun roomRoutes(routing: Routing) = routing.apply {
             val roomName = information.name.ifEmpty {room.name}
 
             serverState.roomManager.modifyEntity(room.ref) {
-                it.copy(name = roomName, description = information.description, color = information.color)
+                it.copy(
+                    name = roomName,
+                    description = information.description,
+                    color = information.color,
+                    icon = information.icon,
+                )
             }
         }
 
@@ -167,8 +177,11 @@ fun roomRoutes(routing: Routing) = routing.apply {
         withRoom {
             assertPermission(RoomPermission.ROOM_OWNER, "You cannot delete this room.")
             serverState.withTransaction {
-                for (question in room.questions) {
+                room.questions.forEach { question ->
                     serverState.questionManager.deleteEntity(question)
+                }
+                roomComments[room.ref]?.values?.forEach { comment ->
+                    serverState.roomCommentManager.deleteEntity(comment)
                 }
 
                 serverState.roomManager.deleteEntity(room)

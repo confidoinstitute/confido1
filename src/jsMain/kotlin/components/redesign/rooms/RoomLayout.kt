@@ -197,14 +197,27 @@ val RoomLayout = FC<Props> {
                 position = Position.fixed
                 width = 100.pct
                 height = 30.px
-                background = linearGradient(stop(palette.color, 0.pct), stop(palette.color.addAlpha("0"), 100.pct))
+                if (scrollY > 0) {
+                    background = linearGradient(stop(palette.color, 0.pct), stop(palette.color.addAlpha("0"), 100.pct))
+                }
                 zIndex = integer(1)
+                transition = 0.5.s
+            }
+        }
+        div {
+            css {
+                mask = url("/static/icons/${room.icon}")
+                maskSize = MaskSize.contain
+                backgroundColor = palette.text.color
+                height = 64.px
+                width = 64.px
+                margin = Margin(0.px, Auto.auto)
             }
         }
         div {
             ref = size.ref
             css {
-                marginTop = (60+44).px
+                marginTop = 16.px
                 width = 100.pct
                 fontSize = 26.px
                 lineHeight = 31.px

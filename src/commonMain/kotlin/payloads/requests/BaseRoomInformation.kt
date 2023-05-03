@@ -10,4 +10,5 @@ data class BaseRoomInformation(
     val name: String,
     val description: String,
     val color: RoomColor,
+    val icon: String?,
 )

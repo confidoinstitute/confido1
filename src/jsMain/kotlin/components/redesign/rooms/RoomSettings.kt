@@ -23,12 +23,13 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
     var name by useState(props.room?.name ?: "")
     var description by useState(props.room?.description ?: "")
     var color by useState(props.room?.color ?: RoomColor.values().random())
+    var icon by useState<String?>(props.room?.icon)
 
-    useEffect(name, description, color) {
+    useEffect(name, description, color, icon) {
         if (name.isEmpty())
             props.onChange?.invoke(null)
         else
-            props.onChange?.invoke(BaseRoomInformation(name, description, color))
+            props.onChange?.invoke(BaseRoomInformation(name, description, color, icon))
     }
 
     Form {
@@ -57,6 +58,13 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
             RoomColorChooser {
                 this.color = color
                 this.onChange = { color = it }
+            }
+            RoomIconChooser {
+                this.color = color
+                this.icon = icon
+                this.onChange = {
+                    icon = it
+                }
             }
             Stack {
                 Button {

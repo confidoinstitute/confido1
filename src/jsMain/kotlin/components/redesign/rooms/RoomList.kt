@@ -24,7 +24,7 @@ external interface RoomLinkProps : LinkProps {
     var highlighted: Boolean
 }
 
-private val RoomLink = Link.withRipple().withStyleLM<RoomLinkProps>("small") {props, layoutMode ->
+private val RoomLink = Link.withRipple().withStyleLM<RoomLinkProps>("small") { props, layoutMode ->
     display = Display.flex
     flexDirection = FlexDirection.row
     gap = 12.px
@@ -82,6 +82,21 @@ val RoomList = FC<RoomListProps> {props ->
                         width = iconSize
                         height = iconSize
                         flexShrink = number(0.0)
+                        display = Display.flex
+                        alignItems = AlignItems.center
+                        justifyContent = JustifyContent.center
+                        padding = 6.px
+                    }
+                    room.icon?.let {
+                        div {
+                            css {
+                                mask = url("/static/icons/$it")
+                                maskSize = MaskSize.contain
+                                backgroundColor = room.color.palette.text.color
+                                width = 100.pct
+                                height = 100.pct
+                            }
+                        }
                     }
                 }
                 span {

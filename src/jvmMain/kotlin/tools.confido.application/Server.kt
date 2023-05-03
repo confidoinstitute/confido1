@@ -42,6 +42,7 @@ import java.time.Duration
 import kotlin.collections.listOf
 
 val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "./build/distributions/").canonicalFile
+val iconDir = System.getenv("CONFIDO_ICONS_PATH")?.let { File(it).canonicalFile }
 val jsBundle = staticDir.resolve("confido1.js")
 val jsHash = DigestUtils(SHA_224).digestAsHex(jsBundle)
 val appConfigHash = DigestUtils(SHA_224).digestAsHex(Json.encodeToString(appConfig))
@@ -318,6 +319,11 @@ fun main() {
                 preCompressed(CompressedFileType.BROTLI, CompressedFileType.GZIP) {
                     files(".")
                     resources()
+                }
+                static("/icons") {
+                    iconDir?.let {
+                        files(iconDir)
+                    }
                 }
             }
         }

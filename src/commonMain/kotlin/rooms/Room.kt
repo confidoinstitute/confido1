@@ -22,6 +22,7 @@ data class Room(
     val members: List<RoomMembership> = emptyList(),
     val inviteLinks: List<InviteLink> = emptyList(),
     val color: RoomColor = colorFromId(id),
+    val icon: String? = null,
 ) : ImmediateDerefEntity, HasUrlPrefix {
     fun findLink(id: String?): InviteLink? {
         if (id == null || id == "") {

@@ -15,6 +15,9 @@ import react.dom.svg.ReactSVG.svg
 
 external interface CheckboxProps: InputHTMLAttributes<HTMLInputElement>, PropsWithPalette<PaletteWithText> {
     var alwaysColorBackground: Boolean
+    var mask: Mask?
+    var maskColor: Color?
+    var noCheckmark: Boolean?
 }
 
 val Checkbox = FC<CheckboxProps> { props ->
@@ -22,9 +25,10 @@ val Checkbox = FC<CheckboxProps> { props ->
     val checkboxRef = useRef<HTMLInputElement>()
 
     val checked = checkboxRef.current?.checked ?: false
+    val noCheckmark = props.noCheckmark ?: false
 
     label {
-        css {
+        css(props.className) {
             position = Position.relative
             display = Display.inlineBlock
             width = 30.px
@@ -56,8 +60,6 @@ val Checkbox = FC<CheckboxProps> { props ->
 
                 if (props.alwaysColorBackground)
                     backgroundColor = palette.color
-                else
-                    backgroundColor = Color("#DDDDDD")
 
                 cursor = Cursor.pointer
 
@@ -70,26 +72,43 @@ val Checkbox = FC<CheckboxProps> { props ->
                     filter = saturate(0.1)
                 }
             }
-        }
-
-        svg {
-            css {
-                position = Position.absolute
-                left = 8.px
-                top = 9.px
-                opacity = number(0.0)
-                cursor = Cursor.pointer
-                transition = 0.1.s
-                "input:checked ~ &" {
-                    opacity = number(1.0)
+            props.mask?.let { mask ->
+                span {
+                    css {
+                        position = Position.absolute
+                        bottom = 5.px
+                        left = 5.px
+                        right = 5.px
+                        top = 5.px
+                        this.mask = mask
+                        maskSize = MaskSize.contain
+                        backgroundColor = props.maskColor
+                    }
                 }
             }
-            width = 14.0
-            height = 12.0
-            viewBox = "0 0 14 12"
-            fill = palette.text.color.toString()
-            path {
-                d = "M0.939341 5.06066L0.56066 5.43934C-0.0251262 6.02513 -0.0251252 6.97487 0.560661 7.56066L3.93934 10.9393C4.52513 11.5251 5.47487 11.5251 6.06066 10.9393L13.4393 3.56066C14.0251 2.97487 14.0251 2.02513 13.4393 1.43934L13.0607 1.06066C12.4749 0.474874 11.5251 0.474872 10.9393 1.06066L5 7L3.06066 5.06066C2.47487 4.47487 1.52513 4.47487 0.939341 5.06066Z"
+        }
+
+        if (!noCheckmark) {
+            svg {
+                css {
+                    position = Position.absolute
+                    left = 8.px
+                    top = 9.px
+                    opacity = number(0.0)
+                    cursor = Cursor.pointer
+                    transition = 0.1.s
+                    "input:checked ~ &" {
+                        opacity = number(1.0)
+                    }
+                }
+                width = 14.0
+                height = 12.0
+                viewBox = "0 0 14 12"
+                fill = palette.text.color.toString()
+                path {
+                    d =
+                        "M0.939341 5.06066L0.56066 5.43934C-0.0251262 6.02513 -0.0251252 6.97487 0.560661 7.56066L3.93934 10.9393C4.52513 11.5251 5.47487 11.5251 6.06066 10.9393L13.4393 3.56066C14.0251 2.97487 14.0251 2.02513 13.4393 1.43934L13.0607 1.06066C12.4749 0.474874 11.5251 0.474872 10.9393 1.06066L5 7L3.06066 5.06066C2.47487 4.47487 1.52513 4.47487 0.939341 5.06066Z"
+                }
             }
         }
     }
