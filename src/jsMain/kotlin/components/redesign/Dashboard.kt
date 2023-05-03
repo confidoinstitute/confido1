@@ -3,7 +3,6 @@ package components.redesign
 import Client
 import components.*
 import components.redesign.basic.*
-import components.redesign.feedback.FeedbackMenuItem
 import components.redesign.forms.*
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
@@ -11,10 +10,10 @@ import components.redesign.questions.*
 import components.redesign.rooms.*
 import csstype.*
 import emotion.react.*
-import hooks.*
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.header
+import react.dom.html.ReactHTML.img
 import react.dom.html.ReactHTML.main
 import react.router.useNavigate
 import tools.confido.refs.deref
@@ -37,7 +36,7 @@ external interface WorkspaceFrameProps : PropsWithClassName {
     var user: User
 }
 
-val WorkspaceFrame = FC<WorkspaceFrameProps> { props ->
+val AccountFrame = FC<WorkspaceFrameProps> { props ->
     val layoutMode = useContext(LayoutModeContext)
     Stack {
         direction = FlexDirection.row
@@ -90,16 +89,75 @@ val WorkspaceFrame = FC<WorkspaceFrameProps> { props ->
     }
 }
 
-val Dashboard = FC<Props> {
+external interface DashboardHeaderProps : Props {
+    var onAccountDialogOpen: (() -> Unit)?
+}
+
+val DesktopHeader = FC<DashboardHeaderProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     val layoutMode = useContext(LayoutModeContext)
+    header {
+        css {
+            display = Display.flex
+            justifyContent = JustifyContent.center
+            flexShrink = number(0.0)
+            height = 60.px
+            width = 100.pct
+            padding = Padding(20.px, 0.px, 60.px)
+            backgroundColor = Color("#F2F2F2")
+        }
 
-    var dialogOpen by useState(false)
-    DashboardDialog {
-        open = dialogOpen
-        onClose = {dialogOpen = false}
+        div {
+            css {
+                height = 60.px
+                display = Display.flex
+                alignItems = AlignItems.center
+                justifyContent = JustifyContent.spaceBetween
+                padding = Padding(0.px, layoutMode.contentSidePad)
+                width = layoutMode.contentWidth
+            }
+
+            img {
+                css {
+                    height = 60.px
+                }
+                src = "/static/sidebar_logo.svg"
+            }
+
+            appState.session.user?.let { user ->
+                ButtonBase {
+                    Stack {
+                        direction = FlexDirection.row
+                        css {
+                            alignItems = AlignItems.center
+                            padding = Padding(4.px, 13.px, 4.px, 4.px)
+                            gap = 15.px
+                            hover {
+                                backgroundColor = Color("#FFFFFF")
+                                borderRadius = 30.px
+                            }
+                        }
+                        AccountFrame {
+                            css {
+                                flexGrow = number(1.0)
+                                flexShrink = number(1.0)
+                            }
+                            this.user = user
+                        }
+                        NavMenuIcon {}
+                    }
+                    onClick = {
+                        props.onAccountDialogOpen?.invoke()
+                    }
+                }
+            }
+        }
     }
+}
 
+val PhoneHeader = FC<DashboardHeaderProps> { props ->
+    val (appState, stale) = useContext(AppStateContext)
+    val layoutMode = useContext(LayoutModeContext)
     header {
         css {
             display = Display.flex
@@ -121,7 +179,7 @@ val Dashboard = FC<Props> {
                 width = layoutMode.contentWidth
             }
             appState.session.user?.let { user ->
-                WorkspaceFrame {
+                AccountFrame {
                     css {
                         flexGrow = number(1.0)
                         flexShrink = number(1.0)
@@ -130,11 +188,32 @@ val Dashboard = FC<Props> {
                 }
                 IconButton {
                     NavMenuIcon {}
-                    onClick = {
-                        dialogOpen = true
-                    }
+                    onClick = {props.onAccountDialogOpen?.invoke() }
                 }
             }
+        }
+    }
+}
+
+val Dashboard = FC<Props> {
+    val (appState, stale) = useContext(AppStateContext)
+    val layoutMode = useContext(LayoutModeContext)
+
+    var dialogOpen by useState(false)
+    DashboardDialog {
+        open = dialogOpen
+        onClose = { dialogOpen = false }
+    }
+
+    if (layoutMode >= LayoutMode.TABLET) {
+        DesktopHeader {
+            onAccountDialogOpen = { dialogOpen = true }
+        }
+    }
+
+    if (layoutMode == LayoutMode.PHONE) {
+        PhoneHeader {
+            onAccountDialogOpen = { dialogOpen = true }
         }
     }
 

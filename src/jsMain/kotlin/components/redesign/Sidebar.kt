@@ -146,7 +146,7 @@ val Sidebar = FC<SidebarProps> { props ->
         }
         SidebarHeader {}
         appState.session.user?.let { user ->
-            WorkspaceFrame {
+            AccountFrame {
                 this.user = user
             }
         }
