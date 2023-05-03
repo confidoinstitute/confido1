@@ -40,7 +40,7 @@ private val RoomLink = Link.withRipple().withStyleLM<RoomLinkProps>("small") { p
     }
     color = Color("#222222")
     padding = Padding(5.px, if (layoutMode == LayoutMode.PHONE) 20.px else 5.px)
-    margin = if (layoutMode == LayoutMode.PHONE) 0.px else Margin(0.px, (-10).px)
+    margin = if (layoutMode == LayoutMode.PHONE) 0.px else Margin(0.px, (-5).px)
     background = None.none
     border = None.none
     // On mobile it goes to the edge of the screen so no rounding
