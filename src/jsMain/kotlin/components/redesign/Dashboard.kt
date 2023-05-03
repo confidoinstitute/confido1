@@ -27,6 +27,7 @@ internal fun ChildrenBuilder.title(text: String, sidePad: Length) = div {
         fontFamily = sansSerif
         fontSize = 14.px
         lineHeight = 17.px
+        fontWeight = integer(500)
         color = Color("#999999")
     }
     +text
@@ -150,7 +151,7 @@ val Dashboard = FC<Props> {
             alignSelf = AlignSelf.center
         }
 
-        title("Recently opened", layoutMode.contentSidePad)
+        title("Recently opened questions", layoutMode.contentSidePad)
 
         Stack {
             direction = FlexDirection.row
