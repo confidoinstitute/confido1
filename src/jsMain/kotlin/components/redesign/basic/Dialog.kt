@@ -1,6 +1,7 @@
 package components.redesign.basic
 
 import browser.*
+import components.redesign.AboutIcon
 import components.redesign.SidebarContext
 import components.redesign.feedback.FeedbackMenuItem
 import components.redesign.forms.*
@@ -513,11 +514,15 @@ val DialogMenuCommonActions = FC<DialogMenuCommonActionsProps> { props ->
         text = "How to use this page"
         disabled = true
     }
+     */
     DialogMenuItem {
         text = "About Confido"
-        disabled = true
+        icon = AboutIcon
+        onClick = {
+            // Warning: This is currently duplicated in DialogMenuCommonActions
+            window.open("https://confido.institute/", "_blank")
+        }
     }
-     */
     DialogMenuItem {
         text = "Switch to old UI"
         onClick = {

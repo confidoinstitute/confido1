@@ -174,11 +174,15 @@ val Sidebar = FC<SidebarProps> { props ->
                 text = "How to use this page"
                 disabled = true
             }
+            */
             SidebarAction {
                 text = "About Confido"
-                disabled = true
+                icon = AboutIcon
+                onClick = {
+                    // Warning: This is currently duplicated in DialogMenuCommonActions
+                    window.open("https://confido.institute/", "_blank")
+                }
             }
-            */
         }
     }
 }

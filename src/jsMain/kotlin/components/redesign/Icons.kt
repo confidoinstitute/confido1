@@ -572,3 +572,34 @@ val ExportIcon = FC<PropsWithClassName> { props ->
         }
     }
 }
+
+val AboutIcon = FC<PropsWithClassName> { props ->
+    svg {
+        className = props.className
+        width = 30.0
+        height = 30.0
+        viewBox = "0 0 30 30"
+        fill = "none"
+        path {
+            d = "M15 18.5V14H14M15 18.5H14M15 18.5H16"
+            stroke = "currentcolor"
+            strokeWidth = 1.2
+            strokeLinejoin = StrokeLinejoin.round
+            strokeLinecap = StrokeLinecap.round
+        }
+        circle {
+            cx = 15.0
+            cy = 11.25
+            r = 0.9
+            fill="currentcolor"
+        }
+        rect {
+            x = 8.5
+            y = 8.5
+            width = 13.0
+            height = 13.0
+            rx = 3.0
+            stroke = "currentcolor"
+        }
+    }
+}
