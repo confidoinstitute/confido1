@@ -81,6 +81,7 @@ val MessageBox = div.styled {props, theme ->
     borderRadius =  10.px
     backgroundColor = Color("#fff")
     boxShadow = BoxShadow(0.px, 0.px, 40.px, 0.px, rgba(0, 0, 0, 0.2))
+    fontFamily = sansSerif
     fontSize = 15.px
     lineHeight = 18.px
     zIndex = integer(2500)

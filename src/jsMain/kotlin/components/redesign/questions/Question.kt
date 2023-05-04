@@ -1,5 +1,6 @@
 package components.redesign.questions
 
+import browser.window
 import components.*
 import components.rooms.*
 import kotlinx.js.*
@@ -15,6 +16,13 @@ val Question = FC<Props> {
     val navigate = useNavigate()
     useEffect(question) {
         if (question == null) navigate(roomCtx.urlPrefix)
+    }
+
+    useEffect(questionID) {
+        window.scrollTo(0, 0)
+        cleanup {
+            window.scrollTo(0, 0)
+        }
     }
 
     if (question != null)

@@ -1,5 +1,6 @@
 package components.redesign.rooms
 
+import browser.window
 import components.*
 import components.redesign.questions.*
 import components.rooms.*
@@ -12,6 +13,13 @@ val Room = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
     val roomId = useParams()["roomID"] ?: return@FC
     val room = appState.rooms[roomId] ?: return@FC
+
+    useEffect(roomId) {
+        window.scrollTo(0, 0)
+        cleanup {
+            window.scrollTo(0, 0)
+        }
+    }
 
     RoomContext.Provider {
         value = room
