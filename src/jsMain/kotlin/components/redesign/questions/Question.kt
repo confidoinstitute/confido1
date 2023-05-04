@@ -19,6 +19,7 @@ val Question = FC<Props> {
 
     if (question != null)
     QuestionPage {
+        key = questionID
         this.question = question
     }
 }

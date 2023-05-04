@@ -20,7 +20,9 @@ val Room = FC<Props> {
             Route {
                 path = "*"
                 index = true
-                this.element = RoomLayout.create()
+                this.element = RoomLayout.create {
+                    key = roomId
+                }
             }
             if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
                 Route {

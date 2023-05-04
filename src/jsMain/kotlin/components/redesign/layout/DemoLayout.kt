@@ -6,12 +6,16 @@ import components.redesign.nouser.*
 import csstype.*
 import emotion.css.*
 import emotion.react.*
+import emotion.styled.styled
 import react.*
 import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.h1
+import react.dom.html.ReactHTML.li
+import react.dom.html.ReactHTML.ol
 import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.strong
+import react.dom.html.ReactHTML.ul
 
 const val REQUEST_WORKSPACE_URL = "https://confido.institute/request-a-workspace.html"
 const val DEMO_CONTINUE_URL = "/rooms/demoroom1"
@@ -49,8 +53,8 @@ val DemoLoginBox = FC<Props> {
     }
 }
 
-external interface DemoWelcomeBoxProps : Props {
-    var dismissDemo: () -> Unit
+external interface MessageBoxProps : Props {
+    var dismiss: () -> Unit
 }
 
 val demoWelcomeKeyframes = keyframes {
@@ -63,29 +67,30 @@ val demoWelcomeKeyframes = keyframes {
     }
 }
 
-val DemoWelcomeBox = FC<DemoWelcomeBoxProps> {props ->
-    div {
-        css {
-            position = Position.absolute
-            left = 50.pct
-            top = 50.pct
-            transform = translate(-50.pct, -50.pct)
-            width = 480.px
-            maxWidth = "calc(100vw - 40px)" as Length
-            maxHeight = "calc(100vh - 40px)" as Length
-            overflow = Auto.auto
-            boxSizing = BoxSizing.borderBox
-            padding = 20.px
-            borderRadius =  10.px
-            backgroundColor = Color("#fff")
-            boxShadow = BoxShadow(0.px, 0.px, 40.px, 0.px, rgba(0, 0, 0, 0.2))
-            fontSize = 16.px
-            lineHeight = 25.px
-            zIndex = integer(2500)
-            animationName = demoWelcomeKeyframes
-            animationDuration = 0.25.s
-            animationTimingFunction = AnimationTimingFunction.easeOut
-        }
+val MessageBox = div.styled {props, theme ->
+    position = Position.absolute
+    left = 50.pct
+    top = 50.pct
+    transform = translate((-50).pct, (-50).pct)
+    width = 480.px
+    maxWidth = "calc(100vw - 40px)" as Length
+    maxHeight = "calc(100vh - 40px)" as Length
+    overflow = Auto.auto
+    boxSizing = BoxSizing.borderBox
+    padding = 20.px
+    borderRadius =  10.px
+    backgroundColor = Color("#fff")
+    boxShadow = BoxShadow(0.px, 0.px, 40.px, 0.px, rgba(0, 0, 0, 0.2))
+    fontSize = 15.px
+    lineHeight = 18.px
+    zIndex = integer(2500)
+    animationName = demoWelcomeKeyframes
+    animationDuration = 0.25.s
+    animationTimingFunction = AnimationTimingFunction.easeOut
+}
+
+val DemoWelcomeBox = FC<MessageBoxProps> {props ->
+    MessageBox {
         //DialogCloseButton { onClose = { navigate(DEMO_CONTINUE_URL) } }
         h1 {
             css {
@@ -123,9 +128,69 @@ val DemoWelcomeBox = FC<DemoWelcomeBoxProps> {props ->
                 css {
                     width = 100.pct
                 }
-                onClick = { props.dismissDemo() }
+                onClick = { props.dismiss() }
                 +"Start testing"
             }
+        }
+    }
+}
+
+val NewDesignBox = FC<MessageBoxProps> {props ->
+    MessageBox {
+        css {
+            display = Display.flex
+            flexDirection = FlexDirection.column
+            gap = 20.px
+        }
+        h1 {
+            css {
+                margin = 0.px
+                fontSize = 20.px
+                lineHeight = 24.px
+                textAlign = TextAlign.center
+            }
+            +"Confido's got a new look!"
+        }
+
+        div {
+            +"We've revamped our app to make it even more user-friendly and visually appealing. Check out what's new:"
+        }
+
+        ol {
+            css {
+                margin = 0.px
+                paddingLeft = 1.rem
+                display = Display.flex
+                flexDirection = FlexDirection.column
+                gap = 8.px
+            }
+            li {+"🎨 Coloured rooms: Admins can now customize rooms with unique colors and icons, making navigation a breeze."}
+            li {+"🚥 Question states: Easily navigate between Open, Closed, and Resolved questions with color-coded labels for quick reference."}
+            li {+"✨ Redesigned answering: Enjoy the reworked probability visualisation in both yes-no and numeric questions, as well as the input of estimates. Now touch-display friendly!"}
+        }
+
+        div {
+            +"And that’s just the beginning – there’s much more than can fit in this box!"
+        }
+
+        div {
+            Button {
+                css {
+                    width = 100.pct
+                    margin = 0.px
+                }
+                onClick = { props.dismiss() }
+                +"Start exploring"
+            }
+        }
+        div {
+            css {
+                marginTop = 8.px
+                fontSize = 13.px
+                lineHeight = 16.px
+                color = Color("#AAAAAA")
+            }
+            +"If you need, you can also temporarily switch back any time using the \"Switch to old UI\" option in the \"three dots\" menu on most pages."
         }
     }
 }

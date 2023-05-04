@@ -42,12 +42,12 @@ private val RootLayoutInner = FC<Props> {
     val (appState, _) = useContext(AppStateContext)
     val layoutMode = useBreakpoints(LayoutMode.PHONE to 740, LayoutMode.TABLET to 1020, default =LayoutMode.DESKTOP)
     val location = useLocation()
-    val prevLocation = useRef("")
     // Do not preserve scroll position when navigating between pages (e.g. room<->question)
     useEffect(location.pathname, layoutMode.ordinal) {
         window.scrollTo(0, 0)
     }
     var showDemoWelcome by useState(appConfig.demoMode && window.asDynamic().demoDismissed != true)
+    var showNewDesign by useState {!appConfig.demoMode && web.storage.localStorage.getItem("newDesignMessageSeen") == null }
     LayoutModeContext.Provider {
         value = layoutMode
         Backdrop {
@@ -61,7 +61,17 @@ private val RootLayoutInner = FC<Props> {
                     window.asDynamic().demoDismissed = true
                 }
             }
-            DemoWelcomeBox { dismissDemo = { showDemoWelcome = false; window.asDynamic().demoDismissed = true } }
+            DemoWelcomeBox { dismiss = { showDemoWelcome = false; window.asDynamic().demoDismissed = true } }
+        }
+
+        Backdrop {
+            this.`in` = showNewDesign
+            css {
+                backdropFilter = blur(10.px)
+            }
+            NewDesignBox {
+                dismiss = { showNewDesign = false; web.storage.localStorage.setItem("newDesignMessageSeen", "yes") }
+            }
         }
 
         GlobalCss {
