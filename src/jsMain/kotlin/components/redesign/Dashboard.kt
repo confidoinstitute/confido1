@@ -17,6 +17,7 @@ import react.dom.html.ReactHTML.img
 import react.dom.html.ReactHTML.main
 import react.dom.html.ReactHTML.span
 import react.router.useNavigate
+import tools.confido.question.QuestionState
 import tools.confido.refs.deref
 import tools.confido.state.appConfig
 import users.User
@@ -252,6 +253,14 @@ val Dashboard = FC<Props> {
         }
     }
 
+    val recentlyOpenedQuestions = useMemo(appState) {
+        appState.rooms.values.flatMap {room ->
+            room.questions.mapNotNull { it.deref() }.filter { it.open }.map {room to it}
+        }.sortedByDescending { (_, q) ->
+            q.stateHistory.filter { it.newState == QuestionState.OPEN }.maxOfOrNull { it.at }
+        }
+    }
+
     main {
         css {
             marginTop = 60.px
@@ -278,15 +287,10 @@ val Dashboard = FC<Props> {
                 flexShrink = number(0.0)
             }
 
-            appState.rooms.values.map { room ->
-                room.questions.map { qRef ->
-                    qRef.deref()?.let { question ->
-                        if (question.open)
-                        QuestionSticker {
-                            this.room = room
-                            this.question = question
-                        }
-                    }
+            recentlyOpenedQuestions.forEach { (room, question) ->
+                QuestionSticker {
+                    this.room = room
+                    this.question = question
                 }
             }
         }
