@@ -167,7 +167,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
             }
 
             // TODO properly
-            if (props.preset != QuestionPreset.SENSITIVE && props.preset != QuestionPreset.BELIEF)
+            if (props.preset == QuestionPreset.KNOWLEDGE || props.preset == QuestionPreset.NONE) {
                 FormSection {
                     title = "Resolution"
                     EditQuestionDialogResolution {
@@ -188,6 +188,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                         }
                     }
                 }
+            }
 
             if (props.preset != QuestionPreset.SENSITIVE)
                 FormSection {
