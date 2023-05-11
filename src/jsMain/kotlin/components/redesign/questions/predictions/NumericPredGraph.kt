@@ -131,6 +131,7 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps>("NumericPred
         ref = combineRefs(panZoomRE, clickRE).unsafeCast<Ref<HTMLElement>>()
         css {
             position = Position.relative
+            overflow = Overflow.hidden
         }
         if (props.interactive?:true)
         GraphButtons {
@@ -149,6 +150,47 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps>("NumericPred
                 touchAction = None.none // fallback for browsers that do not support pan-y
                 "&" {
                     touchAction = TouchAction.panY
+                }
+            }
+        }
+        if (props.isGroup) {
+            val flags = listOfNotNull(props.dist?.let {
+                PredictionFlag(
+                    color = Color("#FF8A00"),
+                    flagpole = it.median in zoomState.visibleContentRange,
+                    content = FlagContentValue.create {
+                    color = Color("#FFFFFF")
+                    value = NumericValue(it.space, it.median)
+                    title = "group estimate"
+                })
+            }, props.resolution?.let {
+                PredictionFlag(
+                    color = Color("#00CC2E"),
+                    flagpole = it.value in zoomState.visibleContentRange,
+                    content = FlagContentValue.create {
+                    color = Color("#FFFFFF")
+                    value = it
+                    title = "correct answer"
+                })
+            })
+            val flagPositions = listOfNotNull(props.dist?.let {
+                zoomState.contentToViewport(it.median)
+            }, props.resolution?.let {
+                zoomState.contentToViewport(it.value)
+            })
+
+            div {
+                style = jso {
+                    this.width = logicalWidth.px
+                    this.height = logicalHeight.px
+                }
+                css {
+                    position = Position.absolute
+                    top = ABOVE_GRAPH_PAD.px
+                }
+                PredictionFlags {
+                    this.flags = flags
+                    this.flagPositions = flagPositions
                 }
             }
         }
@@ -183,4 +225,36 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps>("NumericPred
         }
     }
 
+})
+
+external interface FlagContentValueProps : Props {
+    var color: Color
+    var value: Value
+    var title: String
+}
+
+val FlagContentValue = memo(FC<FlagContentValueProps> {props ->
+    Stack {
+        css {
+            alignItems = AlignItems.center
+            color = props.color
+            fontFamily = sansSerif
+        }
+        div {
+            css {
+                fontSize = 20.px
+                lineHeight = 24.px
+                fontWeight = integer(700)
+            }
+            +props.value.format()
+        }
+        div {
+            css {
+                fontSize = 8.px
+                lineHeight = 8.px
+                fontWeight = integer(600)
+            }
+            +props.title
+        }
+    }
 })

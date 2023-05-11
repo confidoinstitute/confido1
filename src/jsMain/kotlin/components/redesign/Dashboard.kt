@@ -162,6 +162,11 @@ val DesktopHeader = FC<DashboardHeaderProps> { props ->
 
             appState.session.user?.let { user ->
                 ButtonBase {
+                    css {
+                        ".ripple" {
+                            backgroundColor = Color("#000000")
+                        }
+                    }
                     Stack {
                         direction = FlexDirection.row
                         css {
