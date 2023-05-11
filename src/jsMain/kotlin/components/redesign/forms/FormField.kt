@@ -9,6 +9,7 @@ import react.dom.html.ReactHTML.span
 
 external interface FormFieldProps : PropsWithChildren, PropsWithClassName {
     var title: String
+    var titleColor: Color?
     var comment: String
     var error: String?
     var required: Boolean
@@ -33,6 +34,7 @@ val FormField = FC<FormFieldProps> { props ->
                 fontFamily = sansSerif
                 fontSize = 14.px
                 lineHeight = 17.px
+                color = props.titleColor
             }
 
             span {
