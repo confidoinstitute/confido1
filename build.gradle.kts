@@ -170,7 +170,7 @@ val hotpatch by tasks.registering {
     doLast {
         println("HOTPATCH")
         exec {
-            commandLine("./hotpatch_websocket_close.js")
+            commandLine("./hotpatch_websocket_close.sh")
         }
     }
 }
