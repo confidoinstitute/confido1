@@ -163,6 +163,7 @@ val DesktopHeader = FC<DashboardHeaderProps> { props ->
             appState.session.user?.let { user ->
                 ButtonBase {
                     css {
+                        borderRadius = 30.px
                         ".ripple" {
                             backgroundColor = Color("#000000")
                         }
@@ -175,7 +176,6 @@ val DesktopHeader = FC<DashboardHeaderProps> { props ->
                             gap = 15.px
                             hover {
                                 backgroundColor = Color("#FFFFFF")
-                                borderRadius = 30.px
                             }
                         }
                         AccountFrame {

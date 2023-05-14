@@ -104,81 +104,99 @@ val PredictionFlagContent = FC<PredictionFlagContentProps> {props ->
     val pos = props.position ?: return@FC
     val positionX = pos.positionX
 
-    if (props.flag.flagpole) {
-        div {
-            key = "flagpole"
-            style = jso {
-                when (pos.anchor) {
-                    PredictionFlagAnchor.LEFT -> left = (positionX - 1).px
-                    PredictionFlagAnchor.RIGHT -> right = (positionX - 1).px
-                }
-                height = (pos.positionY + 10).px
-            }
-            css {
-                position = Position.absolute
-                bottom = 0.px
-                backgroundColor = props.flag.color
-                width = 2.px
-            }
+    div {
+        key = "background"
+        css {
+            opacity = number(0.7)
+            zIndex = integer(pos.zIndex)
+            position = Position.absolute
+            width = 100.pct
+            height = 100.pct
         }
-        div {
-            key = "flagpole-bottom"
-            style = jso {
-                when (pos.anchor) {
-                    PredictionFlagAnchor.LEFT -> left = (positionX - 4).px
-                    PredictionFlagAnchor.RIGHT -> right = (positionX - 4).px
-                }
-            }
-            css {
-                position = Position.absolute
-                bottom = (-4).px
-                width = 8.px
-                height = 8.px
-                borderRadius = 100.pct
-                backgroundColor = props.flag.color
-            }
-        }
-        if (pos.mode == PredictionFlagMode.NORMAL)
-            svg {
-                key = "flagpole-top"
-                width = 3.0
-                height = 13.0
-                fill = props.flag.color.toString()
+        if (props.flag.flagpole) {
+            div {
+                key = "flagpole"
                 style = jso {
-                    bottom = (pos.positionY - 3).px
                     when (pos.anchor) {
-                        PredictionFlagAnchor.LEFT -> left = (positionX + 1).px
-                        PredictionFlagAnchor.RIGHT -> right = (positionX + 1).px
+                        PredictionFlagAnchor.LEFT -> left = (positionX - 1).px
+                        PredictionFlagAnchor.RIGHT -> right = (positionX - 1).px
+                    }
+                    height = (pos.positionY + 10).px
+                }
+                css {
+                    position = Position.absolute
+                    bottom = 0.px
+                    backgroundColor = props.flag.color
+                    width = 2.px
+                }
+            }
+            div {
+                key = "flagpole-bottom"
+                style = jso {
+                    when (pos.anchor) {
+                        PredictionFlagAnchor.LEFT -> left = (positionX - 4).px
+                        PredictionFlagAnchor.RIGHT -> right = (positionX - 4).px
                     }
                 }
                 css {
                     position = Position.absolute
-                }
-                ReactSVG.path {
-                    d = when (pos.anchor) {
-                        PredictionFlagAnchor.LEFT -> "M 0 0 L 0 13 A 3 3 0 0 1 3 10 L 3 0 L 0 0 z "
-                        PredictionFlagAnchor.RIGHT -> "M 0 0 L 0 10 A 3 3 0 0 1 3 13 L 3 0 L 0 0 z"
-                    }
+                    bottom = (-4).px
+                    width = 8.px
+                    height = 8.px
+                    borderRadius = 100.pct
+                    backgroundColor = props.flag.color
                 }
             }
+            if (pos.mode == PredictionFlagMode.NORMAL)
+                svg {
+                    key = "flagpole-top"
+                    width = 3.0
+                    height = 3.0
+                    fill = props.flag.color.toString()
+                    style = jso {
+                        bottom = (pos.positionY - 3).px
+                        when (pos.anchor) {
+                            PredictionFlagAnchor.LEFT -> left = (positionX + 1).px
+                            PredictionFlagAnchor.RIGHT -> right = (positionX + 1).px
+                        }
+                    }
+                    css {
+                        position = Position.absolute
+                    }
+                    ReactSVG.path {
+                        d = when (pos.anchor) {
+                            PredictionFlagAnchor.LEFT -> "M 0 0 L 0 3 A 3 3 0 0 1 3 0 L 0 0 z"
+                            PredictionFlagAnchor.RIGHT -> "M 0 0 A 3 3 0 0 1 3 3 L 3 0 L 0 0 z"
+                        }
+                    }
+                }
+        }
+        div {
+            key = "flag-back"
+            css {
+                position = Position.absolute
+                borderRadius = 10.px
+                backgroundColor = props.flag.color
+                width = props.size.width.px
+                height = props.size.height.px
+            }
+            style = jso {
+                flagContentPosition(pos)
+            }
+        }
     }
 
     div {
         key = "flag"
         css {
             position = Position.absolute
-            borderRadius = 10.px
-            backgroundColor = props.flag.color
+            padding = Padding(5.px, 8.px)
+            zIndex = integer(pos.zIndex)
         }
         style = jso {
             flagContentPosition(pos)
         }
-        div {
-            css {
-                padding = Padding(5.px, 8.px)
-            }
-            +props.flag.content
-        }
+        +props.flag.content
     }
 }
 
@@ -192,6 +210,7 @@ data class FlagPosition(
     val mode: PredictionFlagMode,
     val positionX: Double,
     val positionY: Double,
+    val zIndex: Int = 0,
 )
 
 fun flagAnchor(pos: Double, width: Double, screenWidth: Double, preferredAnchor: PredictionFlagAnchor) =
@@ -238,7 +257,7 @@ val PredictionFlags = FC<PredictionFlagsProps> {props ->
     var position1 by useState<FlagPosition?>(null)
     var position2 by useState<FlagPosition?>(null)
 
-    useLayoutEffect(props.flagPositions, size1.width, size1.height, size2.width, size2.height) {
+    useLayoutEffect(props.flagPositions, outerSize.width, outerSize.height, size1.width, size1.height, size2.width, size2.height) {
         if (orderedFlags.size == 1) {
             val pos = orderedFlags[0].second
             if (size1.width > 0) {
@@ -262,6 +281,9 @@ val PredictionFlags = FC<PredictionFlagsProps> {props ->
             var y1 = kotlin.math.min(outerSize.height / 2, outerSize.height - size1.height)
             var y2 = kotlin.math.min(outerSize.height / 2, outerSize.height - size2.height)
 
+            var z1 = 0
+            var z2 = 0
+
             if (range1.intersects(range2)) { // Overlapping
                 // Move bottom by half its height down, move up by half bottom's height up
                 // Move the flag that would be covered if it were on top to the bottom
@@ -270,11 +292,13 @@ val PredictionFlags = FC<PredictionFlagsProps> {props ->
                     val top = y2 + size1.height / 2 + 1
                     y2 = kotlin.math.min(top, outerSize.height - size2.height)
                     y1 = kotlin.math.max(bottom, 0.0)
+                    z1 = 1
                 } else {
                     val bottom = y2 - size2.height / 2 - 1
                     val top = y1 + size2.height / 2 + 1
                     y1 = kotlin.math.min(top, outerSize.height - size1.height)
                     y2 = kotlin.math.max(bottom, 0.0)
+                    z2 = 1
                 }
             }
 
@@ -282,13 +306,15 @@ val PredictionFlags = FC<PredictionFlagsProps> {props ->
                 anchor = anchor1,
                 mode = mode1,
                 positionX = if (anchor1 == PredictionFlagAnchor.RIGHT) outerSize.width - pos1 else pos1,
-                positionY = y1
+                positionY = y1,
+                zIndex = z1
             )
             position2 = FlagPosition(
                 anchor = anchor2,
                 mode = mode2,
                 positionX = if (anchor2 == PredictionFlagAnchor.RIGHT) outerSize.width - pos2 else pos2,
-                positionY = y2
+                positionY = y2,
+                zIndex = z2
             )
         }
     }

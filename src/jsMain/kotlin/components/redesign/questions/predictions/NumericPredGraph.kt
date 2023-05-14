@@ -156,7 +156,7 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps>("NumericPred
         if (props.isGroup) {
             val flags = listOfNotNull(props.dist?.let {
                 PredictionFlag(
-                    color = Color("#FF8A00").addAlpha("70%"),
+                    color = Color("#FF8A00"),
                     flagpole = it.median in zoomState.visibleContentRange,
                     content = FlagContentValue.create {
                     color = Color("#FFFFFF")
@@ -165,7 +165,7 @@ val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps>("NumericPred
                 })
             }, props.resolution?.let {
                 PredictionFlag(
-                    color = Color("#00CC2E").addAlpha("70%"),
+                    color = Color("#00CC2E"),
                     flagpole = it.value in zoomState.visibleContentRange,
                     content = FlagContentValue.create {
                     color = Color("#FFFFFF")
