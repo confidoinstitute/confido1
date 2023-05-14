@@ -1,17 +1,19 @@
 package components.layout
 
+import components.NoAppStateProps
 import csstype.*
 import mui.material.*
 import mui.system.*
 import mui.system.Box
 import react.*
-import utils.themed
 
-external interface NoStateLayoutProps : Props {
-    var stale: Boolean
-}
+val NoStateLayout = FC<NoAppStateProps> { props ->
+    RootAppBar {
+        hasDrawer = false
+        hasProfileMenu = false
+    }
+    Toolbar {}
 
-val NoStateLayout = FC<NoStateLayoutProps> {props ->
     Collapse {
         this.`in` = props.stale
         Alert {
@@ -19,6 +21,7 @@ val NoStateLayout = FC<NoStateLayoutProps> {props ->
             +"The server cannot be reached. If this persists, please contact the administrators."
         }
     }
+
     Box {
         sx {
             position = Position.absolute

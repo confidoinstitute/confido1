@@ -2,10 +2,15 @@ package components.presenter
 
 import components.DistributionPlot
 import components.GroupPredictions
+import components.redesign.basic.css
+import components.redesign.basic.serif
+import components.redesign.questions.predictions.BinaryPrediction
 import csstype.*
 import dom.html.HTML.div
+import dom.html.HTML.h3
 import dom.html.HTML.h4
 import dom.html.HTMLDivElement
+import emotion.react.css
 import hooks.useElementSize
 import hooks.useWebSocket
 import mui.material.Stack
@@ -18,6 +23,8 @@ import mui.system.sx
 import payloads.responses.WSData
 import react.FC
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.h3
+import tools.confido.distributions.BinaryDistribution
 import tools.confido.question.Prediction
 import tools.confido.refs.deref
 import tools.confido.state.GroupPredPV
@@ -36,8 +43,14 @@ val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
             alignItems = AlignItems.center
             justifyContent = JustifyContent.spaceBetween
         }
-        Typography {
-            variant = TypographyVariant.h3
+        div {
+            css {
+                fontFamily = serif
+                textAlign = TextAlign.center
+                fontSize = 7.vh
+                padding = 0.px
+                margin = 0.px
+            }
             +question.name
         }
         if (response is WSData) {
@@ -47,15 +60,26 @@ val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
                     flexGrow = number(1.0)
                 }
                 response.data?.dist?.let {
+                    if (it is BinaryDistribution) {
+                        BinaryPrediction {
+                            baseHeight = 50.vh
+                            dist = it
+                            isGroup = true
+                            interactive = false
+                        }
+                    } else {
                     DistributionPlot {
                         distribution = it
                         fontSize = 32.0
+                        resolutionLine = if (props.view.showResolution) question.resolution?.value as? Double else null
                     }
+                  }
                 } ?: Typography {
                     variant = TypographyVariant.h4
                     +"Nobody has yet answered."
                 }
             }
+            if (response.data?.dist !is BinaryDistribution)
             Typography {
                 variant = TypographyVariant.h2
                 response.data?.dist?.let{

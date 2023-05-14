@@ -3,6 +3,9 @@ package hooks
 import kotlinx.js.Object
 import react.*
 
+/**
+ * A simple hook to trace which props caused rerender of a given component. For debugging purposes only.
+ */
 fun useTraceUpdate(props: Props) {
     val prev = useRef(props)
 

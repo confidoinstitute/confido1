@@ -1,11 +1,14 @@
 package icons
+import dom.svg.SVGElement
 import react.*
 import react.dom.svg.ReactSVG.circle
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.svg
+import react.dom.svg.SVGAttributes
 
-val smallLogo = FC<Props> {
+val smallLogo = FC<SVGAttributes<SVGElement>> {
     svg {
+        +it
         width = 56.0
         height = 56.0
         viewBox = "0 0 44 44"

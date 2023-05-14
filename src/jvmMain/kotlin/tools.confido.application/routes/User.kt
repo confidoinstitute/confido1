@@ -8,6 +8,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.datetime.Clock
 import payloads.requests.*
+import payloads.responses.EditProfileResult
 import payloads.responses.InviteStatus
 import rooms.*
 import tools.confido.application.*
@@ -19,13 +20,13 @@ import users.*
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
-data class UserContext(val user: User, val session: UserSession, val transientData: TransientData)
+data class UserContext(val user: User, val session: UserSession, val transientData: TransientData, val call: ApplicationCall)
 
 suspend fun <T> RouteBody.withUser(body: suspend UserContext.() -> T): T {
     val session = call.userSession ?: unauthorized("Not logged in.")
     val user = session.user ?: unauthorized("Not logged in.")
     val transientData = call.transientUserData ?: unauthorized("Not logged in.")
-    return body(UserContext(user, session, transientData))
+    return body(UserContext(user, session, transientData, call))
 }
 suspend fun <T> RouteBody.withAdmin(body: suspend UserContext.() -> T): T =
     withUser {
@@ -148,7 +149,81 @@ fun loginRoutes(routing: Routing) = routing.apply {
     }
 }
 
+
+
+
 fun profileRoutes(routing: Routing) = routing.apply {
+    suspend fun UserContext.changeEmail(email: String) {
+        val expiration = 15.minutes
+        val expiresAt = Clock.System.now().plus(expiration)
+        val link = EmailVerificationLink(
+            token = generateToken(),
+            user = user.ref,
+            expiryTime = expiresAt,
+            email = email
+        )
+        try {
+            call.mailer.sendVerificationMail(email, link, expiration)
+        } catch (e: org.simplejavamail.MailException) {
+            serviceUnavailable("Verification e-mail failed to send")
+        }
+
+        serverState.verificationLinkManager.insertEntity(link)
+    }
+
+    suspend fun UserContext.changePassword(currentPassword: String?, newPassword: String) {
+        if (user.password != null) {
+            if (currentPassword == null || !Password.check(
+                    currentPassword,
+                    user.password
+                ).withArgon2()
+            ) unauthorized("The current password is incorrect.")
+        }
+
+        when (checkPassword(newPassword)) {
+            PasswordCheckResult.OK -> {}
+            PasswordCheckResult.TOO_SHORT ->
+                badRequest("Password is too short, needs to be at least $MIN_PASSWORD_LENGTH characters long.")
+            PasswordCheckResult.TOO_LONG ->
+                badRequest("Password is too long, needs to be at most $MAX_PASSWORD_LENGTH characters long.")
+        }
+
+        val hash = Password.hash(newPassword).addRandomSalt().withArgon2().result
+        serverState.userManager.modifyEntity(user.ref) {
+            it.copy(password = hash)
+        }
+
+        // Prepare password change notification
+        val expiration = 7.days
+        val expiresAt = Clock.System.now().plus(expiration)
+        val link = PasswordResetLink(
+            token = generateToken(),
+            user = user.ref,
+            expiryTime = expiresAt,
+        )
+        try {
+            if (user.email != null)
+                call.mailer.sendPasswordChangedEmail(user.email, link)
+        } catch (e: org.simplejavamail.MailException) {
+            //serviceUnavailable("Password change e-mail failed to send")
+            call.application.log.info("The link to undo password change for ${user.ref} is ${link.link("")}")
+        }
+        serverState.passwordResetLinkManager.insertEntity(link)
+
+        // TODO: Anti password undo spam DDoS
+
+        call.application.log.info("User ${user.ref} changed password.")
+    }
+
+    suspend fun UserContext.changeNick(nick: String) {
+        val newNick = nick.ifEmpty { null }
+
+        serverState.userManager.modifyEntity(user.ref) {
+            it.copy(nick = newNick)
+        }
+    }
+
+
     // E-mail verification: Step one (sending e-mail)
     postST("/profile/email/start_verification") {
         // TODO: Rate limiting
@@ -158,21 +233,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
             if (user.emailVerified && user.email?.lowercase() == mail.email.lowercase())
                 badRequest("The e-mail is already verified")
 
-            val expiration = 15.minutes
-            val expiresAt = Clock.System.now().plus(expiration)
-            val link = EmailVerificationLink(
-                token = generateToken(),
-                user = user.ref,
-                expiryTime = expiresAt,
-                email = mail.email
-            )
-            try {
-                call.mailer.sendVerificationMail(mail.email, link, expiration)
-            } catch (e: org.simplejavamail.MailException) {
-                serviceUnavailable("Verification e-mail failed to send")
-            }
-
-            serverState.verificationLinkManager.insertEntity(link)
+            changeEmail(mail.email)
         }
         call.respond(HttpStatusCode.OK)
     }
@@ -201,47 +262,8 @@ fun profileRoutes(routing: Routing) = routing.apply {
         withUser {
             if (user.email == null) badRequest("You cannot reset password without e-mail.")
             val passwordChange: SetPassword = call.receive()
-            if (user.password != null) {
-                if (passwordChange.currentPassword == null || !Password.check(
-                        passwordChange.currentPassword,
-                        user.password
-                    ).withArgon2()
-                ) unauthorized("The current password is incorrect.")
-            }
 
-            when (checkPassword(passwordChange.newPassword)) {
-                PasswordCheckResult.OK -> {}
-                PasswordCheckResult.TOO_SHORT ->
-                    badRequest("Password is too short, needs to be at least $MIN_PASSWORD_LENGTH characters long.")
-                PasswordCheckResult.TOO_LONG ->
-                    badRequest("Password is too long, needs to be at most $MAX_PASSWORD_LENGTH characters long.")
-            }
-
-            val hash = Password.hash(passwordChange.newPassword).addRandomSalt().withArgon2().result
-            serverState.userManager.modifyEntity(user.ref) {
-                it.copy(password = hash)
-            }
-
-            // Prepare password change notification
-            val expiration = 7.days
-            val expiresAt = Clock.System.now().plus(expiration)
-            val link = PasswordResetLink(
-                token = generateToken(),
-                user = user.ref,
-                expiryTime = expiresAt,
-            )
-            try {
-                if (user.email != null)
-                    call.mailer.sendPasswordChangedEmail(user.email, link)
-            } catch (e: org.simplejavamail.MailException) {
-                //serviceUnavailable("Password change e-mail failed to send")
-                call.application.log.info("The link to undo password change for ${user.ref} is ${link.link("")}")
-            }
-            serverState.passwordResetLinkManager.insertEntity(link)
-
-            // TODO: Anti password undo spam DDoS
-
-            call.application.log.info("User ${user.ref} changed password.")
+            changePassword(passwordChange.currentPassword, passwordChange.newPassword)
         }
 
         call.transientUserData?.refreshSessionWebsockets()
@@ -262,7 +284,8 @@ fun profileRoutes(routing: Routing) = routing.apply {
             try {
                 call.mailer.sendPasswordResetEmail(user.email, link, expiration)
             } catch (e: org.simplejavamail.MailException) {
-                serviceUnavailable("Password reset e-mail failed to send")
+                //serviceUnavailable("Password reset e-mail failed to send")
+                call.application.log.info("The link to undo password reset for ${user.ref} is ${link.link("")}")
             }
 
             serverState.passwordResetLinkManager.insertEntity(link)
@@ -306,10 +329,49 @@ fun profileRoutes(routing: Routing) = routing.apply {
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
+
+    // Edit profile (everything, redesign)
+    postST("/profile/edit") {
+        val response = withUser {
+            val profileData: EditProfile = call.receive()
+
+            var nickChange = false
+            if (profileData.nick != user.nick) {
+                changeNick(profileData.nick)
+                nickChange = true
+            }
+
+            var emailChange = false
+            var emailError: String? = null
+            if (profileData.email.lowercase() != user.email?.lowercase() || !user.emailVerified) {
+                try {
+                    changeEmail(profileData.email)
+                    emailChange = true
+                } catch (e: ResponseError) {
+                    emailError = e.message
+                }
+            }
+
+            var passwordChange = false
+            var passwordError: String? = null
+            if (profileData.newPassword != null) {
+                try {
+                    changePassword(profileData.currentPassword, profileData.newPassword)
+                    passwordChange = true
+                } catch (e: ResponseError) {
+                    passwordError = e.message
+                }
+            }
+
+            EditProfileResult(nickChange, emailChange, emailError, passwordChange, passwordError)
+        }
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK, response)
+    }
 }
 
 fun inviteRoutes(routing: Routing) = routing.apply {
-    getST("/room/{rID}/invite/{token}") {
+    getST("$roomUrl/invite/{token}") {
         val token = call.parameters["token"] ?: ""
         return@getST call.respondRedirect("/join/${token}")
     }
@@ -330,7 +392,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
     // Verify that this invitation is still valid
     getST("/join/{token}/check") {
         suspend fun invalid() {
-            call.respond(HttpStatusCode.OK, InviteStatus(false, null, null, false))
+            call.respond(HttpStatusCode.OK, InviteStatus(false, null, null, null, false))
         }
 
         val token = call.parameters["token"] ?: return@getST invalid()
@@ -346,7 +408,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         val room = serverState.rooms.values.firstOrNull { it.inviteLinks.any(linkMatch) } ?: return@getST invalid()
         val invite = room.inviteLinks.find(linkMatch) ?: return@getST invalid()
 
-        call.respond(HttpStatusCode.OK, InviteStatus(true, room.name, room.ref, invite.allowAnonymous))
+        call.respond(HttpStatusCode.OK, InviteStatus(true, room.name, room.ref, room.color, invite.allowAnonymous))
     }
     // Create an invitation link
     postST("$roomUrl/invites/create") {

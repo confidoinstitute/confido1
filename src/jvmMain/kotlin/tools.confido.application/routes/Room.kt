@@ -15,6 +15,7 @@ import payloads.responses.*
 import rooms.*
 import tools.confido.application.*
 import tools.confido.application.sessions.*
+import tools.confido.question.GroupPredictionVisibility
 import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.state.*
@@ -25,6 +26,7 @@ import users.UserType
 import kotlin.time.Duration.Companion.days
 
 val roomUrl = Room.urlPrefix("{rID}")
+val iconNames = iconDir?.listFiles()?.filter { it.isFile }?.map { it.name }?.sorted() ?: emptyList()
 
 data class RoomContext(val inUser: User?, val room: Room) {
     val user: User by lazy { inUser ?: unauthorized("Not logged in.") }
@@ -43,6 +45,10 @@ suspend fun <T> RouteBody.withRoom(body: suspend RoomContext.() -> T): T {
 }
 
 fun roomRoutes(routing: Routing) = routing.apply {
+    getST("/rooms/icons") {
+        // Icon names are only loaded when the application is started.
+        call.respond(HttpStatusCode.OK, iconNames)
+    }
     // Create a room
     postST("/rooms/add") {
         val room = withUser {
@@ -54,7 +60,8 @@ fun roomRoutes(routing: Routing) = routing.apply {
                 Room(
                     id = "", name = information.name, description = information.description,
                     createdAt = Clock.System.now(), questions = emptyList(),
-                    members = listOf(myMembership), inviteLinks = emptyList()
+                    members = listOf(myMembership), inviteLinks = emptyList(),
+                    color = information.color, icon = information.icon,
                 )
             )
         }
@@ -71,7 +78,12 @@ fun roomRoutes(routing: Routing) = routing.apply {
             val roomName = information.name.ifEmpty {room.name}
 
             serverState.roomManager.modifyEntity(room.ref) {
-                it.copy(name = roomName, description = information.description)
+                it.copy(
+                    name = roomName,
+                    description = information.description,
+                    color = information.color,
+                    icon = information.icon,
+                )
             }
         }
 
@@ -131,7 +143,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                             token = generateToken(),
                             user = newUser.ref,
                             expiryTime = expiresAt,
-                            url = "/room/${room.id}",
+                            url = room.urlPrefix,
                             sentToEmail = user.email?.lowercase()
                         )
                         try {
@@ -155,6 +167,24 @@ fun roomRoutes(routing: Routing) = routing.apply {
                         }
                     }
                 }
+            }
+        }
+
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
+    deleteST(roomUrl) {
+        withRoom {
+            assertPermission(RoomPermission.ROOM_OWNER, "You cannot delete this room.")
+            serverState.withTransaction {
+                room.questions.forEach { question ->
+                    serverState.questionManager.deleteEntity(question)
+                }
+                roomComments[room.ref]?.values?.forEach { comment ->
+                    serverState.roomCommentManager.deleteEntity(comment)
+                }
+
+                serverState.roomManager.deleteEntity(room)
             }
         }
 
@@ -206,10 +236,18 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
     }
     getWS("/state$roomUrl/group_pred") {
         withRoom {
-            val canViewPred = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+            val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
 
             val groupPreds = room.questions.associateWith { ref ->
-                if (canViewPred || ref.deref()?.groupPredVisible == true) serverState.groupPred[ref] else null
+                val lastPrediction = serverState.userPred[ref]?.get(user.ref)
+                val canView = when (ref.deref()?.groupPredictionVisibility) {
+                    GroupPredictionVisibility.EVERYONE -> true
+                    GroupPredictionVisibility.ANSWERED -> lastPrediction != null
+                    GroupPredictionVisibility.MODERATOR_ONLY -> false
+                    null -> false
+                }
+
+                if (canViewAll || canView) serverState.groupPred[ref] else null
             }
             groupPreds
         }

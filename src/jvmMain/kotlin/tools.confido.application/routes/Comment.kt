@@ -54,6 +54,8 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
         withQuestion {
             assertPermission(RoomPermission.POST_QUESTION_COMMENT, "You cannot post a comment to this question.")
 
+            if (!question.allowComments) unauthorized("Commenting is not allowed for this question.")
+
             val createdComment: CreateComment = call.receive()
             if (createdComment.content.isEmpty()) badRequest("No comment content.")
 
@@ -77,7 +79,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
                 ?: notFound("No such comment.")
 
             val newContent: String = call.receive()
-            if (newContent.isEmpty()) unauthorized("No comment content.")
+            if (newContent.isEmpty()) badRequest("No comment content.")
 
             if (!room.hasPermission(
                     user,

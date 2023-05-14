@@ -361,7 +361,7 @@ val UserSettings = FC<Props> {
     }
 
     fun onError(message: String) {
-        showError?.invoke(message)
+        showError(message)
     }
 
     Container {

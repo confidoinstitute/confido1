@@ -36,7 +36,7 @@ val RoomInformation = FC<Props> {
     val editRoom: ((BaseRoomInformation) -> Unit) = useMemo(room) {
         { information ->
             edit {
-                Client.sendData("${room.urlPrefix}/edit", information, onError = { showError?.invoke(it) }) {
+                Client.sendData("${room.urlPrefix}/edit", information, onError = { showError(it) }) {
                     editMode = false
                 }
             }
@@ -120,6 +120,7 @@ val Room = FC<Props> {
         Routes {
             if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
             Route {
+                path = "*"
                 index = true
                 this.element = QuestionList.create {
                     questions = room.questions.mapNotNull { it.deref() }

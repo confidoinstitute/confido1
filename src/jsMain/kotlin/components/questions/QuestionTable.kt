@@ -128,7 +128,7 @@ val QuestionTable = FC<QuestionTableProps> { props ->
                 val newOrder = moved.map { tools.confido.refs.Ref<Question>(it) }.toList()
                 val reorder = ReorderQuestions(newOrder)
                 runCoroutine {
-                    Client.sendData("${room.urlPrefix}/questions/reorder", reorder, onError = {showError?.invoke(it)}) {}
+                    Client.sendData("${room.urlPrefix}/questions/reorder", reorder, onError = {showError(it)}) {}
                 }
             }
         }
@@ -246,7 +246,7 @@ val QuestionRow = FC<QuestionRowProps> { props ->
 
     fun postEditQuestion(question: Question, field: EditQuestionFieldType, value: Boolean) = runCoroutine {
         val editQuestion: EditQuestion = EditQuestionFlag(field, value)
-        Client.sendData("${question.urlPrefix}/edit", editQuestion, onError = {showError?.invoke(it)}) {}
+        Client.sendData("${question.urlPrefix}/edit", editQuestion, onError = {showError(it)}) {}
     }
 
     TableRow {

@@ -26,6 +26,9 @@ fun linkComponent(to: String, onNavigate: ((String) -> Unit)?) =
         }
     }
 
+/**
+ * MUI wrapper for ListItem that renders the inner component as Router link
+ */
 val ListItemNavigation = FC<ListItemNavigationProps> {props ->
 
     val renderLink = useMemo(props.to, props.onNavigate) {
@@ -43,6 +46,9 @@ external interface MenuItemNavigationProps : MenuItemProps {
     var onNavigate: ((String) -> Unit)?
 }
 
+/**
+ * MUI wrapper for MenuItem that renders the inner component as Router link
+ */
 val MenuItemNavigation = FC<MenuItemNavigationProps> {props ->
 
     val renderLink = useMemo(props.to, props.onNavigate) {

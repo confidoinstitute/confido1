@@ -3,6 +3,7 @@ package tools.confido.utils
 import kotlin.math.roundToLong
 
 actual fun Double.toFixed(decimals: Int): String {
+    if (this.isNaN()) return "NaN"
     var x = toDouble()
     repeat(decimals) { x *= 10.0 }
     var s = x.roundToLong().toString()

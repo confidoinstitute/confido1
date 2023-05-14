@@ -6,6 +6,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
+import kotlinx.datetime.Clock
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.encodeToByteArray
 import payloads.requests.*
@@ -31,6 +32,19 @@ data class QuestionContext(val inUser: User?, val question: Question) {
     fun assertPermission(permission: RoomPermission, message: String) {
         if (!room.hasPermission(user, permission)) unauthorized(message)
     }
+
+    fun assertGroupPredictionAccess(message: String) {
+        val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+        val lastPrediction = serverState.userPred[ref]?.get(user.ref)
+        val canView = when (ref.deref()?.groupPredictionVisibility) {
+            GroupPredictionVisibility.EVERYONE -> true
+            GroupPredictionVisibility.ANSWERED -> lastPrediction != null
+            GroupPredictionVisibility.MODERATOR_ONLY -> false
+            null -> false
+        }
+
+        if (!(canViewAll || canView)) unauthorized(message)
+    }
 }
 
 suspend fun <T> RouteBody.withQuestion(body: suspend QuestionContext.() -> T): T {
@@ -46,7 +60,13 @@ fun questionRoutes(routing: Routing) = routing.apply {
         withRoom {
             assertPermission(RoomPermission.ADD_QUESTION, "You cannot add questions.")
 
-            val q: Question = call.receive()
+            var q: Question = call.receive()
+            // Add the initial state to the history if it has not been added already.
+            if (q.stateHistory.isEmpty()) {
+                q = q.copy(stateHistory = listOf(QuestionStateChange(q.state, Clock.System.now(), user.ref)))
+            }
+            q = q.copy(author = user.ref)
+
             serverState.withTransaction {
                 val question = serverState.questionManager.insertEntity(q)
                 serverState.roomManager.modifyEntity(room.ref) {
@@ -68,7 +88,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
                     serverState.questionManager.modifyEntity(ref) {
                         when (editQuestion.fieldType) {
                             EditQuestionFieldType.VISIBLE ->
-                                it.copy(visible = editQuestion.value, open = it.open && editQuestion.value)
+                                it.copy(visible = editQuestion.value)
                             EditQuestionFieldType.OPEN ->
                                 it.copy(open = editQuestion.value)
                             EditQuestionFieldType.GROUP_PRED_VISIBLE ->
@@ -78,8 +98,35 @@ fun questionRoutes(routing: Routing) = routing.apply {
                         }
                     }
                 }
-                is EditQuestionComplete ->
-                    serverState.questionManager.replaceEntity(editQuestion.question.copy(id=question.id))
+                is EditQuestionComplete -> {
+                    serverState.withTransaction {
+                        serverState.questionManager.modifyEntity(ref) {
+                            if (question.numPredictions > 0 && question.answerSpace != editQuestion.question.answerSpace) {
+                                badRequest("Cannot change answer space of a question with predictions.")
+                            }
+
+                            // If withState wasn't used, this will fill in the history automatically.
+                            val newHistory = if (question.state != editQuestion.question.state && editQuestion.question.stateHistory.lastOrNull()?.newState != editQuestion.question.state) {
+                                question.stateHistory + QuestionStateChange(editQuestion.question.state, Clock.System.now(), user.ref)
+                            } else {
+                                question.stateHistory
+                            }
+                            editQuestion.question.copy(id = question.id, stateHistory = newHistory)
+                        }
+                    }
+                }
+            }
+        }
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
+    postST("$questionUrl/state") {
+        withQuestion {
+            val newState: QuestionState = call.receive()
+            assertPermission(RoomPermission.MANAGE_QUESTIONS, "You cannot edit this question.")
+            serverState.questionManager.modifyEntity(ref) {
+                val newHistory = question.stateHistory + QuestionStateChange(newState, Clock.System.now(), user.ref)
+                it.withState(newState).copy(stateHistory = newHistory)
             }
         }
         TransientData.refreshAllWebsockets()
@@ -110,6 +157,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
             val dist: ProbabilityDistribution = call.receive()
 
             assertPermission(RoomPermission.SUBMIT_PREDICTION, "You cannot submit a prediction.")
+            if (!question.open) badRequest("You cannot predict to closed questions.")
             if (question.answerSpace != dist.space) badRequest("The answer space is not compatible.")
 
             val pred = Prediction(ts=unixNow(), dist = dist, question = question.ref, user = user.ref)
@@ -123,6 +171,8 @@ fun questionRoutes(routing: Routing) = routing.apply {
     // Get question updates
     getST("$questionUrl/updates") {
         val updates = withQuestion {
+            assertGroupPredictionAccess("You cannot view this group prediction.")
+
             val updates = serverState.groupPredHistManager.query(ref).map {
                 when (val dist = it.dist) {
                     is BinaryDistribution -> DistributionUpdate(
@@ -151,12 +201,10 @@ fun questionRoutes(routing: Routing) = routing.apply {
     }
 
     // View group predictions
-    getWS("/state/$questionUrl/group_pred") {
+    getWS("/state$questionUrl/group_pred") {
         withQuestion {
-            if (!(room.hasPermission(user, RoomPermission.VIEW_QUESTIONS) && question.groupPredVisible)
-                && !room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
-            )
-                unauthorized("You cannot view this group prediction.")
+            assertPermission(RoomPermission.VIEW_QUESTIONS, "You cannot view this group prediction.")
+            assertGroupPredictionAccess("You cannot view this group prediction.")
 
             serverState.groupPred[question.ref]?.let {
                 it

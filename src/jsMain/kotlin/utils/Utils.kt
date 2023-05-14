@@ -1,6 +1,12 @@
 package utils
 
+import components.redesign.basic.RoomPalette
 import csstype.Color
+import dom.events.Touch
+import dom.events.TouchEvent
+import dom.events.TouchList
+import dom.html.HTMLElement
+import dom.html.Window
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -8,10 +14,17 @@ import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
+import kotlinx.js.WeakMap
+import kotlinx.js.get
 import kotlinx.js.jso
+import react.useEffect
+import react.useMemo
+import react.useState
 import rooms.Room
 import tools.confido.question.Question
-import tools.confido.refs.Ref
+import tools.confido.utils.*
+import web.events.Event
+import web.events.LegacyEvent
 import web.location.location
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.js.Date
@@ -193,3 +206,27 @@ inline fun runCoroutine(noinline coro: suspend CoroutineScope.() -> Unit) { Coro
 
 fun questionUrl(id: String) = Question.urlPrefix(id)
 fun roomUrl(id: String) = Room.urlPrefix(id)
+
+private val oidMap = WeakMap<Any, Int>()
+private var oidMax = 0
+
+/**
+ * Generate unique integer determining object's identity, like python's id() function.
+ * https://stackoverflow.com/questions/2020670/javascript-object-id/35306050#35306050
+ */
+fun objectId(obj: Any) =
+    oidMap[obj] ?: run {
+        oidMax += 1
+        val newId = oidMax
+        oidMap[obj] = newId
+        newId
+    }
+
+/**
+ * A variant of the addEventListener function that allows callbacks that take the
+ * new web.events.Event types instead of the legacy org.w3c.dom.events.Event
+ */
+fun Window.addEventListener(type: String, callback: (Event)->Unit, options: dynamic = jso<dynamic>()) =
+    addEventListener(type, callback.unsafeCast<(LegacyEvent)->Unit>(), options)
+fun Window.removeEventListener(type: String, callback: (Event)->Unit, options: dynamic = jso<dynamic>()) =
+    removeEventListener(type, callback.unsafeCast<(LegacyEvent)->Unit>(), options)

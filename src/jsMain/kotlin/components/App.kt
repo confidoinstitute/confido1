@@ -2,7 +2,9 @@ package components
 
 import browser.document
 import components.layout.*
+import components.redesign.Header
 import csstype.*
+import ext.helmet.Helmet
 import kotlinx.js.jso
 import mui.material.*
 import mui.material.styles.PaletteColor
@@ -14,6 +16,8 @@ import react.router.Routes
 import react.router.dom.BrowserRouter
 import tools.confido.state.SentState
 import tools.confido.state.appConfig
+import web.location.location
+import web.url.URL
 
 val AppStateContext = createContext<ClientAppState>()
 val LoginContext = createContext<Login>()
@@ -49,48 +53,107 @@ val globalTheme = createTheme(
     }
 )
 
+external interface AppProps : Props {
+    var isLoggedIn: Boolean
+}
+
+val AppLegacy = memo(FC<AppProps> { props ->
+    val isLoggedIn = props.isLoggedIn
+    val isDemo = appConfig.demoMode
+    val layout = if (isLoggedIn) {
+        RootLayout
+    } else {
+        NoUserLayout
+    }
+
+    ThemeProvider {
+        this.theme = globalTheme
+        CssBaseline {}
+        GlobalErrorMessage {
+            BrowserRouter {
+                Routes {
+                    if (isDemo)
+                        Route {
+                            path = "/"
+                            index = true
+                            element = DemoLayout.create {}
+                        }
+                    Route {
+                        path = "/*"
+                        index = !isDemo
+                        element = layout.create {
+                            key = "layout"
+                        }
+                    }
+                    Route {
+                        path = "presenter"
+                        element = PresenterLayout.create()
+                    }
+                }
+            }
+        }
+    }
+})
+
+val PresenterWrapper = FC<Props> {
+
+    ThemeProvider {
+        this.theme = globalTheme
+        CssBaseline {}
+        PresenterLayout {}
+    }
+}
+
+val AppMobile = memo(FC<AppProps> {props ->
+    val isLoggedIn = props.isLoggedIn
+    val layout = if (!isLoggedIn)
+        components.redesign.layout.NoUserLayout
+    else
+        components.redesign.layout.RootLayout
+
+    BrowserRouter {
+        Routes {
+            Route {
+                path = "/*"
+                index = true
+                element = layout.create {}
+            }
+            Route {
+                path = "presenter"
+                element = PresenterWrapper.create()
+            }
+        }
+    }
+})
+
+fun mobileFlag(): Boolean {
+    val params = URL(location.href).searchParams
+    val version = params.get("version")?.let {
+        web.storage.localStorage.setItem("layoutVersion", it)
+        it
+    } ?: web.storage.localStorage.getItem("layoutVersion") ?: "mobile"
+    return version == "mobile"
+}
+
 val App = FC<Props> {
     // TODO: initial state from cookie
     // TODO: react to cookie change?
     val sessionCookieExists = document.cookie.contains("session")
     var isLoggedIn by useState(sessionCookieExists)
 
-    CssBaseline {}
+    val mobileFlag = mobileFlag()
+
+    Header {
+        title = ""
+    }
+
     LoginContext.Provider {
         value = Login(isLoggedIn) { isLoggedIn = it }
 
-        val isDemo = appConfig.demoMode
-        val layout = if (isLoggedIn) {
-            RootLayout
+        if (mobileFlag || !isLoggedIn) {
+            AppMobile { this.isLoggedIn = isLoggedIn }
         } else {
-            NoUserLayout
-        }
-
-        ThemeProvider {
-            this.theme = globalTheme
-            GlobalErrorMessage {
-                BrowserRouter {
-                    Routes {
-                        if (isDemo)
-                            Route {
-                                path = "/"
-                                index = true
-                                element = DemoLayout.create {}
-                            }
-                        Route {
-                            path = "/*"
-                            index = !isDemo
-                            element = layout.create {
-                                key = "layout"
-                            }
-                        }
-                        Route {
-                            path = "presenter"
-                            element = PresenterLayout.create()
-                        }
-                    }
-                }
-            }
+            AppLegacy { this.isLoggedIn = isLoggedIn }
         }
     }
 }

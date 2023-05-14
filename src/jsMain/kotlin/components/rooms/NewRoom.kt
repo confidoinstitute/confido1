@@ -12,6 +12,7 @@ import mui.material.Collapse
 import payloads.requests.BaseRoomInformation
 import react.*
 import react.router.useNavigate
+import utils.roomUrl
 import kotlin.coroutines.EmptyCoroutineContext
 
 val NewRoom = FC<Props> {
@@ -22,9 +23,9 @@ val NewRoom = FC<Props> {
     val create = useCoroutineLock()
 
     fun createRoom(information: BaseRoomInformation) = create {
-        Client.sendData("/rooms/add", information, onError = {showError?.invoke(it)}) {
+        Client.sendData("/rooms/add", information, onError = {showError(it)}) {
             val roomId: String = body()
-            navigate("/room/$roomId")
+            navigate(roomUrl(roomId))
         }
     }
 

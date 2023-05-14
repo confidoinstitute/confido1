@@ -34,6 +34,9 @@ external interface PlotlyProps : Props {
     var fixupLayout: ((dynamic) -> Unit)?
 }
 
+/**
+ * An ugly wrapper for the Plotly.kt Kotlin library
+ */
 val ReactPlotly = FC<PlotlyProps> {props ->
     val container = useRef<HTMLDivElement>(null)
 
@@ -76,3 +79,6 @@ val ReactPlotly = FC<PlotlyProps> {props ->
         ref = container
     }
 }
+
+
+fun plotlyVal(x: Number) = space.kscience.dataforge.values.NumberValue(x)

@@ -170,7 +170,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             }
         }
     }
-    useOnUnmount(pendingPrediction) { runCoroutine { Client.sendData("${question.urlPrefix}/predict", it, onError = {showError?.invoke(it)}) {} } }
+    useOnUnmount(pendingPrediction) { runCoroutine { Client.sendData("${question.urlPrefix}/predict", it, onError = {showError(it)}) {} } }
 
     Snackbar {
         open = snackOpen

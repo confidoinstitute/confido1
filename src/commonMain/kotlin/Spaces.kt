@@ -13,7 +13,7 @@ sealed class Space {
     abstract val bins: Int
     abstract fun checkValue(value: Any): Boolean
     abstract fun value2bin(value: Any): Int?
-    abstract fun formatValue(value: Any): String
+    abstract fun formatValue(value: Any, showUnit: Boolean = true, condensed: Boolean = false): String
 }
 
 
@@ -21,7 +21,7 @@ sealed class TypedSpace<T : Any> : Space() {
     @Suppress("INAPPLICABLE_JVM_NAME")
     @JvmName("_checkValue")
     abstract fun checkValue(value : T): Boolean
-    override final fun  checkValue(value: Any): Boolean {
+    final override fun checkValue(value: Any): Boolean {
         try {
             @Suppress("UNCHECKED_CAST")
             return checkValue(value as T)
@@ -33,12 +33,12 @@ sealed class TypedSpace<T : Any> : Space() {
 
     @Suppress("INAPPLICABLE_JVM_NAME")
     @JvmName("_formatValue")
-    abstract fun formatValue(value : T): String
-    override final fun  formatValue(value: Any): String {
+    abstract fun formatValue(value : T, showUnit: Boolean = true, condensed: Boolean = false): String
+    final override fun formatValue(value: Any, showUnit: Boolean, condensed: Boolean): String {
         if (!checkValue(value)) return "(invalid)"
         try {
             @Suppress("UNCHECKED_CAST")
-            return formatValue(value as T)
+            return formatValue(value as T, showUnit, condensed)
         } catch (e: ClassCastException) {
             return "(invalid)"
         }
@@ -47,7 +47,7 @@ sealed class TypedSpace<T : Any> : Space() {
     @Suppress("INAPPLICABLE_JVM_NAME")
     @JvmName("_value2bin")
     abstract fun value2bin(value : T): Int?
-    override final fun  value2bin(value: Any): Int? {
+    final override fun value2bin(value: Any): Int? {
         if (!checkValue(value)) return null
         @Suppress("UNCHECKED_CAST")
         return value2bin(value as T)
@@ -63,7 +63,7 @@ object BinarySpace : TypedSpace<Boolean>() {
     override val bins: Int = 2
     override fun checkValue(value: Boolean) = true
 
-    override fun formatValue(value: Boolean): String =
+    override fun formatValue(value: Boolean, showUnit: Boolean, condensed: Boolean): String =
         if (value) "Yes" else "No" // TODO translations, custom strings
 
     override fun value2bin(value: Boolean): Int? =
@@ -108,23 +108,36 @@ data class NumericSpace(
 
     val size get() = max - min
 
+    val range get() = min..max
+
+    fun subspace(min: Double, max: Double): NumericSpace {
+        return this.copy(min = maxOf(this.min,min), max = minOf(this.max,max))
+    }
+
+    infix fun issubspace(other: NumericSpace): Boolean {
+        return this.min >= other.min && this.max <= other.max && this.representsDays == other.representsDays
+    }
+
     override fun checkValue(value: Double) = value in min..max
 
-    override fun formatValue(value: Double): String {
+    override fun formatValue(value: Double, showUnit: Boolean, condensed: Boolean): String {
         if (representsDays) {
             return LocalDate.utcFromUnix(value.toInt()).toString()
         }
-        var r = value.toFixed(decimals)
-        if (unit != "") r += " ${unit}"
+        var r = if (condensed)
+                condensedNum(value)
+            else
+                value.toFixed(decimals)
+        if (unit != "" && showUnit) r += " $unit"
         return r
     }
 
-    fun formatDifference(value: Double): String {
+    fun formatDifference(value: Double, showUnit: Boolean = true): String {
         if (representsDays) {
             return "${(value / 86400).toFixed(1)} days"
         }
         var r = value.toFixed(decimals)
-        if (unit != "") r += " ${unit}"
+        if (unit != "" && showUnit) r += " $unit"
         return r
     }
 

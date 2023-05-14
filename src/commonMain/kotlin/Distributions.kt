@@ -37,9 +37,12 @@ interface ContinuousProbabilityDistribution : ProbabilityDistribution {
     fun probabilityBetween(range: ClosedRange<Double>) = probabilityBetween(range.start, range.endInclusive)
     fun probabilityBetween(range: OpenEndRange<Double>) = probabilityBetween(range.start, range.endExclusive)
     fun densityBetween(start: Double, end: Double) = probabilityBetween(start, end) / (end - start)
+    fun densityBetween(range: ClosedRange<Double>) = densityBetween(range.start, range.endInclusive)
+    fun densityBetween(range: OpenEndRange<Double>) = densityBetween(range.start, range.endExclusive)
 
     val mean: Double
     val stdev: Double
+    val maxDensity: Double // maximum value of pdf, useful for scaling graphs
     val median get() = icdf(0.5)
     val preferredCICenter: Double
         get() = mean
@@ -58,7 +61,8 @@ interface ContinuousProbabilityDistribution : ProbabilityDistribution {
             space,
             binner.binRanges.map { probabilityBetween(it) }.toList(),
             origMean = this.mean, origStdev = this.stdev)
-    fun discretize(bins: Int = space.bins) = discretize(Binner(space, bins))
+    fun discretize(bins: Int) = discretize(Binner(space, bins))
+    fun discretize() = discretize(space.binner)
 
     // a one-line user-visible stringification
     override val description get() = "${space.formatValue(mean)} ± ${space.formatDifference(stdev)}"
@@ -97,6 +101,12 @@ data class DiscretizedContinuousDistribution(
         sqrt(binProbs.zip(binner.binMidpoints) { p, midp -> p * (midp - discretizedMean).pow(2) }.sum())
     }
 
+    val binDensity: List<Double> by lazy {
+        binProbs Zdiv binner.binSize
+    }
+
+    override val maxDensity by lazy { binDensity.max() }
+
     override val mean: Double
         get() = origMean ?: discretizedMean
     override val stdev: Double
@@ -130,6 +140,8 @@ data class DiscretizedContinuousDistribution(
             return binner.binRanges[bin].start + off
         }
     }
+
+    override fun discretize() = this
 }
 
 @Serializable
@@ -138,6 +150,8 @@ object CanonicalNormalDistribution : ContinuousProbabilityDistribution {
     override val mean = 0.0
     override val stdev = 1.0
     override val space = NumericSpace()
+    override val maxDensity = pdf(0.0)
+
     override fun pdf(x: Double) = exp(-(ln(2 * PI) + x * x) * 0.5)
 
     /*
@@ -219,6 +233,8 @@ interface TransformedDistribution : ContinuousProbabilityDistribution {
     val dist: ContinuousProbabilityDistribution
     val shift: Double
     val scale: Double
+    override val maxDensity get() = dist.maxDensity / scale
+
 
     val origSpace get() = space.copy(min = toOrig(space.min), max = toOrig(space.max))
     fun toOrig(x: Double) = (x - shift) / scale
@@ -285,6 +301,7 @@ data class TruncatedCanonicalNormalDistribution(
     override val preferredCICenter: Double
         get() = 0.0
     override val dist get() = CanonicalNormalDistribution
+    override val maxDensity = pdf(0.0)
 
     protected val a get() = space.min
     protected val b get() = space.max

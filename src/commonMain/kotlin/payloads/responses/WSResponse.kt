@@ -52,36 +52,41 @@ class WSResponseSerializer<T>(private val dataSerializer: KSerializer<T>) : KSer
     }
 }
 
+/**
+ * A sum type for a WebSocket response representing a subscription channel. May contain [data].
+ */
 @Serializable(with = WSResponseSerializer::class)
 sealed class WSResponse<out T> {
     abstract val data: T?
 }
 
+/**
+ * WebSocket has not yet been established, waiting for connection.
+ */
 @Serializable
 class WSLoading<out T> : WSResponse<T>() {
     override val data: T? = null
 }
 
+/**
+ * Subscription channel was established and returned [data]. If the WebSocket connection broke, the data is [stale].
+ */
 @Serializable
 class WSData<out T>(override val data: T, val stale: Boolean = false) : WSResponse<T>()
 
 @Serializable
-enum class WSErrorType {
-    UNAUTHORIZED,
-    NOT_FOUND,
-    BAD_REQUEST,
-    DISCONNECTED,
-    INTERNAL_ERROR;
+enum class WSErrorType(val prettyName: String) {
+    UNAUTHORIZED("Not Authorized"),
+    NOT_FOUND("Not Found"),
+    BAD_REQUEST("Bad Request"),
+    DISCONNECTED("Disconnected"),
+    INTERNAL_ERROR("Internal Error"),
 
-    val prettyName get() = when(this) {
-        UNAUTHORIZED -> "Not Authorized"
-        NOT_FOUND -> "Not Found"
-        BAD_REQUEST -> "Bad Request"
-        INTERNAL_ERROR -> "Internal Error"
-        DISCONNECTED -> "Disconnected"
-    }
 }
 
+/**
+ * There was an error with the subscription channel, contains the error [type][errType] and [message].
+ */
 @Serializable
 class WSError<out T>(val errType: WSErrorType, val message: String) : WSResponse<T>() {
     val prettyMessage get() = "${errType.prettyName}: $message"

@@ -325,7 +325,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
         (!(user eqid appState.session.user) || appState.isAdmin())
 
     fun memberRoleChange(role: RoomRole) = runCoroutine {
-        Client.sendData("${room.urlPrefix}/members/add", AddedExistingMember(membership.user, role) as AddedMember, onError = {showError?.invoke(it)}) {}
+        Client.sendData("${room.urlPrefix}/members/add", AddedExistingMember(membership.user, role) as AddedMember, onError = {showError(it)}) {}
     }
 
     ListItem {

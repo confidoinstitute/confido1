@@ -24,6 +24,7 @@ import tools.confido.state.appConfig
 import utils.eventValue
 import utils.runCoroutine
 import utils.themed
+import web.storage.localStorage
 import kotlin.coroutines.EmptyCoroutineContext
 
 val FeedbackForm = FC<Props> {
@@ -80,6 +81,7 @@ val FeedbackForm = FC<Props> {
         }
     }
 
+    /*
     Button {
         sx {
             marginLeft = themed(2)
@@ -87,6 +89,18 @@ val FeedbackForm = FC<Props> {
         onClick = {formOpen = true}
         color = ButtonColor.inherit
         +"Feedback"
+    }
+     */
+    Button {
+        sx {
+            marginLeft = themed(2)
+        }
+        onClick = {
+            localStorage.setItem("layoutVersion", "mobile")
+            web.location.location.reload()
+        }
+        color = ButtonColor.inherit
+        +"NEW UI"
     }
 }
 
@@ -159,7 +173,7 @@ val ProfileMenu = FC<Props> {
             }
             onClick = {
                 runCoroutine {
-                    Client.send("/logout", onError = { showError?.invoke(it) }) {
+                    Client.send("/logout", onError = { showError(it) }) {
                         navigate("/")
                         loginState.logout()
                     }

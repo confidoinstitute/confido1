@@ -1,19 +1,14 @@
 package components.layout
 
 import components.AppStateContext
+import components.AppStateWebsocketProvider
 import components.presenter.PresenterPage
 import csstype.vh
 import csstype.vw
-import kotlinx.serialization.decodeFromString
 import mui.system.sx
 import react.*
-import tools.confido.serialization.confidoJSON
 import tools.confido.state.EmptyPV
-import tools.confido.utils.unixNow
 import utils.webSocketUrl
-import web.timers.Timeout
-import web.timers.clearInterval
-import web.timers.setInterval
 import web.timers.setTimeout
 import websockets.WebSocket
 

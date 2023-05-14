@@ -1,12 +1,12 @@
 
-val ktorVersion = "2.1.3"
-val serializationVersion = "1.4.1"
+val ktorVersion = "2.2.4"
+val serializationVersion = "1.5.0"
 val kmongoVersion = "4.7.2"
 val kotlinWrappersVersion = "1.0.0-pre.444"
 
 plugins {
-    kotlin("multiplatform") version "1.7.21"
-    kotlin("plugin.serialization") version "1.7.21"
+    kotlin("multiplatform") version "1.8.20"
+    kotlin("plugin.serialization") version "1.8.20"
     application
 }
 
@@ -36,21 +36,23 @@ kotlin {
             commonWebpackConfig {
                 configDirectory = projectDir.resolve("webpack-config")
                 cssSupport {
-                    enabled = true
+                    enabled.set(true)
                 }
                 devServer?.open = false
                 devServer?.port = 8081
                 devServer?.proxy = mutableMapOf(
                     "/" to mapOf(
-                        "target" to "http://localhost:8080/",
+                        // XXX does not work with 'localhost' instead of 127.0.0.1. Tries to connect
+                        // via IPv6 (::1) and fails.
+                        "target" to "http://127.0.0.1:8080/",
                         "secure" to false,
                     ),
                     "/api/**" to mapOf(
-                        "target" to "http://localhost:8080/",
+                        "target" to "http://127.0.0.1:8080/",
                         "secure" to false,
                     ),
                     "/state" to mapOf(
-                        "target" to "http://localhost:8080/",
+                        "target" to "http://127.0.0.1:8080/",
                         "secure" to false,
                         "ws" to true,
                     ),
@@ -102,10 +104,18 @@ kotlin {
                 // Plotly
                 implementation("space.kscience:plotlykt-core:0.5.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+                // DND Kit
                 implementation(npm("@dnd-kit/core", "6.0.5"))
                 implementation(npm("@dnd-kit/modifiers", "6.0.0"))
                 implementation(npm("@dnd-kit/sortable", "7.0.1"))
+                // QR codes
                 implementation(npm("qrcode.react", "3.1.0"))
+                // Transitions
+                implementation(npm("react-transition-group","4.4.5"))
+                // Helmet
+                implementation(npm("react-helmet", "6.1.0"))
+                // Show more text
+                implementation(npm("react-show-more-text", "1.6.2"))
             }
         }
     }
@@ -153,5 +163,25 @@ tasks.named<JavaExec>("run") {
     dependsOn(tasks.named<Jar>("jvmJar"))
     classpath(tasks.named<Jar>("jvmJar"))
 }
+
+
+
+val hotpatch by tasks.registering {
+    doLast {
+        println("HOTPATCH")
+        exec {
+            commandLine("./hotpatch_websocket_close.js")
+        }
+    }
+}
+
+
+listOf("jsProductionExecutableCompileSync", "jsDevelopmentExecutableCompileSync").forEach {
+
+    tasks.named(it) {
+        finalizedBy(hotpatch) 
+    }
+}
+
 
 //tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> { kotlinOptions.languageVersion = "1.8" }

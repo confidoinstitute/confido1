@@ -42,6 +42,7 @@ import java.time.Duration
 import kotlin.collections.listOf
 
 val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "./build/distributions/").canonicalFile
+val iconDir = System.getenv("CONFIDO_ICONS_PATH")?.let { File(it).canonicalFile }
 val jsBundle = staticDir.resolve("confido1.js")
 val jsHash = DigestUtils(SHA_224).digestAsHex(jsBundle)
 val appConfigHash = DigestUtils(SHA_224).digestAsHex(Json.encodeToString(appConfig))
@@ -51,13 +52,18 @@ val demoMode = System.getenv("CONFIDO_DEMO") == "1"
 fun HTML.index() {
     head {
         title("Confido")
-        meta(name = "viewport", content = "width=device-width, initial-scale=1.0")
+        meta(name = "viewport", content = "width=device-width, initial-scale=1.0,user-scalable=no,maximum-scale=1.0")
         link(rel = "icon", href = "/static/favicon.ico") { sizes = "any" }
         link(rel = "icon", href = "/static/icon.svg", type = "image/svg+xml")
         link(rel = "apple-touch-icon", href = "/static/apple-touch-icon.png")
         link(rel = "manifest", href = "static/manifest.webmanifest")
     }
     body {
+        script {
+            attributes["crossorigin"] = ""
+            // TODO make configurable via environment
+            src = "https://polyfill.x.confido.tools/api/polyfill?features=pointer-event,resize-observer"
+        }
         script(type="text/javascript") { unsafe { +"bundleVer= '${jsHash}'" } }
         script(type="text/javascript") { unsafe { +"appConfigVer= '${appConfigHash}'" } }
         script(type="text/javascript") { unsafe { +"appConfig= ${Json.encodeToString(appConfig)}" } }
@@ -313,6 +319,11 @@ fun main() {
                 preCompressed(CompressedFileType.BROTLI, CompressedFileType.GZIP) {
                     files(".")
                     resources()
+                }
+                static("/icons") {
+                    iconDir?.let {
+                        files(iconDir)
+                    }
                 }
             }
         }

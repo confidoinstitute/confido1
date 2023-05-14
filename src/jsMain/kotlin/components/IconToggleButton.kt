@@ -17,6 +17,9 @@ external interface IconToggleButtonProps : PropsWithRef<HTMLButtonElement> {
     var onChange: ((Boolean) -> Unit)?
 }
 
+/**
+ * Button that changes its icon according to its inner state (if `on` is not provided) or controlled state
+ */
 val IconToggleButton = ForwardRef<HTMLButtonElement, IconToggleButtonProps> {props, forwardedRef ->
     var state by useState(props.defaultOn ?: false)
     val effectiveState = props.on ?: state
