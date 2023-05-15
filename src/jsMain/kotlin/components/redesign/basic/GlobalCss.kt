@@ -25,6 +25,10 @@ val GlobalCss = FC<GlobalCssProps> {props ->
                 display = Display.flex
                 flexDirection = FlexDirection.column
             }
+            fontFace {
+                fontFamily = "Inter"
+                src = "url('/static/Inter.var.woff2') format('woff2')"
+            }
         }
     }
 }
