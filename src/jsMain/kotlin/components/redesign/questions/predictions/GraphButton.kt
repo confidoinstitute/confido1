@@ -64,7 +64,7 @@ external interface GraphExactPredictionButtonProps: Props {
     var question: Question
 }
 
-val GraphExactPredictionButton = FC<GraphExactPredictionButtonProps> { props ->
+val GraphExactPredictionButton: FC<GraphExactPredictionButtonProps> = FC { props ->
     var open by useState(false)
     ExactEstimateDialog {
         this.open = open
@@ -90,8 +90,7 @@ val GraphButtons = FC<GraphButtonsProps>("GraphButtons") { props->
         if (props.isGroup && layoutMode >= LayoutMode.TABLET && props.dist != null) {
             props.question?.let { GraphPresenterButton { question = it } }
         }
-        if (props.isInput ?: false && props.dist is BinaryDistribution) {
-            // TODO: Check if edit possible
+        if (props.isInput ?: false) {
             props.question?.let { GraphExactPredictionButton { question = it } }
         }
     }

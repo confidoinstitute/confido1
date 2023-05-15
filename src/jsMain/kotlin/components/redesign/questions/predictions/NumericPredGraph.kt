@@ -34,7 +34,7 @@ external interface NumericPredGraphProps : PropsWithElementSize, BasePredictionG
 
 val SIDE_PAD = 27.0
 val LABELS_HEIGHT = 24.0
-val NumericPredGraph = elementSizeWrapper(FC<NumericPredGraphProps>("NumericPredGraph") { props->
+val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericPredGraphProps>("NumericPredGraph") { props->
     val ABOVE_GRAPH_PAD = 8.0
     val GRAPH_TOP_PAD = 33.0
     val GRAPH_HEIGHT = 131.0
