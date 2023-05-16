@@ -16,6 +16,7 @@ import react.*
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.Question
+import tools.confido.question.QuestionState
 import tools.confido.refs.ref
 import tools.confido.spaces.Space
 import tools.confido.state.GroupPredPV
@@ -90,7 +91,7 @@ val GraphButtons = FC<GraphButtonsProps>("GraphButtons") { props->
         if (props.isGroup && layoutMode >= LayoutMode.TABLET && props.dist != null) {
             props.question?.let { GraphPresenterButton { question = it } }
         }
-        if (props.isInput ?: false) {
+        if (props.isInput == true && props.question?.state == QuestionState.OPEN) {
             props.question?.let { GraphExactPredictionButton { question = it } }
         }
     }
