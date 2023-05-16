@@ -1,6 +1,8 @@
 package components.redesign.questions.predictions
 
 import components.redesign.basic.*
+import components.redesign.layout.LayoutMode
+import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.*
 import csstype.*
 import dom.html.*
@@ -120,6 +122,7 @@ external interface BinaryPredSliderProps : PredictionInputProps, PropsWithElemen
 }
 val BIN_PRED_SPACE = NumericSpace(0.0, 100.0, unit="%")
 val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
+    val layoutMode = useContext(LayoutModeContext)
     val predictionTerminology = props.question?.predictionTerminology ?: PredictionTerminology.ANSWER
     val zoomParams = PZParams(viewportWidth = props.elementWidth, contentDomain = 0.0..100.0, sidePad = SIDE_PAD)
     val zoomState = PZState(zoomParams)
@@ -144,6 +147,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
             update(newProb, true)
         }
     }
+    val interactVerb = if (layoutMode >= LayoutMode.TABLET) { "Click" } else { "Tap" }
 
     div {
 
@@ -205,7 +209,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
                         height = 100.pct
                         cursor = Cursor.default
                     }
-                    +"Tap here to create an ${predictionTerminology.aTerm}"// TODO choose "tap"/"click" based on device
+                    +"$interactVerb here to create ${predictionTerminology.aTerm}"
                 }
         } else {
             SliderTrack {

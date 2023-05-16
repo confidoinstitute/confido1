@@ -1,6 +1,8 @@
 package components.redesign.questions.predictions
 
 import components.redesign.basic.*
+import components.redesign.layout.LayoutMode
+import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.PredictionOverlay
 import csstype.*
 import dom.html.HTMLDivElement
@@ -55,6 +57,7 @@ fun findDistribution(space: NumericSpace, center: Double, ciWidth: Double): Trun
 }
 
 val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPredSlider") { props->
+    val layoutMode = useContext(LayoutModeContext)
     val space = props.space as NumericSpace
     val zoomState = props.zoomState
     val propDist = props.dist as? TruncatedNormalDistribution
@@ -136,6 +139,8 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
     //useEffect(dist?.pseudoMean, dist?.pseudoStdev, dragging) {
     //    if (!dragging) dist?.let { props.onCommit?.invoke(dist) }
     //}
+    val interactVerb = if (layoutMode >= LayoutMode.TABLET) { "Click" } else { "Tap" }
+
     div {
         key="sliderArea"
         css {
@@ -241,7 +246,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
                         height = 100.pct
                         cursor = Cursor.default
                     }
-                    +"Tap here to create ${predictionTerminology.aTerm}"// TODO choose "tap"/"click" based on device
+                    +"$interactVerb here to create ${predictionTerminology.aTerm}"
                     ref = createEstimateRE
                 }
             } else if (dist == null) {
@@ -267,7 +272,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
                         cursor = Cursor.default
                     }
                     div {
-                        +"Tap here to set uncertainty"// TODO choose "tap"/"click" based on device
+                        +"$interactVerb here to set uncertainty"
                         css {
                             paddingLeft = 10.px
                             paddingRight = 10.px
