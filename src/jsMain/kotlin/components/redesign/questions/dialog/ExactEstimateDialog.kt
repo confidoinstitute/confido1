@@ -11,9 +11,11 @@ import components.showError
 import csstype.*
 import emotion.react.css
 import hooks.useCoroutineLock
+import kotlinx.datetime.*
 import react.*
 import react.dom.html.ButtonType
 import react.dom.html.InputMode
+import react.dom.html.InputType
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
@@ -60,7 +62,6 @@ val ExactEstimateDialog = FC<ExactEstimateDialogProps> { props ->
             }
 
             is NumericSpace -> {
-                console.log(appState.myPredictions[props.question.ref]?.dist)
                 val dist = appState.myPredictions[props.question.ref]?.dist as TruncatedNormalDistribution?
                 SymmetricNumericExactEstimateDialog {
                     +props
@@ -266,10 +267,23 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
         }
     }
 
+    fun readInputValue(text: String): Double? {
+        return if (space.representsDays) {
+            try {
+                val unixTime = LocalDate.parse(text).atTime(12, 0).toInstant(TimeZone.UTC).epochSeconds
+                unixTime.toDouble()
+            } catch (e: Exception) {
+                null
+            }
+        } else {
+            text.toDoubleOrNull()
+        }
+    }
+
     fun setCenterText(newText: String) {
         centerText = newText
         // The center has shifted, update both confidence interval start and end, keeping the same radius.
-        newText.toDoubleOrNull()?.let { newCenter ->
+        readInputValue(newText)?.let { newCenter ->
             pseudoMean = newCenter
 
             ciRadius?.let { ciRadius ->
@@ -300,7 +314,7 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
         lowerBoundText = newText
         // Update the upper bound text as it is symmetric.
         pseudoMean?.let { center ->
-            newText.toDoubleOrNull()?.let {
+            readInputValue(newText)?.let {
                 val newRadius = center - it
                 ciRadius = newRadius
                 val newUpperBound = if (center + newRadius > space.max) {
@@ -319,7 +333,7 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
         upperBoundText = newText
         // Update the lower bound text as it is symmetric.
         pseudoMean?.let { center ->
-            newText.toDoubleOrNull()?.let {
+            readInputValue(newText)?.let {
                 val newRadius = it - center
                 ciRadius = newRadius
                 val newLowerBound = if (center - newRadius < space.min) {
@@ -355,6 +369,8 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
         }
     }
 
+    val inputType = if (space.representsDays) { InputType.date } else { InputType.text }
+    val inputMode = if (space.representsDays) { null } else { InputMode.numeric }
     val disabled = estimate == null || ciError != null || centerError != null || submitLock.running
 
     val centerColor = Color("#FF8A00")
@@ -390,6 +406,10 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
                             }
                             size = maxOf(1, centerText.length - 4)
                             value = centerText
+                            type = inputType
+                            this.inputMode = inputMode
+                            min = space.formatValue(space.min)
+                            max = space.formatValue(space.max)
                             onChange = { e -> setCenterText(e.target.value) }
                         }
                         +" ${space.unit}."
@@ -414,7 +434,8 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
                             }
                             size = maxOf(1, lowerBoundText.length - 4)
                             value = lowerBoundText
-                            inputMode = InputMode.numeric
+                            type = inputType
+                            this.inputMode = inputMode
                             onChange = { e -> setLowerBoundText(e.target.value) }
                         }
                         +" ${space.unit} and "
@@ -424,6 +445,8 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
                             }
                             size = maxOf(1, upperBoundText.length - 4)
                             value = upperBoundText
+                            type = inputType
+                            this.inputMode = inputMode
                             onChange = { e -> setUpperBoundText(e.target.value) }
                         }
                         +" ${space.unit}."
