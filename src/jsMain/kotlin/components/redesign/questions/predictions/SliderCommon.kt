@@ -63,7 +63,7 @@ val SliderTrack = FC<SliderTrackProps>("SliderTrack") { props->
 }
 enum class ThumbKind(val signpostColor: String) {
     Left("#0066FF"),
-    Center("#00CC2E"),
+    Center(MainPalette.center.color.toString()),
     Right("#0066FF"),
 }
 

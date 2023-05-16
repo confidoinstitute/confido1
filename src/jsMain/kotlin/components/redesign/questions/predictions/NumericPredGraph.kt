@@ -156,10 +156,10 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
         if (props.isGroup) {
             val flags = listOfNotNull(props.dist?.let {
                 PredictionFlag(
-                    color = Color("#FF8A00"),
+                    color = MainPalette.center.color,
                     flagpole = it.median in zoomState.visibleContentRange,
                     content = FlagContentValue.create {
-                    color = Color("#FFFFFF")
+                    color = MainPalette.center.text.color
                     value = NumericValue(it.space, it.median)
                     title = "group estimate"
                 })

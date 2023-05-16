@@ -30,6 +30,7 @@ enum class MainPalette(override val color: Color, override val text: TextPalette
     primary(Color("#6319FF"), TextPalette.white),
     secondary(Color("#00C2FF"), TextPalette.white),
     login(Color("#6733DA"), TextPalette.white),
+    center(Color("#FF8A00"), TextPalette.white),
 }
 
 enum class RoomPalette(override val color: Color, override val text: TextPalette): PaletteWithText {

@@ -2,6 +2,7 @@ package components.redesign.questions.dialog
 
 import components.AppStateContext
 import components.redesign.basic.Dialog
+import components.redesign.basic.MainPalette
 import components.redesign.basic.css
 import components.redesign.basic.sansSerif
 import components.redesign.forms.*
@@ -152,7 +153,7 @@ val BinaryExactEstimateDialog = FC<BinaryExactEstimateDialogProps> { props ->
             FormSection {
                 FormField {
                     title = "Probability"
-                    titleColor = Color("#00CC2E")
+                    titleColor = MainPalette.center.color
                     ProbabilityInput {
                         value = estimate
                         onChange = { estimate = it }
@@ -373,7 +374,6 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
     val inputMode = if (space.representsDays) { null } else { InputMode.numeric }
     val disabled = estimate == null || ciError != null || centerError != null || submitLock.running
 
-    val centerColor = Color("#FF8A00")
     val confidenceColor = Color("#00C2FF")
     val rangeColor = Color("#0066FF")
 
@@ -395,14 +395,14 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
                 }
                 FormField {
                     title = "Center"
-                    titleColor = centerColor
+                    titleColor = MainPalette.center.color
                     error = centerError
                     div {
                         className = descriptionTextClass
                         +"You think that the most probable answer is "
                         TextInput {
                             css(override = numericTextBoxClass) {
-                                color = centerColor
+                                color = MainPalette.center.color
                             }
                             size = maxOf(1, centerText.length - 4)
                             value = centerText
