@@ -24,7 +24,7 @@ external interface GroupPredictionDescriptionProps : Props {
     var predictionTerminology: PredictionTerminology
 }
 
-val predictorCountColor = Color("#FF6B00")
+val predictorCountColor = Color("#000000")
 val yesColor = Color("#00CC2E")
 val noColor = Color("#FF5555")
 
