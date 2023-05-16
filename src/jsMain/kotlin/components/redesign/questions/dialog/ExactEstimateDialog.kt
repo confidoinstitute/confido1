@@ -29,6 +29,7 @@ import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.NumericSpace
 import tools.confido.spaces.Space
 import tools.confido.utils.formatPercent
+import tools.confido.utils.toFixed
 import kotlin.math.abs
 
 external interface ExactEstimateDialogProps : Props {
@@ -85,7 +86,7 @@ external interface ProbabilityInputProps : Props {
 
 val ProbabilityInput = FC<ProbabilityInputProps> { props ->
     // TODO: Generalize as a TextInput with unit
-    var value by useState(props.value?.yesProb?.times(100) ?: "")
+    var value by useState(props.value?.yesProb?.times(100)?.toFixed(2) ?: "")
     TextInput {
         this.value = value
         autoFocus = props.autoFocus
@@ -125,6 +126,10 @@ val ProbabilityInput = FC<ProbabilityInputProps> { props ->
 val BinaryExactEstimateDialog = FC<BinaryExactEstimateDialogProps> { props ->
     var estimate by useState(props.myPredictionDist)
     val submitLock = useCoroutineLock()
+
+    useEffect(props.myPredictionDist) {
+        estimate = props.myPredictionDist
+    }
 
     fun estimate() {
         submitLock {
