@@ -122,7 +122,7 @@ data class NumericSpace(
 
     override fun formatValue(value: Double, showUnit: Boolean, condensed: Boolean): String {
         if (representsDays) {
-            return LocalDate.utcFromUnix(value.toInt()).toString()
+            return LocalDate.utcFromUnix(value.toLong()).toString()
         }
         var r = if (condensed)
                 condensedNum(value)
