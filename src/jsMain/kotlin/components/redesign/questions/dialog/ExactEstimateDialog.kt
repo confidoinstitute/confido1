@@ -189,10 +189,16 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
     // For CIWidth -> 0.8 this converges to uniform distribution
     //     CIWidth > 0.8 there is no solution (the distribution would need to be convex) and distribution search
     //     diverges, returns astronomically large stdev and creates weird artifacts
-    val maxCIRadius = 0.798 * space.size / 2
+    val maxCIWidth = 0.798 * space.size
 
     var pseudoMean by useState<Double?>(null)
     var ciRadius by useState<Double?>(null)
+
+    val ciWidth = pseudoMean?.let { center ->
+        ciRadius?.let { radius ->
+            minOf(radius, center - space.min) + minOf(radius, space.max - center)
+        }
+    }
 
     val lowerBound = ciRadius?.let { pseudoMean?.minus(it) }
     val upperBound = ciRadius?.let { pseudoMean?.plus(it) }
@@ -214,8 +220,8 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
             null
         }
     }
-    val ciError = ciRadius?.let {
-        if (it >= maxCIRadius) {
+    val ciError = ciWidth?.let {
+        if (ciWidth >= maxCIWidth) {
             "The confidence interval is too wide. Please try a narrower range."
         } else {
             pseudoMean?.let { center ->
@@ -351,8 +357,8 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
 
     val estimate = useMemo(pseudoMean, ciRadius, space) {
         pseudoMean?.let { center ->
-            ciRadius?.let { ciRadius ->
-                findDistribution(space, center, ciRadius.coerceIn(0.0..maxCIRadius) * 2)
+            ciWidth?.let { ciWidth ->
+                findDistribution(space, center, ciWidth.coerceIn(0.0..maxCIWidth))
             }
         }
     }
