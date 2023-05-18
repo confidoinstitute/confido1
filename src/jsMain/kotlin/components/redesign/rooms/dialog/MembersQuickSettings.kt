@@ -6,6 +6,7 @@ import components.redesign.basic.DialogMenu
 import components.redesign.basic.DialogMenuHeader
 import components.redesign.basic.DialogMenuItem
 import components.redesign.basic.DialogMenuItemVariant
+import components.redesign.presenter.PresenterContext
 import components.rooms.RoomContext
 import csstype.px
 import emotion.react.css
@@ -14,7 +15,10 @@ import react.Props
 import react.dom.html.ReactHTML.div
 import react.useContext
 import react.useState
+import rooms.InviteLink
 import rooms.RoomPermission
+import tools.confido.refs.ref
+import tools.confido.state.InviteLinkPV
 
 external interface MemberQuickSettingsDialogProps : Props {
     var open: Boolean
@@ -27,6 +31,7 @@ external interface MemberQuickSettingsDialogProps : Props {
 }
 
 external interface InvitationQuickSettingsDialogProps : Props {
+    var link: InviteLink
     var hasUsers: Boolean
     var open: Boolean
     var onClose: (() -> Unit)?
@@ -69,6 +74,7 @@ val MemberQuickSettingsDialog = FC<MemberQuickSettingsDialogProps> {props ->
 val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {props ->
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
+    val presenterCtl = useContext(PresenterContext)
 
     var deleting by useState(false)
 
@@ -85,6 +91,15 @@ val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {prop
             onClick = {
                 props.onClose?.invoke()
                 props.onCopy?.invoke()
+            }
+        }
+        DialogMenuItem {
+            text = "Show link & QR code in presentation mode"
+            icon = PresenterIcon
+            disabled = stale
+            onClick = {
+                props.onClose?.invoke()
+                presenterCtl.offer(InviteLinkPV(room.ref, props.link.id))
             }
         }
         DialogMenuItem {

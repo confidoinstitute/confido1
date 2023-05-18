@@ -248,6 +248,7 @@ val InvitationMembers = FC<InvitationMembersProps> { props ->
     }
 
     InvitationQuickSettingsDialog {
+        link = props.invitation
         open = dialogOpen
         hasUsers = props.members?.isNotEmpty() == true
         onClose = { dialogOpen = false }
