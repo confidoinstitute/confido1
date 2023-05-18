@@ -6,6 +6,7 @@ import components.AppStateWebsocketProvider
 import components.layout.RoomRedirect
 import components.nouser.EmailLoginAlreadyLoggedIn
 import components.redesign.*
+import components.redesign.admin.UserAdmin
 import components.redesign.basic.*
 import components.redesign.basic.GlobalErrorMessage
 import components.redesign.feedback.FeedbackProvider
@@ -19,6 +20,7 @@ import hooks.useBreakpoints
 import react.*
 import react.router.*
 import tools.confido.state.*
+import users.UserType
 
 val RootLayout = FC<Props> {
     ThemeProvider {
@@ -132,6 +134,12 @@ private val RootLayoutInner = FC<Props> {
                     Route {
                         path = "profile"
                         this.element = UserProfile.create()
+                    }
+                    if (appState.session.user?.type == UserType.ADMIN) {
+                        Route {
+                            path = "admin/users"
+                            this.element = UserAdmin.create()
+                        }
                     }
                 }
                 /*

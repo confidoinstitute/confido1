@@ -28,7 +28,7 @@ val Checkbox = FC<CheckboxProps> { props ->
     val noCheckmark = props.noCheckmark ?: false
 
     label {
-        css(props.className) {
+        css(override=props.className) {
             position = Position.relative
             display = Display.inlineBlock
             width = 30.px
@@ -58,8 +58,11 @@ val Checkbox = FC<CheckboxProps> { props ->
                 justifyContent = JustifyContent.center
                 transition = 0.1.s
 
+                // XXX unchecked checkbox is "invisible"
                 if (props.alwaysColorBackground)
                     backgroundColor = palette.color
+                //else
+                //    backgroundColor = Color("#DDDDDD")
 
                 cursor = Cursor.pointer
 

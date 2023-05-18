@@ -1,6 +1,7 @@
 package components.redesign.basic
 
 import browser.*
+import components.AppStateContext
 import components.redesign.AboutIcon
 import components.redesign.SidebarContext
 import components.redesign.feedback.FeedbackMenuItem
@@ -501,6 +502,7 @@ external interface DialogMenuCommonActionsProps : Props {
 }
 
 val DialogMenuCommonActions = FC<DialogMenuCommonActionsProps> { props ->
+    val (appState, stale) = useContext(AppStateContext)
     FeedbackMenuItem {
         pageName = props.pageName
         onClick = {

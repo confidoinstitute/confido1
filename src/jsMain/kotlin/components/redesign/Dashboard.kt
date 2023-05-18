@@ -316,6 +316,7 @@ external interface DashboardDialogProps : Props {
 val DashboardDialog = FC<DashboardDialogProps> { props ->
     val loginState = useContext(LoginContext)
     val navigate = useNavigate()
+    val (appState, stale) = useContext(AppStateContext)
 
     DialogMenu {
         open = props.open
@@ -344,6 +345,14 @@ val DashboardDialog = FC<DashboardDialogProps> { props ->
         DialogMenuCommonActions {
             pageName = "Dashboard"
             onClose = props.onClose
+        }
+        if (appState.isAdmin()) {
+            DialogMenuSeparator{}
+            DialogMenuHeader { this.text = "Administration" }
+            DialogMenuNav {
+                text = "User management"
+                this.navigate = "/admin/users"
+            }
         }
     }
 }
