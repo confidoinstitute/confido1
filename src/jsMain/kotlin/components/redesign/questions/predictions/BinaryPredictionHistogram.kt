@@ -13,7 +13,11 @@ import hooks.usePureClick
 import kotlinx.js.jso
 import react.*
 import react.dom.html.ReactHTML
+import react.dom.html.ReactHTML.canvas
+import react.dom.html.ReactHTML.div
 import tools.confido.distributions.BinaryDistribution
+import tools.confido.spaces.NumericSpace
+import tools.confido.spaces.NumericValue
 import tools.confido.utils.GeneratedList
 import tools.confido.utils.toFixed
 import utils.panzoom1d.PZParams
@@ -22,6 +26,8 @@ import utils.panzoom1d.usePanZoom
 external interface BinaryPredictionHistogramProps : PropsWithElementSize {
     // TODO: Wrap somehow?
     var predictions: List<BinaryDistribution>
+    var median: Double?
+    var mean: Double?
 }
 
 class BinaryHistogramBinner(val bins: Int) {
@@ -185,7 +191,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
             position = Position.relative
             overflow = Overflow.hidden
         }
-        ReactHTML.canvas {
+        canvas {
             style = jso {
                 this.width = logicalWidth.px
                 this.height = logicalHeight.px
@@ -201,7 +207,32 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                 }
             }
         }
-        ReactHTML.div {
+        val flags = listOfNotNull(props.median?.let {
+            PredictionFlag(
+                color = Color("#2AE6C9"),
+                flagpole = it in zoomState.visibleContentRange,
+                content = FlagContentValue.create {
+                    color = Color("#FFFFFF")
+                    value = NumericValue(NumericSpace(0.0, 1.0), it)
+                    title = "median"
+                })
+        }, props.mean?.let {
+            PredictionFlag(
+                color = Color("#00C3E9"),
+                flagpole = it in zoomState.visibleContentRange,
+                content = FlagContentValue.create {
+                    color = Color("#FFFFFF")
+                    value = NumericValue(NumericSpace(0.0, 1.0), it)
+                    title = "mean"
+                })
+        })
+        val flagPositions = listOfNotNull(props.median?.let {
+            zoomState.contentToViewport(it)
+        }, props.mean?.let {
+            zoomState.contentToViewport(it)
+        })
+
+        div {
             style = jso {
                 this.width = logicalWidth.px
                 this.height = logicalHeight.px
@@ -216,7 +247,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
             }
         }
 
-        ReactHTML.div {
+        div {
             style = jso {
                 this.width = logicalWidth.px
                 this.height = logicalHeight.px
@@ -230,7 +261,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                 this.flagPositions = flagPositions
             }
         }
-        ReactHTML.div {
+        div {
             css {
                 height = LABELS_HEIGHT.px
                 flexGrow = number(0.0)
@@ -244,7 +275,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
             rectangles
                 .filter { it.rangeMidpoint in zoomState.visibleContentRange }
                 .forEachIndexed { idx, rect ->
-                    ReactHTML.div {
+                    div {
                         style = jso {
                             left = zoomState.contentToViewport(rect.rangeMidpoint).px
                             top = 50.pct
@@ -263,7 +294,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                     }
                 }
         }
-        ReactHTML.div {
+        div {
             css {
                 height = LABELS_HEIGHT.px
                 flexGrow = number(0.0)
@@ -275,7 +306,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                 fontFamily = sansSerif
             }
             horizontalMarks.forEach { value ->
-                ReactHTML.div {
+                div {
                     style = jso {
                         left = 12.px
                         top = (logicalHeight - value * yScale).px

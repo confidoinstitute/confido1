@@ -108,6 +108,8 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
         BinaryPredictionHistogram {
             key = "binaryPredictionHistogram"
             predictions = randomPredictions
+            median = 0.43
+            mean = 0.53
             //predictions = listOf(
             //    BinaryDistribution(0.0),
             //    BinaryDistribution(0.4),
