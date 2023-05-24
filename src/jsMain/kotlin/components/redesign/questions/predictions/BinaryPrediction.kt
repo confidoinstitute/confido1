@@ -17,6 +17,7 @@ import tools.confido.spaces.*
 import utils.panzoom1d.PZParams
 import utils.panzoom1d.PZState
 import kotlin.math.*
+import kotlin.random.Random
 
 external interface BinaryPredictionProps : Props, BasePredictionGraphProps {
     override var dist: BinaryDistribution?
@@ -97,23 +98,63 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
     val baseHeight = props.baseHeight ?: 145.px
     val circleSize: Double = min(realSize.height, realSize.width / 2)
 
-    Stack {
-        ref = realSize.ref
-        direction = FlexDirection.row
-        css {
-            width = 100.pct
-            height = baseHeight
-            justifyContent = JustifyContent.center
-            alignItems = AlignItems.center
-            position = Position.relative
+    var showHistogram by useState(false)
+    if (showHistogram) {
+        // TODO: Get values
+        val randomPredictions = List(500) {
+            BinaryDistribution((sqrt(-2.0 * log(1 - Random.nextDouble(), E)) * cos(2.0 * PI * Random.nextDouble()) * 0.2 + 0.5).coerceIn(0.0, 1.0))
+            //BinaryDistribution(Random.nextDouble())
         }
-        val noColor = if (props.resolution?.value == true) { Color("#BBBBBB") } else { Color("#FF5555") }
-        val yesColor = if (props.resolution?.value == false) { Color("#BBBBBB") } else { Color("#00CC2E") }
-        proportionalCircle("No", noColor, props.dist?.yesProb?.let {1 - it}, size = circleSize)
-        proportionalCircle("Yes", yesColor, props.dist?.yesProb, size = circleSize)
-        if (props.interactive?:true)
-        GraphButtons {
-            +props
+        BinaryPredictionHistogram {
+            key = "binaryPredictionHistogram"
+            predictions = randomPredictions
+            //predictions = listOf(
+            //    BinaryDistribution(0.0),
+            //    BinaryDistribution(0.4),
+            //    BinaryDistribution(0.45),
+            //    BinaryDistribution(0.2),
+            //    BinaryDistribution(0.48),
+            //    BinaryDistribution(0.8),
+            //    BinaryDistribution(1.0),
+            //    BinaryDistribution(0.9)
+            //)
+        }
+        if (props.interactive ?: true) {
+            GraphButtons {
+                +props
+                onHistogramClick = { showHistogram = !showHistogram }
+            }
+        }
+    } else {
+
+        Stack {
+            ref = realSize.ref
+            direction = FlexDirection.row
+            css {
+                width = 100.pct
+                height = baseHeight
+                justifyContent = JustifyContent.center
+                alignItems = AlignItems.center
+                position = Position.relative
+            }
+            val noColor = if (props.resolution?.value == true) {
+                Color("#BBBBBB")
+            } else {
+                Color("#FF5555")
+            }
+            val yesColor = if (props.resolution?.value == false) {
+                Color("#BBBBBB")
+            } else {
+                Color("#00CC2E")
+            }
+            proportionalCircle("No", noColor, props.dist?.yesProb?.let { 1 - it }, size = circleSize)
+            proportionalCircle("Yes", yesColor, props.dist?.yesProb, size = circleSize)
+            if (props.interactive ?: true) {
+                GraphButtons {
+                    +props
+                    onHistogramClick = { showHistogram = !showHistogram }
+                }
+            }
         }
     }
 }

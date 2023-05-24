@@ -14,10 +14,7 @@ import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.dialog.*
 import components.redesign.questions.dialog.EditQuestionDialog
-import components.redesign.questions.predictions.GroupPredictionDescription
-import components.redesign.questions.predictions.MyPredictionDescription
-import components.redesign.questions.predictions.PredictionGraph
-import components.redesign.questions.predictions.PredictionInput
+import components.redesign.questions.predictions.*
 import components.redesign.rooms.*
 import components.redesign.rooms.dialog.CsvExportDialog
 import components.rooms.*
