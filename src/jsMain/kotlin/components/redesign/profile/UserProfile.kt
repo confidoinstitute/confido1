@@ -86,6 +86,8 @@ val UserProfile = FC<Props> {
         navigateBack = "/"
         title = "Edit profile"
         action = "Save"
+        disabledAction = (stale || edit.running)
+        onAction = { editProfile() }
     }
 
     ThemeProvider {
