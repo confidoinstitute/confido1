@@ -171,15 +171,15 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                         width = 100.pct
                     }
 
-                    fun renderDistribution(distribution: ProbabilityDistribution) {
-                        val space = distribution.space
-                        when (distribution) {
+                    fun renderDistribution(dist: ProbabilityDistribution) {
+                        val space = dist.space
+                        when (dist) {
                             is BinaryDistribution -> {
-                                +"${(distribution.yesProb * 100).toFixed(0)}%"
+                                +"${(dist.yesProb * 100).toFixed(0)}%"
                             }
 
                             is ContinuousProbabilityDistribution -> {
-                                val interval = distribution.confidenceInterval(0.8)
+                                val interval = dist.confidenceInterval(0.8, preferredCenter = dist.median)
                                 +"${
                                     space.formatValue(
                                         interval.start,
