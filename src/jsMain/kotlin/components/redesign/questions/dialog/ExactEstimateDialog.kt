@@ -6,6 +6,7 @@ import components.redesign.basic.MainPalette
 import components.redesign.basic.css
 import components.redesign.basic.sansSerif
 import components.redesign.forms.*
+import components.redesign.questions.predictions.NumericPredGraph
 import components.redesign.questions.predictions.PredictionGraph
 import components.redesign.questions.predictions.findDistribution
 import components.showError
@@ -398,9 +399,9 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
         Form {
             onSubmit = { estimate() }
             FormSection {
-                PredictionGraph {
+                NumericPredGraph {
                     key = "exactPredictionGraph"
-                    this.space = props.question.answerSpace
+                    this.space = space
                     dist = estimate
                     isGroup = false
                 }
