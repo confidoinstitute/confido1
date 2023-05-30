@@ -1,6 +1,6 @@
 package components.redesign.questions.predictions
 
-import components.redesign.AboutIcon
+import components.redesign.HistogramIcon
 import components.redesign.ExactPredictionIcon
 import components.redesign.PresenterIcon
 import components.redesign.basic.MainPalette
@@ -89,8 +89,7 @@ external interface GraphHistogramButtonProps: Props {
 val GraphHistogramButton: FC<GraphHistogramButtonProps> = FC { props ->
     GraphButton {
         this.palette = MainPalette.primary
-        // TODO icon
-        AboutIcon {}
+        HistogramIcon {}
         onClick = { props.onClick?.invoke() }
     }
 }
