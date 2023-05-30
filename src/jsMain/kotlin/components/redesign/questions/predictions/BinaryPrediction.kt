@@ -100,31 +100,18 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
 
     var showHistogram by useState(false)
     if (showHistogram) {
-        // TODO: Get values
-        val randomPredictions = List(500) {
-            BinaryDistribution((sqrt(-2.0 * log(1 - Random.nextDouble(), E)) * cos(2.0 * PI * Random.nextDouble()) * 0.2 + 0.5).coerceIn(0.0, 1.0))
-            //BinaryDistribution(Random.nextDouble())
-        }
-        BinaryPredictionHistogram {
-            key = "binaryPredictionHistogram"
-            predictions = randomPredictions
-            median = 0.43
-            mean = 0.53
-            //predictions = listOf(
-            //    BinaryDistribution(0.0),
-            //    BinaryDistribution(0.4),
-            //    BinaryDistribution(0.45),
-            //    BinaryDistribution(0.2),
-            //    BinaryDistribution(0.48),
-            //    BinaryDistribution(0.8),
-            //    BinaryDistribution(1.0),
-            //    BinaryDistribution(0.9)
-            //)
+        props.question?.let { question ->
+            BinaryPredictionHistogram {
+                key = "binaryPredictionHistogram"
+                this.question = question
+            }
         }
         if (props.interactive ?: true) {
             GraphButtons {
                 +props
-                onHistogramClick = { showHistogram = !showHistogram }
+                if (props.question != null) {
+                    onHistogramClick = { showHistogram = !showHistogram }
+                }
             }
         }
     } else {

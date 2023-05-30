@@ -1,5 +1,6 @@
 package components.redesign.questions.predictions
 
+import BinaryHistogram
 import components.redesign.basic.*
 import csstype.*
 import dom.html.HTMLCanvasElement
@@ -10,48 +11,20 @@ import emotion.react.css
 import hooks.combineRefs
 import hooks.useDPR
 import hooks.usePureClick
+import hooks.useWebSocket
 import kotlinx.js.jso
 import react.*
-import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.canvas
 import react.dom.html.ReactHTML.div
-import tools.confido.distributions.BinaryDistribution
+import tools.confido.question.Question
 import tools.confido.spaces.NumericSpace
 import tools.confido.spaces.NumericValue
-import tools.confido.utils.GeneratedList
 import tools.confido.utils.toFixed
 import utils.panzoom1d.PZParams
 import utils.panzoom1d.usePanZoom
 
 external interface BinaryPredictionHistogramProps : PropsWithElementSize {
-    // TODO: Wrap somehow?
-    var predictions: List<BinaryDistribution>
-    var median: Double?
-    var mean: Double?
-}
-
-class BinaryHistogramBinner(val bins: Int) {
-    init {
-        require(bins > 0)
-    }
-
-    val binSize = 1.0 / (bins + 1)
-
-    val binRanges
-        get() = GeneratedList<OpenEndRange<Double>>(bins) {
-            val start = 0 + binSize * it
-            (start..<start + binSize)
-        }
-    val binBorders
-        get() = GeneratedList<Double>(bins + 1) { it * binSize }
-    val binMidpoints
-        get() = GeneratedList<Double>(bins) { it * binSize + binSize / 2 }
-
-    fun value2bin(value: BinaryDistribution): Int? {
-        if (value.yesProb < 0 || value.yesProb > 1) return null
-        // In case of yesProb = 1 we would get a value out of the range, so we clamp it
-        return minOf((value.yesProb / binSize).toInt(), bins)
-    }
+    var question: Question
 }
 
 private data class BinRectangle(
@@ -59,9 +32,10 @@ private data class BinRectangle(
     val y: Double,
     val width: Double,
     val height: Double,
-    val range: OpenEndRange<Double>
+    val min: Double,
+    val max: Double,
 ) {
-    val rangeMidpoint = (range.start + range.endExclusive) / 2
+    val rangeMidpoint = (min + max) / 2
 
     fun contains(posX: Double, posY: Double): Boolean {
         return if (height < 0) {
@@ -99,33 +73,27 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
         val yRel = y / rect.height
     }
 
-    val bins = 9  // TODO: test with different values
-    val binner = BinaryHistogramBinner(bins)
+    val histogram = useWebSocket<BinaryHistogram>("/state${props.question.urlPrefix}/histogram")
 
-    val histogramBinCounts = useMemo(props.predictions, bins) {
-        val counts = MutableList(bins + 1) { 0 }
-        for (prediction in props.predictions) {
-            binner.value2bin(prediction)?.let { counts[it]++ }
-        }
-        counts.toList()
-    }
+    // TODO: Send
+    val bins = 9
 
-    val yScale = GRAPH_HEIGHT / histogramBinCounts.max()
+    val yScale = GRAPH_HEIGHT / (histogram.data?.bins?.maxOfOrNull { it.count }?.toDouble() ?: 1.0)
 
-    val rectangles = useMemo(zoomState.pan, dpr, logicalWidth, bins, zoomState.zoom, yScale, histogramBinCounts) {
-        histogramBinCounts.mapIndexed { index, binHeight ->
+    val rectangles = useMemo(zoomState.pan, dpr, logicalWidth, bins, zoomState.zoom, yScale, histogram) {
+        histogram.data?.bins?.mapIndexed { index, bin ->
             val left = (-zoomState.pan).toInt()
             val binRectWidth = (logicalWidth - 2 * SIDE_PAD) / (bins + 1) * zoomState.zoom
             val x = (left + index * binRectWidth) * dpr
             val y = (GRAPH_TOP_PAD + GRAPH_HEIGHT) * dpr
             val width = binRectWidth * dpr
-            val height = -binHeight * yScale * dpr
-            BinRectangle(x, y, width, height, binner.binRanges[index])
-        }
+            val height = -bin.count * yScale * dpr
+            BinRectangle(x, y, width, height, bin.min, bin.max)
+        } ?: emptyList()
     }
 
-    val horizontalMarks = useMemo(histogramBinCounts) {
-        val max = histogramBinCounts.max()
+    val horizontalMarks = useMemo(histogram) {
+        val max = histogram.data?.bins?.maxOfOrNull { it.count } ?: 1
         val base = maxOf(max / (HORIZONTAL_MARK_COUNT - 1), 1)
 
         val marks = (0..max step base).take(HORIZONTAL_MARK_COUNT).toMutableList()
@@ -165,7 +133,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
             clearRect(0.0, 0.0, physicalWidth, physicalHeight)
             rectangles.mapIndexed { index, rect ->
                 fillStyle = Color("#8BF08E")
-                strokeStyle = rgba(0, 0, 0, 0.2)
+                strokeStyle = rgba(0, 0, 0, 0.1)
                 fillRect(rect.x, rect.y, rect.width, rect.height)
                 beginPath()
                 moveTo(rect.x, rect.y)
@@ -179,7 +147,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                 val y = logicalHeight * dpr - markY * yScale * dpr
                 moveTo(SIDE_PAD, y)
                 lineTo(physicalWidth - SIDE_PAD, y)
-                strokeStyle = rgba(0, 0, 0, 0.10)
+                strokeStyle = rgba(0, 0, 0, 0.1)
                 stroke()
             }
         }
@@ -207,28 +175,28 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                 }
             }
         }
-        val flags = listOfNotNull(props.median?.let {
+        val flags = listOfNotNull(histogram.data?.median?.let {
             PredictionFlag(
                 color = Color("#2AE6C9"),
                 flagpole = it in zoomState.visibleContentRange,
                 content = FlagContentValue.create {
                     color = Color("#FFFFFF")
-                    value = NumericValue(NumericSpace(0.0, 1.0), it)
+                    value = NumericValue(NumericSpace(0.0, 100.0, decimals=0, unit="%"), it * 100)
                     title = "median"
                 })
-        }, props.mean?.let {
+        }, histogram.data?.mean?.let {
             PredictionFlag(
                 color = Color("#00C3E9"),
                 flagpole = it in zoomState.visibleContentRange,
                 content = FlagContentValue.create {
                     color = Color("#FFFFFF")
-                    value = NumericValue(NumericSpace(0.0, 1.0), it)
+                    value = NumericValue(NumericSpace(0.0, 100.0, decimals=0, unit="%"), it * 100)
                     title = "mean"
                 })
         })
-        val flagPositions = listOfNotNull(props.median?.let {
+        val flagPositions = listOfNotNull(histogram.data?.median?.let {
             zoomState.contentToViewport(it)
-        }, props.mean?.let {
+        }, histogram.data?.mean?.let {
             zoomState.contentToViewport(it)
         })
 
@@ -288,8 +256,8 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                             transform = translate(xtrans, (-50).pct)
                             position = Position.absolute
                         }
-                        val start = (rect.range.start * 100.0).toFixed(0)
-                        val end = (rect.range.endExclusive * 100.0).toFixed(0)
+                        val start = (rect.min * 100.0).toFixed(0)
+                        val end = (rect.max * 100.0).toFixed(0)
                         +"$start–$end%"
                     }
                 }

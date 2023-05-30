@@ -1,5 +1,6 @@
 package tools.confido.application.routes
 
+import BinaryHistogramBinner
 import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -17,6 +18,7 @@ import tools.confido.application.sessions.*
 import tools.confido.distributions.*
 import tools.confido.question.*
 import tools.confido.refs.*
+import tools.confido.spaces.BinarySpace
 import tools.confido.state.*
 import tools.confido.utils.unixNow
 import users.User
@@ -211,4 +213,26 @@ fun questionRoutes(routing: Routing) = routing.apply {
             } ?: notFound("There is no group prediction.")
         }
     }
+
+    // View a histogram
+    getWS("/state$questionUrl/histogram") {
+        withQuestion {
+            assertPermission(RoomPermission.VIEW_QUESTIONS, "You cannot view this group prediction.")
+            assertGroupPredictionAccess("You cannot view this group prediction.")
+
+            if (question.answerSpace != BinarySpace) {
+                badRequest("Histograms are only supported for binary questions.")
+            }
+
+            // TODO: configurable (from query params?)
+            val binCount = 9
+            val binner = BinaryHistogramBinner(binCount)
+
+            val predictions = serverState.userPred[question.ref]?.values ?: notFound("No user predictions found.")
+
+            val histogram = binner.createHistogram(predictions.map { it.dist as BinaryDistribution })
+            histogram
+        }
+    }
 }
+
