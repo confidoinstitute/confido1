@@ -40,6 +40,7 @@ val CreateRoom = FC<Props> {
     }
 
     PageHeader {
+        
         title = "Create a new room"
         navigateBack = "/"
         action = "Create"

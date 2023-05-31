@@ -11,6 +11,7 @@ import csstype.*
 import emotion.react.Global
 import emotion.react.css
 import emotion.react.styles
+import icons.LockOpenIcon
 import react.*
 import react.dom.html.ReactHTML.aside
 import react.dom.html.ReactHTML.button
@@ -181,6 +182,19 @@ val Sidebar = FC<SidebarProps> { props ->
                 onClick = {
                     // Warning: This is currently duplicated in DialogMenuCommonActions
                     window.open("https://confido.institute/", "_blank")
+                }
+            }
+            if (appConfig.privacyPolicyUrl != null)
+            SidebarAction {
+                icon = (LockOpenIcon as FC<PropsWithClassName>).withStyle {
+                    transform = scale(0.75)
+                    position = Position.relative
+                    top = (-2).px
+                }
+                text = "Privacy policy"
+                onClick = {
+                    // Warning: This is currently duplicated in DialogMenuCommonActions
+                    window.open(appConfig.privacyPolicyUrl, "_blank")
                 }
             }
         }

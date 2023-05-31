@@ -51,7 +51,8 @@ fun loadConfig() = AppConfig(
     devMode = getenvBool("CONFIDO_DEVMODE"),
     demoMode = getenvBool("CONFIDO_DEMO"),
     betaIndicator = getenvBool("CONFIDO_BETA_INDICATOR"),
-    featureFlags = FeatureFlag.values().filter{ getenvBool("CONFIDO_FEAT_${it.name}", it in DEFAULT_FEATURE_FLAGS)}.toSet()
+    featureFlags = FeatureFlag.values().filter{ getenvBool("CONFIDO_FEAT_${it.name}", it in DEFAULT_FEATURE_FLAGS)}.toSet(),
+    privacyPolicyUrl = System.getenv("CONFIDO_PRIVACY_POLICY_URL")?.ifEmpty {null},
 )
 
 actual val appConfig = loadConfig()

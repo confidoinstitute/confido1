@@ -19,6 +19,7 @@ data class AppConfig(
     val demoMode: Boolean = false,
     val betaIndicator: Boolean = false,
     val featureFlags: Set<FeatureFlag> = setOf(),
+    val privacyPolicyUrl: String? = null,
 )
 
 expect val appConfig: AppConfig
