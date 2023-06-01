@@ -99,6 +99,14 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
     val circleSize: Double = min(realSize.height, realSize.width / 2)
 
     var showHistogram by useState(false)
+
+    val buttons = GraphButtons.create {
+        +props
+        if (props.question != null) {
+            onHistogramClick = { showHistogram = !showHistogram }
+        }
+    }
+
     if (showHistogram) {
         props.question?.let { question ->
             BinaryPredictionHistogram {
@@ -107,15 +115,9 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
             }
         }
         if (props.interactive ?: true) {
-            GraphButtons {
-                +props
-                if (props.question != null) {
-                    onHistogramClick = { showHistogram = !showHistogram }
-                }
-            }
+            +buttons
         }
     } else {
-
         Stack {
             ref = realSize.ref
             direction = FlexDirection.row
@@ -139,10 +141,7 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
             proportionalCircle("No", noColor, props.dist?.yesProb?.let { 1 - it }, size = circleSize)
             proportionalCircle("Yes", yesColor, props.dist?.yesProb, size = circleSize)
             if (props.interactive ?: true) {
-                GraphButtons {
-                    +props
-                    onHistogramClick = { showHistogram = !showHistogram }
-                }
+                +buttons
             }
         }
     }

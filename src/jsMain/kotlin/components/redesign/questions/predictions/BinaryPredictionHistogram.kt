@@ -2,6 +2,8 @@ package components.redesign.questions.predictions
 
 import BinaryHistogram
 import components.redesign.basic.*
+import components.redesign.layout.LayoutMode
+import components.redesign.layout.LayoutModeContext
 import csstype.*
 import dom.html.HTMLCanvasElement
 import dom.html.HTMLDivElement
@@ -47,6 +49,7 @@ private data class BinRectangle(
 }
 
 val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeWrapper(FC { props ->
+    val layoutMode = useContext(LayoutModeContext)
     // TODO: This is heavily based on NumericPredGraph, consider refactoring
     val ABOVE_GRAPH_PAD = 8.0
     val GRAPH_TOP_PAD = 33.0
@@ -75,20 +78,19 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
 
     val histogram = useWebSocket<BinaryHistogram>("/state${props.question.urlPrefix}/histogram")
 
-    // TODO: Send
-    val bins = 9
-
     val yScale = GRAPH_HEIGHT / (histogram.data?.bins?.maxOfOrNull { it.count }?.toDouble() ?: 1.0)
 
-    val rectangles = useMemo(zoomState.pan, dpr, logicalWidth, bins, zoomState.zoom, yScale, histogram) {
-        histogram.data?.bins?.mapIndexed { index, bin ->
-            val left = (-zoomState.pan).toInt()
-            val binRectWidth = (logicalWidth - 2 * SIDE_PAD) / (bins + 1) * zoomState.zoom
-            val x = (left + index * binRectWidth) * dpr
-            val y = (GRAPH_TOP_PAD + GRAPH_HEIGHT) * dpr
-            val width = binRectWidth * dpr
-            val height = -bin.count * yScale * dpr
-            BinRectangle(x, y, width, height, bin.min, bin.max)
+    val rectangles = useMemo(zoomState.pan, dpr, logicalWidth, zoomState.zoom, yScale, histogram) {
+        histogram.data?.bins?.let { bins ->
+            bins.mapIndexed { index, bin ->
+                val left = (-zoomState.pan).toInt()
+                val binRectWidth = (logicalWidth - 2 * SIDE_PAD) / (bins.size) * zoomState.zoom
+                val x = (left + index * binRectWidth) * dpr
+                val y = (GRAPH_TOP_PAD + GRAPH_HEIGHT) * dpr
+                val width = binRectWidth * dpr
+                val height = -bin.count * yScale * dpr
+                BinRectangle(x, y, width, height, bin.min, bin.max)
+            }
         } ?: emptyList()
     }
 
@@ -131,7 +133,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
         val context = canvas.current?.getContext(RenderingContextId.canvas)
         context?.apply {
             clearRect(0.0, 0.0, physicalWidth, physicalHeight)
-            rectangles.mapIndexed { index, rect ->
+            rectangles.map { rect ->
                 fillStyle = Color("#8BF08E")
                 strokeStyle = rgba(0, 0, 0, 0.1)
                 fillRect(rect.x, rect.y, rect.width, rect.height)
@@ -229,38 +231,53 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                 this.flagPositions = flagPositions
             }
         }
-        div {
-            css {
-                height = LABELS_HEIGHT.px
-                flexGrow = number(0.0)
-                flexShrink = number(0.0)
-                fontSize = 12.px
-                color = Color("rgba(0,0,0,30%)")
-                lineHeight = 14.52.px
-                position = Position.relative
-                fontFamily = sansSerif
-            }
-            rectangles
-                .filter { it.rangeMidpoint in zoomState.visibleContentRange }
-                .forEachIndexed { idx, rect ->
-                    div {
-                        style = jso {
-                            left = zoomState.contentToViewport(rect.rangeMidpoint).px
-                            top = 50.pct
-                        }
-                        css {
-                            val xtrans = when (idx) {
-                                0 -> max((-50).pct, (-SIDE_PAD).px)
-                                else -> (-50).pct
-                            }
-                            transform = translate(xtrans, (-50).pct)
-                            position = Position.absolute
-                        }
-                        val start = (rect.min * 100.0).toFixed(0)
-                        val end = (rect.max * 100.0).toFixed(0)
-                        +"$start–$end%"
+
+        val rows = if (layoutMode >= LayoutMode.TABLET) {
+            listOf(rectangles)
+        } else {
+            listOf(
+                rectangles.filterIndexed { idx, _ -> idx % 2 == 0 },
+                rectangles.filterIndexed { idx, _ -> idx % 2 == 1 }
+            )
+        }
+
+        rows.mapIndexed { rowIndex, rowRectangles ->
+            div {
+                css {
+                    height = LABELS_HEIGHT.px
+                    flexGrow = number(0.0)
+                    flexShrink = number(0.0)
+                    fontSize = 12.px
+                    color = rgba(0, 0, 0, 0.3)
+                    lineHeight = 14.52.px
+                    position = Position.relative
+                    fontFamily = sansSerif
+                    if (rowIndex > 0) {
+                        marginTop = (-10).px
                     }
                 }
+                rowRectangles
+                    .filter { it.rangeMidpoint in zoomState.visibleContentRange }
+                    .forEachIndexed { idx, rect ->
+                        div {
+                            style = jso {
+                                left = zoomState.contentToViewport(rect.rangeMidpoint).px
+                                top = 50.pct
+                            }
+                            css {
+                                val xtrans = when (idx) {
+                                    0 -> max((-50).pct, (-SIDE_PAD).px)
+                                    else -> (-50).pct
+                                }
+                                transform = translate(xtrans, (-50).pct)
+                                position = Position.absolute
+                            }
+                            val start = (rect.min * 100.0).toFixed(0)
+                            val end = (rect.max * 100.0).toFixed(0)
+                            +"$start–$end%"
+                        }
+                    }
+            }
         }
         div {
             css {
@@ -268,7 +285,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                 flexGrow = number(0.0)
                 flexShrink = number(0.0)
                 fontSize = 12.px
-                color = Color("rgba(0,0,0,30%)")
+                color = rgba(0, 0, 0, 0.3)
                 lineHeight = 14.52.px
                 position = Position.absolute
                 fontFamily = sansSerif
