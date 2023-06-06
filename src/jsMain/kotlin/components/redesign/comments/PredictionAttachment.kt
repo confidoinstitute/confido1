@@ -25,12 +25,10 @@ val PredictionAttachment = FC<PredictionAttachmentProps> { props ->
         css {
             alignItems = AlignItems.center
             gap = 5.px
+            color = Color("#555555")
         }
         +icon.create()
         span {
-            css {
-                color = Color("#555555")
-            }
             +props.prediction.dist.description
         }
     }

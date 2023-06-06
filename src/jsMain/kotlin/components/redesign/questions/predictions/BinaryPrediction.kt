@@ -107,13 +107,25 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
             alignItems = AlignItems.center
             position = Position.relative
         }
-        val noColor = if (props.resolution?.value == true) { Color("#BBBBBB") } else { Color("#FF5555") }
-        val yesColor = if (props.resolution?.value == false) { Color("#BBBBBB") } else { Color("#00CC2E") }
-        proportionalCircle("No", noColor, props.dist?.yesProb?.let {1 - it}, size = circleSize)
+        val noColor = if (props.resolution?.value == true) {
+            Color("#BBBBBB")
+        } else {
+            Color("#FF5555")
+        }
+        val yesColor = if (props.resolution?.value == false) {
+            Color("#BBBBBB")
+        } else {
+            Color("#00CC2E")
+        }
+        proportionalCircle("No", noColor, props.dist?.yesProb?.let { 1 - it }, size = circleSize)
         proportionalCircle("Yes", yesColor, props.dist?.yesProb, size = circleSize)
-        if (props.interactive?:true)
-        GraphButtons {
-            +props
+        if (props.interactive ?: true) {
+            GraphButtons {
+                +props
+                if (props.question != null) {
+                    onHistogramClick = props.onHistogramButtonClick
+                }
+            }
         }
     }
 }

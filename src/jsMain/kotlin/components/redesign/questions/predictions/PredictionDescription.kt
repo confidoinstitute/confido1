@@ -1,5 +1,6 @@
 package components.redesign.questions.predictions
 
+import BinaryHistogram
 import components.redesign.basic.*
 import csstype.*
 import emotion.react.*
@@ -24,9 +25,17 @@ external interface GroupPredictionDescriptionProps : Props {
     var predictionTerminology: PredictionTerminology
 }
 
+external interface BinaryHistogramDescriptionProps : Props {
+    var resolved: Boolean
+    var binaryHistogram: BinaryHistogram
+    var predictionTerminology: PredictionTerminology
+}
+
 val predictorCountColor = Color("#000000")
 val yesColor = Color("#00CC2E")
 val noColor = Color("#FF5555")
+val medianColor = Color("#2AE6C9")
+val meanColor = Color("#00C3E9")
 
 val descriptionClass = emotion.css.ClassName {
     padding = Padding(25.px, 15.px)
@@ -160,6 +169,93 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
         }
     }
 }
+
+val BinaryHistogramDescription = FC<BinaryHistogramDescriptionProps> { props ->
+    val predictors = props.binaryHistogram.bins.sumOf { it.count }
+
+    val predTerm = props.predictionTerminology
+    Stack {
+        css(descriptionClass) {}
+        div {
+            if (!props.resolved) {
+                +"So far, "
+            }
+            if (predictors == 0) {
+                b {
+                    css { this.color = predictorCountColor }
+                    if (props.resolved) {
+                        +"Nobody "
+                    } else {
+                        +"nobody "
+                    }
+                }
+                +"added ${predTerm.aTerm}."
+            } else {
+                b {
+                    css { this.color = predictorCountColor }
+                    +"$predictors "
+                }
+                if (predictors > 1) {
+                    +"people added at least one ${predTerm.term}."
+                } else {
+                    +"person added at least one ${predTerm.term}."
+                }
+            }
+        }
+        props.binaryHistogram.median?.let { median ->
+            div {
+                +"The median ${predTerm.term} of the group "
+                if (props.resolved) {
+                    +"was a "
+                } else {
+                    +"is a "
+                }
+                b {
+                    css { this.color = medianColor }
+                    +"${formatPercent(median, space = false)} "
+                }
+                +"chance that the answer "
+                if (props.resolved) {
+                    +"would be "
+                } else {
+                    +"is "
+                }
+                b {
+                    css { this.color = yesColor }
+                    +"Yes"
+                }
+                +"."
+            }
+        }
+
+        props.binaryHistogram.mean?.let { mean ->
+            div {
+                +"The average ${predTerm.term} of the group "
+                if (props.resolved) {
+                    +"was a "
+                } else {
+                    +"is a "
+                }
+                b {
+                    css { this.color = meanColor }
+                    +"${formatPercent(mean, space = false)} "
+                }
+                +"chance that the answer "
+                if (props.resolved) {
+                    +"would be "
+                } else {
+                    +"is "
+                }
+                b {
+                    css { this.color = yesColor }
+                    +"Yes"
+                }
+                +"."
+            }
+        }
+    }
+}
+
 
 val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
     Stack {

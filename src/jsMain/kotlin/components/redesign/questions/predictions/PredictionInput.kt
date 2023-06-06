@@ -1,11 +1,8 @@
 package components.redesign.questions.predictions
 
-import components.redesign.forms.*
-import tools.confido.refs.*
 import react.*
 import tools.confido.distributions.*
 import tools.confido.question.Question
-import tools.confido.refs.Ref
 import tools.confido.spaces.*
 
 external interface PredictionInputProps : Props {
@@ -40,6 +37,7 @@ external interface BasePredictionGraphProps {
     var isInput: Boolean?
     var question: Question?
     var interactive: Boolean? // =true
+    var onHistogramButtonClick: (() -> Unit)?
 }
 
 external interface PredictionGraphProps : Props, BasePredictionGraphProps {

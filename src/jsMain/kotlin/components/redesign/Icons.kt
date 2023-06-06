@@ -202,7 +202,6 @@ val CloseIcon = FC<PropsWithClassName> { props ->
 }
 
 val CirclesIcon = FC<PropsWithClassName> { props ->
-    val color = "#555555"
     svg {
         className = props.className
         width = 18.0
@@ -213,13 +212,13 @@ val CirclesIcon = FC<PropsWithClassName> { props ->
             cx = 3.5
             cy = 4.5
             r = 3.5
-            fill = color
+            fill = "currentcolor"
         }
         circle {
             cx = 13.5
             cy = 4.5
             r = 4.5
-            fill = color
+            fill = "currentcolor"
         }
     }
 }
@@ -617,6 +616,28 @@ val AboutIcon = FC<PropsWithClassName> { props ->
             height = 13.0
             rx = 3.0
             stroke = "currentcolor"
+        }
+    }
+}
+
+val HistogramIcon = FC<PropsWithClassName> { props ->
+    val binWidth = 3.0
+
+    svg {
+        className = props.className
+        width = 30.0
+        height = 30.0
+        viewBox = "0 0 30 30"
+        fill = "none"
+        listOf(5.0, 15.0, 11.0, 4.0).mapIndexed { i, binHeight ->
+            rect {
+                width = binWidth
+                x = 6 + i * (binWidth + 2)
+                y = 24 - binHeight
+                rx = 1.0
+                height = binHeight
+                fill = "currentcolor"
+            }
         }
     }
 }

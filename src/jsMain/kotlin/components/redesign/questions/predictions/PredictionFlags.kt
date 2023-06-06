@@ -1,5 +1,6 @@
 package components.redesign.questions.predictions
 
+import browser.window
 import csstype.*
 import dom.html.HTMLDivElement
 import emotion.react.css
@@ -11,7 +12,9 @@ import react.dom.html.ReactHTML.div
 import react.dom.svg.ReactSVG
 import react.dom.svg.ReactSVG.svg
 import tools.confido.utils.intersects
-import tools.confido.utils.mid
+import utils.addEventListener
+import utils.removeEventListener
+import web.events.Event
 
 data class PredictionFlag(
     val color: Color,
@@ -51,6 +54,8 @@ external interface PredictionFlagContentProps : Props {
     var flag: PredictionFlag
     var size: ElementSize<HTMLDivElement>
     var position: FlagPosition?
+    /** Hide when not hovered. Defaults to false. */
+    var collapseUntilHovered: Boolean?
 }
 
 fun CSSProperties.flagContentPosition(position: FlagPosition) {
@@ -83,7 +88,7 @@ fun CSSProperties.flagContentPosition(position: FlagPosition) {
     bottom = position.positionY.px
 }
 
-val PredictionFlagContent = FC<PredictionFlagContentProps> {props ->
+val PredictionFlagContent = FC<PredictionFlagContentProps> { props ->
     div {
         key = "flag-size-ref"
         ref = props.size.ref
@@ -104,10 +109,44 @@ val PredictionFlagContent = FC<PredictionFlagContentProps> {props ->
     val pos = props.position ?: return@FC
     val positionX = pos.positionX
 
+    val collapseUntilHovered = props.collapseUntilHovered ?: false
+    var hidden by useState(collapseUntilHovered)
+    val background = useRef<HTMLDivElement>()
+
+    useEffect {
+        // This must not be a fun, as referencing it through ::onMouseMove would result
+        // in a different function being created in addEventListener and removeEventListener,
+        // and removal would fail.
+        val onMouseMove = { e: Event ->
+            e as dom.events.MouseEvent
+            val target = background.current as HTMLDivElement
+            val boundingRect = target.getBoundingClientRect()
+            val x = when (pos.anchor) {
+                PredictionFlagAnchor.LEFT -> e.clientX - boundingRect.left - 1
+                PredictionFlagAnchor.RIGHT -> boundingRect.right - e.clientX - 1
+            }
+
+            val distance = 20
+            val isMouseNearPole = e.y in boundingRect.top..boundingRect.bottom
+                    && x in (pos.positionX - props.size.width - distance)..(pos.positionX + props.size.width + distance)
+            if (collapseUntilHovered) {
+                hidden = !isMouseNearPole
+            }
+        }
+
+        window.addEventListener("mousemove", onMouseMove);
+        cleanup {
+            window.removeEventListener("mousemove", onMouseMove);
+        }
+    }
+
     div {
         key = "background"
+        ref = background
         css {
-            opacity = number(0.7)
+            if (!collapseUntilHovered) {
+                opacity = number(0.7)
+            }
             zIndex = integer(pos.zIndex)
             position = Position.absolute
             width = 100.pct
@@ -162,6 +201,12 @@ val PredictionFlagContent = FC<PredictionFlagContentProps> {props ->
                     }
                     css {
                         position = Position.absolute
+                        if (collapseUntilHovered) {
+                            transition = Transition(ident("opacity"), 0.2.s, TransitionTimingFunction.easeInOut)
+                        }
+                        if (hidden) {
+                            opacity = number(0.0)
+                        }
                     }
                     ReactSVG.path {
                         d = when (pos.anchor) {
@@ -179,6 +224,12 @@ val PredictionFlagContent = FC<PredictionFlagContentProps> {props ->
                 backgroundColor = props.flag.color
                 width = props.size.width.px
                 height = props.size.height.px
+                if (collapseUntilHovered) {
+                    transition = Transition(ident("width"), 0.2.s, TransitionTimingFunction.easeInOut)
+                }
+                if (hidden) {
+                    width = 2.px
+                }
             }
             style = jso {
                 flagContentPosition(pos)
@@ -196,13 +247,29 @@ val PredictionFlagContent = FC<PredictionFlagContentProps> {props ->
         style = jso {
             flagContentPosition(pos)
         }
-        +props.flag.content
+        if (collapseUntilHovered) {
+            div {
+                css {
+                    position = Position.relative
+                    overflow = Overflow.hidden
+                    transition = Transition(ident("width"), 0.2.s, TransitionTimingFunction.easeInOut)
+                    if (hidden) {
+                        width = 0.px
+                    }
+                }
+                +props.flag.content
+            }
+        } else {
+            +props.flag.content
+        }
     }
 }
 
 external interface PredictionFlagsProps : Props {
     var flags: List<PredictionFlag>
     var flagPositions: List<Double>
+    /** Hide when not hovered. Defaults to false. */
+    var collapseUntilHovered: Boolean?
 }
 
 data class FlagPosition(
@@ -334,12 +401,14 @@ val PredictionFlags = FC<PredictionFlagsProps> {props ->
                 flag = orderedFlags[0].first
                 size = size1
                 position = position1
+                collapseUntilHovered = props.collapseUntilHovered
             }
             if (orderedFlags.size > 1)
                 PredictionFlagContent {
                     flag = orderedFlags[1].first
                     size = size2
                     position = position2
+                    collapseUntilHovered = props.collapseUntilHovered
                 }
         }
     }

@@ -1,5 +1,6 @@
 package components.redesign.questions.predictions
 
+import components.redesign.HistogramIcon
 import components.redesign.ExactPredictionIcon
 import components.redesign.PresenterIcon
 import components.redesign.basic.MainPalette
@@ -18,6 +19,7 @@ import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.Question
 import tools.confido.question.QuestionState
 import tools.confido.refs.ref
+import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.Space
 import tools.confido.state.GroupPredPV
 
@@ -80,9 +82,22 @@ val GraphExactPredictionButton: FC<GraphExactPredictionButtonProps> = FC { props
     }
 }
 
+external interface GraphHistogramButtonProps: Props {
+    var onClick: (() -> Unit)?
+}
+
+val GraphHistogramButton: FC<GraphHistogramButtonProps> = FC { props ->
+    GraphButton {
+        this.palette = MainPalette.primary
+        HistogramIcon {}
+        onClick = { props.onClick?.invoke() }
+    }
+}
+
 external interface GraphButtonsProps : Props, BasePredictionGraphProps {
     override var dist: ProbabilityDistribution?
     override var space: Space
+    var onHistogramClick: (() -> Unit)?
 }
 
 val GraphButtons = FC<GraphButtonsProps>("GraphButtons") { props->
@@ -94,5 +109,28 @@ val GraphButtons = FC<GraphButtonsProps>("GraphButtons") { props->
         if (props.isInput == true && props.question?.state == QuestionState.OPEN) {
             props.question?.let { GraphExactPredictionButton { question = it } }
         }
+        if (props.isGroup && props.space is BinarySpace) {
+            props.onHistogramClick?.let { GraphHistogramButton { onClick = it } }
+        }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
