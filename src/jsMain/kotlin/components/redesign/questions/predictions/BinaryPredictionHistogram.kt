@@ -32,6 +32,7 @@ import web.events.Event
 
 external interface BinaryPredictionHistogramProps : PropsWithElementSize {
     var question: Question
+    var binaryHistogram: BinaryHistogram?
 }
 
 private data class BinRectangle(
@@ -83,12 +84,12 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
         val yRel = y / rect.height
     }
 
-    val histogram = useWebSocket<BinaryHistogram>("/state${props.question.urlPrefix}/histogram")
+    val histogram = props.binaryHistogram
 
-    val yScale = GRAPH_HEIGHT / (histogram.data?.bins?.maxOfOrNull { it.count }?.toDouble() ?: 1.0)
+    val yScale = GRAPH_HEIGHT / (histogram?.bins?.maxOfOrNull { it.count }?.toDouble() ?: 1.0)
 
     val rectangles = useMemo(zoomState.pan, dpr, logicalWidth, zoomState.zoom, yScale, histogram) {
-        histogram.data?.bins?.let { bins ->
+        histogram?.bins?.let { bins ->
             bins.mapIndexed { index, bin ->
                 val left = (-zoomState.pan).toInt()
                 val binRectWidth = (logicalWidth - 2 * SIDE_PAD) / (bins.size) * zoomState.zoom
@@ -102,7 +103,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
     }
 
     val horizontalMarks = useMemo(histogram) {
-        val max = histogram.data?.bins?.maxOfOrNull { it.count } ?: 1
+        val max = histogram?.bins?.maxOfOrNull { it.count } ?: 1
         val base = maxOf(max / (HORIZONTAL_MARK_COUNT - 1), 1)
 
         val marks = (0..max step base).take(HORIZONTAL_MARK_COUNT).toMutableList()
@@ -131,7 +132,6 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                 }
             }
             hoveredBin = foundIndex
-            console.log()
         }
 
         window.addEventListener("mousemove", onMouseMove);
@@ -200,7 +200,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                 }
             }
         }
-        val flags = listOfNotNull(histogram.data?.median?.let {
+        val flags = listOfNotNull(histogram?.median?.let {
             PredictionFlag(
                 color = Color("#2AE6C9"),
                 flagpole = it in zoomState.visibleContentRange,
@@ -209,7 +209,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                     value = NumericValue(NumericSpace(0.0, 100.0, decimals=0, unit="%"), it * 100)
                     title = "median"
                 })
-        }, histogram.data?.mean?.let {
+        }, histogram?.mean?.let {
             PredictionFlag(
                 color = Color("#00C3E9"),
                 flagpole = it in zoomState.visibleContentRange,
@@ -219,9 +219,9 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                     title = "mean"
                 })
         })
-        val flagPositions = listOfNotNull(histogram.data?.median?.let {
+        val flagPositions = listOfNotNull(histogram?.median?.let {
             zoomState.contentToViewport(it)
-        }, histogram.data?.mean?.let {
+        }, histogram?.mean?.let {
             zoomState.contentToViewport(it)
         })
 

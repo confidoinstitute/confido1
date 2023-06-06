@@ -1,5 +1,6 @@
 package components.redesign.questions
 
+import BinaryHistogram
 import Client
 import components.*
 import components.questions.PendingPredictionState
@@ -76,6 +77,12 @@ external interface QuestionCommentSectionProps : Props {
     var myPrediction: Prediction?
     var allowAddingComment: Boolean
 }
+
+external interface BinaryHistogramSectionProps : Props {
+    var question: Question
+    var onHide: (() -> Unit)?
+}
+
 
 private val bgColor = Color("#f2f2f2")
 
@@ -248,6 +255,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
     // false = your estimate open, true = group estimate open
     // Open group prediction by default. If the user has no permission to predict, your estimate tab is not useful.
     var groupPredictionOpen by useState(!hasPredictPermission)
+    var groupHistogramOpen by useState(false)
 
     var pendingPrediction: ProbabilityDistribution? by useState(null) // to be submitted
     var predictionPreview: ProbabilityDistribution? by useState(null) // continuously updated preview
@@ -298,14 +306,14 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
         }
     }
 
-    div {
-        css {
-            backgroundColor = Color("#fff")
-            flexShrink = number(0.0)
-        }
-        if (!groupPredictionOpen) {
+    if (!groupPredictionOpen) {
+        div {
+            css {
+                backgroundColor = Color("#fff")
+                flexShrink = number(0.0)
+            }
             div {
-                key="myPredictionBox"
+                key = "myPredictionBox"
                 if (pendingPredictionState != PendingPredictionState.NONE && pendingPredictionState != PendingPredictionState.MAKING) {
                     div {
                         key = "submitFeedback"
@@ -316,7 +324,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                             left = 8.px
                             top = 8.px
                             padding = Padding(4.px, 6.px)
-                            background = rgba(0,0,0, 0.7)
+                            background = rgba(0, 0, 0, 0.7)
                             color = NamedColor.white
                             fontWeight = integer(500)
                             fontSize = 12.px
@@ -329,7 +337,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                             PendingPredictionState.SENDING -> "Submitting ${word.uncapFirst()}..."
                             PendingPredictionState.ACCEPTED -> "${word.capFirst()} submitted"
                             PendingPredictionState.ERROR -> "Error submitting ${word.uncapFirst()}"
-                            else->""
+                            else -> ""
                         }
                     }
                 }
@@ -388,9 +396,24 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     }
                 }
             }
+        }
+        MyPredictionDescription {
+            this.dist = predictionPreview ?: pendingPrediction ?: props.myPrediction?.dist
+            this.resolved = props.resolution != null
+        }
+    } else {
+        if (groupHistogramOpen) {
+            // Group prediction histogram
+            BinaryHistogramSection {
+                this.question = question
+                onHide = { groupHistogramOpen = false }
+            }
         } else {
+            // Group prediction graph
             div {
                 css {
+                    backgroundColor = Color("#fff")
+                    flexShrink = number(0.0)
                     position = Position.relative
                 }
                 PredictionGraph {
@@ -400,6 +423,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     resolution = props.resolution
                     isGroup = true
                     this.question = props.question
+                    onHistogramButtonClick = { groupHistogramOpen = !groupHistogramOpen }
                 }
                 val canViewAll = appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
                 if (question.groupPredictionVisibility == GroupPredictionVisibility.ANSWERED && props.myPrediction == null && !canViewAll) {
@@ -420,20 +444,41 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     }
                 }
             }
+            GroupPredictionDescription {
+                this.prediction = props.groupPrediction
+                this.myPredictionExists = props.myPrediction != null
+                this.resolved = props.resolution != null
+                this.numPredictors = props.numPredictors
+                this.predictionTerminology = props.question.predictionTerminology
+            }
         }
     }
-    if (groupPredictionOpen) {
-        GroupPredictionDescription {
-            this.prediction = props.groupPrediction
-            this.myPredictionExists = props.myPrediction != null
-            this.resolved = props.resolution != null
-            this.numPredictors = props.numPredictors
-            this.predictionTerminology = props.question.predictionTerminology
+}
+
+private val BinaryHistogramSection = FC<BinaryHistogramSectionProps> { props ->
+    val histogram = useWebSocket<BinaryHistogram>("/state${props.question.urlPrefix}/histogram")
+    div {
+        css {
+            backgroundColor = Color("#fff")
+            flexShrink = number(0.0)
+            position = Position.relative
         }
-    } else {
-        MyPredictionDescription {
-            this.dist = predictionPreview ?: pendingPrediction ?: props.myPrediction?.dist
-            this.resolved = props.resolution != null
+        BinaryPredictionHistogram {
+            key = "binaryPredictionHistogram"
+            this.question = question
+            this.binaryHistogram = histogram.data
+        }
+        GraphButtonContainer {
+            GraphHistogramButton {
+                onClick = { props.onHide?.invoke() }
+            }
+        }
+    }
+    histogram.data?.let {
+        BinaryHistogramDescription {
+            this.resolved = props.question.state == QuestionState.RESOLVED
+            this.binaryHistogram = it
+            this.predictionTerminology = props.question.predictionTerminology
         }
     }
 }

@@ -17,7 +17,6 @@ import tools.confido.spaces.*
 import utils.panzoom1d.PZParams
 import utils.panzoom1d.PZState
 import kotlin.math.*
-import kotlin.random.Random
 
 external interface BinaryPredictionProps : Props, BasePredictionGraphProps {
     override var dist: BinaryDistribution?
@@ -98,50 +97,34 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
     val baseHeight = props.baseHeight ?: 145.px
     val circleSize: Double = min(realSize.height, realSize.width / 2)
 
-    var showHistogram by useState(false)
-
-    val buttons = GraphButtons.create {
-        +props
-        if (props.question != null) {
-            onHistogramClick = { showHistogram = !showHistogram }
+    Stack {
+        ref = realSize.ref
+        direction = FlexDirection.row
+        css {
+            width = 100.pct
+            height = baseHeight
+            justifyContent = JustifyContent.center
+            alignItems = AlignItems.center
+            position = Position.relative
         }
-    }
-
-    if (showHistogram) {
-        props.question?.let { question ->
-            BinaryPredictionHistogram {
-                key = "binaryPredictionHistogram"
-                this.question = question
-            }
+        val noColor = if (props.resolution?.value == true) {
+            Color("#BBBBBB")
+        } else {
+            Color("#FF5555")
         }
+        val yesColor = if (props.resolution?.value == false) {
+            Color("#BBBBBB")
+        } else {
+            Color("#00CC2E")
+        }
+        proportionalCircle("No", noColor, props.dist?.yesProb?.let { 1 - it }, size = circleSize)
+        proportionalCircle("Yes", yesColor, props.dist?.yesProb, size = circleSize)
         if (props.interactive ?: true) {
-            +buttons
-        }
-    } else {
-        Stack {
-            ref = realSize.ref
-            direction = FlexDirection.row
-            css {
-                width = 100.pct
-                height = baseHeight
-                justifyContent = JustifyContent.center
-                alignItems = AlignItems.center
-                position = Position.relative
-            }
-            val noColor = if (props.resolution?.value == true) {
-                Color("#BBBBBB")
-            } else {
-                Color("#FF5555")
-            }
-            val yesColor = if (props.resolution?.value == false) {
-                Color("#BBBBBB")
-            } else {
-                Color("#00CC2E")
-            }
-            proportionalCircle("No", noColor, props.dist?.yesProb?.let { 1 - it }, size = circleSize)
-            proportionalCircle("Yes", yesColor, props.dist?.yesProb, size = circleSize)
-            if (props.interactive ?: true) {
-                +buttons
+            GraphButtons {
+                +props
+                if (props.question != null) {
+                    onHistogramClick = props.onHistogramButtonClick
+                }
             }
         }
     }
