@@ -1,10 +1,12 @@
 package components.redesign.questions.predictions
 
 import BinaryHistogram
+import browser.window
 import components.redesign.basic.*
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import csstype.*
+import dom.events.MouseEvent
 import dom.html.HTMLCanvasElement
 import dom.html.HTMLDivElement
 import dom.html.HTMLElement
@@ -22,14 +24,19 @@ import tools.confido.question.Question
 import tools.confido.spaces.NumericSpace
 import tools.confido.spaces.NumericValue
 import tools.confido.utils.toFixed
+import utils.addEventListener
 import utils.panzoom1d.PZParams
 import utils.panzoom1d.usePanZoom
+import utils.removeEventListener
+import web.events.Event
 
 external interface BinaryPredictionHistogramProps : PropsWithElementSize {
     var question: Question
 }
 
 private data class BinRectangle(
+    val id: Int,
+    val count: Int,
     val x: Double,
     val y: Double,
     val width: Double,
@@ -89,7 +96,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                 val y = (GRAPH_TOP_PAD + GRAPH_HEIGHT) * dpr
                 val width = binRectWidth * dpr
                 val height = -bin.count * yScale * dpr
-                BinRectangle(x, y, width, height, bin.min, bin.max)
+                BinRectangle(index, bin.count, x, y, width, height, bin.min, bin.max)
             }
         } ?: emptyList()
     }
@@ -105,20 +112,32 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
     }
 
     var hoveredBin by useState<Int?>(null)
-    canvas.current?.onmousemove = { e ->
-        val target = e.target as HTMLCanvasElement
-        val boundingRect = target.getBoundingClientRect()
-        val x = e.clientX - boundingRect.left
-        val y = e.clientY - boundingRect.top
+    useEffect {
+        // This must not be a fun, as referencing it through ::onMouseMove would result
+        // in a different function being created in addEventListener and removeEventListener,
+        // and removal would fail.
+        val onMouseMove = { e: Event ->
+            e as MouseEvent
+            val target = canvas.current as HTMLCanvasElement
+            val boundingRect = target.getBoundingClientRect()
+            val x = e.clientX - boundingRect.left
+            val y = e.clientY - boundingRect.top
 
-        var foundIndex: Int? = null
-        for ((index, rect) in rectangles.withIndex()) {
-            if (rect.contains(x, y)) {
-                foundIndex = index
-                break
+            var foundIndex: Int? = null
+            for ((index, rect) in rectangles.withIndex()) {
+                if (rect.contains(x, y)) {
+                    foundIndex = index
+                    break
+                }
             }
+            hoveredBin = foundIndex
+            console.log()
         }
-        hoveredBin = foundIndex
+
+        window.addEventListener("mousemove", onMouseMove);
+        cleanup {
+            window.removeEventListener("mousemove", onMouseMove);
+        }
     }
 
     useLayoutEffect(
@@ -134,7 +153,11 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
         context?.apply {
             clearRect(0.0, 0.0, physicalWidth, physicalHeight)
             rectangles.map { rect ->
-                fillStyle = Color("#8BF08E")
+                fillStyle = if (rect.id == hoveredBin) {
+                    Color("#7CF77F")
+                } else {
+                    Color("#8BF08E")
+                }
                 strokeStyle = rgba(0, 0, 0, 0.1)
                 fillRect(rect.x, rect.y, rect.width, rect.height)
                 beginPath()
@@ -217,21 +240,6 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
             }
         }
 
-        div {
-            style = jso {
-                this.width = logicalWidth.px
-                this.height = logicalHeight.px
-            }
-            css {
-                position = Position.absolute
-                top = ABOVE_GRAPH_PAD.px
-            }
-            PredictionFlags {
-                this.flags = flags
-                this.flagPositions = flagPositions
-            }
-        }
-
         val rows = if (layoutMode >= LayoutMode.TABLET) {
             listOf(rectangles)
         } else {
@@ -263,6 +271,10 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                             style = jso {
                                 left = zoomState.contentToViewport(rect.rangeMidpoint).px
                                 top = 50.pct
+                                if (rect.id == hoveredBin) {
+                                    color = rgba(0, 0, 0, 0.6)
+                                }
+                                transition = Transition(ident("color"), 0.2.s, 0.s)
                             }
                             css {
                                 val xtrans = when (idx) {
@@ -301,6 +313,40 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                         position = Position.absolute
                     }
                     +"$value"
+                }
+            }
+        }
+
+        div {
+            css {
+                height = LABELS_HEIGHT.px
+                flexGrow = number(0.0)
+                flexShrink = number(0.0)
+                fontSize = 14.px
+                color = rgba(0, 0, 0, 0.6)
+                lineHeight = 14.52.px
+                position = Position.absolute
+                fontFamily = sansSerif
+            }
+            // A floating number that shows the number of predictions in the hovered bin
+            hoveredBin?.let { id ->
+                val rect = rectangles[id]
+                val y = rect.y + rect.height - 6
+                div {
+                    style = jso {
+                        left = zoomState.contentToViewport(rect.rangeMidpoint).px
+                        top = y.px
+                        transition = Transition(ident("color"), 0.2.s, 0.s)
+                    }
+                    css {
+                        val xtrans = when (id) {
+                            0 -> max((-50).pct, (-SIDE_PAD).px)
+                            else -> (-50).pct
+                        }
+                        transform = translate(xtrans, (-50).pct)
+                        position = Position.absolute
+                    }
+                    +"${rect.count}"
                 }
             }
         }
