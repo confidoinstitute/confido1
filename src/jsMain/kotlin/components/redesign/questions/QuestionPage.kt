@@ -469,7 +469,9 @@ private val BinaryHistogramSection = FC<BinaryHistogramSectionProps> { props ->
             this.binaryHistogram = histogram.data
         }
         GraphButtonContainer {
-            GraphHistogramButton {
+            GraphButton {
+                this.palette = MainPalette.primary
+                CirclesIcon {}
                 onClick = { props.onHide?.invoke() }
             }
         }

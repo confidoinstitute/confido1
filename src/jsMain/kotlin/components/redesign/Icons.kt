@@ -202,7 +202,6 @@ val CloseIcon = FC<PropsWithClassName> { props ->
 }
 
 val CirclesIcon = FC<PropsWithClassName> { props ->
-    val color = "#555555"
     svg {
         className = props.className
         width = 18.0
@@ -213,13 +212,13 @@ val CirclesIcon = FC<PropsWithClassName> { props ->
             cx = 3.5
             cy = 4.5
             r = 3.5
-            fill = color
+            fill = "currentcolor"
         }
         circle {
             cx = 13.5
             cy = 4.5
             r = 4.5
-            fill = color
+            fill = "currentcolor"
         }
     }
 }
