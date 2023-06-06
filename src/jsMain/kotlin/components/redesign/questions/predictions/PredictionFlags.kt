@@ -201,6 +201,12 @@ val PredictionFlagContent = FC<PredictionFlagContentProps> { props ->
                     }
                     css {
                         position = Position.absolute
+                        if (collapseUntilHovered) {
+                            transition = Transition(ident("opacity"), 0.2.s, TransitionTimingFunction.easeInOut)
+                        }
+                        if (hidden) {
+                            opacity = number(0.0)
+                        }
                     }
                     ReactSVG.path {
                         d = when (pos.anchor) {
