@@ -237,6 +237,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
             PredictionFlags {
                 this.flags = flags
                 this.flagPositions = flagPositions
+                this.collapseUntilHovered = true
             }
         }
 
