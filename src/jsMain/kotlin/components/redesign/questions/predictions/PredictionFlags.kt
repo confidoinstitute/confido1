@@ -127,7 +127,8 @@ val PredictionFlagContent = FC<PredictionFlagContentProps> { props ->
             }
 
             val distance = 20
-            val isMouseNearPole = x in (pos.positionX - props.size.width - distance)..(pos.positionX + props.size.width + distance)
+            val isMouseNearPole = e.y in boundingRect.top..boundingRect.bottom
+                    && x in (pos.positionX - props.size.width - distance)..(pos.positionX + props.size.width + distance)
             if (collapseUntilHovered) {
                 hidden = !isMouseNearPole
             }
