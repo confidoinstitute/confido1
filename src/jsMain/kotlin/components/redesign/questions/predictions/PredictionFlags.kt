@@ -144,7 +144,9 @@ val PredictionFlagContent = FC<PredictionFlagContentProps> { props ->
         key = "background"
         ref = background
         css {
-            opacity = number(0.7)
+            if (!collapseUntilHovered) {
+                opacity = number(0.7)
+            }
             zIndex = integer(pos.zIndex)
             position = Position.absolute
             width = 100.pct
