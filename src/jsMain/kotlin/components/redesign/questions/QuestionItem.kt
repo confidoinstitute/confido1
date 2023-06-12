@@ -5,6 +5,7 @@ import components.redesign.basic.*
 import csstype.*
 import emotion.react.*
 import hooks.*
+import kotlinx.datetime.Clock
 import react.*
 import react.dom.html.ReactHTML.br
 import react.dom.html.ReactHTML.div
@@ -47,6 +48,20 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
     val predictionAgoText = useTimeAgo(prediction?.ts)
 
+    // In case there is no "Open" change, this may be a question that predates question history tracking.
+    val isNew = props.question.state == QuestionState.OPEN
+            && props.question.stateHistory.firstOrNull { it.newState == QuestionState.OPEN }
+        ?.let { firstOpen ->
+            val age = Clock.System.now() - firstOpen.at
+            // We want the "new" label to be visible for the typical question after a weekend,
+            // so 5 days is a fairly reasonable cutoff.
+            // We may change this in the future if this does not work very well.
+            //
+            // New state is also currently not removed when opening the question,
+            // as of writing this, that is not tracked, so we remove it only when making a prediction.
+            age.inWholeDays < 5 && prediction == null
+        } ?: false
+
     Link {
         css(LinkUnstyled) {
             display = Display.flex
@@ -88,6 +103,12 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 StatusChip {
                     color = Color("#ADBDC2")
                     text = "Hidden"
+                }
+            }
+            if (isNew) {
+                StatusChip {
+                    color = Color("#FF9330")
+                    text = "New"
                 }
             }
         }
