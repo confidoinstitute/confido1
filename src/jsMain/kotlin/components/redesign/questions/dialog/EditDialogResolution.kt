@@ -69,7 +69,8 @@ internal val EditQuestionDialogResolution = FC<EditQuestionDialogResolutionProps
                 options = listOf(
                     QuestionState.OPEN to "Open",
                     QuestionState.CLOSED to "Closed",
-                    QuestionState.RESOLVED to "Resolved"
+                    QuestionState.RESOLVED to "Resolved",
+                    QuestionState.ANNULLED to "Annulled",
                 )
                 defaultValue = QuestionState.OPEN
                 value = props.state
@@ -83,50 +84,58 @@ internal val EditQuestionDialogResolution = FC<EditQuestionDialogResolutionProps
             }
         }
     }
-    FormField {
-        title = "Correct answer"
-        required = valueRequired
-        if (props.space != null)
-            when (questionType) {
-                QuestionType.BINARY -> {
-                    BinaryValueEntry {
-                        value = binaryResolution
-                        required = valueRequired
-                        onChange = { binaryResolution = it }
+    // In open and closed states, it may make sense to prepare a resolution for resolving in the future.
+    // For annulled questions, this is unlikely to be useful, so we hide the resolution section
+    // as the resolution is not shown.
+    if (props.state != QuestionState.ANNULLED) {
+        FormField {
+            title = "Correct answer"
+            required = valueRequired
+            if (props.space != null)
+                when (questionType) {
+                    QuestionType.BINARY -> {
+                        BinaryValueEntry {
+                            value = binaryResolution
+                            required = valueRequired
+                            onChange = { binaryResolution = it }
+                        }
                     }
-                }
-                QuestionType.NUMERIC -> {
-                    NumericValueEntry {
-                        value = numericResolution
-                        placeholder = "Enter the correct answer"
-                        required = valueRequired
-                        onChange = { numericResolution = it }
+
+                    QuestionType.NUMERIC -> {
+                        NumericValueEntry {
+                            value = numericResolution
+                            placeholder = "Enter the correct answer"
+                            required = valueRequired
+                            onChange = { numericResolution = it }
+                        }
                     }
-                }
-                QuestionType.DATE -> {
-                    DateValueEntry {
-                        value = dateResolution
-                        placeholder = "Enter the correct answer"
-                        required = valueRequired
-                        onChange = { dateResolution = it; dateError = false }
-                        onError = { dateError = true }
+
+                    QuestionType.DATE -> {
+                        DateValueEntry {
+                            value = dateResolution
+                            placeholder = "Enter the correct answer"
+                            required = valueRequired
+                            onChange = { dateResolution = it; dateError = false }
+                            onError = { dateError = true }
+                        }
                     }
+
+                    else -> {}
                 }
-                else -> {}
+            if (questionType == null)
+                error = "The answer space is not well defined, please correct it."
+            else if (dateError)
+                error = "This is not a valid date."
+            else if (!props.valid)
+                error = "This resolution is not within the answer range."
+            if (props.value != null) {
+                if (props.state != QuestionState.RESOLVED)
+                    comment = "Will be shown to room members when the status is changed to Resolved."
+                else
+                    comment = "Will be shown to room members."
+            } else if (!valueRequired) {
+                comment = "This question has no correct answer, thus nothing will be shown."
             }
-        if (questionType == null)
-            error = "The answer space is not well defined, please correct it."
-        else if (dateError)
-            error = "This is not a valid date."
-        else if (!props.valid)
-            error = "This resolution is not within the answer range."
-        if (props.value != null) {
-            if (props.state != QuestionState.RESOLVED)
-                comment = "Will be shown to room members when the status is changed to Resolved."
-            else
-                comment = "Will be shown to room members."
-        } else if (!valueRequired) {
-            comment = "This question has no correct answer, thus nothing will be shown."
         }
     }
 }

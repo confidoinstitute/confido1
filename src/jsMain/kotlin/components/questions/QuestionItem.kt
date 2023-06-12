@@ -24,6 +24,7 @@ import rooms.RoomPermission
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.Prediction
 import tools.confido.question.Question
+import tools.confido.question.QuestionState
 import tools.confido.refs.ref
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.NumericSpace
@@ -230,9 +231,15 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     sx {
                         alignItems = AlignItems.center
                     }
-                    if (question.resolved) {
+                    if (question.state == QuestionState.RESOLVED) {
                         Chip {
                             label = ReactNode("Resolved")
+                            variant = ChipVariant.outlined
+                        }
+                    }
+                    if (question.state == QuestionState.ANNULLED) {
+                        Chip {
+                            label = ReactNode("Annulled")
                             variant = ChipVariant.outlined
                         }
                     }

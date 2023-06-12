@@ -168,7 +168,7 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
         }
         QuestionPredictionSection {
             this.question = props.question
-            if (props.question.resolved && props.question.resolutionVisible) {
+            if (props.question.state == QuestionState.RESOLVED) {
                 this.resolution = props.question.resolution
             }
             this.myPrediction = myPrediction

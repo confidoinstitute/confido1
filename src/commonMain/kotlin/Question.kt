@@ -134,6 +134,7 @@ data class Question(
     val resolutionVisible: Boolean = false,
     val resolution: Value? = null,
     val allowComments: Boolean = true,
+    val annulled: Boolean = false,
     val sensitive: Boolean = false,
     val author: Ref<User>? = null,
     val stateHistory: List<QuestionStateChange> = emptyList(),
@@ -151,23 +152,27 @@ data class Question(
     fun withState(questionState: QuestionState): Question {
         return when (questionState) {
             QuestionState.OPEN -> {
-                this.copy(open = true, resolutionVisible = false)
+                this.copy(open = true, resolutionVisible = false, annulled = false)
             }
 
             QuestionState.CLOSED -> {
-                this.copy(open = false, resolutionVisible = false)
+                this.copy(open = false, resolutionVisible = false, annulled = false)
             }
 
             QuestionState.RESOLVED -> {
-                this.copy(open = false, resolutionVisible = true)
+                this.copy(open = false, resolutionVisible = true, annulled = false)
             }
 
-            QuestionState.ANNULLED -> TODO()
+            QuestionState.ANNULLED -> {
+                this.copy(open = false, resolutionVisible = false, annulled = true)
+            }
         }
     }
 
     val state: QuestionState
         get() {
+            if (annulled)
+                return QuestionState.ANNULLED
             if (resolved && resolutionVisible)
                 return QuestionState.RESOLVED
             if (!open)

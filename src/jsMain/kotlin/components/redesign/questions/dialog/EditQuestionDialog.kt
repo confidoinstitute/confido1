@@ -45,13 +45,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
 
     // RESOLUTION
     var questionStatus by useState {
-        props.entity?.let {
-            when {
-                it.resolved && it.resolutionVisible -> QuestionState.RESOLVED
-                it.open -> QuestionState.OPEN
-                else -> QuestionState.CLOSED
-            }
-        } ?: QuestionState.OPEN
+        props.entity?.state ?: QuestionState.OPEN
     }
     var resolution: Value? by useState(props.entity?.resolution)
     var resolutionValid: Boolean by useState(true)
@@ -102,6 +96,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
             open = questionStatus == QuestionState.OPEN,
             resolutionVisible = questionStatus == QuestionState.RESOLVED,
             resolution = resolution,
+            annulled = questionStatus == QuestionState.ANNULLED,
             // ANCHORING
             groupPredVisible = groupPredictionVisibility.groupPredVisible,
             groupPredRequirePrediction = groupPredictionVisibility.groupPredRequirePrediction,

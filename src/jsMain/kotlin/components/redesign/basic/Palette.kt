@@ -50,7 +50,7 @@ enum class QuestionPalette(override val color: Color): Palette {
     `open`(Color("#5433B4")),
     closed(Color("#0B65B8")),
     resolved(Color("#0A9653")),
-    annulled(Color("#8B8B8B")),
+    annulled(Color("#765953")),
 }
 
 external interface PropsWithPalette<P: Palette>: Props {
