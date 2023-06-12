@@ -73,7 +73,7 @@ private val RootLayoutInner = FC<Props> {
         }
 
         GlobalCss {
-            backgroundColor = Color("#F2F2F2")
+            backgroundColor = UIGrayBg
         }
         GlobalErrorMessage {}
         BackdropProvider {

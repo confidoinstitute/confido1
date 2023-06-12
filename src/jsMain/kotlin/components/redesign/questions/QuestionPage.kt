@@ -21,7 +21,6 @@ import components.redesign.rooms.dialog.CsvExportDialog
 import components.rooms.*
 import csstype.*
 import emotion.react.*
-import ext.showmoretext.ShowMoreText
 import hooks.*
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -572,11 +571,11 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
                 lineHeight = 18.px
                 color = Color("#000000")
             }
-            ShowMoreText {
-                lines = 3
-                anchorClass = ShortenedTextExpanderClass
-                more = ReactNode("See more")
-                less = ReactNode("")
+            SeeMore {
+                maxLines = 3
+                lineHeight = 18.0
+                linkCss = ShortenedTextExpanderClass
+                backgroundColor = UIGrayBg
 
                 TextWithLinks {
                     text = props.description

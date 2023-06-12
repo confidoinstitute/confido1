@@ -13,8 +13,8 @@ import components.showError
 import csstype.*
 import dom.ScrollBehavior
 import dom.html.*
+import emotion.css.ClassName
 import emotion.react.*
-import ext.showmoretext.ShowMoreText
 import hooks.*
 import io.ktor.http.*
 import kotlinx.js.*
@@ -242,10 +242,13 @@ val RoomLayout = FC<Props> {
                 lineHeight = 19.px
                 whiteSpace = WhiteSpace.preLine
             }
-            ShowMoreText {
-                lines = 5
-                more = ReactNode("See more")
-                less = ReactNode("")
+            SeeMore {
+                maxLines = 5
+                lineHeight = 19.0
+                backgroundColor = palette.color
+                linkCss = ClassName {
+                    color = Color("inherit")
+                }
                 TextWithLinks {
                     text = room.description
                 }

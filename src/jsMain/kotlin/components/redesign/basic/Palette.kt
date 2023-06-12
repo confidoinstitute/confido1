@@ -8,6 +8,8 @@ interface Palette {
     val color: Color
 }
 
+val UIGrayBg = Color("#F2F2F2")
+
 
 enum class TextPalette(override val color: Color): Palette {
     white(Color("#FFFFFF")),

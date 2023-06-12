@@ -114,8 +114,6 @@ kotlin {
                 implementation(npm("react-transition-group","4.4.5"))
                 // Helmet
                 implementation(npm("react-helmet", "6.1.0"))
-                // Show more text
-                implementation(npm("react-show-more-text", "1.6.2"))
             }
         }
     }
