@@ -47,9 +47,9 @@ enum class RoomPalette(override val color: Color, override val text: TextPalette
 }
 
 enum class QuestionPalette(override val color: Color): Palette {
-    `open`(Color("#5433B4")),
-    closed(Color("#0B65B8")),
-    resolved(Color("#0A9653")),
+    `open`(Color("#4F24CA")),
+    closed(Color("#0079D0")),
+    resolved(Color("#00AA59")),
     annulled(Color("#765953")),
 }
 
