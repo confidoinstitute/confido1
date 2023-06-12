@@ -1,5 +1,5 @@
 
-val ktorVersion = "2.2.4"
+val ktorVersion = "2.3.1"
 val serializationVersion = "1.5.0"
 val kmongoVersion = "4.7.2"
 val kotlinWrappersVersion = "1.0.0-pre.444"
@@ -161,25 +161,5 @@ tasks.named<JavaExec>("run") {
     dependsOn(tasks.named<Jar>("jvmJar"))
     classpath(tasks.named<Jar>("jvmJar"))
 }
-
-
-
-val hotpatch by tasks.registering {
-    doLast {
-        println("HOTPATCH")
-        exec {
-            commandLine("./hotpatch_websocket_close.sh")
-        }
-    }
-}
-
-
-listOf("jsProductionExecutableCompileSync", "jsDevelopmentExecutableCompileSync").forEach {
-
-    tasks.named(it) {
-        finalizedBy(hotpatch) 
-    }
-}
-
 
 //tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> { kotlinOptions.languageVersion = "1.8" }
