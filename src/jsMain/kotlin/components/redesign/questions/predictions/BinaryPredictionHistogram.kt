@@ -12,10 +12,7 @@ import dom.html.HTMLDivElement
 import dom.html.HTMLElement
 import dom.html.RenderingContextId
 import emotion.react.css
-import hooks.combineRefs
-import hooks.useDPR
-import hooks.usePureClick
-import hooks.useWebSocket
+import hooks.*
 import kotlinx.js.jso
 import react.*
 import react.dom.html.ReactHTML.canvas
@@ -242,26 +239,32 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
             }
         }
 
-        val rows = if (layoutMode >= LayoutMode.TABLET) {
-            listOf(rectangles)
-        } else {
+        val twoRows = useBreakpoints(true to 480,  default = false)
+
+        val rows = if (twoRows) {
             listOf(
                 rectangles.filterIndexed { idx, _ -> idx % 2 == 0 },
                 rectangles.filterIndexed { idx, _ -> idx % 2 == 1 }
             )
+        } else {
+            listOf(rectangles)
+
         }
 
         rows.mapIndexed { rowIndex, rowRectangles ->
             div {
                 css {
-                    height = LABELS_HEIGHT.px
+                    height = if (layoutMode >= LayoutMode.TABLET) 36.px else 28.px
+                    marginTop = 4.px
                     flexGrow = number(0.0)
                     flexShrink = number(0.0)
-                    fontSize = 12.px
+                    alignSelf = AlignSelf.flexStart
                     color = rgba(0, 0, 0, 0.3)
-                    lineHeight = 14.52.px
                     position = Position.relative
                     fontFamily = sansSerif
+                    fontWeight = integer(200)
+                    whiteSpace = WhiteSpace.nowrap
+                    textAlign = TextAlign.center
                     if (rowIndex > 0) {
                         marginTop = (-10).px
                     }
@@ -272,9 +275,9 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                         div {
                             style = jso {
                                 left = zoomState.contentToViewport(rect.rangeMidpoint).px
-                                top = 50.pct
+                                top = 0.pct
                                 if (rect.id == hoveredBin) {
-                                    color = rgba(0, 0, 0, 0.6)
+                                    color = rgba(0, 0, 0, 0.8)
                                 }
                                 transition = Transition(ident("color"), 0.2.s, 0.s)
                             }
@@ -283,15 +286,34 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                                     0 -> max((-50).pct, (-SIDE_PAD).px)
                                     else -> (-50).pct
                                 }
-                                transform = translate(xtrans, (-50).pct)
+                                transform = translatex(xtrans)
                                 position = Position.absolute
                             }
                             val start = (rect.min * 100.0).toFixed(0)
                             val end = (rect.max * 100.0).toFixed(0)
 
-                            +if (rect.min == 0.0) "<$end%"
+                            val shortName = if (rect.min == 0.0) "<$end%"
                             else if (rect.max == 1.0) ">$start%"
-                            else "$start–$end%"
+                            else "${(100.0*(rect.min+rect.max)/2).toFixed(0)}%"
+
+                            var longName = if (rect.min > 0.0 && rect.max < 1.0) "$start–$end%" else null
+                            div {
+                                div {
+                                    css {
+                                        fontSize = if (layoutMode >= LayoutMode.TABLET) 16.px else 15.px
+                                    }
+                                    +shortName
+                                }
+                            }
+                            if (layoutMode >= LayoutMode.TABLET)
+                            longName?.let {
+                                div {
+                                    css {
+                                        fontSize = 10.px
+                                    }
+                                    +"($longName)"
+                                }
+                            }
                         }
                     }
             }
