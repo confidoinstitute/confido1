@@ -225,8 +225,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
             }
 
             // TODO: configurable (from query params?)
-            val binCount = 9
-            val binner = BinaryHistogramBinner(binCount)
+            val binner = BinaryHistogramBinner()
 
             val predictions = serverState.userPred[question.ref]?.values ?: notFound("No user predictions found.")
 

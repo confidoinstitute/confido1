@@ -90,10 +90,11 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
 
     val rectangles = useMemo(zoomState.pan, dpr, logicalWidth, zoomState.zoom, yScale, histogram) {
         histogram?.bins?.let { bins ->
+            var off = (-zoomState.pan)
             bins.mapIndexed { index, bin ->
-                val left = (-zoomState.pan).toInt()
-                val binRectWidth = (logicalWidth - 2 * SIDE_PAD) / (bins.size) * zoomState.zoom
-                val x = (left + index * binRectWidth) * dpr
+                val binRectWidth = (logicalWidth - 2 * SIDE_PAD) * bin.width * zoomState.zoom
+                val x = off * dpr
+                off += binRectWidth
                 val y = (GRAPH_TOP_PAD + GRAPH_HEIGHT) * dpr
                 val width = binRectWidth * dpr
                 val height = -bin.count * yScale * dpr
@@ -287,7 +288,10 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                             }
                             val start = (rect.min * 100.0).toFixed(0)
                             val end = (rect.max * 100.0).toFixed(0)
-                            +"$start–$end%"
+
+                            +if (rect.min == 0.0) "<$end%"
+                            else if (rect.max == 1.0) ">$start%"
+                            else "$start–$end%"
                         }
                     }
             }

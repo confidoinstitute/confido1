@@ -10,30 +10,34 @@ data class BinaryHistogram(
 )
 
 @Serializable
-data class HistogramBin(val min: Double, val max: Double, val count: Int)
+data class HistogramBin(val min: Double, val max: Double, val count: Int = 0) {
+    val width = (max - min)
+}
 
-class BinaryHistogramBinner(private val bins: Int) {
+typealias HistogramBinningRule = List<HistogramBin>
+
+val DefaultHistogramBinning = listOf(HistogramBin(0.0, 0.05)) +
+                                (10..90 step 10).map { HistogramBin((it-5)/100.0, (it+5)/100.0) } +
+                                listOf(HistogramBin(0.95, 1.0))
+
+class BinaryHistogramBinner(private val bins: HistogramBinningRule = DefaultHistogramBinning) {
     init {
-        require(bins > 0)
+        require(bins.size > 0)
     }
-
-    private val binSize = 1.0 / (bins + 1)
 
     private fun valueToBin(value: BinaryDistribution): Int? {
         if (value.yesProb < 0 || value.yesProb > 1) return null
         // In case of yesProb = 1 we would get a value out of the range, so we clamp it
-        return minOf((value.yesProb / binSize).toInt(), bins)
+        return bins.indexOfFirst { value.yesProb >= it.min && value.yesProb <= it.max }
     }
 
     private fun binPredictions(predictions: Iterable<BinaryDistribution>): List<HistogramBin> {
-        val counts = MutableList(bins + 1) { 0 }
+        val counts = MutableList(bins.size) { 0 }
         for (dist in predictions) {
             valueToBin(dist)?.let { counts[it]++ }
         }
         return counts.mapIndexed { index, count ->
-            val min = index * binSize
-            val max = (index + 1) * binSize
-            HistogramBin(min, max, count)
+            bins[index].copy(count = count)
         }
     }
 
