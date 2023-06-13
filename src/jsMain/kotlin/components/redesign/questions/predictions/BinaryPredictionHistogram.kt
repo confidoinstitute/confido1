@@ -90,11 +90,11 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
             var off = (-zoomState.pan)
             bins.mapIndexed { index, bin ->
                 val binRectWidth = (logicalWidth - 2 * SIDE_PAD) * bin.width * zoomState.zoom
-                val x = off * dpr
+                val x = off
                 off += binRectWidth
-                val y = (GRAPH_TOP_PAD + GRAPH_HEIGHT) * dpr
-                val width = binRectWidth * dpr
-                val height = -bin.count * yScale * dpr
+                val y = (GRAPH_TOP_PAD + GRAPH_HEIGHT)
+                val width = binRectWidth
+                val height = -bin.count * yScale
                 BinRectangle(index, bin.count, x, y, width, height, bin.min, bin.max)
             }
         } ?: emptyList()
@@ -157,12 +157,16 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                     Color("#8BF08E")
                 }
                 strokeStyle = rgba(0, 0, 0, 0.1)
-                fillRect(rect.x, rect.y, rect.width, rect.height)
+                val x = rect.x * dpr
+                val y = rect.y * dpr
+                val width = rect.width * dpr
+                val height = rect.height * dpr
+                fillRect(x, y, width, height)
                 beginPath()
-                moveTo(rect.x, rect.y)
-                lineTo(rect.x, rect.y + rect.height)
-                lineTo(rect.x + rect.width, rect.y + rect.height)
-                lineTo(rect.x + rect.width, rect.y)
+                moveTo(x, y)
+                lineTo(x, y + height)
+                lineTo(x + width, y + height)
+                lineTo(x + width, y)
                 stroke()
             }
             horizontalMarks.forEach { markY ->
