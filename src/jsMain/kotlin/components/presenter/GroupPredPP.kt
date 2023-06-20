@@ -1,15 +1,16 @@
 package components.presenter
 
 import components.DistributionPlot
-import components.GroupPredictions
-import components.redesign.basic.css
 import components.redesign.basic.serif
 import components.redesign.questions.predictions.BinaryPrediction
 import csstype.*
+<<<<<<< HEAD
 import dom.html.HTML.div
 import dom.html.HTML.h3
 import dom.html.HTML.h4
 import dom.html.HTMLDivElement
+=======
+>>>>>>> 3834dda (Presenter: show resolution for binary question)
 import emotion.react.css
 import hooks.useElementSize
 import hooks.useWebSocket
@@ -23,10 +24,10 @@ import mui.system.sx
 import payloads.responses.WSData
 import react.FC
 import react.dom.html.ReactHTML.div
-import react.dom.html.ReactHTML.h3
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.question.Prediction
 import tools.confido.refs.deref
+import tools.confido.spaces.BinaryValue
 import tools.confido.state.GroupPredPV
 import utils.themed
 
@@ -66,6 +67,8 @@ val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
                             dist = it
                             isGroup = true
                             interactive = false
+                            if (props.view.showResolution && question.resolution != null)
+                                resolution = question.resolution as? BinaryValue?
                         }
                     } else {
                     DistributionPlot {
