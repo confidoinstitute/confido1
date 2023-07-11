@@ -4,13 +4,10 @@ import components.DistributionPlot
 import components.redesign.basic.serif
 import components.redesign.questions.predictions.BinaryPrediction
 import csstype.*
-<<<<<<< HEAD
 import dom.html.HTML.div
 import dom.html.HTML.h3
 import dom.html.HTML.h4
 import dom.html.HTMLDivElement
-=======
->>>>>>> 3834dda (Presenter: show resolution for binary question)
 import emotion.react.css
 import hooks.useElementSize
 import hooks.useWebSocket
