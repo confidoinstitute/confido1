@@ -53,7 +53,6 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                     value = description
                     onChange = { description = it.target.value }
                 }
-                comment = "The description should contain all resolution criteria."
             }
             RoomColorChooser {
                 this.color = color
