@@ -5,8 +5,8 @@ val kmongoVersion = "4.7.2"
 val kotlinWrappersVersion = "1.0.0-pre.444"
 
 plugins {
-    kotlin("multiplatform") version "1.8.20"
-    kotlin("plugin.serialization") version "1.8.20"
+    kotlin("multiplatform") version "1.9.0"
+    kotlin("plugin.serialization") version "1.9.0"
     application
 }
 
@@ -120,7 +120,7 @@ kotlin {
     sourceSets.all {
         languageSettings.apply {
             // needed (at least) for OpenEndRange support
-            languageVersion = "1.8"
+            languageVersion = "1.9"
             optIn("kotlin.ExperimentalStdlibApi")
         }
     }
