@@ -224,7 +224,6 @@ val CirclesIcon = FC<PropsWithClassName> { props ->
 }
 
 val SymmetricGaussIcon = FC<PropsWithClassName> { props ->
-    val color = "#555555"
     svg {
         className = props.className
         width = 20.0
@@ -233,7 +232,7 @@ val SymmetricGaussIcon = FC<PropsWithClassName> { props ->
         fill = "none"
         path {
             d = "M10 0C11.2543 0 12.0668 0.908928 12.8893 2.18446C13.2771 2.78589 13.6506 3.46193 14.0354 4.15867C15.4462 6.71274 17.0107 9.54501 20 10V11H0V10C2.98934 9.54501 4.55381 6.71273 5.96459 4.15867C6.34945 3.46193 6.72287 2.78589 7.11067 2.18446C7.93317 0.908928 8.74567 0 10 0Z"
-            fill = color
+            fill = "currentColor"
         }
     }
 }
@@ -248,7 +247,7 @@ val AsymmetricGaussIcon = FC<PropsWithClassName> { props ->
         fill = "none"
         path {
             d = "M4.87167 0.713226C3.47733 2.46897 3.34067 9.20824 0 9.93548V11H20V9.93548C11.3793 8.35592 8.4215 0 6.05033 0C5.65483 0 5.30433 0.168371 4.87167 0.713226Z"
-            fill = color
+            fill = "currentColor"
         }
     }
 }
@@ -641,3 +640,4 @@ val HistogramIcon = FC<PropsWithClassName> { props ->
         }
     }
 }
+

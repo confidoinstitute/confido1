@@ -1,6 +1,10 @@
 package components.redesign.questions.predictions
 
+import components.redesign.AsymmetricGaussIcon
+import components.redesign.SymmetricGaussIcon
 import components.redesign.basic.*
+import components.redesign.forms.Switch
+import components.redesign.forms.SwitchProps
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.PredictionOverlay
@@ -321,6 +325,15 @@ val NumericPredInput = FC<NumericPredInputProps>("NumericPredInput") { props->
                 onZoomChange = { newZoomState, newMarks ->
                     console.log("OZC")
                     zoomState = newZoomState; marks = newMarks; }
+            }
+            div {
+                css {
+                    position = Position.absolute
+                    left = 8.px
+                    top = 8.px
+                    zIndex = integer(10)
+                }
+                SymmetrySwitch {}
             }
             // Hide the overlay when a center is set, otherwise it overlays the center signpost if you try to move
             // the center thumb before setting uncertainty.

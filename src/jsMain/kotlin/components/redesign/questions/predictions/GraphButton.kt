@@ -1,12 +1,12 @@
 package components.redesign.questions.predictions
 
-import components.redesign.HistogramIcon
-import components.redesign.ExactPredictionIcon
-import components.redesign.PresenterIcon
+import components.redesign.*
 import components.redesign.basic.MainPalette
 import components.redesign.basic.Stack
 import components.redesign.basic.withStyle
 import components.redesign.forms.Button
+import components.redesign.forms.Switch
+import components.redesign.forms.SwitchProps
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.presenter.PresenterContext
@@ -116,6 +116,16 @@ val GraphButtons = FC<GraphButtonsProps>("GraphButtons") { props->
 }
 
 
+val SymmetrySwitch = FC<SwitchProps> { props->
+    Switch {
+        onIcon = AsymmetricGaussIcon.create()
+        offIcon = SymmetricGaussIcon.create()
+        switchHeight = 30.0
+        switchWidth = 58.0
+        noColor = true
+        +props
+    }
+}
 
 
 

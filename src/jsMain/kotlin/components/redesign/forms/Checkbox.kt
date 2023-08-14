@@ -117,19 +117,31 @@ val Checkbox = FC<CheckboxProps> { props ->
     }
 }
 
-val Switch = FC<CheckboxProps> { props ->
+external interface SwitchProps: InputHTMLAttributes<HTMLInputElement>, PropsWithPalette<PaletteWithText> {
+    var switchHeight: Double?
+    var switchWidth: Double?
+    var offIcon: ReactNode?
+    var onIcon: ReactNode?
+    var activeIconColor: Color?
+    var inactiveIconColor: Color?
+    var noColor: Boolean?
+}
+val Switch = FC<SwitchProps> { props ->
     val palette = props.palette ?: MainPalette.primary
+    val switchHeight = props.switchHeight ?: 36.0
+    val switchWidth = props.switchWidth ?: 64.0
+    val activeIconColor = props.activeIconColor ?: Color("#555555")
+    val inactiveIconColor = props.inactiveIconColor ?: Color("#555555").addAlpha("30%")
     label {
         css {
-            width = 64.px
-            height = 36.px
+            width = switchWidth.px
+            height = switchHeight.px
             display = Display.inlineBlock
             position = Position.relative
             flexShrink = number(0.0)
         }
         input {
             +props
-            delete(asDynamic().alwaysColorBackground)
             type = InputType.checkbox
             css {
                 display = None.none
@@ -143,15 +155,15 @@ val Switch = FC<CheckboxProps> { props ->
                 right = 0.px
                 top = 0.px
                 backgroundColor = Color("#C2C0C6")
-                borderRadius = 18.px
+                borderRadius = (switchHeight / 2.0).px
                 transitionDuration = 0.4.s
                 cursor = Cursor.pointer
 
                 before {
                     left = 2.px
                     top = 2.px
-                    width = 32.px
-                    height = 32.px
+                    width = (switchHeight - 4.0).px
+                    height = (switchHeight - 4.0).px
                     borderRadius = 100.pct
                     backgroundColor = Color("#FFFFFF")
                     content = string("\"\"")
@@ -160,9 +172,10 @@ val Switch = FC<CheckboxProps> { props ->
                 }
 
                 "input:checked + &" {
-                    backgroundColor = palette.color
+                    if (!(props.noColor ?: false))
+                        backgroundColor = palette.color
                     before {
-                        left = 30.px
+                        left = (switchWidth - switchHeight + 2).px
                     }
                 }
 
@@ -170,6 +183,47 @@ val Switch = FC<CheckboxProps> { props ->
                     opacity = number(0.3)
                     filter = saturate(0.1)
                 }
+            }
+        }
+        props.offIcon?.let { offIcon ->
+            span {
+                css {
+                    position = Position.absolute
+                    bottom = 2.px
+                    left = 2.px
+                    width = (switchHeight - 4.0).px
+                    top = 2.px
+                    display = Display.flex
+                    alignItems = AlignItems.center
+                    justifyContent = JustifyContent.center
+
+                    color =  activeIconColor
+
+                    "input:checked ~ &" {
+                        color =  inactiveIconColor
+                    }
+                }
+                +offIcon
+            }
+        }
+        props.onIcon?.let { onIcon ->
+            span {
+                css {
+                    position = Position.absolute
+                    bottom = 2.px
+                    right = 2.px
+                    width = (switchHeight - 4.0).px
+                    top = 2.px
+                    display = Display.flex
+                    alignItems = AlignItems.center
+                    justifyContent = JustifyContent.center
+                    color =  inactiveIconColor
+
+                    "input:checked ~ &" {
+                        color =  activeIconColor
+                    }
+                }
+                +onIcon
             }
         }
     }
