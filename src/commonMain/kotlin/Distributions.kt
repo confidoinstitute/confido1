@@ -44,8 +44,10 @@ interface ContinuousProbabilityDistribution : ProbabilityDistribution {
     val stdev: Double
     val maxDensity: Double // maximum value of pdf, useful for scaling graphs
     val median get() = icdf(0.5)
+    val meanIsDiscretized get() = false
+    val stdevIsDiscretized get() = false
     val preferredCICenter: Double
-        get() = mean
+        get() = median
     fun confidenceInterval(p: Double, preferredCenter: Double = preferredCICenter): ClosedRange<Double> {
         val probRadius = p / 2
         val centerCDF = cdf(preferredCenter)
@@ -60,7 +62,8 @@ interface ContinuousProbabilityDistribution : ProbabilityDistribution {
         DiscretizedContinuousDistribution(
             space,
             binner.binRanges.map { probabilityBetween(it) }.toList(),
-            origMean = this.mean, origStdev = this.stdev)
+            origMean = if (meanIsDiscretized) null else this.mean,
+            origStdev = if (stdevIsDiscretized) null else this.stdev)
     fun discretize(bins: Int) = discretize(Binner(space, bins))
     fun discretize() = discretize(space.binner)
 
@@ -162,6 +165,8 @@ object CanonicalNormalDistribution : ContinuousProbabilityDistribution {
      * National Bureau of Standards. New York, NY: Dover. ISBN 978-0-486-61272-0.
      */
     override fun cdf(x: Double): Double {
+        if (x == Double.NEGATIVE_INFINITY) return 0.0
+        if (x == Double.POSITIVE_INFINITY) return 1.0
         val b0 = 0.2316419
         val b1 = 0.319381530
         val b2 = -0.356563782
@@ -252,6 +257,33 @@ interface TransformedDistribution : ContinuousProbabilityDistribution {
     override val stdev: Double get() = dist.stdev * scale
 }
 
+enum class Half { LEFT, RIGHT }
+@Serializable
+data class CanonicalHalfNormalDistribution(val half: Half): ContinuousProbabilityDistribution {
+    override val space = when (half) {
+        Half.LEFT -> NumericSpace(Double.NEGATIVE_INFINITY,0.0)
+        Half.RIGHT -> NumericSpace(0.0, Double.POSITIVE_INFINITY)
+    }
+    override fun pdf(x: Double) =
+        if (x in space.range) 2 * CanonicalNormalDistribution.pdf(x) else 0.0
+
+    override fun cdf(x: Double) = when (half) {
+        Half.LEFT -> 2*CanonicalNormalDistribution.cdf(x)
+        Half.RIGHT -> 2*(1 - CanonicalNormalDistribution.cdf(-x))
+    }
+
+    override fun icdf(p: Double) = when (half) {
+        Half.LEFT -> CanonicalNormalDistribution.icdf(p / 2.0)
+        Half.RIGHT -> - CanonicalNormalDistribution.cdf(1 - p/2.0)
+    }
+
+    override val mean = 0.0
+    override val stdev = (1.0 - 2.0 / PI)
+    override val maxDensity = CanonicalNormalDistribution.maxDensity * 2.0
+}
+
+
+
 @Serializable
 @SerialName("normal")
 data class NormalDistribution(override val mean: Double, override val stdev: Double) : TransformedDistribution {
@@ -261,6 +293,122 @@ data class NormalDistribution(override val mean: Double, override val stdev: Dou
     override val shift get() = mean
     override val scale get() = stdev
 }
+
+@Serializable
+@SerialName("halfNormal")
+data class HalfNormalDistribution(val half: Half, val center: Double, override val scale: Double) : TransformedDistribution {
+    @Transient
+    override val space = NumericSpace()
+    override val dist get() = CanonicalHalfNormalDistribution(half)
+    override val shift get() = center
+}
+
+
+@Serializable
+sealed class PiecewiseDistribution: ContinuousProbabilityDistribution {
+
+    abstract val pieces: List<Pair<ContinuousProbabilityDistribution, Double>>
+
+    //XXX called too soon
+    //init {
+    //    pieces.zipWithNext { a, b ->
+    //        check(a.first.space.max <= b.first.space.min)
+    //    }
+    //}
+
+    val weightSum by lazy { pieces.map{it.second}.sum() }
+    val normalizedPieces by lazy { pieces.map{ it.first to it.second/weightSum } }
+
+    override fun pdf(x: Double)
+        = normalizedPieces.firstOrNull { x in it.first.space.range }?.let { it.first.pdf(x) * it.second  } ?: 0.0
+    override fun cdf(x: Double): Double {
+        var r = 0.0
+        for ((dist,scale) in  normalizedPieces) {
+            if (dist.space.max <= x) r += scale // whole piece
+            else if (dist.space.min <= x) {
+                r += scale * dist.cdf(x)
+                break
+            }
+        }
+        return r
+    }
+    override fun icdf(p: Double): Double {
+        var remainingProb = p
+        for ((dist,area) in  normalizedPieces) {
+            if (remainingProb <= 0.0) break
+            if (remainingProb >= area) {
+                remainingProb -= area
+            } else {
+                return dist.icdf(remainingProb / area)
+            }
+        }
+        return pieces.last().first.icdf(1.0)
+    }
+
+    override val maxDensity get() = normalizedPieces.map{ (dist,scale) -> dist.maxDensity*scale }.max()
+
+    override val mean get() = normalizedPieces.map{ (dist,scale) -> dist.mean*scale }.sum()
+}
+
+data class SplitNormalDistribution(val center: Double, val s1: Double, val s2: Double) : PiecewiseDistribution() {
+    val leftHalf = HalfNormalDistribution(Half.LEFT, center, s1)
+    val rightHalf = HalfNormalDistribution(Half.RIGHT, center, s2)
+    override val space = NumericSpace()
+    override val pieces = listOf(
+        leftHalf to 1.0/leftHalf.maxDensity,
+        rightHalf to 1.0/rightHalf.maxDensity,
+    )
+    val variance get() =  (1 - 2.0/PI) * (s2-s1).pow(2) + s1*s2
+    override val stdev get() = sqrt( variance )
+}
+
+@Serializable
+@SerialName("truncSN")
+data class TruncatedSplitNormalDistribution(override val space: NumericSpace, val center: Double, val s1: Double, val s2: Double) : PiecewiseDistribution() {
+    init {
+        check(center >= space.min)
+        check(center <= space.max)
+    }
+    val leftSpace = space.subspace(space.min, center)
+    val rightSpace = space.subspace(center, space.max)
+    val leftHalf = TruncatedNormalDistribution(leftSpace, center, s1)
+    val rightHalf = TruncatedNormalDistribution(rightSpace, center, s2)
+    override val pieces = listOf(
+        leftHalf to 1.0/leftHalf.maxDensity,
+        rightHalf to 1.0/rightHalf.maxDensity,
+    )
+    override val stdevIsDiscretized = true
+    override val stdev get() = discretize().stdev
+    companion object {
+        fun findByCI(space:NumericSpace, center: Double, lowerProb: Double, lowerPos: Double,
+                     upperProb: Double, upperPos: Double): TruncatedSplitNormalDistribution {
+            val paramRange = (space.size / 100.0 .. space.size * 10.0)
+            println("findByCI ${space.min}..${space.max} ($lowerPos - $center - $upperPos)")
+            check(center in space.range)
+            check(lowerPos in space.range)
+            check(upperPos in space.range)
+            check(lowerPos <= center)
+            check(upperPos >= center)
+            var dist = TruncatedSplitNormalDistribution(space, center, (center - space.min) / 3.0, (space.max - center) / 3.0)
+            println("paramRange: $paramRange")
+            println("initialDist: $dist")
+            println("initialLower: ${dist.icdf(lowerProb)}")
+            println("initialUpper: ${dist.icdf(upperProb)}")
+            repeat(5) {
+                val newS1 = binarySearch(paramRange, lowerPos, decreasing = true) { dist.copy(s1 = it).icdf(lowerProb) }.mid
+                println("newS1: $newS1")
+                val dist1 = dist.copy(s1 = newS1)
+                val newS2 = binarySearch(paramRange, upperPos) { dist.copy(s2 = it).icdf(upperProb) }.mid
+                println("newS2: $newS2")
+                val dist2 = dist1.copy(s2 = newS2)
+                dist = dist2
+            }
+            println("findByCI done")
+            return dist
+        }
+    }
+}
+
 
 
 sealed class TruncatedDistribution : ContinuousProbabilityDistribution {
@@ -331,6 +479,7 @@ data class TruncatedNormalDistribution(
     override val description get() = "${space.formatValue(pseudoMean)} ± ${space.formatDifference(pseudoStdev)}"
 }
 
+
 val distributionsSM = SerializersModule {
     polymorphic(ProbabilityDistribution::class) {
         subclass(BinaryDistribution::class)
@@ -339,5 +488,14 @@ val distributionsSM = SerializersModule {
         subclass(TruncatedCanonicalNormalDistribution::class)
         subclass(NormalDistribution::class)
         subclass(CanonicalNormalDistribution::class)
+        subclass(TruncatedSplitNormalDistribution::class)
+    }
+    polymorphic(ContinuousProbabilityDistribution::class) {
+        subclass(DiscretizedContinuousDistribution::class)
+        subclass(TruncatedNormalDistribution::class)
+        subclass(TruncatedCanonicalNormalDistribution::class)
+        subclass(NormalDistribution::class)
+        subclass(CanonicalNormalDistribution::class)
+        subclass(TruncatedSplitNormalDistribution::class)
     }
 }
