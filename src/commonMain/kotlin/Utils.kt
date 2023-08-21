@@ -234,3 +234,22 @@ inline fun <T1: Any, T2: Any, T3: Any, T4: Any, R:Any> multiletNotNull(a1: T1?, 
         = if (a1 != null && a2 != null && a3 != null && a4 != null) body(a1, a2, a3, a4) else null
 
 inline fun <reified T: ImmediateDerefEntity> Iterable<Ref<T>>.forEachDeref(body: (T)->Unit) = forEach { it.deref()?.let { body(it) } }
+
+fun binarySearch(initialRange: ClosedFloatingPointRange<Double>, desiredValue: Double, maxSteps: Int = 30,
+                decreasing: Boolean = false, f: (Double) -> Double): ClosedFloatingPointRange<Double> {
+    var curRange = initialRange
+    fun cmp(x: Double) = desiredValue.compareTo(f(x)) * if (decreasing) -1 else 1
+    for (step in 1..maxSteps) {
+        if (cmp(curRange.endInclusive) == 1) curRange = curRange.start .. (2*curRange.endInclusive)
+        else break
+    }
+    for (step in 1..maxSteps) {
+        val mid = curRange.mid
+        when (cmp(mid)) {
+            0 -> return mid..mid
+            1 -> curRange = mid..curRange.endInclusive // want higher
+            -1 -> curRange = curRange.start..mid // want lower
+        }
+    }
+    return curRange
+}

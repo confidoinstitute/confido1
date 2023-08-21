@@ -36,23 +36,6 @@ external interface NumericPredSliderProps : NumericPredInputProps, PropsWithElem
     var simulateClickRef: SimulateClickRef?
 }
 
-fun binarySearch(initialRange: ClosedFloatingPointRange<Double>, desiredValue: Double, maxSteps: Int, f: (Double) -> Double): ClosedFloatingPointRange<Double> {
-    var curRange = initialRange
-    fun cmp(x: Double) = desiredValue.compareTo(f(x))
-    for (step in 1..maxSteps) {
-        if (cmp(curRange.endInclusive) == 1) curRange = curRange.start .. (2*curRange.endInclusive)
-        else break
-    }
-    for (step in 1..maxSteps) {
-        val mid = curRange.mid
-        when (cmp(mid)) {
-            0 -> return mid..mid
-            1 -> curRange = mid..curRange.endInclusive // want higher
-            -1 -> curRange = curRange.start..mid // want lower
-        }
-    }
-    return curRange
-}
 fun findDistribution(space: NumericSpace, center: Double, ciWidth: Double): TruncatedNormalDistribution {
     val pseudoStdev = binarySearch(0.0..ciWidth, ciWidth, 30) {
         TruncatedNormalDistribution(space, center, it).confidenceInterval(0.8).size
