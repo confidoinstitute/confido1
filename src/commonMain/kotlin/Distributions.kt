@@ -8,6 +8,9 @@ import kotlin.math.*
 interface ProbabilityDistribution {
     val space: Space
     val description: String
+    // Return a string uniquely identifying the distribution and its parameters. Can be used
+    // to compare distributions for equality.
+    fun identify(): String
 }
 
 
@@ -24,6 +27,8 @@ data class BinaryDistribution( // TODO: Make this a special case of a general Ch
     fun probabilityOf(v: Boolean) = if (v) yesProb else noProb
 
     override val description get() = formatPercent(yesProb)
+
+    override fun identify() = "binary:$yesProb"
 }
 
 interface ContinuousProbabilityDistribution : ProbabilityDistribution {
@@ -145,6 +150,7 @@ data class DiscretizedContinuousDistribution(
     }
 
     override fun discretize() = this
+    override fun identify() = "discr:" + binProbs.joinToString(":")
 }
 
 @Serializable
@@ -233,6 +239,8 @@ object CanonicalNormalDistribution : ContinuousProbabilityDistribution {
 
     }
 
+    override fun identify() = "canon_normal"
+
 }
 interface TransformedDistribution : ContinuousProbabilityDistribution {
     val dist: ContinuousProbabilityDistribution
@@ -280,6 +288,7 @@ data class CanonicalHalfNormalDistribution(val half: Half): ContinuousProbabilit
     override val mean = 0.0
     override val stdev = (1.0 - 2.0 / PI)
     override val maxDensity = CanonicalNormalDistribution.maxDensity * 2.0
+    override fun identify() = "canon_half_norm:$half"
 }
 
 
@@ -292,6 +301,8 @@ data class NormalDistribution(override val mean: Double, override val stdev: Dou
     override val dist get() = CanonicalNormalDistribution
     override val shift get() = mean
     override val scale get() = stdev
+
+    override fun identify() = "norm:$mean:$stdev"
 }
 
 @Serializable
@@ -301,8 +312,8 @@ data class HalfNormalDistribution(val half: Half, val center: Double, override v
     override val space = NumericSpace()
     override val dist get() = CanonicalHalfNormalDistribution(half)
     override val shift get() = center
+    override fun identify() = "halfnorm:$half:$mean:$stdev"
 }
-
 
 @Serializable
 sealed class PiecewiseDistribution: ContinuousProbabilityDistribution {
@@ -360,6 +371,7 @@ data class SplitNormalDistribution(val center: Double, val s1: Double, val s2: D
     )
     val variance get() =  (1 - 2.0/PI) * (s2-s1).pow(2) + s1*s2
     override val stdev get() = sqrt( variance )
+    override fun identify() = "splitnorm:$center:$s1:$s2"
 }
 
 @Serializable
@@ -379,6 +391,7 @@ data class TruncatedSplitNormalDistribution(override val space: NumericSpace, va
     )
     override val stdevIsDiscretized = true
     override val stdev get() = discretize().stdev
+    override fun identify() = "trunc_sn:$center:$s1:$s2"
     companion object {
         fun findByCI(space:NumericSpace, center: Double, lowerProb: Double, lowerPos: Double,
                      upperProb: Double, upperPos: Double): TruncatedSplitNormalDistribution {
@@ -461,6 +474,8 @@ data class TruncatedCanonicalNormalDistribution(
 
     override val stdev: Double
         get() = sqrt(1 - (b*dist.pdf(b) - a*dist.pdf(a)) / pIn - ((dist.pdf(b) - dist.pdf(a)) / pIn).pow(2))
+
+    override fun identify() = "trunc_canon_norm"
 }
 
 @Serializable
@@ -477,6 +492,8 @@ data class TruncatedNormalDistribution(
 
     override val preferredCICenter get() = pseudoMean
     override val description get() = "${space.formatValue(pseudoMean)} ± ${space.formatDifference(pseudoStdev)}"
+
+    override fun identify() = "trunc_norm:$pseudoMean:$pseudoStdev"
 }
 
 
