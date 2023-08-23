@@ -65,11 +65,14 @@ val ExactEstimateDialog = FC<ExactEstimateDialogProps> { props ->
             }
 
             is NumericSpace -> {
-                val dist = appState.myPredictions[props.question.ref]?.dist as TruncatedNormalDistribution?
-                SymmetricNumericExactEstimateDialog {
-                    +props
-                    myPredictionDist = dist
-                    this.space = answerSpace
+                val dist = appState.myPredictions[props.question.ref]?.dist
+                when (dist) {
+                    is TruncatedNormalDistribution ->
+                    SymmetricNumericExactEstimateDialog {
+                        +props
+                        myPredictionDist = dist
+                        this.space = answerSpace
+                    }
                 }
             }
         }
