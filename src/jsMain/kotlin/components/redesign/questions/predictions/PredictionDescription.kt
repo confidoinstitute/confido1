@@ -293,7 +293,7 @@ val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
                 }
             }
 
-            is TruncatedNormalDistribution -> {
+            is ContinuousProbabilityDistribution -> {
                 val confidenceColor = Color("#00C2FF")
                 val rangeColor = Color("#0066FF")
                 ReactHTML.div {
@@ -304,7 +304,11 @@ val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
                     }
                     ReactHTML.b {
                         css { this.color = MainPalette.center.color }
-                        +dist.space.formatValue(dist.pseudoMean)
+                        +dist.space.formatValue(when (dist) {
+                            is TruncatedNormalDistribution -> dist.pseudoMean
+                            is TruncatedSplitNormalDistribution -> dist.center
+                            else -> dist.median
+                        })
                     }
                     +"."
                 }
