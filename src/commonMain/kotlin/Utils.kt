@@ -90,7 +90,14 @@ open class List2<out T>(val lst: List<T>) : List<T> by lst {
     fun component3(): Nothing = throw IndexOutOfBoundsException()
     fun component4(): Nothing = throw IndexOutOfBoundsException()
     fun component5(): Nothing = throw IndexOutOfBoundsException()
+
 }
+
+fun<T> List2<T>.replace1(new1: T) = List2(new1, e2)
+fun<T> List2<T>.replace2(new2: T) = List2(e1, new2)
+fun<T> List2<T>.replace(index: Int, new: T) = if (index == 0) replace1(new)
+                                                else if (index == 1) replace2(new)
+                                                else throw IllegalArgumentException()
 
 fun String.mapFirst(f: (Char) -> String): String = if (isEmpty()) "" else f(this[0]) + this.substring(1)
 fun String.capFirst() = mapFirst { it.uppercase() }
@@ -239,10 +246,10 @@ fun binarySearch(initialRange: ClosedFloatingPointRange<Double>, desiredValue: D
                 decreasing: Boolean = false, f: (Double) -> Double): ClosedFloatingPointRange<Double> {
     var curRange = initialRange
     fun cmp(x: Double) = desiredValue.compareTo(f(x)) * if (decreasing) -1 else 1
-    for (step in 1..maxSteps) {
-        if (cmp(curRange.endInclusive) == 1) curRange = curRange.start .. (2*curRange.endInclusive)
-        else break
-    }
+    //for (step in 1..maxSteps) {
+    //    if (cmp(curRange.endInclusive) == 1) curRange = curRange.start .. (2*curRange.endInclusive)
+    //    else break
+    //}
     for (step in 1..maxSteps) {
         val mid = curRange.mid
         when (cmp(mid)) {
