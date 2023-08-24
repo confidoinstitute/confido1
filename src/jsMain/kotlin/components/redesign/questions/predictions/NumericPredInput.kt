@@ -58,12 +58,13 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
     var ciWidth by useState(propDist?.confidenceInterval(0.8)?.size?.coerceIn(0.0..maxCIWidth))
     var dragging by useState(false)
     val ciRadius = ciWidth?.let { it / 2.0 }
-    val minCIRadius = props.zoomState.paperDistToContent(20.0) // do not allow the thumbs to overlap too much
+    val minCIRadiusThumb = props.zoomState.paperDistToContent(20.0) // do not allow the thumbs to overlap too much
+    val minCIRadius = props.zoomState.paperDistToContent(3.0)
     val predictionTerminology = props.question?.predictionTerminology ?: PredictionTerminology.ANSWER
     val ci = if (center != null && ciWidth != null) {
-        if (center!! + ciRadius!! > space.max) (space.max - ciWidth!!)..space.max
-        else if (center!! - ciRadius < space.min) space.min..(space.min + ciWidth!!)
-        else (center!! - ciRadius)..(center!! + ciRadius)
+        if (center!! + ciRadius!! > space.max) List2(space.max - ciWidth!!,space.max)
+        else if (center!! - ciRadius < space.min) List2(space.min,space.min + ciWidth!!)
+        else List2(center!! - ciRadius,center!! + ciRadius)
     } else null
     var didChange by useState(false)
     useEffectOnce { console.log("SLIDER INIT") }
@@ -130,7 +131,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
     val interactVerb = if (layoutMode >= LayoutMode.TABLET) { "Click" } else { "Tap" }
 
     div {
-        key="sliderArea"
+        key = "sliderArea"
         css {
             height = 40.px
             minHeight = 40.px
@@ -143,35 +144,41 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
             SliderTrack {
                 +props
             }
-        if (dist != null)
-            SliderThumb{
-                key = "thumb_left"
-                this.containerElement = props.element
-                this.zoomState = zoomState
-                this.formatSignpost = { v -> space.formatValue(v) }
-                kind = ThumbKind.Left
-                pos = ci!!.start
-                this.disabled = disabled
-                onDrag = { pos, isCommit ->
-                    center?.let { center->
-                        val effectivePos = minOf(pos, center - minCIRadius)
-                        val naturalRadius = center - effectivePos
-                        val newCIWidth = (if (center + naturalRadius > space.max) {
-                             space.max - effectivePos
-                        } else {
-                             2 * naturalRadius
-                        }).coerceIn(0.0..maxCIWidth)
+
+        fun sideThumb(side: Int) {
+            val sideName = listOf("left", "right")[side]
+            multiletNotNull(ci, center) { ci, center ->
+                SliderThumb {
+                    key = "thumb_$sideName"
+                    this.containerElement = props.element
+                    this.zoomState = zoomState
+                    this.formatSignpost = { v -> space.formatValue(v) }
+                    kind = listOf(ThumbKind.Left, ThumbKind.Right)[side]
+                    pos = ci[side]
+                    val coerceRange = if (side == 0) space.min..maxOf(center - minCIRadius, space.min)
+                    else minOf(space.max, center + minCIRadius)..space.max
+                    val coerceRangeThumb = if (side == 0) space.min..maxOf(center - minCIRadiusThumb, space.min)
+                    else minOf(space.max, center + minCIRadiusThumb)..space.max
+                    thumbPos = pos.coerceIn(coerceRangeThumb)
+                    this.disabled = disabled
+                    onDrag = { pos, isCommit ->
+                        val effectivePos = pos.coerceIn(coerceRange)
+                        val naturalRadius = abs(center - effectivePos)
+                        val mirrorPos = (2*center - effectivePos).coerceIn(space.range)
+                        val newCIWidth = abs(effectivePos - mirrorPos).coerceIn(0.0..maxCIWidth)
                         console.log("pos=$pos effectivePos=$effectivePos center=$center minCIradius=$minCIRadius newCIWidth=$newCIWidth")
                         ciWidth = newCIWidth
                         didChange = true
                         update(center, newCIWidth, isCommit)
                     }
-                }
-                onDragStart = { dragging = true }
-                onDragEnd = {
-                    dragging = false
+                    onDragStart = { dragging = true }
+                    onDragEnd = {
+                        dragging = false
+                    }
                 }
             }
+        }
+        if (dist != null) sideThumb(0)
         if (center != null)
             SliderThumb{
                 key = "thumb_center"
@@ -190,32 +197,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
                 onDragStart = { dragging = true }
                 onDragEnd = { dragging = false }
             }
-        if (dist != null)
-            SliderThumb{
-                key = "thumb_right"
-                this.containerElement = props.element
-                this.zoomState = zoomState
-                this.formatSignpost = { v -> space.formatValue(v) }
-                kind = ThumbKind.Right
-                pos = ci!!.endInclusive
-                this.disabled = disabled
-                onDrag = { pos, isCommit->
-                    center?.let { center->
-                        val effectivePos = maxOf(pos, center + minCIRadius)
-                        val naturalRadius = effectivePos - center
-                        val newCIWidth = (if (center - naturalRadius < space.min) {
-                            effectivePos - space.min
-                        } else {
-                             2 * naturalRadius
-                        }).coerceIn(0.0..maxCIWidth)
-                        ciWidth = newCIWidth
-                        didChange = true
-                        update(center, newCIWidth, isCommit)
-                    }
-                }
-                onDragStart = { dragging = true }
-                onDragEnd = { dragging = false }
-            }
+        if (dist != null) sideThumb(1)
         if (!disabled) {
             if (center == null) {
                 div {
@@ -291,7 +273,8 @@ val NumericPredSliderAsym = elementSizeWrapper(FC<NumericPredSliderProps>("Numer
     var center by useState(propDist.center)
     var ci by useState(List2(propDist.icdf(0.1).coerceIn(space.min, center),
                             propDist.icdf(0.9).coerceIn(center, space.max)))
-    val minCIRadius = props.zoomState.paperDistToContent(20.0) // do not allow the thumbs to overlap too much
+    val minCIRadiusThumb = props.zoomState.paperDistToContent(20.0) // do not allow the thumbs to overlap too much
+    val minCIRadius = props.zoomState.paperDistToContent(3.0)
     // For CIWidth -> 0.8 this converges to uniform distribution
     //     CIWidth > 0.8 there is no solution (the distribution would need to be convex) and distribution search
     //     diverges, returns astronomically large stdev and creates weird artivacts
@@ -348,8 +331,10 @@ val NumericPredSliderAsym = elementSizeWrapper(FC<NumericPredSliderProps>("Numer
                 kind = listOf(ThumbKind.Left, ThumbKind.Right)[side]
                 val coerceRange = if (side == 0) space.min..maxOf(center - minCIRadius, space.min)
                                     else minOf(space.max, center+minCIRadius)..space.max
+                val coerceRangeThumb = if (side == 0) space.min..maxOf(center - minCIRadiusThumb, space.min)
+                                        else minOf(space.max, center+minCIRadiusThumb)..space.max
                 pos = ci[side]
-                thumbPos = ci[side].coerceIn(coerceRange)
+                thumbPos = ci[side].coerceIn(coerceRangeThumb)
                 this.disabled = disabled
                 onDrag = { pos, isCommit ->
                     console.log("drag $sideName")
