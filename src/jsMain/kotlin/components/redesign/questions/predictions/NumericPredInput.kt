@@ -305,11 +305,9 @@ val NumericPredSliderAsym = elementSizeWrapper(FC<NumericPredSliderProps>("Numer
             center = propDist.center.coerceIn(space.range)
             ci = List2(propDist.icdf(0.1).coerceIn(space.min, center),
                          propDist.icdf(0.9).coerceIn(center, space.max))
+            console.log("new CI: ${ci.e1} ${ci.e2}")
             didChange = false
         }
-    }
-    val dist = useMemo(space, center, ci.e1, ci.e2) {
-        TruncatedSplitNormalDistribution.findByCI(space, center, 0.1, ci.e1, 0.9, ci.e2)
     }
     fun update(newCenter: Double, newLeft: Double, newRight: Double, isCommit: Boolean): TruncatedSplitNormalDistribution {
         println("upd0")
@@ -348,20 +346,25 @@ val NumericPredSliderAsym = elementSizeWrapper(FC<NumericPredSliderProps>("Numer
                 this.zoomState = zoomState
                 this.formatSignpost = { v -> space.formatValue(v) }
                 kind = listOf(ThumbKind.Left, ThumbKind.Right)[side]
+                val coerceRange = if (side == 0) space.min..maxOf(center - minCIRadius, space.min)
+                                    else minOf(space.max, center+minCIRadius)..space.max
                 pos = ci[side]
+                thumbPos = ci[side].coerceIn(coerceRange)
                 this.disabled = disabled
                 onDrag = { pos, isCommit ->
                     console.log("drag $sideName")
-                    val effectivePos = pos.coerceIn(if (side == 0) space.min..(center - minCIRadius)
-                                                    else (center+minCIRadius)..space.max)
+                    val effectivePos = pos.coerceIn(coerceRange)
                     console.log("center=$center ciOrig=${ci} pos=$pos")
                     val newCi = ci.replace(side, effectivePos)
+                    console.log("ondrag new ci ${ci.e1} ${ci.e2}")
                     ci = newCi
                     didChange = true
                     val newDist = update(center, newCi.e1, newCi.e2, isCommit)
                     val achievedPos = newDist.icdf(quantile)
-                    if (abs(achievedPos - effectivePos) / abs(space.size) > 1e-5)
+                    if (abs(achievedPos - effectivePos) / abs(space.size) > 1e-5) {
+                        console.log("CI fixup $sideName $effectivePos -> $achievedPos")
                         ci = ci.replace(side, achievedPos)
+                    }
                 }
                 onDragStart = { dragging = true }
                 onDragEnd = {
@@ -383,7 +386,7 @@ val NumericPredSliderAsym = elementSizeWrapper(FC<NumericPredSliderProps>("Numer
                 val delta = pos - center
                 val newLeft = (ci.e1 + delta).coerceIn(space.min, pos)
                 val newRight = (ci.e2 + delta).coerceIn(pos, space.max)
-                println("center drag $pos $center $delta $newLeft $newRight")
+                println("center drag $pos $center $delta (${ci.e1} ${ci.e2}) -> ($newLeft $newRight)")
                 center = pos
                 ci = List2(newLeft, newRight)
                 didChange = true

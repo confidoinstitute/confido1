@@ -318,6 +318,7 @@ data class HalfNormalDistribution(val half: Half, val center: Double, override v
 @Serializable
 sealed class PiecewiseDistribution: ContinuousProbabilityDistribution {
 
+    @Transient
     abstract val pieces: List<Pair<ContinuousProbabilityDistribution, Double>>
 
     //XXX called too soon
@@ -328,7 +329,11 @@ sealed class PiecewiseDistribution: ContinuousProbabilityDistribution {
     //}
 
     val weightSum by lazy { pieces.map{it.second}.sum() }
-    val normalizedPieces by lazy { pieces.map{ it.first to it.second/weightSum } }
+    val normalizedPieces by lazy {
+        val np = pieces.map{ it.first to it.second/weightSum }
+        val npf = np.filter { it.second > 1e-5 }
+        npf
+    }
 
     override fun pdf(x: Double)
         = normalizedPieces.firstOrNull { x in it.first.space.range }?.let { it.first.pdf(x) * it.second  } ?: 0.0
@@ -362,9 +367,13 @@ sealed class PiecewiseDistribution: ContinuousProbabilityDistribution {
 }
 
 data class SplitNormalDistribution(val center: Double, val s1: Double, val s2: Double) : PiecewiseDistribution() {
+    @Transient
     val leftHalf = HalfNormalDistribution(Half.LEFT, center, s1)
+    @Transient
     val rightHalf = HalfNormalDistribution(Half.RIGHT, center, s2)
+    @Transient
     override val space = NumericSpace()
+    @Transient
     override val pieces = listOf(
         leftHalf to 1.0/leftHalf.maxDensity,
         rightHalf to 1.0/rightHalf.maxDensity,
@@ -381,42 +390,50 @@ data class TruncatedSplitNormalDistribution(override val space: NumericSpace, va
         check(center >= space.min)
         check(center <= space.max)
     }
+    @Transient
     val leftSpace = space.subspace(space.min, center)
+    @Transient
     val rightSpace = space.subspace(center, space.max)
+    @Transient
     val leftHalf = TruncatedNormalDistribution(leftSpace, center, s1)
+    @Transient
     val rightHalf = TruncatedNormalDistribution(rightSpace, center, s2)
-    override val pieces = listOf(
-        leftHalf to 1.0/leftHalf.maxDensity,
-        rightHalf to 1.0/rightHalf.maxDensity,
-    )
+    @Transient
+    override val pieces = buildList {
+        if (leftSpace.size > 0)
+            add(leftHalf to 1.0 / leftHalf.maxDensity)
+        if (rightSpace.size > 0)
+            add(rightHalf to 1.0 / rightHalf.maxDensity)
+    }
+    @Transient
     override val stdevIsDiscretized = true
     override val stdev get() = discretize().stdev
     override fun identify() = "trunc_sn:$center:$s1:$s2"
     companion object {
         fun findByCI(space:NumericSpace, center: Double, lowerProb: Double, lowerPos: Double,
                      upperProb: Double, upperPos: Double): TruncatedSplitNormalDistribution {
-            val paramRange = (space.size / 100.0 .. space.size * 10.0)
-            println("findByCI ${space.min}..${space.max} ($lowerPos - $center - $upperPos)")
+            val paramRange = (space.size / 1000.0 .. space.size * 10.0)
+            //println("findByCI ${space.min}..${space.max} ($lowerPos - $center - $upperPos)")
             check(center in space.range)
             check(lowerPos in space.range)
             check(upperPos in space.range)
             check(lowerPos <= center)
             check(upperPos >= center)
             var dist = TruncatedSplitNormalDistribution(space, center, (center - space.min) / 3.0, (space.max - center) / 3.0)
-            println("paramRange: $paramRange")
-            println("initialDist: $dist")
-            println("initialLower: ${dist.icdf(lowerProb)}")
-            println("initialUpper: ${dist.icdf(upperProb)}")
+            //println("paramRange: $paramRange")
+            //println("initialDist: $dist")
+            //println("nitialLower: ${dist.icdf(lowerProb)}")
+            //println("initialUpper: ${dist.icdf(upperProb)}")
             repeat(5) {
                 val newS1 = binarySearch(paramRange, lowerPos, decreasing = true) { dist.copy(s1 = it).icdf(lowerProb) }.mid
-                println("newS1: $newS1")
+                //println("newS1: $newS1")
                 val dist1 = dist.copy(s1 = newS1)
                 val newS2 = binarySearch(paramRange, upperPos) { dist.copy(s2 = it).icdf(upperProb) }.mid
-                println("newS2: $newS2")
+                //println("newS2: $newS2")
                 val dist2 = dist1.copy(s2 = newS2)
                 dist = dist2
             }
-            println("findByCI done")
+            //println("findByCI done")
             return dist
         }
     }

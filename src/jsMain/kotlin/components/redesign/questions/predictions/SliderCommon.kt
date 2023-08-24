@@ -76,6 +76,7 @@ external interface SliderThumbProps : Props {
     var formatSignpost: ((Double)->String)?
     var zoomState: PZState
     var pos: Double
+    var thumbPos: Double?
     var onDrag: ((Double, Boolean)->Unit)?
     var onDragEnd: (()->Unit)?
     var onDragStart: (()->Unit)?
@@ -85,8 +86,10 @@ external interface SliderThumbProps : Props {
 }
 val SliderThumb = FC<SliderThumbProps>("SliderThumb") { props->
     val pos = props.pos
+    val thumbPos = props.thumbPos ?: pos
     val zoomState = props.zoomState
     val posPx = zoomState.contentToViewport(pos)
+    val thumbPosPx = zoomState.contentToViewport(thumbPos)
     val disabled = props.disabled ?: false
     var focused by useState(false)
     var dragFocused by useState(false)
@@ -136,7 +139,7 @@ val SliderThumb = FC<SliderThumbProps>("SliderThumb") { props->
         }
         ref = combineRefs(thumbRef, dragRE)
         style = jso {
-            left = posPx.px
+            left = thumbPosPx.px
         }
         tabIndex = 0 // make focusable
         onFocus = { focused = true }
