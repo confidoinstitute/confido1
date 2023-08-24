@@ -279,18 +279,18 @@ val NumericPredSliderAsym = elementSizeWrapper(FC<NumericPredSliderProps>("Numer
     val layoutMode = useContext(LayoutModeContext)
     val space = props.space as NumericSpace
     val zoomState = props.zoomState
-    val propDist = props.dist?.let { dist ->
+    val propDist = props.dist!!.let { dist ->
         when (dist) {
             is TruncatedSplitNormalDistribution -> dist
             // XXX is this the conversion we want?
             is TruncatedNormalDistribution -> TruncatedSplitNormalDistribution(dist.space, dist.pseudoMean, dist.pseudoStdev, dist.pseudoStdev)
-            else -> null
+            else -> return@FC
         }
     }
     val disabled = props.disabled ?: false
-    var center by useState(propDist?.center)
-    var ciLeft by useState(propDist?.icdf(0.1)?.coerceIn(space.min, center))
-    var ciRight by useState(propDist?.icdf(0.9)?.coerceIn(center, space.max))
+    var center by useState(propDist.center)
+    var ciLeft by useState(propDist.icdf(0.1).coerceIn(space.min, center))
+    var ciRight by useState(propDist.icdf(0.9).coerceIn(center, space.max))
     val minCIRadius = props.zoomState.paperDistToContent(20.0) // do not allow the thumbs to overlap too much
     // For CIWidth -> 0.8 this converges to uniform distribution
     //     CIWidth > 0.8 there is no solution (the distribution would need to be convex) and distribution search
@@ -299,9 +299,9 @@ val NumericPredSliderAsym = elementSizeWrapper(FC<NumericPredSliderProps>("Numer
     val predictionTerminology = props.question?.predictionTerminology ?: PredictionTerminology.ANSWER
     var didChange by useState(false)
     useEffectOnce { console.log("SLIDER INIT") }
-    useEffect(propDist?.center, propDist?.s1, propDist?.s2) {
-        console.log("new propdist ${propDist?.center} ${propDist?.s1} ${propDist?.s2}")
-        propDist?.let {
+    useEffect(propDist.center, propDist.s1, propDist.s2) {
+        console.log("new propdist ${propDist.center} ${propDist.s1} ${propDist.s2}")
+        propDist.let {
             center = propDist.center.coerceIn(space.range)
             ciLeft = propDist.icdf(0.1).coerceIn(space.min, center)
             ciRight = propDist.icdf(0.9).coerceIn(center, space.max)
@@ -309,15 +309,13 @@ val NumericPredSliderAsym = elementSizeWrapper(FC<NumericPredSliderProps>("Numer
         }
     }
     val dist = useMemo(space, center, ciLeft, ciRight) {
-        if (center != null && ciLeft != null && ciRight != null)
-            TruncatedSplitNormalDistribution.findByCI(space, center!!, 0.1, ciLeft!!, 0.9, ciRight!!)
-        else null
+        TruncatedSplitNormalDistribution.findByCI(space, center, 0.1, ciLeft, 0.9, ciRight)
     }
     fun update(newCenter: Double, newLeft: Double, newRight: Double, isCommit: Boolean) {
         println("upd0")
         val newDist = TruncatedSplitNormalDistribution.findByCI(space, newCenter,
-            0.1, newLeft.coerceIn(space.min, newCenter - minCIRadius),
-            0.9, newRight.coerceIn(newCenter + minCIRadius, space.max))
+            0.1, newLeft.coerceIn(space.min, newCenter),
+            0.9, newRight.coerceIn(newCenter, space.max))
         println("upd1")
         props.onChange?.invoke(newDist)
         println("upd2")
@@ -325,44 +323,6 @@ val NumericPredSliderAsym = elementSizeWrapper(FC<NumericPredSliderProps>("Numer
             props.onCommit?.invoke(newDist)
         println("upd3")
     }
-    val createEstimateRE = usePureClick<HTMLDivElement> { ev->
-        if (center == null) {
-            val newCenter = props.zoomState.viewportToContent(ev.offsetX)
-            props.onCenterChange?.invoke(newCenter)
-            center = newCenter
-            didChange = true
-        }
-    }
-    fun setCIBoundary(desiredCIBoundary: Double) {
-        if (dist == null) {
-            center?.let { center ->
-                val desiredCIRadius = abs(center - desiredCIBoundary)
-                val mirrorPos = (2*center - desiredCIBoundary).coerceIn(space.range)
-                var (newLeft, newRight) = listOf(mirrorPos, desiredCIBoundary).sorted()
-
-                didChange = true
-                update(center, newLeft, newRight, true)
-            }
-        }
-    }
-    val setUncertaintyRE = usePureClick<HTMLDivElement> { ev->
-        // set ciWidth so that a blue thumb ends up where you clicked
-        console.log("zs=${props.zoomState} center=${center}")
-        val desiredCIBoundary =
-            props.zoomState.viewportToContent(ev.clientX.toDouble() - props.element.getBoundingClientRect().left)
-        setCIBoundary(desiredCIBoundary)
-    }
-    fun simulateClick(spaceX: Double) {
-        if (center == null) center = spaceX
-        else if (dist == null) setCIBoundary(spaceX)
-    }
-    props.simulateClickRef?.let { it.current = ::simulateClick }
-    //useEffect(dist?.pseudoMean, dist?.pseudoStdev, didChange) {
-    //    if (didChange) dist?.let { props.onChange?.invoke(dist) }
-    //}
-    //useEffect(dist?.pseudoMean, dist?.pseudoStdev, dragging) {
-    //    if (!dragging) dist?.let { props.onCommit?.invoke(dist) }
-    //}
     val interactVerb = if (layoutMode >= LayoutMode.TABLET) { "Click" } else { "Tap" }
 
     div {
@@ -375,131 +335,68 @@ val NumericPredSliderAsym = elementSizeWrapper(FC<NumericPredSliderProps>("Numer
             // overflowX = Overflow.hidden // FIXME apparently, this does not work
             // overflowY = Overflow.visible
         }
-        if (dist != null)
-            SliderTrack {
-                +props
+        SliderTrack {
+            +props
+        }
+        SliderThumb{
+            key = "thumb_left"
+            this.containerElement = props.element
+            this.zoomState = zoomState
+            this.formatSignpost = { v -> space.formatValue(v) }
+            kind = ThumbKind.Left
+            pos = ciLeft
+            this.disabled = disabled
+            onDrag = { pos, isCommit ->
+                console.log("drag left")
+                val effectivePos = pos.coerceIn(space.min, center - minCIRadius)
+                console.log("center=$center ciRight=$ciRight pos=$pos")
+                ciLeft = effectivePos
+                didChange = true
+                update(center, effectivePos, ciRight, isCommit)
             }
-        if (dist != null)
-            SliderThumb{
-                key = "thumb_left"
-                this.containerElement = props.element
-                this.zoomState = zoomState
-                this.formatSignpost = { v -> space.formatValue(v) }
-                kind = ThumbKind.Left
-                pos = ciLeft!!
-                this.disabled = disabled
-                onDrag = { pos, isCommit ->
-                    console.log("drag left")
-                    center?.let { center->
-                        val effectivePos = pos.coerceIn(space.min, center - minCIRadius)
-                        console.log("center=$center ciRight=$ciRight pos=$pos")
-                        ciLeft = effectivePos
-                        didChange = true
-                        update(center, effectivePos, ciRight!!, isCommit)
-                    }
-                }
-                onDragStart = { dragging = true }
-                onDragEnd = {
-                    dragging = false
-                }
+            onDragStart = { dragging = true }
+            onDragEnd = {
+                dragging = false
             }
-        if (center != null)
-            SliderThumb{
-                key = "thumb_center"
-                this.containerElement = props.element
-                this.zoomState = zoomState
-                this.formatSignpost = { v -> space.formatValue(v) }
-                kind = ThumbKind.Center
-                pos = center!!
-                this.disabled = disabled
-                onDrag = { pos, isCommit ->
-                    val delta = pos - center!!
-                    val newLeft = (ciLeft!! + delta).coerceIn(space.min, pos - minCIRadius)
-                    val newRight = (ciRight!! + delta).coerceIn(pos + minCIRadius, space.max)
-                    center = pos
-                    ciLeft = newLeft
-                    ciRight = newRight
-                    didChange = true
-                    if (dist != null) update(pos, newLeft, newRight, isCommit)
-                    else props.onCenterChange?.invoke(pos)
-                }
-                onDragStart = { dragging = true }
-                onDragEnd = { dragging = false }
+        }
+        SliderThumb{
+            key = "thumb_center"
+            this.containerElement = props.element
+            this.zoomState = zoomState
+            this.formatSignpost = { v -> space.formatValue(v) }
+            kind = ThumbKind.Center
+            pos = center
+            this.disabled = disabled
+            onDrag = { pos, isCommit ->
+                val delta = pos - center
+                val newLeft = (ciLeft + delta).coerceIn(space.min, pos)
+                val newRight = (ciRight + delta).coerceIn(pos, space.max)
+                println("center drag $pos $center $delta $newLeft $newRight")
+                center = pos
+                ciLeft = newLeft
+                ciRight = newRight
+                didChange = true
+                update(pos, newLeft, newRight, isCommit)
             }
-        if (dist != null)
-            SliderThumb{
-                key = "thumb_right"
-                this.containerElement = props.element
-                this.zoomState = zoomState
-                this.formatSignpost = { v -> space.formatValue(v) }
-                kind = ThumbKind.Right
-                pos = ciRight!!
-                this.disabled = disabled
-                onDrag = { pos, isCommit->
-                    center?.let { center->
-                        val effectivePos = pos.coerceIn(center + minCIRadius, space.max)
-                        didChange = true
-                        ciRight = effectivePos
-                        update(center, ciLeft!!, effectivePos, isCommit)
-                    }
-                }
-                onDragStart = { dragging = true }
-                onDragEnd = { dragging = false }
+            onDragStart = { dragging = true }
+            onDragEnd = { dragging = false }
+        }
+        SliderThumb{
+            key = "thumb_right"
+            this.containerElement = props.element
+            this.zoomState = zoomState
+            this.formatSignpost = { v -> space.formatValue(v) }
+            kind = ThumbKind.Right
+            pos = ciRight
+            this.disabled = disabled
+            onDrag = { pos, isCommit->
+                val effectivePos = pos.coerceIn(center + minCIRadius, space.max)
+                didChange = true
+                ciRight = effectivePos
+                update(center, ciLeft, effectivePos, isCommit)
             }
-        if (!disabled) {
-            if (center == null) {
-                div {
-                    key = "setCenter"
-                    css {
-                        fontFamily = sansSerif
-                        fontWeight = integer(600)
-                        fontSize = 15.px
-                        lineHeight = 18.px
-                        display = Display.flex
-                        alignItems = AlignItems.center
-                        textAlign = TextAlign.center
-                        justifyContent = JustifyContent.center
-                        color = Color("#6319FF")
-                        flexDirection = FlexDirection.column
-                        height = 100.pct
-                        cursor = Cursor.default
-                    }
-                    +"$interactVerb here to create ${predictionTerminology.aTerm}"
-                    ref = createEstimateRE
-                }
-            } else if (dist == null) {
-                div {
-                    key = "setUncertainty"
-                    css {
-                        val pxCenter = props.zoomState.contentToViewport(center!!)
-                        if (pxCenter < props.elementWidth / 2.0)
-                            paddingLeft = (pxCenter + 20.0).px
-                        else
-                            paddingRight = (props.elementWidth - pxCenter + 20.0).px
-                        fontFamily = sansSerif
-                        fontWeight = integer(600)
-                        fontSize = 15.px
-                        lineHeight = 18.px
-                        display = Display.flex
-                        alignItems = AlignItems.center
-                        textAlign = TextAlign.center
-                        justifyContent = JustifyContent.center
-                        color = Color("#6319FF")
-                        flexDirection = FlexDirection.column
-                        height = 100.pct
-                        cursor = Cursor.default
-                    }
-                    div {
-                        +"$interactVerb here to set uncertainty"
-                        css {
-                            paddingLeft = 10.px
-                            paddingRight = 10.px
-                        }
-                    }
-                    ref = setUncertaintyRE
-                }
-
-            }
+            onDragStart = { dragging = true }
+            onDragEnd = { dragging = false }
         }
     }
 })
