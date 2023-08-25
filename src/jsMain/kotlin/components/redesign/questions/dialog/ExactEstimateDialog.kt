@@ -224,7 +224,7 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
 
     val centerError = pseudoMean?.let {
         if (!space.range.contains(it)) {
-            "The center value has to be within the answer range."
+            "The center value has to be within the answer range (${space.min} to ${space.max})."
         } else {
             null
         }
