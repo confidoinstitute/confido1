@@ -57,9 +57,10 @@ fun ApplicationCall.getSessionIdOrCreateNew(): String {
  * Provides access to user session data.
  *
  * In case a session does not exist, setting a value will create a new session.
+ * In case the session has expired, ignore it.
  */
 val ApplicationCall.userSession: UserSession?
-    get() = sessionId?.let { serverState.userSessionManager.entityMap[sessionId] }
+    get() = sessionId?.let { serverState.userSessionManager.entityMap[sessionId]?.let {if (it.isExpired()) null else it} }
 
 suspend fun ApplicationCall.setUserSession(value: UserSession?) {
     val id = getSessionIdOrCreateNew()
