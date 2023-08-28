@@ -19,6 +19,7 @@ import react.dom.html.ReactHTML.input
 import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.title
+import tools.confido.state.UserSessionValidity
 import utils.*
 
 val LoginLinkButton = ButtonBase.withStyle {
@@ -110,13 +111,13 @@ val LoginForm = FC<LoginFormProps> { props ->
         login {
             when (mode) {
                 LoginMode.MagicLink -> {
-                    Client.sendData("/login_email/create", SendMailLink(trimmedEmail, "/"), onError = {showError(it)}) {
+                    Client.sendData("/login_email/create", SendMailLink(trimmedEmail, "/", validity = UserSessionValidity.PERMANENT), onError = {showError(it)}) {
                         emailSent = true
                     }
                 }
 
                 LoginMode.Password -> {
-                    Client.sendData("/login", PasswordLogin(trimmedEmail, password), onError = {
+                    Client.sendData("/login", PasswordLogin(trimmedEmail, password, validity = UserSessionValidity.PERMANENT), onError = {
                         if (status == HttpStatusCode.Unauthorized) {
                             passwordError = "Wrong password or email. Please try again."
                             password = ""

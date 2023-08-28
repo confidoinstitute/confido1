@@ -3,6 +3,7 @@ package payloads.requests
 import kotlinx.serialization.Serializable
 import rooms.RoomRole
 import tools.confido.refs.Ref
+import tools.confido.state.UserSessionValidity
 import users.User
 
 /**
@@ -21,6 +22,7 @@ data class AcceptInviteAndCreateUser(
     val inviteToken: String,
     val userNick: String?,
     val email: String?,
+    val validity: UserSessionValidity,
 )
 
 /**

@@ -24,6 +24,8 @@ import react.dom.html.ReactHTML.em
 import react.router.useNavigate
 import rooms.Room
 import tools.confido.refs.eqid
+import tools.confido.state.UserSessionValidity
+import tools.confido.state.UserSessionValidity.*
 import tools.confido.utils.TOKEN_LEN
 import utils.*
 import web.location.location
@@ -96,7 +98,8 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                         AcceptInviteAndCreateUser(
                             props.inviteToken,
                             name.trim().ifEmpty { null },
-                            userMail
+                            userMail,
+                            PERMANENT,
                         ),
                         onError = { showError(it) }
                     ) {

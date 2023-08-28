@@ -13,10 +13,12 @@ import kotlinx.js.*
 import mui.material.*
 import mui.material.Container
 import mui.system.sx
+import payloads.requests.UsernameLogin
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.input
 import tools.confido.refs.*
+import tools.confido.state.UserSessionValidity
 import users.*
 import utils.*
 
@@ -77,7 +79,7 @@ val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
     val autocomplete: FC<AutocompleteProps<User>> = Autocomplete
     fun attemptLogin() = login {
         chosenUser?.let {
-            Client.sendData("/login_users", it.ref, onError = { showError(it) }) {
+            Client.sendData("/login_users", UsernameLogin(it.ref, validity = UserSessionValidity.PERMANENT), onError = { showError(it) }) {
                 loginState.login()
             }
         }

@@ -2,6 +2,8 @@
 
 package tools.confido.refs
 
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -27,6 +29,14 @@ interface HasId {
 
 interface Entity: HasId {
 }
+interface HasExpiration {
+    val expiryTime: Instant
+    fun isExpired() = Clock.System.now() > expiryTime
+}
+
+interface ExpiringEntity: Entity, HasExpiration
+
+
 inline fun <reified T: ImmediateDerefEntity> Ref<T>.deref(): T? {
     @OptIn(DelicateRefAPI::class)
     return globalState.derefNonBlocking(T::class, id) as T?

@@ -4,7 +4,6 @@ import browser.document
 import components.layout.*
 import components.redesign.Header
 import csstype.*
-import ext.helmet.Helmet
 import kotlinx.js.jso
 import mui.material.*
 import mui.material.styles.PaletteColor
@@ -135,11 +134,11 @@ fun mobileFlag(): Boolean {
     return version == "mobile"
 }
 
+fun cookieSet() = document.cookie.contains("\\bsession=".toRegex())
+
 val App = FC<Props> {
     // TODO: initial state from cookie
-    // TODO: react to cookie change?
-    val sessionCookieExists = document.cookie.contains("session")
-    var isLoggedIn by useState(sessionCookieExists)
+    var isLoggedIn by useState(cookieSet())
 
     val mobileFlag = mobileFlag()
 

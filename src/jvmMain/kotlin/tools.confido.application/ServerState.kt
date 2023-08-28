@@ -6,11 +6,11 @@ import com.mongodb.ConnectionString
 import com.mongodb.client.model.Filters.and
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.reactivestreams.client.ClientSession
-import io.ktor.server.html.*
 import io.ktor.util.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
 import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.*
@@ -30,7 +30,7 @@ import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
 import kotlin.reflect.KClass
-import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -133,6 +133,10 @@ object serverState : GlobalState() {
         }
 
     }
+    interface ExpiringEntityManager<E: HasExpiration> {
+        suspend fun cleanupExpired()
+    }
+
     open class IdBasedEntityManager<E: HasId>(mongoCollection: CoroutineCollection<E>) : EntityManager<E>(mongoCollection) {
         open suspend fun get(id: String): E? {
             return mongoCollection.findOneById(id)
@@ -228,6 +232,17 @@ object serverState : GlobalState() {
             onEntityDeleted { entityMap.remove(it.id) }
         }
         // FIXME move general parts to EntityManager to handle case when all entities are not cached in memory
+    }
+
+    open class InMemoryExpiringEntityManager<E: ExpiringEntity>(mongoCollection: CoroutineCollection<E>, val tolerance: Duration = 0.seconds)
+        : InMemoryEntityManager<E>(mongoCollection), ExpiringEntityManager<E> {
+        override suspend fun cleanupExpired() {
+            val now = Clock.System.now()
+            this.entityMap.values.forEach {
+                if (now > it.expiryTime + tolerance)
+                    this.deleteEntity(it.id)
+            }
+        }
     }
 
     val managers : MutableMap<KClass<*>, EntityManager<*>> = mutableMapOf()
@@ -479,9 +494,7 @@ object serverState : GlobalState() {
         }
     }
 
-    object userSessionManager : InMemoryEntityManager<UserSession>(database.getCollection("userSessions")) {
-        // TODO automatic cleanup of expired sessions
-    }
+    object userSessionManager : InMemoryExpiringEntityManager<UserSession>(database.getCollection("userSessions"))
     init {
         roomManager.register()
         questionManager.register()

@@ -2,8 +2,9 @@ package tools.confido.application.sessions
 
 import io.ktor.server.application.*
 import io.ktor.util.*
+import tools.confido.refs.ref
 import tools.confido.state.UserSession
-import tools.confido.state.deleteEntity
+import tools.confido.state.UserSessionValidity
 import tools.confido.state.serverState
 import users.User
 
@@ -64,19 +65,26 @@ suspend fun ApplicationCall.setUserSession(value: UserSession?) {
     val id = getSessionIdOrCreateNew()
     if (value == null) {
         serverState.userSessionManager.deleteEntity(id, ignoreNonexistent = true)
+        clearCookie(this)
     } else {
         serverState.userSessionManager.replaceEntity(value.copy(id = id), upsert = true)
     }
 }
 
+
 suspend fun ApplicationCall.modifyUserSession(modify: (UserSession) -> UserSession) =
     serverState.withMutationLock {
         val id = getSessionIdOrCreateNew()
-        val oldSession = userSession ?: UserSession(id = id)
-        val newSession = modify(oldSession)
+        val oldSession = userSession ?: UserSession(id = id, validity = UserSessionValidity.TRANSIENT)
+        val newSession = modify(oldSession).renew()
         setUserSession(newSession)
         newSession
     }
+
+suspend fun ApplicationCall.loginUserSession(user: User, validity: UserSessionValidity) = modifyUserSession {
+    it.copy(userRef = user.ref, validity = validity)
+}
+suspend fun ApplicationCall.renewUserSession() = modifyUserSession {it}
 
 suspend fun ApplicationCall.destroyUserSession() = setUserSession(null)
 
@@ -129,8 +137,8 @@ class SessionTracker {
     }
 
     fun send(call: ApplicationCall) {
-        val sessionId = this.sessionId(call) ?: return
-        sendCookie(call, sessionId)
+        val session = call.userSession ?: return
+        sendCookie(call, session.id, session.validity == UserSessionValidity.PERMANENT)
     }
 }
 
