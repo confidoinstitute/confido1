@@ -73,7 +73,9 @@ open class List2<out T>(val lst: List<T>) : List<T> by lst {
     constructor(e1: T, e2: T) : this(listOf(e1,e2))
 
     inline fun <U> map(f: (T) -> U): List2<U> = List2(lst.map(f))
+    inline fun <U> mapIndexed(f: (Int, T) -> U): List2<U> = List2(lst.mapIndexed(f))
     inline fun <U> zip(other: List2<U>): List2<Pair<T,U>> = List2(lst.zip(other))
+    inline fun <U,R> zip(other: List2<U>, fn: (T,U)->R): List2<R> = List2(lst.zip(other, fn))
     inline fun <K: Comparable<K>> sortedBy(crossinline f: (T) -> K): List2<T> = List2(lst.sortedBy(f))
     fun reversed() = List2(lst.reversed())
     override val size get() = 2

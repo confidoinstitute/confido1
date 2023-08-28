@@ -7,8 +7,6 @@ import components.redesign.basic.css
 import components.redesign.basic.sansSerif
 import components.redesign.forms.*
 import components.redesign.questions.predictions.NumericPredGraph
-import components.redesign.questions.predictions.PredictionGraph
-import components.redesign.questions.predictions.findDistribution
 import components.showError
 import csstype.*
 import emotion.react.css
@@ -29,8 +27,7 @@ import tools.confido.refs.ref
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.NumericSpace
 import tools.confido.spaces.Space
-import tools.confido.utils.formatPercent
-import tools.confido.utils.toFixed
+import tools.confido.utils.*
 import kotlin.math.abs
 
 external interface ExactEstimateDialogProps : Props {
@@ -191,6 +188,13 @@ private val numericTextBoxClass = emotion.css.ClassName {
 }
 
 val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { props ->
+
+    fun findDistribution(space: NumericSpace, center: Double, ciWidth: Double): TruncatedNormalDistribution {
+        val pseudoStdev = binarySearch(0.0..4*ciWidth, ciWidth, 30) {
+                TruncatedNormalDistribution(space, center, it).confidenceInterval(0.8).size
+            }.mid
+        return TruncatedNormalDistribution(space, center, pseudoStdev)
+    }
     val submitLock = useCoroutineLock()
     val space = props.space
     val confidence = 0.8

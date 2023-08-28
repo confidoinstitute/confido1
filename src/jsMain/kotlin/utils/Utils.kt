@@ -17,6 +17,7 @@ import kotlinx.datetime.*
 import kotlinx.js.WeakMap
 import kotlinx.js.get
 import kotlinx.js.jso
+import react.StateInstance
 import react.useEffect
 import react.useMemo
 import react.useState
@@ -30,6 +31,7 @@ import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.js.Date
 import kotlin.math.ceil
 import kotlin.math.floor
+import kotlin.reflect.KProperty
 
 // Build an object which does not have properly defined interface
 inline fun <T: Any> buildObject(init: dynamic.() -> Unit): T =
@@ -230,3 +232,12 @@ fun Window.addEventListener(type: String, callback: (Event)->Unit, options: dyna
     addEventListener(type, callback.unsafeCast<(LegacyEvent)->Unit>(), options)
 fun Window.removeEventListener(type: String, callback: (Event)->Unit, options: dynamic = jso<dynamic>()) =
     removeEventListener(type, callback.unsafeCast<(LegacyEvent)->Unit>(), options)
+
+// HACK to allow defining class properties as "by useState"
+inline operator fun <T, U> StateInstance<T>.getValue(thisRef: U, property: KProperty<*>) : T =
+    asDynamic()[0]
+inline operator fun <T, U> StateInstance<T>.setValue(
+    thisRef: U,
+    property: KProperty<*>,
+    value: T,
+) { asDynamic()[1](value) }
