@@ -8,8 +8,9 @@ import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.label
+import utils.except
 
-external interface FormSwitchProps : InputHTMLAttributes<HTMLInputElement>, PropsWithPalette<Palette> {
+external interface FormSwitchProps : CheckboxProps {
     var component: FC<CheckboxProps>?
     var label: String
     var comment: String
@@ -39,7 +40,7 @@ val FormSwitch = FC<FormSwitchProps> { props ->
                 +props.label
             }
             (props.component ?: Switch) {
-                +props
+                +props.except("label", "comment")
             }
         }
 

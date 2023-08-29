@@ -11,12 +11,14 @@ interface Palette {
 val UIGrayBg = Color("#F2F2F2")
 
 
+
 enum class TextPalette(override val color: Color): Palette {
     white(Color("#FFFFFF")),
     black(Color("#000000")),
     almostBlack(Color("#222222")),
     gray(Color("#DDDDDD")),
     action(Color("#631AFF")),
+    login(Color("#6733DA")),
 
     ;
     val hoverColor: Color get() = Color(color.toString() + "10")
@@ -32,6 +34,7 @@ enum class MainPalette(override val color: Color, override val text: TextPalette
     primary(Color("#6319FF"), TextPalette.white),
     secondary(Color("#00C2FF"), TextPalette.white),
     login(Color("#6733DA"), TextPalette.white),
+    loginInverted(Color("#FFFFFF"), TextPalette.login),
     center(Color("#FF8A00"), TextPalette.white),
 }
 
@@ -58,14 +61,14 @@ external interface PropsWithPalette<P: Palette>: Props {
 }
 
 val RGB_RE = Regex("^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$")
-fun Color.addAlpha(alpha: String): Color {
+fun Color.addAlpha(alpha: Double): Color {
     val s = this.toString()
     val m = RGB_RE.matchEntire(s)
     if (m == null) return this // cannot handle this color
     val r = m.groupValues[1].toInt(16)
     val g = m.groupValues[2].toInt(16)
     val b = m.groupValues[3].toInt(16)
-    return Color("rgba($r,$g,$b,$alpha)")
+    return rgba(r,g,b,alpha)
 }
 
 val RoomColor.palette: RoomPalette get() {

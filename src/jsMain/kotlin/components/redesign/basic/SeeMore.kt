@@ -49,7 +49,7 @@ val SeeMore = FC<SeeMoreProps> {props->
                         whiteSpace = WhiteSpace.nowrap
                         background = linearGradient(
                             90.deg,
-                            stop(props.backgroundColor.addAlpha("0%"), 0.px),
+                            stop(props.backgroundColor.addAlpha(0.0), 0.px),
                             stop(props.backgroundColor, 65.px),
                             stop(props.backgroundColor, 100.pct),
                         )

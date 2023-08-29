@@ -37,6 +37,11 @@ val LoginLinkButton = ButtonBase.withStyle {
     }
 }
 
+val LoginCheckbox = FormSwitch.withStyle {
+    fontSize = 15.px
+    lineHeight = 18.px
+}
+
 external interface LoginInputProps : InputHTMLAttributes<HTMLInputElement> {
     var error: Boolean
 }
@@ -91,6 +96,7 @@ val LoginForm = FC<LoginFormProps> { props ->
     val loginState = useContext(LoginContext)
     var email by useState(props.prefilledEmail ?: "")
     var password by useState("")
+    var permanent by useState(true)
 
     var mode by useState(LoginMode.MagicLink)
     var emailSent by useState(false)
@@ -111,13 +117,13 @@ val LoginForm = FC<LoginFormProps> { props ->
         login {
             when (mode) {
                 LoginMode.MagicLink -> {
-                    Client.sendData("/login_email/create", SendMailLink(trimmedEmail, "/", validity = UserSessionValidity.PERMANENT), onError = {showError(it)}) {
+                    Client.sendData("/login_email/create", SendMailLink(trimmedEmail, "/", validity = UserSessionValidity.fromBool(permanent)), onError = {showError(it)}) {
                         emailSent = true
                     }
                 }
 
                 LoginMode.Password -> {
-                    Client.sendData("/login", PasswordLogin(trimmedEmail, password, validity = UserSessionValidity.PERMANENT), onError = {
+                    Client.sendData("/login", PasswordLogin(trimmedEmail, password, validity = UserSessionValidity.fromBool(permanent)), onError = {
                         if (status == HttpStatusCode.Unauthorized) {
                             passwordError = "Wrong password or email. Please try again."
                             password = ""
@@ -224,6 +230,18 @@ val LoginForm = FC<LoginFormProps> { props ->
                     this.palette = MainPalette.default
                     disabled = emailSent || login.running
                     +"Log in"
+                }
+                FormSwitch {
+                    css {
+                        ".Checkbox" {
+                            backgroundColor = Color("#ffffff80")
+                        }
+                    }
+                    this.palette = MainPalette.loginInverted
+                    component = Checkbox
+                    label = "Keep me logged in"
+                    checked = permanent
+                    onChange = { e -> permanent = e.target.checked }
                 }
             }
         }

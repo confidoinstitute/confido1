@@ -11,7 +11,14 @@ import kotlin.time.Duration.Companion.hours
 
 enum class UserSessionValidity(val validTime: Duration) {
     TRANSIENT(3.hours),
-    PERMANENT(90.days),
+    PERMANENT(90.days);
+
+    companion object {
+        fun fromBool(permanent: Boolean) = when(permanent) {
+            true -> PERMANENT
+            false -> TRANSIENT
+        }
+    }
 }
 
 @Serializable
