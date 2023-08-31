@@ -1,28 +1,25 @@
 package components.redesign.questions.predictions
 
-import components.redesign.AsymmetricGaussIcon
-import components.redesign.SymmetricGaussIcon
-import components.redesign.basic.*
-import components.redesign.forms.Switch
-import components.redesign.forms.SwitchProps
+import components.redesign.basic.PropsWithElementSize
+import components.redesign.basic.Stack
+import components.redesign.basic.elementSizeWrapper
+import components.redesign.basic.sansSerif
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.PredictionOverlay
 import csstype.*
 import dom.html.HTMLDivElement
-import emotion.css.*
-import emotion.react.*
+import emotion.react.css
 import hooks.usePureClick
 import react.*
 import react.dom.html.ReactHTML.div
-import tools.confido.distributions.*
+import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.question.PredictionTerminology
 import tools.confido.question.Question
-import tools.confido.spaces.*
-import tools.confido.utils.*
-import utils.panzoom1d.PZParams
+import tools.confido.spaces.NumericSpace
+import tools.confido.spaces.NumericValue
+import tools.confido.utils.multiletNotNull
 import utils.panzoom1d.PZState
-import kotlin.math.*
 
 
 external interface NumericPredInputProps : PredictionInputProps {
