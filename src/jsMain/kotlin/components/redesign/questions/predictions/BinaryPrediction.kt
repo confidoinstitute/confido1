@@ -146,9 +146,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
     }
     fun update(newProb: Double, isCommit: Boolean) {
         yesProb = newProb
-        props.onChange?.invoke(BinaryDistribution(newProb))
-        if (isCommit)
-            props.onCommit?.invoke(BinaryDistribution(newProb))
+        props.onChange?.invoke(BinaryDistribution(newProb), isCommit)
     }
     val clickRE = usePureClick<HTMLDivElement> { ev->
 
@@ -314,11 +312,10 @@ val BinaryPredInput = FC<PredictionInputProps> { props->
         BinaryPredSlider {
             this.space = props.space
             this.dist = props.dist
-            this.onChange = {
-                previewDist = (it as BinaryDistribution)
-                props.onChange?.invoke(it)
+            this.onChange = { newDist, isCommit->
+                previewDist = (newDist as BinaryDistribution)
+                props.onChange?.invoke(newDist, isCommit)
             }
-            this.onCommit = props.onCommit
             this.disabled = props.disabled
         }
     }

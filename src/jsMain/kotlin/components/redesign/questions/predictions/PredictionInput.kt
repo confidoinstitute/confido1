@@ -10,8 +10,7 @@ external interface PredictionInputProps : Props {
     var dist: ProbabilityDistribution?
     var resolution: Value?
     var question: Question?
-    var onChange: ((ProbabilityDistribution) -> Unit)?
-    var onCommit: ((ProbabilityDistribution) -> Unit)?
+    var onChange: ((ProbabilityDistribution, Boolean) -> Unit)?
     var disabled: Boolean?
 }
 

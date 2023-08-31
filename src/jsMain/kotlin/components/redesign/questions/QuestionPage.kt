@@ -356,17 +356,16 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                         this.question = question
                         this.resolution = question.resolution
                         if (question.open) {
-                            this.onChange = {
-                                pendingPrediction = null
-                                console.log("ONCHANGE")
-                                pendingPredictionState = PendingPredictionState.NONE
-                                predictionPreview = it
-                            }
-                            this.onCommit = {
-                                console.log("ONCOMMIT")
-                                pendingPredictionState = PendingPredictionState.MAKING
-                                pendingPrediction = it
-                                predictionPreview = null
+                            this.onChange = { newDist, isCommit->
+                                if (isCommit) {
+                                    pendingPredictionState = PendingPredictionState.MAKING
+                                    pendingPrediction = newDist
+                                    predictionPreview = null
+                                } else {
+                                    pendingPredictionState = PendingPredictionState.NONE
+                                    predictionPreview = newDist
+                                    pendingPrediction = null
+                                }
                             }
                         }
                     }
