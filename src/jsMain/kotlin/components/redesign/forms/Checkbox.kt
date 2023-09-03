@@ -18,6 +18,7 @@ external interface CheckboxProps: InputHTMLAttributes<HTMLInputElement>, PropsWi
     var mask: Mask?
     var maskColor: Color?
     var noCheckmark: Boolean?
+    var wrapLabel: Boolean?
 }
 
 val Checkbox = FC<CheckboxProps> { props ->
@@ -26,8 +27,9 @@ val Checkbox = FC<CheckboxProps> { props ->
 
     val checked = checkboxRef.current?.checked ?: false
     val noCheckmark = props.noCheckmark ?: false
+    val wrapComp = if (props.wrapLabel ?: true) label else span
 
-    label {
+    wrapComp {
         css(override=props.className) {
             position = Position.relative
             display = Display.inlineBlock
@@ -125,6 +127,7 @@ external interface SwitchProps: InputHTMLAttributes<HTMLInputElement>, PropsWith
     var activeIconColor: Color?
     var inactiveIconColor: Color?
     var noColor: Boolean?
+    var wrapLabel: Boolean?
 }
 val Switch = FC<SwitchProps> { props ->
     val palette = props.palette ?: MainPalette.primary
@@ -132,7 +135,9 @@ val Switch = FC<SwitchProps> { props ->
     val switchWidth = props.switchWidth ?: 64.0
     val activeIconColor = props.activeIconColor ?: Color("#555555")
     val inactiveIconColor = props.inactiveIconColor ?: Color("#555555").addAlpha("30%")
-    label {
+    val wrapComp = if (props.wrapLabel ?: true) label else span
+
+    wrapComp {
         css {
             width = switchWidth.px
             height = switchHeight.px
