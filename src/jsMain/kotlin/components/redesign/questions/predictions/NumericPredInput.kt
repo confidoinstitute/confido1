@@ -35,7 +35,6 @@ external interface NumericPredSliderProps :  PropsWithElementSize {
     // Fired when only a center is set up but not yet a full distribution
     var onSpecChange: ((NormalishDistSpec, Boolean) -> Unit)?
     var simulateClickRef: SimulateClickRef?
-    var asymmetric: Boolean?
     var spec: NormalishDistSpec?
 }
 

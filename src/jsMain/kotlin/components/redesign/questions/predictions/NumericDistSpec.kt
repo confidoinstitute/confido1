@@ -11,6 +11,7 @@ import kotlin.math.abs
 sealed interface NumericDistSpec {
     val space: NumericSpace
     val dist: ContinuousProbabilityDistribution?
+    val complete: Boolean
     fun identify(): String
 
     fun useDist() = useMemo(identify()) { dist }
@@ -25,36 +26,46 @@ sealed class NormalishDistSpec: NumericDistSpec {
     abstract fun setAsymmetric(newAsymmetric: Boolean): NormalishDistSpec
     open fun coerceToRealistic() = this
 
+    open val minCiRadius get() = space.size / 10000.0
+    val coerceRanges get() =
+        center?.let { center->
+            List2(
+                space.min..maxOf(center - minCiRadius, space.min),
+                minOf(center + minCiRadius, space.max)..space.max
+            )
+        } ?:  List2(space.range, space.range)
+
     companion object {
+
+        val ciConfidence = 0.8
         fun fromDist(dist: ContinuousProbabilityDistribution) =
             when (dist) {
                 is TruncatedSplitNormalDistribution -> NumericDistSpecAsym(dist)
                 is TruncatedNormalDistribution -> NumericDistSpecSym(dist)
-                else -> NumericDistSpecAsym(dist.space, dist.median, List2(dist.icdf(0.1), dist.icdf(0.9)))
+                else -> NumericDistSpecAsym(dist.space, dist.median, List2(dist.icdf((1 - ciConfidence) / 2),
+                        dist.icdf(1 - (1 - ciConfidence) / 2)))
             }
     }
 }
 
 data class NumericDistSpecSym(override val space: NumericSpace, override val center: Double? = null, val ciWidth: Double? = null): NormalishDistSpec() {
     override val asymmetric = false
-    constructor(dist: TruncatedNormalDistribution): this(dist.space, dist.pseudoMean, dist.confidenceInterval(0.8).size)
+    constructor(dist: TruncatedNormalDistribution): this(dist.space, dist.pseudoMean, dist.confidenceInterval(
+        ciConfidence).size)
     override val dist: TruncatedNormalDistribution? by lazy {
         multiletNotNull(center, ciWidth) { center, ciWidth ->
             val pseudoStdev = binarySearch(0.0..4 * ciWidth, ciWidth, 30) {
-                TruncatedNormalDistribution(space, center, it).confidenceInterval(0.8).size
+                TruncatedNormalDistribution(space, center, it).confidenceInterval(ciConfidence).size
             }.mid
             TruncatedNormalDistribution(space, center, pseudoStdev)
         }
     }
+    override val complete = center != null && ciWidth != null
     override fun setCenter(newCenter: Double) = copy (center = newCenter.coerceIn(space.range))
     override fun setCiBoundary(newCiBoundary: Double, side: Int?): NumericDistSpecSym {
         if (center == null) return this
         val effectiveNewBoundary = newCiBoundary.coerceIn(
-            when (side) {
-                0 -> space.min..(center - minCiWidth/2.0)
-                1 -> (center + minCiWidth/2.0) .. space.max
-                else -> space.min..space.max
-            }
+            if (side==null) space.range else coerceRanges[side]
         )
         val desiredCiRadius = abs(center - effectiveNewBoundary)
 
@@ -97,25 +108,19 @@ data class NumericDistSpecSym(override val space: NumericSpace, override val cen
 data class NumericDistSpecAsym(override val space: NumericSpace, override val center: Double?,
                                 val ciRadii: List2<Double>?): NormalishDistSpec() {
     override val asymmetric = true
+    override val complete = center != null && ciRadii != null
     override fun identify() = "S:$center:${ciRadii?.e1}:${ciRadii?.e2}"
     constructor(dist: TruncatedSplitNormalDistribution) : this(dist.space, dist.center,
-        List2(maxOf(dist.center - dist.icdf(0.1), 0.0),
-        maxOf(dist.icdf(0.9) - dist.center, 0.0)))
+        List2(maxOf(dist.center - dist.icdf(ciPercentiles.e1), 0.0),
+        maxOf(dist.icdf(ciPercentiles.e2) - dist.center, 0.0)))
     override val dist: TruncatedSplitNormalDistribution? by lazy {
         center ?: return@lazy null
         ciRadii ?: return@lazy null
         TruncatedSplitNormalDistribution.findByCI(space, center,
-            0.1, (center - ciRadii.e1).coerceIn(coerceRanges.e1),
-            0.9, (center + ciRadii.e2).coerceIn(coerceRanges.e2),
+            ciPercentiles.e1, (center - ciRadii.e1).coerceIn(coerceRanges.e1),
+            ciPercentiles.e2, (center + ciRadii.e2).coerceIn(coerceRanges.e2),
             )
     }
-    val coerceRanges get() =
-        center?.let {
-            List2(
-                space.min..maxOf(center - minCiRadius, space.min),
-                minOf(center + minCiRadius, space.max)..space.max
-            )
-        } ?:  List2(space.range, space.range)
 
     override fun setCenter(newCenter: Double) = copy(center = newCenter.coerceIn(space.range))
 
@@ -129,11 +134,10 @@ data class NumericDistSpecAsym(override val space: NumericSpace, override val ce
         return copy(ciRadii = newRadii)
     }
 
-    val percentiles = List2(0.1, 0.9)
 
     override fun coerceToRealistic(): NumericDistSpecAsym {
         center ?: return this
-        val newCiRadii = (ci ?: return  this).zip(percentiles) { wantedCiBoundary, percentile ->
+        val newCiRadii = (ci ?: return  this).zip(ciPercentiles) { wantedCiBoundary, percentile ->
             val achievedCiBoundary = (dist ?: return this).icdf(percentile)
 
             val newCiBoundary  = if (abs(achievedCiBoundary - wantedCiBoundary) / abs(space.size) > 1e-5) {
@@ -151,9 +155,12 @@ data class NumericDistSpecAsym(override val space: NumericSpace, override val ce
         List2((center - ciRadii.e1).coerceIn(coerceRanges.e1),
             (center + ciRadii.e2).coerceIn(coerceRanges.e2))
     } else null
-    val minCiRadius get() = space.size / 10000.0
 
     fun toSymmetric() = NumericDistSpecSym(space, center, ciRadii?.sum())
     override fun setAsymmetric(newAsymmetric: Boolean) = if (newAsymmetric) this else toSymmetric()
+
+    companion object {
+        val ciPercentiles = List2((1 - ciConfidence) / 2, 1 - (1 - ciConfidence) / 2)
+    }
 }
 

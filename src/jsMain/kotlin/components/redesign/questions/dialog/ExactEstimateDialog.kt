@@ -1,25 +1,26 @@
 package components.redesign.questions.dialog
 
 import components.AppStateContext
-import components.redesign.basic.Dialog
-import components.redesign.basic.MainPalette
-import components.redesign.basic.css
-import components.redesign.basic.sansSerif
+import components.redesign.basic.*
 import components.redesign.forms.*
+import components.redesign.questions.predictions.NormalishDistSpec
+import components.redesign.questions.predictions.NumericDistSpecSym
 import components.redesign.questions.predictions.NumericPredGraph
+import components.redesign.questions.predictions.SymmetrySwitch
 import components.showError
 import csstype.*
+import dom.html.HTMLInputElement
 import emotion.react.css
 import hooks.useCoroutineLock
 import kotlinx.datetime.*
+import kotlinx.js.jso
 import react.*
-import react.dom.html.ButtonType
-import react.dom.html.InputMode
-import react.dom.html.InputType
-import react.dom.html.ReactHTML
+import react.dom.html.*
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.label
 import react.dom.html.ReactHTML.span
 import tools.confido.distributions.BinaryDistribution
+import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.distributions.TruncatedNormalDistribution
 import tools.confido.question.Question
@@ -44,7 +45,7 @@ external interface BinaryExactEstimateDialogProps : ExactEstimateDialogProps {
 }
 
 external interface NumericExactEstimateDialogProps : ExactEstimateDialogProps {
-    var myPredictionDist: TruncatedNormalDistribution?
+    var myPredictionDist: ContinuousProbabilityDistribution?
     override var space: NumericSpace
 }
 
@@ -63,15 +64,13 @@ val ExactEstimateDialog = FC<ExactEstimateDialogProps> { props ->
 
             is NumericSpace -> {
                 val dist = appState.myPredictions[props.question.ref]?.dist
-                when (dist) {
-                    is TruncatedNormalDistribution ->
-                    SymmetricNumericExactEstimateDialog {
-                        +props
-                        myPredictionDist = dist
-                        this.space = answerSpace
-                    }
+                NumericExactEstimateDialog {
+                    +props
+                    myPredictionDist = dist as? ContinuousProbabilityDistribution
+                    this.space = answerSpace
                 }
             }
+            else-> {}
         }
     }
 }
@@ -187,108 +186,18 @@ private val numericTextBoxClass = emotion.css.ClassName {
     textAlign = TextAlign.center
 }
 
-val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { props ->
-
-    fun findDistribution(space: NumericSpace, center: Double, ciWidth: Double): TruncatedNormalDistribution {
-        val pseudoStdev = binarySearch(0.0..4*ciWidth, ciWidth, 30) {
-                TruncatedNormalDistribution(space, center, it).confidenceInterval(0.8).size
-            }.mid
-        return TruncatedNormalDistribution(space, center, pseudoStdev)
-    }
-    val submitLock = useCoroutineLock()
+val NumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { props ->
     val space = props.space
-    val confidence = 0.8
-    // TODO: This limit is shared with NumericPredInput, deduplicate
-    // For CIWidth -> 0.8 this converges to uniform distribution
-    //     CIWidth > 0.8 there is no solution (the distribution would need to be convex) and distribution search
-    //     diverges, returns astronomically large stdev and creates weird artifacts
-    val maxCIWidth = 0.798 * space.size
+    val propDist = props.myPredictionDist
+    var spec by useState(propDist?.let { NormalishDistSpec.fromDist(it) }
+                                        ?: NumericDistSpecSym(space, null, null))
+    val previewDist = spec.useDist()
 
-    var pseudoMean by useState<Double?>(null)
-    var ciRadius by useState<Double?>(null)
+    val submitLock = useCoroutineLock()
 
-    val ciWidth = pseudoMean?.let { center ->
-        ciRadius?.let { radius ->
-            minOf(radius, center - space.min) + minOf(radius, space.max - center)
-        }
-    }
-
-    val lowerBound = ciRadius?.let { pseudoMean?.minus(it) }
-    val upperBound = ciRadius?.let { pseudoMean?.plus(it) }
-
-    var centerText by useState("")
-    var lowerBoundText by useState("")
-    var upperBoundText by useState("")
-
-    // TODO: Input debouncing
-
-    // TODO: Some kind of textbox highlights when set, along with errors
-    var lowerLimitComment by useState<String?>(null)
-    var upperLimitComment by useState<String?>(null)
-
-    val centerError = pseudoMean?.let {
-        if (!space.range.contains(it)) {
-            "The center value has to be within the answer range (${space.min} to ${space.max})."
-        } else {
-            null
-        }
-    }
-    val ciError = ciWidth?.let {
-        if (ciWidth >= maxCIWidth) {
-            "The confidence interval is too wide. Please try a narrower range."
-        } else {
-            pseudoMean?.let { center ->
-                lowerBound?.let { lowerBound ->
-                    if (lowerBound >= center) {
-                        "The start of your confidence interval has to be smaller than the center value"
-                    } else {
-                        upperBound?.let { upperBound ->
-                            if (upperBound <= center) {
-                                "The end of your confidence interval has to be bigger than the center value"
-                            } else {
-                                null
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    val lowerClampCommentText = "The start of your confidence interval has been clamped to the answer range."
-    val higherClampCommentText = "The end of your confidence interval has been clamped to the answer range."
-
-    useEffect(props.myPredictionDist) {
-        props.myPredictionDist?.let { dist ->
-            pseudoMean = dist.pseudoMean
-            val radius = maxOf(
-                abs(dist.confidenceInterval(confidence).start - dist.pseudoMean),
-                abs(dist.confidenceInterval(confidence).endInclusive - dist.pseudoMean)
-            )
-            ciRadius = radius
-            val confidenceInterval = dist.confidenceInterval(confidence)
-            centerText = space.formatValue(dist.pseudoMean, showUnit = false)
-            lowerBoundText = space.formatValue(confidenceInterval.start, showUnit = false)
-            upperBoundText = space.formatValue(confidenceInterval.endInclusive, showUnit = false)
-            if (dist.pseudoMean + radius > space.max) {
-                upperLimitComment = higherClampCommentText
-            }
-            if (dist.pseudoMean - radius < space.min) {
-                lowerLimitComment = lowerClampCommentText
-            }
-        } ?: run {
-            pseudoMean = null
-            ciRadius = null
-            centerText = ""
-            lowerBoundText = ""
-            upperBoundText = ""
-            lowerLimitComment = null
-            upperLimitComment = null
-        }
-    }
-
-    fun readInputValue(text: String): Double? {
-        return if (space.representsDays) {
+    fun parseInputValue(text: String) =
+        if (text == "") null
+        else if (space.representsDays) {
             try {
                 val unixTime = LocalDate.parse(text).atTime(12, 0).toInstant(TimeZone.UTC).epochSeconds
                 unixTime.toDouble()
@@ -298,89 +207,92 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
         } else {
             text.toDoubleOrNull()
         }
+    fun formatForInput(v: Double?) =
+        if (v == null) ""
+        else if (space.representsDays) Instant.fromEpochSeconds(v.toLong()).toLocalDateTime(TimeZone.UTC).date.toString()
+        else v.toFixed(space.reasonableDecimals)
+    var lastEdited by useState(-1)
+    data class ParamInput(
+        val id: Int,
+        val textInput: String,
+        val specValue: Double?,
+        private val setText: StateSetter<String>,
+        val onChange: (Double)->Unit,
+    ) {
+        val numericInput get() = parseInputValue(textInput)
+        val numericOrLast get() = numericInput ?: specValue
+        fun setInput(v: String) {
+            setText(v)
+            lastEdited = id
+            parseInputValue(v)?.let { onChange(it) }
+        }
+        fun setValue(v: Double?) = setText(formatForInput(v))
+        val validNumber get() = (numericInput != null)
+    }
+    fun useParamInput(id: Int, cur: Double?, onChange: (Double)->Unit): ParamInput {
+        val (text, setText) = useState(cur?.toString() ?: "")
+        useEffect(cur) {
+            if (lastEdited != id) setText(formatForInput(cur))
+        }
+        return ParamInput(id, text, cur, setText, onChange)
     }
 
-    fun setCenterText(newText: String) {
-        centerText = newText
-        // The center has shifted, update both confidence interval start and end, keeping the same radius.
-        readInputValue(newText)?.let { newCenter ->
-            pseudoMean = newCenter
+    val centerParam = useParamInput(0, spec.center) { spec = spec.setCenter(it) }
+    val lowerParam = useParamInput(1, spec.ci?.e1) { spec = spec.setCiBoundary(it, 0) }
+    val upperParam = useParamInput(2, spec.ci?.e2) { spec = spec.setCiBoundary(it, 1) }
 
-            ciRadius?.let { ciRadius ->
-                val newUpperBound = if (newCenter + ciRadius > space.max) {
-                    upperLimitComment = higherClampCommentText
-                    space.max
-                } else {
-                    upperLimitComment = null
-                    newCenter + ciRadius
-                }
-                upperBoundText = space.formatValue(newUpperBound, showUnit = false)
-            }
 
-            ciRadius?.let { ciRadius ->
-                val newLowerBound = if (newCenter - ciRadius < space.min) {
-                    lowerLimitComment = lowerClampCommentText
-                    space.min
-                } else {
-                    lowerLimitComment = null
-                    newCenter - ciRadius
-                }
-                lowerBoundText = space.formatValue(newLowerBound, showUnit = false)
-            }
+    useEffect(propDist?.identify()) {
+        if (propDist != null && propDist != previewDist) {
+            val newSpec = NormalishDistSpec.fromDist(propDist)
+            spec = newSpec
+            centerParam.setValue(newSpec.center)
+            lowerParam.setValue(newSpec.ci?.e1)
+            upperParam.setValue(newSpec.ci?.e2)
         }
     }
 
-    fun setLowerBoundText(newText: String) {
-        lowerBoundText = newText
-        // Update the upper bound text as it is symmetric.
-        pseudoMean?.let { center ->
-            readInputValue(newText)?.let {
-                val newRadius = center - it
-                ciRadius = newRadius
-                val newUpperBound = if (center + newRadius > space.max) {
-                    upperLimitComment = higherClampCommentText
-                    space.max
-                } else {
-                    upperLimitComment = null
-                    center + newRadius
+    // TODO: Some kind of textbox highlights when set, along with errors
+    var lowerLimitComment by useState<String?>(null)
+    var upperLimitComment by useState<String?>(null)
+
+    val centerError =
+        if (centerParam.textInput == "") ""
+        else if (centerParam.numericInput == null) "invalid number"
+        else if (!space.range.contains(centerParam.numericInput!!)) {
+            "The center value has to be within the answer range (${space.min} to ${space.max})."
+        } else {
+            null
+        }
+    val ciError =
+            centerParam.numericInput?.let { center ->
+                lowerParam.numericInput?.let { lowerBound ->
+                    if (lowerBound >= center) {
+                        "The start of your confidence interval has to be smaller than the center value"
+                    } else {
+                        upperParam.numericInput?.let { upperBound ->
+                            if (upperBound <= center) {
+                                "The end of your confidence interval has to be bigger than the center value"
+                            } else {
+                                null
+                            }
+                        }
+                    }
                 }
-                upperBoundText = space.formatValue(newUpperBound, showUnit = false)
             }
-        }
-    }
 
-    fun setUpperBoundText(newText: String) {
-        upperBoundText = newText
-        // Update the lower bound text as it is symmetric.
-        pseudoMean?.let { center ->
-            readInputValue(newText)?.let {
-                val newRadius = it - center
-                ciRadius = newRadius
-                val newLowerBound = if (center - newRadius < space.min) {
-                    lowerLimitComment = lowerClampCommentText
-                    space.min
-                } else {
-                    lowerLimitComment = null
-                    center - newRadius
-                }
-                lowerBoundText = space.formatValue(newLowerBound, showUnit = false)
-            }
-        }
-    }
+    val lowerClampCommentText = "The start of your confidence interval has been clamped to the answer range."
+    val higherClampCommentText = "The end of your confidence interval has been clamped to the answer range."
 
-    val estimate = useMemo(pseudoMean, ciRadius, space) {
-        pseudoMean?.let { center ->
-            ciWidth?.let { ciWidth ->
-                findDistribution(space, center, ciWidth.coerceIn(0.0..maxCIWidth))
-            }
-        }
-    }
 
-    fun estimate() {
+
+
+    // XXX this should ideally be handled by a parent PredictionInput instead of
+    // wild-west sending it directly from here
+    fun send() {
         submitLock {
-            estimate?.let { typedEstimate ->
-                val dist: ProbabilityDistribution = typedEstimate
-                Client.sendData("${props.question.urlPrefix}/predict", dist, onError = {
+            previewDist?.let { dist ->
+                Client.sendData("${props.question.urlPrefix}/predict", dist as ProbabilityDistribution, onError = {
                     showError(it)
                 }) {
                     props.onClose?.invoke()
@@ -391,25 +303,32 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
 
     val inputType = if (space.representsDays) { InputType.date } else { InputType.text }
     val inputMode = if (space.representsDays) { null } else { InputMode.numeric }
-    val disabled = estimate == null || ciError != null || centerError != null || submitLock.running
+    val disabled = (!spec.complete) || ciError != null || centerError != null || submitLock.running
 
     val confidenceColor = Color("#00C2FF")
     val rangeColor = Color("#0066FF")
+
+    val inputParams = jso<InputHTMLAttributes<HTMLInputElement>> {
+        type = inputType
+        this.inputMode = inputMode
+        min = space.formatValue(space.min)
+        max = space.formatValue(space.max)
+    }
 
     Dialog {
         open = props.open
         onClose = { props.onClose?.invoke() }
         title = "Set exact ${props.question.predictionTerminology.term}"
         action = "Save"
-        onAction = { estimate() }
+        onAction = { send() }
         disabledAction = disabled
         Form {
-            onSubmit = { estimate() }
+            onSubmit = { send() }
             FormSection {
                 NumericPredGraph {
                     key = "exactPredictionGraph"
                     this.space = space
-                    dist = estimate
+                    dist = previewDist
                     isGroup = false
                 }
                 FormField {
@@ -423,13 +342,10 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
                             css(override = numericTextBoxClass) {
                                 color = MainPalette.center.color
                             }
-                            size = maxOf(1, centerText.length - 4)
-                            value = centerText
-                            type = inputType
-                            this.inputMode = inputMode
-                            min = space.formatValue(space.min)
-                            max = space.formatValue(space.max)
-                            onChange = { e -> setCenterText(e.target.value) }
+                            size = maxOf(1, centerParam.textInput.length - 4)
+                            value = centerParam.textInput
+                            onChange = { e -> centerParam.setInput(e.target.value) }
+                            +inputParams
                         }
                         +" ${space.unit}."
                     }
@@ -439,36 +355,71 @@ val SymmetricNumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { 
                     titleColor = Color("#0066FF")
                     this.comment = "${lowerLimitComment ?: ""} ${upperLimitComment ?: ""}"
                     this.error = ciError
+                    Stack {
+                        div {
+                            className = descriptionTextClass
+                            +"You are "
+                            ReactHTML.b {
+                                css { this.color = confidenceColor }
+                                +"${formatPercent(NormalishDistSpec.ciConfidence, space = false)} "
+                            }
+                            +"confident that the answer is between "
+                            TextInput {
+                                css(override = numericTextBoxClass) {
+                                    color = rangeColor
+                                }
+                                size = maxOf(1, lowerParam.textInput.length - 4)
+                                value = lowerParam.textInput
+                                +inputParams
+                                onChange = { e -> lowerParam.setInput(e.target.value) }
+                            }
+                            +" ${space.unit} and "
+                            TextInput {
+                                css(override = numericTextBoxClass) {
+                                    color = rangeColor
+                                }
+                                size = maxOf(1, upperParam.textInput.length - 4)
+                                value = upperParam.textInput
+                                +inputParams
+                                onChange = { e -> upperParam.setInput(e.target.value) }
+                            }
+                            +" ${space.unit}."
+                        }
+                    }
+                }
+                FormField {
+                    title = "Symmetry"
                     div {
-                        className = descriptionTextClass
-                        +"You are "
-                        ReactHTML.b {
-                            css { this.color = confidenceColor }
-                            +"${formatPercent(confidence, space = false)} "
-                        }
-                        +"confident that the answer is between "
-                        TextInput {
-                            css(override = numericTextBoxClass) {
-                                color = rangeColor
+                        label {
+                            Stack {
+                                direction = FlexDirection.row
+                                css {
+                                    alignItems = AlignItems.center
+                                    fontFamily = sansSerif
+                                    gap = 10.px
+                                }
+                                span {
+                                    css {
+                                        if (!spec.asymmetric) fontWeight = FontWeight.bold
+                                    }
+                                    +"Symmetric"
+                                }
+                                SymmetrySwitch {
+                                    checked = spec.asymmetric
+                                    wrapLabel = false
+                                    onChange = { e ->
+                                        spec = spec.setAsymmetric(e.target.checked)
+                                    }
+                                }
+                                span {
+
+                                    css {
+                                        if (spec.asymmetric) fontWeight = FontWeight.bold
+                                    }
+                                    +"Asymmetric"
+                                }
                             }
-                            size = maxOf(1, lowerBoundText.length - 4)
-                            value = lowerBoundText
-                            type = inputType
-                            this.inputMode = inputMode
-                            onChange = { e -> setLowerBoundText(e.target.value) }
                         }
-                        +" ${space.unit} and "
-                        TextInput {
-                            css(override = numericTextBoxClass) {
-                                color = rangeColor
-                            }
-                            size = maxOf(1, upperBoundText.length - 4)
-                            value = upperBoundText
-                            type = inputType
-                            this.inputMode = inputMode
-                            onChange = { e -> setUpperBoundText(e.target.value) }
-                        }
-                        +" ${space.unit}."
                     }
                 }
                 Button {
