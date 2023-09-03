@@ -6,6 +6,8 @@ import kotlinx.serialization.*
 import kotlinx.serialization.modules.*
 import tools.confido.utils.*
 import kotlin.jvm.JvmName
+import kotlin.math.ceil
+import kotlin.math.log10
 
 
 @Serializable
@@ -109,6 +111,8 @@ data class NumericSpace(
     val size get() = max - min
 
     val range get() = min..max
+
+    val reasonableDecimals get() = ceil(maxOf(-log10(size / 1000), 0.0)).toInt()
 
     fun subspace(min: Double, max: Double): NumericSpace {
         return this.copy(min = maxOf(this.min,min), max = minOf(this.max,max))
