@@ -296,6 +296,7 @@ val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
             is ContinuousProbabilityDistribution -> {
                 val confidenceColor = Color("#00C2FF")
                 val rangeColor = Color("#0066FF")
+                val tailColor = Color("#b08bff")
                 ReactHTML.div {
                     if (props.resolved) {
                         +"You thought that the most probable answer would be around "
@@ -313,7 +314,7 @@ val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
                     +"."
                 }
 
-                val confidence = 0.8
+                val confidence = NormalishDistSpec.ciConfidence
                 val confidenceInterval = dist.confidenceInterval(confidence)
                 ReactHTML.div {
                     if (props.resolved) {
@@ -340,6 +341,34 @@ val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
                         +dist.space.formatValue(confidenceInterval.endInclusive)
                     }
                     +"."
+                }
+                if (dist is TruncatedSplitNormalDistribution) {
+                    listOf(0,1).forEach {side->
+                        ReactHTML.div {
+                            if (props.resolved) {
+                                +"You thought there was a "
+                            } else {
+                                +"You think there is a "
+                            }
+                            val tailProb = (1 - confidence) / 2
+                            val tailPos = dist.icdf(NumericDistSpecAsym.ciPercentiles[side])
+                            ReactHTML.b {
+                                css { this.color = tailColor }
+                                +"${formatPercent(tailProb, space = false)} "
+                            }
+                            if (props.resolved) {
+                                +"probability that the answer would be "
+                            } else {
+                                +"probability that the answer is "
+                            }
+                            +listOf(" lower than ", " higher than ")[side]
+                            ReactHTML.b {
+                                css { this.color = rangeColor }
+                                +"${dist.space.formatValue(tailPos)} "
+                            }
+                            +"."
+                        }
+                    }
                 }
             }
         }
