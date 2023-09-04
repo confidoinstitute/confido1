@@ -238,6 +238,7 @@ val NumericPredInput = FC<NumericPredInputProps>("NumericPredInput") { props->
                 if (spec.ci != null)
                 SymmetrySwitch {
                     checked = spec.asymmetric
+                    this.disabled = props.disabled
                     onChange = { e-> setAsymmetric(e.target.checked) }
                 }
             }
