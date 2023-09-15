@@ -36,12 +36,12 @@ suspend fun <T> RouteBody.withAdmin(body: suspend UserContext.() -> T): T =
 
 fun RouteBody.assertSession() = call.userSession ?: badRequest("Missing session.")
 
-suspend fun RouteBody.initSession(user: User) {
+suspend fun RouteBody.initSession(user: User, validity: UserSessionValidity) {
     if (call.userSession != null) {
         call.destroyUserSession()
     }
 
-    call.setUserSession(UserSession(userRef = user.ref))
+    call.setUserSession(UserSession(userRef = user.ref, validity = validity))
 }
 
 
@@ -60,8 +60,8 @@ fun loginRoutes(routing: Routing) = routing.apply {
             it.copy(lastLoginAt = Clock.System.now())
         }
 
-        initSession(user)
-        call.modifyUserSession { it.copy(userRef = user.ref) }
+        initSession(user, validity = login.validity)
+        call.loginUserSession(user, login.validity)
 
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
@@ -75,7 +75,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
         if (user != null && user.active) {
             val expiration = 15.minutes
             val expiresAt = Clock.System.now().plus(expiration)
-            val link = LoginLink(token = generateToken(), user = user.ref, expiryTime = expiresAt, url = mail.url, sentToEmail = user.email?.lowercase())
+            val link = LoginLink(token = generateToken(), user = user.ref, expiryTime = expiresAt, url = mail.url, sentToEmail = user.email?.lowercase(), validity = mail.validity)
             // The operation to send an e-mail can fail, do not ma
             try {
                 call.mailer.sendLoginMail(mail.email.lowercase(), link, expiration)
@@ -106,8 +106,8 @@ fun loginRoutes(routing: Routing) = routing.apply {
                     it.copy(lastLoginAt = Clock.System.now())
             }
 
-            initSession(user)
-            call.modifyUserSession { it.copy(userRef = loginLink.user) }
+            initSession(user, loginLink.validity)
+            call.loginUserSession(user, loginLink.validity)
             TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK, loginLink.url)
         } finally {
@@ -124,16 +124,16 @@ fun loginRoutes(routing: Routing) = routing.apply {
         }
         // Login by id: log in by only specifying a user ref
         postST("/login_users") {
-            val userRef: Ref<User> = call.receive()
-            val user = userRef.deref() ?: unauthorized("The user does not exist.")
+            val login: UsernameLogin = call.receive()
+            val user = login.username.deref() ?: unauthorized("The user does not exist.")
             if (!user.active) { unauthorized("The user is deactivated.") }
 
             serverState.userManager.modifyEntity(user.ref) {
                 it.copy(lastLoginAt = Clock.System.now())
             }
 
-            initSession(user)
-            call.modifyUserSession { it.copy(userRef = user.ref) }
+            initSession(user, login.validity)
+            call.loginUserSession(user, login.validity)
             TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
@@ -550,8 +550,8 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                         it.copy(members = it.members + listOf(RoomMembership(newUser.ref, invite.role, invite.id)))
                     }
                 }
-                initSession(newUser)
-                call.modifyUserSession { it.copy(userRef = newUser.ref) }
+                initSession(newUser, accept.validity)
+                call.loginUserSession(newUser, accept.validity)
             }
             userAlreadyExists
         }

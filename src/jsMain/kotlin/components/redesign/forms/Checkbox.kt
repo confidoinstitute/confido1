@@ -49,7 +49,7 @@ val Checkbox = FC<CheckboxProps> { props ->
         }
 
         span {
-            css {
+            css(ClassName("Checkbox")) {
                 position = Position.absolute
                 bottom = 0.px
                 left = 0.px

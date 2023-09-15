@@ -1,5 +1,7 @@
 package components.redesign.layout
 
+import components.LoginContext
+import components.cookieSet
 import components.nouser.DevModeSection
 import components.profile.*
 import components.redesign.AboutIcon
@@ -17,9 +19,24 @@ import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.main
 import react.router.*
 import tools.confido.state.*
+import web.timers.clearInterval
+import web.timers.setInterval
+import kotlin.time.Duration.Companion.seconds
 
 val NoUserLayout = FC<Props> {
     val palette = MainPalette.login
+    val loginContext = useContext(LoginContext)
+
+    useEffect {
+        val interval = setInterval(5.seconds) {
+            if (cookieSet())
+                loginContext.login()
+        }
+        cleanup {
+            clearInterval(interval)
+        }
+    }
+
     GlobalCss {
         backgroundColor = palette.color
     }
