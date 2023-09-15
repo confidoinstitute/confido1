@@ -43,6 +43,7 @@ val FormSection = FC<FormSectionProps> { props ->
             backgroundColor = theme.colors.form.background
             gap = 20.px
             padding = 20.px
+            fontFamily = sansSerif
         }
         +props.children
     }

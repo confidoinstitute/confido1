@@ -1,9 +1,11 @@
 package components.redesign.questions.dialog
 
 import components.redesign.CloseIcon
+import components.redesign.basic.sansSerif
 import components.redesign.forms.DateTimeInput
 import components.redesign.forms.FormField
 import components.redesign.forms.IconButton
+import csstype.px
 import kotlinx.datetime.*
 import kotlinx.js.jso
 import react.*
