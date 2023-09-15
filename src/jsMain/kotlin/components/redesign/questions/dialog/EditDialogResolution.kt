@@ -111,7 +111,7 @@ internal val EditQuestionDialogResolution = FC<EditQuestionDialogResolutionProps
                     }
 
                     QuestionType.DATE -> {
-                        DateValueEntry {
+                        DateInput {
                             value = dateResolution
                             placeholder = "Enter the correct answer"
                             required = valueRequired
