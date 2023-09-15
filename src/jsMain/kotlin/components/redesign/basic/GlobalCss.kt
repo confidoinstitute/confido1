@@ -24,6 +24,7 @@ val GlobalCss = FC<GlobalCssProps> { props ->
                 backgroundColor = props.backgroundColor
                 display = Display.flex
                 flexDirection = FlexDirection.column
+                fontFamily = sansSerif
             }
         }
     }
