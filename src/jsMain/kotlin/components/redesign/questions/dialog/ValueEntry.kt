@@ -13,15 +13,6 @@ external interface NumericValueEntryProps : Props {
     var onChange: ((Double?) -> Unit)?
 }
 
-external interface DateValueEntryProps : Props {
-    var placeholder: String
-    var required: Boolean?
-    var value: LocalDate?
-    var onChange: ((LocalDate?) -> Unit)?
-    var onError: (() -> Unit)?
-    var min: Double
-    var max: Double
-}
 
 internal val NumericValueEntry = FC<NumericValueEntryProps>("NumericValueEntry") { props ->
     var value by useState(props.value?.toString() ?: "");
@@ -42,29 +33,6 @@ internal val NumericValueEntry = FC<NumericValueEntryProps>("NumericValueEntry")
             } else {
                 props.onChange?.invoke(null)
             }
-        }
-    }
-}
-internal val DateValueEntry = FC<DateValueEntryProps> { props ->
-    TextInput {
-        type = InputType.date
-        min = props.min
-        max = props.max
-        value = props.value ?: ""
-        placeholder = props.placeholder
-        required = props.required
-        onChange = { event ->
-            val date = try {
-                val value = event.target.value
-                if (value.isEmpty())
-                    null
-                else
-                    LocalDate.parse(event.target.value)
-            } catch (e: Exception) {
-                props.onError?.invoke()
-                null
-            }
-            props.onChange?.invoke(date)
         }
     }
 }
