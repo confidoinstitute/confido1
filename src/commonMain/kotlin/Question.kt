@@ -108,6 +108,16 @@ data class QuestionStateChange(
 )
 
 @Serializable
+data class QuestionSchedule(
+    val open: Instant? = null,
+    val score: Instant? = null,
+    val close: Instant? = null,
+    val resolve: Instant? = null,
+) {
+    fun identify() = "${open}:${score}:${close}:${resolve}"
+}
+
+@Serializable
 data class Question(
     @SerialName("_id")
     override val id: String,
@@ -138,6 +148,7 @@ data class Question(
     val sensitive: Boolean = false,
     val author: Ref<User>? = null,
     val stateHistory: List<QuestionStateChange> = emptyList(),
+    val schedule: QuestionSchedule = QuestionSchedule(),
 ) : ImmediateDerefEntity, HasUrlPrefix {
     init {
         if (resolution != null) {

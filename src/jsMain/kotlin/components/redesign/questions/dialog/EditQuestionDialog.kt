@@ -8,6 +8,7 @@ import components.rooms.*
 import csstype.*
 import emotion.react.*
 import hooks.*
+import kotlinx.datetime.Clock
 import payloads.requests.*
 import react.*
 import react.dom.html.ButtonType
@@ -35,6 +36,8 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
 
+    val isEdit = props.entity != null
+
     var questionTitle by useState(props.entity?.name ?: "")
     var questionDescription by useState(props.entity?.description ?: "")
 
@@ -49,6 +52,9 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     }
     var resolution: Value? by useState(props.entity?.resolution)
     var resolutionValid: Boolean by useState(true)
+
+    // SCHEDULE
+    var schedule by useState(props.entity?.schedule ?: QuestionSchedule())
 
     // ANCHORING
     var groupPredictionVisibility by useState(props.entity?.groupPredictionVisibility ?: GroupPredictionVisibility.ANSWERED)
@@ -82,32 +88,33 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     val questionValid = questionTitle.isNotEmpty() && answerSpaceValid && resolutionValid
 
     val submit = useCoroutineLock()
+    fun assembleQuestion() = if (questionValid) Question(
+        id = props.entity?.id ?: "",
+        stateHistory = props.entity?.stateHistory ?: emptyList(),
+        // QUESTION
+        name = questionTitle,
+        description = questionDescription,
+        // ANSWER
+        answerSpace = answerSpace!!,
+        // RESOLUTION
+        open = questionStatus == QuestionState.OPEN,
+        resolutionVisible = questionStatus == QuestionState.RESOLVED,
+        resolution = resolution,
+        annulled = questionStatus == QuestionState.ANNULLED,
+        // ANCHORING
+        groupPredVisible = groupPredictionVisibility.groupPredVisible,
+        groupPredRequirePrediction = groupPredictionVisibility.groupPredRequirePrediction,
+        // TERMINOLOGY
+        predictionTerminology = predictionTerminology,
+        groupTerminology = groupTerminology,
+        // VISIBILITY
+        visible = isVisible,
+        allowComments = allowComments,
+        sensitive = isSensitive,
+        schedule = schedule,
+    ) else null
     fun submitQuestion() = submit {
-        if (!questionValid) return@submit
-        val question = tools.confido.question.Question(
-            id = props.entity?.id ?: "",
-            stateHistory = props.entity?.stateHistory ?: emptyList(),
-            // QUESTION
-            name = questionTitle,
-            description = questionDescription,
-            // ANSWER
-            answerSpace = answerSpace!!,
-            // RESOLUTION
-            open = questionStatus == QuestionState.OPEN,
-            resolutionVisible = questionStatus == QuestionState.RESOLVED,
-            resolution = resolution,
-            annulled = questionStatus == QuestionState.ANNULLED,
-            // ANCHORING
-            groupPredVisible = groupPredictionVisibility.groupPredVisible,
-            groupPredRequirePrediction = groupPredictionVisibility.groupPredRequirePrediction,
-            // TERMINOLOGY
-            predictionTerminology = predictionTerminology,
-            groupTerminology = groupTerminology,
-            // VISIBILITY
-            visible = isVisible,
-            allowComments = allowComments,
-            sensitive = isSensitive,
-        )
+        val question = assembleQuestion() ?: return@submit
 
         if (props.entity == null) {
             Client.sendData("${room.urlPrefix}/questions/add", question, onError = {showError(it)}) {props.onClose?.invoke()}
@@ -180,6 +187,30 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                         this.onError = {
                             resolution = null
                             resolutionValid = false
+                        }
+                    }
+                }
+            }
+
+            FormSection {
+                title = "Schedule"
+                EditQuestionDialogSchedule {
+                    this.preset = props.preset
+                    this.schedule = schedule
+                    this.showOpen = (isEdit || questionStatus in setOf(QuestionState.CLOSED, QuestionState.OPEN))
+                    this.showClose = (isEdit || questionStatus in setOf(QuestionState.CLOSED, QuestionState.OPEN))
+                    this.showResolve = (isEdit || questionStatus in setOf(QuestionState.CLOSED, QuestionState.OPEN))
+                    this.openPlaceholder = if (isEdit && props.entity?.state == QuestionState.OPEN) "already open"
+                                            else if (questionStatus == QuestionState.OPEN) "immediately"
+                                            else "manually"
+                    this.onChange = {
+                        schedule = it
+                        val now = Clock.System.now()
+                        if (questionStatus == QuestionState.CLOSED && it.open != null && now >= it.open && (it.close == null || now < it.close)) {
+                            questionStatus = QuestionState.OPEN
+                        }
+                        if (questionStatus == QuestionState.OPEN && it.open != null && now < it.open) {
+                            questionStatus = QuestionState.CLOSED
                         }
                     }
                 }
