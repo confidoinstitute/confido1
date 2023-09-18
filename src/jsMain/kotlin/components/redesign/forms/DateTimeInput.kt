@@ -59,6 +59,7 @@ external interface TimeInputProps : PropsWithClassName {
     var onError: (() -> Unit)?
     var min: LocalTime?
     var max: LocalTime?
+    var disabled: Boolean?
     // NOTE placeholders are not supported for date/time inputs by HTML5
 }
 
@@ -70,6 +71,7 @@ val TimeInput = FC<TimeInputProps> { props ->
         if (props.max != null) max = props.max
         value = props.value ?: ""
         required = props.required
+        disabled = props.disabled ?: false
         onChange = { event ->
             val time = try {
                 val value = event.target.value
@@ -135,6 +137,7 @@ val DateTimeInput = FC<DateTimeInputProps> { props->
         },
         TimeInput.create {
             this.value = time
+            this.disabled = (date == null)
             onChange = {
                 time = it
                 update(date, it)

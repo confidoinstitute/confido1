@@ -15,6 +15,13 @@ external interface FormFieldProps : PropsWithChildren, PropsWithClassName {
     var required: Boolean
 }
 
+val FormErrorCSS = emotion.css.ClassName {
+        color = Color("#F35454")
+        fontFamily = sansSerif
+        fontSize = 12.px
+        lineHeight = 14.px
+}
+
 val FormField = FC<FormFieldProps> { props ->
     val notesClass = ClassName("FormGroup-Notes")
 
@@ -67,12 +74,7 @@ val FormField = FC<FormFieldProps> { props ->
         // Error area
         props.error?.let {
             div {
-                css {
-                    color = Color("#F35454")
-                    fontFamily = sansSerif
-                    fontSize = 12.px
-                    lineHeight = 14.px
-                }
+                className = FormErrorCSS
                 +it
             }
         }

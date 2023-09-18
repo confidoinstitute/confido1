@@ -52,6 +52,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     }
     var resolution: Value? by useState(props.entity?.resolution)
     var resolutionValid: Boolean by useState(true)
+    var scheduleValid: Boolean by useState(true)
 
     // SCHEDULE
     var schedule by useState(props.entity?.schedule ?: QuestionSchedule())
@@ -85,7 +86,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     }
 
     // Validity
-    val questionValid = questionTitle.isNotEmpty() && answerSpaceValid && resolutionValid
+    val questionValid = questionTitle.isNotEmpty() && answerSpaceValid && resolutionValid && scheduleValid
 
     val submit = useCoroutineLock()
     fun assembleQuestion() = if (questionValid) Question(
@@ -203,13 +204,15 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                     this.openPlaceholder = if (isEdit && props.entity?.state == QuestionState.OPEN) "already open"
                                             else if (questionStatus == QuestionState.OPEN) "immediately"
                                             else "manually"
-                    this.onChange = {
-                        schedule = it
+                    this.onChange = { newSched, isError ->
+                        schedule = newSched
+                        scheduleValid = !isError
+
                         val now = Clock.System.now()
-                        if (questionStatus == QuestionState.CLOSED && it.open != null && now >= it.open && (it.close == null || now < it.close)) {
+                        if (questionStatus == QuestionState.CLOSED && newSched.open != null && now >= newSched.open && (newSched.close == null || now < newSched.close)) {
                             questionStatus = QuestionState.OPEN
                         }
-                        if (questionStatus == QuestionState.OPEN && it.open != null && now < it.open) {
+                        if (questionStatus == QuestionState.OPEN && newSched.open != null && now < newSched.open) {
                             questionStatus = QuestionState.CLOSED
                         }
                     }
