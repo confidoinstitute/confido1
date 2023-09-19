@@ -20,6 +20,8 @@ external interface DateInputProps : PropsWithClassName {
     var max: LocalDate?
     var id: String?
     var placeholder: String?
+    var disabled: Boolean?
+    var readOnly: Boolean?
 }
 
 internal val DateInput = FC<DateInputProps> { props ->
@@ -28,6 +30,8 @@ internal val DateInput = FC<DateInputProps> { props ->
         this.className = props.className
         type = if (props.value == null && props.placeholder != null && !focused) InputType.text else InputType.date
         placeholder = props.placeholder
+        disabled = props.disabled ?: false
+        readOnly = props.readOnly ?: false
         onFocus = { focused = true }
         onBlur = { focused = false }
         size = 10
@@ -60,6 +64,7 @@ external interface TimeInputProps : PropsWithClassName {
     var min: LocalTime?
     var max: LocalTime?
     var disabled: Boolean?
+    var readOnly: Boolean?
     // NOTE placeholders are not supported for date/time inputs by HTML5
 }
 
@@ -72,6 +77,7 @@ val TimeInput = FC<TimeInputProps> { props ->
         value = props.value ?: ""
         required = props.required
         disabled = props.disabled ?: false
+        readOnly = props.readOnly ?: false
         onChange = { event ->
             val time = try {
                 val value = event.target.value
@@ -100,6 +106,8 @@ external interface DateTimeInputProps : Props {
     var dateProps: DateInputProps?
     var timeProps: TimeInputProps?
     var placeholder: String?
+    var disabled: Boolean?
+    var readOnly: Boolean?
 }
 
 val DateTimeInput = FC<DateTimeInputProps> { props->
@@ -122,6 +130,8 @@ val DateTimeInput = FC<DateTimeInputProps> { props->
         DateInput.create {
             this.value = date
             this.placeholder = props.placeholder
+            this.disabled = props.disabled == true
+            this.readOnly = props.readOnly
             onChange = {newDate ->
                 date = newDate
                 val newTime = if (newDate != null && time == null && props.defaultTime != null) {
@@ -137,7 +147,8 @@ val DateTimeInput = FC<DateTimeInputProps> { props->
         },
         TimeInput.create {
             this.value = time
-            this.disabled = (date == null)
+            this.disabled = (props.disabled == true || date == null)
+            this.readOnly = props.readOnly
             onChange = {
                 time = it
                 update(date, it)

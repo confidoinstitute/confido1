@@ -12,6 +12,8 @@ import kotlinx.datetime.Clock
 import payloads.requests.*
 import react.*
 import react.dom.html.ButtonType
+import react.dom.html.ReactHTML.a
+import react.dom.html.ReactHTML.div
 import tools.confido.question.*
 import tools.confido.spaces.*
 
@@ -55,7 +57,8 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     var scheduleValid: Boolean by useState(true)
 
     // SCHEDULE
-    var schedule by useState(props.entity?.schedule ?: QuestionSchedule())
+    var customSchedule by useState(room.defaultSchedule == QuestionSchedule())
+    var schedule by useState(props.entity?.schedule ?: room.defaultSchedule)
 
     // ANCHORING
     var groupPredictionVisibility by useState(props.entity?.groupPredictionVisibility ?: GroupPredictionVisibility.ANSWERED)
@@ -86,7 +89,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     }
 
     // Validity
-    val questionValid = questionTitle.isNotEmpty() && answerSpaceValid && resolutionValid && scheduleValid
+    val questionValid = questionTitle.isNotEmpty() && answerSpaceValid && resolutionValid && (scheduleValid || !customSchedule)
 
     val submit = useCoroutineLock()
     fun assembleQuestion() = if (questionValid) Question(
@@ -112,7 +115,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         visible = isVisible,
         allowComments = allowComments,
         sensitive = isSensitive,
-        schedule = schedule,
+        schedule = if (customSchedule) schedule else null,
     ) else null
     fun submitQuestion() = submit {
         val question = assembleQuestion() ?: return@submit
@@ -200,13 +203,16 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                     this.schedule = schedule
                     this.showOpen = (isEdit || questionStatus in setOf(QuestionState.CLOSED, QuestionState.OPEN))
                     this.showClose = (isEdit || questionStatus in setOf(QuestionState.CLOSED, QuestionState.OPEN))
-                    this.showResolve = (isEdit || questionStatus in setOf(QuestionState.CLOSED, QuestionState.OPEN))
+                    this.showResolve = (isEdit || questionStatus in setOf(QuestionState.CLOSED, QuestionState.OPEN)) &&
+                            preset != QuestionPreset.BELIEF
+                    this.showScore = preset != QuestionPreset.BELIEF
                     this.openPlaceholder = if (isEdit && props.entity?.state == QuestionState.OPEN) "already open"
                                             else if (questionStatus == QuestionState.OPEN) "immediately"
                                             else "manually"
                     this.onChange = { newSched, isError ->
                         schedule = newSched
                         scheduleValid = !isError
+                        customSchedule = true
 
                         val now = Clock.System.now()
                         if (questionStatus == QuestionState.CLOSED && newSched.open != null && now >= newSched.open && (newSched.close == null || now < newSched.close)) {
@@ -215,6 +221,26 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                         if (questionStatus == QuestionState.OPEN && newSched.open != null && now < newSched.open) {
                             questionStatus = QuestionState.CLOSED
                         }
+                    }
+                }
+                if (room.defaultSchedule != QuestionSchedule())
+                div {
+                    css {
+                        fontSize = 12.px
+                        color =  Color("#AAAAAA")
+                    }
+                    if (customSchedule) {
+                        +"Using a custom schedule for this question. "
+                        a {
+                            +"Use default schedule from the room."
+                            href="#"
+                            onClick = {
+                                customSchedule = false
+                                schedule = room.defaultSchedule
+                            }
+                        }
+                    } else {
+                        +"Using a default schedule configured for the room. If it changes, this question's schedule will change accordingly. You can also set a custom schedule for this question here."
                     }
                 }
             }

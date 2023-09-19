@@ -148,7 +148,7 @@ data class Question(
     val sensitive: Boolean = false,
     val author: Ref<User>? = null,
     val stateHistory: List<QuestionStateChange> = emptyList(),
-    val schedule: QuestionSchedule = QuestionSchedule(),
+    val schedule: QuestionSchedule? = null, // null = inherit default schedule from room
 ) : ImmediateDerefEntity, HasUrlPrefix {
     init {
         if (resolution != null) {
@@ -197,6 +197,8 @@ data class Question(
 
     override val urlPrefix get() = urlPrefix(id)
 
+    val room get() = globalState.rooms.values.firstOrNull { ref in it.questions }
+    val effectiveSchedule = schedule ?: room?.defaultSchedule ?: QuestionSchedule()
     companion object {
         fun urlPrefix(id: String) = "/questions/$id"
     }

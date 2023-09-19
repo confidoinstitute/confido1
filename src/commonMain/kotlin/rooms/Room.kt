@@ -5,6 +5,7 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import tools.confido.question.Question
+import tools.confido.question.QuestionSchedule
 import tools.confido.refs.*
 import tools.confido.utils.generateId
 import tools.confido.utils.HasUrlPrefix
@@ -23,6 +24,7 @@ data class Room(
     val inviteLinks: List<InviteLink> = emptyList(),
     val color: RoomColor = colorFromId(id),
     val icon: String? = null,
+    val defaultSchedule: QuestionSchedule = QuestionSchedule(),
 ) : ImmediateDerefEntity, HasUrlPrefix {
     fun findLink(id: String?): InviteLink? {
         if (id == null || id == "") {
