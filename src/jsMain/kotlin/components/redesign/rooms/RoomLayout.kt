@@ -63,10 +63,16 @@ val RoomHeader = FC<PropsWithChildren> { props ->
     }
 }
 
-val RoomLayout = FC<Props> {
+external interface RoomLayoutProps : Props {
+    var openEdit: Boolean?
+    var openSchedule: Boolean?
+}
+
+val RoomLayout = FC<RoomLayoutProps> { props->
     val (appState, _) = useContext(AppStateContext)
     val room = useContext(RoomContext)
     val navigate = useNavigate()
+    val location = useLocation()
 
     val size = useElementSize<HTMLDivElement>()
     val tabRef = useRef<HTMLDivElement>()
@@ -76,7 +82,7 @@ val RoomLayout = FC<Props> {
     val cutoff = 60.0 + size.height - 15.0
 
     var dialogOpen by useState(false)
-    var editOpen by useState(false)
+    var editOpen by useState(props.openEdit ?: false)
     var exportOpen by useState(false)
     var deleteConfirmOpen by useState(false)
 
@@ -91,7 +97,8 @@ val RoomLayout = FC<Props> {
 
     EditRoomSettingsDialog {
         open = editOpen
-        onClose = { editOpen = false }
+        openSchedule = props.openEdit == true && props.openSchedule == true
+        onClose = { editOpen = false; if (location.pathname.endsWith("/edit")) navigate("..") }
     }
     CsvExportDialog {
         open = exportOpen

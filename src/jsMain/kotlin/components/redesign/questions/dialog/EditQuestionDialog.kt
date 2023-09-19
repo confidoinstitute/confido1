@@ -11,6 +11,7 @@ import hooks.*
 import kotlinx.datetime.Clock
 import payloads.requests.*
 import react.*
+import react.dom.html.AnchorTarget
 import react.dom.html.ButtonType
 import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.div
@@ -200,7 +201,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 title = "Schedule"
                 EditQuestionDialogSchedule {
                     this.preset = props.preset
-                    this.schedule = schedule
+                    this.schedule = if (customSchedule) schedule else room.defaultSchedule
                     this.showOpen = (isEdit || questionStatus in setOf(QuestionState.CLOSED, QuestionState.OPEN))
                     this.showClose = (isEdit || questionStatus in setOf(QuestionState.CLOSED, QuestionState.OPEN))
                     this.showResolve = (isEdit || questionStatus in setOf(QuestionState.CLOSED, QuestionState.OPEN)) &&
@@ -223,13 +224,20 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                         }
                     }
                 }
-                if (room.defaultSchedule != QuestionSchedule())
                 div {
                     css {
                         fontSize = 12.px
                         color =  Color("#AAAAAA")
                     }
-                    if (customSchedule) {
+                    if (room.defaultSchedule == QuestionSchedule()) {
+                        +"You can also set a default schedule for the whole room in "
+                        a {
+                            href = "/rooms/${room.id}/edit?schedule=1"
+                            target = AnchorTarget._blank
+                            +"room settings"
+                        }
+                        +"."
+                    } else if (customSchedule) {
                         +"Using a custom schedule for this question. "
                         a {
                             +"Use default schedule from the room."

@@ -20,6 +20,7 @@ external interface RoomSettingsProps : Props {
     var room: Room?
     var onChange: ((BaseRoomInformation?) -> Unit)?
     var onSubmit: (() -> Unit)?
+    var openSchedule: Boolean?
 }
 
 val RoomSettings = FC<RoomSettingsProps> { props ->
@@ -30,7 +31,7 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
     var color by useState(props.room?.color ?: RoomColor.values().random())
     var icon by useState(props.room?.icon)
     var defaultSchedule by useState(props.room?.defaultSchedule ?: QuestionSchedule())
-    var showSchedule by useState(false)
+    var showSchedule by useState(props.openSchedule ?: false)
     var scheduleValid by useState(true)
     val valid = !name.isEmpty() && scheduleValid
 

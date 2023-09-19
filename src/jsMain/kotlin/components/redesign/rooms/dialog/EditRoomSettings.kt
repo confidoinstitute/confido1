@@ -14,7 +14,11 @@ import react.useContext
 import react.useState
 import utils.runCoroutine
 
-val EditRoomSettingsDialog = FC<DialogCoreProps> { props ->
+external interface EditRoomSettingsDialogProps: DialogCoreProps {
+    var openSchedule: Boolean?
+}
+
+val EditRoomSettingsDialog = FC<EditRoomSettingsDialogProps> { props ->
     val room = useContext(RoomContext)
     val stale = useContext(AppStateContext).stale
 
@@ -36,6 +40,7 @@ val EditRoomSettingsDialog = FC<DialogCoreProps> { props ->
             this.room = room
             onChange = {baseInfo = it}
             onSubmit = ::editRoom
+            openSchedule = props.openSchedule
         }
     }
 }
