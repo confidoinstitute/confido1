@@ -58,7 +58,8 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     var scheduleValid: Boolean by useState(true)
 
     // SCHEDULE
-    var customSchedule by useState(room.defaultSchedule == QuestionSchedule())
+    var customSchedule by useState(props.entity?.let { it.schedule != null }
+        ?: (room.defaultSchedule == QuestionSchedule()))
     var schedule by useState(props.entity?.schedule ?: room.defaultSchedule)
 
     // ANCHORING
