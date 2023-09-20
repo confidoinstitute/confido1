@@ -148,7 +148,11 @@ data class Question(
     val sensitive: Boolean = false,
     val author: Ref<User>? = null,
     val stateHistory: List<QuestionStateChange> = emptyList(),
-    val schedule: QuestionSchedule? = null, // null = inherit default schedule from room
+
+    // null = inherit default schedule from room
+    // The default value is purposefully NOT null because we do not want existing questions
+    // (created before this feature was introduced) to ex-post start inheriting room schedule.
+    val schedule: QuestionSchedule? = QuestionSchedule(),
 ) : ImmediateDerefEntity, HasUrlPrefix {
     init {
         if (resolution != null) {
