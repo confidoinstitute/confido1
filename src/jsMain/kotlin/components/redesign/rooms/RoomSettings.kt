@@ -10,11 +10,15 @@ import emotion.react.css
 import payloads.requests.BaseRoomInformation
 import react.*
 import react.dom.html.ButtonType
+import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.a
+import react.dom.html.ReactHTML.abbr
+import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.p
 import rooms.Room
 import rooms.RoomColor
 import tools.confido.question.QuestionSchedule
+import tools.confido.refs.deref
 
 external interface RoomSettingsProps : Props {
     var room: Room?
@@ -94,6 +98,25 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                     onChange = { newSched, isError ->
                         defaultSchedule = newSched
                         scheduleValid = !isError
+                    }
+                }
+                props.room?.let { room->
+                    val affectedQuestions = room.questions.mapNotNull { it.deref() }.filter{ it.schedule == null }
+                    console.log("AQ ${room.questions.size} ${affectedQuestions.size}")
+
+                    if (affectedQuestions.isNotEmpty())
+                    div {
+                        css {
+                            fontSize = 12.px
+                            this.color = Color("#AAAAAA")
+                        }
+                        +"Changing this schedule will affect "
+                        abbr {
+                            +" ${affectedQuestions.size} existing questions "
+                            title = affectedQuestions.reversed().take(5).joinToString("\n"){ it.name } +
+                                    if (affectedQuestions.size > 5) "\n..."  else ""
+                        }
+                        +" that are configured to follow it."
                     }
                 }
             }
