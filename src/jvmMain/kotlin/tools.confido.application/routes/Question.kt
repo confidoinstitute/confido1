@@ -102,18 +102,18 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 }
                 is EditQuestionComplete -> {
                     serverState.withTransaction {
-                        serverState.questionManager.modifyEntity(ref) {
+                        serverState.questionManager.modifyEntity(ref) { orig->
                             if (question.numPredictions > 0 && question.answerSpace != editQuestion.question.answerSpace) {
                                 badRequest("Cannot change answer space of a question with predictions.")
                             }
 
                             // If withState wasn't used, this will fill in the history automatically.
                             val newHistory = if (question.state != editQuestion.question.state && editQuestion.question.stateHistory.lastOrNull()?.newState != editQuestion.question.state) {
-                                question.stateHistory + QuestionStateChange(editQuestion.question.state, Clock.System.now(), user.ref)
+                                orig.stateHistory + QuestionStateChange(editQuestion.question.state, Clock.System.now(), user.ref)
                             } else {
-                                question.stateHistory
+                                orig.stateHistory
                             }
-                            editQuestion.question.copy(id = question.id, stateHistory = newHistory)
+                            editQuestion.question.copy(id = question.id, stateHistory = newHistory, author = orig.author)
                         }
                     }
                 }
