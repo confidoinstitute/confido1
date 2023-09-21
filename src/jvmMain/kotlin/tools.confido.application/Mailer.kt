@@ -3,11 +3,14 @@ package tools.confido.application
 import io.ktor.server.application.*
 import io.ktor.util.*
 import io.ktor.util.logging.*
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.html.*
 import kotlinx.html.stream.appendHTML
 import org.simplejavamail.api.email.Email
 import org.simplejavamail.email.EmailBuilder
 import rooms.*
+import tools.confido.question.Question
 import tools.confido.state.appConfig
 import users.*
 import kotlin.time.*
@@ -261,9 +264,34 @@ $feedback"""
 
         sendMail(mail)
     }
+
+    fun sendScheduledResolutionMail(address: String, q: Question) {
+        if (appConfig.demoMode) return
+        val subject = "Please resolve question '${q.name}'"
+        val resolveTime = q.effectiveSchedule.resolve ?: return
+        val room = q.room ?: return
+
+        val body = """
+            Question '${q.name}' has resolution time scheduled for ${resolveTime.toLocalDateTime(TimeZone.UTC).toString().replace('T',  ' ')} UTC
+            but no resolution has yet been set.
+            
+            Please set the resolution at $origin/rooms/${room.id}/questions/${q.id}/resolve
+            """.trimIndent()
+
+        val mail = EmailBuilder.startingBlank()
+            .from(senderName, senderAddress)
+            .to(address)
+            .withSubject(subject)
+            .withPlainText(body)
+            //.withHTMLText(sb.toString())
+            .buildEmail()
+
+        sendMail(mail)
+    }
 }
 
 internal val MailerKey = AttributeKey<Mailer>("Mailer")
+lateinit var globalMailer: Mailer
 
 class MailingConfig {
     /** The URL of the hosted frontend used in mailed links (no trailing /) **/
@@ -284,9 +312,12 @@ val Mailing: RouteScopedPlugin<MailingConfig> = createRouteScopedPlugin("Mailing
                 "from being sent. Either configure a mailer or enable debug mode if you do not need mails to be sent.")
     }
 
+    val mailer =
+        Mailer(pluginConfig.urlOrigin, pluginConfig.debugMode, pluginConfig.mailer, pluginConfig.senderAddress, pluginConfig.senderName, application.log)
+    globalMailer = mailer
     application.attributes.put(
         MailerKey,
-        Mailer(pluginConfig.urlOrigin, pluginConfig.debugMode, pluginConfig.mailer, pluginConfig.senderAddress, pluginConfig.senderName, application.log)
+        mailer
     )
 }
 

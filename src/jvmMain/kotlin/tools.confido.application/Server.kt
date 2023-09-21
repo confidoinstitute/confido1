@@ -29,6 +29,7 @@ import org.simplejavamail.mailer.MailerBuilder
 import rooms.*
 import tools.confido.application.routes.*
 import tools.confido.application.sessions.*
+import tools.confido.question.Question
 import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.serialization.confidoSM
@@ -37,6 +38,8 @@ import users.*
 import java.io.File
 import kotlin.collections.listOf
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "build/dist/js/productionExecutable").canonicalFile
 val iconDir = System.getenv("CONFIDO_ICONS_PATH")?.let { File(it).canonicalFile }
@@ -148,6 +151,13 @@ fun main() {
                     it.cleanupExpired()
                 }
                 delay(1.hours)
+            }
+        }
+
+        launch {
+            while (true) {
+                delay(if (appConfig.devMode) 5.seconds else 15.minutes)
+                checkAllQuestionSchedules()
             }
         }
 

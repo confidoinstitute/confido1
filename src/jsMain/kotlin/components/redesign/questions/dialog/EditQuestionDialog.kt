@@ -118,6 +118,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         allowComments = allowComments,
         sensitive = isSensitive,
         schedule = if (customSchedule) schedule else null,
+        scheduleStatus = QuestionScheduleStatus(if (customSchedule) schedule else room.defaultSchedule),
     ) else null
     fun submitQuestion() = submit {
         val question = assembleQuestion() ?: return@submit

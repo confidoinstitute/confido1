@@ -1,5 +1,6 @@
 package tools.confido.question
 
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.*
 import tools.confido.distributions.ProbabilityDistribution
@@ -118,6 +119,19 @@ data class QuestionSchedule(
 }
 
 @Serializable
+data class QuestionScheduleStatus(
+    val openDone: Boolean = false,
+    val closeDone: Boolean = false,
+    val resolveDone: Boolean = false,
+) {
+    constructor(sched: QuestionSchedule) : this(
+        sched.open != null && sched.open < Clock.System.now(),
+        sched.close != null && sched.close < Clock.System.now(),
+        sched.resolve != null && sched.resolve < Clock.System.now(),
+    )
+}
+
+@Serializable
 data class Question(
     @SerialName("_id")
     override val id: String,
@@ -153,6 +167,7 @@ data class Question(
     // The default value is purposefully NOT null because we do not want existing questions
     // (created before this feature was introduced) to ex-post start inheriting room schedule.
     val schedule: QuestionSchedule? = QuestionSchedule(),
+    val scheduleStatus: QuestionScheduleStatus = QuestionScheduleStatus(),
 ) : ImmediateDerefEntity, HasUrlPrefix {
     init {
         if (resolution != null) {

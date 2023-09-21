@@ -32,6 +32,8 @@ import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.main
 import react.router.dom.Link
+import react.router.useLocation
+import react.router.useNavigate
 import rooms.*
 import tools.confido.distributions.*
 import tools.confido.question.*
@@ -43,6 +45,7 @@ import utils.*
 
 external interface QuestionLayoutProps : Props {
     var question: Question
+    var openResolve: Boolean?
 }
 
 external interface QuestionHeaderProps : Props {
@@ -94,8 +97,10 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
     val roomPalette = room.color.palette
 
     var quickSettingsOpen by useState(false)
-    var resolutionDialogOpen by useState(false)
+    var resolutionDialogOpen by useState(props.openResolve ?: false)
     var csvDialogOpen by useState(false)
+    val loc = useLocation()
+    val navigate = useNavigate()
 
     val editDialog = useEditDialog(EditQuestionDialog, jso {
         preset = QuestionPreset.NONE
@@ -124,7 +129,10 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
     QuestionResolveDialog {
         open = resolutionDialogOpen
         question = props.question
-        onClose = { resolutionDialogOpen = false }
+        onClose = {
+            resolutionDialogOpen = false
+            if (loc.pathname.endsWith("/resolve")) navigate("..")
+        }
         key = "ResolveDialog"
     }
 

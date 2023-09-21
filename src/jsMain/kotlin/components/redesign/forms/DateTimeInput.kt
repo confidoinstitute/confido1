@@ -114,7 +114,9 @@ val DateTimeInput = FC<DateTimeInputProps> { props->
     val value = props.value
     var date by useState(value?.date)
     var time by useState(value?.time)
-    val wrap = props.wrap ?: { di,ti -> Stack.create { direction  = FlexDirection.row; +di; +ti } }
+    val wrap = props.wrap ?: { di,ti ->
+        Fragment.create { +di; +ti; }
+    }
     useEffect(props.value.toString()) {
         println("EFF ${props.value}")
         date = props.value?.date
@@ -140,9 +142,6 @@ val DateTimeInput = FC<DateTimeInputProps> { props->
                 } else time
                 update(newDate, newTime)
             }
-            css {
-                flexBasis = 50.pct
-            }
             +props.dateProps
         },
         TimeInput.create {
@@ -152,9 +151,6 @@ val DateTimeInput = FC<DateTimeInputProps> { props->
             onChange = {
                 time = it
                 update(date, it)
-            }
-            css {
-                flexBasis = 50.pct
             }
             +props.timeProps
         }

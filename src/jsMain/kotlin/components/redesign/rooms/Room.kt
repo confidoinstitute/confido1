@@ -46,7 +46,17 @@ val Room = FC<Props> {
             if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
                 Route {
                     path = "questions/:questionID"
-                    this.element = Question.create()
+                    Route {
+                        path = ""
+                        index = true
+                        this.element = Question.create()
+                    }
+                    Route {
+                        path = "resolve"
+                        this.element = Question.create {
+                            openResolve = true
+                        }
+                    }
                 }
         }
     }
