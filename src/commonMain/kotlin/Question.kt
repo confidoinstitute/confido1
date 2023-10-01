@@ -217,7 +217,7 @@ data class Question(
     override val urlPrefix get() = urlPrefix(id)
 
     val room get() = globalState.rooms.values.firstOrNull { ref in it.questions }
-    val effectiveSchedule = schedule ?: room?.defaultSchedule ?: QuestionSchedule()
+    val effectiveSchedule get() = schedule ?: room?.defaultSchedule ?: QuestionSchedule()
     companion object {
         fun urlPrefix(id: String) = "/questions/$id"
     }
