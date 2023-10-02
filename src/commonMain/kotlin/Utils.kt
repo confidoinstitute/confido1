@@ -83,6 +83,8 @@ open class List2<out T>(val lst: List<T>) : List<T> by lst {
     // sometimes it is useful to index with booleans
     operator fun get(idx: Boolean) = get(if(idx) 1 else 0)
 
+    override fun toString() = lst.toString()
+
     val e1 get() = lst[0]
     val e2 get() = lst[1]
 
@@ -243,6 +245,8 @@ inline fun <T1: Any, T2: Any, T3: Any, T4: Any, R:Any> multiletNotNull(a1: T1?, 
         = if (a1 != null && a2 != null && a3 != null && a4 != null) body(a1, a2, a3, a4) else null
 
 inline fun <reified T: ImmediateDerefEntity> Iterable<Ref<T>>.forEachDeref(body: (T)->Unit) = forEach { it.deref()?.let { body(it) } }
+inline fun <reified T: ImmediateDerefEntity> Iterable<Ref<T>>.mapDeref() =  map { it.deref() }.filterNotNull()
+inline fun <reified T: ImmediateDerefEntity, R> Iterable<Ref<T>>.mapDeref(body: (T)->R) =  mapDeref().map(body)
 
 fun binarySearch(initialRange: ClosedFloatingPointRange<Double>, desiredValue: Double, maxSteps: Int = 30,
                 decreasing: Boolean = false, f: (Double) -> Double): ClosedFloatingPointRange<Double> {
