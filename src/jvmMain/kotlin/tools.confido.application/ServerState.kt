@@ -11,6 +11,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.*
@@ -355,9 +356,17 @@ object serverState : GlobalState() {
             ).toFlow().collect { totalPredictions[it.question] = it.cnt }
             //println("STATS!!! $totalPredictions")
         }
-        suspend fun query(question: Ref<Question>, user: Ref<User>) =
+        fun query(question: Ref<Question>, user: Ref<User>) =
             mongoCollection.find(and(Prediction::question eq question, Prediction::user eq user))
                 .sort(ascending(Prediction::ts)).toFlow()
+
+        suspend fun at(question: Ref<Question>, user: Ref<User>, ts: Int) =
+            mongoCollection.find(and(Prediction::question eq question,
+                                                            Prediction::user eq user,
+                                                            Prediction::ts lte ts))
+                .sort(descending(Prediction::ts)).first()
+
+        suspend fun at(question: Ref<Question>, user: Ref<User>, ts: Instant) = at(question, user, ts.epochSeconds.toInt())
         init {
             onEntityAdded {
                 totalPredictions.compute(it.question) { _, cnt -> (cnt ?: 0) + 1 }
@@ -370,9 +379,14 @@ object serverState : GlobalState() {
         override suspend fun initialize() {
             mongoCollection.ensureIndex(Prediction::question, Prediction::ts)
         }
-        suspend fun query(question: Ref<Question>) =
+        fun query(question: Ref<Question>) =
             mongoCollection.find(and(Prediction::question eq question))
                 .sort(ascending(Prediction::ts)).toFlow()
+
+        suspend fun at(question: Ref<Question>, ts: Int) =
+            mongoCollection.find(and(Prediction::question eq question, Prediction::ts lte ts))
+                .sort(descending(Prediction::ts)).first()
+        suspend fun at(question: Ref<Question>, ts: Instant) = at(question, ts.epochSeconds.toInt())
     }
 
     object questionCommentManager: InMemoryEntityManager<QuestionComment>(database.getCollection("questionComments")) {

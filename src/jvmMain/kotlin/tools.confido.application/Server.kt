@@ -277,6 +277,7 @@ fun main() {
                 questionCommentsRoutes(this)
                 genericRoutes(this)
                 presenterRoutes(this)
+                calibrationRoutes(this)
 
                 webSocketST("/state") {
                     val clientVer = call.request.queryParameters["bundleVer"] ?: ""
