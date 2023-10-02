@@ -10,19 +10,27 @@ import users.User
 @Serializable
 sealed class CalibrationWho
 @Serializable
-object Myself: CalibrationWho()
+object Myself: CalibrationWho() {
+    override fun toString() = "Myself"
+}
 @Serializable
-object Everyone: CalibrationWho()
+object Everyone: CalibrationWho(){
+    override fun toString() = "Everyone"
+}
 //data class UserSet(val users: Set<Ref<User>>) : CalibrationWho()
 
 @Serializable
 data class CalibrationRequest(
+    val who: CalibrationWho = Myself,
     val rooms: Set<Ref<Room>>? = null,
     val questions: Set<Ref<Question>>? = null,
     val excludeQuestions: Set<Ref<Question>> = emptySet(),
     val fromTime: Instant? = null,
     val toTime: Instant? = null,
-    val who: CalibrationWho = Myself,
     val includeHiddenResolutions: Boolean = false,
     val includeNumeric: Boolean = true,
-)
+) {
+    fun identify() = "$who:${rooms?.joinToString(","){it.id}}:${questions?.joinToString(",") { it.id }}:" +
+                     "${excludeQuestions?.joinToString(","){it.id}}:$fromTime:$toTime:$includeNumeric:$includeHiddenResolutions"
+
+}

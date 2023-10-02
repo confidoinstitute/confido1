@@ -42,7 +42,8 @@ data class CalibrationEntry(
     val counts: List2<Int> = List2(0, 0),
 ) {
     constructor(correct: Boolean, cnt: Int = 1) : this(if (correct) List2(0,cnt) else List2(cnt, 0))
-    val successRate get() = if (counts.sum() == 0) null else counts[true].toDouble() / counts.sum().toDouble()
+    val successRate get() = if (counts.sum() == 0) null else counts[true].toDouble() / total.toDouble()
+    val total get() = counts.sum()
     operator fun plus(other: CalibrationEntry) = CalibrationEntry(counts.zip(other.counts) { a, b -> a+b })
     override fun toString() = counts.toString()
 }
