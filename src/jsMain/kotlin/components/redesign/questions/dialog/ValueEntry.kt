@@ -14,7 +14,7 @@ external interface NumericValueEntryProps : Props {
 }
 
 
-internal val NumericValueEntry = FC<NumericValueEntryProps> { props ->
+internal val NumericValueEntry = FC<NumericValueEntryProps>("NumericValueEntry") { props ->
     var value by useState(props.value?.toString() ?: "");
 
     TextInput {
@@ -22,7 +22,7 @@ internal val NumericValueEntry = FC<NumericValueEntryProps> { props ->
         // TODO: Proper step
         //step = kotlin.math.min(0.1, props.space.binner.binSize)
         step = 0.1
-        this.value = value
+        this.value = props.value
         placeholder = props.placeholder
         required = props.required
         onChange = { event ->
