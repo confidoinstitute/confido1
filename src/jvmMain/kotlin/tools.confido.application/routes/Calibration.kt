@@ -8,10 +8,10 @@ import payloads.requests.Everyone
 import payloads.requests.Myself
 import rooms.Room
 import rooms.RoomPermission
-import tools.confido.application.calibration.getGroupCalibration
-import tools.confido.application.calibration.getUserCalibration
+import tools.confido.application.calibration.getScoredPrediction
+import tools.confido.calibration.CalibrationVector
+import tools.confido.calibration.getCalibration
 import tools.confido.calibration.sum
-import tools.confido.question.Question
 import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.spaces.BinarySpace
@@ -52,10 +52,17 @@ fun calibrationRoutes(routing: Routing) = routing.apply {
             } }.flatten()
             //println("questions: ${questions.map{ listOf(it.id, it.name, getUserCalibration(it, user.ref))}}")
             val calib = questions.map { q ->
-                when (req.who) {
-                    Myself -> getUserCalibration(q, user.ref)
-                    Everyone -> getGroupCalibration(q)
+                val pred = getScoredPrediction(q, when (req.who) {
+                    Myself -> user.ref
+                    Everyone -> null
+                }) ?: return@map CalibrationVector()
+                if ((req.fromTime == null || pred.ts >= req.fromTime.epochSeconds)
+                    && (req.toTime == null || pred.ts <= req.toTime.epochSeconds)) {
+                    getCalibration(q, pred)
+                } else {
+                    CalibrationVector()
                 }
+
             }.sum()
             call.respond(calib)
         }
