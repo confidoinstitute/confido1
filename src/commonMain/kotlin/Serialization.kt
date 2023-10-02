@@ -10,4 +10,5 @@ val confidoSM = distributionsSM // here we can add other SMs
 val confidoJSON = Json {
     allowSpecialFloatingPointValues = true // support e.g. infinite ranges
     serializersModule = confidoSM
+    ignoreUnknownKeys = true
 }
