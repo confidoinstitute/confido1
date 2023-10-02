@@ -241,7 +241,7 @@ val Dashboard = FC<Props> {
     val layoutMode = useContext(LayoutModeContext)
 
     var dialogOpen by useState(false)
-    DashboardDialog {
+    UserMenu {
         open = dialogOpen
         onClose = { dialogOpen = false }
     }
@@ -308,12 +308,12 @@ val Dashboard = FC<Props> {
     }
 }
 
-external interface DashboardDialogProps : Props {
+external interface UserMenuProps : Props {
     var open: Boolean
     var onClose: (() -> Unit)?
 }
 
-val DashboardDialog = FC<DashboardDialogProps> { props ->
+val UserMenu = FC<UserMenuProps> { props ->
     val loginState = useContext(LoginContext)
     val navigate = useNavigate()
     val (appState, stale) = useContext(AppStateContext)
