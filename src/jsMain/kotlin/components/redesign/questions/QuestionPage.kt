@@ -2,6 +2,7 @@ package components.redesign.questions
 
 import BinaryHistogram
 import Client
+import browser.window
 import components.*
 import components.questions.PendingPredictionState
 import components.redesign.*
@@ -27,6 +28,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.js.*
 import kotlinx.serialization.*
+import kotlinx.serialization.json.encodeToDynamic
 import payloads.responses.*
 import react.*
 import react.dom.html.ReactHTML.div
@@ -85,7 +87,7 @@ external interface BinaryHistogramSectionProps : Props {
 
 private val bgColor = Color("#f2f2f2")
 
-val QuestionPage = FC<QuestionLayoutProps> { props ->
+val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
     val myPrediction = appState.myPredictions[props.question.ref]
@@ -96,6 +98,13 @@ val QuestionPage = FC<QuestionLayoutProps> { props ->
     var quickSettingsOpen by useState(false)
     var resolutionDialogOpen by useState(false)
     var csvDialogOpen by useState(false)
+
+    useEffect(props.question.id) { // TODO does not reflect change in question value
+        window.asDynamic().curQuestion = confidoJSON.encodeToDynamic(props.question)
+        cleanup {
+            window.asDynamic().curQuestion = undefined
+        }
+    }
 
     val editDialog = useEditDialog(EditQuestionDialog, jso {
         preset = QuestionPreset.NONE
