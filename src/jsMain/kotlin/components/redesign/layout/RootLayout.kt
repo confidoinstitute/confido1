@@ -62,15 +62,15 @@ private val RootLayoutInner = FC<Props> {
             DemoWelcomeBox { dismiss = { showDemoWelcome = false; window.asDynamic().demoDismissed = true } }
         }
 
-        Backdrop {
-            this.`in` = showNewDesign
-            css {
-                backdropFilter = blur(10.px)
-            }
-            NewDesignBox {
-                dismiss = { showNewDesign = false; web.storage.localStorage.setItem("newDesignMessageSeen", "yes") }
-            }
-        }
+        //Backdrop {
+        //    this.`in` = showNewDesign
+        //    css {
+        //        backdropFilter = blur(10.px)
+        //    }
+        //    NewDesignBox {
+        //        dismiss = { showNewDesign = false; web.storage.localStorage.setItem("newDesignMessageSeen", "yes") }
+        //    }
+        //}
 
         GlobalCss {
             backgroundColor = UIGrayBg
