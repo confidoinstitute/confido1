@@ -5,8 +5,10 @@ import kotlinx.datetime.Clock.System.now
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import tools.confido.refs.ExpiringEntity
 import tools.confido.refs.ImmediateDerefEntity
 import tools.confido.refs.Ref
+import tools.confido.state.UserSessionValidity
 
 @Serializable
 data class User(
@@ -32,11 +34,11 @@ data class LoginLink(
     override val id: String = "", // generated on insert
     val token: String,
     val user: Ref<User>,
-    val expiryTime: Instant,
+    override val expiryTime: Instant,
     val url: String = "/",
     val sentToEmail: String? = null,
-) : ImmediateDerefEntity {
-    fun isExpired() = now() > expiryTime
+    val validity: UserSessionValidity = UserSessionValidity.PERMANENT,
+) : ImmediateDerefEntity, ExpiringEntity {
 
     fun link(origin: String) = "$origin/email_login?t=$token"
 }
@@ -48,9 +50,8 @@ data class EmailVerificationLink(
     val token: String,
     val user: Ref<User>,
     val email: String,
-    val expiryTime: Instant,
-) : ImmediateDerefEntity {
-    fun isExpired() = now() > expiryTime
+    override val expiryTime: Instant,
+) : ImmediateDerefEntity, ExpiringEntity {
 
     fun link(origin: String) = "$origin/email_verify?t=$token"
 }
@@ -61,9 +62,8 @@ data class PasswordResetLink(
     override val id: String = "", // generated on insert
     val token: String,
     val user: Ref<User>,
-    val expiryTime: Instant,
-) : ImmediateDerefEntity {
-    fun isExpired() = now() > expiryTime
+    override val expiryTime: Instant,
+) : ImmediateDerefEntity, ExpiringEntity {
 
     fun link(origin: String) = "$origin/password_reset?t=$token"
 }

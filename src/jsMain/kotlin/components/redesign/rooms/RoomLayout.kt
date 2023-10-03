@@ -198,7 +198,7 @@ val RoomLayout = FC<Props> {
                 width = 100.pct
                 height = 30.px
                 if (scrollY > 0) {
-                    background = linearGradient(stop(palette.color, 0.pct), stop(palette.color.addAlpha("0"), 100.pct))
+                    background = linearGradient(stop(palette.color, 0.pct), stop(palette.color.addAlpha(0.0), 100.pct))
                 }
                 zIndex = integer(1)
                 transition = 0.5.s

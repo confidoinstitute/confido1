@@ -21,12 +21,14 @@ import mui.material.styles.TypographyVariant
 import mui.system.sx
 import payloads.requests.PasswordLogin
 import payloads.requests.SendMailLink
+import payloads.requests.UsernameLogin
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.button
 import react.dom.onChange
 import react.dom.html.ReactHTML.h1
 import tools.confido.refs.ref
+import tools.confido.state.UserSessionValidity
 import users.User
 import utils.*
 import kotlin.coroutines.EmptyCoroutineContext
@@ -63,13 +65,13 @@ val LoginForm = FC<LoginFormProps> { props ->
         login {
             when (mode) {
                 LoginMode.MagicLink -> {
-                    Client.sendData("/login_email/create", SendMailLink(trimmedEmail, "/"), onError = {showError(it)}) {
+                    Client.sendData("/login_email/create", SendMailLink(trimmedEmail, "/", validity = UserSessionValidity.PERMANENT), onError = {showError(it)}) {
                         emailSent = true
                     }
                 }
 
                 LoginMode.Password -> {
-                    Client.sendData("/login", PasswordLogin(trimmedEmail, password), onError = {
+                    Client.sendData("/login", PasswordLogin(trimmedEmail, password, validity = UserSessionValidity.PERMANENT), onError = {
                         if (status == HttpStatusCode.Unauthorized) {
                             passwordError = "Wrong password or email, please try again."
                             password = ""
@@ -308,7 +310,7 @@ val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
     val autocomplete: FC<AutocompleteProps<User>> = Autocomplete
     fun attemptLogin() = login {
         chosenUser?.let {
-            Client.sendData("/login_users", it.ref, onError = { showError(it) }) {
+            Client.sendData("/login_users", UsernameLogin(it.ref, UserSessionValidity.TRANSIENT), onError = { showError(it) }) {
                 loginState.login()
             }
         }

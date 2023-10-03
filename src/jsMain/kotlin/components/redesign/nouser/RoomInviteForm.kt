@@ -14,6 +14,7 @@ import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.p
 import react.router.*
+import tools.confido.state.UserSessionValidity
 import utils.*
 
 val RoomInviteNoUser = FC<Props> {
@@ -64,7 +65,8 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                         AcceptInviteAndCreateUser(
                             props.inviteToken,
                             name.trim().ifEmpty { null },
-                            userMail
+                            userMail,
+                            UserSessionValidity.PERMANENT,
                         ),
                         onError = { showError(it) }
                     ) {
