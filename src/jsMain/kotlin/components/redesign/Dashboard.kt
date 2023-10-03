@@ -327,6 +327,10 @@ val UserMenu = FC<UserMenuProps> { props ->
             icon = SettingsIcon
             this.navigate = "/profile"
         }
+        DialogMenuNav {
+            text = "Calibration"
+            this.navigate = "/calibration"
+        }
 
         DialogMenuItem {
             text = "Log out"

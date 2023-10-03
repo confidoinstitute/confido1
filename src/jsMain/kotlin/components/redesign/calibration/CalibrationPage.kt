@@ -99,6 +99,9 @@ val CalibrationPage = FC<CalibrationPageProps> { props->
     // decimal numbers that seem weird when rounded
     fun fmtp(p: Double) = (100*p).toFixed(1).trimEnd('0').trimEnd('.')+"%"
     if (calib != null) {
+        CalibrationGraph {
+            this.calib = calib
+        }
         table {
             thead {
                 tr {
