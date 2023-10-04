@@ -140,19 +140,23 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
             table {
                 css(ClassName("qmgmt-tab")) {
                     borderCollapse = BorderCollapse.separate
-                    borderSpacing = "0 10px".unsafeCast<BorderSpacing>()
+                    borderSpacing = "0 3px".unsafeCast<BorderSpacing>()
                     "tbody td" {
                         border = None.none
                         backgroundColor = NamedColor.white
                         paddingLeft = 5.px
                         paddingRight = 5.px
                     }
-                    "tbody td:first-child" {
+                    "tbody tr:first-child td:first-child" {
                         borderTopLeftRadius = 5.px
+                    }
+                    "tbody tr:last-child td:first-child" {
                         borderBottomLeftRadius = 5.px
                     }
-                    "tbody td:last-child" {
+                    "tbody tr:first-child td:last-child" {
                         borderTopRightRadius = 5.px
+                    }
+                    "tbody tr:last-child td:last-child" {
                         borderBottomRightRadius = 5.px
                     }
                 }
