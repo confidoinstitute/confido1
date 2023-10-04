@@ -134,7 +134,7 @@ val Switch = FC<SwitchProps> { props ->
     val switchHeight = props.switchHeight ?: 36.0
     val switchWidth = props.switchWidth ?: 64.0
     val activeIconColor = props.activeIconColor ?: Color("#555555")
-    val inactiveIconColor = props.inactiveIconColor ?: Color("#555555").addAlpha("30%")
+    val inactiveIconColor = props.inactiveIconColor ?: Color("#555555").addAlpha(0.3)
     val wrapComp = if (props.wrapLabel ?: true) label else span
 
     wrapComp {

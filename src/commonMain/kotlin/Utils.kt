@@ -229,6 +229,7 @@ fun condensedNum(n: Number) =  n.toDouble().let { d->
 }
 val ClosedRange<Double>.size get() = endInclusive - start
 val ClosedRange<Double>.mid get() = (start + endInclusive)/2.0
+val ClosedRange<Double>.endpoints get() = List2(start, endInclusive)
 fun ClosedRange<Double>.intersects(other: ClosedRange<Double>) = (start > other.endInclusive || other.start < endInclusive)
 
 inline fun <T1, R> multilet(x: T1, body: (T1)->R) =  body(x)

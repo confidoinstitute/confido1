@@ -1,11 +1,16 @@
 package components.redesign
 
+import components.redesign.basic.css
+import csstype.px
+import dom.svg.SVGElement
 import react.*
+import react.dom.aria.AriaRole
 import react.dom.svg.*
 import react.dom.svg.ReactSVG.circle
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.rect
 import react.dom.svg.ReactSVG.svg
+import utils.except
 
 /*
 TODO: This needs to be revamped to be easier to use.
@@ -18,6 +23,29 @@ regardless of whether fills or strokes are used.
 
 The icons also have mildly varying sizes.
  */
+
+external interface IconProps: PropsWithClassName, SVGAttributes<SVGElement> {
+    var size: Int?
+}
+
+
+fun createIcon(size: Int = 30, boxSize: Int = size, builder: ChildrenBuilder.()->Unit) =
+    FC<IconProps> { props->
+        svg {
+            css(override = props.className) {
+                (props.size ?: size).let {height = it.px}
+            }
+            viewBox = "0 0 $boxSize $boxSize"
+            +props.except("className", "size")
+            builder()
+        }
+    }
+fun createIcon(d: String, size: Int = 30, boxSize: Int = size) = createIcon(size=size, boxSize=boxSize) {
+    ReactSVG.path {
+        this.d = d
+        fill = "currentColor"
+    }
+}
 
 val ReplyIcon = FC<PropsWithClassName> { props ->
     svg {
@@ -641,3 +669,10 @@ val HistogramIcon = FC<PropsWithClassName> { props ->
     }
 }
 
+
+val DragIndicatorIcon =
+    createIcon("M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z", boxSize=24)
+val GroupsIcon =
+    createIcon("M12 12.75c1.63 0 3.07.39 4.24.9 1.08.48 1.76 1.56 1.76 2.73V18H6v-1.61c0-1.18.68-2.26 1.76-2.73 1.17-.52 2.61-.91 4.24-.91zM4 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm1.13 1.1c-.37-.06-.74-.1-1.13-.1-.99 0-1.93.21-2.78.58C.48 14.9 0 15.62 0 16.43V18h4.5v-1.61c0-.83.23-1.61.63-2.29zM20 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm4 3.43c0-.81-.48-1.53-1.22-1.85-.85-.37-1.79-.58-2.78-.58-.39 0-.76.04-1.13.1.4.68.63 1.46.63 2.29V18H24v-1.57zM12 6c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z", boxSize = 24)
+val TimelineIcon =
+    createIcon("M23 8c0 1.1-.9 2-2 2-.18 0-.35-.02-.51-.07l-3.56 3.55c.05.16.07.34.07.52 0 1.1-.9 2-2 2s-2-.9-2-2c0-.18.02-.36.07-.52l-2.55-2.55c-.16.05-.34.07-.52.07s-.36-.02-.52-.07l-4.55 4.56c.05.16.07.33.07.51 0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2c.18 0 .35.02.51.07l4.56-4.55C8.02 9.36 8 9.18 8 9c0-1.1.9-2 2-2s2 .9 2 2c0 .18-.02.36-.07.52l2.55 2.55c.16-.05.34-.07.52-.07s.36.02.52.07l3.55-3.56C19.02 8.35 19 8.18 19 8c0-1.1.9-2 2-2s2 .9 2 2z", boxSize = 24)

@@ -122,5 +122,8 @@ val RoomTabs = FC<RoomTabsProps> { props ->
 
         if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
             tab("members", "Room members")
+
+        if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS) && layoutMode >= LayoutMode.TABLET)
+            tab("qmgmt", "Question management")
     }
 }
