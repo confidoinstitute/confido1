@@ -219,7 +219,7 @@ external interface SidebarActionProps : Props {
     /** Defaults to false. */
     var disabled: Boolean?
     var onClick: (() -> Unit)?
-    var icon: ComponentType<PropsWithClassName>?
+    var icon: ComponentType<IconProps>?
 }
 
 // TODO: This is very close to DialogMenuItem (with padding changes and text size changes)

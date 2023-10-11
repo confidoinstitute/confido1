@@ -379,7 +379,7 @@ private val MoreIcon = FC<Props> { props ->
 
 external interface FooterActionProps : Props {
     var text: String?
-    var icon: ComponentType<PropsWithClassName>?
+    var icon: ComponentType<IconProps>?
     var onClick: (() -> Unit)?
 }
 
@@ -414,7 +414,7 @@ private val FooterAction = FC<FooterActionProps> { props ->
 }
 
 external interface FooterVoteActionProps : Props {
-    var icon: ComponentType<PropsWithClassName>?
+    var icon: ComponentType<IconProps>?
     var onClick: (() -> Unit)?
 }
 
