@@ -4,38 +4,11 @@ import components.redesign.forms.*
 import kotlinx.datetime.*
 import react.*
 import react.dom.html.*
-import tools.confido.utils.toFixed
+import tools.confido.spaces.*
+import kotlin.math.ceil
+import kotlin.math.log10
+import kotlin.math.pow
 
-external interface NumericValueEntryProps : Props {
-    var placeholder: String
-    var required: Boolean?
-    var value: Double?
-    var onChange: ((Double?) -> Unit)?
-}
-
-
-internal val NumericValueEntry = FC<NumericValueEntryProps>("NumericValueEntry") { props ->
-    var value by useState(props.value?.toString() ?: "");
-
-    TextInput {
-        type = InputType.number
-        // TODO: Proper step
-        //step = kotlin.math.min(0.1, props.space.binner.binSize)
-        step = 0.1
-        this.value = props.value
-        placeholder = props.placeholder
-        required = props.required
-        onChange = { event ->
-            value = event.target.value
-            val newValue = event.target.valueAsNumber
-            if (!newValue.isNaN()) {
-                props.onChange?.invoke(newValue)
-            } else {
-                props.onChange?.invoke(null)
-            }
-        }
-    }
-}
 
 external interface BinaryValueEntryProps : Props {
     var value: Boolean?
@@ -63,5 +36,61 @@ internal val BinaryValueEntry = FC<BinaryValueEntryProps> { props ->
         }
         value = selectedValue
         onChange = { value -> props.onChange?.invoke(value) }
+    }
+}
+
+external interface SpaceValueEntryProps: InputProps<Value> {
+    var space: Space
+}
+
+val SpaceValueEntry = FC<SpaceValueEntryProps> { props->
+    val space = props.space
+    val valueRequired = props.required ?: false
+    when (space) {
+        is BinarySpace -> {
+            BinaryValueEntry {
+                value = (props.value as? BinaryValue)?.value
+                required = valueRequired
+                onChange = { props.onChange?.invoke(it?.let { BinaryValue(it) }, null) }
+            }
+        }
+
+        is NumericSpace-> {
+            if (space.representsDays) {
+
+                fun ts2ld(ts: Double) = Instant.fromEpochSeconds(ts.toLong()).toLocalDateTime(
+                    TimeZone.UTC
+                ).date
+                fun ts2ld(ts: Double?) = ts?.let { ts2ld(ts) }
+                fun ld2ts(ld: LocalDate) = ld.atStartOfDayIn(TimeZone.UTC).epochSeconds.toDouble()
+                fun ld2ts(ld: LocalDate?) = ld?.let{ ld2ts(ld) }
+                fun val2ld(v: Value) = ts2ld((v as NumericValue).value)
+                fun ld2val(ld: LocalDate) = NumericValue(space, ld2ts(ld))
+                fun ld2val(ld: LocalDate?) = ld?.let { ld2val(ld) }
+                fun val2ld(v: Value?) = ts2ld((v as? NumericValue)?.value)
+                DateInput {
+                    value = val2ld(props.value)
+                    placeholder = props.placeholder
+                    required = valueRequired
+                    min = ts2ld(space.min)
+                    max = ts2ld(space.max)
+                    onChange = { v, err->
+                        props.onChange?.invoke(ld2val(v), err)
+                    }
+                }
+            } else {
+                NumericInput {
+                    value = (props.value as? NumericValue)?.value
+                    placeholder = props.placeholder ?: ""
+                    required = valueRequired
+                    min = space.min
+                    max = space.max
+                    step = 10.0.pow(minOf(ceil(log10(space.binner.binSize)) - 1, -1.0))
+                    onChange = { v, err ->
+                        props.onChange?.invoke(v?.let { NumericValue(space, v) }, err)
+                    }
+                }
+            }
+        }
     }
 }
