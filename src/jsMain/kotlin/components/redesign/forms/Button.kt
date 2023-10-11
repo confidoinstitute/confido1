@@ -115,6 +115,8 @@ val ButtonUnstyled = button.withStyle {
     padding = 0.px
     margin = 0.px
     background = None.none
+    fontFamily = "inherit".unsafeCast<FontFamily>()
+    fontSize = "inherit".unsafeCast<FontSize>()
 }
 
 external interface IconLinkProps: LinkProps, PropsWithPalette<TextPalette>
