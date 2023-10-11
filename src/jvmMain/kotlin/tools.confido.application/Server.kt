@@ -136,13 +136,13 @@ fun main() {
     // with KMongo.
     registerSerializer(RefAsStringSerializer)
 
-    runBlocking { // this is single-threaded by default
+    runBlocking {
         serverState.initialize()
         serverState.load()
         if (appConfig.demoMode) initDemo()
         else initData()
 
-        launch {
+        launch(context= singleThreadContext) {
             val allManagers = serverState.managers.values + serverState.additionalManagers
             val expiringManagers = allManagers.filterIsInstance<serverState.ExpiringEntityManager<*>>()
 

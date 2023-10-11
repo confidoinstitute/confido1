@@ -26,6 +26,9 @@ val GlobalCss = FC<GlobalCssProps> { props ->
                 flexDirection = FlexDirection.column
                 fontFamily = sansSerif
             }
+            "button" {
+                cursor = Cursor.pointer
+            }
         }
     }
 

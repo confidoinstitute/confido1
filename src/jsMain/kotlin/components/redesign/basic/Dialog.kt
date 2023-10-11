@@ -3,6 +3,7 @@ package components.redesign.basic
 import browser.*
 import components.AppStateContext
 import components.redesign.AboutIcon
+import components.redesign.IconProps
 import components.redesign.SidebarContext
 import components.redesign.feedback.FeedbackMenuItem
 import components.redesign.forms.*
@@ -339,7 +340,7 @@ external interface DialogMenuItemProps : Props {
     /** Defaults to [DialogMenuItemVariant.normal]. */
     var variant: DialogMenuItemVariant?
     var onClick: (() -> Unit)?
-    var icon: ComponentType<PropsWithClassName>?
+    var icon: ComponentType<IconProps>?
 }
 
 external interface DialogMenuNavProps : DialogMenuItemProps {

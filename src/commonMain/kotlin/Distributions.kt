@@ -73,7 +73,9 @@ interface ContinuousProbabilityDistribution : ProbabilityDistribution {
     fun discretize() = discretize(space.binner)
 
     // a one-line user-visible stringification
-    override val description get() = "${space.formatValue(mean)} ± ${space.formatDifference(stdev)}"
+    override val description get() =
+        confidenceInterval(0.8).endpoints.joinToString(" to ") { space.formatValue(it, showUnit = false) } +
+        if (space.unit.isNotEmpty()) " ${space.unit}" else ""
 }
 
 interface DiscretizedProbabilityDistribution : ProbabilityDistribution {
@@ -508,7 +510,6 @@ data class TruncatedNormalDistribution(
     override val scale get() = pseudoStdev
 
     override val preferredCICenter get() = pseudoMean
-    override val description get() = "${space.formatValue(pseudoMean)} ± ${space.formatDifference(pseudoStdev)}"
 
     override fun identify() = "trunc_norm:$pseudoMean:$pseudoStdev"
 }

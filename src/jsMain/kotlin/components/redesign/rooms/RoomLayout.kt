@@ -26,6 +26,7 @@ import react.dom.html.ReactHTML.span
 import react.router.*
 import rooms.*
 import tools.confido.refs.*
+import tools.confido.utils.mapDeref
 import utils.roomUrl
 import utils.runCoroutine
 import web.timers.*
@@ -38,11 +39,15 @@ val RoomHeaderButton = Button.withStyle {
         fontWeight = integer(600)
 }
 
-val RoomHeader = FC<PropsWithChildren> { props ->
+external interface RoomHeaderProps: PropsWithChildren, PropsWithClassName {
+    var fullWidth: Boolean?
+    var innerClass: ClassName?
+}
+val RoomHeader = FC<RoomHeaderProps> { props ->
     val layoutMode = useContext(LayoutModeContext)
     Stack {
         direction = FlexDirection.row
-        css {
+        css(ClassName("room-header"), override=props) {
             backgroundColor = Color("#FFFFFF")
             borderBottom = Border(0.5.px, LineStyle.solid, Color("#CCCCCC"))
             padding = Padding(15.px, 14.px, 15.px, 15.px)
@@ -54,8 +59,8 @@ val RoomHeader = FC<PropsWithChildren> { props ->
 
         Stack {
             direction = FlexDirection.row
-            css {
-                width = layoutMode.contentWidth
+            css(ClassName("room-header-inner"), override=props.innerClass) {
+                width = if (props.fullWidth ?: false) 100.pct else layoutMode.contentWidth
                 justifyContent = JustifyContent.spaceBetween
             }
             +props.children
@@ -295,7 +300,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                 Route {
                     index = true
                     this.element = QuestionList.create {
-                        questions = room.questions.mapNotNull { it.deref() }
+                        questions = room.questions.mapDeref()
                         showHiddenQuestions = appState.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
                         allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
                     }
@@ -309,6 +314,14 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                 Route {
                     path = "members"
                     this.element = RoomMembers.create()
+                }
+            if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
+                Route {
+                    path = "manage_questions"
+                    this.element = QuestionManagement.create {
+                        questions = room.questions.mapDeref()
+                        this.room = room
+                    }
                 }
         }
     }

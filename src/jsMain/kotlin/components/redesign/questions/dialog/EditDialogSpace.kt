@@ -122,7 +122,7 @@ internal val EditQuestionDialogSpace = FC<EditQuestionDialogSpaceProps> { props 
                 disabled = readOnly
             }
             comment = when (questionType) {
-                QuestionType.BINARY -> "The question asks whether something is true."
+                QuestionType.BINARY -> "The question asks whether something is (will be) true."
                 QuestionType.NUMERIC -> "The answer to this question is a number."
                 QuestionType.DATE -> "The answer to this question is a date."
             }

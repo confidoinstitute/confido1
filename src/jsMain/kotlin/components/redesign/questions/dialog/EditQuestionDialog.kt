@@ -106,7 +106,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         open = questionStatus == QuestionState.OPEN,
         resolutionVisible = questionStatus == QuestionState.RESOLVED,
         resolution = resolution,
-        annulled = questionStatus == QuestionState.ANNULLED,
+        annulled = questionStatus == QuestionState.CANCELLED,
         // ANCHORING
         groupPredVisible = groupPredictionVisibility.groupPredVisible,
         groupPredRequirePrediction = groupPredictionVisibility.groupPredRequirePrediction,
@@ -183,6 +183,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                         this.preset = props.preset
                         state = questionStatus
                         onStateChange = { questionStatus = it }
+                        this.terminology = predictionTerminology
 
                         space = answerSpace
                         value = resolution

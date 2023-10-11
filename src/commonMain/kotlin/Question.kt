@@ -95,10 +95,12 @@ enum class GroupPredictionVisibility : Terminology {
 
 @Serializable
 enum class QuestionState {
+    DRAFT,
     OPEN,
     CLOSED,
     RESOLVED,
-    ANNULLED,
+    @SerialName("ANNULLED") //Backward compat
+    CANCELLED,
 }
 
 @Serializable
@@ -181,34 +183,39 @@ data class Question(
 
     fun withState(questionState: QuestionState): Question {
         return when (questionState) {
+            QuestionState.DRAFT -> {
+                this.copy(open = false, resolutionVisible = false, annulled = false, visible = false)
+            }
             QuestionState.OPEN -> {
-                this.copy(open = true, resolutionVisible = false, annulled = false)
+                this.copy(open = true, resolutionVisible = false, annulled = false, visible = true)
             }
 
             QuestionState.CLOSED -> {
-                this.copy(open = false, resolutionVisible = false, annulled = false)
+                this.copy(open = false, resolutionVisible = false, annulled = false, visible = true)
             }
 
             QuestionState.RESOLVED -> {
-                this.copy(open = false, resolutionVisible = true, annulled = false)
+                this.copy(open = false, resolutionVisible = true, annulled = false, visible = true)
             }
 
-            QuestionState.ANNULLED -> {
-                this.copy(open = false, resolutionVisible = false, annulled = true)
+            QuestionState.CANCELLED -> {
+                this.copy(open = false, resolutionVisible = false, annulled = true, visible = true)
             }
         }
     }
 
     val state: QuestionState
-        get() {
-            if (annulled)
-                return QuestionState.ANNULLED
-            if (resolved && resolutionVisible)
-                return QuestionState.RESOLVED
-            if (!open)
-                return QuestionState.CLOSED
-            return QuestionState.OPEN
-        }
+        get() =
+            if (!visible)
+                QuestionState.DRAFT
+            else if (annulled)
+                QuestionState.CANCELLED
+            else if (resolved && resolutionVisible)
+                QuestionState.RESOLVED
+            else if (!open)
+                QuestionState.CLOSED
+            else
+                QuestionState.OPEN
 
     @Suppress("DEPRECATION")
     val groupPredictionVisibility: GroupPredictionVisibility

@@ -1,11 +1,17 @@
 package components.redesign
 
+import components.redesign.basic.css
+import csstype.px
+import dom.svg.SVGElement
 import react.*
+import react.dom.aria.AriaRole
 import react.dom.svg.*
 import react.dom.svg.ReactSVG.circle
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.rect
 import react.dom.svg.ReactSVG.svg
+import tools.confido.utils.List2
+import utils.except
 
 /*
 TODO: This needs to be revamped to be easier to use.
@@ -19,44 +25,53 @@ regardless of whether fills or strokes are used.
 The icons also have mildly varying sizes.
  */
 
-val ReplyIcon = FC<PropsWithClassName> { props ->
-    svg {
-        className = props.className
-        width = 17.0
-        height = 17.0
-        viewBox = "0 0 17 17"
-        fill = "none"
-        path {
-            d = "M16 16V13C16 9.5 13.5 7 10 7H1"
-            strokeLinecap = StrokeLinecap.round
-            strokeLinejoin = StrokeLinejoin.round
-            stroke = "black"
+external interface IconProps: PropsWithClassName, SVGAttributes<SVGElement> {
+    var size: Int?
+}
+
+
+fun createIcon(width: Int = 30, height: Int = width, boxSize: List2<Int> = List2(width, height), builder: ChildrenBuilder.()->Unit) =
+    FC<IconProps> { props->
+        svg {
+            css(override = props.className) {
+                (props.size ?: height).let {this.height = it.px}
+            }
+            viewBox = "0 0 " + boxSize.joinToString(" ")
+            +props.except("className", "size")
+            builder()
         }
-        path {
-            d = "M7 1L1 7L7 13"
-            strokeLinecap = StrokeLinecap.round
-            strokeLinejoin = StrokeLinejoin.round
-            stroke = "black"
+    }
+fun createIcon(d: String, width: Int = 30, height: Int = width, boxSize: List2<Int> = List2(width, height)) =
+    createIcon(width=width, height=height, boxSize=boxSize) {
+        ReactSVG.path {
+            this.d = d
+            fill = "currentColor"
         }
+    }
+
+val ReplyIcon = createIcon(17) {
+    path {
+        d = "M16 16V13C16 9.5 13.5 7 10 7H1"
+        strokeLinecap = StrokeLinecap.round
+        strokeLinejoin = StrokeLinejoin.round
+        stroke = "currentColor"
+    }
+    path {
+        d = "M7 1L1 7L7 13"
+        strokeLinecap = StrokeLinecap.round
+        strokeLinejoin = StrokeLinejoin.round
+        stroke = "currentColor"
     }
 }
 
-val UpvoteIcon = FC<PropsWithClassName> { props ->
-    val color = "black"
-    svg {
-        className = props.className
-        width = 16.0
-        height = 17.0
-        viewBox = "0 0 16 17"
-        fill = "none"
-        path {
-            d = "M15 9V9.5C15.1962 9.5 15.3742 9.38526 15.4553 9.20661C15.5364 9.02795 15.5055 8.81839 15.3763 8.67075L15 9ZM11 9V8.5C10.7239 8.5 10.5 8.72386 10.5 9H11ZM8 1L8.37629 0.670748C8.28134 0.56224 8.14418 0.5 8 0.5C7.85582 0.5 7.71866 0.56224 7.62371 0.670748L8 1ZM1 9L0.623712 8.67075C0.494521 8.81839 0.463615 9.02795 0.544684 9.20661C0.625752 9.38526 0.803812 9.5 1 9.5L1 9ZM5 9H5.5C5.5 8.72386 5.27614 8.5 5 8.5V9ZM5 16H4.5C4.5 16.2761 4.72386 16.5 5 16.5V16ZM11 16V16.5C11.2761 16.5 11.5 16.2761 11.5 16H11ZM15 8.5H11V9.5H15V8.5ZM7.62371 1.32925L14.6237 9.32925L15.3763 8.67075L8.37629 0.670748L7.62371 1.32925ZM1.37629 9.32925L8.37629 1.32925L7.62371 0.670748L0.623712 8.67075L1.37629 9.32925ZM5 8.5H1V9.5H5V8.5ZM5.5 16V9H4.5V16H5.5ZM11 15.5H5V16.5H11V15.5ZM10.5 9V16H11.5V9H10.5Z"
-            fill = color
-        }
+val UpvoteIcon = createIcon(16,17) {
+    path {
+        d = "M15 9V9.5C15.1962 9.5 15.3742 9.38526 15.4553 9.20661C15.5364 9.02795 15.5055 8.81839 15.3763 8.67075L15 9ZM11 9V8.5C10.7239 8.5 10.5 8.72386 10.5 9H11ZM8 1L8.37629 0.670748C8.28134 0.56224 8.14418 0.5 8 0.5C7.85582 0.5 7.71866 0.56224 7.62371 0.670748L8 1ZM1 9L0.623712 8.67075C0.494521 8.81839 0.463615 9.02795 0.544684 9.20661C0.625752 9.38526 0.803812 9.5 1 9.5L1 9ZM5 9H5.5C5.5 8.72386 5.27614 8.5 5 8.5V9ZM5 16H4.5C4.5 16.2761 4.72386 16.5 5 16.5V16ZM11 16V16.5C11.2761 16.5 11.5 16.2761 11.5 16H11ZM15 8.5H11V9.5H15V8.5ZM7.62371 1.32925L14.6237 9.32925L15.3763 8.67075L8.37629 0.670748L7.62371 1.32925ZM1.37629 9.32925L8.37629 1.32925L7.62371 0.670748L0.623712 8.67075L1.37629 9.32925ZM5 8.5H1V9.5H5V8.5ZM5.5 16V9H4.5V16H5.5ZM11 15.5H5V16.5H11V15.5ZM10.5 9V16H11.5V9H10.5Z"
+        fill = "currentColor"
     }
 }
 
-val UpvoteActiveIcon = FC<PropsWithClassName> { props ->
+val UpvoteActiveIcon = FC<IconProps> { props ->
     val color = "#0088FF"
     svg {
         className = props.className
@@ -77,7 +92,7 @@ val UpvoteActiveIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val DownvoteIcon = FC<PropsWithClassName> { props ->
+val DownvoteIcon = FC<IconProps> { props ->
     val color = "black"
     svg {
         className = props.className
@@ -92,7 +107,7 @@ val DownvoteIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val DownvoteActiveIcon = FC<PropsWithClassName> { props ->
+val DownvoteActiveIcon = FC<IconProps> { props ->
     val color = "#0088FF"
     svg {
         className = props.className
@@ -113,7 +128,7 @@ val DownvoteActiveIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val ExactPredictionIcon = FC<PropsWithClassName> { props ->
+val ExactPredictionIcon = FC<IconProps> { props ->
     svg {
         className = props.className
         width = 19.0
@@ -131,21 +146,14 @@ val ExactPredictionIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val EditIcon = FC<PropsWithClassName> { props ->
-    svg {
-        className = props.className
-        width = 18.0
-        height = 18.0
-        viewBox = "0 0 18 18"
-        fill = "none"
-        path {
-            d = "M5 15.5L5.16483 16.0769C5.26288 16.0489 5.35216 15.9964 5.42426 15.9243L5 15.5ZM2.5 13L2.07574 12.5757C2.00363 12.6478 1.9511 12.7371 1.92309 12.8352L2.5 13ZM1.5 16.5L0.923086 16.3352C0.863224 16.5447 0.921657 16.7702 1.07574 16.9243C1.22981 17.0783 1.45532 17.1368 1.66483 17.0769L1.5 16.5ZM16.2929 2.79289L15.8686 3.21716L16.2929 2.79289ZM14.7828 2.13137L15.8686 3.21716L16.7172 2.36863L15.6314 1.28284L14.7828 2.13137ZM2.92426 13.4243L13.4243 2.92426L12.5757 2.07574L2.07574 12.5757L2.92426 13.4243ZM13.4243 2.92426L14.2172 2.13137L13.3686 1.28284L12.5757 2.07574L13.4243 2.92426ZM15.8686 3.78284L15.0757 4.57574L15.9243 5.42426L16.7172 4.63137L15.8686 3.78284ZM15.0757 4.57574L4.57574 15.0757L5.42426 15.9243L15.9243 5.42426L15.0757 4.57574ZM12.5757 2.92426L15.0757 5.42426L15.9243 4.57574L13.4243 2.07574L12.5757 2.92426ZM4.83517 14.9231L1.33517 15.9231L1.66483 17.0769L5.16483 16.0769L4.83517 14.9231ZM2.07691 16.6648L3.07691 13.1648L1.92309 12.8352L0.923086 16.3352L2.07691 16.6648ZM2.07574 13.4243L4.57574 15.9243L5.42426 15.0757L2.92426 12.5757L2.07574 13.4243ZM15.8686 3.21716C16.0248 3.37337 16.0248 3.62663 15.8686 3.78284L16.7172 4.63137C17.342 4.00653 17.342 2.99347 16.7172 2.36863L15.8686 3.21716ZM15.6314 1.28284C15.0065 0.658004 13.9935 0.658005 13.3686 1.28284L14.2172 2.13137C14.3734 1.97516 14.6266 1.97516 14.7828 2.13137L15.6314 1.28284Z"
-            fill = "currentcolor"
-        }
+val EditIcon = createIcon(18) {
+    path {
+        d = "M5 15.5L5.16483 16.0769C5.26288 16.0489 5.35216 15.9964 5.42426 15.9243L5 15.5ZM2.5 13L2.07574 12.5757C2.00363 12.6478 1.9511 12.7371 1.92309 12.8352L2.5 13ZM1.5 16.5L0.923086 16.3352C0.863224 16.5447 0.921657 16.7702 1.07574 16.9243C1.22981 17.0783 1.45532 17.1368 1.66483 17.0769L1.5 16.5ZM16.2929 2.79289L15.8686 3.21716L16.2929 2.79289ZM14.7828 2.13137L15.8686 3.21716L16.7172 2.36863L15.6314 1.28284L14.7828 2.13137ZM2.92426 13.4243L13.4243 2.92426L12.5757 2.07574L2.07574 12.5757L2.92426 13.4243ZM13.4243 2.92426L14.2172 2.13137L13.3686 1.28284L12.5757 2.07574L13.4243 2.92426ZM15.8686 3.78284L15.0757 4.57574L15.9243 5.42426L16.7172 4.63137L15.8686 3.78284ZM15.0757 4.57574L4.57574 15.0757L5.42426 15.9243L15.9243 5.42426L15.0757 4.57574ZM12.5757 2.92426L15.0757 5.42426L15.9243 4.57574L13.4243 2.07574L12.5757 2.92426ZM4.83517 14.9231L1.33517 15.9231L1.66483 17.0769L5.16483 16.0769L4.83517 14.9231ZM2.07691 16.6648L3.07691 13.1648L1.92309 12.8352L0.923086 16.3352L2.07691 16.6648ZM2.07574 13.4243L4.57574 15.9243L5.42426 15.0757L2.92426 12.5757L2.07574 13.4243ZM15.8686 3.21716C16.0248 3.37337 16.0248 3.62663 15.8686 3.78284L16.7172 4.63137C17.342 4.00653 17.342 2.99347 16.7172 2.36863L15.8686 3.21716ZM15.6314 1.28284C15.0065 0.658004 13.9935 0.658005 13.3686 1.28284L14.2172 2.13137C14.3734 1.97516 14.6266 1.97516 14.7828 2.13137L15.6314 1.28284Z"
+        fill = "currentcolor"
     }
 }
 
-val BinIcon = FC<PropsWithClassName> { props ->
+val BinIcon = FC<IconProps> { props ->
     val color = "#FF0000"
     svg {
         className = props.className
@@ -162,7 +170,7 @@ val BinIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val SortIcon = FC<PropsWithClassName> { props ->
+val SortIcon = FC<IconProps> { props ->
     val color = "#888888"
     svg {
         className = props.className
@@ -181,27 +189,20 @@ val SortIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val CloseIcon = FC<PropsWithClassName> { props ->
-    svg {
-        className = props.className
-        width = 17.0
-        height = 16.0
-        viewBox = "0 0 17 16"
-        fill = "none"
-        path {
-            d = "M1 15L15.1642 1"
-            strokeWidth = 2.0
-            strokeLinecap = StrokeLinecap.round
-        }
-        path {
-            d = "M0.99984 1L15.1641 15"
-            strokeWidth = 2.0
-            strokeLinecap = StrokeLinecap.round
-        }
+val CloseIcon = createIcon(17,16) {
+    path {
+        d = "M1 15L15.1642 1"
+        strokeWidth = 2.0
+        strokeLinecap = StrokeLinecap.round
+    }
+    path {
+        d = "M0.99984 1L15.1641 15"
+        strokeWidth = 2.0
+        strokeLinecap = StrokeLinecap.round
     }
 }
 
-val CirclesIcon = FC<PropsWithClassName> { props ->
+val CirclesIcon = FC<IconProps> { props ->
     svg {
         className = props.className
         width = 18.0
@@ -223,7 +224,7 @@ val CirclesIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val SymmetricGaussIcon = FC<PropsWithClassName> { props ->
+val SymmetricGaussIcon = FC<IconProps> { props ->
     svg {
         className = props.className
         width = 20.0
@@ -237,7 +238,7 @@ val SymmetricGaussIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val AsymmetricGaussIcon = FC<PropsWithClassName> { props ->
+val AsymmetricGaussIcon = FC<IconProps> { props ->
     val color = "#555555"
     svg {
         className = props.className
@@ -252,7 +253,7 @@ val AsymmetricGaussIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val BackIcon = FC<PropsWithClassName> { props ->
+val BackIcon = FC<IconProps> { props ->
     svg {
         className = props.className
         width = 10.0
@@ -267,7 +268,7 @@ val BackIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val NavMenuIcon = FC<PropsWithClassName> { props ->
+val NavMenuIcon = FC<IconProps> { props ->
     svg {
         className = props.className
         width = 19.0
@@ -283,7 +284,7 @@ val NavMenuIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val LogoutIcon = FC<PropsWithClassName> { props ->
+val LogoutIcon = FC<IconProps> { props ->
     val color = "#FF0000"
     svg {
         className = props.className
@@ -301,7 +302,7 @@ val LogoutIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val ResolveIcon = FC<PropsWithClassName> { props ->
+val ResolveIcon = FC<IconProps> { props ->
     val color = "black"
     svg {
         className = props.className
@@ -319,7 +320,7 @@ val ResolveIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val SettingsIcon = FC<PropsWithClassName> { props ->
+val SettingsIcon = FC<IconProps> { props ->
     val color = "black"
     svg {
         className = props.className
@@ -343,7 +344,7 @@ val SettingsIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val HideIcon = FC<PropsWithClassName> { props ->
+val HideIcon = FC<IconProps> { props ->
     val color = "black"
     svg {
         className = props.className
@@ -376,7 +377,7 @@ val HideIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val UnhideIcon = FC<PropsWithClassName> { props ->
+val UnhideIcon = FC<IconProps> { props ->
     val color = "black"
     svg {
         className = props.className
@@ -401,7 +402,7 @@ val UnhideIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val LockIcon = FC<PropsWithClassName> { props ->
+val LockIcon = FC<IconProps> { props ->
     val color = "black"
     svg {
         className = props.className
@@ -424,7 +425,7 @@ val LockIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val UnlockIcon = FC<PropsWithClassName> { props ->
+val UnlockIcon = FC<IconProps> { props ->
     val color = "black"
     svg {
         className = props.className
@@ -446,7 +447,7 @@ val UnlockIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val InviteLinkIcon = FC<PropsWithClassName> { props ->
+val InviteLinkIcon = FC<IconProps> { props ->
     val color = "white"
     svg {
         className = props.className
@@ -461,7 +462,7 @@ val InviteLinkIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val FeedbackIcon = FC<PropsWithClassName> { props ->
+val FeedbackIcon = FC<IconProps> { props ->
     val color = "black"
     svg {
         className = props.className
@@ -479,7 +480,7 @@ val FeedbackIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val MailIcon = FC<PropsWithClassName> { props ->
+val MailIcon = FC<IconProps> { props ->
     val color = "black"
     svg {
         className = props.className
@@ -515,7 +516,7 @@ val MailIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val CopyIcon = FC<PropsWithClassName> { props ->
+val CopyIcon = FC<IconProps> { props ->
     val color = "black"
     svg {
         className = props.className
@@ -539,7 +540,7 @@ val CopyIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val SidebarIcon = FC<PropsWithClassName> { props ->
+val SidebarIcon = FC<IconProps> { props ->
     svg {
         className = props.className
         shapeRendering = "crispEdges"
@@ -558,7 +559,7 @@ val SidebarIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val PresenterIcon = FC<PropsWithClassName> { props ->
+val PresenterIcon = FC<IconProps> { props ->
     svg {
         className = props.className
         width = 26.0
@@ -571,7 +572,7 @@ val PresenterIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val ExportIcon = FC<PropsWithClassName> { props ->
+val ExportIcon = FC<IconProps> { props ->
     svg {
         className = props.className
         width = 30.0
@@ -588,7 +589,7 @@ val ExportIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val AboutIcon = FC<PropsWithClassName> { props ->
+val AboutIcon = FC<IconProps> { props ->
     svg {
         className = props.className
         width = 30.0
@@ -619,7 +620,7 @@ val AboutIcon = FC<PropsWithClassName> { props ->
     }
 }
 
-val HistogramIcon = FC<PropsWithClassName> { props ->
+val HistogramIcon = FC<IconProps> { props ->
     val binWidth = 3.0
 
     svg {
@@ -641,3 +642,10 @@ val HistogramIcon = FC<PropsWithClassName> { props ->
     }
 }
 
+
+val DragIndicatorIcon =
+    createIcon("M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z", boxSize=List2(24,24))
+val GroupsIcon =
+    createIcon("M12 12.75c1.63 0 3.07.39 4.24.9 1.08.48 1.76 1.56 1.76 2.73V18H6v-1.61c0-1.18.68-2.26 1.76-2.73 1.17-.52 2.61-.91 4.24-.91zM4 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm1.13 1.1c-.37-.06-.74-.1-1.13-.1-.99 0-1.93.21-2.78.58C.48 14.9 0 15.62 0 16.43V18h4.5v-1.61c0-.83.23-1.61.63-2.29zM20 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm4 3.43c0-.81-.48-1.53-1.22-1.85-.85-.37-1.79-.58-2.78-.58-.39 0-.76.04-1.13.1.4.68.63 1.46.63 2.29V18H24v-1.57zM12 6c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z", boxSize = List2(24,24))
+val TimelineIcon =
+    createIcon("M23 8c0 1.1-.9 2-2 2-.18 0-.35-.02-.51-.07l-3.56 3.55c.05.16.07.34.07.52 0 1.1-.9 2-2 2s-2-.9-2-2c0-.18.02-.36.07-.52l-2.55-2.55c-.16.05-.34.07-.52.07s-.36-.02-.52-.07l-4.55 4.56c.05.16.07.33.07.51 0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2c.18 0 .35.02.51.07l4.56-4.55C8.02 9.36 8 9.18 8 9c0-1.1.9-2 2-2s2 .9 2 2c0 .18-.02.36-.07.52l2.55 2.55c.16-.05.34-.07.52-.07s.36.02.52.07l3.55-3.56C19.02 8.35 19 8.18 19 8c0-1.1.9-2 2-2s2 .9 2 2z", boxSize = List2(24,24))

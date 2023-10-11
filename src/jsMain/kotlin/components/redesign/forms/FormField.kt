@@ -12,7 +12,7 @@ external interface FormFieldProps : PropsWithChildren, PropsWithClassName {
     var titleColor: Color?
     var comment: String
     var error: String?
-    var required: Boolean
+    var required: Boolean?
 }
 
 val FormErrorCSS = emotion.css.ClassName {
@@ -51,7 +51,7 @@ val FormField = FC<FormFieldProps> { props ->
                 }
                 +props.title
             }
-            if (props.required) {
+            if (props.required == true) {
                 span {
                     css {
                         color = Color("#F35454")

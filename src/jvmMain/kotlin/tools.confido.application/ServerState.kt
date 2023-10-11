@@ -239,10 +239,13 @@ object serverState : GlobalState() {
         : InMemoryEntityManager<E>(mongoCollection), ExpiringEntityManager<E> {
         override suspend fun cleanupExpired() {
             val now = Clock.System.now()
+            val toDelete = mutableListOf<String>()
             this.entityMap.values.forEach {
                 if (now > it.expiryTime + tolerance)
-                    this.deleteEntity(it.id)
+                    toDelete.add(it.id)
             }
+
+            toDelete.forEach { this.deleteEntity(it) }
         }
     }
 

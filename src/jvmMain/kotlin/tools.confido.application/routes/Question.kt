@@ -108,12 +108,25 @@ fun questionRoutes(routing: Routing) = routing.apply {
                             }
 
                             // If withState wasn't used, this will fill in the history automatically.
-                            val newHistory = if (question.state != editQuestion.question.state && editQuestion.question.stateHistory.lastOrNull()?.newState != editQuestion.question.state) {
+                            val newHistory = if (orig.state != editQuestion.question.state && orig.stateHistory.lastOrNull()?.newState != editQuestion.question.state) {
                                 orig.stateHistory + QuestionStateChange(editQuestion.question.state, Clock.System.now(), user.ref)
                             } else {
                                 orig.stateHistory
                             }
                             editQuestion.question.copy(id = question.id, stateHistory = newHistory, author = orig.author)
+                        }
+                    }
+                }
+                is EditQuestionState -> {
+                    serverState.withTransaction {
+                        serverState.questionManager.modifyEntity(ref) {
+                            // If withState wasn't used, this will fill in the history automatically.
+                            val newHistory = if (question.state != editQuestion.newState && question.stateHistory.lastOrNull()?.newState != editQuestion.newState) {
+                                question.stateHistory + QuestionStateChange(editQuestion.newState, Clock.System.now(), user.ref)
+                            } else {
+                                question.stateHistory
+                            }
+                            question.withState(editQuestion.newState).copy(id = question.id, stateHistory = newHistory)
                         }
                     }
                 }

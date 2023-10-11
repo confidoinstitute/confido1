@@ -16,6 +16,7 @@ sealed class Space {
     abstract fun checkValue(value: Any): Boolean
     abstract fun value2bin(value: Any): Int?
     abstract fun formatValue(value: Any, showUnit: Boolean = true, condensed: Boolean = false): String
+    abstract fun identify(): String
 }
 
 
@@ -70,6 +71,8 @@ object BinarySpace : TypedSpace<Boolean>() {
 
     override fun value2bin(value: Boolean): Int? =
         if (value) 1 else 0
+
+    override fun identify() = "binary"
 }
 
 class Binner(val space : NumericSpace, val bins: Int) {
@@ -149,6 +152,8 @@ data class NumericSpace(
     fun value2bin(value: Double, binner: Binner) = binner.value2bin(value)
     fun value2bin(value: Double, bins: Int) = Binner(this, bins).value2bin(value)
 
+    override fun identify() = "num:$min:$max:$representsDays"
+
     companion object {
         const val DEFAULT_BINS = 1000
         fun fromDates(minDate: LocalDate, maxDate: LocalDate): NumericSpace {
@@ -166,6 +171,8 @@ sealed class Value {
     abstract val space: Space
     abstract val value: Any
     open fun format() = space.formatValue(value)
+
+    open fun identify() = "${space.identify()}:$value"
 }
 
 sealed class TypedValue<V: Any, S: TypedSpace<V>> : Value() {

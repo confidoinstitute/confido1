@@ -4,12 +4,14 @@ import components.*
 import components.redesign.basic.*
 import csstype.*
 import emotion.react.*
+import emotion.css.*
 import hooks.*
 import kotlinx.datetime.Clock
 import react.*
 import react.dom.html.ReactHTML.br
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
+import react.dom.html.ReactHTML.button
 import react.router.dom.*
 import tools.confido.distributions.*
 import tools.confido.question.*
@@ -22,9 +24,10 @@ external interface QuestionItemProps : Props {
     var href: String?
 }
 
-external interface StatusChipProps : Props {
+external interface StatusChipProps : PropsWithClassName {
     var text: String
     var color: Color
+    var onClick: (()->Unit)?
 }
 
 val QuestionItem = FC<QuestionItemProps> { props ->
@@ -33,12 +36,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
     val questionState = props.question.state
 
-    val palette = when (questionState) {
-        QuestionState.OPEN -> QuestionPalette.open
-        QuestionState.CLOSED -> QuestionPalette.closed
-        QuestionState.RESOLVED -> QuestionPalette.resolved
-        QuestionState.ANNULLED -> QuestionPalette.annulled
-    }
+    val palette = questionState.palette
 
     val predictionTerm = when (props.question.predictionTerminology) {
         PredictionTerminology.PREDICTION -> "prediction"
@@ -91,20 +89,9 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
             StatusChip {
                 color = palette.color
-                text = when (questionState) {
-                    QuestionState.OPEN -> "Open"
-                    QuestionState.CLOSED -> "Closed"
-                    QuestionState.RESOLVED -> "Resolved"
-                    QuestionState.ANNULLED -> "Annulled"
-                }
+                text = questionState.name.lowercase().capFirst()
             }
 
-            if (!props.question.visible) {
-                StatusChip {
-                    color = Color("#ADBDC2")
-                    text = "Hidden"
-                }
-            }
             if (isNew) {
                 StatusChip {
                     color = Color("#FF9330")
@@ -287,19 +274,24 @@ val QuestionItem = FC<QuestionItemProps> { props ->
     }
 }
 
-private val StatusChip = FC<StatusChipProps> { props ->
-    span {
-        css {
-            fontFamily = sansSerif
-            fontStyle = FontStyle.normal
-            fontWeight = integer(600)
-            fontSize = 11.px
-            lineHeight = 13.px
+val ChipCSS = ClassName(ClassName("chip")) {
+    fontFamily = sansSerif
+    fontStyle = FontStyle.normal
+    fontWeight = integer(600)
+    fontSize = 11.px
+    lineHeight = 13.px
+    padding = Padding(3.px, 7.px)
+    borderRadius = 20.px
+    border = None.none
+}
+
+val StatusChip = FC<StatusChipProps> { props ->
+    (if (props.onClick != null) button else span) {
+        css(ChipCSS, override=props) {
             backgroundColor = props.color
-            color = Color("#FFFFFF")
-            padding = Padding(3.px, 7.px)
-            borderRadius = 20.px
+            color = NamedColor.white
         }
+        props.onClick?.let { this.onClick = { props.onClick?.invoke() } }
         +props.text
     }
 }

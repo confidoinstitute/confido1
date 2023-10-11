@@ -12,7 +12,6 @@ import react.*
 import react.router.*
 import tools.confido.question.*
 import utils.*
-import web.prompts.*
 
 external interface QuestionQuickSettingsDialogProps : Props {
     var question: Question
@@ -78,20 +77,22 @@ val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props -
             }
             DialogMenuItem {
                 text = when (props.question.state) {
+                    QuestionState.DRAFT -> "Open"
                     QuestionState.OPEN -> "Close"
                     QuestionState.CLOSED -> "Open"
                     QuestionState.RESOLVED -> "Reopen"
-                    QuestionState.ANNULLED -> "Reopen"
+                    QuestionState.CANCELLED -> "Reopen"
                 }
                 icon = if (props.question.open) { LockIcon } else { UnlockIcon }
                 disabled = editLock.running
                 onClick = {
                     editLock {
                         val newState: QuestionState = when (props.question.state) {
+                            QuestionState.DRAFT -> QuestionState.OPEN
                             QuestionState.OPEN -> QuestionState.CLOSED
                             QuestionState.CLOSED -> QuestionState.OPEN
                             QuestionState.RESOLVED -> QuestionState.OPEN
-                            QuestionState.ANNULLED -> QuestionState.OPEN
+                            QuestionState.CANCELLED -> QuestionState.OPEN
                         }
                         Client.sendData(
                             "${props.question.urlPrefix}/state",

@@ -7,6 +7,7 @@ import hooks.useCoroutineLock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.js.jso
 import payloads.requests.EditQuestion
 import payloads.requests.EditQuestionComplete
 import react.FC
@@ -25,12 +26,13 @@ external interface QuestionResolveDialogProps : Props {
 }
 
 val QuestionResolveDialog = FC<QuestionResolveDialogProps> { props ->
-    var resolution by useState<Value?>(props.question.resolution)
-    var resolutionValid by useState(props.question.resolution != null)
+    val question = props.question
+    var resolution by useState(question.resolution)
+    var resolutionValid by useState(question.resolution != null)
+    var publish by useState(question.resolution == null || question.resolutionVisible)
+    val submitLock = useCoroutineLock()
     var scoreTime by useState(props.question.effectiveSchedule.score)
     val tz = TimeZone.currentSystemDefault()
-
-    val submitLock = useCoroutineLock()
 
     fun resolve() {
         // If we inherited schedule from room including score time and did not change
@@ -38,11 +40,15 @@ val QuestionResolveDialog = FC<QuestionResolveDialogProps> { props ->
         // resolve dialog, then we need to make a copy of the schedule for this question.
         val newSchedule = if (scoreTime == props.question.effectiveSchedule.score) props.question.schedule
                             else props.question.effectiveSchedule.copy(score = scoreTime)
-        val question = props.question.copy(resolution = resolution, schedule = newSchedule).withState(QuestionState.RESOLVED)
+        val question = question.copy(resolution = resolution, schedule = newSchedule).let {
+            if (publish) it.withState(QuestionState.RESOLVED)
+            else it
+        }
+        // TODO: Make a dedicated edit mode for this to prevent overwrites!
         val editQuestion: EditQuestion = EditQuestionComplete(question)
         submitLock {
             Client.sendData(
-                "${props.question.urlPrefix}/edit",
+                "${question.urlPrefix}/edit",
                 editQuestion,
                 onError = { showError(it) }) {
                 props.onClose?.invoke()
@@ -53,29 +59,37 @@ val QuestionResolveDialog = FC<QuestionResolveDialogProps> { props ->
     Dialog {
         open = props.open
         onClose = { props.onClose?.invoke() }
-        title = "Resolve this question"
-        action = "Resolve"
+        title = if (question.resolution != null) "Change resolution" else "Resolve this question"
+        val buttonTitle = if (question.state != QuestionState.RESOLVED && publish) "Resolve" else "Save"
+        val buttonDisabled = !resolutionValid || submitLock.running
+        action = buttonTitle
         onAction = { resolve() }
-        disabledAction = resolution == null || !resolutionValid || submitLock.running
+        disabledAction = buttonDisabled
         Form {
             onSubmit = { resolve() }
             FormSection {
-                EditQuestionDialogResolution {
-                    state = QuestionState.RESOLVED
-                    space = props.question.answerSpace
-                    value = resolution
-                    valid = resolutionValid
-                    valueRequired = true
-                    this.onChange = {
-                        resolution = it
-                        resolutionValid = true
-                    }
-                    this.onError = {
-                        resolution = null
-                        resolutionValid = false
+                InputFormField<Value, SpaceValueEntryProps>()() {
+                    title = "Resolution"
+                    comment = "The correct answer or actual outcome."
+                    inputComponent = SpaceValueEntry
+                    inputProps = jso {
+                        space = question.answerSpace
+                        value = resolution
+                        this.onChange = { newVal, err->
+                            resolution = newVal
+                            resolutionValid = err == null
+                        }
                     }
                 }
 
+                if (question.state != QuestionState.RESOLVED)
+                FormSwitch {
+                    label = "Publish resolution"
+                    comment = "This will make resolution visible to all forecasters and prevent adding further ${question.predictionTerminology.plural}."
+                    checked = publish
+                    onChange = {  publish = it.target.checked }
+                }
+                if (publish)
                 FormField {
                     this.title = "Score time"
                     this.comment = "Set a time from which predictions should be used for scoring and calibration curves." +
@@ -92,8 +106,8 @@ val QuestionResolveDialog = FC<QuestionResolveDialogProps> { props ->
 
                 Button {
                     type = ButtonType.submit
-                    disabled = resolution == null || !resolutionValid || submitLock.running
-                    +"Resolve"
+                    disabled = buttonDisabled
+                    +buttonTitle
                 }
             }
         }

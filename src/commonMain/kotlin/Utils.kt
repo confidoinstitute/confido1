@@ -127,6 +127,7 @@ fun Double.clamp01() = clamp(0.0..1.0)
 
 expect fun Double.toFixed(decimals: Int): String
 
+fun Boolean.toInt() = if (this) 1 else 0
 fun unixNow(): Int = (Clock.System.now().toEpochMilliseconds()/1000).toInt()
 
 fun LocalDate.Companion.fromUnix(ts: Number) = Instant.fromEpochSeconds(ts.toLong()).toLocalDateTime(TimeZone.currentSystemDefault()).date
@@ -229,6 +230,7 @@ fun condensedNum(n: Number) =  n.toDouble().let { d->
 }
 val ClosedRange<Double>.size get() = endInclusive - start
 val ClosedRange<Double>.mid get() = (start + endInclusive)/2.0
+val ClosedRange<Double>.endpoints get() = List2(start, endInclusive)
 fun ClosedRange<Double>.intersects(other: ClosedRange<Double>) = (start > other.endInclusive || other.start < endInclusive)
 
 inline fun <T1, R> multilet(x: T1, body: (T1)->R) =  body(x)
