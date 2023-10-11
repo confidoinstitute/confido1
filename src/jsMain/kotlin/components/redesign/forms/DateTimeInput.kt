@@ -4,6 +4,7 @@ import components.redesign.basic.Stack
 import csstype.FlexDirection
 import csstype.pct
 import emotion.react.css
+import hooks.useEffectNotFirst
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
@@ -11,122 +12,142 @@ import react.*
 import react.dom.html.InputType
 import tools.confido.utils.multiletNotNull
 
-external interface DateInputProps : PropsWithClassName {
-    var required: Boolean?
-    var value: LocalDate?
-    var onChange: ((LocalDate?) -> Unit)?
-    var onError: (() -> Unit)?
-    var min: LocalDate?
-    var max: LocalDate?
+external interface DateInputProps : PropsWithClassName, InputPropsWithRange<LocalDate> {
     var id: String?
-    var placeholder: String?
 }
 
-internal val DateInput = FC<DateInputProps> { props ->
+val DateInput = FC<DateInputProps> { props ->
     var focused by useState(false)
+    var rawValue by useState(props.value?.toString() ?: "")
+    val ism = useInputStateManager(props) {
+        rawValue = it?.toString() ?: ""
+    }
+    fun onRawChange(newRaw: String) {
+        if (newRaw.isEmpty()) {
+            ism.update(null, null)
+        } else {
+            val date = try {
+                LocalDate.parse(newRaw)
+            } catch (e: Exception) {
+                return ism.update(null, InvalidFormat)
+            }
+            if (props.min?.let { date < it } == true) {
+                ism.update(null, InputTooSmall)
+            } else if (props.max?.let { date > it } == true) {
+                ism.update(null, InputTooLarge)
+            } else {
+                ism.update(date, null)
+            }
+        }
+    }
+    useEffectNotFirst(props.min.toString(), props.max.toString()) {
+        // reevaluate error if constraints change
+        onRawChange(rawValue)
+    }
     TextInput {
         this.className = props.className
-        type = if (props.value == null && props.placeholder != null && !focused) InputType.text else InputType.date
+        type = if (rawValue == "" && !props.placeholder.isNullOrEmpty() && !focused) InputType.text else InputType.date
+
         placeholder = props.placeholder
         onFocus = { focused = true }
         onBlur = { focused = false }
         size = 10
-        if (props.min != null) min = props.min
-        if (props.max != null) max = props.max
-        value = props.value ?: ""
+        props.min?.let { min = it.toString() }
+        props.max?.let { max = it.toString() }
+        this.value = rawValue
         required = props.required
         id = props.id
         onChange = { event ->
-            val date = try {
-                val value = event.target.value
-                if (value.isEmpty())
-                    null
-                else
-                    LocalDate.parse(event.target.value)
-            } catch (e: Exception) {
-                props.onError?.invoke()
-                null
-            }
-            props.onChange?.invoke(date)
+            val newValue = event.target.value
+            rawValue = newValue
+            onRawChange(newValue)
         }
     }
 }
 
-external interface TimeInputProps : PropsWithClassName {
-    var required: Boolean?
-    var value: LocalTime?
-    var onChange: ((LocalTime?) -> Unit)?
-    var onError: (() -> Unit)?
-    var min: LocalTime?
-    var max: LocalTime?
-    // NOTE placeholders are not supported for date/time inputs by HTML5
+external interface TimeInputProps : PropsWithClassName, InputPropsWithRange<LocalTime> {
 }
 
 val TimeInput = FC<TimeInputProps> { props ->
+    var rawValue by useState(props.value?.toString() ?: "")
+    val ism = useInputStateManager(props)
+
+    fun onRawChange(newValue: String) {
+        if (newValue.isEmpty()) {
+            ism.update(null, null)
+        } else {
+            val time = try {
+                LocalTime.parse(newValue)
+            } catch (e: Exception) {
+                return ism.update(null, InvalidFormat)
+            }
+            if (props.min?.let { time < it } == true) {
+                ism.update(null, InputTooSmall)
+            } else if (props.max?.let { time > it } == true) {
+                ism.update(null, InputTooLarge)
+            } else {
+                ism.update(time, null)
+            }
+        }
+    }
+    useEffectNotFirst(props.min.toString(), props.max.toString()) {
+        // reevaluate error if constraints change
+        onRawChange(rawValue)
+    }
+
     TextInput {
         this.className = props.className
         type = InputType.time
-        if (props.min != null) min = props.min
-        if (props.max != null) max = props.max
-        value = props.value ?: ""
+        props.min?.let { min = it.toString() }
+        props.max?.let { max = it.toString() }
+        this.value = rawValue
         required = props.required
         onChange = { event ->
-            val time = try {
-                val value = event.target.value
-                if (value.isEmpty())
-                    null
-                else
-                    LocalTime.parse(event.target.value)
-            } catch (e: Exception) {
-                props.onError?.invoke()
-                null
-            }
-            props.onChange?.invoke(time)
+            val newValue = event.target.value
+            rawValue = newValue
+            onRawChange(newValue)
         }
     }
 }
 
-external interface DateTimeInputProps : Props {
-    var required: Boolean?
-    var value: LocalDateTime?
-    var onChange: ((LocalDateTime?) -> Unit)?
-    //var onError: (() -> Unit)?
-    var min: LocalDateTime?
-    var max: LocalDateTime?
+external interface DateTimeInputProps : InputPropsWithRange<LocalDateTime> {
     var defaultTime: LocalTime?
     var wrap: ((ReactNode, ReactNode) -> ReactNode)?
     var dateProps: DateInputProps?
     var timeProps: TimeInputProps?
-    var placeholder: String?
 }
 
 val DateTimeInput = FC<DateTimeInputProps> { props->
-    val value = props.value
-    var date by useState(value?.date)
-    var time by useState(value?.time)
+    var date by useState(props.value?.date)
+    var time by useState(props.value?.time)
+    val ism = useInputStateManager(props) { date = it?.date; time = it?.time; }
+    var dateErr by useState<InputError>()
+    var timeErr by useState<InputError>()
     val wrap = props.wrap ?: { di,ti -> Stack.create { direction  = FlexDirection.row; +di; +ti } }
-    useEffect(props.value.toString()) {
-        println("EFF ${props.value}")
-        date = props.value?.date
-        time = props.value?.time
-    }
-    fun update(newDate: LocalDate?, newTime: LocalTime?) {
+    fun update(newDate: LocalDate?, newDateErr: InputError?, newTime: LocalTime?, newTimeErr: InputError?) {
         val newTimeEff = newTime ?: props.defaultTime
-        val newDT = multiletNotNull(newDate, newTimeEff)  { d,t -> LocalDateTime(d,t) }
-        if (newDT != props.value)
-            props.onChange?.invoke(newDT)
+        val newDT = if (newDateErr == null && newTimeErr == null)
+            multiletNotNull(newDate, newTimeEff)  { d,t -> LocalDateTime(d,t) }
+        else null
+        val newErr = newDateErr ?: newTimeErr
+        ism.update(newDT, newErr)
+    }
+    useEffectNotFirst(props.min.toString(), props.max.toString()) {
+        // reevaluate error if constraints change
+        update(date,dateErr,time,timeErr)
     }
     +wrap(
         DateInput.create {
             this.value = date
             this.placeholder = props.placeholder
-            onChange = {newDate ->
+            onChange = { newDate, err ->
                 date = newDate
+                dateErr = err
                 val newTime = if (newDate != null && time == null && props.defaultTime != null) {
                     time = props.defaultTime
                     props.defaultTime
                 } else time
-                update(newDate, newTime)
+                update(newDate, err, newTime, timeErr)
             }
             css {
                 flexBasis = 50.pct
@@ -135,9 +156,10 @@ val DateTimeInput = FC<DateTimeInputProps> { props->
         },
         TimeInput.create {
             this.value = time
-            onChange = {
-                time = it
-                update(date, it)
+            onChange = { newTime, err->
+                time = newTime
+                timeErr = err
+                update(date, dateErr, newTime, err)
             }
             css {
                 flexBasis = 50.pct
