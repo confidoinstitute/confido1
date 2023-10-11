@@ -3,6 +3,7 @@ package components.redesign.basic
 import csstype.*
 import react.*
 import rooms.RoomColor
+import tools.confido.question.QuestionState
 
 interface Palette {
     val color: Color
@@ -50,6 +51,7 @@ enum class RoomPalette(override val color: Color, override val text: TextPalette
 }
 
 enum class QuestionPalette(override val color: Color): Palette {
+    draft(Color("#ADBDC2")),
     `open`(Color("#4F24CA")),
     closed(Color("#0079D0")),
     resolved(Color("#00AA59")),
@@ -82,4 +84,12 @@ val RoomColor.palette: RoomPalette get() {
         RoomColor.MAGENTA -> RoomPalette.magenta
         RoomColor.GRAY -> RoomPalette.gray
     }
+}
+
+val QuestionState.palette get() = when (this) {
+    QuestionState.DRAFT -> QuestionPalette.draft
+    QuestionState.OPEN -> QuestionPalette.open
+    QuestionState.CLOSED -> QuestionPalette.closed
+    QuestionState.RESOLVED -> QuestionPalette.resolved
+    QuestionState.CANCELLED -> QuestionPalette.annulled
 }

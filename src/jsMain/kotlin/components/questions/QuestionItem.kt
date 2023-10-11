@@ -237,7 +237,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                             variant = ChipVariant.outlined
                         }
                     }
-                    if (question.state == QuestionState.ANNULLED) {
+                    if (question.state == QuestionState.CANCELLED) {
                         Chip {
                             label = ReactNode("Annulled")
                             variant = ChipVariant.outlined
