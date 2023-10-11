@@ -127,6 +127,7 @@ fun Double.clamp01() = clamp(0.0..1.0)
 
 expect fun Double.toFixed(decimals: Int): String
 
+fun Boolean.toInt() = if (this) 1 else 0
 fun unixNow(): Int = (Clock.System.now().toEpochMilliseconds()/1000).toInt()
 
 fun LocalDate.Companion.fromUnix(ts: Number) = Instant.fromEpochSeconds(ts.toLong()).toLocalDateTime(TimeZone.currentSystemDefault()).date

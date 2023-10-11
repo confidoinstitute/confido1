@@ -510,7 +510,6 @@ data class TruncatedNormalDistribution(
     override val scale get() = pseudoStdev
 
     override val preferredCICenter get() = pseudoMean
-    override val description get() = "${space.formatValue(pseudoMean)} ± ${space.formatDifference(pseudoStdev)}"
 
     override fun identify() = "trunc_norm:$pseudoMean:$pseudoStdev"
 }

@@ -109,6 +109,14 @@ val IconButton = ButtonBase.withStyle<TextButtonProps>("palette") {props ->
     iconButton(palette)
 }
 
+val ButtonUnstyled = button.withStyle {
+    border = None.none
+    borderRadius = 0.px
+    padding = 0.px
+    margin = 0.px
+    background = None.none
+}
+
 external interface IconLinkProps: LinkProps, PropsWithPalette<TextPalette>
 
 val IconLink = Link.withRipple().withStyle<IconLinkProps>("palette") {props ->

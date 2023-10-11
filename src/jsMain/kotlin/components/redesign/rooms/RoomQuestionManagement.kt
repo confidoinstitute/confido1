@@ -2,13 +2,17 @@ package components.redesign.rooms
 
 import Client
 import components.AppStateContext
-import components.redesign.DragIndicatorIcon
-import components.redesign.GroupsIcon
-import components.redesign.TimelineIcon
-import components.redesign.basic.Stack
+import components.redesign.*
+import components.redesign.basic.*
 import components.redesign.forms.Button
+import components.redesign.forms.ButtonUnstyled
+import components.redesign.forms.IconButton
+import components.redesign.forms.IconLink
+import components.redesign.questions.ChipCSS
+import components.redesign.questions.StatusChip
 import components.redesign.questions.dialog.EditQuestionDialog
 import components.redesign.questions.dialog.QuestionPreset
+import components.redesign.questions.dialog.QuestionResolveDialog
 import components.showError
 import csstype.*
 import dndkit.applyListeners
@@ -17,35 +21,67 @@ import dndkit.modifiers.restrictToVerticalAxis
 import dndkit.modifiers.restrictToWindowEdges
 import dndkit.sortable.*
 import dndkit.utilities.closestCenter
+import dom.html.HTMLElement
 import emotion.css.ClassName
 import emotion.react.css
+import hooks.useCoroutineLock
 import hooks.useEditDialog
 import hooks.useWebSocket
 import kotlinx.js.jso
+import payloads.requests.EditQuestion
+import payloads.requests.EditQuestionState
 import payloads.requests.ReorderQuestions
 import payloads.responses.WSError
 import react.*
 import react.dom.aria.AriaRole
+import react.dom.html.AnchorTarget
 import react.dom.html.ReactHTML
+import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.table
 import react.dom.html.ReactHTML.tbody
 import react.dom.html.ReactHTML.td
 import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
+import react.router.dom.Link
 import rooms.Room
 import rooms.RoomPermission
 import tools.confido.question.Prediction
 import tools.confido.question.Question
+import tools.confido.question.QuestionState
 import tools.confido.refs.Ref
 import tools.confido.state.havePermission
+import tools.confido.utils.capFirst
+import tools.confido.utils.toInt
 import utils.runCoroutine
+
+external interface StatusChangeDialogProps : Props {
+    var open: Boolean
+    var onCancel: (()->Unit)?
+    var onSelect: ((QuestionState)->Unit)?
+}
+val StatusChangeDialog = FC<StatusChangeDialogProps> { props->
+    DialogMenu {
+        open = props.open
+        onClose = { props.onCancel?.invoke() }
+        DialogMenuHeader { text = "Change question state" }
+        QuestionState.entries.forEach {
+            DialogMenuItem {
+                text = it.name.lowercase().capFirst()
+                onClick = {
+                    props.onSelect?.invoke(it)
+                }
+            }
+        }
+    }
+}
+
 
 external interface QuestionManagementProps : Props {
     var room: Room
     var questions: List<Question>
 }
-
 
 val QuestionManagement = FC<QuestionManagementProps> { props ->
     val (_, stale) = useContext(AppStateContext)
@@ -141,26 +177,35 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
                 css(ClassName("qmgmt-tab")) {
                     borderCollapse = BorderCollapse.separate
                     borderSpacing = "0 3px".unsafeCast<BorderSpacing>()
+                    "thead td" {
+                        paddingLeft = 5.px // align with content
+                    }
                     "tbody td" {
                         border = None.none
                         backgroundColor = NamedColor.white
                         paddingLeft = 5.px
                         paddingRight = 5.px
+                        verticalAlign = VerticalAlign.middle
                     }
                     "tbody tr:first-child td:first-child" {
-                        borderTopLeftRadius = 5.px
+                        borderTopLeftRadius = 10.px
                     }
                     "tbody tr:last-child td:first-child" {
-                        borderBottomLeftRadius = 5.px
+                        borderBottomLeftRadius = 10.px
                     }
                     "tbody tr:first-child td:last-child" {
-                        borderTopRightRadius = 5.px
+                        borderTopRightRadius = 10.px
                     }
                     "tbody tr:last-child td:last-child" {
-                        borderBottomRightRadius = 5.px
+                        borderBottomRightRadius = 10.px
+                    }
+                    "tbody" {
+                        fontSize = 90.pct
                     }
                 }
                 ReactHTML.colgroup {
+                    autoSizedCol()
+                    autoSizedCol()
                     autoSizedCol()
                     ReactHTML.col {}
                     repeat(3) {
@@ -169,12 +214,14 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
                 }
                 thead {
                     css {
-                        fontWeight = FontWeight.bold
+                        fontWeight = integer(600)
                         color = Color("#333")
                         fontSize = 80.pct
                     }
                     tr {
                         td {}
+                        td {}
+                        td{ +"State" }
                         td {  +"Question" }
                         td {
                             autoSized()
@@ -203,10 +250,11 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
                                 QuestionRow {
                                     key = question.id
                                     this.question = question
+                                    this.room = room
                                     this.showGroupPredCol = showGroupPredCol
                                     this.groupPred = groupPreds.get(question.id)
                                     this.showResolutionCol = showResolutionCol
-                                    this.onEditDialog = editQuestionOpen
+                                    this.onEdit = { editQuestionOpen(question) }
                                 }
                             }
                         }
@@ -226,11 +274,12 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
 }
 
 external interface QuestionRowProps : Props {
+    var room: Room
     var question: Question
     var showGroupPredCol: Boolean
     var groupPred: Prediction?
     var showResolutionCol: Boolean
-    var onEditDialog: ((Question) -> Unit)?
+    var onEdit: (() -> Unit)?
 }
 
 external interface DragHandleProps : Props {
@@ -254,10 +303,21 @@ val QuestionRow = FC<QuestionRowProps> { props ->
     val (_, stale) = useContext(AppStateContext)
     val question = props.question
 
-    val sortable = useSortable(jso<UseSortableArguments> {
+    val sortable = useSortable(jso {
         this.id = props.question.id
     })
 
+    var changingState by useState(false)
+    var fullHeight by useState(0.0)
+    val submitLock = useCoroutineLock()
+    var resolveOpen by useState(false)
+    val room = props.room
+
+    QuestionResolveDialog {
+        this.question = question
+        this.open = resolveOpen
+        this.onClose = { resolveOpen = false; changingState = false }
+    }
 
     tr {
         this.asDynamic().ref = sortable.setNodeRef
@@ -268,44 +328,192 @@ val QuestionRow = FC<QuestionRowProps> { props ->
             // XXX this was causing confusing visual artifacts, as seen here:
             // https://chat.confido.institute/file-upload/ikuaaPABuHgNjD7XR/reorder-questions-2022-12-06_23.04.39.webm
             //this.asDynamic().transition = sortable.transition
+            if (changingState) height = fullHeight.px
         }
         // TODO: apply sortable.attributes (a11y)
 
         // apparently, this is the only way? (https://stackoverflow.com/questions/4757844/css-table-column-autowidth)
-        fun PropsWithClassName.autoSized() = css { width = 1.px; whiteSpace = WhiteSpace.nowrap }
+        fun PropertiesBuilder.autoSized() {  width = 1.px; whiteSpace = WhiteSpace.nowrap }
+        fun PropsWithClassName.autoSized() = css(className) { autoSized() }
         td {
             css {
-                paddingLeft = 1.px
-                paddingRight = 0.px
+                autoSized()
+                "&&" {
+                    paddingLeft = 1.px
+                    paddingRight = 0.px
+                }
             }
-            autoSized()
-            if (!stale)
+            if (!stale) {
                 DragHandle {
                     // TODO apply sortable.setActivatorNodeRef (requires forwardref in DragHandle)
                     listeners = sortable.listeners
                     isDragging = sortable.isDragging
                 }
+            }
         }
-        td { +question.name }
         td {
-            autoSized()
-            +"${question.numPredictors} "
-            +" / "
-            +"${question.numPredictions}"
+            css {
+                autoSized()
+                verticalAlign = VerticalAlign.middle
+                "&&" {
+                    paddingLeft = 1.px
+                }
+            }
+            Stack {
+                direction = FlexDirection.row
+                css {
+                    alignItems = AlignItems.center
+                }
+                ButtonUnstyled {
+                    css {
+                        height = Auto.auto
+                        lineHeight = 10.px
+                    }
+                    SettingsIcon {}
+                    onClick = { changingState = false; props.onEdit?.invoke() }
+                }
+            }
         }
-        if (props.showGroupPredCol)
-            td {
-                autoSized()
-                props.groupPred?.dist?.let { groupDist ->
-                    +groupDist.description
+        val state = question.state
+        val palette = state.palette
+        td {
+            css { verticalAlign = VerticalAlign.middle }
+            autoSized()
+            //StatusIndicator{
+            //    state = question.state
+            //}
+            button {
+                css(ChipCSS) {
+                    cursor = Cursor.pointer
+                    backgroundColor = palette.color
+                    color = NamedColor.white
+                }
+                + state.name.lowercase().capFirst()// + " " + if (changingState) "▴" else "▾"
+                onClick = {
+                    if (!changingState) {
+                        val row = (it.target as HTMLElement).parentElement?.parentElement
+                        println(row)
+                        row?.let {
+                            fullHeight = row.getBoundingClientRect().height
+                            println("fh ${row.getBoundingClientRect().height}")
+                        }
+                    }
+                    changingState = !changingState
                 }
             }
-        if (props.showResolutionCol)
+        }
+        if (changingState) {
             td {
-                autoSized()
-                question.resolution?.let {
-                    +it.format()
+                colSpan = 2 + props.showGroupPredCol.toInt() + props.showResolutionCol.toInt()
+                css {
+                    verticalAlign = VerticalAlign.middle
+                }
+                Stack {
+                    direction = FlexDirection.row
+                    css {
+                        gap = 10.px
+                        alignItems = AlignItems.center
+                    }
+                    span {
+                        css {
+                            fontSize = 16.px
+                            lineHeight = 16.px
+                            fontWeight = FontWeight.bold
+                        }
+                        +"⭢"
+                    }
+                    QuestionState.entries.filter { it != state }.forEach {newState->
+                        button {
+                            css(ChipCSS) {
+                                border = Border(1.px, LineStyle.solid, newState.palette.color)
+                                color = newState.palette.color
+                                backgroundColor = NamedColor.white
+                            }
+                            +newState.name.lowercase().capFirst()
+                            onClick = {
+                                if (newState == QuestionState.RESOLVED && question.resolution == null) {
+                                    resolveOpen = true
+                                } else submitLock {
+                                    val edit: EditQuestion = EditQuestionState(newState)
+                                    Client.sendData(
+                                        "${props.question.urlPrefix}/edit",
+                                        edit,
+                                        onError = { showError(it); changingState = false }) {
+                                        changingState = false
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    IconButton {
+                        CloseIcon{
+                            css {
+                                height = 12.px
+                            }
+                        }
+                        onClick = { changingState = false }
+                    }
                 }
             }
+        } else {
+            td { Link {
+                this.to = props.room.urlPrefix  + question.urlPrefix
+                this.target = AnchorTarget._blank
+                css(LinkUnstyled) {}
+                +question.name
+            } }
+            td {
+                autoSized()
+                +"${question.numPredictors} "
+                +" / "
+                +"${question.numPredictions}"
+            }
+            if (props.showGroupPredCol)
+                td {
+                    autoSized()
+                    props.groupPred?.dist?.let { groupDist ->
+                        +groupDist.description
+                    }
+                }
+            if (props.showResolutionCol)
+                td {
+                    css {
+                        autoSized()
+                        ".edit-icon" {
+                            if (question.resolution != null) visibility = Visibility.hidden
+                        }
+                        "&:hover .edit-icon" {
+                            visibility = Visibility.visible
+                        }
+                        if (question.resolution != null) {
+                            // The hidden pencil icon can serve instead of padding so that
+                            // there is not too much blank space on the right when it is
+                            // hidden.
+                            "&&" { paddingRight = 1.px }
+                        }
+                    }
+
+
+                    ButtonUnstyled {
+                        css {
+                            height = Auto.auto
+                            lineHeight = 10.px
+                            flexDirection = FlexDirection.row
+                            display = Display.flex
+                            alignItems = AlignItems.center
+                            gap = 3.px
+                        }
+                        question.resolution?.let {
+                            +it.format()
+                        }
+                        EditIcon {
+                            className = ClassName("edit-icon")
+                            size = 14
+                            color = "#333"
+                        }
+                        onClick = { changingState = false; resolveOpen = true; }
+                    }
+                }
+        }
     }
 }

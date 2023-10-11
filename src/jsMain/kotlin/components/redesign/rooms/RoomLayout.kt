@@ -305,7 +305,7 @@ val RoomLayout = FC<Props> {
                 }
             if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
                 Route {
-                    path = "qmgmt"
+                    path = "manage_questions"
                     this.element = QuestionManagement.create {
                         questions = room.questions.mapDeref()
                         this.room = room

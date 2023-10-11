@@ -2,6 +2,7 @@ package payloads.requests
 
 import kotlinx.serialization.Serializable
 import tools.confido.question.Question
+import tools.confido.question.QuestionState
 import tools.confido.spaces.Value
 
 @Serializable
@@ -43,3 +44,8 @@ data class EditQuestionResolution(
 data class EditQuestionComplete(
     val question: Question,
 ) : EditQuestion()
+
+@Serializable
+data class EditQuestionState(
+    val newState: QuestionState
+): EditQuestion()
