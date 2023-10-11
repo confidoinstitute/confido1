@@ -169,6 +169,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                         this.preset = props.preset
                         state = questionStatus
                         onStateChange = { questionStatus = it }
+                        this.terminology = predictionTerminology
 
                         space = answerSpace
                         value = resolution

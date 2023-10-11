@@ -1,8 +1,11 @@
 package components.redesign.questions.dialog
 
+import components.ValueEntry
 import components.redesign.forms.*
 import kotlinx.datetime.*
+import kotlinx.js.jso
 import react.*
+import tools.confido.question.PredictionTerminology
 import tools.confido.question.QuestionState
 import tools.confido.spaces.*
 import tools.confido.utils.*
@@ -18,47 +21,33 @@ internal external interface EditQuestionDialogResolutionProps : Props {
     var valid: Boolean
     var onChange: (Value?) -> Unit
     var onError: () -> Unit
+    var terminology: PredictionTerminology?
 }
 
 internal val EditQuestionDialogResolution = FC<EditQuestionDialogResolutionProps> { props ->
-    var binaryResolution by useState<Boolean?>(null)
-    var dateResolution by useState<LocalDate?>(null)
-    var dateError by useState(false)
-    var numericResolution by useState<Double?>(null)
-
-    val questionType = props.space?.questionType
     val valueRequired = props.valueRequired ?: false
+    var resolution by useState(props.value)
+    val space = props.space
+    val terminology = props.terminology ?: PredictionTerminology.ESTIMATE
 
-    useEffect(props.space, binaryResolution, dateResolution.toString(), numericResolution) {
+    useEffect(space?.identify(), resolution?.identify()) {
         console.log("Resolution part update")
-        try {
-            val value: Value? = when (questionType) {
-                QuestionType.BINARY -> binaryResolution?.let { BinaryValue(it) }
-                QuestionType.NUMERIC -> numericResolution?.let { NumericValue(props.space as NumericSpace, it) }
-                QuestionType.DATE -> dateResolution?.let {
-                    val timestamp = it.atStartOfDayIn(TimeZone.UTC).epochSeconds
-                    NumericValue(props.space as NumericSpace, timestamp.toDouble())
-                }
-                null -> null
+        multiletNotNull(resolution, space) { oldResolution, newSpace ->
+            val oldSpace = oldResolution.space
+            if (oldSpace == newSpace) {
+                // NOP
+            } else if (oldSpace is NumericSpace && newSpace is NumericSpace
+                        && oldResolution is NumericValue
+                        && oldSpace.representsDays == newSpace.representsDays
+                        && oldResolution.value in newSpace.range) {
+                val newValue = oldResolution.copy(space = newSpace)
+                resolution = newValue
+                props.onChange(newValue)
+            } else {
+                // Resolution is incompatible with new space, clear it.
+                resolution = null
+                props.onChange(null)
             }
-            props.onChange(value)
-        } catch (e: IllegalArgumentException) {
-            props.onError()
-        }
-    }
-
-    useEffect(props.value) {
-        if (questionType == null) {
-            return@useEffect
-        }
-        when (val value = props.value) {
-            is BinaryValue -> binaryResolution = value.value
-            is NumericValue ->
-                if (questionType == QuestionType.NUMERIC)
-                    numericResolution = value.value
-                else
-                    dateResolution = LocalDate.fromUnix(value.value)
-            else -> {}
         }
     }
 
@@ -67,67 +56,38 @@ internal val EditQuestionDialogResolution = FC<EditQuestionDialogResolutionProps
             title = "Status"
             OptionGroup<QuestionState>()() {
                 options = listOf(
+                    QuestionState.DRAFT to "Draft",
                     QuestionState.OPEN to "Open",
                     QuestionState.CLOSED to "Closed",
                     QuestionState.RESOLVED to "Resolved",
-                    QuestionState.ANNULLED to "Annulled",
+                    QuestionState.CANCELLED to "Cancelled",
                 )
                 defaultValue = QuestionState.OPEN
                 value = props.state
                 onChange = { props.onStateChange?.invoke(it) }
             }
             comment = when (props.state) {
-                QuestionState.OPEN -> "The question is open to answers."
-                QuestionState.CLOSED -> "Room members cannot add new estimates or update them."
-                QuestionState.RESOLVED -> "Room members cannot update estimates and the resolution is shown."
-                QuestionState.ANNULLED -> "Room members cannot update estimates or update them."
+                QuestionState.DRAFT -> "The question is visible only to moderators. ${terminology.plural.capFirst()} cannot be added."
+                QuestionState.OPEN -> "Forecasters can add new and update existing ${terminology.plural}."
+                QuestionState.CLOSED -> "Room members cannot add new ${terminology.plural} or update them."
+                QuestionState.RESOLVED -> "The question has a known resolution (correct answer), which is made public. Forecasters cannot add or update ${terminology.plural}."
+                QuestionState.CANCELLED -> "It is not (and won't be) possible to resolve the question because of unexpected circumstances. The question is closed, ${terminology.plural} cannot be added or updated and there is no correct answer."
             }
         }
     }
     // In open and closed states, it may make sense to prepare a resolution for resolving in the future.
     // For annulled questions, this is unlikely to be useful, so we hide the resolution section
     // as the resolution is not shown.
-    if (props.state != QuestionState.ANNULLED) {
-        FormField {
+    if (props.state != QuestionState.CANCELLED && space != null) {
+        InputFormField<Value, SpaceValueEntryProps>()() {
+            inputComponent = SpaceValueEntry
+            inputProps = jso {
+                this.space = space
+                value = resolution
+            }
             title = "Correct answer"
             required = valueRequired
-            if (props.space != null)
-                when (questionType) {
-                    QuestionType.BINARY -> {
-                        BinaryValueEntry {
-                            value = binaryResolution
-                            required = valueRequired
-                            onChange = { binaryResolution = it }
-                        }
-                    }
 
-                    QuestionType.NUMERIC -> {
-                        NumericValueEntry {
-                            value = numericResolution
-                            placeholder = "Enter the correct answer"
-                            required = valueRequired
-                            onChange = { numericResolution = it }
-                        }
-                    }
-
-                    QuestionType.DATE -> {
-                        DateInput {
-                            value = dateResolution
-                            placeholder = "Enter the correct answer"
-                            required = valueRequired
-                            onChange = { dateResolution = it; dateError = false }
-                            onError = { dateError = true }
-                        }
-                    }
-
-                    else -> {}
-                }
-            if (questionType == null)
-                error = "The answer space is not well defined, please correct it."
-            else if (dateError)
-                error = "This is not a valid date."
-            else if (!props.valid)
-                error = "This resolution is not within the answer range."
             if (props.value != null) {
                 if (props.state != QuestionState.RESOLVED)
                     comment = "Will be shown to room members when the status is changed to Resolved."

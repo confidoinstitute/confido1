@@ -1,11 +1,10 @@
 package components.redesign.questions.dialog
 
 import components.redesign.basic.Dialog
-import components.redesign.forms.Button
-import components.redesign.forms.Form
-import components.redesign.forms.FormSection
+import components.redesign.forms.*
 import components.showError
 import hooks.useCoroutineLock
+import kotlinx.js.jso
 import payloads.requests.EditQuestion
 import payloads.requests.EditQuestionComplete
 import react.FC
@@ -24,17 +23,22 @@ external interface QuestionResolveDialogProps : Props {
 }
 
 val QuestionResolveDialog = FC<QuestionResolveDialogProps> { props ->
-    var resolution by useState<Value?>(null)
-    var resolutionValid by useState(false)
-
+    val question = props.question
+    var resolution by useState(question.resolution)
+    var resolutionValid by useState(question.resolution != null)
+    var publish by useState(question.resolution == null || question.resolutionVisible)
     val submitLock = useCoroutineLock()
 
     fun resolve() {
-        val question = props.question.copy(resolution = resolution).withState(QuestionState.RESOLVED)
+        val question = question.copy(resolution = resolution).let {
+            if (publish) it.withState(QuestionState.RESOLVED)
+            else it
+        }
+        // TODO: Make a dedicated edit mode for this to prevent overwrites!
         val editQuestion: EditQuestion = EditQuestionComplete(question)
         submitLock {
             Client.sendData(
-                "${props.question.urlPrefix}/edit",
+                "${question.urlPrefix}/edit",
                 editQuestion,
                 onError = { showError(it) }) {
                 props.onClose?.invoke()
@@ -45,33 +49,41 @@ val QuestionResolveDialog = FC<QuestionResolveDialogProps> { props ->
     Dialog {
         open = props.open
         onClose = { props.onClose?.invoke() }
-        title = "Resolve this question"
-        action = "Resolve"
+        title = if (question.resolution != null) "Change resolution" else "Resolve this question"
+        val buttonTitle = if (question.state != QuestionState.RESOLVED && publish) "Resolve" else "Save"
+        val buttonDisabled = !resolutionValid || submitLock.running
+        action = buttonTitle
         onAction = { resolve() }
-        disabledAction = resolution == null || !resolutionValid || submitLock.running
+        disabledAction = buttonDisabled
         Form {
             onSubmit = { resolve() }
             FormSection {
-                EditQuestionDialogResolution {
-                    state = QuestionState.RESOLVED
-                    space = props.question.answerSpace
-                    value = resolution
-                    valid = resolutionValid
-                    valueRequired = true
-                    this.onChange = {
-                        resolution = it
-                        resolutionValid = true
+                InputFormField<Value, SpaceValueEntryProps>()() {
+                    title = "Resolution"
+                    comment = "The correct answer or actual outcome."
+                    inputComponent = SpaceValueEntry
+                    inputProps = jso {
+                        space = question.answerSpace
+                        value = resolution
+                        this.onChange = { newVal, err->
+                            resolution = newVal
+                            resolutionValid = err == null
+                        }
                     }
-                    this.onError = {
-                        resolution = null
-                        resolutionValid = false
-                    }
+                }
+
+                if (question.state != QuestionState.RESOLVED)
+                FormSwitch {
+                    label = "Publish resolution"
+                    comment = "This will make resolution visible to all forecasters and prevent adding further ${question.predictionTerminology.plural}."
+                    checked = publish
+                    onChange = {  publish = it.target.checked }
                 }
 
                 Button {
                     type = ButtonType.submit
-                    disabled = submitLock.running
-                    +"Resolve"
+                    disabled = buttonDisabled
+                    +buttonTitle
                 }
             }
         }
