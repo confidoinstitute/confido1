@@ -68,6 +68,7 @@ private val QMHelpDialog = FC<DialogProps> { props->
     Dialog {
         title = "Help"
         action = "Close"
+        onAction = { props.onClose?.invoke() }
         +props
         ul {
             li {
