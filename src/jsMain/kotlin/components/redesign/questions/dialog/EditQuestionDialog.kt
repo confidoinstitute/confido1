@@ -68,9 +68,6 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     }
 
     // VISIBILITY
-    var isVisible by useState {
-        props.entity?.visible ?: true
-    }
     var allowComments by useState {
         props.entity?.allowComments ?: true
     }
@@ -84,7 +81,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     val submit = useCoroutineLock()
     fun submitQuestion() = submit {
         if (!questionValid) return@submit
-        val question = tools.confido.question.Question(
+        val question = Question(
             id = props.entity?.id ?: "",
             stateHistory = props.entity?.stateHistory ?: emptyList(),
             // QUESTION
@@ -93,10 +90,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
             // ANSWER
             answerSpace = answerSpace!!,
             // RESOLUTION
-            open = questionStatus == QuestionState.OPEN,
-            resolutionVisible = questionStatus == QuestionState.RESOLVED,
             resolution = resolution,
-            annulled = questionStatus == QuestionState.CANCELLED,
             // ANCHORING
             groupPredVisible = groupPredictionVisibility.groupPredVisible,
             groupPredRequirePrediction = groupPredictionVisibility.groupPredRequirePrediction,
@@ -104,10 +98,9 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
             predictionTerminology = predictionTerminology,
             groupTerminology = groupTerminology,
             // VISIBILITY
-            visible = isVisible,
             allowComments = allowComments,
             sensitive = isSensitive,
-        )
+        ).withState(questionStatus)
 
         if (props.entity == null) {
             Client.sendData("${room.urlPrefix}/questions/add", question, onError = {showError(it)}) {props.onClose?.invoke()}
@@ -223,17 +216,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 }
 
             FormSection {
-                title = "Visibility"
-                FormSwitch {
-                    label = "Question visible"
-                    checked = isVisible
-                    onChange = { e -> isVisible = e.target.checked }
-                    comment = if (isVisible) {
-                        "This question will be visible to all room members."
-                    } else {
-                        "This question will be visible to moderators only."
-                    }
-                }
+                title = "Comments"
                 FormSwitch {
                     label = "Allow comments"
                     checked = allowComments
