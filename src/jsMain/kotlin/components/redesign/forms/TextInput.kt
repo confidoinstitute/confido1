@@ -68,8 +68,12 @@ object RequiredInputMissing: InputError(){
 sealed class InputOutOfRange: InputError(){
     override fun toString() = "Value out of allowed range"
 }
-object InputTooLarge: InputOutOfRange()
-object InputTooSmall: InputOutOfRange()
+class InputTooLarge(val limit: Any): InputOutOfRange() {
+    override fun toString() = "Value too large (maximum: $limit)"
+}
+class InputTooSmall(val limit: Any): InputOutOfRange() {
+    override fun toString() = "Value too small (minimum: $limit)"
+}
 external interface InputProps<T>: Props {
     var value: T?
     var placeholder: String?
@@ -138,9 +142,9 @@ val NumericInput = FC<NumericInputProps>("NumericInput") { props ->
         else if (newValue == null)
             ism.update(null, InvalidFormat)
         else if (newValue < (props.min ?: Double.NEGATIVE_INFINITY))
-            ism.update(null, InputTooSmall)
+            ism.update(null, InputTooSmall(props.min!!))
         else if (newValue > (props.max ?: Double.POSITIVE_INFINITY))
-            ism.update(null, InputTooLarge)
+            ism.update(null, InputTooLarge(props.max!!))
         else
             ism.update(newValue, null)
     }

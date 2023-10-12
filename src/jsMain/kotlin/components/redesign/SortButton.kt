@@ -22,32 +22,33 @@ external interface SortButtonProps : PropsWithClassName {
     var options: List<SortType>?
 }
 
+var HeaderGrayButton = ButtonBase.withStyle {
+    display = Display.flex
+    flexDirection = FlexDirection.row
+    fontFamily = sansSerif
+    fontWeight = integer(600)
+    fontSize = 13.px
+    lineHeight = 16.px
+    padding = Padding(7.px, 10.px)
+    borderRadius = 5.px
+    color = Color("#888888")
+    gap = 7.px
+    alignItems = AlignItems.center
+
+    hover {
+        backgroundColor = Color("#88888810")
+    }
+
+    ".ripple" {
+        backgroundColor = rgba(0, 0, 0, 0.2)
+    }
+
+}
+
 val SortButton = FC<SortButtonProps> { props ->
     val options = props.options ?: listOf(SortType.NEWEST, SortType.OLDEST)
 
-    ButtonBase {
-        css(override = props.className) {
-            display = Display.flex
-            flexDirection = FlexDirection.row
-            fontFamily = sansSerif
-            fontWeight = integer(600)
-            fontSize = 13.px
-            lineHeight = 16.px
-            padding = Padding(7.px, 10.px)
-            borderRadius = 5.px
-            color = Color("#888888")
-            gap = 7.px
-            alignItems = AlignItems.center
-
-            hover {
-                backgroundColor = Color("#88888810")
-            }
-
-            ".ripple" {
-                backgroundColor = rgba(0, 0, 0, 0.2)
-            }
-
-        }
+    HeaderGrayButton {
         SortIcon { }
         val text = when (props.sortType) {
             SortType.NEWEST -> "Newest first"
