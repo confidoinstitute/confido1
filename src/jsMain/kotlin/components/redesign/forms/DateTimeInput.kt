@@ -32,9 +32,9 @@ val DateInput = FC<DateInputProps> { props ->
                 return ism.update(null, InvalidFormat)
             }
             if (props.min?.let { date < it } == true) {
-                ism.update(null, InputTooSmall)
+                ism.update(null, InputTooSmall(props.min!!))
             } else if (props.max?.let { date > it } == true) {
-                ism.update(null, InputTooLarge)
+                ism.update(null, InputTooLarge(props.max!!))
             } else {
                 ism.update(date, null)
             }
@@ -82,9 +82,9 @@ val TimeInput = FC<TimeInputProps> { props ->
                 return ism.update(null, InvalidFormat)
             }
             if (props.min?.let { time < it } == true) {
-                ism.update(null, InputTooSmall)
+                ism.update(null, InputTooSmall(props.min!!))
             } else if (props.max?.let { time > it } == true) {
-                ism.update(null, InputTooLarge)
+                ism.update(null, InputTooLarge(props.max!!))
             } else {
                 ism.update(time, null)
             }

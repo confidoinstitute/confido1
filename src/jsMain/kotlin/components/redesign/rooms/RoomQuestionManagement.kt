@@ -10,6 +10,7 @@ import components.redesign.forms.IconButton
 import components.redesign.forms.IconLink
 import components.redesign.questions.ChipCSS
 import components.redesign.questions.StatusChip
+import components.redesign.questions.dialog.AddQuestionPresetDialog
 import components.redesign.questions.dialog.EditQuestionDialog
 import components.redesign.questions.dialog.QuestionPreset
 import components.redesign.questions.dialog.QuestionResolveDialog
@@ -38,12 +39,14 @@ import react.dom.html.AnchorTarget
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.li
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.table
 import react.dom.html.ReactHTML.tbody
 import react.dom.html.ReactHTML.td
 import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
+import react.dom.html.ReactHTML.ul
 import react.router.dom.Link
 import rooms.Room
 import rooms.RoomPermission
@@ -56,35 +59,71 @@ import tools.confido.utils.capFirst
 import tools.confido.utils.toInt
 import utils.runCoroutine
 
-external interface StatusChangeDialogProps : Props {
-    var open: Boolean
-    var onCancel: (()->Unit)?
-    var onSelect: ((QuestionState)->Unit)?
-}
-val StatusChangeDialog = FC<StatusChangeDialogProps> { props->
-    DialogMenu {
-        open = props.open
-        onClose = { props.onCancel?.invoke() }
-        DialogMenuHeader { text = "Change question state" }
-        QuestionState.entries.forEach {
-            DialogMenuItem {
-                text = it.name.lowercase().capFirst()
-                onClick = {
-                    props.onSelect?.invoke(it)
-                }
-            }
-        }
-    }
-}
-
-
 external interface QuestionManagementProps : Props {
     var room: Room
     var questions: List<Question>
 }
 
+private val QMHelpDialog = FC<DialogProps> { props->
+    Dialog {
+        title = "Help"
+        action = "Close"
+        onAction = { props.onClose?.invoke() }
+        +props
+        ul {
+            li {
+                + "You can drag the "
+                DragIndicatorIcon{
+                    size = 20
+                    css {
+                        verticalAlign = VerticalAlign.middle
+                        margin = -3.px
+                    }
+                }
+                +" handles to change question order. "
+                +" This determines the order in which questions are shown to forecasters. "
+                +" By default, newest questions are put on top."
+            }
+            li {
+                +"You can click the "
+                SettingsIcon{
+                    css { verticalAlign = VerticalAlign.middle }
+                }
+                +" icon to edit the question (open the question edit dialog)."
+            }
+            li {
+                +"You can click the question state indicator (e.g. "
+                StatusChip {
+                    color = QuestionState.OPEN.palette.color
+                    text = "Open"
+                }
+                +") to quickly change question state."
+            }
+            li {
+                +"You can click the question text to open the question page (in a new tab)."
+            }
+            li {
+                +"The "
+                GroupsIcon {
+                    css { verticalAlign = VerticalAlign.middle }
+                    size = 16
+                }
+                +" / "
+                TimelineIcon {
+                    css { verticalAlign = VerticalAlign.middle }
+                    size = 16
+                }
+                +" column shows the number of people who have predicted on a given question and the total number of predictions made (incl. updates)."
+            }
+            li {
+                +"You can click in the Resolution column to quickly add/edit question resolution."
+            }
+        }
+    }
+}
+
 val QuestionManagement = FC<QuestionManagementProps> { props ->
-    val (_, stale) = useContext(AppStateContext)
+    val (appState, stale) = useContext(AppStateContext)
     val room = props.room
 
     val groupPredsWS = useWebSocket<Map<String, Prediction?>>("/state${room.urlPrefix}/group_pred")
@@ -106,7 +145,28 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
         questionOrder = (nonRemovedIds + newQuestionIds).toTypedArray()
     }
 
-    val editQuestionOpen = useEditDialog(EditQuestionDialog, jso { this.preset = QuestionPreset.NONE })
+    var preset by useState(QuestionPreset.NONE)
+    var presetOpen by useState(false)
+    var helpOpen by useState(false)
+
+    val editQuestionOpen = useEditDialog(EditQuestionDialog, jso {
+        this.preset = preset
+    })
+
+    fun addQuestion() {
+        presetOpen = true
+    }
+
+    AddQuestionPresetDialog {
+        open = presetOpen
+        onClose = {presetOpen = false}
+        onPreset = {preset = it; presetOpen = false; editQuestionOpen(null)}
+    }
+
+    QMHelpDialog {
+        open = helpOpen
+        onClose = { helpOpen = false }
+    }
 
     val showGroupPredCol = (
             props.questions.any{it.numPredictions > 0}
@@ -124,7 +184,33 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
             )
 
     RoomHeader {
-        +"Quick and condensed moderator overview of questions in the room."
+        Stack {
+            direction = FlexDirection.row
+            css {
+                flexGrow = number(1.0)
+                alignItems = AlignItems.center
+                justifyItems = JustifyItems.center
+                marginLeft = 5.px
+                marginRight = 5.px
+                gap = 0.px
+                fontSize = 14.px
+                fontWeight = integer(500)
+                color = Color("#888")
+            }
+            div { +"Quick and condensed moderator overview of questions in the room." }
+            IconButton {
+                HelpIcon{}
+                onClick = { helpOpen = true }
+            }
+
+            if (appState.hasPermission(room, RoomPermission.ADD_QUESTION)) {
+                div { css {flexGrow = number(1.0)} }
+                RoomHeaderButton {
+                    +"Create a question"
+                    onClick = { addQuestion() }
+                }
+            }
+        }
         fullWidth = true
         innerClass = ClassName {
             justifyContent = JustifyContent.center
@@ -254,23 +340,15 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
                                     this.showGroupPredCol = showGroupPredCol
                                     this.groupPred = groupPreds.get(question.id)
                                     this.showResolutionCol = showResolutionCol
-                                    this.onEdit = { editQuestionOpen(question) }
+                                    this.onEdit = { preset = QuestionPreset.NONE; editQuestionOpen(question) }
                                 }
                             }
                         }
                     }
                 }
             }
-            if (room.havePermission(RoomPermission.ADD_QUESTION)) {
-                Button {
-                    this.disabled = stale
-                    onClick = { editQuestionOpen(null) }
-                    +"Add question…"
-                }
-            }
         }
     }
-
 }
 
 external interface QuestionRowProps : Props {
@@ -509,7 +587,7 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                         EditIcon {
                             className = ClassName("edit-icon")
                             size = 14
-                            color = "#333"
+                            color = "#888"
                         }
                         onClick = { changingState = false; resolveOpen = true; }
                     }

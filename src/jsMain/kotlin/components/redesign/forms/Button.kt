@@ -74,7 +74,7 @@ val TextButton = ButtonBase.withStyle<TextButtonProps>("palette") {props ->
     }
 }
 
-fun PropertiesBuilder.iconButton(palette: TextPalette) {
+fun PropertiesBuilder.iconButton(palette: TextPalette?) {
     display = Display.flex
     alignItems = AlignItems.center
     justifyContent = JustifyContent.center
@@ -88,23 +88,19 @@ fun PropertiesBuilder.iconButton(palette: TextPalette) {
     cursor = Cursor.pointer
 
 
-    color = palette.color
+    palette?.color?.let { color = it }
 
     ".ripple" {
-        backgroundColor = palette.color
+        backgroundColor = palette?.color ?: NamedColor.black
     }
 
     hover {
-        backgroundColor = palette.hoverColor
-    }
-    "svg" {
-        asDynamic().fill = palette.color
-        asDynamic().stroke = palette.color
+        backgroundColor = palette?.hoverColor ?: Color("#00000010")
     }
 }
 
 val IconButton = ButtonBase.withStyle<TextButtonProps>("palette") {props ->
-    val palette = props.palette ?: TextPalette.black
+    val palette = props.palette
 
     iconButton(palette)
 }
@@ -115,6 +111,8 @@ val ButtonUnstyled = button.withStyle {
     padding = 0.px
     margin = 0.px
     background = None.none
+    fontFamily = "inherit".unsafeCast<FontFamily>()
+    fontSize = "inherit".unsafeCast<FontSize>()
 }
 
 external interface IconLinkProps: LinkProps, PropsWithPalette<TextPalette>

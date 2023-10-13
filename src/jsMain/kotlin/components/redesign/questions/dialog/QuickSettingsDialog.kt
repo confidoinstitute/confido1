@@ -60,22 +60,6 @@ val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props -
                 text = "Quick settings"
             }
             DialogMenuItem {
-                // TODO: Better text for "Unhide". Using something like "Show" would not make it clear what this button does (i.e. the question is currently hidden).
-                text = if (props.question.visible) { "Hide" } else { "Unhide" }
-                icon = if (props.question.visible) { HideIcon } else { UnhideIcon }
-                disabled = editLock.running
-                onClick = {
-                    editLock {
-                        val edit: EditQuestion = EditQuestionFlag(EditQuestionFieldType.VISIBLE, !props.question.visible)
-                        Client.sendData(
-                            "${props.question.urlPrefix}/edit",
-                            edit,
-                            onError = { showError(it) }) {
-                        }
-                    }
-                }
-            }
-            DialogMenuItem {
                 text = when (props.question.state) {
                     QuestionState.DRAFT -> "Open"
                     QuestionState.OPEN -> "Close"

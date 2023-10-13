@@ -86,6 +86,7 @@ internal val EditQuestionDialogResolution = FC<EditQuestionDialogResolutionProps
             inputProps = jso {
                 this.space = space
                 value = resolution
+                onChange = { v, err -> resolution = v; props.onChange(v) }
             }
             title = "Correct answer"
             required = valueRequired

@@ -80,9 +80,6 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     }
 
     // VISIBILITY
-    var isVisible by useState {
-        props.entity?.visible ?: true
-    }
     var allowComments by useState {
         props.entity?.allowComments ?: true
     }
@@ -103,10 +100,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         // ANSWER
         answerSpace = answerSpace!!,
         // RESOLUTION
-        open = questionStatus == QuestionState.OPEN,
-        resolutionVisible = questionStatus == QuestionState.RESOLVED,
         resolution = resolution,
-        annulled = questionStatus == QuestionState.CANCELLED,
         // ANCHORING
         groupPredVisible = groupPredictionVisibility.groupPredVisible,
         groupPredRequirePrediction = groupPredictionVisibility.groupPredRequirePrediction,
@@ -114,12 +108,12 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         predictionTerminology = predictionTerminology,
         groupTerminology = groupTerminology,
         // VISIBILITY
-        visible = isVisible,
         allowComments = allowComments,
         sensitive = isSensitive,
         schedule = if (customSchedule) schedule else null,
         scheduleStatus = QuestionScheduleStatus(if (customSchedule) schedule else room.defaultSchedule),
-    ) else null
+    ).withState(questionStatus) else null
+
     fun submitQuestion() = submit {
         val question = assembleQuestion() ?: return@submit
 
@@ -293,17 +287,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 }
 
             FormSection {
-                title = "Visibility"
-                FormSwitch {
-                    label = "Question visible"
-                    checked = isVisible
-                    onChange = { e -> isVisible = e.target.checked }
-                    comment = if (isVisible) {
-                        "This question will be visible to all room members."
-                    } else {
-                        "This question will be visible to moderators only."
-                    }
-                }
+                title = "Comments"
                 FormSwitch {
                     label = "Allow comments"
                     checked = allowComments
