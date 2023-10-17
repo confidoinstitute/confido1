@@ -92,14 +92,14 @@ val QuestionResolveDialog = FC<QuestionResolveDialogProps> { props ->
                 if (publish)
                 FormField {
                     this.title = "Score time"
-                    this.comment = "Set a time from which predictions should be used for scoring and calibration curves." +
+                    this.comment = "Set a time from which predictions should be used for computing calibration." +
                                    " This is usually a compromise " +
                                    " between the forecasters having had enough time to think about the question and the " +
-                                   " outcome not yet being too obvious. If no time is set, last prediction will be used."
+                                   " outcome not yet being too obvious. If no time is set, the question will be excluded from calibration."
                     DateTimeInput {
                         this.value = scoreTime?.toLocalDateTime(tz)
-                        onChange = {
-                            scoreTime = it?.toInstant(tz)
+                        onChange = { newVal, err->
+                            scoreTime = newVal?.toInstant(tz)
                         }
                     }
                 }

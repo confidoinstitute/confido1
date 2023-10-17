@@ -79,6 +79,8 @@ external interface InputProps<T>: Props {
     var placeholder: String?
     var onChange: ((newVal: T?, errType: InputError?) -> Unit)?
     var required: Boolean?
+    var disabled: Boolean?
+    var readOnly: Boolean?
 }
 
 external interface InputPropsWithRange<T>: InputProps<T> {
@@ -163,6 +165,8 @@ val NumericInput = FC<NumericInputProps>("NumericInput") { props ->
         props.min?.let { this.min = it }
         props.max?.let { this.max = it }
         props.step?.let { this.step = it }
+        props.disabled?.let { this.disabled = it }
+        props.readOnly?.let { this.readOnly = it }
         onChange = { event ->
             val newRaw = event.target.value
             rawValue = newRaw

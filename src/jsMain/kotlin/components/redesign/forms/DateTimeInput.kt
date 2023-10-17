@@ -54,6 +54,8 @@ val DateInput = FC<DateInputProps> { props ->
         size = 10
         props.min?.let { min = it.toString() }
         props.max?.let { max = it.toString() }
+        props.disabled?.let { this.disabled = it }
+        props.readOnly?.let { this.readOnly = it }
         this.value = rawValue
         required = props.required
         id = props.id
@@ -102,6 +104,8 @@ val TimeInput = FC<TimeInputProps> { props ->
         props.max?.let { max = it.toString() }
         this.value = rawValue
         required = props.required
+        props.disabled?.let { this.disabled = it }
+        props.readOnly?.let { this.readOnly = it }
         onChange = { event ->
             val newValue = event.target.value
             rawValue = newValue
@@ -156,6 +160,8 @@ val DateTimeInput = FC<DateTimeInputProps> { props->
         },
         TimeInput.create {
             this.value = time
+            this.disabled = (props.disabled == true || date == null)
+            this.readOnly = props.readOnly
             onChange = { newTime, err->
                 time = newTime
                 timeErr = err

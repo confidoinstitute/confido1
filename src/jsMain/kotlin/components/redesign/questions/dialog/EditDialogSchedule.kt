@@ -80,12 +80,12 @@ val EditQuestionDialogSchedule = FC<EditQuestionDialogScheduleProps> { props ->
                     this.value = ldt
                     this.placeholder = placeholder
                     this.defaultTime = LocalTime(0, 0)
-                    this.disabled = disabled
-                    this.readOnly = readOnly
+                    //this.disabled = disabled
+                    //this.readOnly = readOnly
                     dateProps = jso {
                         this.id = dateId
                     }
-                    this.onChange = { newLDT ->
+                    this.onChange = { newLDT, err ->
                         if (!disabled && !readOnly) {
                             val newInst = newLDT?.toInstant(TimeZone.currentSystemDefault())
                             val newSched = transform(newInst)
