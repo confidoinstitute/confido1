@@ -257,18 +257,13 @@ val AsymmetricGaussIcon = FC<IconProps> { props ->
     }
 }
 
-val BackIcon = FC<IconProps> { props ->
-    svg {
-        className = props.className
-        width = 10.0
-        height = 18.0
-        viewBox = "-1 -1 10 18"
+val BackIcon = createIcon(10,18, svgAttrs = jso{viewBox = "-1 -1 10 18"}) {
+    path {
         strokeLinecap = StrokeLinecap.round
         strokeWidth = 2.0
-        ReactSVG.path {
-            fill = "transparent"
-            d = "M8,0 L0,8 L8,16"
-        }
+        fill = "transparent"
+        stroke = "currentColor"
+        d = "M8,0 L0,8 L8,16"
     }
 }
 
