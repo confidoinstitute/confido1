@@ -8,17 +8,19 @@ import react.FC
 import react.PropsWithClassName
 import react.dom.html.ReactHTML.div
 import react.dom.svg.AlignmentBaseline
+import react.dom.svg.ReactSVG
 import react.dom.svg.ReactSVG.circle
+import react.dom.svg.ReactSVG.clipPath
+import react.dom.svg.ReactSVG.defs
 import react.dom.svg.ReactSVG.g
 import react.dom.svg.ReactSVG.path
+import react.dom.svg.ReactSVG.rect
 import react.dom.svg.ReactSVG.svg
 import react.dom.svg.ReactSVG.text
 import tools.confido.calibration.CalibrationBin
 import tools.confido.calibration.CalibrationEntry
 import tools.confido.calibration.CalibrationVector
-import tools.confido.utils.List2
-import tools.confido.utils.`Z+`
-import tools.confido.utils.toFixed
+import tools.confido.utils.*
 import utils.except
 
 external interface CalibrationGraphProps: PropsWithElementSize, PropsWithClassName {
@@ -27,8 +29,10 @@ external interface CalibrationGraphProps: PropsWithElementSize, PropsWithClassNa
 }
 
 val wellCalibratedRadius = 0.05
+val slightMiscalibRadius = 0.2
 private fun fmtp(p: Double) = (100*p).toFixed(1).trimEnd('0').trimEnd('.')+"%"
-private val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> {props->
+
+private val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { props->
     val height = props.elementHeight
     val leftPad = 0.0
     val botPad = 0.0
@@ -44,42 +48,58 @@ private val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProp
     fun proj(p: Map.Entry<CalibrationBin,CalibrationEntry>):List2<Double> = proj(p.key.mid, p.value.successRate ?: 0.0)
     fun pt(c: List2<Double>) = c.joinToString(" ")
     fun pt(x: Number, y: Number) = "$x $y"
-    val legendFontSize = 12.0
-    val legendColor = "#666"
+    fun ptp(px: Double, py: Double) = pt(proj(px,py))
+    val userLineColor = "#6319FF"
     svg {
         css(override=props) {
             width = 100.pct
             this.height = 100.pct//height.px
         }
         overflow = "visible"
+
+        defs {
+            ReactSVG.clipPath {
+                id = "graph"
+                rect {
+                    x = leftPad
+                    y = topPad
+                    width = graphWidth
+                    this.height = graphHeight
+                }
+            }
+        }
+        fun confidenceBand(range: ClosedFloatingPointRange<Double>, color: String) {
+            val (l,h) = range
+            path {
+                d = "M ${ptp(0.5, 0.5+l)} L ${ptp(1.0, 1.0+l)} L ${ptp(1.0, 1.0+h)} L ${ptp(0.5, 0.5+h)}"
+                clipPath = "url(#graph)"
+                fill = color
+                stroke ="none"
+                strokeWidth= 0.0
+            }
+        }
+        //val bands = listOf(
+        //    -1.0,
+        //    -slightMiscalibRadius,
+        //    -wellCalibratedRadius,
+        //    +wellCalibratedRadius,
+        //    +slightMiscalibRadius,
+        //    +1.0
+        //).zip((170..320 step 30).reversed()) { a,b-> a to "hsl($b, 85%, 85%)" }
+        val bands = listOf(
+            -1.0 to "#bc97f4",
+            -slightMiscalibRadius to "#d0b7f5",
+            -wellCalibratedRadius to "#f5fafa",
+            +wellCalibratedRadius to "#b1ebf3",
+            +slightMiscalibRadius to "#90e4f3",
+        )
+        (bands + listOf(1.0 to "")).zipWithNext { a, b -> confidenceBand(a.first..b.first, a.second) }
         path {
             // line of perfect calibration
             d = "M ${pt(proj(0.5, 0.5))} L ${pt(proj(1.0, 1.0))}"
-            stroke = "gray"
+            stroke = "#505050"
+            strokeWidth = 2.0
             strokeDasharray = "2,3"
-        }
-        path {
-            stroke = "none"
-            fill = "#f5FAFA"
-            d = "M ${pt(proj(0.5, 0.5+ wellCalibratedRadius))} L ${pt(proj(1.0- wellCalibratedRadius, 1.0))} "+
-                    " L ${pt(proj(1.0,1.0))} L ${pt(proj(1.0, 1.0- wellCalibratedRadius))} " +
-                    " L ${pt(proj(0.5, 0.5- wellCalibratedRadius))} Z"
-
-        }
-        path {
-            stroke = "none"
-            fill = "#B1EBF3"
-            d = "M ${pt(proj(0.5, 0.5+ wellCalibratedRadius))} L ${pt(proj(0.5, 1.0))} "+
-                    " L ${pt(proj(1.0- wellCalibratedRadius, 1.0))}  Z"
-
-        }
-        path {
-            stroke = "none"
-            fill = "#D0B7F5"
-            d = "M ${pt(proj(0.5, 0.5- wellCalibratedRadius))} "+
-                    " L ${pt(proj(0.5,0.0))} L ${pt(proj(1.0, 0.0))} "+
-                    " L ${pt(proj(1.0, 1.0- wellCalibratedRadius))} Z"
-
         }
         g {
             stroke = "#666"
@@ -110,7 +130,7 @@ private val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProp
         if (ent.size > 1)
             path {
                 d = ent.mapIndexed { idx, ent -> (if (idx == 0) "M" else "L") + pt(proj(ent)) }.joinToString(" ")
-                stroke = "#6319FF"
+                stroke = userLineColor
                 strokeWidth = 4.0
                 fill = "none"
             }
@@ -120,7 +140,7 @@ private val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProp
                 cx = pt.e1
                 cy = pt.e2
                 r = 4.0
-                fill = "#6319FF"
+                fill = userLineColor
             }
         }
     }

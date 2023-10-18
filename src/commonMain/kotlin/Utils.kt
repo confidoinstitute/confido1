@@ -268,3 +268,6 @@ fun binarySearch(initialRange: ClosedFloatingPointRange<Double>, desiredValue: D
     }
     return curRange
 }
+
+operator fun <T: Comparable<T>> ClosedFloatingPointRange<T>.component1() = start
+operator fun <T: Comparable<T>> ClosedFloatingPointRange<T>.component2() = endInclusive
