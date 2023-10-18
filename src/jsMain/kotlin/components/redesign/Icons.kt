@@ -198,11 +198,13 @@ val CloseIcon = createIcon(17,16) {
         d = "M1 15L15.1642 1"
         strokeWidth = 2.0
         strokeLinecap = StrokeLinecap.round
+        stroke = "currentColor"
     }
     path {
         d = "M0.99984 1L15.1641 15"
         strokeWidth = 2.0
         strokeLinecap = StrokeLinecap.round
+        stroke = "currentColor"
     }
 }
 
