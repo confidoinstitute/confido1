@@ -13,6 +13,7 @@ import components.redesign.transitions.*
 import csstype.*
 import dom.html.*
 import emotion.react.*
+import hooks.useEffectNotFirst
 import react.*
 import react.dom.*
 import react.dom.html.*
@@ -22,6 +23,7 @@ import react.dom.svg.*
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.svg
 import react.router.dom.Link
+import tools.confido.utils.generateId
 import web.location.*
 import web.storage.*
 
@@ -104,9 +106,33 @@ val DialogMenu = ForwardRef<HTMLElement, DialogMenuProps> { props, fRef ->
     }
 }
 
-external interface DialogCoreProps : PropsWithChildren, PropsWithRef<HTMLElement> {
+external interface BaseDialogProps : Props {
     var open: Boolean
     var onClose: (() -> Unit)?
+}
+/** State that is reset each time dialog is opened. */
+fun <T> useDialogState(init: T, props: BaseDialogProps): StateInstance<T> {
+    val si = useState(init)
+    useEffectNotFirst(props.open) {
+        if (props.open) si.component2()(init)
+    }
+    return si
+}
+fun <P: BaseDialogProps> dialogStateWrapper(component: FC<P>, displayName: String?=null): FC<P> {
+    return FC(displayName ?: component.displayName?.let { it + "DSW" } ?: "DialogStateWrapper") { props ->
+        var key by useState(generateId())
+        useEffectNotFirst(props.open) {
+            // No need to do this on close. Also, if we do this on close,
+            // it breaks the close animation on mobile.
+            if (props.open) key = generateId()
+        }
+        component {
+            this.key = key
+            +props
+        }
+    }
+}
+external interface DialogCoreProps : PropsWithChildren, PropsWithRef<HTMLElement>, BaseDialogProps {
     var header: ReactNode
     var fullSize: Boolean
 }

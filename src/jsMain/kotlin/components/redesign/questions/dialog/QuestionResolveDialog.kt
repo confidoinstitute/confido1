@@ -1,9 +1,13 @@
 package components.redesign.questions.dialog
 
+import Client
+import components.redesign.basic.BaseDialogProps
 import components.redesign.basic.Dialog
+import components.redesign.basic.dialogStateWrapper
 import components.redesign.forms.*
 import components.showError
 import hooks.useCoroutineLock
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
@@ -11,7 +15,6 @@ import kotlinx.js.jso
 import payloads.requests.EditQuestion
 import payloads.requests.EditQuestionComplete
 import react.FC
-import react.Props
 import react.dom.html.ButtonType
 import react.useState
 import tools.confido.question.Question
@@ -19,13 +22,11 @@ import tools.confido.question.QuestionState
 import tools.confido.spaces.Value
 
 
-external interface QuestionResolveDialogProps : Props {
+external interface QuestionResolveDialogProps : BaseDialogProps{
     var question: Question
-    var open: Boolean
-    var onClose: (() -> Unit)?
 }
 
-val QuestionResolveDialog = FC<QuestionResolveDialogProps> { props ->
+val QuestionResolveDialog = dialogStateWrapper(FC<QuestionResolveDialogProps>("QuestionResolveDialog") { props ->
     val question = props.question
     var resolution by useState(question.resolution)
     var resolutionValid by useState(question.resolution != null)
@@ -90,14 +91,15 @@ val QuestionResolveDialog = FC<QuestionResolveDialogProps> { props ->
                     onChange = {  publish = it.target.checked }
                 }
                 if (publish)
-                FormField {
-                    this.title = "Score time"
-                    this.comment = "Set a time from which predictions should be used for computing calibration." +
+                InputFormField<LocalDateTime, DateTimeInputProps>()() {
+                    title = "Score time"
+                    comment = "Set a time from which predictions should be used for computing calibration." +
                                    " This is usually a compromise " +
                                    " between the forecasters having had enough time to think about the question and the " +
                                    " outcome not yet being too obvious. If no time is set, the question will be excluded from calibration."
-                    DateTimeInput {
-                        this.value = scoreTime?.toLocalDateTime(tz)
+                    inputComponent = DateTimeInput
+                    inputProps = jso {
+                        value = scoreTime?.toLocalDateTime(tz)
                         onChange = { newVal, err->
                             scoreTime = newVal?.toInstant(tz)
                         }
@@ -112,5 +114,5 @@ val QuestionResolveDialog = FC<QuestionResolveDialogProps> { props ->
             }
         }
     }
-}
+})
 
