@@ -76,7 +76,7 @@ fun numeric2binary(dist: ContinuousProbabilityDistribution, resolution: Double) 
         it.mid to (resolution in dist.confidenceInterval(it.mid))
     }
 
-fun Iterable<CalibrationVector>.sum() = reduce{ a,b -> a+b  }
+fun Iterable<CalibrationVector>.sum() = reduceOrNull{ a,b -> a+b  } ?: CalibrationVector()
 
 fun getCalibration(q: Question, dist: ProbabilityDistribution): CalibrationVector {
     val E = CalibrationVector()

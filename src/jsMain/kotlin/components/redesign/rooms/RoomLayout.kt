@@ -315,6 +315,13 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                     path = "members"
                     this.element = RoomMembers.create()
                 }
+            if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
+                Route {
+                    path = "calibration"
+                    this.element = RoomCalibration.create {
+                        this.room = room
+                    }
+                }
             if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
                 Route {
                     path = "manage_questions"

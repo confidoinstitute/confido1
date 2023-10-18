@@ -209,7 +209,7 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
     }
 }
 
-private val QuestionEstimateTabButton = ButtonBase.withStyle<QuestionEstimateTabButtonProps>("active") { props ->
+val QuestionEstimateTabButton = ButtonBase.withStyle<QuestionEstimateTabButtonProps>("active") { props ->
     all = Globals.unset
     cursor = Cursor.pointer
 
