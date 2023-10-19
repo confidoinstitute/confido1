@@ -72,7 +72,7 @@ external interface TimeInputProps : PropsWithClassName, InputPropsWithRange<Loca
 
 val TimeInput = FC<TimeInputProps> { props ->
     var rawValue by useState(props.value?.toString() ?: "")
-    val ism = useInputStateManager(props)
+    val ism = useInputStateManager(props) { rawValue = it?.toString() ?: "" }
 
     fun onRawChange(newValue: String) {
         if (newValue.isEmpty()) {
