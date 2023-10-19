@@ -13,6 +13,7 @@ external interface FormFieldProps : PropsWithChildren, PropsWithClassName {
     var comment: String
     var error: String?
     var required: Boolean?
+    var inputAreaCSS: ClassName?
 }
 
 val FormErrorCSS = emotion.css.ClassName {
@@ -65,8 +66,12 @@ val FormField = FC<FormFieldProps> { props ->
         // Input elements
         Stack {
             direction = FlexDirection.row
-            css {
+            css(override=props.inputAreaCSS) {
                 gap = 10.px
+                justifyContent = JustifyContent.stretch
+                "& > *" {
+                    flexGrow = number(1.0)
+                }
             }
             +props.children
         }

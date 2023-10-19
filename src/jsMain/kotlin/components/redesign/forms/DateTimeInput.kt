@@ -3,6 +3,7 @@ package components.redesign.forms
 import components.redesign.basic.Stack
 import csstype.FlexDirection
 import csstype.pct
+import csstype.px
 import emotion.react.css
 import hooks.useEffectNotFirst
 import kotlinx.datetime.LocalDate
@@ -127,7 +128,8 @@ val DateTimeInput = FC<DateTimeInputProps> { props->
     val ism = useInputStateManager(props) { date = it?.date; time = it?.time; }
     var dateErr by useState<InputError>()
     var timeErr by useState<InputError>()
-    val wrap = props.wrap ?: { di,ti -> Stack.create { direction  = FlexDirection.row; +di; +ti } }
+    val wrap = props.wrap ?: if (props.inFormField == true) { di,ti -> Fragment.create {+di;+ti} }
+            else { di,ti -> Stack.create { direction  = FlexDirection.row; css { gap = 7.px; }; +di; +ti } }
     fun update(newDate: LocalDate?, newDateErr: InputError?, newTime: LocalTime?, newTimeErr: InputError?) {
         val newTimeEff = newTime ?: props.defaultTime
         val newDT = if (newDateErr == null && newTimeErr == null)

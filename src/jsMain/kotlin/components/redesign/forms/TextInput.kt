@@ -81,6 +81,7 @@ external interface InputProps<T>: Props {
     var required: Boolean?
     var disabled: Boolean?
     var readOnly: Boolean?
+    var inFormField: Boolean?
 }
 
 external interface InputPropsWithRange<T>: InputProps<T> {
@@ -187,7 +188,8 @@ val InputFormFieldComponent = FC<InputFormFieldProps<dynamic, InputProps<dynamic
         +props.except("error", "inputComponent", "inputProps")
         this.error = props.error ?: inputError?.toString()
         props.inputComponent {
-            +props.inputProps.except("onChange", "required")
+            +props.inputProps.except("onChange", "required", "inFormField")
+            this.inFormField = true
             this.required = props.inputProps.required ?: props.required ?: false
             this.onChange = { v, err->
                 inputError = err
