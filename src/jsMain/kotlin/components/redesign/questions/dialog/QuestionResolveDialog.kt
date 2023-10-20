@@ -7,10 +7,7 @@ import components.redesign.basic.dialogStateWrapper
 import components.redesign.forms.*
 import components.showError
 import hooks.useCoroutineLock
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toInstant
-import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.*
 import kotlinx.js.jso
 import payloads.requests.EditQuestion
 import payloads.requests.EditQuestionComplete
@@ -100,6 +97,7 @@ val QuestionResolveDialog = dialogStateWrapper(FC<QuestionResolveDialogProps>("Q
                     inputComponent = DateTimeInput
                     inputProps = jso {
                         value = scoreTime?.toLocalDateTime(tz)
+                        defaultTime = LocalTime.fromSecondOfDay(0)
                         onChange = { newVal, err->
                             scoreTime = newVal?.toInstant(tz)
                         }
