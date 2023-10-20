@@ -28,7 +28,7 @@ fun calibrationRoutes(routing: Routing) = routing.apply {
                     room.hasPermission(user, RoomPermission.VIEW_QUESTIONS)
                 }
                 Everyone -> {
-                    room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+                    room.hasPermission(user, RoomPermission.VIEW_GROUP_CALIBRATION)
                 }
                 //is UserSet -> { // not implemented
                 //    room.hasPermission(user, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
