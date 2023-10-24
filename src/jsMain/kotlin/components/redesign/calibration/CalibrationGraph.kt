@@ -32,6 +32,22 @@ val wellCalibratedRadius = 0.05
 val slightMiscalibRadius = 0.2
 private fun fmtp(p: Double) = (100*p).toFixed(1).trimEnd('0').trimEnd('.')+"%"
 
+data class CalibrationBand(
+    val range: ClosedFloatingPointRange<Double>,
+    val color: String,
+    val name: String,
+)
+
+val calibrationBands = listOf(
+    CalibrationBand(-1.0..-slightMiscalibRadius, "#bc97f4", "Overconfident"),
+    CalibrationBand(-slightMiscalibRadius..-wellCalibratedRadius, "#d0b7f5", "Slightly overconfident"),
+    CalibrationBand(-wellCalibratedRadius..wellCalibratedRadius, "#f5fafa", "Well-calibrated"),
+    CalibrationBand(wellCalibratedRadius..slightMiscalibRadius, "#b1ebf3", "Slightly overconfident"),
+    CalibrationBand(slightMiscalibRadius..1.0, "#90e4f3", "Underconfident"),
+)
+
+
+
 private val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { props->
     val height = props.elementHeight
     val leftPad = 0.0
@@ -86,14 +102,7 @@ private val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProp
         //    +slightMiscalibRadius,
         //    +1.0
         //).zip((170..320 step 30).reversed()) { a,b-> a to "hsl($b, 85%, 85%)" }
-        val bands = listOf(
-            -1.0 to "#bc97f4",
-            -slightMiscalibRadius to "#d0b7f5",
-            -wellCalibratedRadius to "#f5fafa",
-            +wellCalibratedRadius to "#b1ebf3",
-            +slightMiscalibRadius to "#90e4f3",
-        )
-        (bands + listOf(1.0 to "")).zipWithNext { a, b -> confidenceBand(a.first..b.first, a.second) }
+        calibrationBands.forEach { (range,color) -> confidenceBand(range,color) }
         path {
             // line of perfect calibration
             d = "M ${pt(proj(0.5, 0.5))} L ${pt(proj(1.0, 1.0))}"
@@ -144,10 +153,38 @@ private val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProp
             }
         }
     }
+    div {
+        css {
+            position = Position.absolute
+            top = topPad.px
+            left = leftPad.px
+            fontWeight = integer(600)
+            paddingLeft = 5.px
+            paddingTop = 2.px
+            fontSize = 16.px
+            fontVariantCaps = FontVariantCaps.smallCaps
+            color = Color("#53848c")
+        }
+        +"underconfident"
+    }
+    div {
+        css {
+            position = Position.absolute
+            right = rightPad.px
+            bottom = botPad.px
+            fontWeight = integer(600)
+            paddingRight = 5.px
+            paddingBottom = 4.px
+            fontSize = 16.px
+            fontVariantCaps = FontVariantCaps.smallCaps
+            color = Color("#685487")
+        }
+        +"overconfident"
+    }
 }, ClassName {
     width = 100.pct
     height = 100.pct
-
+    position = Position.relative
 })
 
 val CalibrationGraph = FC<CalibrationGraphProps> { props->

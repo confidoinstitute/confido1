@@ -1,6 +1,7 @@
 package components.redesign.calibration
 
-import csstype.NamedColor
+import components.redesign.basic.Stack
+import csstype.*
 import emotion.react.css
 import hooks.useSuspendResult
 import io.ktor.client.call.*
@@ -57,6 +58,93 @@ fun request2params(req: CalibrationRequest): URLSearchParams {
     return URLSearchParams(lst.map { (a,b) -> tupleOf(a,b) }.toTypedArray())
 }
 
+external interface CalibrationTableProps: Props  {
+    var data: CalibrationVector
+    var who: CalibrationWho?
+}
+
+val CalibrationTable = FC<CalibrationTableProps> { props->
+    fun fmtp(p: Double) = (100*p).toFixed(1).trimEnd('0').trimEnd('.')+"%"
+    val calib = props.data
+    table {
+        css {
+            borderCollapse = BorderCollapse.separate
+            borderSpacing = 3.px
+            "td, th" {
+                textAlign = TextAlign.center
+            }
+            "thead th" {
+                paddingLeft = 5.px // align with content
+                fontWeight = integer(600)
+                color = Color("#333")
+                fontSize = 80.pct
+            }
+            "tbody td" {
+                border = None.none
+                backgroundColor = NamedColor.white
+                //paddingLeft = 5.px
+                //paddingRight = 5.px
+                padding = 5.px
+                verticalAlign = VerticalAlign.middle
+            }
+            "tbody tr:first-child td:first-child" {
+                borderTopLeftRadius = 10.px
+            }
+            "tbody tr:last-child td:first-child" {
+                borderBottomLeftRadius = 10.px
+            }
+            "tbody tr:first-child td:last-child" {
+                borderTopRightRadius = 10.px
+            }
+            "tbody tr:last-child td:last-child" {
+                borderBottomRightRadius = 10.px
+            }
+            "tbody" {
+                fontSize = 90.pct
+            }
+        }
+        val whos = when (props.who) { Myself -> "My"; Everyone -> "Group"; else -> "Actual" }
+        thead {
+            tr {
+                th { +"$whos confidence" }
+                th { +"Ideal accuracy" }
+                th { +"$whos accuracy" }
+                th { +"Correct answers" }
+                th { +"Result" }
+            }
+        }
+        tbody {
+            calib.entries.filter {it.value.total != 0}.sortedBy { it.key }.forEach { (bin,entry)->
+                tr {
+                    td {
+                        +"${fmtp(bin.range.start)} - ${formatPercent(bin.range.endInclusive)}"
+                    }
+                    td {
+                        +fmtp(bin.mid)
+                    }
+                    td {
+                        entry.successRate?.let{ +fmtp(it) }
+                    }
+                    td {
+                        +"${entry.counts[true]} out of ${entry.total}"
+                    }
+                    td {
+                        val calibrationOff = entry.successRate!! - bin.mid
+                        val band = calibrationBands.first { calibrationOff in it.range }
+                        css {
+                            "&&" {
+                                backgroundColor = Color(band.color)
+                                fontWeight = integer(600)
+                            }
+                        }
+                        +band.name
+                    }
+                }
+            }
+        }
+    }
+}
+
 external interface CalibrationViewBaseProps: Props {
     var graphHeight: Double?
 }
@@ -68,43 +156,21 @@ val CalibrationView = FC<CalibrationViewProps> { props->
     val calib = props.data
     // Format with one decimal points because midpoints of 50-55 and 95-100 bins are
     // decimal numbers that seem weird when rounded
-    fun fmtp(p: Double) = (100*p).toFixed(1).trimEnd('0').trimEnd('.')+"%"
     if (calib != null) {
-        div {
-            css {
-                backgroundColor = NamedColor.white
-            }
-            CalibrationGraph {
-                this.calib = calib
-                this.height = props.graphHeight
-            }
-        }
-        table {
-            thead {
-                tr {
-                    th { +"Confidence range" }
-                    th { +"Ideal accuracy" }
-                    th { +"${when (props.who) { Myself -> "My"; Everyone -> "Group"; else -> "Actual" }} accuracy" }
-                    th { +"Correct answers" }
+        Stack {
+            css { gap = 15.px; paddingBottom = 30.px; }
+            div {
+                css {
+                    backgroundColor = NamedColor.white
+                }
+                CalibrationGraph {
+                    this.calib = calib
+                    this.height = props.graphHeight
                 }
             }
-            tbody {
-                calib.entries.filter {it.value.total != 0}.sortedBy { it.key }.forEach { (bin,entry)->
-                    tr {
-                        td {
-                            +"${fmtp(bin.range.start)} - ${formatPercent(bin.range.endInclusive)}"
-                        }
-                        td {
-                            +fmtp(bin.mid)
-                        }
-                        td {
-                            entry.successRate?.let{ +fmtp(it) }
-                        }
-                        td {
-                            +"${entry.counts[true]} / ${entry.total}"
-                        }
-                    }
-                }
+            CalibrationTable {
+                this.data = calib
+                this.who = props.who
             }
         }
     }
