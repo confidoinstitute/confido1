@@ -262,7 +262,7 @@ val NumericPredInput = FC<NumericPredInputProps>("NumericPredInput") { props->
             this.spec = spec
             this.onSpecChange = { newSpec, isCommit ->
                 spec = newSpec
-                spec.dist?.let { dist ->
+                newSpec.dist?.let { dist ->
                     props.onChange?.invoke(dist, isCommit)
                 }
             }
