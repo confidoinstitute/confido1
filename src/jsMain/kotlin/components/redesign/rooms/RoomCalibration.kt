@@ -74,7 +74,7 @@ val RoomCalibration = FC<RoomCalibrationProps> { props->
             }
             direction = FlexDirection.row
             QuestionEstimateTabButton {
-                +"My calibration"
+                +"Your calibration"
                 active = (who == Myself)
                 onClick = { who = Myself }
             }

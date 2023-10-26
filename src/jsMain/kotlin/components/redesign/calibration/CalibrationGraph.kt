@@ -4,6 +4,7 @@ import components.redesign.basic.*
 import csstype.*
 import emotion.react.css
 import emotion.css.ClassName
+import payloads.requests.CalibrationWho
 import react.FC
 import react.PropsWithClassName
 import react.dom.html.ReactHTML.div
@@ -26,6 +27,7 @@ import utils.except
 external interface CalibrationGraphProps: PropsWithElementSize, PropsWithClassName {
     var calib: CalibrationVector
     var height: Double?
+    var who: CalibrationWho?
 }
 
 val wellCalibratedRadius = 0.05
@@ -36,14 +38,15 @@ data class CalibrationBand(
     val range: ClosedFloatingPointRange<Double>,
     val color: String,
     val name: String,
+    val sign: String,
 )
 
 val calibrationBands = listOf(
-    CalibrationBand(-1.0..-slightMiscalibRadius, "#bc97f4", "Overconfident"),
-    CalibrationBand(-slightMiscalibRadius..-wellCalibratedRadius, "#d0b7f5", "Slightly overconfident"),
-    CalibrationBand(-wellCalibratedRadius..wellCalibratedRadius, "#f5fafa", "Well-calibrated"),
-    CalibrationBand(wellCalibratedRadius..slightMiscalibRadius, "#b1ebf3", "Slightly overconfident"),
-    CalibrationBand(slightMiscalibRadius..1.0, "#90e4f3", "Underconfident"),
+    CalibrationBand(-1.0..-slightMiscalibRadius, "#bc97f4", "Overconfident", ">"),
+    CalibrationBand(-slightMiscalibRadius..-wellCalibratedRadius, "#d0b7f5", "Slightly overconfident", ">"),
+    CalibrationBand(-wellCalibratedRadius..wellCalibratedRadius, "#f5fafa", "Well-calibrated", "≈"),
+    CalibrationBand(wellCalibratedRadius..slightMiscalibRadius, "#b1ebf3", "Slightly overconfident", "<"),
+    CalibrationBand(slightMiscalibRadius..1.0, "#90e4f3", "Underconfident", "<"),
 )
 
 
@@ -192,11 +195,17 @@ val CalibrationGraph = FC<CalibrationGraphProps> { props->
         fontSize = 13.px
         color = Color("#666")
     }
+    val axisLabelCSS = ClassName {
+        fontSize = 13.px
+        color = Color("#666")
+        fontWeight = integer(600)
+        textAlign = TextAlign.center
+    }
     div {
         css(override=props) {
             display = Display.grid
-            gridTemplateRows = "1fr auto".unsafeCast<GridTemplateRows>()
-            gridTemplateColumns = "auto 1fr".unsafeCast<GridTemplateRows>()
+            gridTemplateRows = "1fr auto auto".unsafeCast<GridTemplateRows>()
+            gridTemplateColumns = "auto auto 1fr".unsafeCast<GridTemplateRows>()
             height = (props.height?:500.0).px
             marginTop = 20.px
             marginRight = 25.px
@@ -210,7 +219,7 @@ val CalibrationGraph = FC<CalibrationGraphProps> { props->
                 justifyContent = JustifyContent.stretch
                 justifyItems = JustifyItems.stretch
                     gridRow = integer(1)
-                    gridColumn = integer(2)
+                    gridColumn = integer(3)
             }
             CalibrationGraphContent {
                 +props.except("className")
@@ -219,10 +228,19 @@ val CalibrationGraph = FC<CalibrationGraphProps> { props->
                 }
             }
         }
+        div {
+            css(axisLabelCSS) {
+                gridRow = integer(1)
+                gridColumn = integer(1)
+                writingMode = WritingMode.verticalLr
+                transform = rotate(180.deg)
+            }
+            +props.who.withAdjective("accuracy").capFirst()
+        }
         div { // vertical axis
             css(legendCSS) {
                 gridRow = integer(1)
-                gridColumn = integer(1)
+                gridColumn = integer(2)
                 position = Position.relative
                 textAlign = TextAlign.right
                 marginRight = 5.px
@@ -249,7 +267,7 @@ val CalibrationGraph = FC<CalibrationGraphProps> { props->
         div { // horizontal axis
             css(legendCSS) {
                 gridRow = integer(2)
-                gridColumn = integer(2)
+                gridColumn = integer(3)
                 position = Position.relative
                 textAlign = TextAlign.right
                 marginTop = 5.px
@@ -271,6 +289,13 @@ val CalibrationGraph = FC<CalibrationGraphProps> { props->
                     +fmtp(it)
                 }
             }
+        }
+        div {
+            css(axisLabelCSS) {
+                gridRow = integer(3)
+                gridColumn = integer(3)
+            }
+            +props.who.withAdjective("confidence").capFirst()
         }
     }
 }

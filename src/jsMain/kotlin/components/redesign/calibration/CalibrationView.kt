@@ -25,6 +25,7 @@ import rooms.Room
 import tools.confido.calibration.CalibrationVector
 import tools.confido.question.Question
 import tools.confido.refs.Ref
+import tools.confido.utils.capFirst
 import tools.confido.utils.formatPercent
 import tools.confido.utils.toFixed
 import utils.except
@@ -62,6 +63,9 @@ external interface CalibrationTableProps: Props  {
     var data: CalibrationVector
     var who: CalibrationWho?
 }
+
+val CalibrationWho.adjective get() = when (this) { Myself -> "your"; Everyone -> "group"; else -> null }
+fun CalibrationWho?.withAdjective(noun: String) = this?.adjective?.let { "$it $noun" } ?: noun
 
 val CalibrationTable = FC<CalibrationTableProps> { props->
     fun fmtp(p: Double) = (100*p).toFixed(1).trimEnd('0').trimEnd('.')+"%"
@@ -103,24 +107,30 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
                 fontSize = 90.pct
             }
         }
-        val whos = when (props.who) { Myself -> "My"; Everyone -> "Group"; else -> "Actual" }
         thead {
             tr {
-                th { +"$whos confidence" }
-                th { +"Ideal accuracy" }
-                th { +"$whos accuracy" }
+                th { +props.who.withAdjective("confidence").capFirst() }
+                th {}
+                th { +props.who.withAdjective("accuracy").capFirst() }
                 th { +"Correct answers" }
                 th { +"Result" }
             }
         }
         tbody {
             calib.entries.filter {it.value.total != 0}.sortedBy { it.key }.forEach { (bin,entry)->
+                val calibrationOff = entry.successRate!! - bin.mid
+                val band = calibrationBands.first { calibrationOff in it.range }
                 tr {
                     td {
                         +"${fmtp(bin.range.start)} - ${formatPercent(bin.range.endInclusive)}"
                     }
                     td {
-                        +fmtp(bin.mid)
+                        css {
+                            "&&" {
+                                backgroundColor = Color(band.color)
+                            }
+                        }
+                        +band.sign
                     }
                     td {
                         entry.successRate?.let{ +fmtp(it) }
@@ -129,8 +139,6 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
                         +"${entry.counts[true]} out of ${entry.total}"
                     }
                     td {
-                        val calibrationOff = entry.successRate!! - bin.mid
-                        val band = calibrationBands.first { calibrationOff in it.range }
                         css {
                             "&&" {
                                 backgroundColor = Color(band.color)
@@ -166,6 +174,7 @@ val CalibrationView = FC<CalibrationViewProps> { props->
                 CalibrationGraph {
                     this.calib = calib
                     this.height = props.graphHeight
+                    this.who = props.who
                 }
             }
             CalibrationTable {
