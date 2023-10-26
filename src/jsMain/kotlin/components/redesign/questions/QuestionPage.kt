@@ -551,7 +551,7 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
         //    text = "Resolving 28 feb 2023, 12:00"
         //}
         QuestionStatusLine {
-            text = props.questionState.name.lowercase().capFirst()
+            text = props.questionState.pastVerb.lowercase().capFirst()
             props.stateHistory.filter { it.newState == props.questionState }.maxByOrNull { it.at }?.let {
                 time = it.at
             }

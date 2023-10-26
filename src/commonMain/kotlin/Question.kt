@@ -103,6 +103,21 @@ enum class QuestionState {
     CANCELLED,
 }
 
+val QuestionState.pastVerb get() = when (this) {
+    QuestionState.DRAFT -> "draft since"
+    QuestionState.OPEN -> "opened"
+    QuestionState.CLOSED -> "closed"
+    QuestionState.RESOLVED -> "resolved"
+    QuestionState.CANCELLED -> "cancelled"
+}
+val QuestionState.futureVerb get() = when (this) {
+    QuestionState.DRAFT -> "" // not applicable
+    QuestionState.OPEN -> "opens"
+    QuestionState.CLOSED -> "closes"
+    QuestionState.RESOLVED -> "resolves"
+    QuestionState.CANCELLED -> "" // not applicable
+}
+
 @Serializable
 data class QuestionStateChange(
     val newState: QuestionState,
