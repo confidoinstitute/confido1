@@ -363,7 +363,8 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                         this.dist = props.myPrediction?.dist
                         this.disabled = !question.open || !hasPredictPermission
                         this.question = question
-                        this.resolution = question.resolution
+                        if (question.resolutionVisible)
+                            this.resolution = question.resolution
                         if (question.open) {
                             this.onChange = { newDist, isCommit->
                                 if (isCommit) {
