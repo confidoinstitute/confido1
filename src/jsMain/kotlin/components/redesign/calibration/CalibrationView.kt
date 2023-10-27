@@ -76,6 +76,7 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
     fun fmtp(p: Double) = (100*p).toFixed(1).trimEnd('0').trimEnd('.')+"%"
     val calib = props.data
     val entries = calib.entries.filter {it.value.total != 0}.sortedBy { it.key }
+    val layoutMode = useContext(LayoutModeContext)
     if (entries.size > 0)
     table {
         css {
@@ -98,17 +99,19 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
                 padding = 5.px
                 verticalAlign = VerticalAlign.middle
             }
-            "tbody tr:first-child td:first-child" {
-                borderTopLeftRadius = 10.px
-            }
-            "tbody tr:last-child td:first-child" {
-                borderBottomLeftRadius = 10.px
-            }
-            "tbody tr:first-child td:last-child" {
-                borderTopRightRadius = 10.px
-            }
-            "tbody tr:last-child td:last-child" {
-                borderBottomRightRadius = 10.px
+            if (layoutMode >= LayoutMode.TABLET) {
+                "tbody tr:first-child td:first-child" {
+                    borderTopLeftRadius = 10.px
+                }
+                "tbody tr:last-child td:first-child" {
+                    borderBottomLeftRadius = 10.px
+                }
+                "tbody tr:first-child td:last-child" {
+                    borderTopRightRadius = 10.px
+                }
+                "tbody tr:last-child td:last-child" {
+                    borderBottomRightRadius = 10.px
+                }
             }
             "tbody" {
                 fontSize = 90.pct
@@ -119,7 +122,7 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
                 th { +props.who.withAdjective("confidence").capFirst() }
                 th {}
                 th { +props.who.withAdjective("accuracy").capFirst() }
-                th { +"Correct answers" }
+                th { +"Questions" }
                 th { +"Result" }
             }
         }
@@ -143,7 +146,7 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
                         entry.successRate?.let{ +fmtp(it) }
                     }
                     td {
-                        +"${entry.counts[true]} out of ${entry.total}"
+                        +"${entry.total}"
                     }
                     td {
                         css {
