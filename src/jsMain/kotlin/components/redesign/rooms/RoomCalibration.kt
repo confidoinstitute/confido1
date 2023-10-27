@@ -1,8 +1,10 @@
 package components.redesign.rooms
 
 import components.redesign.HelpIcon
+import components.redesign.basic.LayoutWidthWrapper
 import components.redesign.basic.Stack
 import components.redesign.calibration.CalibrationReqView
+import components.redesign.calibration.TabbedCalibrationReqView
 import components.redesign.forms.IconButton
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
@@ -28,7 +30,6 @@ external interface RoomCalibrationProps: Props {
 private val bgColor = Color("#f2f2f2")
 val RoomCalibration = FC<RoomCalibrationProps> { props->
     val layoutMode = useContext(LayoutModeContext)
-    var who by useState<CalibrationWho>(Myself)
 
     RoomHeader {
         Stack {
@@ -54,38 +55,10 @@ val RoomCalibration = FC<RoomCalibrationProps> { props->
         }
     }
 
-    Stack {
-        component = ReactHTML.main
-        css {
-            marginTop = 15.px
-            flexDirection = FlexDirection.column
-            flexGrow = number(1.0)
-            width = layoutMode.contentWidth
-            marginLeft = Auto.auto
-            marginRight = Auto.auto
-        }
-        Stack {
-            css {
-                padding = if (layoutMode >= LayoutMode.TABLET) Padding(15.px, 0.px) else 15.px
-                paddingTop = 0.px
-                background = bgColor
-                borderRadius = 5.px
-                flexShrink = number(0.0)
-            }
-            direction = FlexDirection.row
-            QuestionEstimateTabButton {
-                +"Your calibration"
-                active = (who == Myself)
-                onClick = { who = Myself }
-            }
-            QuestionEstimateTabButton {
-                +"Group calibration"
-                active = ( who ==  Everyone )
-                onClick = { who = Everyone }
-            }
-        }
-        CalibrationReqView {
-            req = CalibrationRequest(rooms = setOf(props.room.ref), who = who)
+    LayoutWidthWrapper {
+        css { paddingBottom = 30.px }
+        TabbedCalibrationReqView {
+            req = CalibrationRequest(rooms = setOf(props.room.ref), who = Myself)
             graphHeight = 260.0
         }
     }

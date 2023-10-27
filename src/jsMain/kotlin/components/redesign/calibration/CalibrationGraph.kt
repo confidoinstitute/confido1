@@ -8,16 +8,13 @@ import payloads.requests.CalibrationWho
 import react.FC
 import react.PropsWithClassName
 import react.dom.html.ReactHTML.div
-import react.dom.svg.AlignmentBaseline
 import react.dom.svg.ReactSVG
 import react.dom.svg.ReactSVG.circle
-import react.dom.svg.ReactSVG.clipPath
 import react.dom.svg.ReactSVG.defs
 import react.dom.svg.ReactSVG.g
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.rect
 import react.dom.svg.ReactSVG.svg
-import react.dom.svg.ReactSVG.text
 import tools.confido.calibration.CalibrationBin
 import tools.confido.calibration.CalibrationEntry
 import tools.confido.calibration.CalibrationVector
@@ -28,6 +25,7 @@ external interface CalibrationGraphProps: PropsWithElementSize, PropsWithClassNa
     var calib: CalibrationVector
     var height: Double?
     var who: CalibrationWho?
+    var areaLabels: Boolean?
 }
 
 val wellCalibratedRadius = 0.05
@@ -41,25 +39,28 @@ data class CalibrationBand(
     val sign: String,
 )
 
+//val calibrationBands = listOf(
+//    CalibrationBand(-1.0..-slightMiscalibRadius, "#bc97f4", "Overconfident", ">"),
+//    CalibrationBand(-slightMiscalibRadius..-wellCalibratedRadius, "#d0b7f5", "Slightly overconfident", ">"),
+//    CalibrationBand(-wellCalibratedRadius..wellCalibratedRadius, "#f5fafa", "Well-calibrated", "≈"),
+//    CalibrationBand(wellCalibratedRadius..slightMiscalibRadius, "#b1ebf3", "Slightly overconfident", "<"),
+//    CalibrationBand(slightMiscalibRadius..1.0, "#90e4f3", "Underconfident", "<"),
+//)
 val calibrationBands = listOf(
-    CalibrationBand(-1.0..-slightMiscalibRadius, "#bc97f4", "Overconfident", ">"),
-    CalibrationBand(-slightMiscalibRadius..-wellCalibratedRadius, "#d0b7f5", "Slightly overconfident", ">"),
+    CalibrationBand(-1.0..-slightMiscalibRadius, "#b08bff", "Overconfident", ">"),
+    CalibrationBand(-slightMiscalibRadius..-wellCalibratedRadius, "#d4bfff", "Slightly overconfident", ">"),
     CalibrationBand(-wellCalibratedRadius..wellCalibratedRadius, "#f5fafa", "Well-calibrated", "≈"),
-    CalibrationBand(wellCalibratedRadius..slightMiscalibRadius, "#b1ebf3", "Slightly overconfident", "<"),
-    CalibrationBand(slightMiscalibRadius..1.0, "#90e4f3", "Underconfident", "<"),
+    CalibrationBand(wellCalibratedRadius..slightMiscalibRadius, "#bffbff", "Slightly overconfident", "<"),
+    CalibrationBand(slightMiscalibRadius..1.0, "#7ff7ff", "Underconfident", "<"),
 )
 
 
 
-private val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { props->
+val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { props->
     val height = props.elementHeight
-    val leftPad = 0.0
-    val botPad = 0.0
-    val topPad = 0.0
-    val rightPad = 0.0
-    val graphWidth = props.elementWidth - leftPad - rightPad
-    val graphHeight = height - botPad - topPad
-    val origin = List2(leftPad, height - botPad)
+    val graphWidth = props.elementWidth
+    val graphHeight = height
+    val origin = List2(0.0, height)
     fun proj(px: Double, py: Double) = origin `Z+` List2(
         (px - 0.5)*2*graphWidth,
         - py*graphHeight
@@ -69,10 +70,14 @@ private val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProp
     fun pt(x: Number, y: Number) = "$x $y"
     fun ptp(px: Double, py: Double) = pt(proj(px,py))
     val userLineColor = "#6319FF"
+    val entries = props.calib.entries.filter { it.value.total > 0 }
     svg {
         css(override=props) {
             width = 100.pct
             this.height = 100.pct//height.px
+            if (entries.size == 0) {
+                filter = "saturate(35%) contrast(60%) brightness(125%)".unsafeCast<Filter>()
+            }
         }
         overflow = "visible"
 
@@ -80,8 +85,8 @@ private val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProp
             ReactSVG.clipPath {
                 id = "graph"
                 rect {
-                    x = leftPad
-                    y = topPad
+                    x = 0.0
+                    y = 0.0
                     width = graphWidth
                     this.height = graphHeight
                 }
@@ -113,21 +118,21 @@ private val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProp
             strokeWidth = 2.0
             strokeDasharray = "2,3"
         }
-        g {
-            stroke = "#666"
-            path {
-                d = "M ${pt(origin)} L ${pt(proj(0.5, 1.0))}"
-            }
-            path {
-                d = "M ${pt(origin)} L ${pt(proj(1.0, 0.0))}"
-            }
-            path {
-                d = "M ${pt(proj(0.5, 1.0))} L ${pt(proj(1.0, 1.0))}"
-            }
-            path {
-                d = "M ${pt(proj(1.0, 0.0))} L ${pt(proj(1.0, 1.0))}"
-            }
-        }
+        //g {
+        //    stroke = "#666"
+        //    path {
+        //        d = "M ${pt(origin)} L ${pt(proj(0.5, 1.0))}"
+        //    }
+        //    path {
+        //        d = "M ${pt(origin)} L ${pt(proj(1.0, 0.0))}"
+        //    }
+        //    path {
+        //        d = "M ${pt(proj(0.5, 1.0))} L ${pt(proj(1.0, 1.0))}"
+        //    }
+        //    path {
+        //        d = "M ${pt(proj(1.0, 0.0))} L ${pt(proj(1.0, 1.0))}"
+        //    }
+        //}
         g {
             stroke = "rgba(0,0,0,15%)"
             (1..9).map { it / 10.0 }.forEach {
@@ -138,15 +143,14 @@ private val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProp
 
             }
         }
-        val ent = props.calib.entries.filter { it.value.total > 0 }
-        if (ent.size > 1)
+        if (entries.size > 1)
             path {
-                d = ent.mapIndexed { idx, ent -> (if (idx == 0) "M" else "L") + pt(proj(ent)) }.joinToString(" ")
+                d = entries.mapIndexed { idx, ent -> (if (idx == 0) "M" else "L") + pt(proj(ent)) }.joinToString(" ")
                 stroke = userLineColor
                 strokeWidth = 4.0
                 fill = "none"
             }
-        ent.forEach { ent ->
+        entries.forEach { ent ->
             circle {
                 val pt = proj(ent)
                 cx = pt.e1
@@ -156,33 +160,49 @@ private val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProp
             }
         }
     }
-    div {
-        css {
-            position = Position.absolute
-            top = topPad.px
-            left = leftPad.px
-            fontWeight = integer(600)
-            paddingLeft = 5.px
-            paddingTop = 2.px
-            fontSize = 16.px
-            fontVariantCaps = FontVariantCaps.smallCaps
-            color = Color("#53848c")
+    if ((props.areaLabels ?: true) && entries.size > 0) {
+        div {
+            css {
+                position = Position.absolute
+                top = 0.px
+                left = 0.px
+                fontWeight = integer(600)
+                paddingLeft = 5.px
+                paddingTop = 2.px
+                fontSize = 16.px
+                fontVariantCaps = FontVariantCaps.smallCaps
+                color = Color("#46888c")
+            }
+            +"underconfident"
         }
-        +"underconfident"
+        div {
+            css {
+                position = Position.absolute
+                right = 0.px
+                bottom = 0.px
+                fontWeight = integer(600)
+                paddingRight = 5.px
+                paddingBottom = 4.px
+                fontSize = 16.px
+                fontVariantCaps = FontVariantCaps.smallCaps
+                color = Color("#5a4782")
+            }
+            +"overconfident"
+        }
     }
-    div {
-        css {
-            position = Position.absolute
-            right = rightPad.px
-            bottom = botPad.px
-            fontWeight = integer(600)
-            paddingRight = 5.px
-            paddingBottom = 4.px
-            fontSize = 16.px
-            fontVariantCaps = FontVariantCaps.smallCaps
-            color = Color("#685487")
+    if (entries.size == 0) {
+        div {
+            css {
+                position = Position.absolute
+                left = 50.pct
+                top = 50.pct
+                transform = translate((-50).pct, (-50).pct)
+                fontSize = 20.px
+                fontWeight = integer(500)
+                color = Color("#222")
+            }
+            +"No data yet"
         }
-        +"overconfident"
     }
 }, ClassName {
     width = 100.pct
@@ -218,8 +238,9 @@ val CalibrationGraph = FC<CalibrationGraphProps> { props->
                 alignItems = AlignItems.stretch
                 justifyContent = JustifyContent.stretch
                 justifyItems = JustifyItems.stretch
-                    gridRow = integer(1)
-                    gridColumn = integer(3)
+                gridRow = integer(1)
+                gridColumn = integer(3)
+                border = Border(1.px, LineStyle.solid, Color("#666"))
             }
             CalibrationGraphContent {
                 +props.except("className")

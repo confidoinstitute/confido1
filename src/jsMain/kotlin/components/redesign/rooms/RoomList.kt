@@ -24,7 +24,7 @@ external interface RoomLinkProps : LinkProps {
     var highlighted: Boolean
 }
 
-private val RoomLink = Link.withRipple().withStyleLM<RoomLinkProps>("small") { props, layoutMode ->
+val RoomLink = Link.withRipple().withStyleLM<RoomLinkProps>("small") { props, layoutMode ->
     display = Display.flex
     flexDirection = FlexDirection.row
     gap = 12.px

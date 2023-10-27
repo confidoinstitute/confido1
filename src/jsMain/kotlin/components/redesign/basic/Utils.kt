@@ -10,6 +10,7 @@ import hooks.*
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.main
 import utils.*
 
 inline fun PropsWithClassName.css(
@@ -74,4 +75,14 @@ fun <P: PropsWithClassName> ElementType<P>.withStyleLM(vararg except: String, bl
             block(props, layoutMode)
         }
     }
+}
+
+val LayoutWidthWrapper = main.withStyleLM {props, layoutMode->
+    display = Display.flex
+    marginTop = 15.px
+    flexDirection = FlexDirection.column
+    flexGrow = number(1.0)
+    width = layoutMode.contentWidth
+    marginLeft = Auto.auto
+    marginRight = Auto.auto
 }

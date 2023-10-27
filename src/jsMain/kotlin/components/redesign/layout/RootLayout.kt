@@ -9,6 +9,7 @@ import components.redesign.*
 import components.redesign.admin.UserAdmin
 import components.redesign.basic.*
 import components.redesign.basic.GlobalErrorMessage
+import components.redesign.calibration.CalibrationPage
 import components.redesign.feedback.FeedbackProvider
 import components.redesign.presenter.PresenterControllerProvider
 import components.redesign.profile.UserProfile
@@ -134,6 +135,10 @@ private val RootLayoutInner = FC<Props> {
                     Route {
                         path = "profile"
                         this.element = UserProfile.create()
+                    }
+                    Route {
+                        path = "calibration"
+                        this.element = CalibrationPage.create()
                     }
                     if (appState.session.user?.type == UserType.ADMIN) {
                         Route {

@@ -1,6 +1,10 @@
 package components.redesign.calibration
 
 import components.redesign.basic.Stack
+import components.redesign.forms.OptionGroup
+import components.redesign.forms.OptionGroupPageTabsVariant
+import components.redesign.layout.LayoutMode
+import components.redesign.layout.LayoutModeContext
 import csstype.*
 import emotion.react.css
 import hooks.useSuspendResult
@@ -12,8 +16,7 @@ import payloads.requests.CalibrationRequest
 import payloads.requests.CalibrationWho
 import payloads.requests.Everyone
 import payloads.requests.Myself
-import react.FC
-import react.Props
+import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.table
 import react.dom.html.ReactHTML.tbody
@@ -29,6 +32,8 @@ import tools.confido.utils.capFirst
 import tools.confido.utils.formatPercent
 import tools.confido.utils.toFixed
 import utils.except
+import components.redesign.basic.css
+import react.dom.html.ReactHTML.span
 import web.url.URLSearchParams
 
 fun params2request(params: URLSearchParams): CalibrationRequest {
@@ -70,6 +75,8 @@ fun CalibrationWho?.withAdjective(noun: String) = this?.adjective?.let { "$it $n
 val CalibrationTable = FC<CalibrationTableProps> { props->
     fun fmtp(p: Double) = (100*p).toFixed(1).trimEnd('0').trimEnd('.')+"%"
     val calib = props.data
+    val entries = calib.entries.filter {it.value.total != 0}.sortedBy { it.key }
+    if (entries.size > 0)
     table {
         css {
             borderCollapse = BorderCollapse.separate
@@ -117,7 +124,7 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
             }
         }
         tbody {
-            calib.entries.filter {it.value.total != 0}.sortedBy { it.key }.forEach { (bin,entry)->
+            entries.forEach { (bin,entry)->
                 val calibrationOff = entry.successRate!! - bin.mid
                 val band = calibrationBands.first { calibrationOff in it.range }
                 tr {
@@ -145,7 +152,38 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
                                 fontWeight = integer(600)
                             }
                         }
-                        +band.name
+                        if (0.0 in band.range) { // well-calibrated band
+                            Stack {
+                                direction = FlexDirection.row
+                                css {
+                                    justifyContent = JustifyContent.center
+                                }
+                                div {
+                                    +band.name
+                                }
+                                div {
+                                    css {
+                                        width = 0.px
+                                        flexBasis = 0.px
+                                        flexGrow = number(0.0)
+                                        position = Position.relative
+                                    }
+                                    div {
+                                        css {
+                                            color = Color("#00CC2E")
+                                            fontSize = 150.pct
+                                            lineHeight = number(1.0)
+                                            position = Position.absolute
+                                            left = 0.px
+                                            top = (-10).pct
+                                        }
+                                        +"✓"
+                                    }
+                                }
+                            }
+                        } else {
+                            +band.name
+                        }
                     }
                 }
             }
@@ -153,8 +191,12 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
     }
 }
 
-external interface CalibrationViewBaseProps: Props {
+external interface CalibrationViewBaseProps: PropsWithClassName {
     var graphHeight: Double?
+    var graphAreaLabels: Boolean?
+    var showGraph: Boolean?
+    var showTable: Boolean?
+    var graphContentOnly: Boolean?
 }
 external interface CalibrationViewProps : CalibrationViewBaseProps {
     var data : CalibrationVector?
@@ -166,17 +208,23 @@ val CalibrationView = FC<CalibrationViewProps> { props->
     // decimal numbers that seem weird when rounded
     if (calib != null) {
         Stack {
-            css { gap = 15.px; paddingBottom = 30.px; }
+            css(ClassName("calibration-view"), override = props) {
+                gap = 15.px
+                alignItems = AlignItems.stretch
+            }
+            if (props.showGraph ?: true)
             div {
                 css {
                     backgroundColor = NamedColor.white
                 }
-                CalibrationGraph {
+                (if (props.graphContentOnly ?: false) CalibrationGraphContent else CalibrationGraph) {
                     this.calib = calib
                     this.height = props.graphHeight
                     this.who = props.who
+                    this.areaLabels = props.graphAreaLabels
                 }
             }
+            if (props.showTable ?: true)
             CalibrationTable {
                 this.data = calib
                 this.who = props.who
@@ -198,6 +246,31 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
     CalibrationView {
         this.data = data
         this.who = props.req.who
+        +props.except("req")
+    }
+}
+
+val TabbedCalibrationReqView = FC<CalibrationReqViewProps> {props->
+    var who by useState(props.req.who)
+    val req = props.req.copy(who = who)
+    val layoutMode = useContext(LayoutModeContext)
+    OptionGroup<CalibrationWho>()() {
+        variant = OptionGroupPageTabsVariant
+        options = listOf(
+            Myself to "Your calibration",
+            Everyone to "Group calibration",
+        )
+        value = who
+        onChange = { who = it }
+        css {
+            if (layoutMode == LayoutMode.PHONE) {
+                paddingLeft = 15.px
+                paddingRight = 15.px
+            }
+        }
+    }
+    CalibrationReqView {
+        this.req = req
         +props.except("req")
     }
 }
