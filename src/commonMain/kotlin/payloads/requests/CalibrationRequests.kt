@@ -10,13 +10,9 @@ import users.User
 @Serializable
 sealed class CalibrationWho
 @Serializable
-object Myself: CalibrationWho() {
-    override fun toString() = "Myself"
-}
+data object Myself: CalibrationWho()
 @Serializable
-object Everyone: CalibrationWho(){
-    override fun toString() = "Everyone"
-}
+data object Everyone: CalibrationWho()
 //data class UserSet(val users: Set<Ref<User>>) : CalibrationWho()
 
 @Serializable

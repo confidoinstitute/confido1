@@ -1,6 +1,8 @@
 package components.redesign.calibration
 
-import components.redesign.basic.Stack
+import components.AppStateContext
+import components.redesign.basic.*
+import components.redesign.forms.ButtonUnstyled
 import components.redesign.forms.OptionGroup
 import components.redesign.forms.OptionGroupPageTabsVariant
 import components.redesign.layout.LayoutMode
@@ -32,8 +34,24 @@ import tools.confido.utils.capFirst
 import tools.confido.utils.formatPercent
 import tools.confido.utils.toFixed
 import utils.except
-import components.redesign.basic.css
+import components.redesign.questions.predictions.binaryColors
+import components.redesign.questions.predictions.binaryNames
+import components.redesign.questions.predictions.yesGreen
+import components.showError
+import dom.html.HTMLAnchorElement
+import dom.html.HTMLTableCellElement
+import hooks.useCoroutineLock
+import hooks.useEffectNotFirst
+import payloads.responses.CalibrationQuestion
+import react.dom.aria.ariaLabel
+import react.dom.html.HTMLAttributes
 import react.dom.html.ReactHTML.span
+import react.dom.html.TdHTMLAttributes
+import rooms.RoomPermission
+import tools.confido.calibration.CalibrationBin
+import tools.confido.refs.deref
+import tools.confido.utils.List2
+import utils.runCoroutine
 import web.url.URLSearchParams
 
 fun params2request(params: URLSearchParams): CalibrationRequest {
@@ -67,10 +85,13 @@ fun request2params(req: CalibrationRequest): URLSearchParams {
 external interface CalibrationTableProps: Props  {
     var data: CalibrationVector
     var who: CalibrationWho?
+    var onDetail: ((CalibrationBin)->Unit)?
 }
 
 val CalibrationWho.adjective get() = when (this) { Myself -> "your"; Everyone -> "group"; else -> null }
 fun CalibrationWho?.withAdjective(noun: String) = this?.adjective?.let { "$it $noun" } ?: noun
+
+
 
 val CalibrationTable = FC<CalibrationTableProps> { props->
     fun fmtp(p: Double) = (100*p).toFixed(1).trimEnd('0').trimEnd('.')+"%"
@@ -130,11 +151,29 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
             entries.forEach { (bin,entry)->
                 val calibrationOff = entry.successRate!! - bin.mid
                 val band = calibrationBands.first { calibrationOff in it.range }
-                tr {
+
+                val btd = FC<TdHTMLAttributes<HTMLTableCellElement>> { btdProps->
                     td {
+                        +btdProps.except("children")
+                        if (props.onDetail != null) {
+                            ButtonUnstyled {
+                                css { width = 100.pct; cursor = Cursor.pointer }
+                                onClick = {
+                                    props.onDetail?.invoke(bin)
+                                }
+                                ariaLabel = "View calibration details for the ${bin.formattedRange} confidence bracket"
+                                +btdProps.children
+                            }
+                        } else {
+                            +btdProps.children
+                        }
+                    }
+                }
+                tr {
+                    btd {
                         +"${fmtp(bin.range.start)} - ${formatPercent(bin.range.endInclusive)}"
                     }
-                    td {
+                    btd {
                         css {
                             "&&" {
                                 backgroundColor = Color(band.color)
@@ -142,13 +181,17 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
                         }
                         +band.sign
                     }
-                    td {
+                    btd {
                         entry.successRate?.let{ +fmtp(it) }
                     }
-                    td {
-                        +"${entry.total}"
+                    btd {
+                        span {
+                            css { +linkCSS }
+                            +"${entry.total}"
+                            //+" ${entry.total} "
+                        }
                     }
-                    td {
+                    btd {
                         css {
                             "&&" {
                                 backgroundColor = Color(band.color)
@@ -173,7 +216,7 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
                                     }
                                     div {
                                         css {
-                                            color = Color("#00CC2E")
+                                            color = yesGreen
                                             fontSize = 150.pct
                                             lineHeight = number(1.0)
                                             position = Position.absolute
@@ -204,6 +247,7 @@ external interface CalibrationViewBaseProps: PropsWithClassName {
 external interface CalibrationViewProps : CalibrationViewBaseProps {
     var data : CalibrationVector?
     var who: CalibrationWho?
+    var onDetail: ((CalibrationBin)->Unit)?
 }
 val CalibrationView = FC<CalibrationViewProps> { props->
     val calib = props.data
@@ -231,6 +275,7 @@ val CalibrationView = FC<CalibrationViewProps> { props->
             CalibrationTable {
                 this.data = calib
                 this.who = props.who
+                this.onDetail = props.onDetail
             }
         }
     }
@@ -246,8 +291,40 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
         if (resp.status.isSuccess()) resp.body<CalibrationVector>()
         else null
     }
+    val req = props.req
+    val entries = data?.entries?.filter { it.value.total > 0 } ?: emptyList()
+    val (appState,stale) = useContext(AppStateContext)
+    val detailFetch = useCoroutineLock()
+    var detailBin by useState<CalibrationBin>()
+    var detail by useState<List<CalibrationQuestion>>()
+    val canDetail = (
+            entries.size > 0 &&
+                (req.who == Myself || (
+                    req.rooms != null
+                    && req.rooms.all { it.deref()?.hasPermission(appState.session.user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)?:false }
+                )
+            )
+        )
+    if (canDetail && detail != null) {
+        CalibrationDetailDialog {
+            open = detailBin != null
+            this.data = detail!!
+            bin = detailBin
+            onClose = { detailBin = null }
+        }
+    }
     CalibrationView {
         this.data = data
+        this.onDetail = { bin->
+            if (detail == null) {
+                detailFetch {
+                    Client.sendData("/calibration/detail", props.req, onError = {showError(it)}) {
+                        detail = body<List<CalibrationQuestion>>()
+                    }
+                }
+            }
+            detailBin = bin
+        }
         this.who = props.req.who
         +props.except("req")
     }

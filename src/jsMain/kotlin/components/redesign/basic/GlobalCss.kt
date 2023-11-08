@@ -1,8 +1,11 @@
 package components.redesign.basic
 
 import csstype.*
+import emotion.css.ClassName
 import emotion.react.*
+import kotlinx.js.jso
 import react.*
+import utils.buildProps
 
 external interface GlobalCssProps : Props {
     var backgroundColor: BackgroundColor
@@ -10,6 +13,12 @@ external interface GlobalCssProps : Props {
 
 val sansSerif = string("Inter, sans-serif")
 val serif = string("TeX Gyre Pagella, Palatino, serif")
+
+val linkCSS = buildProps {
+    textDecoration = TextDecoration.underline
+    color = MainPalette.primary.color
+    cursor = Cursor.pointer
+}
 
 val GlobalCss = FC<GlobalCssProps> { props ->
     Global {
@@ -28,6 +37,9 @@ val GlobalCss = FC<GlobalCssProps> { props ->
             }
             "button" {
                 cursor = Cursor.pointer
+            }
+            "a" {
+                +linkCSS
             }
         }
     }

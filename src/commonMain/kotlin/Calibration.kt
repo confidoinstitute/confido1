@@ -1,6 +1,7 @@
 package tools.confido.calibration
 
 import kotlinx.serialization.Serializable
+import payloads.responses.CalibrationQuestion
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.distributions.ProbabilityDistribution
@@ -11,7 +12,9 @@ import tools.confido.spaces.BinaryValue
 import tools.confido.spaces.NumericSpace
 import tools.confido.spaces.NumericValue
 import tools.confido.utils.List2
+import tools.confido.utils.endpoints
 import tools.confido.utils.mid
+import tools.confido.utils.toFixed
 
 @Serializable
 enum class CalibrationBin(val range: ClosedFloatingPointRange<Double>) {
@@ -24,11 +27,8 @@ enum class CalibrationBin(val range: ClosedFloatingPointRange<Double>) {
 
     val mid get() = range.mid
 
-    data class BinSpec(
-        val bin: CalibrationBin,
-        val weight: Double,
-        val correctAnswer: Boolean,
-    )
+    val formattedRange get() = range.endpoints.joinToString(" – ") { (100*it).toFixed(0)+"%" }
+
     companion object {
         fun find(p: Double): Pair<CalibrationBin, Boolean>? =
             if (p == 0.5) null
@@ -42,6 +42,8 @@ data class CalibrationEntry(
     val counts: List2<Int> = List2(0, 0),
 ) {
     constructor(correct: Boolean, cnt: Int = 1) : this(if (correct) List2(0,cnt) else List2(cnt, 0))
+    constructor(cq: CalibrationQuestion) : this(cq.isCorrect)
+    constructor(cqs: Iterable<CalibrationQuestion>) : this(List2(cqs.groupBy { it.isCorrect }.mapValues { it.value.size }, 0))
     val successRate get() = if (counts.sum() == 0) null else counts[true].toDouble() / total.toDouble()
     val total get() = counts.sum()
     operator fun plus(other: CalibrationEntry) = CalibrationEntry(counts.zip(other.counts) { a, b -> a+b })

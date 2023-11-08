@@ -14,6 +14,7 @@ import react.dom.html.ReactHTML.div
 import tools.confido.distributions.*
 import tools.confido.question.PredictionTerminology
 import tools.confido.spaces.*
+import tools.confido.utils.List2
 import utils.panzoom1d.PZParams
 import utils.panzoom1d.PZState
 import kotlin.math.*
@@ -91,6 +92,11 @@ fun ChildrenBuilder.proportionalCircle(text: String, color: Color, prob: Double?
     }
 }
 
+
+val yesGreen = Color("#00CC2E")
+val noRed = Color("#FF5555")
+val binaryColors = List2(noRed, yesGreen)
+val binaryNames = List2("No","Yes")
 val BinaryPrediction = FC<BinaryPredictionProps> { props ->
     val realSize = useElementSize<HTMLElement>()
 
@@ -110,12 +116,12 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
         val noColor = if (props.resolution?.value == true) {
             Color("#BBBBBB")
         } else {
-            Color("#FF5555")
+            noRed
         }
         val yesColor = if (props.resolution?.value == false) {
             Color("#BBBBBB")
         } else {
-            Color("#00CC2E")
+            yesGreen
         }
         proportionalCircle("No", noColor, props.dist?.yesProb?.let { 1 - it }, size = circleSize)
         proportionalCircle("Yes", yesColor, props.dist?.yesProb, size = circleSize)

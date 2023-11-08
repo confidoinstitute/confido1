@@ -53,7 +53,7 @@ interface ContinuousProbabilityDistribution : ProbabilityDistribution {
     val stdevIsDiscretized get() = false
     val preferredCICenter: Double
         get() = median
-    fun confidenceInterval(p: Double, preferredCenter: Double = preferredCICenter): ClosedRange<Double> {
+    fun confidenceInterval(p: Double, preferredCenter: Double = preferredCICenter): ClosedFloatingPointRange<Double> {
         val probRadius = p / 2
         val centerCDF = cdf(preferredCenter)
         val leftCDF = centerCDF - probRadius

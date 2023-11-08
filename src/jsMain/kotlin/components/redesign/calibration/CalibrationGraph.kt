@@ -37,7 +37,14 @@ data class CalibrationBand(
     val color: String,
     val name: String,
     val sign: String,
-)
+) {
+    fun absRange(center: Double): ClosedFloatingPointRange<Double>? {
+        val r = range.endpoints.map{ (it + center).clamp01() }.toRange()
+        return if (r.size == 0.0) null else r
+    }
+
+    fun absRange(bin: CalibrationBin) = absRange(bin.mid)
+}
 
 //val calibrationBands = listOf(
 //    CalibrationBand(-1.0..-slightMiscalibRadius, "#bc97f4", "Overconfident", ">"),
