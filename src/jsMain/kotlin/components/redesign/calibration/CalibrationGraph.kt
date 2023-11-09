@@ -1,6 +1,10 @@
 package components.redesign.calibration
 
+import components.redesign.HelpIcon
 import components.redesign.basic.*
+import components.redesign.forms.ButtonUnstyled
+import components.redesign.forms.IconButton
+import components.redesign.forms.IconLink
 import csstype.*
 import emotion.react.css
 import emotion.css.ClassName
@@ -26,6 +30,7 @@ external interface CalibrationGraphProps: PropsWithElementSize, PropsWithClassNa
     var height: Double?
     var who: CalibrationWho?
     var areaLabels: Boolean?
+    var grid: Boolean?
 }
 
 val wellCalibratedRadius = 0.05
@@ -140,14 +145,17 @@ val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { pro
         //        d = "M ${pt(proj(1.0, 0.0))} L ${pt(proj(1.0, 1.0))}"
         //    }
         //}
-        g {
-            stroke = "rgba(0,0,0,15%)"
-            (1..9).map { it / 10.0 }.forEach {
-                path { d = "M  ${pt(proj(0.5, it))} L  ${pt(proj(1.0, it))}" }
-            }
-            listOf(0.525, 0.6, 0.7, 0.8, 0.9, 0.975).forEach {
-                path { d = "M  ${pt(proj(it,0.0))} L  ${pt(proj(it, 1.0))}" }
+        if (props.grid ?: true) {
+            g {
+                stroke = "rgba(0,0,0,10%)"
+                //(1..9).map { it / 10.0 }.forEach {
+                (1..4).map { it / 5.0 }.forEach {
+                    path { d = "M  ${pt(proj(0.5, it))} L  ${pt(proj(1.0, it))}" }
+                }
+                listOf(0.6, 0.7, 0.8, 0.9).forEach {
+                    path { d = "M  ${pt(proj(it, 0.0))} L  ${pt(proj(it, 1.0))}" }
 
+                }
             }
         }
         if (entries.size > 1)
@@ -318,12 +326,28 @@ val CalibrationGraph = FC<CalibrationGraphProps> { props->
                 }
             }
         }
-        div {
+        Stack {
+            direction = FlexDirection.row
             css(axisLabelCSS) {
                 gridRow = integer(3)
                 gridColumn = integer(3)
+                justifyContent = JustifyContent.center
+                alignItems = AlignItems.center
             }
             +props.who.withAdjective("confidence").capFirst()
+            ButtonUnstyled {
+                HelpIcon{
+                    css {
+                        position = Position.relative
+                        top = 1.5.px
+                        marginLeft = (-2).px
+                        marginTop = (-2).px
+                        marginBottom = (-2).px
+                    }
+                    color = "#888"
+                    size = 24
+                }
+            }
         }
     }
 }

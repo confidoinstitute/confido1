@@ -239,6 +239,7 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
 
 external interface CalibrationViewBaseProps: PropsWithClassName {
     var graphHeight: Double?
+    var graphGrid: Boolean?
     var graphAreaLabels: Boolean?
     var showGraph: Boolean?
     var showTable: Boolean?
@@ -267,6 +268,7 @@ val CalibrationView = FC<CalibrationViewProps> { props->
                 (if (props.graphContentOnly ?: false) CalibrationGraphContent else CalibrationGraph) {
                     this.calib = calib
                     this.height = props.graphHeight
+                    this.grid = props.graphGrid
                     this.who = props.who
                     this.areaLabels = props.graphAreaLabels
                 }
@@ -283,6 +285,7 @@ val CalibrationView = FC<CalibrationViewProps> { props->
 
 external interface CalibrationReqViewProps : CalibrationViewBaseProps {
     var req: CalibrationRequest
+    var underTabs: ReactNode?
 }
 
 val CalibrationReqView = FC<CalibrationReqViewProps> { props->
@@ -334,21 +337,18 @@ val TabbedCalibrationReqView = FC<CalibrationReqViewProps> {props->
     var who by useState(props.req.who)
     val req = props.req.copy(who = who)
     val layoutMode = useContext(LayoutModeContext)
-    OptionGroup<CalibrationWho>()() {
-        variant = OptionGroupPageTabsVariant
-        options = listOf(
-            Myself to "Your calibration",
-            Everyone to "Group calibration",
-        )
-        value = who
-        onChange = { who = it }
-        css {
-            if (layoutMode == LayoutMode.PHONE) {
-                paddingLeft = 15.px
-                paddingRight = 15.px
-            }
+    MobileSidePad {
+        OptionGroup<CalibrationWho>()() {
+            variant = OptionGroupPageTabsVariant
+            options = listOf(
+                Myself to "Your calibration",
+                Everyone to "Group calibration",
+            )
+            value = who
+            onChange = { who = it }
         }
     }
+    +props.underTabs
     CalibrationReqView {
         this.req = req
         +props.except("req")

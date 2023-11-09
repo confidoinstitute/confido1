@@ -86,3 +86,10 @@ val LayoutWidthWrapper = main.withStyleLM {props, layoutMode->
     marginLeft = Auto.auto
     marginRight = Auto.auto
 }
+
+val MobileSidePad = div.withStyleLM { props, layoutMode ->
+    if (layoutMode == LayoutMode.PHONE) {
+        paddingLeft = 15.px
+        paddingRight = 15.px
+    }
+}
