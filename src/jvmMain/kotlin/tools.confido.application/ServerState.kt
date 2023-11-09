@@ -349,6 +349,7 @@ object serverState : GlobalState() {
         val totalPredictions: MutableMap<Ref<Question>, Int> = mutableMapOf()
         override suspend fun initialize() {
             mongoCollection.ensureIndex(Prediction::question, Prediction::user, Prediction::ts)
+            mongoCollection.ensureIndex(Prediction::question, Prediction::ts)
         }
 
         override suspend fun doLoad() {
