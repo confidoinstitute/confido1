@@ -85,7 +85,9 @@ fun request2params(req: CalibrationRequest): URLSearchParams {
 external interface CalibrationTableProps: Props  {
     var data: CalibrationVector
     var who: CalibrationWho?
+    var highlightBin: CalibrationBin?
     var onDetail: ((CalibrationBin)->Unit)?
+    var onBinHover: ((CalibrationBin?)->Unit)?
 }
 
 val CalibrationWho.adjective get() = when (this) { Myself -> "your"; Everyone -> "group"; else -> null }
@@ -114,7 +116,6 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
             }
             "tbody td" {
                 border = None.none
-                backgroundColor = NamedColor.white
                 //paddingLeft = 5.px
                 //paddingRight = 5.px
                 padding = 5.px
@@ -170,6 +171,13 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
                     }
                 }
                 tr {
+                    css {
+                        "td" {
+                            backgroundColor = if (bin == props.highlightBin) Color("#eee") else NamedColor.white
+                        }
+                    }
+                    onMouseEnter = { props.onBinHover?.invoke(bin) }
+                    onMouseLeave = { props.onBinHover?.invoke(null) }
                     btd {
                         +"${fmtp(bin.range.start)} - ${formatPercent(bin.range.endInclusive)}"
                     }
@@ -252,6 +260,7 @@ external interface CalibrationViewProps : CalibrationViewBaseProps {
 }
 val CalibrationView = FC<CalibrationViewProps> { props->
     val calib = props.data
+    var hoveredBin by useState<CalibrationBin>()
     // Format with one decimal points because midpoints of 50-55 and 95-100 bins are
     // decimal numbers that seem weird when rounded
     if (calib != null) {
@@ -271,6 +280,8 @@ val CalibrationView = FC<CalibrationViewProps> { props->
                     this.grid = props.graphGrid
                     this.who = props.who
                     this.areaLabels = props.graphAreaLabels
+                    this.highlightBin = hoveredBin
+                    this.onBinHover = { hoveredBin = it }
                 }
             }
             if (props.showTable ?: true)
@@ -278,6 +289,8 @@ val CalibrationView = FC<CalibrationViewProps> { props->
                 this.data = calib
                 this.who = props.who
                 this.onDetail = props.onDetail
+                this.highlightBin = hoveredBin
+                this.onBinHover = { hoveredBin = it }
             }
         }
     }

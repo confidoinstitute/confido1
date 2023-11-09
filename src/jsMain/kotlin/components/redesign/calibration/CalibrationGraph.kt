@@ -19,6 +19,7 @@ import react.dom.svg.ReactSVG.g
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.rect
 import react.dom.svg.ReactSVG.svg
+import react.useState
 import tools.confido.calibration.CalibrationBin
 import tools.confido.calibration.CalibrationEntry
 import tools.confido.calibration.CalibrationVector
@@ -31,6 +32,8 @@ external interface CalibrationGraphProps: PropsWithElementSize, PropsWithClassNa
     var who: CalibrationWho?
     var areaLabels: Boolean?
     var grid: Boolean?
+    var highlightBin: CalibrationBin?
+    var onBinHover: ((CalibrationBin?)->Unit)?
 }
 
 val wellCalibratedRadius = 0.05
@@ -83,6 +86,7 @@ val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { pro
     fun ptp(px: Double, py: Double) = pt(proj(px,py))
     val userLineColor = "#6319FF"
     val entries = props.calib.entries.filter { it.value.total > 0 }
+    var graphHovered by useState(false)
     svg {
         css(override=props) {
             width = 100.pct
@@ -92,6 +96,9 @@ val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { pro
             }
         }
         overflow = "visible"
+
+        onMouseEnter = { graphHovered = true }
+        onMouseLeave = { graphHovered = false }
 
         defs {
             ReactSVG.clipPath {
@@ -145,7 +152,7 @@ val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { pro
         //        d = "M ${pt(proj(1.0, 0.0))} L ${pt(proj(1.0, 1.0))}"
         //    }
         //}
-        if (props.grid ?: true) {
+        if ((props.grid ?: true) && graphHovered && props.highlightBin == null) {
             g {
                 stroke = "rgba(0,0,0,10%)"
                 //(1..9).map { it / 10.0 }.forEach {
@@ -158,6 +165,24 @@ val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { pro
                 }
             }
         }
+        props.highlightBin?.let { bin->
+            props.calib[bin].successRate?.let { sr ->
+                g {
+                    stroke = "rgba(0,0,0,20%)"
+                    path { d = "M  ${pt(proj(0.5, sr))} L  ${pt(proj(1.0, sr))}" }
+                    path {
+                        d = "M  ${pt(proj(props.highlightBin!!.mid, 0.0))} L  ${
+                            pt(
+                                proj(
+                                    props.highlightBin!!.mid,
+                                    1.0
+                                )
+                            )
+                        }"
+                    }
+                }
+            }
+        }
         if (entries.size > 1)
             path {
                 d = entries.mapIndexed { idx, ent -> (if (idx == 0) "M" else "L") + pt(proj(ent)) }.joinToString(" ")
@@ -166,12 +191,20 @@ val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { pro
                 fill = "none"
             }
         entries.forEach { ent ->
+            val pt = proj(ent)
             circle {
-                val pt = proj(ent)
                 cx = pt.e1
                 cy = pt.e2
-                r = 4.0
+                r = if (props.highlightBin ==  ent.key) 7.0 else 4.0
                 fill = userLineColor
+            }
+            circle {
+                cx = pt.e1
+                cy = pt.e2
+                r = 10.0
+                fill = "transparent"
+                onMouseEnter = { props.onBinHover?.invoke(ent.key) }
+                onMouseLeave = { props.onBinHover?.invoke(null) }
             }
         }
     }
