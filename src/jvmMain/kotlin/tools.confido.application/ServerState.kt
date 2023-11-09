@@ -374,6 +374,9 @@ object serverState : GlobalState() {
             onEntityAdded {
                 totalPredictions.compute(it.question) { _, cnt -> (cnt ?: 0) + 1 }
             }
+            onEntityDeleted {
+                totalPredictions.compute(it.question) { _, cnt -> (cnt ?: 0) - 1 }
+            }
         }
     }
 
@@ -626,12 +629,39 @@ object serverState : GlobalState() {
     suspend fun addPrediction(pred: Prediction) {
         val q = pred.question.deref()
         require(q != null)
+        val sched  = q.effectiveSchedule
         withTransaction {
             userPredManager.save(pred)
+            val myLastPred = userPredHistManager.mongoCollection.find(and(Prediction::question eq pred.question,
+                Prediction::user eq pred.user,
+                ))
+                .sort(descending(Prediction::ts)).first()
+
+            // If predictions are less than 1min apart, replace previous one instead of adding another history
+            // entry. This prevents clogging up history with lots of records and also makes the "number of uptates"
+            // metric more meaningful. Exception: if previous prediction was before score time and new one after
+            // we need to keep the previous one in order to preserve scoring.
+            var lastPredOther: Prediction? = null
+            if (myLastPred != null && pred.ts - myLastPred.ts < 60 &&
+                    !(sched.score != null && myLastPred.ts <= sched.score.epochSeconds && pred.ts > sched.score.epochSeconds)) {
+                userPredHistManager.deleteEntity(myLastPred)
+                lastPredOther = userPredHistManager.mongoCollection.find(and(Prediction::question eq pred.question))
+                    .sort(descending(Prediction::ts)).first()
+            }
+
             userPredHistManager.insertEntity(pred.copy(id=""))
             val gp = recalcGroupPred(q)
             gp?.let {
                 check(gp.user==null)
+                if (lastPredOther != null) {
+                    // If last group prediction update was due to my deleted prediction, delete it also.
+                    val lastGroupPred =
+                        groupPredHistManager.mongoCollection.find(and(Prediction::question eq pred.question))
+                            .sort(descending(Prediction::ts)).first()
+                    if (lastGroupPred != null && lastGroupPred.ts >= lastPredOther.ts) {
+                        groupPredHistManager.deleteEntity(lastGroupPred)
+                    }
+                }
                 groupPredHistManager.insertEntity(gp.copy(id = ""))
             }
         }

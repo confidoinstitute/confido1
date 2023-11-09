@@ -63,6 +63,13 @@ val ConfidenceBar = FC<ConfidenceBarProps> {props->
                 }
             }
         }
+        div {
+            css {
+                height = 24.px
+                position = Position.relative
+            }
+            
+        }
     }
 }
 
@@ -181,7 +188,6 @@ val CalibrationBar = FC<CalibrationBarProps> { props->
             marginTop = 24.px
             marginBottom = 24.px
         }
-        AccuracyBar { entry = props.entry }
         //PercentBar {}
         props.bin?.let { ConfidenceBar { bin = it } }
         val accuracy = props.entry.successRate!!
