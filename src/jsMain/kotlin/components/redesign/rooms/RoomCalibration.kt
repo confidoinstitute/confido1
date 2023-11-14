@@ -4,6 +4,7 @@ import components.redesign.HelpIcon
 import components.redesign.basic.LayoutWidthWrapper
 import components.redesign.basic.MobileSidePad
 import components.redesign.basic.Stack
+import components.redesign.calibration.CalibrationHelpSection
 import components.redesign.calibration.CalibrationReqView
 import components.redesign.calibration.TabbedCalibrationReqView
 import components.redesign.forms.IconButton
@@ -32,6 +33,7 @@ external interface RoomCalibrationProps: Props {
 private val bgColor = Color("#f2f2f2")
 val RoomCalibration = FC<RoomCalibrationProps> { props->
     val layoutMode = useContext(LayoutModeContext)
+    val calibrationHelpOpen = useRef<(CalibrationHelpSection)->Unit>()
 
     RoomHeader {
         Stack {
@@ -52,6 +54,7 @@ val RoomCalibration = FC<RoomCalibrationProps> { props->
             div {
                 css { flexGrow = number(1.0) }
                 IconButton {
+                    onClick = { calibrationHelpOpen.current?.invoke(CalibrationHelpSection.INTRO) }
                     css {
                         flexShrink = number(0.0)
                     }
@@ -73,6 +76,7 @@ val RoomCalibration = FC<RoomCalibrationProps> { props->
         TabbedCalibrationReqView {
             req = CalibrationRequest(rooms = setOf(props.room.ref), who = Myself)
             graphHeight = 260.0
+            externalHelpOpen = calibrationHelpOpen
         }
     }
 }

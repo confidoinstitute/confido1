@@ -10,6 +10,7 @@ import csstype.*
 import react.FC
 import react.Props
 import emotion.react.css
+import react.ReactNode
 import react.dom.html.ReactHTML.div
 import react.useContext
 
@@ -19,6 +20,7 @@ external interface PageHeaderProps : Props {
     var navigateBack: String?
     var action: String
     var allowSidebar: Boolean
+    var rightExtra: ReactNode?
     var onAction: (() -> Unit)?
 }
 
@@ -86,6 +88,7 @@ val PageHeader = FC<PageHeaderProps> { props ->
                 disabled = props.disabledAction
                 onClick = { props.onAction?.invoke() }
             }
+            +props.rightExtra
         }
     }
 }

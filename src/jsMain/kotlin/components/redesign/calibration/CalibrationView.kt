@@ -3,6 +3,7 @@ package components.redesign.calibration
 import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.forms.ButtonUnstyled
+import components.redesign.forms.InlineHelpButton
 import components.redesign.forms.OptionGroup
 import components.redesign.forms.OptionGroupPageTabsVariant
 import components.redesign.layout.LayoutMode
@@ -88,6 +89,7 @@ external interface CalibrationTableProps: Props  {
     var highlightBin: CalibrationBin?
     var onDetail: ((CalibrationBin)->Unit)?
     var onBinHover: ((CalibrationBin?)->Unit)?
+    var onHelp: ((CalibrationHelpSection)->Unit)?
 }
 
 val CalibrationWho.adjective get() = when (this) { Myself -> "your"; Everyone -> "group"; else -> null }
@@ -141,9 +143,19 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
         }
         thead {
             tr {
-                th { +props.who.withAdjective("confidence").capFirst() }
+                th {
+                    +props.who.withAdjective("confidence").capFirst()
+                    InlineHelpButton {
+                        onClick = { props.onHelp?.invoke(CalibrationHelpSection.CONFIDENCE) }
+                    }
+                }
                 th {}
-                th { +props.who.withAdjective("accuracy").capFirst() }
+                th {
+                    +props.who.withAdjective("accuracy").capFirst()
+                    InlineHelpButton {
+                        onClick = { props.onHelp?.invoke(CalibrationHelpSection.ACCURACY) }
+                    }
+                }
                 th { +"Questions" }
                 th { +"Result" }
             }
@@ -252,6 +264,7 @@ external interface CalibrationViewBaseProps: PropsWithClassName {
     var showGraph: Boolean?
     var showTable: Boolean?
     var graphContentOnly: Boolean?
+    var externalHelpOpen: MutableRefObject<(CalibrationHelpSection)->Unit>?
 }
 external interface CalibrationViewProps : CalibrationViewBaseProps {
     var data : CalibrationVector?
@@ -261,6 +274,16 @@ external interface CalibrationViewProps : CalibrationViewBaseProps {
 val CalibrationView = FC<CalibrationViewProps> { props->
     val calib = props.data
     var hoveredBin by useState<CalibrationBin>()
+    var helpSectionOpen by useState<CalibrationHelpSection>()
+    CalibrationHelpDialog {
+        open = helpSectionOpen != null
+        initialSection = helpSectionOpen
+        onClose = { helpSectionOpen = null }
+    }
+    useEffect {
+        props.externalHelpOpen?.current = { helpSectionOpen = it }
+        cleanup { props.externalHelpOpen?.current = null }
+    }
     // Format with one decimal points because midpoints of 50-55 and 95-100 bins are
     // decimal numbers that seem weird when rounded
     if (calib != null) {
@@ -282,6 +305,7 @@ val CalibrationView = FC<CalibrationViewProps> { props->
                     this.areaLabels = props.graphAreaLabels
                     this.highlightBin = hoveredBin
                     this.onBinHover = { hoveredBin = it }
+                    this.onHelp = { helpSectionOpen = it }
                 }
             }
             if (props.showTable ?: true)
@@ -291,6 +315,7 @@ val CalibrationView = FC<CalibrationViewProps> { props->
                 this.onDetail = props.onDetail
                 this.highlightBin = hoveredBin
                 this.onBinHover = { hoveredBin = it }
+                this.onHelp = { helpSectionOpen = it }
             }
         }
     }

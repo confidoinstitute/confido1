@@ -1,8 +1,12 @@
 package components.redesign.forms
 
+import components.redesign.HelpIcon
+import components.redesign.HelpIconNoPad
 import components.redesign.basic.*
 import csstype.*
 import dom.html.*
+import emotion.react.css
+import react.FC
 import react.dom.html.*
 import react.dom.html.ReactHTML.button
 import react.router.dom.*
@@ -121,4 +125,21 @@ val IconLink = Link.withRipple().withStyle<IconLinkProps>("palette") {props ->
     val palette = props.palette ?: TextPalette.black
 
     iconButton(palette)
+}
+
+val InlineHelpButton = FC<ButtonHTMLAttributes<HTMLButtonElement>> { props->
+    ButtonUnstyled {
+        +props
+        title = "Show help"
+        HelpIconNoPad {
+            css {
+                height = 1.em
+                padding = 0.03.em
+                paddingLeft = 0.1.em
+                position = Position.relative
+                top = 0.15.em
+            }
+            color = "#999"
+        }
+    }
 }

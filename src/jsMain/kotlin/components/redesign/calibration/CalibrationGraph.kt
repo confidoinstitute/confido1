@@ -3,15 +3,20 @@ package components.redesign.calibration
 import components.redesign.HelpIcon
 import components.redesign.basic.*
 import components.redesign.forms.ButtonUnstyled
-import components.redesign.forms.IconButton
-import components.redesign.forms.IconLink
+import components.redesign.forms.FormSection
+import components.redesign.forms.InlineHelpButton
+import components.redesign.forms.OptionGroup
+import components.redesign.questions.predictions.BinaryPrediction
 import csstype.*
 import emotion.react.css
 import emotion.css.ClassName
 import payloads.requests.CalibrationWho
 import react.FC
 import react.PropsWithClassName
+import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.i
+import react.dom.html.ReactHTML.p
 import react.dom.svg.ReactSVG
 import react.dom.svg.ReactSVG.circle
 import react.dom.svg.ReactSVG.defs
@@ -23,6 +28,7 @@ import react.useState
 import tools.confido.calibration.CalibrationBin
 import tools.confido.calibration.CalibrationEntry
 import tools.confido.calibration.CalibrationVector
+import tools.confido.distributions.BinaryDistribution
 import tools.confido.utils.*
 import utils.except
 
@@ -34,6 +40,7 @@ external interface CalibrationGraphProps: PropsWithElementSize, PropsWithClassNa
     var grid: Boolean?
     var highlightBin: CalibrationBin?
     var onBinHover: ((CalibrationBin?)->Unit)?
+    var onHelp: ((CalibrationHelpSection)->Unit)?
 }
 
 val wellCalibratedRadius = 0.05
@@ -62,13 +69,15 @@ data class CalibrationBand(
 //    CalibrationBand(slightMiscalibRadius..1.0, "#90e4f3", "Underconfident", "<"),
 //)
 val calibrationBands = listOf(
-    CalibrationBand(-1.0..-slightMiscalibRadius, "#b08bff", "Overconfident", ">"),
-    CalibrationBand(-slightMiscalibRadius..-wellCalibratedRadius, "#d4bfff", "Slightly overconfident", ">"),
-    CalibrationBand(-wellCalibratedRadius..wellCalibratedRadius, "#f5fafa", "Well-calibrated", "≈"),
-    CalibrationBand(wellCalibratedRadius..slightMiscalibRadius, "#bffbff", "Slightly overconfident", "<"),
-    CalibrationBand(slightMiscalibRadius..1.0, "#7ff7ff", "Underconfident", "<"),
+    CalibrationBand(-1.0..-slightMiscalibRadius, "#e5ceff", "Overconfident", ">"),
+    CalibrationBand(-slightMiscalibRadius..-wellCalibratedRadius, "#f2e5ff", "Slightly overconfident", ">"),
+    CalibrationBand(-wellCalibratedRadius..wellCalibratedRadius, "white", "Well-calibrated", "≈"),
+    CalibrationBand(wellCalibratedRadius..slightMiscalibRadius, "#ecfffe", "Slightly underconfident", "<"),
+    CalibrationBand(slightMiscalibRadius..1.0, "#dafffd", "Underconfident", "<"),
 )
 
+val perfectCalibrationColor = "#8cc63f"
+val userCalibrationColor = "#8a5fff"
 
 
 val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { props->
@@ -84,7 +93,6 @@ val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { pro
     fun pt(c: List2<Double>) = c.joinToString(" ")
     fun pt(x: Number, y: Number) = "$x $y"
     fun ptp(px: Double, py: Double) = pt(proj(px,py))
-    val userLineColor = "#6319FF"
     val entries = props.calib.entries.filter { it.value.total > 0 }
     var graphHovered by useState(false)
     svg {
@@ -133,9 +141,9 @@ val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { pro
         path {
             // line of perfect calibration
             d = "M ${pt(proj(0.5, 0.5))} L ${pt(proj(1.0, 1.0))}"
-            stroke = "#505050"
-            strokeWidth = 2.0
-            strokeDasharray = "2,3"
+            stroke = perfectCalibrationColor
+            strokeWidth = 4.0
+            strokeDasharray = "4,5"
         }
         //g {
         //    stroke = "#666"
@@ -186,7 +194,7 @@ val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { pro
         if (entries.size > 1)
             path {
                 d = entries.mapIndexed { idx, ent -> (if (idx == 0) "M" else "L") + pt(proj(ent)) }.joinToString(" ")
-                stroke = userLineColor
+                stroke = userCalibrationColor
                 strokeWidth = 4.0
                 fill = "none"
             }
@@ -196,7 +204,7 @@ val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { pro
                 cx = pt.e1
                 cy = pt.e2
                 r = if (props.highlightBin ==  ent.key) 7.0 else 4.0
-                fill = userLineColor
+                fill = userCalibrationColor
             }
             circle {
                 cx = pt.e1
@@ -258,6 +266,7 @@ val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { pro
     position = Position.relative
 })
 
+
 val CalibrationGraph = FC<CalibrationGraphProps> { props->
     val legendCSS = ClassName {
         fontSize = 13.px
@@ -272,10 +281,10 @@ val CalibrationGraph = FC<CalibrationGraphProps> { props->
     div {
         css(override=props) {
             display = Display.grid
-            gridTemplateRows = "1fr auto auto".unsafeCast<GridTemplateRows>()
+            gridTemplateRows = "auto 1fr auto auto".unsafeCast<GridTemplateRows>()
             gridTemplateColumns = "auto auto 1fr".unsafeCast<GridTemplateRows>()
             height = (props.height?:500.0).px
-            marginTop = 20.px
+            marginTop = 15.px
             marginRight = 25.px
             marginLeft = 10.px
             marginBottom = 5.px
@@ -286,7 +295,7 @@ val CalibrationGraph = FC<CalibrationGraphProps> { props->
                 alignItems = AlignItems.stretch
                 justifyContent = JustifyContent.stretch
                 justifyItems = JustifyItems.stretch
-                gridRow = integer(1)
+                gridRow = integer(2)
                 gridColumn = integer(3)
                 border = Border(1.px, LineStyle.solid, Color("#666"))
             }
@@ -297,18 +306,66 @@ val CalibrationGraph = FC<CalibrationGraphProps> { props->
                 }
             }
         }
-        div {
-            css(axisLabelCSS) {
+        Stack {
+            direction = FlexDirection.row
+            css {
                 gridRow = integer(1)
+                gridColumn = integer(3)
+                justifyContent = JustifyContent.stretch
+                marginBottom = 10.px
+            }
+            listOf(props.who.withAdjective("calibration").capFirst() to userCalibrationColor,
+                        "Perfect calibration" to perfectCalibrationColor).forEach { (text, color)->
+                Stack {
+                    direction = FlexDirection.row
+                    css {
+                        alignItems = AlignItems.center
+                        justifyContent = JustifyContent.center
+                        flexGrow = number(1.0)
+                        gap = 4.px
+                    }
+                    div {
+                        css {
+                            backgroundColor = Color(color)
+                            width = 11.px
+                            height = 11.px
+                            borderRadius = 100.pct
+                        }
+                    }
+                    div {
+                        +text
+                    }
+                }
+            }
+        }
+        Stack {
+            direction = FlexDirection.row
+            css(axisLabelCSS) {
+                gridRow = integer(2)
                 gridColumn = integer(1)
                 writingMode = WritingMode.verticalLr
                 transform = rotate(180.deg)
             }
-            +props.who.withAdjective("accuracy").capFirst()
+
+            div { css { flexGrow = number(1.0) }}
+            div {
+                +props.who.withAdjective("accuracy").capFirst()
+            }
+
+            Stack {
+                direction = FlexDirection.row
+                css { flexGrow = number(1.0); alignItems = AlignItems.flexStart }
+                InlineHelpButton {
+                    css {
+                        transform = rotate((90).deg)
+                    }
+                    onClick = { props.onHelp?.invoke(CalibrationHelpSection.CONFIDENCE) }
+                }
+            }
         }
         div { // vertical axis
             css(legendCSS) {
-                gridRow = integer(1)
+                gridRow = integer(2)
                 gridColumn = integer(2)
                 position = Position.relative
                 textAlign = TextAlign.right
@@ -335,7 +392,7 @@ val CalibrationGraph = FC<CalibrationGraphProps> { props->
         }
         div { // horizontal axis
             css(legendCSS) {
-                gridRow = integer(2)
+                gridRow = integer(3)
                 gridColumn = integer(3)
                 position = Position.relative
                 textAlign = TextAlign.right
@@ -362,23 +419,18 @@ val CalibrationGraph = FC<CalibrationGraphProps> { props->
         Stack {
             direction = FlexDirection.row
             css(axisLabelCSS) {
-                gridRow = integer(3)
+                gridRow = integer(4)
                 gridColumn = integer(3)
                 justifyContent = JustifyContent.center
                 alignItems = AlignItems.center
             }
-            +props.who.withAdjective("confidence").capFirst()
-            ButtonUnstyled {
-                HelpIcon{
-                    css {
-                        position = Position.relative
-                        top = 1.5.px
-                        marginLeft = (-2).px
-                        marginTop = (-2).px
-                        marginBottom = (-2).px
-                    }
-                    color = "#888"
-                    size = 24
+            div { css { flexGrow = number(1.0) }}
+            div { +props.who.withAdjective("confidence").capFirst() }
+            Stack {
+                direction = FlexDirection.row
+                css { flexGrow = number(1.0); alignItems = AlignItems.flexStart }
+                InlineHelpButton {
+                    onClick = { props.onHelp?.invoke(CalibrationHelpSection.CONFIDENCE) }
                 }
             }
         }
