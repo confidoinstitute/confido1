@@ -207,7 +207,8 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
                     }
                     btd {
                         span {
-                            css { +linkCSS }
+                            if (props.onDetail != null)
+                                css { +linkCSS }
                             +"${entry.total}"
                             //+" ${entry.total} "
                         }
@@ -366,15 +367,17 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
     }
     CalibrationView {
         this.data = data
-        this.onDetail = { bin->
-            if (detail == null) {
-                detailFetch {
-                    Client.sendData("/calibration/detail", props.req, onError = {showError(it)}) {
-                        detail = body<List<CalibrationQuestion>>()
+        if (canDetail) {
+            this.onDetail = { bin->
+                if (detail == null) {
+                    detailFetch {
+                        Client.sendData("/calibration/detail", props.req, onError = { showError(it) }) {
+                            detail = body<List<CalibrationQuestion>>()
+                        }
                     }
                 }
+                detailBin = bin
             }
-            detailBin = bin
         }
         this.who = props.req.who
         +props.except("req", "externalHelpOpen")
