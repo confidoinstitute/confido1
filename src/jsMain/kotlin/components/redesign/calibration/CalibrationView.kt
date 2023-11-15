@@ -41,6 +41,7 @@ import components.redesign.questions.predictions.yesGreen
 import components.showError
 import dom.html.HTMLAnchorElement
 import dom.html.HTMLTableCellElement
+import hooks.combineRefs
 import hooks.useCoroutineLock
 import hooks.useEffectNotFirst
 import payloads.responses.CalibrationQuestion
@@ -265,6 +266,7 @@ external interface CalibrationViewBaseProps: PropsWithClassName {
     var showTable: Boolean?
     var graphContentOnly: Boolean?
     var externalHelpOpen: MutableRefObject<(CalibrationHelpSection)->Unit>?
+    var onHelpChange: ((Boolean)->Unit)?
 }
 external interface CalibrationViewProps : CalibrationViewBaseProps {
     var data : CalibrationVector?
@@ -279,6 +281,9 @@ val CalibrationView = FC<CalibrationViewProps> { props->
         open = helpSectionOpen != null
         initialSection = helpSectionOpen
         onClose = { helpSectionOpen = null }
+    }
+    useEffect(helpSectionOpen != null) {
+        props.onHelpChange?.invoke(helpSectionOpen != null)
     }
     useEffect {
         props.externalHelpOpen?.current = { helpSectionOpen = it }
@@ -337,7 +342,9 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
     val (appState,stale) = useContext(AppStateContext)
     val detailFetch = useCoroutineLock()
     var detailBin by useState<CalibrationBin>()
+    val calibrationHelpOpen = useRef<(CalibrationHelpSection)->Unit>()
     var detail by useState<List<CalibrationQuestion>>()
+    var helpOpen by useState(false)
     val canDetail = (
             entries.size > 0 &&
                 (req.who == Myself || (
@@ -348,10 +355,13 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
         )
     if (canDetail && detail != null) {
         CalibrationDetailDialog {
-            open = detailBin != null
+            open = detailBin != null && !helpOpen
             this.data = detail!!
             bin = detailBin
             onClose = { detailBin = null }
+            onHelp = {
+                calibrationHelpOpen.current?.invoke(it)
+            }
         }
     }
     CalibrationView {
@@ -367,7 +377,9 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
             detailBin = bin
         }
         this.who = props.req.who
-        +props.except("req")
+        +props.except("req", "externalHelpOpen")
+        this.externalHelpOpen = combineRefs(calibrationHelpOpen, props.externalHelpOpen)
+        onHelpChange = { helpOpen = it }
     }
 }
 

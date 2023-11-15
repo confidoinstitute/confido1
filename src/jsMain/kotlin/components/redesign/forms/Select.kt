@@ -1,11 +1,12 @@
 package components.redesign.forms
 
 import components.redesign.basic.sansSerif
+import components.redesign.basic.withStyle
 import csstype.*
 import emotion.styled.*
 import react.dom.html.ReactHTML.select
 
-val Select = select.styled {props, theme ->
+val Select = select.withStyle {props->
     all = Globals.unset
     boxSizing = BoxSizing.borderBox
     border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))

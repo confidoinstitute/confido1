@@ -6,6 +6,7 @@ import components.redesign.basic.Stack
 import components.redesign.basic.css
 import components.redesign.forms.FormField
 import components.redesign.forms.FormSection
+import components.redesign.forms.InlineHelpButton
 import components.redesign.forms.OptionGroup
 import components.redesign.questions.predictions.binaryColors
 import components.redesign.questions.predictions.binaryNames
@@ -92,6 +93,7 @@ val AccuracyBar  = FC<AccuracyBarProps> { props->
                     css {
                         color = binaryColors[correct]
                         fontWeight = integer(600)
+                        textAlign = if (correct) TextAlign.left else TextAlign.right
                     }
                     val cnt = entry.counts[correct]
                     val adj = if (correct) "correct" else "incorrect"
@@ -238,6 +240,7 @@ val CalibrationBar = FC<CalibrationBarProps> { props->
 external interface CalibrationDetailProps: Props {
     var data: List<CalibrationQuestion>
     var bin: CalibrationBin?
+    var onHelp: ((CalibrationHelpSection)->Unit)?
 }
 
 val CalibrationDetail = FC<CalibrationDetailProps> { props ->
@@ -350,8 +353,20 @@ val CalibrationDetail = FC<CalibrationDetailProps> { props ->
                 }
                 thead {
                     th { +"Question" }
-                    th { +"Prediction" }
-                    th { +"Confidence" }
+                    th {
+                        css { whiteSpace = WhiteSpace.nowrap }
+                        +"Belief"
+                        InlineHelpButton {
+                            onClick = { props.onHelp?.invoke(CalibrationHelpSection.CONFIDENCE) }
+                        }
+                    }
+                    th {
+                        css { whiteSpace = WhiteSpace.nowrap }
+                        +"Confidence"
+                        InlineHelpButton {
+                            onClick = { props.onHelp?.invoke(CalibrationHelpSection.CONFIDENCE) }
+                        }
+                    }
                     th { +"Resolution" }
                     th { +"Correct?" }
                 }
@@ -462,7 +477,7 @@ val FilteringCalibrationDetail = FC<FilteringCalibrationDetailProps> {props->
         css { marginTop = (-20).px }
         CalibrationDetail {
             data = props.data.filter { it.bin == bin }
-            this.bin = bin
+            +props.except("data")
         }
     }
 }

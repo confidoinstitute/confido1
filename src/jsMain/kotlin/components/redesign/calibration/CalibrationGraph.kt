@@ -359,7 +359,7 @@ val CalibrationGraph = FC<CalibrationGraphProps> { props->
                     css {
                         transform = rotate((90).deg)
                     }
-                    onClick = { props.onHelp?.invoke(CalibrationHelpSection.CONFIDENCE) }
+                    onClick = { props.onHelp?.invoke(CalibrationHelpSection.ACCURACY) }
                 }
             }
         }
