@@ -110,9 +110,9 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             }
             span {
                 css {
-                    fontFamily = serif
+                    fontFamily = sansSerif
                     fontWeight = integer(700)
-                    fontSize = 30.px
+                    fontSize = 26.px
                     lineHeight = 105.pct
                     color = Color("#000000")
                 }

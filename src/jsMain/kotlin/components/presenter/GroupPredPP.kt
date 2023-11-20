@@ -43,7 +43,7 @@ val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
         }
         div {
             css {
-                fontFamily = serif
+                fontFamily = sansSerif
                 textAlign = TextAlign.center
                 fontSize = 7.vh
                 padding = 0.px

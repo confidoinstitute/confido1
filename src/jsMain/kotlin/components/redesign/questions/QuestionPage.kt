@@ -530,8 +530,8 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
         // Question text
         div {
             css {
-                fontFamily = serif
-                fontWeight = integer(700)
+                fontFamily = sansSerif
+                fontWeight = integer(800)
                 fontSize = 34.px
                 lineHeight = 105.pct
                 color = Color("#000000")
@@ -567,7 +567,7 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
         props.resolution?.let {
             div {
                 css {
-                    fontFamily = serif
+                    fontFamily = sansSerif
                     fontWeight = FontWeight.bold
                     fontSize = 34.px
                     lineHeight = 100.pct

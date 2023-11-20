@@ -236,10 +236,10 @@ val RoomLayout = FC<RoomLayoutProps> { props->
             css {
                 marginTop = 16.px
                 width = 100.pct
-                fontSize = 26.px
-                lineHeight = 31.px
-                fontWeight = integer(700)
-                fontFamily = serif
+                fontSize = 32.px
+                lineHeight = 34.px
+                fontWeight = integer(800)
+                fontFamily = sansSerif
                 textAlign = TextAlign.center
                 color = palette.text.color
                 padding = Padding(0.px, 10.px)
