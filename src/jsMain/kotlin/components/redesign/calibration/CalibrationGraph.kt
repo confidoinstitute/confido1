@@ -7,6 +7,7 @@ import components.redesign.forms.FormSection
 import components.redesign.forms.InlineHelpButton
 import components.redesign.forms.OptionGroup
 import components.redesign.questions.predictions.BinaryPrediction
+import components.redesign.questions.predictions.binaryColors
 import csstype.*
 import emotion.react.css
 import emotion.css.ClassName
@@ -68,17 +69,40 @@ data class CalibrationBand(
 //    CalibrationBand(wellCalibratedRadius..slightMiscalibRadius, "#b1ebf3", "Slightly overconfident", "<"),
 //    CalibrationBand(slightMiscalibRadius..1.0, "#90e4f3", "Underconfident", "<"),
 //)
+
+//Datta's colorscheme
+// val calibrationBands = listOf(
+//     CalibrationBand(-1.0..-slightMiscalibRadius, "#e5ceff", "Overconfident", ">"),
+//     CalibrationBand(-slightMiscalibRadius..-wellCalibratedRadius, "#f2e5ff", "Slightly overconfident", ">"),
+//     CalibrationBand(-wellCalibratedRadius..wellCalibratedRadius, "white", "Well-calibrated", "≈"),
+//     CalibrationBand(wellCalibratedRadius..slightMiscalibRadius, "#ecfffe", "Slightly underconfident", "<"),
+//     CalibrationBand(slightMiscalibRadius..1.0, "#dafffd", "Underconfident", "<"),
+// )
+//
+// val perfectCalibrationColor = "#8cc63f"
+// val userCalibrationColor = "#8a5fff"
+
+// OG Blanka Colors
+//val calibrationBands = listOf(
+//    CalibrationBand(-1.0..-slightMiscalibRadius, "#bc97f4", "Overconfident", ">"),
+//    CalibrationBand(-slightMiscalibRadius..-wellCalibratedRadius, "#d0b7f5", "Slightly overconfident", ">"),
+//    CalibrationBand(-wellCalibratedRadius..wellCalibratedRadius, "#f5fafa", "Well-calibrated", "≈"),
+//    CalibrationBand(wellCalibratedRadius..slightMiscalibRadius, "#b1ebf3", "Slightly underconfident", "<"),
+//    CalibrationBand(slightMiscalibRadius..1.0, "#90e4f3", "Underconfident", "<"),
+//)
+//val perfectCalibrationColor = binaryColors[true].toString()
+//val userCalibrationColor = MainPalette.primary.color.toString()
+
+// Lightened Blanka colors
 val calibrationBands = listOf(
-    CalibrationBand(-1.0..-slightMiscalibRadius, "#e5ceff", "Overconfident", ">"),
-    CalibrationBand(-slightMiscalibRadius..-wellCalibratedRadius, "#f2e5ff", "Slightly overconfident", ">"),
-    CalibrationBand(-wellCalibratedRadius..wellCalibratedRadius, "white", "Well-calibrated", "≈"),
-    CalibrationBand(wellCalibratedRadius..slightMiscalibRadius, "#ecfffe", "Slightly underconfident", "<"),
-    CalibrationBand(slightMiscalibRadius..1.0, "#dafffd", "Underconfident", "<"),
+    CalibrationBand(-1.0..-slightMiscalibRadius, "#d0b7f5", "Overconfident", ">"),
+    CalibrationBand(-slightMiscalibRadius..-wellCalibratedRadius, "#dfd0f5", "Slightly overconfident", ">"),
+    CalibrationBand(-wellCalibratedRadius..wellCalibratedRadius, "#f5fafa", "Well-calibrated", "≈"),
+    CalibrationBand(wellCalibratedRadius..slightMiscalibRadius, "#c7eef3", "Slightly underconfident", "<"),
+    CalibrationBand(slightMiscalibRadius..1.0, "#aaeaf3", "Underconfident", "<"),
 )
-
-val perfectCalibrationColor = "#8cc63f"
-val userCalibrationColor = "#8a5fff"
-
+val perfectCalibrationColor = binaryColors[true].toString()
+val userCalibrationColor = MainPalette.primary.color.toString()
 
 val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { props->
     val height = props.elementHeight
