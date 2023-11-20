@@ -125,7 +125,7 @@ val CalibrationHelpDialog = dialogStateWrapper(FC<CalibrationHelpDialogProps> { 
                 }
                 p {
                     +" Confidence can range from 0% (absolute certainty the statement is false) through 50% "
-                    +" (equally likely to be true or false, representing zero knowledge about the satement)"
+                    +" (equally likely to be true or false, representing zero knowledge about the statement)"
                     +" to 100% (absolute certainty the statement is true)."
                 }
                 p {
@@ -181,12 +181,14 @@ val CalibrationHelpDialog = dialogStateWrapper(FC<CalibrationHelpDialogProps> { 
                 p {
                     +"For a given "
                     sectionLink(CalibrationHelpSection.CONFIDENCE, "confidence level")
-                    +", your accuracy is simply the proportion of your "
+                    +", your "
+                    b{+"accuracy"}
+                    +" is simply the proportion of your "
                     sectionLink(CalibrationHelpSection.CONFIDENCE, "beliefs")
                     +" with that confidence that turn out to be correct."
                 }
                 p {
-                    +"For example, if you have made 10 predictions at 80% confidence and"
+                    +"For example, if you made 10 predictions at 80% confidence and"
                     +" 7 of them turned out correct, your accuracy would be 70%"
                     +" (making you slightly "
                     sectionLink(CalibrationHelpSection.RESULTS, "overconfident")
@@ -203,13 +205,32 @@ val CalibrationHelpDialog = dialogStateWrapper(FC<CalibrationHelpDialogProps> { 
                     PercentBar {}
                 }
                 p {
-                    +"As accuracy is an aggregate metric, you would need to aggregate"
-                    +" enough predictions with a given confidence level to get a meaningful result"
+                    +"As accuracy is an average metric, we need to aggregate "
+                    +" enough predictions with a given confidence level to get a meaningful result. "
                     note {
-                        +" (for example, if you made only two 80% predictions, one correct, one not,"
+                        +" (For example, if you made only two 80% predictions, one correct, one not,"
                         +" for an accuracy of 50%, it is hard to say whether you are overconfident"
-                        +" or just had bad luck)"
+                        +" or just had bad luck.)"
                     }
+                }
+                p {
+                    +"To achieve that, instead of computing accuracy separately for each exact confidence level "
+                    +" (such as 80%, 81%, or even 80.5%),"
+                    +" Confido groups predictions with similar confidence levels into "
+                    b{ +"confidence brackets" }
+                    +" and then computes accuracy for each bracket. "
+                }
+                p {
+                    +"For example, the 80% bracket contains all predictions with confidence in the range from 75% to 85%."
+                    +" If you made four predictions with confidence levels 78%, 80%, 80%, 84% and three of them were correct,"
+                    +" your confidence in the 80% bracket would be 75%."
+                }
+                p{
+                note {
+                    +"(This makes the result less precise because of mixing beliefs with different confidence"
+                    +" levels but this is compensated by averaging more predictions when computing accuracy,"
+                    +" thus reducing effects of random chance.)"
+                }
                 }
             }
             else->{}
