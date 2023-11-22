@@ -10,7 +10,8 @@ import react.dom.html.ReactHTML.span
 external interface FormFieldProps : PropsWithChildren, PropsWithClassName {
     var title: String
     var titleColor: Color?
-    var comment: String
+    var comment: String?
+    var commentNode: ReactNode?
     var error: String?
     var required: Boolean?
     var inputAreaCSS: ClassName?
@@ -91,6 +92,7 @@ val FormField = FC<FormFieldProps> { props ->
         }
 
         // Comment area
+        if (props.comment != null || props.commentNode != null)
         div {
             css {
                 color = Color("#AAAAAA")
@@ -98,7 +100,8 @@ val FormField = FC<FormFieldProps> { props ->
                 fontSize = 12.px
                 lineHeight = 14.px
             }
-            +props.comment
+            +(props.comment?:"")
+            +props.commentNode
         }
     }
 }

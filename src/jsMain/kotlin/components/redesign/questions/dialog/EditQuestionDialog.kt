@@ -140,7 +140,19 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 FormField {
                     title = "Title"
                     required = true
-                    comment = "The question title should cover the main topic. Try and make your question specific and resolvable – so that after the event, everyone will agree on what the outcome is."
+                    commentNode = Fragment.create {
+                        +"Try and make your question specific and resolvable – so that after the event, everyone will agree on what the outcome is. "
+                        a {
+                            css {
+                                color = Globals.inherit
+                                fontWeight = integer(600)
+                                textDecoration = TextDecoration.underline
+                            }
+                            href = "https://confido.institute/encyclopedia/what-makes-a-good-forecasting-question.html"
+                            target = AnchorTarget._blank
+                            +"More on how to write a good question."
+                        }
+                    }
                     TextInput {
                         placeholder = "Enter the question title"
                         value = questionTitle
