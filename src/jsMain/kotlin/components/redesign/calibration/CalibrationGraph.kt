@@ -97,7 +97,7 @@ data class CalibrationBand(
 val calibrationBands = listOf(
     CalibrationBand(-1.0..-slightMiscalibRadius, "#d0b7f5", "Overconfident", ">"),
     CalibrationBand(-slightMiscalibRadius..-wellCalibratedRadius, "#dfd0f5", "Slightly overconfident", ">"),
-    CalibrationBand(-wellCalibratedRadius..wellCalibratedRadius, "#f5fafa", "Well-calibrated", "≈"),
+    CalibrationBand(-wellCalibratedRadius..wellCalibratedRadius, "white", "Well-calibrated", "≈"),
     CalibrationBand(wellCalibratedRadius..slightMiscalibRadius, "#c7eef3", "Slightly underconfident", "<"),
     CalibrationBand(slightMiscalibRadius..1.0, "#aaeaf3", "Underconfident", "<"),
 )

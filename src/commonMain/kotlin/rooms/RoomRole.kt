@@ -71,7 +71,7 @@ object Viewer : RoomRole(setOf(
         RoomPermission.VIEW_GROUP_CALIBRATION,
 )) {
     override val id = "viewer"
-    override val name = "Viewer"
+    override val name = "Observer"
 }
 
 @Serializable

@@ -106,7 +106,7 @@ internal val AddMemberItem = FC<AddMemberItemProps> {props ->
     }
 }
 
-val AddMemberDialog = FC<DialogProps> {props ->
+val AddMemberDialog = dialogStateWrapper(FC<BaseDialogProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
 
@@ -203,4 +203,4 @@ val AddMemberDialog = FC<DialogProps> {props ->
             }
         }
     }
-}
+})

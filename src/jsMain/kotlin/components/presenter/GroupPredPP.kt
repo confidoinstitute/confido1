@@ -1,6 +1,7 @@
 package components.presenter
 
 import components.DistributionPlot
+import components.redesign.basic.sansSerif
 import components.redesign.basic.serif
 import components.redesign.questions.predictions.BinaryPrediction
 import csstype.*

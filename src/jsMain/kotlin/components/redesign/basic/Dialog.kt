@@ -27,9 +27,7 @@ import tools.confido.utils.generateId
 import web.location.*
 import web.storage.*
 
-external interface DialogProps : PropsWithChildren, PropsWithRef<HTMLElement> {
-    var open: Boolean
-    var onClose: (() -> Unit)?
+external interface DialogProps : BaseDialogProps, PropsWithChildren, PropsWithRef<HTMLElement> {
     var title: String
     var action: String
     var disabledAction: Boolean
