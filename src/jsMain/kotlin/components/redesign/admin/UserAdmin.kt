@@ -17,6 +17,7 @@ import hooks.useCoroutineLock
 import hooks.useEditDialog
 import io.ktor.client.request.*
 import kotlinx.datetime.Clock
+import kotlinx.js.jso
 import react.*
 import react.dom.html.InputType
 import react.dom.html.OlType
@@ -41,6 +42,7 @@ import utils.isEmailValid
 import utils.toDateTime
 
 external interface EditUserDialogProps : EditEntityDialogProps<User> {
+    var onTypeHelp: (()->Unit)?
 }
 
 val EditUserDialog = FC<EditUserDialogProps> { props ->
@@ -127,6 +129,7 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
                 if (!isSelf) {
                     FormField {
                         title = "User type"
+                        onInlineHelp = props.onTypeHelp
 
                         Select {
                             value = userType.name
@@ -237,10 +240,10 @@ val UserAdmin = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
     if (!appState.isAdmin()) return@FC
 
-    val editUserOpen = useEditDialog(EditUserDialog)
 
     val activate = useCoroutineLock()
     var typeHelpOpen by useDialog(UserTypeHelpDialog)
+    val editUserOpen = useEditDialog(EditUserDialog, jso { onTypeHelp = {typeHelpOpen = true} }, temporaryHide=typeHelpOpen)
     val layoutMode = useContext(LayoutModeContext)
 
     PageHeader {

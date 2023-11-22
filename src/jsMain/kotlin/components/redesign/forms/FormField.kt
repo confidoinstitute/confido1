@@ -14,6 +14,7 @@ external interface FormFieldProps : PropsWithChildren, PropsWithClassName {
     var error: String?
     var required: Boolean?
     var inputAreaCSS: ClassName?
+    var onInlineHelp: (()->Unit)?
 }
 
 val FormErrorCSS = emotion.css.ClassName {
@@ -51,6 +52,11 @@ val FormField = FC<FormFieldProps> { props ->
                     flexGrow = number(1.0)
                 }
                 +props.title
+                props.onInlineHelp?.let {
+                    InlineHelpButton {
+                        onClick = { props.onInlineHelp?.invoke() }
+                    }
+                }
             }
             if (props.required == true) {
                 span {

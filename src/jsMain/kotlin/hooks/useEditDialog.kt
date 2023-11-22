@@ -14,7 +14,7 @@ external interface EditEntityDialogProps<E> : Props {
  *  its inner state is reset on each edit by changing its React key.
  *  For example usage, see QuestionList.
  */
-inline fun <E, DP: EditEntityDialogProps<E>> ChildrenBuilder.useEditDialog(comp: FC<DP>, props: DP? = null): ((E?)->Unit) {
+inline fun <E, DP: EditEntityDialogProps<E>> ChildrenBuilder.useEditDialog(comp: FC<DP>, props: DP? = null, temporaryHide: Boolean = false): ((E?)->Unit) {
     var editedEntity by useState<E?>(null)
     var editedKey by useState("")
     var editOpen by useState(false)
@@ -26,7 +26,7 @@ inline fun <E, DP: EditEntityDialogProps<E>> ChildrenBuilder.useEditDialog(comp:
     comp {
         key = "##editDialog##$editedKey"
         entity = editedEntity
-        open = editOpen
+        open = editOpen && !temporaryHide
         onClose = { editOpen = false }
         +props
     }
