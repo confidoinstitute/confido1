@@ -559,7 +559,7 @@ val DialogMenuCommonActions = FC<DialogMenuCommonActionsProps> { props ->
         icon = AboutIcon
         onClick = {
             // Warning: This is currently duplicated in DialogMenuCommonActions
-            window.open("https://confido.institute/", "_blank")
+            window.open("https://confido.institute/confido-app.html", "_blank")
         }
     }
     DialogMenuItem {
