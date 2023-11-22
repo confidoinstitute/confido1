@@ -1,39 +1,43 @@
 package components.redesign.admin
 
 
+import Client
 import components.AppStateContext
+import components.redesign.EditIcon
 import components.redesign.basic.*
 import components.redesign.forms.*
+import components.redesign.layout.LayoutMode
+import components.redesign.layout.LayoutModeContext
+import components.redesign.questions.StatusChip
 import components.showError
 import csstype.*
 import emotion.react.css
 import hooks.EditEntityDialogProps
-import hooks.useEditDialog
 import hooks.useCoroutineLock
-import icons.AddIcon
-import icons.EditIcon
+import hooks.useEditDialog
 import io.ktor.client.request.*
 import kotlinx.datetime.Clock
 import react.*
 import react.dom.html.InputType
-import react.dom.html.ReactHTML
-import react.dom.html.ReactHTML.div
+import react.dom.html.OlType
+import react.dom.html.ReactHTML.b
+import react.dom.html.ReactHTML.i
+import react.dom.html.ReactHTML.li
+import react.dom.html.ReactHTML.ol
 import react.dom.html.ReactHTML.option
+import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.table
 import react.dom.html.ReactHTML.tbody
 import react.dom.html.ReactHTML.td
 import react.dom.html.ReactHTML.th
 import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
-import react.dom.html.TdAlign
-import react.dom.onChange
+import react.dom.html.ReactHTML.ul
 import tools.confido.refs.eqid
-import tools.confido.state.appConfig
+import tools.confido.utils.capFirst
 import users.User
 import users.UserType
-import utils.eventValue
 import utils.isEmailValid
-import utils.themed
 import utils.toDateTime
 
 external interface EditUserDialogProps : EditEntityDialogProps<User> {
@@ -168,6 +172,67 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
     }
 }
 
+val UserTypeHelpDialog = FC<BaseDialogProps> { props->
+    Dialog {
+        title="User types"
+        +props
+        p {
+            +"There are three types of users in Confido:"
+            ul {
+                li {
+                    b{
+                        css { color = userTypeColors[UserType.ADMIN]!!.color }
+                        +"Admins"
+                    }
+                    +" have complete control over the workspace. They can access all rooms, see all group and individual "
+                    +" predictions, create and modify users and more."
+                }
+                li {
+                    b{
+                        css { color = userTypeColors[UserType.MEMBER]!!.color }
+                        +"Members"
+                    }
+                    +" are people that are part of the organization or group managing the workspace, for example the employees of your company."
+                    +" They are allowed to create new rooms in the workspace and add members to these rooms."
+                    +" Only Admins can add new Members to the workspace."
+                }
+                li {
+                    b{
+                        css { color = userTypeColors[UserType.GUEST]!!.color }
+                        +"Guests"
+                    }
+                    +" are invited external collaborators. They can be both anonymous and non-anonymous. "
+                    +" They can access only the room(s) they were added to and cannot create new rooms."
+                    +" Guest accounts are usually not created here in the user administration, but: "
+                    ol {
+                        type = OlType.a
+                        li {
+                            +"By entering a new e-mail address in the "
+                            i { +"Add member" }
+                            +" dialog under the "
+                            i { +"Room members" }
+                            +" tab of any room."
+                        }
+                        li {
+                            +"By joining the room via a shared invite link (which can also be created "
+                            +" on the "
+                            i { +"Room members" }
+                            +" tab)."
+                        }
+                    }
+                    +"Any room moderator is able to invite guests and create shared invite links, they do not need to be an admin."
+                }
+            }
+        }
+    }
+}
+
+val userTypeColors = mapOf(
+    UserType.ADMIN to RoomPalette.red,
+    UserType.MEMBER to RoomPalette.blue,
+    UserType.GUEST to RoomPalette.gray,
+)
+
 val UserAdmin = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
     if (!appState.isAdmin()) return@FC
@@ -175,6 +240,8 @@ val UserAdmin = FC<Props> {
     val editUserOpen = useEditDialog(EditUserDialog)
 
     val activate = useCoroutineLock()
+    var typeHelpOpen by useDialog(UserTypeHelpDialog)
+    val layoutMode = useContext(LayoutModeContext)
 
     PageHeader {
         title = "User management"
@@ -183,102 +250,84 @@ val UserAdmin = FC<Props> {
 
     Stack {
         css {
-            margin = 20.px
+            ".phone &" { alignItems = AlignItems.stretch }
+            ".tabplus &" { alignItems = AlignItems.center }
         }
-        table {
+        Stack {
             css {
-                "th" {
-                    textAlign = TextAlign.left
-                }
-                "td, th" {
-                    margin = 0.px
-                    padding = Padding(4.px, 8.px)
-                }
-                fontFamily = sansSerif
-                padding = 0.px
-                margin = 0.px
-                borderCollapse = BorderCollapse.collapse
-            }
-            thead {
-                tr {
-                    css { "th" { paddingBottom = 10.px; paddingTop = 5.px; } }
-                    th { +"Nick" }
-                    th { +"E-mail" }
-                    th { +"Status" }
-                    th { +"Active" }
-                    th { +"Last login" }
-                    th {} // Edit button
+                alignItems = AlignItems.stretch
+                ".tabplus &" {
+                    marginLeft = 20.px
+                    marginRight = 20.px
+                    maxWidth = 1000.px
                 }
             }
-            tbody {
-                css {
-                    "&:before" {
-                        display = Display.block
-                        height  = 15.px
+            table {
+                css(rowStyleTableCSS) {
+                    "td" {
+                        paddingLeft = 15.px
                     }
-                    backgroundColor = NamedColor.white
-                    "tr" {
-                        backgroundColor = NamedColor.white
+                    "th" {
+                        paddingLeft = 15.px
                     }
-                    padding = 15.px
                 }
-                appState.users.values.sortedWith(compareBy(
-                    {
-                        when (it.type) {
-                            UserType.ADMIN -> 0
-                            UserType.MEMBER -> 1
-                            UserType.GUEST -> 2
-                        }
-                    },
-                    { if (it.email != null) 0 else 1 },
-                    { if (it.nick != null) 0 else 1 },
-                    { it.nick },
-                    { it.email },
-                )).map { user ->
+                thead {
                     tr {
-                        key = user.id
-                        td {
-                            +(user.nick ?: "")
-                        }
-                        td { +(user.email ?: "") }
-                        td { +user.type.name }
-                       td {
-                            Checkbox {
-                                css {
-                                    cursor = Cursor.default
+                        th { +"Nick" }
+                        th { +"E-mail" }
+                        th { +"Type"; InlineHelpButton { onClick = { typeHelpOpen = true } } }
+                        if (layoutMode >= LayoutMode.TABLET)
+                            th { +"Last login" }
+                        th {} // Edit button
+                    }
+                }
+                tbody {
+                    appState.users.values.sortedWith(
+                        compareBy(
+                            {
+                                when (it.type) {
+                                    UserType.ADMIN -> 0
+                                    UserType.MEMBER -> 1
+                                    UserType.GUEST -> 2
                                 }
-                                val isSelf = user eqid appState.session.user
-                                this.disabled = stale || isSelf
-                                this.checked = user.active
-                                readOnly = true
-                                onClick = {
-                                    it.preventDefault()
-                                    //activate {
-                                    //    if (!isSelf) {
-                                    //        Client.sendData("/users/edit", user.copy(active = !user.active), onError = {showError(it)}) {}
-                                    //    }
-                                    //}
-                                }
+                            },
+                            { if (it.email != null) 0 else 1 },
+                            { if (it.nick != null) 0 else 1 },
+                            { it.nick },
+                            { it.email },
+                        )
+                    ).map { user ->
+                        tr {
+                            key = user.id
+                            td {
+                                +(user.nick ?: "")
                             }
-                        }
-                        td { +(user.lastLoginAt?.epochSeconds?.toDateTime() ?: "Never") }
-                        td {
-                            IconButton {
-                                disabled = stale
-                                onClick = { editUserOpen(user) }
-                                EditIcon {}
+                            td { +(user.email ?: "") }
+                            td { StatusChip {
+                                color = userTypeColors[user.type]!!.color
+                                text = user.type.name.lowercase().capFirst()
+                            } }
+                            if (layoutMode >= LayoutMode.TABLET)
+                                td { +(user.lastLoginAt?.epochSeconds?.toDateTime() ?: "Never") }
+                            td {
+                                IconButton {
+                                    disabled = stale
+                                    onClick = { editUserOpen(user) }
+                                    EditIcon{ size = 14 }
+                                }
                             }
                         }
                     }
                 }
+            }
+
+            Button {
+                this.key = "##add##"
+                // TODO icon
+                onClick = { editUserOpen(null) }
+                +"Add user…"
             }
         }
+    }
 
-    Button {
-        this.key = "##add##"
-        // TODO icon
-        onClick = { editUserOpen(null) }
-        +"Add user…"
-    }
-    }
 }

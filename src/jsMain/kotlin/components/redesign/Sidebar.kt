@@ -117,11 +117,14 @@ val SidebarLayout = FC<Props> {
 
 external interface SidebarActionsProps: Props {
     var small: Boolean
+    var hideCalib: Boolean
 }
 val SidebarActions = FC<SidebarActionsProps> {props->
     val iconSize = if(props.small) 36.px else 48.px
     val iconSizeInner = if(props.small) 34 else 46
+    val (appState, _) = useContext(AppStateContext)
 
+    if (!props.hideCalib)
     RoomLink {
         key = "::calibration"
         to = "/calibration"
@@ -145,6 +148,33 @@ val SidebarActions = FC<SidebarActionsProps> {props->
         }
         ReactHTML.span {
             +"Calibration"
+        }
+    }
+
+    if (appState.isAdmin())
+    RoomLink {
+        key = "::users"
+        to = "/admin/users"
+        small = props.small
+        highlighted = location.pathname == "/admin/users"
+        div {
+            css {
+                //border = Border(1.px, LineStyle.solid, Color("#BBBBBB"))
+                //borderRadius = 8.px
+                width = iconSize
+                height = iconSize
+                display = Display.flex
+                alignItems = AlignItems.center
+                justifyContent = JustifyContent.center
+                flexShrink = number(0.0)
+            }
+            UsersIcon {
+                css { width = 80.pct; height = 80.pct; }
+                color = "#bbb"
+            }
+        }
+        ReactHTML.span {
+            +"Users"
         }
     }
 }
@@ -196,7 +226,12 @@ val Sidebar = FC<SidebarProps> { props ->
                 gap = 10.px
             }
             title("Workspace", layoutMode.contentSidePad)
-            SidebarActions { small = true }
+            Stack {
+                css {
+                    gap = 5.px
+                }
+                SidebarActions { small = true }
+            }
             title("Rooms", layoutMode.contentSidePad)
             RoomList {
                 canCreate = appState.session.user?.type?.isProper() ?: false

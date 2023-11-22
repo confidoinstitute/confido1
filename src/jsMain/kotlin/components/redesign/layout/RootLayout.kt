@@ -47,6 +47,13 @@ private val RootLayoutInner = FC<Props> {
     val location = useLocation()
     var showDemoWelcome by useState(appConfig.demoMode && window.asDynamic().demoDismissed != true)
     var showNewDesign by useState {!appConfig.demoMode && web.storage.localStorage.getItem("newDesignMessageSeen") == null }
+    useEffect(layoutMode.ordinal) {
+        document.body.className = when (layoutMode) {
+            LayoutMode.PHONE -> "phone tabminus"
+            LayoutMode.TABLET -> "tablet tabplus tabminus"
+            LayoutMode.DESKTOP -> "desktop tabplus"
+        }
+    }
     LayoutModeContext.Provider {
         value = layoutMode
         Backdrop {

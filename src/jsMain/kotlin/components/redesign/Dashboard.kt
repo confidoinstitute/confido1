@@ -317,12 +317,9 @@ val Dashboard = FC<Props> {
             if (resp.status.isSuccess()) resp.body<CalibrationVector>()
             else null
         }
-        if (myCalib == null || myCalib.entries.filter { it.value.total > 0 }.size == 0) {
-            // TODO: When there are more actions, show the menu unconditionally and only
-            // conditionally hide the Calibration button (maybe?)
-            title("Workspace", layoutMode.contentSidePad)
-            SidebarActions {}
-        } else {
+        val showCalibGraph = (myCalib != null && myCalib.entries.filter { it.value.total > 0 }.size > 0)
+
+        if (showCalibGraph) {
             title("Your calibration", layoutMode.contentSidePad)
             Link {
                 to = "/calibration"
@@ -348,7 +345,7 @@ val Dashboard = FC<Props> {
                     }
                     CalibrationGraphContent {
                         areaLabels = false
-                        calib = myCalib
+                        calib = myCalib ?: CalibrationVector()
                     }
                 }
                 div {
@@ -367,6 +364,11 @@ val Dashboard = FC<Props> {
                     }
                 }
             }
+        }
+
+        if (!showCalibGraph || appState.isAdmin()) {
+            title("Workspace", layoutMode.contentSidePad)
+            SidebarActions { hideCalib = showCalibGraph }
         }
 
         title("Rooms", layoutMode.contentSidePad)

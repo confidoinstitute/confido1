@@ -1,5 +1,6 @@
 package components.redesign.basic
 
+import components.redesign.layout.LayoutMode
 import csstype.*
 import emotion.css.ClassName
 import emotion.react.*
@@ -18,6 +19,64 @@ val linkCSS = buildProps {
     textDecoration = TextDecoration.underline
     color = MainPalette.primary.color
     cursor = Cursor.pointer
+}
+
+val baseTableCSS = ClassName {
+
+    borderCollapse = BorderCollapse.separate
+    borderSpacing = 3.px
+    "th" {
+        textAlign = TextAlign.center
+        paddingLeft = 5.px // align with content
+        fontWeight = integer(600)
+        color = Color("#666")
+        fontSize = 90.pct
+    }
+    "td" {
+        textAlign = TextAlign.center
+        border = None.none
+        backgroundColor = NamedColor.white
+        //paddingLeft = 5.px
+        //paddingRight = 5.px
+        padding = 5.px
+        verticalAlign = VerticalAlign.middle
+    }
+    ".tabplus &" {
+        "tbody tr:first-child td:first-child" {
+            borderTopLeftRadius = 10.px
+        }
+        "tbody tr:last-child td:first-child" {
+            borderBottomLeftRadius = 10.px
+        }
+        "tbody tr:first-child td:last-child" {
+            borderTopRightRadius = 10.px
+        }
+        "tbody tr:last-child td:last-child" {
+            borderBottomRightRadius = 10.px
+        }
+    }
+    "tbody" {
+        fontSize = 90.pct
+    }
+}
+val rowStyleTableCSS = ClassName(baseTableCSS) {
+
+    borderSpacing = "0 3px".unsafeCast<BorderSpacing>()
+    "th" {
+        fontWeight = integer(600)
+        color = Color("#666")
+        fontSize = 90.pct
+        paddingLeft = 5.px // align with content
+        textAlign = TextAlign.left
+    }
+    "td" {
+        border = None.none
+        verticalAlign = VerticalAlign.middle
+        textAlign = TextAlign.left
+        padding = 0.px
+        paddingLeft = 5.px
+        paddingRight = 5.px
+    }
 }
 
 val GlobalCss = FC<GlobalCssProps> { props ->

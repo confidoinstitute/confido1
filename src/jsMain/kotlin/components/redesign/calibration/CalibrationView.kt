@@ -1,15 +1,19 @@
 package components.redesign.calibration
 
+import Client
 import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.forms.ButtonUnstyled
 import components.redesign.forms.InlineHelpButton
 import components.redesign.forms.OptionGroup
 import components.redesign.forms.OptionGroupPageTabsVariant
-import components.redesign.layout.LayoutMode
-import components.redesign.layout.LayoutModeContext
+import components.redesign.questions.predictions.yesGreen
+import components.showError
 import csstype.*
+import dom.html.HTMLTableCellElement
 import emotion.react.css
+import hooks.combineRefs
+import hooks.useCoroutineLock
 import hooks.useSuspendResult
 import io.ktor.client.call.*
 import io.ktor.http.*
@@ -19,41 +23,29 @@ import payloads.requests.CalibrationRequest
 import payloads.requests.CalibrationWho
 import payloads.requests.Everyone
 import payloads.requests.Myself
+import payloads.responses.CalibrationQuestion
 import react.*
+import react.dom.aria.ariaLabel
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.table
 import react.dom.html.ReactHTML.tbody
 import react.dom.html.ReactHTML.td
 import react.dom.html.ReactHTML.th
 import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
+import react.dom.html.TdHTMLAttributes
 import rooms.Room
+import rooms.RoomPermission
+import tools.confido.calibration.CalibrationBin
 import tools.confido.calibration.CalibrationVector
 import tools.confido.question.Question
 import tools.confido.refs.Ref
+import tools.confido.refs.deref
 import tools.confido.utils.capFirst
 import tools.confido.utils.formatPercent
 import tools.confido.utils.toFixed
 import utils.except
-import components.redesign.questions.predictions.binaryColors
-import components.redesign.questions.predictions.binaryNames
-import components.redesign.questions.predictions.yesGreen
-import components.showError
-import dom.html.HTMLAnchorElement
-import dom.html.HTMLTableCellElement
-import hooks.combineRefs
-import hooks.useCoroutineLock
-import hooks.useEffectNotFirst
-import payloads.responses.CalibrationQuestion
-import react.dom.aria.ariaLabel
-import react.dom.html.HTMLAttributes
-import react.dom.html.ReactHTML.span
-import react.dom.html.TdHTMLAttributes
-import rooms.RoomPermission
-import tools.confido.calibration.CalibrationBin
-import tools.confido.refs.deref
-import tools.confido.utils.List2
-import utils.runCoroutine
 import web.url.URLSearchParams
 
 fun params2request(params: URLSearchParams): CalibrationRequest {
@@ -102,45 +94,9 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
     fun fmtp(p: Double) = (100*p).toFixed(1).trimEnd('0').trimEnd('.')+"%"
     val calib = props.data
     val entries = calib.entries.filter {it.value.total != 0}.sortedBy { it.key }
-    val layoutMode = useContext(LayoutModeContext)
     if (entries.size > 0)
     table {
-        css {
-            borderCollapse = BorderCollapse.separate
-            borderSpacing = 3.px
-            "td, th" {
-                textAlign = TextAlign.center
-            }
-            "thead th" {
-                paddingLeft = 5.px // align with content
-                fontWeight = integer(600)
-                color = Color("#333")
-                fontSize = 80.pct
-            }
-            "tbody td" {
-                border = None.none
-                //paddingLeft = 5.px
-                //paddingRight = 5.px
-                padding = 5.px
-                verticalAlign = VerticalAlign.middle
-            }
-            if (layoutMode >= LayoutMode.TABLET) {
-                "tbody tr:first-child td:first-child" {
-                    borderTopLeftRadius = 10.px
-                }
-                "tbody tr:last-child td:first-child" {
-                    borderBottomLeftRadius = 10.px
-                }
-                "tbody tr:first-child td:last-child" {
-                    borderTopRightRadius = 10.px
-                }
-                "tbody tr:last-child td:last-child" {
-                    borderBottomRightRadius = 10.px
-                }
-            }
-            "tbody" {
-                fontSize = 90.pct
-            }
+        css(baseTableCSS) {
         }
         thead {
             tr {
@@ -389,7 +345,6 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
 val TabbedCalibrationReqView = FC<CalibrationReqViewProps> {props->
     var who by useState(props.req.who)
     val req = props.req.copy(who = who)
-    val layoutMode = useContext(LayoutModeContext)
     MobileSidePad {
         OptionGroup<CalibrationWho>()() {
             variant = OptionGroupPageTabsVariant

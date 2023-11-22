@@ -14,6 +14,7 @@ import csstype.*
 import dom.html.*
 import emotion.react.*
 import hooks.useEffectNotFirst
+import kotlinx.js.jso
 import react.*
 import react.dom.*
 import react.dom.html.*
@@ -50,6 +51,17 @@ val Dialog = ForwardRef<HTMLElement, DialogProps> { props, fRef ->
         }
         +props.children
     }
+}
+
+fun <P: BaseDialogProps> ChildrenBuilder.useDialog(comp: FC<P>, props: P = jso{}): StateInstance<Boolean> {
+    val isOpenState = useState(false)
+    var isOpen by isOpenState
+    comp {
+        +props
+        open = isOpen
+        onClose = { isOpen = false }
+    }
+    return isOpenState
 }
 
 external interface DialogMenuProps : PropsWithChildren, PropsWithRef<HTMLElement> {
