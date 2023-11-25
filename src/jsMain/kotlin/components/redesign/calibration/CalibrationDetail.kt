@@ -22,6 +22,7 @@ import react.dom.html.AnchorTarget
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.b
+import react.dom.html.ReactHTML.br
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.table
@@ -408,9 +409,34 @@ val CalibrationDetail = FC<CalibrationDetailProps> { props ->
                     th { +"Question" }
                     if (numConfidence == null) {
                         th { +"Confidence" }
-                        th { +"Confidence interval" }
+                        th {
+                            +"Confidence interval"
+                            InlineHelpButton {
+                                onClick = { props.onHelp?.invoke(CalibrationHelpSection.NUMERIC) }
+                            }
+                        }
                     } else {
-                        th { +"${fmtp(numConfidence)} confidence interval" }
+                        th {
+                            Stack {
+                                direction = FlexDirection.row
+                                css {
+                                    alignItems = AlignItems.flexStart
+                                }
+                                div {
+                                    +fmtp(numConfidence)
+                                    +"\u00A0"
+                                }
+                                div {
+                                    +"confidence"
+                                    br {}
+                                    +" interval"
+
+                                    InlineHelpButton {
+                                        onClick = { props.onHelp?.invoke(CalibrationHelpSection.NUMERIC) }
+                                    }
+                                }
+                            }
+                        }
                     }
                     th { +"Resolution" }
                     th { +"Correct?" }
