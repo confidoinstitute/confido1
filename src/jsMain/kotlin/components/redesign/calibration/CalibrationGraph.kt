@@ -1,12 +1,7 @@
 package components.redesign.calibration
 
-import components.redesign.HelpIcon
 import components.redesign.basic.*
-import components.redesign.forms.ButtonUnstyled
-import components.redesign.forms.FormSection
 import components.redesign.forms.InlineHelpButton
-import components.redesign.forms.OptionGroup
-import components.redesign.questions.predictions.BinaryPrediction
 import components.redesign.questions.predictions.binaryColors
 import csstype.*
 import emotion.react.css
@@ -14,10 +9,7 @@ import emotion.css.ClassName
 import payloads.requests.CalibrationWho
 import react.FC
 import react.PropsWithClassName
-import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
-import react.dom.html.ReactHTML.i
-import react.dom.html.ReactHTML.p
 import react.dom.svg.ReactSVG
 import react.dom.svg.ReactSVG.circle
 import react.dom.svg.ReactSVG.defs
@@ -29,7 +21,6 @@ import react.useState
 import tools.confido.calibration.CalibrationBin
 import tools.confido.calibration.CalibrationEntry
 import tools.confido.calibration.CalibrationVector
-import tools.confido.distributions.BinaryDistribution
 import tools.confido.utils.*
 import utils.except
 
@@ -184,7 +175,7 @@ val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { pro
         //        d = "M ${pt(proj(1.0, 0.0))} L ${pt(proj(1.0, 1.0))}"
         //    }
         //}
-        if ((props.grid ?: true) && graphHovered && props.highlightBin == null) {
+        if ((props.grid ?: true) && graphHovered && props.highlightBin == null && entries.isNotEmpty()) {
             g {
                 stroke = "rgba(0,0,0,10%)"
                 //(1..9).map { it / 10.0 }.forEach {
@@ -282,6 +273,9 @@ val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { pro
                 color = Color("#222")
             }
             +"No data yet"
+            props.onHelp?.let {
+                InlineHelpButton { onClick = { it(CalibrationHelpSection.SCORE_DATES) } }
+            }
         }
     }
 }, ClassName {

@@ -114,7 +114,12 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
                     }
                 }
                 th { +"Questions" }
-                th { +"Result" }
+                th {
+                    +"Result"
+                    InlineHelpButton {
+                        onClick = { props.onHelp?.invoke(CalibrationHelpSection.RESULTS) }
+                    }
+                }
             }
         }
         tbody {

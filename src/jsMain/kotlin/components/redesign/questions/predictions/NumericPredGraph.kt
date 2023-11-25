@@ -21,10 +21,12 @@ external interface NumericPredGraphProps : PropsWithElementSize, BasePredictionG
     override var space: NumericSpace
     override var dist: ContinuousProbabilityDistribution?
     override var resolution: NumericValue?
+    var graphHeight: Double?
     var preferredCICenter: Double?
     var zoomable: Boolean?
     var onZoomChange: ((PZState, List<Double>)->Unit)? // args: zoom state & visible marks
     var dimLines: Boolean?
+    var maxZoom: Double?
     var onGraphClick: ((xSpace: Double, yRel: Double) -> Unit)?
 }
 
@@ -37,24 +39,25 @@ val LABELS_HEIGHT = 24.0
 val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericPredGraphProps>("NumericPredGraph") { props->
     val ABOVE_GRAPH_PAD = 8.0
     val GRAPH_TOP_PAD = 33.0
-    val GRAPH_HEIGHT = 131.0
+    val graphHeight = props.graphHeight ?: 131.0
     val dist = props.dist
     val canvas = useRef<HTMLCanvasElement>()
     val space = props.space
     val dpr = useDPR()
-    val desiredLogicalHeight = GRAPH_TOP_PAD + GRAPH_HEIGHT
+    val desiredLogicalHeight = GRAPH_TOP_PAD + graphHeight
     val desiredLogicalWidth = props.elementWidth
     val physicalWidth = (desiredLogicalWidth * dpr).toInt()
     val physicalHeight = (desiredLogicalHeight * dpr).toInt()
     val logicalWidth = physicalWidth.toDouble() / dpr // make sure we have whole number of physical pixels
     val logicalHeight = physicalHeight.toDouble() / dpr
 
-    val zoomParams = PZParams(contentDomain = space.range, viewportWidth = props.elementWidth, sidePad = SIDE_PAD)
+    val zoomParams = PZParams(contentDomain = space.range, viewportWidth = props.elementWidth, sidePad = SIDE_PAD,
+        maxZoom = props.maxZoom ?: 10.0)
     val (panZoomRE, zoomState) = usePanZoom<HTMLDivElement>(zoomParams)
     val clickRE = usePureClick<HTMLDivElement> { ev->
         val rect = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
         val x = ev.clientX - rect.left
-        val xSp = zoomState.viewportToContent(x.toDouble())
+        val xSp = zoomState.viewportToContent(x)
         val y = ev.clientY - rect.top
         val yRel = y / rect.height
         props.onGraphClick?.invoke(xSp, yRel)
@@ -102,7 +105,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
 
     val yTicks = (0 until bins).map { bin -> discretizedProbs[bin] to barColor(binner.binMidpoints[bin]) }
 
-    val yScale = GRAPH_HEIGHT / maxDensity
+    val yScale = graphHeight / maxDensity
 
     useLayoutEffect(yTicks, yScale, physicalWidth, physicalHeight) {
         val context = canvas.current?.getContext(RenderingContextId.canvas)
@@ -111,7 +114,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
             val left = (zoomState.leftPadVisible*dpr).toInt()
             yTicks.mapIndexed {index, yTick ->
                 fillStyle = yTick.second
-                fillRect(left+index, (GRAPH_TOP_PAD+GRAPH_HEIGHT)*dpr, 1, -yTick.first*yScale*dpr)
+                fillRect(left+index, (GRAPH_TOP_PAD+graphHeight)*dpr, 1, -yTick.first*yScale*dpr)
                 //beginPath()
                 //moveTo(left + index, (GRAPH_TOP_PAD + GRAPH_HEIGHT)*dpr)
                 //lineTo(left + index, (GRAPH_TOP_PAD + GRAPH_HEIGHT - yTick.first*yScale)*dpr)
@@ -121,7 +124,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
             filteredMarks.forEach { x->
                 beginPath()
                 moveTo(space2canvasPhysPx(x), 0)
-                lineTo(space2canvasPhysPx(x), (GRAPH_TOP_PAD + GRAPH_HEIGHT)*dpr)
+                lineTo(space2canvasPhysPx(x), (GRAPH_TOP_PAD + graphHeight)*dpr)
                 strokeStyle = "rgba(0,0,0,${if (props.dimLines?:false) 15 else 30}%)"
                 stroke()
             }
