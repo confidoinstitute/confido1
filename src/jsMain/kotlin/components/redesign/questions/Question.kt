@@ -7,7 +7,11 @@ import kotlinx.js.*
 import react.*
 import react.router.*
 
-val Question = FC<Props> {
+external interface QuestionProps : Props {
+    var openResolve: Boolean?
+}
+
+val Question = FC<QuestionProps> { props->
     val (appState, stale) = useContext(AppStateContext)
     val roomCtx = useContext(RoomContext)
 
@@ -29,5 +33,6 @@ val Question = FC<Props> {
     QuestionPage {
         key = questionID
         this.question = question
+        this.openResolve = props.openResolve
     }
 }

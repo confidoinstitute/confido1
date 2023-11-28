@@ -34,6 +34,8 @@ import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.main
 import react.router.dom.Link
+import react.router.useLocation
+import react.router.useNavigate
 import rooms.*
 import tools.confido.distributions.*
 import tools.confido.question.*
@@ -45,6 +47,7 @@ import utils.*
 
 external interface QuestionLayoutProps : Props {
     var question: Question
+    var openResolve: Boolean?
 }
 
 external interface QuestionHeaderProps : Props {
@@ -96,8 +99,17 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
     val roomPalette = room.color.palette
 
     var quickSettingsOpen by useState(false)
-    var resolutionDialogOpen by useState(false)
+    var resolutionDialogOpen by useState(props.openResolve ?: false)
     var csvDialogOpen by useState(false)
+    val loc = useLocation()
+    val navigate = useNavigate()
+
+    useEffect(props.question.id) { // TODO does not reflect change in question value
+        window.asDynamic().curQuestion = confidoJSON.encodeToDynamic(props.question)
+        cleanup {
+            window.asDynamic().curQuestion = undefined
+        }
+    }
 
     useEffect(props.question.id) { // TODO does not reflect change in question value
         window.asDynamic().curQuestion = confidoJSON.encodeToDynamic(props.question)
@@ -133,7 +145,10 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
     QuestionResolveDialog {
         open = resolutionDialogOpen
         question = props.question
-        onClose = { resolutionDialogOpen = false }
+        onClose = {
+            resolutionDialogOpen = false
+            if (loc.pathname.endsWith("/resolve")) navigate("..")
+        }
         key = "ResolveDialog"
     }
 
@@ -194,7 +209,7 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
     }
 }
 
-private val QuestionEstimateTabButton = ButtonBase.withStyle<QuestionEstimateTabButtonProps>("active") { props ->
+val QuestionEstimateTabButton = ButtonBase.withStyle<QuestionEstimateTabButtonProps>("active") { props ->
     all = Globals.unset
     cursor = Cursor.pointer
 
@@ -515,8 +530,8 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
         // Question text
         div {
             css {
-                fontFamily = serif
-                fontWeight = integer(700)
+                fontFamily = sansSerif
+                fontWeight = integer(800)
                 fontSize = 34.px
                 lineHeight = 105.pct
                 color = Color("#000000")
@@ -536,7 +551,7 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
         //    text = "Resolving 28 feb 2023, 12:00"
         //}
         QuestionStatusLine {
-            text = props.questionState.name.lowercase().capFirst()
+            text = props.questionState.pastVerb.lowercase().capFirst()
             props.stateHistory.filter { it.newState == props.questionState }.maxByOrNull { it.at }?.let {
                 time = it.at
             }
@@ -552,7 +567,7 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
         props.resolution?.let {
             div {
                 css {
-                    fontFamily = serif
+                    fontFamily = sansSerif
                     fontWeight = FontWeight.bold
                     fontSize = 34.px
                     lineHeight = 100.pct

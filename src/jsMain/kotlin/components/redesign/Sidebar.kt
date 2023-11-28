@@ -6,6 +6,7 @@ import components.redesign.basic.*
 import components.redesign.feedback.FeedbackContext
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
+import components.redesign.rooms.RoomLink
 import components.redesign.rooms.RoomList
 import csstype.*
 import emotion.react.Global
@@ -13,14 +14,17 @@ import emotion.react.css
 import emotion.react.styles
 import icons.LockOpenIcon
 import react.*
+import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.aside
 import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.img
+import react.dom.svg.ReactSVG
 import react.router.Outlet
 import react.router.dom.Link
 import react.router.useLocation
 import tools.confido.state.appConfig
+import web.location.location
 
 external interface SidebarProps : PropsWithChildren {
     var open: Boolean?
@@ -111,6 +115,70 @@ val SidebarLayout = FC<Props> {
     Outlet {}
 }
 
+external interface SidebarActionsProps: Props {
+    var small: Boolean
+    var hideCalib: Boolean
+}
+val SidebarActions = FC<SidebarActionsProps> {props->
+    val iconSize = if(props.small) 36.px else 48.px
+    val iconSizeInner = if(props.small) 34 else 46
+    val (appState, _) = useContext(AppStateContext)
+
+    if (!props.hideCalib)
+    RoomLink {
+        key = "::calibration"
+        to = "/calibration"
+        small = props.small
+        highlighted = location.pathname == "/calibration"
+        div {
+            css {
+                //border = Border(1.px, LineStyle.solid, Color("#BBBBBB"))
+                //borderRadius = 8.px
+                width = iconSize
+                height = iconSize
+                display = Display.flex
+                alignItems = AlignItems.center
+                justifyContent = JustifyContent.center
+                flexShrink = number(0.0)
+            }
+            CompassIcon {
+                size = iconSizeInner
+                color = "#bbb"
+            }
+        }
+        ReactHTML.span {
+            +"Calibration"
+        }
+    }
+
+    if (appState.isAdmin())
+    RoomLink {
+        key = "::users"
+        to = "/admin/users"
+        small = props.small
+        highlighted = location.pathname == "/admin/users"
+        div {
+            css {
+                //border = Border(1.px, LineStyle.solid, Color("#BBBBBB"))
+                //borderRadius = 8.px
+                width = iconSize
+                height = iconSize
+                display = Display.flex
+                alignItems = AlignItems.center
+                justifyContent = JustifyContent.center
+                flexShrink = number(0.0)
+            }
+            UsersIcon {
+                css { width = 80.pct; height = 80.pct; }
+                color = "#bbb"
+            }
+        }
+        ReactHTML.span {
+            +"Users"
+        }
+    }
+}
+
 val Sidebar = FC<SidebarProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     val layoutMode = useContext(LayoutModeContext)
@@ -157,6 +225,13 @@ val Sidebar = FC<SidebarProps> { props ->
             css {
                 gap = 10.px
             }
+            title("Workspace", layoutMode.contentSidePad)
+            Stack {
+                css {
+                    gap = 5.px
+                }
+                SidebarActions { small = true }
+            }
             title("Rooms", layoutMode.contentSidePad)
             RoomList {
                 canCreate = appState.session.user?.type?.isProper() ?: false
@@ -181,7 +256,7 @@ val Sidebar = FC<SidebarProps> { props ->
                 icon = AboutIcon
                 onClick = {
                     // Warning: This is currently duplicated in DialogMenuCommonActions
-                    window.open("https://confido.institute/", "_blank")
+                    window.open("https://confido.institute/confido-app.html", "_blank")
                 }
             }
             if (appConfig.privacyPolicyUrl != null)

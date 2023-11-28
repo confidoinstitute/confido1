@@ -10,9 +10,19 @@ import react.dom.html.ReactHTML.span
 external interface FormFieldProps : PropsWithChildren, PropsWithClassName {
     var title: String
     var titleColor: Color?
-    var comment: String
+    var comment: String?
+    var commentNode: ReactNode?
     var error: String?
     var required: Boolean?
+    var inputAreaCSS: ClassName?
+    var onInlineHelp: (()->Unit)?
+}
+
+val FormErrorCSS = emotion.css.ClassName {
+        color = Color("#F35454")
+        fontFamily = sansSerif
+        fontSize = 12.px
+        lineHeight = 14.px
 }
 
 val FormField = FC<FormFieldProps> { props ->
@@ -43,6 +53,11 @@ val FormField = FC<FormFieldProps> { props ->
                     flexGrow = number(1.0)
                 }
                 +props.title
+                props.onInlineHelp?.let {
+                    InlineHelpButton {
+                        onClick = { props.onInlineHelp?.invoke() }
+                    }
+                }
             }
             if (props.required == true) {
                 span {
@@ -58,8 +73,12 @@ val FormField = FC<FormFieldProps> { props ->
         // Input elements
         Stack {
             direction = FlexDirection.row
-            css {
+            css(override=props.inputAreaCSS) {
                 gap = 10.px
+                justifyContent = JustifyContent.stretch
+                "& > *" {
+                    flexGrow = number(1.0)
+                }
             }
             +props.children
         }
@@ -67,17 +86,13 @@ val FormField = FC<FormFieldProps> { props ->
         // Error area
         props.error?.let {
             div {
-                css {
-                    color = Color("#F35454")
-                    fontFamily = sansSerif
-                    fontSize = 12.px
-                    lineHeight = 14.px
-                }
+                className = FormErrorCSS
                 +it
             }
         }
 
         // Comment area
+        if (props.comment != null || props.commentNode != null)
         div {
             css {
                 color = Color("#AAAAAA")
@@ -85,7 +100,8 @@ val FormField = FC<FormFieldProps> { props ->
                 fontSize = 12.px
                 lineHeight = 14.px
             }
-            +props.comment
+            +(props.comment?:"")
+            +props.commentNode
         }
     }
 }

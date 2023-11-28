@@ -70,9 +70,9 @@ fun <T: Any> useRefEffect(vararg dependencies: Any?, body: RefEffectContext<T>.(
     return internalState.refObject
 }
 
-fun <T: Any> combineRefs(vararg refs: MutableRefObject<in T>) = useMemo {
+fun <T: Any> combineRefs(vararg refs: MutableRefObject<in T>?) = useMemo {
     var currentValue: T? = null
-    val refCallback = { newValue: T? -> currentValue = newValue; refs.forEach { it.current = newValue } }
+    val refCallback = { newValue: T? -> currentValue = newValue; refs.forEach { it?.current = newValue } }
     Object.defineProperty(refCallback, "current", jso<PropertyDescriptor<T?>>{
         get = { currentValue }
         set = refCallback

@@ -1,20 +1,30 @@
 package components.redesign.rooms
 
 import components.AppStateContext
+import components.redesign.basic.LinkUnstyled
 import components.redesign.basic.Stack
 import components.redesign.forms.*
+import components.redesign.questions.dialog.EditQuestionDialogSchedule
 import csstype.*
 import emotion.react.css
 import payloads.requests.BaseRoomInformation
 import react.*
 import react.dom.html.ButtonType
+import react.dom.html.ReactHTML
+import react.dom.html.ReactHTML.a
+import react.dom.html.ReactHTML.abbr
+import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.p
 import rooms.Room
 import rooms.RoomColor
+import tools.confido.question.QuestionSchedule
+import tools.confido.refs.deref
 
 external interface RoomSettingsProps : Props {
     var room: Room?
     var onChange: ((BaseRoomInformation?) -> Unit)?
     var onSubmit: (() -> Unit)?
+    var openSchedule: Boolean?
 }
 
 val RoomSettings = FC<RoomSettingsProps> { props ->
@@ -23,18 +33,22 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
     var name by useState(props.room?.name ?: "")
     var description by useState(props.room?.description ?: "")
     var color by useState(props.room?.color ?: RoomColor.values().random())
-    var icon by useState<String?>(props.room?.icon)
+    var icon by useState(props.room?.icon)
+    var defaultSchedule by useState(props.room?.defaultSchedule ?: QuestionSchedule())
+    var showSchedule by useState(props.openSchedule ?: false)
+    var scheduleValid by useState(true)
+    val valid = !name.isEmpty() && scheduleValid
 
-    useEffect(name, description, color, icon) {
-        if (name.isEmpty())
-            props.onChange?.invoke(null)
+    useEffect(name, description, color, icon, defaultSchedule.identify()) {
+        if (valid)
+            props.onChange?.invoke(BaseRoomInformation(name, description, color, icon, defaultSchedule))
         else
-            props.onChange?.invoke(BaseRoomInformation(name, description, color, icon))
+            props.onChange?.invoke(null)
     }
 
     Form {
         onSubmit = {
-            props.onSubmit?.invoke()
+            if (valid) props.onSubmit?.invoke()
         }
         FormSection {
             FormField {
@@ -65,6 +79,49 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                     icon = it
                 }
             }
+        }
+        FormSection {
+            if (defaultSchedule == QuestionSchedule() && !showSchedule) {
+               a {
+                   href = "#"
+                   +"Configure default question schedule"
+                   onClick = {
+                       showSchedule = true
+                       it.preventDefault()
+                   }
+
+               }
+            } else {
+                title = "Default question schedule (optional)"
+                EditQuestionDialogSchedule {
+                    this.schedule = defaultSchedule
+                    onChange = { newSched, isError ->
+                        defaultSchedule = newSched
+                        scheduleValid = !isError
+                    }
+                }
+                props.room?.let { room->
+                    val affectedQuestions = room.questions.mapNotNull { it.deref() }.filter{ it.schedule == null }
+                    console.log("AQ ${room.questions.size} ${affectedQuestions.size}")
+
+                    if (affectedQuestions.isNotEmpty())
+                    div {
+                        css {
+                            fontSize = 12.px
+                            this.color = Color("#AAAAAA")
+                        }
+                        +"Changing this schedule will affect "
+                        abbr {
+                            +" ${affectedQuestions.size} existing questions "
+                            title = affectedQuestions.reversed().take(5).joinToString("\n"){ it.name } +
+                                    if (affectedQuestions.size > 5) "\n..."  else ""
+                        }
+                        +" that are configured to follow it."
+                    }
+                }
+            }
+        }
+        FormSection {
             Stack {
                 Button {
                     type = ButtonType.submit
@@ -75,7 +132,7 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                         +"Save"
                     else
                         +"Create room"
-                    disabled = (stale || name.isEmpty())
+                    disabled = (stale || !valid)
                 }
             }
         }

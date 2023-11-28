@@ -11,6 +11,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.*
@@ -348,6 +349,7 @@ object serverState : GlobalState() {
         val totalPredictions: MutableMap<Ref<Question>, Int> = mutableMapOf()
         override suspend fun initialize() {
             mongoCollection.ensureIndex(Prediction::question, Prediction::user, Prediction::ts)
+            mongoCollection.ensureIndex(Prediction::question, Prediction::ts)
         }
 
         override suspend fun doLoad() {
@@ -358,12 +360,23 @@ object serverState : GlobalState() {
             ).toFlow().collect { totalPredictions[it.question] = it.cnt }
             //println("STATS!!! $totalPredictions")
         }
-        suspend fun query(question: Ref<Question>, user: Ref<User>) =
+        fun query(question: Ref<Question>, user: Ref<User>) =
             mongoCollection.find(and(Prediction::question eq question, Prediction::user eq user))
                 .sort(ascending(Prediction::ts)).toFlow()
+
+        suspend fun at(question: Ref<Question>, user: Ref<User>, ts: Int) =
+            mongoCollection.find(and(Prediction::question eq question,
+                                                            Prediction::user eq user,
+                                                            Prediction::ts lte ts))
+                .sort(descending(Prediction::ts)).first()
+
+        suspend fun at(question: Ref<Question>, user: Ref<User>, ts: Instant) = at(question, user, ts.epochSeconds.toInt())
         init {
             onEntityAdded {
                 totalPredictions.compute(it.question) { _, cnt -> (cnt ?: 0) + 1 }
+            }
+            onEntityDeleted {
+                totalPredictions.compute(it.question) { _, cnt -> (cnt ?: 0) - 1 }
             }
         }
     }
@@ -373,9 +386,14 @@ object serverState : GlobalState() {
         override suspend fun initialize() {
             mongoCollection.ensureIndex(Prediction::question, Prediction::ts)
         }
-        suspend fun query(question: Ref<Question>) =
+        fun query(question: Ref<Question>) =
             mongoCollection.find(and(Prediction::question eq question))
                 .sort(ascending(Prediction::ts)).toFlow()
+
+        suspend fun at(question: Ref<Question>, ts: Int) =
+            mongoCollection.find(and(Prediction::question eq question, Prediction::ts lte ts))
+                .sort(descending(Prediction::ts)).first()
+        suspend fun at(question: Ref<Question>, ts: Instant) = at(question, ts.epochSeconds.toInt())
     }
 
     object questionCommentManager: InMemoryEntityManager<QuestionComment>(database.getCollection("questionComments")) {
@@ -612,12 +630,39 @@ object serverState : GlobalState() {
     suspend fun addPrediction(pred: Prediction) {
         val q = pred.question.deref()
         require(q != null)
+        val sched  = q.effectiveSchedule
         withTransaction {
             userPredManager.save(pred)
+            val myLastPred = userPredHistManager.mongoCollection.find(and(Prediction::question eq pred.question,
+                Prediction::user eq pred.user,
+                ))
+                .sort(descending(Prediction::ts)).first()
+
+            // If predictions are less than 1min apart, replace previous one instead of adding another history
+            // entry. This prevents clogging up history with lots of records and also makes the "number of uptates"
+            // metric more meaningful. Exception: if previous prediction was before score time and new one after
+            // we need to keep the previous one in order to preserve scoring.
+            var lastPredOther: Prediction? = null
+            if (myLastPred != null && pred.ts - myLastPred.ts < 60 &&
+                    !(sched.score != null && myLastPred.ts <= sched.score.epochSeconds && pred.ts > sched.score.epochSeconds)) {
+                userPredHistManager.deleteEntity(myLastPred)
+                lastPredOther = userPredHistManager.mongoCollection.find(and(Prediction::question eq pred.question))
+                    .sort(descending(Prediction::ts)).first()
+            }
+
             userPredHistManager.insertEntity(pred.copy(id=""))
             val gp = recalcGroupPred(q)
             gp?.let {
                 check(gp.user==null)
+                if (lastPredOther != null) {
+                    // If last group prediction update was due to my deleted prediction, delete it also.
+                    val lastGroupPred =
+                        groupPredHistManager.mongoCollection.find(and(Prediction::question eq pred.question))
+                            .sort(descending(Prediction::ts)).first()
+                    if (lastGroupPred != null && lastGroupPred.ts >= lastPredOther.ts) {
+                        groupPredHistManager.deleteEntity(lastGroupPred)
+                    }
+                }
                 groupPredHistManager.insertEntity(gp.copy(id = ""))
             }
         }

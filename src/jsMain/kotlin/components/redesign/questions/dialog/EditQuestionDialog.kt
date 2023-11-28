@@ -8,9 +8,13 @@ import components.rooms.*
 import csstype.*
 import emotion.react.*
 import hooks.*
+import kotlinx.datetime.Clock
 import payloads.requests.*
 import react.*
+import react.dom.html.AnchorTarget
 import react.dom.html.ButtonType
+import react.dom.html.ReactHTML.a
+import react.dom.html.ReactHTML.div
 import tools.confido.question.*
 import tools.confido.spaces.*
 
@@ -35,6 +39,8 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
 
+    val isEdit = props.entity != null
+
     var questionTitle by useState(props.entity?.name ?: "")
     var questionDescription by useState(props.entity?.description ?: "")
 
@@ -49,6 +55,12 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     }
     var resolution: Value? by useState(props.entity?.resolution)
     var resolutionValid: Boolean by useState(true)
+    var scheduleValid: Boolean by useState(true)
+
+    // SCHEDULE
+    var customSchedule by useState(props.entity?.let { it.schedule != null }
+        ?: (room.defaultSchedule == QuestionSchedule()))
+    var schedule by useState(props.entity?.schedule ?: room.defaultSchedule)
 
     // ANCHORING
     var groupPredictionVisibility by useState(props.entity?.groupPredictionVisibility ?: GroupPredictionVisibility.ANSWERED)
@@ -76,31 +88,34 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     }
 
     // Validity
-    val questionValid = questionTitle.isNotEmpty() && answerSpaceValid && resolutionValid
+    val questionValid = questionTitle.isNotEmpty() && answerSpaceValid && resolutionValid && (scheduleValid || !customSchedule)
 
     val submit = useCoroutineLock()
+    fun assembleQuestion() = if (questionValid) Question(
+        id = props.entity?.id ?: "",
+        stateHistory = props.entity?.stateHistory ?: emptyList(),
+        // QUESTION
+        name = questionTitle,
+        description = questionDescription,
+        // ANSWER
+        answerSpace = answerSpace!!,
+        // RESOLUTION
+        resolution = resolution,
+        // ANCHORING
+        groupPredVisible = groupPredictionVisibility.groupPredVisible,
+        groupPredRequirePrediction = groupPredictionVisibility.groupPredRequirePrediction,
+        // TERMINOLOGY
+        predictionTerminology = predictionTerminology,
+        groupTerminology = groupTerminology,
+        // VISIBILITY
+        allowComments = allowComments,
+        sensitive = isSensitive,
+        schedule = if (customSchedule) schedule else null,
+        scheduleStatus = QuestionScheduleStatus(if (customSchedule) schedule else room.defaultSchedule),
+    ).withState(questionStatus) else null
+
     fun submitQuestion() = submit {
-        if (!questionValid) return@submit
-        val question = Question(
-            id = props.entity?.id ?: "",
-            stateHistory = props.entity?.stateHistory ?: emptyList(),
-            // QUESTION
-            name = questionTitle,
-            description = questionDescription,
-            // ANSWER
-            answerSpace = answerSpace!!,
-            // RESOLUTION
-            resolution = resolution,
-            // ANCHORING
-            groupPredVisible = groupPredictionVisibility.groupPredVisible,
-            groupPredRequirePrediction = groupPredictionVisibility.groupPredRequirePrediction,
-            // TERMINOLOGY
-            predictionTerminology = predictionTerminology,
-            groupTerminology = groupTerminology,
-            // VISIBILITY
-            allowComments = allowComments,
-            sensitive = isSensitive,
-        ).withState(questionStatus)
+        val question = assembleQuestion() ?: return@submit
 
         if (props.entity == null) {
             Client.sendData("${room.urlPrefix}/questions/add", question, onError = {showError(it)}) {props.onClose?.invoke()}
@@ -125,7 +140,19 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 FormField {
                     title = "Title"
                     required = true
-                    comment = "The question title should cover the main topic. Try and make your question specific and resolvable – so that after the event, everyone will agree on what the outcome is."
+                    commentNode = Fragment.create {
+                        +"Try and make your question specific and resolvable – so that after the event, everyone will agree on what the outcome is. "
+                        a {
+                            css {
+                                color = Globals.inherit
+                                fontWeight = integer(600)
+                                textDecoration = TextDecoration.underline
+                            }
+                            href = "https://confido.institute/encyclopedia/what-makes-a-good-forecasting-question.html"
+                            target = AnchorTarget._blank
+                            +"More on how to write a good question."
+                        }
+                    }
                     TextInput {
                         placeholder = "Enter the question title"
                         value = questionTitle
@@ -175,6 +202,62 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                             resolution = null
                             resolutionValid = false
                         }
+                    }
+                }
+            }
+
+            FormSection {
+                title = "Schedule"
+                EditQuestionDialogSchedule {
+                    this.preset = props.preset
+                    this.schedule = if (customSchedule) schedule else room.defaultSchedule
+                    this.showOpen = (isEdit || questionStatus in setOf(QuestionState.CLOSED, QuestionState.OPEN))
+                    this.showClose = (isEdit || questionStatus in setOf(QuestionState.CLOSED, QuestionState.OPEN))
+                    this.showResolve = (isEdit || questionStatus in setOf(QuestionState.CLOSED, QuestionState.OPEN)) &&
+                            preset != QuestionPreset.BELIEF
+                    this.showScore = preset != QuestionPreset.BELIEF
+                    this.openPlaceholder = if (isEdit && props.entity?.state == QuestionState.OPEN) "already open"
+                                            else if (questionStatus == QuestionState.OPEN) "immediately"
+                                            else "manually"
+                    this.onChange = { newSched, isError ->
+                        schedule = newSched
+                        scheduleValid = !isError
+                        customSchedule = true
+
+                        val now = Clock.System.now()
+                        if (questionStatus == QuestionState.CLOSED && newSched.open != null && now >= newSched.open && (newSched.close == null || now < newSched.close)) {
+                            questionStatus = QuestionState.OPEN
+                        }
+                        if (questionStatus == QuestionState.OPEN && newSched.open != null && now < newSched.open) {
+                            questionStatus = QuestionState.CLOSED
+                        }
+                    }
+                }
+                div {
+                    css {
+                        fontSize = 12.px
+                        color =  Color("#AAAAAA")
+                    }
+                    if (room.defaultSchedule == QuestionSchedule()) {
+                        +"You can also set a default schedule for the whole room in "
+                        a {
+                            href = "/rooms/${room.id}/edit?schedule=1"
+                            target = AnchorTarget._blank
+                            +"room settings"
+                        }
+                        +"."
+                    } else if (customSchedule) {
+                        +"Using a custom schedule for this question. "
+                        a {
+                            +"Use default schedule from the room."
+                            href="#"
+                            onClick = {
+                                customSchedule = false
+                                schedule = room.defaultSchedule
+                            }
+                        }
+                    } else {
+                        +"Using a default schedule configured for the room. If it changes, this question's schedule will change accordingly. You can also set a custom schedule for this question here."
                     }
                 }
             }

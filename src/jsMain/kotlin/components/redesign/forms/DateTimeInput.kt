@@ -3,6 +3,7 @@ package components.redesign.forms
 import components.redesign.basic.Stack
 import csstype.FlexDirection
 import csstype.pct
+import csstype.px
 import emotion.react.css
 import hooks.useEffectNotFirst
 import kotlinx.datetime.LocalDate
@@ -54,6 +55,8 @@ val DateInput = FC<DateInputProps> { props ->
         size = 10
         props.min?.let { min = it.toString() }
         props.max?.let { max = it.toString() }
+        props.disabled?.let { this.disabled = it }
+        props.readOnly?.let { this.readOnly = it }
         this.value = rawValue
         required = props.required
         id = props.id
@@ -70,7 +73,7 @@ external interface TimeInputProps : PropsWithClassName, InputPropsWithRange<Loca
 
 val TimeInput = FC<TimeInputProps> { props ->
     var rawValue by useState(props.value?.toString() ?: "")
-    val ism = useInputStateManager(props)
+    val ism = useInputStateManager(props) { rawValue = it?.toString() ?: "" }
 
     fun onRawChange(newValue: String) {
         if (newValue.isEmpty()) {
@@ -102,6 +105,8 @@ val TimeInput = FC<TimeInputProps> { props ->
         props.max?.let { max = it.toString() }
         this.value = rawValue
         required = props.required
+        props.disabled?.let { this.disabled = it }
+        props.readOnly?.let { this.readOnly = it }
         onChange = { event ->
             val newValue = event.target.value
             rawValue = newValue
@@ -123,7 +128,8 @@ val DateTimeInput = FC<DateTimeInputProps> { props->
     val ism = useInputStateManager(props) { date = it?.date; time = it?.time; }
     var dateErr by useState<InputError>()
     var timeErr by useState<InputError>()
-    val wrap = props.wrap ?: { di,ti -> Stack.create { direction  = FlexDirection.row; +di; +ti } }
+    val wrap = props.wrap ?: if (props.inFormField == true) { di,ti -> Fragment.create {+di;+ti} }
+            else { di,ti -> Stack.create { direction  = FlexDirection.row; css { gap = 7.px; }; +di; +ti } }
     fun update(newDate: LocalDate?, newDateErr: InputError?, newTime: LocalTime?, newTimeErr: InputError?) {
         val newTimeEff = newTime ?: props.defaultTime
         val newDT = if (newDateErr == null && newTimeErr == null)
@@ -156,6 +162,8 @@ val DateTimeInput = FC<DateTimeInputProps> { props->
         },
         TimeInput.create {
             this.value = time
+            this.disabled = (props.disabled == true || date == null)
+            this.readOnly = props.readOnly
             onChange = { newTime, err->
                 time = newTime
                 timeErr = err

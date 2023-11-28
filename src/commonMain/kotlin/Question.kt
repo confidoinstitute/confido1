@@ -1,5 +1,6 @@
 package tools.confido.question
 
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.*
 import tools.confido.distributions.ProbabilityDistribution
@@ -102,12 +103,50 @@ enum class QuestionState {
     CANCELLED,
 }
 
+val QuestionState.pastVerb get() = when (this) {
+    QuestionState.DRAFT -> "draft since"
+    QuestionState.OPEN -> "opened"
+    QuestionState.CLOSED -> "closed"
+    QuestionState.RESOLVED -> "resolved"
+    QuestionState.CANCELLED -> "cancelled"
+}
+val QuestionState.futureVerb get() = when (this) {
+    QuestionState.DRAFT -> "" // not applicable
+    QuestionState.OPEN -> "opens"
+    QuestionState.CLOSED -> "closes"
+    QuestionState.RESOLVED -> "resolves"
+    QuestionState.CANCELLED -> "" // not applicable
+}
+
 @Serializable
 data class QuestionStateChange(
     val newState: QuestionState,
     val at: Instant,
     val user: Ref<User>?,
 )
+
+@Serializable
+data class QuestionSchedule(
+    val open: Instant? = null,
+    val score: Instant? = null,
+    val close: Instant? = null,
+    val resolve: Instant? = null,
+) {
+    fun identify() = "${open}:${score}:${close}:${resolve}"
+}
+
+@Serializable
+data class QuestionScheduleStatus(
+    val openDone: Boolean = false,
+    val closeDone: Boolean = false,
+    val resolveDone: Boolean = false,
+) {
+    constructor(sched: QuestionSchedule) : this(
+        sched.open != null && sched.open < Clock.System.now(),
+        sched.close != null && sched.close < Clock.System.now(),
+        sched.resolve != null && sched.resolve < Clock.System.now(),
+    )
+}
 
 @Serializable
 data class Question(
@@ -140,6 +179,12 @@ data class Question(
     val sensitive: Boolean = false,
     val author: Ref<User>? = null,
     val stateHistory: List<QuestionStateChange> = emptyList(),
+
+    // null = inherit default schedule from room
+    // The default value is purposefully NOT null because we do not want existing questions
+    // (created before this feature was introduced) to ex-post start inheriting room schedule.
+    val schedule: QuestionSchedule? = QuestionSchedule(),
+    val scheduleStatus: QuestionScheduleStatus = QuestionScheduleStatus(),
 ) : ImmediateDerefEntity, HasUrlPrefix {
     init {
         if (resolution != null) {
@@ -193,6 +238,8 @@ data class Question(
 
     override val urlPrefix get() = urlPrefix(id)
 
+    val room get() = globalState.rooms.values.firstOrNull { ref in it.questions }
+    val effectiveSchedule get() = schedule ?: room?.defaultSchedule ?: QuestionSchedule()
     companion object {
         fun urlPrefix(id: String) = "/questions/$id"
     }

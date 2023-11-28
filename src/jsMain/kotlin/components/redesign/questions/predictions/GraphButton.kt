@@ -42,7 +42,7 @@ val GraphButtonContainer = FC<PropsWithChildren> { props->
             right = 8.px
             height = 30.px
             gap = 4.px
-            zIndex = integer(100)
+            zIndex = integer(10)
         }
         +props.children
     }

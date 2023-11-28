@@ -56,7 +56,7 @@ val RoomNavbar = FC<RoomNavbarProps> { props ->
         }
         div {
             css {
-                fontFamily = serif
+                fontFamily = sansSerif
                 fontSize = 17.px
                 lineHeight = 21.px
                 fontWeight = integer(700)

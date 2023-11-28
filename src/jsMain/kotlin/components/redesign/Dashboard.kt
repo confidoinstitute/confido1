@@ -3,6 +3,9 @@ package components.redesign
 import Client
 import components.*
 import components.redesign.basic.*
+import components.redesign.calibration.CalibrationGraphContent
+import components.redesign.calibration.CalibrationReqView
+import components.redesign.calibration.CalibrationView
 import components.redesign.forms.*
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
@@ -10,13 +13,21 @@ import components.redesign.questions.*
 import components.redesign.rooms.*
 import csstype.*
 import emotion.react.*
+import hooks.useSuspendResult
+import io.ktor.client.call.*
+import io.ktor.http.*
+import payloads.requests.CalibrationRequest
+import payloads.requests.Myself
 import react.*
+import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.header
 import react.dom.html.ReactHTML.img
 import react.dom.html.ReactHTML.main
 import react.dom.html.ReactHTML.span
+import react.router.dom.Link
 import react.router.useNavigate
+import tools.confido.calibration.CalibrationVector
 import tools.confido.question.QuestionState
 import tools.confido.refs.deref
 import tools.confido.state.appConfig
@@ -241,7 +252,7 @@ val Dashboard = FC<Props> {
     val layoutMode = useContext(LayoutModeContext)
 
     var dialogOpen by useState(false)
-    DashboardDialog {
+    UserMenu {
         open = dialogOpen
         onClose = { dialogOpen = false }
     }
@@ -300,6 +311,66 @@ val Dashboard = FC<Props> {
             }
         }
 
+
+        val myCalib = useSuspendResult {
+            val resp = Client.sendDataRequest("/calibration", CalibrationRequest())
+            if (resp.status.isSuccess()) resp.body<CalibrationVector>()
+            else null
+        }
+        val showCalibGraph = (myCalib != null && myCalib.entries.filter { it.value.total > 0 }.size > 0)
+
+        if (showCalibGraph) {
+            title("Your calibration", layoutMode.contentSidePad)
+            Link {
+                to = "/calibration"
+                css(LinkUnstyled) {
+                    display = Display.flex
+                    flexDirection = FlexDirection.column
+                    gap = 3.px
+                    fontWeight = integer(500)
+                }
+
+                div {
+                    css {
+                        height = 150.px
+                        paddingLeft = layoutMode.contentSidePad
+                        paddingRight = layoutMode.contentSidePad
+                        display = Display.flex
+                        flexDirection = FlexDirection.column
+                        alignItems = AlignItems.stretch
+                        justifyContent = JustifyContent.stretch
+                        border = Border(1.px, LineStyle.solid, Color("#666"))
+                        borderRadius = 10.px
+                        overflow = Overflow.hidden
+                    }
+                    CalibrationGraphContent {
+                        areaLabels = false
+                        calib = myCalib ?: CalibrationVector()
+                    }
+                }
+                div {
+                    css {
+                        textAlign = TextAlign.right
+                        paddingRight = layoutMode.contentSidePad
+                    }
+                    a {
+                        css {
+                            color = MainPalette.primary.color
+                            textDecoration = TextDecoration.underline
+                            fontSize = 14.px
+                        }
+                        href = "/calibration"
+                        +"Open calibration statistics >"
+                    }
+                }
+            }
+        }
+
+        if (!showCalibGraph || appState.isAdmin()) {
+            title("Workspace", layoutMode.contentSidePad)
+            SidebarActions { hideCalib = showCalibGraph }
+        }
+
         title("Rooms", layoutMode.contentSidePad)
 
         RoomList {
@@ -308,12 +379,12 @@ val Dashboard = FC<Props> {
     }
 }
 
-external interface DashboardDialogProps : Props {
+external interface UserMenuProps : Props {
     var open: Boolean
     var onClose: (() -> Unit)?
 }
 
-val DashboardDialog = FC<DashboardDialogProps> { props ->
+val UserMenu = FC<UserMenuProps> { props ->
     val loginState = useContext(LoginContext)
     val navigate = useNavigate()
     val (appState, stale) = useContext(AppStateContext)
@@ -326,6 +397,10 @@ val DashboardDialog = FC<DashboardDialogProps> { props ->
             text = "User settings"
             icon = SettingsIcon
             this.navigate = "/profile"
+        }
+        DialogMenuNav {
+            text = "Calibration"
+            this.navigate = "/calibration"
         }
 
         DialogMenuItem {

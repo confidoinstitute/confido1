@@ -44,6 +44,7 @@ import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.table
 import react.dom.html.ReactHTML.tbody
 import react.dom.html.ReactHTML.td
+import react.dom.html.ReactHTML.th
 import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
 import react.dom.html.ReactHTML.ul
@@ -260,34 +261,7 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
                 alignItems = AlignItems.stretch
             }
             table {
-                css(ClassName("qmgmt-tab")) {
-                    borderCollapse = BorderCollapse.separate
-                    borderSpacing = "0 3px".unsafeCast<BorderSpacing>()
-                    "thead td" {
-                        paddingLeft = 5.px // align with content
-                    }
-                    "tbody td" {
-                        border = None.none
-                        backgroundColor = NamedColor.white
-                        paddingLeft = 5.px
-                        paddingRight = 5.px
-                        verticalAlign = VerticalAlign.middle
-                    }
-                    "tbody tr:first-child td:first-child" {
-                        borderTopLeftRadius = 10.px
-                    }
-                    "tbody tr:last-child td:first-child" {
-                        borderBottomLeftRadius = 10.px
-                    }
-                    "tbody tr:first-child td:last-child" {
-                        borderTopRightRadius = 10.px
-                    }
-                    "tbody tr:last-child td:last-child" {
-                        borderBottomRightRadius = 10.px
-                    }
-                    "tbody" {
-                        fontSize = 90.pct
-                    }
+                css(ClassName("qmgmt-tab"), rowStyleTableCSS) {
                 }
                 ReactHTML.colgroup {
                     autoSizedCol()
@@ -299,17 +273,12 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
                     }
                 }
                 thead {
-                    css {
-                        fontWeight = integer(600)
-                        color = Color("#333")
-                        fontSize = 80.pct
-                    }
                     tr {
-                        td {}
-                        td {}
-                        td{ +"State" }
-                        td {  +"Question" }
-                        td {
+                        th {}
+                        th {}
+                        th { +"State" }
+                        th {  +"Question" }
+                        th {
                             autoSized()
                             ReactHTML.abbr {
                                 title = "Number of people predicting, total number of prediction updates"
@@ -323,8 +292,8 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
                                     TimelineIcon { size = 16 }
                             }
                         }
-                        if (showGroupPredCol) td { autoSized(); +"Group pred." }
-                        if (showResolutionCol) td { autoSized(); +"Resolution" }
+                        if (showGroupPredCol) th { autoSized(); +"Group pred." }
+                        if (showResolutionCol) th { autoSized(); +"Resolution" }
                     }
                 }
                 SortableContext {

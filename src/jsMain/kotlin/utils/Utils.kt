@@ -2,6 +2,8 @@ package utils
 
 import components.redesign.basic.RoomPalette
 import csstype.Color
+import csstype.Properties
+import csstype.PropertiesBuilder
 import dom.events.Touch
 import dom.events.TouchEvent
 import dom.events.TouchList
@@ -241,3 +243,6 @@ inline operator fun <T, U> StateInstance<T>.setValue(
     property: KProperty<*>,
     value: T,
 ) { asDynamic()[1](value) }
+
+
+fun buildProps(builder: PropertiesBuilder.() -> Unit): Properties = jso(builder)

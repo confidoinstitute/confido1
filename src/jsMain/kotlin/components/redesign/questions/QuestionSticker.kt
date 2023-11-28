@@ -48,7 +48,7 @@ val QuestionSticker = FC<QuestionStickerProps> {props ->
         }
         div {
             css {
-                fontFamily = serif
+                fontFamily = sansSerif
                 fontWeight = integer(700)
                 fontSize = 14.px
                 lineHeight = 16.px

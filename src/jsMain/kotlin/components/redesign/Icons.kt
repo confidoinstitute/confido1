@@ -9,6 +9,9 @@ import react.*
 import react.dom.aria.AriaRole
 import react.dom.svg.*
 import react.dom.svg.ReactSVG.circle
+import react.dom.svg.ReactSVG.clipPath
+import react.dom.svg.ReactSVG.defs
+import react.dom.svg.ReactSVG.g
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.rect
 import react.dom.svg.ReactSVG.svg
@@ -198,11 +201,13 @@ val CloseIcon = createIcon(17,16) {
         d = "M1 15L15.1642 1"
         strokeWidth = 2.0
         strokeLinecap = StrokeLinecap.round
+        stroke = "currentColor"
     }
     path {
         d = "M0.99984 1L15.1641 15"
         strokeWidth = 2.0
         strokeLinecap = StrokeLinecap.round
+        stroke = "currentColor"
     }
 }
 
@@ -651,4 +656,50 @@ val HelpIcon = createIcon(30) {
     }
     circle { cx=15.0; cy=19.0; r=0.9; fill="currentColor"; stroke="none"; }
     circle { cx=15.0; cy=15.0; r=7.5; stroke="currentColor"; fill="none"; strokeWidth=1.2; }
+}
+
+val HelpIconNoPad = createIcon(17,17,
+    svgAttrs = jso { viewBox = "6.5 6.5 17 17" }
+    ) {
+    path {
+        d="M15 16.5C15 15.3 15.7614 14.7342 16.2 14.3C16.6386 13.8658 17.2 13.35 17.2 12.5C17.2 11.4456 16.3037 10.5 15.1 10.5C13.95 10.5 13.0514 11.4476 13 12.6"
+        stroke="currentColor"
+        fill = "none"
+        strokeWidth=1.2
+        strokeLinecap=StrokeLinecap.round
+    }
+    circle { cx=15.0; cy=19.0; r=0.9; fill="currentColor"; stroke="none"; }
+    circle { cx=15.0; cy=15.0; r=7.5; stroke="currentColor"; fill="none"; strokeWidth=1.2; }
+}
+
+// Source: https://www.svgrepo.com/svg/313760/compass
+// Author: icons8
+// License: MIT
+val CompassIcon = createIcon(32) {
+    path {
+        d="M 16 4 C 9.382813 4 4 9.382813 4 16 C 4 22.617188 9.382813 28 16 28 C 22.617188 28 28 22.617188 28 16 C 28 9.382813 22.617188 4 16 4 Z M 14.96875 6.0625 C 14.980469 6.0625 14.988281 6.0625 15 6.0625 L 15 7 L 17 7 L 17 6.0625 C 21.738281 6.527344 25.472656 10.261719 25.9375 15 L 25 15 L 25 17 L 25.9375 17 C 25.472656 21.738281 21.738281 25.472656 17 25.9375 L 17 25 L 15 25 L 15 25.9375 C 10.261719 25.472656 6.527344 21.738281 6.0625 17 L 7 17 L 7 15 L 6.0625 15 C 6.527344 10.269531 10.246094 6.539063 14.96875 6.0625 Z M 22.5 9.5 L 14.15625 14.15625 L 9.5 22.5 L 17.84375 17.84375 Z M 16 14.5 C 16.828125 14.5 17.5 15.171875 17.5 16 C 17.5 16.828125 16.828125 17.5 16 17.5 C 15.171875 17.5 14.5 16.828125 14.5 16 C 14.5 15.171875 15.171875 14.5 16 14.5 Z"
+        fill = "currentColor"
+    }
+}
+
+// Source: https://www.svgrepo.com/svg/491734/users
+// Author: Wolf Kit
+// License: CC-BY
+val UsersIcon = createIcon(24) {
+    g {
+        clipPath="url(#clip0_1251_98416)"
+        path { fillRule=FillRule.evenodd; clipRule="evenodd"; d="M9 0C5.96243 0 3.5 2.46243 3.5 5.5C3.5 8.53757 5.96243 11 9 11C12.0376 11 14.5 8.53757 14.5 5.5C14.5 2.46243 12.0376 0 9 0ZM5.5 5.5C5.5 3.567 7.067 2 9 2C10.933 2 12.5 3.567 12.5 5.5C12.5 7.433 10.933 9 9 9C7.067 9 5.5 7.433 5.5 5.5Z"; fill="currentColor" }
+        path { d="M15.5 0C14.9477 0 14.5 0.447715 14.5 1C14.5 1.55228 14.9477 2 15.5 2C17.433 2 19 3.567 19 5.5C19 7.433 17.433 9 15.5 9C14.9477 9 14.5 9.44771 14.5 10C14.5 10.5523 14.9477 11 15.5 11C18.5376 11 21 8.53757 21 5.5C21 2.46243 18.5376 0 15.5 0Z"; fill="currentColor" }
+        path { d="M19.0837 14.0157C19.3048 13.5096 19.8943 13.2786 20.4004 13.4997C22.5174 14.4246 24 16.538 24 19V21C24 21.5523 23.5523 22 23 22C22.4477 22 22 21.5523 22 21V19C22 17.3613 21.0145 15.9505 19.5996 15.3324C19.0935 15.1113 18.8625 14.5217 19.0837 14.0157Z"; fill="currentColor" }
+        path { d="M6 13C2.68629 13 0 15.6863 0 19V21C0 21.5523 0.447715 22 1 22C1.55228 22 2 21.5523 2 21V19C2 16.7909 3.79086 15 6 15H12C14.2091 15 16 16.7909 16 19V21C16 21.5523 16.4477 22 17 22C17.5523 22 18 21.5523 18 21V19C18 15.6863 15.3137 13 12 13H6Z"; fill="currentColor" }
+    }
+    defs {
+        clipPath {
+            id = "clip0_1251_98416"
+            rect {
+                width = 24.0
+                height = 24.0
+            }
+        }
+    }
 }

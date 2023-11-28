@@ -68,10 +68,16 @@ val RoomHeader = FC<RoomHeaderProps> { props ->
     }
 }
 
-val RoomLayout = FC<Props> {
+external interface RoomLayoutProps : Props {
+    var openEdit: Boolean?
+    var openSchedule: Boolean?
+}
+
+val RoomLayout = FC<RoomLayoutProps> { props->
     val (appState, _) = useContext(AppStateContext)
     val room = useContext(RoomContext)
     val navigate = useNavigate()
+    val location = useLocation()
 
     val size = useElementSize<HTMLDivElement>()
     val tabRef = useRef<HTMLDivElement>()
@@ -81,7 +87,7 @@ val RoomLayout = FC<Props> {
     val cutoff = 60.0 + size.height - 15.0
 
     var dialogOpen by useState(false)
-    var editOpen by useState(false)
+    var editOpen by useState(props.openEdit ?: false)
     var exportOpen by useState(false)
     var deleteConfirmOpen by useState(false)
 
@@ -96,7 +102,8 @@ val RoomLayout = FC<Props> {
 
     EditRoomSettingsDialog {
         open = editOpen
-        onClose = { editOpen = false }
+        openSchedule = props.openEdit == true && props.openSchedule == true
+        onClose = { editOpen = false; if (location.pathname.endsWith("/edit")) navigate("..") }
     }
     CsvExportDialog {
         open = exportOpen
@@ -121,6 +128,11 @@ val RoomLayout = FC<Props> {
                 icon = EditIcon
                 onClick = { editOpen = true; dialogOpen = false }
             }
+        }
+
+        DialogMenuNav {
+            text = "Calibration"
+            this.navigate = "/calibration?room=${room.id}"
         }
         if (appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)) {
             DialogMenuItem {
@@ -224,10 +236,10 @@ val RoomLayout = FC<Props> {
             css {
                 marginTop = 16.px
                 width = 100.pct
-                fontSize = 26.px
-                lineHeight = 31.px
-                fontWeight = integer(700)
-                fontFamily = serif
+                fontSize = 32.px
+                lineHeight = 34.px
+                fontWeight = integer(800)
+                fontFamily = sansSerif
                 textAlign = TextAlign.center
                 color = palette.text.color
                 padding = Padding(0.px, 10.px)
@@ -302,6 +314,13 @@ val RoomLayout = FC<Props> {
                 Route {
                     path = "members"
                     this.element = RoomMembers.create()
+                }
+            if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
+                Route {
+                    path = "calibration"
+                    this.element = RoomCalibration.create {
+                        this.room = room
+                    }
                 }
             if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
                 Route {

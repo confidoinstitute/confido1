@@ -25,6 +25,7 @@ enum class RoomPermission {
     MANAGE_MEMBERS,
     MANAGE_COMMENTS,
     ROOM_OWNER,
+    VIEW_GROUP_CALIBRATION,
 }
 
 @Serializable
@@ -67,9 +68,10 @@ object Viewer : RoomRole(setOf(
         RoomPermission.VIEW_QUESTION_COMMENTS,
         RoomPermission.VIEW_ROOM_COMMENTS,
         RoomPermission.VIEW_ALL_GROUP_PREDICTIONS,
+        RoomPermission.VIEW_GROUP_CALIBRATION,
 )) {
     override val id = "viewer"
-    override val name = "Viewer"
+    override val name = "Observer"
 }
 
 @Serializable
@@ -80,6 +82,7 @@ object Forecaster : RoomRole(setOf(
         RoomPermission.VIEW_ROOM_COMMENTS,
         RoomPermission.POST_ROOM_COMMENT,
         RoomPermission.POST_QUESTION_COMMENT,
+        RoomPermission.VIEW_GROUP_CALIBRATION,
 )) {
     override val id = "forecaster"
     override val name = "Forecaster"
@@ -108,6 +111,7 @@ object Moderator : RoomRole(
         RoomPermission.MANAGE_MEMBERS,
         RoomPermission.CREATE_INVITE_LINK,
         RoomPermission.VIEW_ALL_INVITE_TOKENS,
+        RoomPermission.VIEW_GROUP_CALIBRATION,
     )
 ) {
     override val id = "moderator"

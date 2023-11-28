@@ -55,13 +55,15 @@ internal val EditQuestionDialogResolution = FC<EditQuestionDialogResolutionProps
         FormField {
             title = "Status"
             OptionGroup<QuestionState>()() {
-                options = listOf(
-                    QuestionState.DRAFT to "Draft",
-                    QuestionState.OPEN to "Open",
-                    QuestionState.CLOSED to "Closed",
-                    QuestionState.RESOLVED to "Resolved",
-                    QuestionState.CANCELLED to "Cancelled",
-                )
+                options = buildList {
+                    add(QuestionState.DRAFT to "Draft")
+                    add(QuestionState.OPEN to "Open")
+                    add(QuestionState.CLOSED to "Closed")
+                    if (props.preset == QuestionPreset.NONE) {
+                        add(QuestionState.RESOLVED to "Resolved")
+                        add(QuestionState.CANCELLED to "Cancelled")
+                    }
+                }
                 defaultValue = QuestionState.OPEN
                 value = props.state
                 onChange = { props.onStateChange?.invoke(it) }

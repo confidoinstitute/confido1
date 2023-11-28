@@ -104,7 +104,7 @@ val NoUserLayout = FC<Props> {
                 target = AnchorTarget._blank
             }
             a {
-                href = "https://confido.institute/"
+                href = "https://confido.institute/confido-app.html"
                 +"About Confido"
                 target = AnchorTarget._blank
             }

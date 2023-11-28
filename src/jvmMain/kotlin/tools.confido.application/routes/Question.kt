@@ -113,7 +113,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
                             } else {
                                 orig.stateHistory
                             }
-                            editQuestion.question.copy(id = question.id, stateHistory = newHistory)
+                            editQuestion.question.copy(id = question.id, stateHistory = newHistory, author = orig.author)
                         }
                     }
                 }

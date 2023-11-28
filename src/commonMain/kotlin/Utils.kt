@@ -53,7 +53,8 @@ class GeneratedList<T>(override val size: Int, val gen: (Int) -> T) : List<T> {
     override fun iterator() = listIterator()
     override fun lastIndexOf(element: T) = (0 until size).reversed().first { gen(it) == element }
 
-}class List2Serializer<T>(private val elementSerializer: KSerializer<T>) : KSerializer<List2<T>> {
+}
+class List2Serializer<T>(private val elementSerializer: KSerializer<T>) : KSerializer<List2<T>> {
     override val descriptor: SerialDescriptor = ListSerializer(elementSerializer).descriptor
     override fun serialize(encoder: Encoder, value: List2<T>) {
         encoder.encodeSerializableValue(ListSerializer(elementSerializer), value)
@@ -71,6 +72,8 @@ class GeneratedList<T>(override val size: Int, val gen: (Int) -> T) : List<T> {
 open class List2<out T>(val lst: List<T>) : List<T> by lst {
     init { require(lst.size == 2) }
     constructor(e1: T, e2: T) : this(listOf(e1,e2))
+
+    constructor(m: Map<Boolean, T>, default: T): this(m[false] ?: default, m[true] ?: default)
 
     inline fun <U> map(f: (T) -> U): List2<U> = List2(lst.map(f))
     inline fun <U> mapIndexed(f: (Int, T) -> U): List2<U> = List2(lst.mapIndexed(f))
@@ -115,7 +118,7 @@ fun randomString(length: Int) =
 
 fun generateId() = randomString(16)
 
-fun formatPercent(value: Number, space: Boolean=true): String = "${(value.toDouble()*100).roundToInt()}${if (space) " " else ""}%"
+fun formatPercent(value: Number, space: Boolean=false): String = "${(value.toDouble()*100).roundToInt()}${if (space) " " else ""}%"
 
 fun Double.clamp(range: ClosedRange<Double>): Double {
     if (this < range.start) return range.start
@@ -230,7 +233,9 @@ fun condensedNum(n: Number) =  n.toDouble().let { d->
 }
 val ClosedRange<Double>.size get() = endInclusive - start
 val ClosedRange<Double>.mid get() = (start + endInclusive)/2.0
-val ClosedRange<Double>.endpoints get() = List2(start, endInclusive)
+val <T: Comparable<T>> ClosedRange<T>.endpoints get() = List2(start, endInclusive)
+fun <T: Comparable<T>>List2<T>.toRange() = e1..e2
+fun List2<Double>.toRange() = e1..e2
 fun ClosedRange<Double>.intersects(other: ClosedRange<Double>) = (start > other.endInclusive || other.start < endInclusive)
 
 inline fun <T1, R> multilet(x: T1, body: (T1)->R) =  body(x)
@@ -268,3 +273,6 @@ fun binarySearch(initialRange: ClosedFloatingPointRange<Double>, desiredValue: D
     }
     return curRange
 }
+
+operator fun <T: Comparable<T>> ClosedFloatingPointRange<T>.component1() = start
+operator fun <T: Comparable<T>> ClosedFloatingPointRange<T>.component2() = endInclusive

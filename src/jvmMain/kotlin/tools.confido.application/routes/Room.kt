@@ -62,6 +62,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                     createdAt = Clock.System.now(), questions = emptyList(),
                     members = listOf(myMembership), inviteLinks = emptyList(),
                     color = information.color, icon = information.icon,
+                    defaultSchedule = information.defaultSchedule,
                 )
             )
         }
@@ -83,6 +84,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                     description = information.description,
                     color = information.color,
                     icon = information.icon,
+                    defaultSchedule = information.defaultSchedule,
                 )
             }
         }
