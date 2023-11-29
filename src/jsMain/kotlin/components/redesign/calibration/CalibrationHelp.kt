@@ -149,7 +149,7 @@ val CalibrationHelpDialog = dialogStateWrapper(FC<CalibrationHelpDialogProps> { 
                 p {
                     +"Based on the results, your calibration can be classified as "
                     b { sectionLink(CalibrationHelpSection.RESULTS, "well-calibrated") }
-                    +" (confidence rougly track accuracy), "
+                    +" (confidence roughly tracks accuracy), "
                     b { sectionLink(CalibrationHelpSection.RESULTS, "overconfident") }
                     +" (confidence tends to overstate accuracy), "
                     b { sectionLink(CalibrationHelpSection.RESULTS, "underconfident") }
