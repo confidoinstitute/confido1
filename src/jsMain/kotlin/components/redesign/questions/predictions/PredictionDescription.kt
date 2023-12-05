@@ -2,10 +2,13 @@ package components.redesign.questions.predictions
 
 import BinaryHistogram
 import components.redesign.basic.*
+import components.redesign.forms.ButtonUnstyled
+import components.redesign.questions.dialog.ExactEstimateDialog
 import csstype.*
 import emotion.react.*
 import react.*
 import react.dom.html.*
+import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.b
 import tools.confido.distributions.*
@@ -15,6 +18,7 @@ import tools.confido.utils.*
 external interface MyPredictionDescriptionProps : Props {
     var resolved: Boolean
     var dist: ProbabilityDistribution?
+    var question: Question?
 }
 
 external interface GroupPredictionDescriptionProps : Props {
@@ -258,38 +262,59 @@ val BinaryHistogramDescription = FC<BinaryHistogramDescriptionProps> { props ->
 
 
 val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
+    var exactOpen by useState(false)
+    if (props.question != null)
+    ExactEstimateDialog {
+        question = props.question!!
+        open = exactOpen
+        onClose = {exactOpen = false}
+    }
     Stack {
         css(descriptionClass) {}
         when (val dist = props.dist) {
             is BinaryDistribution -> {
-                var optionColor = noColor
-                var answer = "No"
+                var answer = false
                 var prob = dist.noProb
-                if (dist.yesProb > 0.5) {
-                    optionColor = yesColor
-                    answer = "Yes"
+                if (dist.yesProb >= 0.5) {
+                    answer = true
                     prob = dist.yesProb
                 }
+                val optionColor = binaryColors[answer]
                 ReactHTML.div {
                     if (props.resolved) {
-                        +"You predicted there was a "
+                        +"You were "
                     } else {
-                        +"You think there is a "
+                        +"You are "
                     }
                     ReactHTML.b {
                         css { this.color = optionColor }
-                        +"${formatPercent(prob, space = false)} "
+                        +"${formatPercent(prob, space = false, decimals = if (prob >= 0.99 && prob < 1) 2 else 0)} "
                     }
                     if (props.resolved) {
-                        +"chance that the answer would be "
+                        +"confident that the answer would be "
                     } else {
-                        +"chance that the answer is "
+                        +"confident that the answer is "
                     }
                     ReactHTML.b {
                         css { this.color = optionColor }
-                        +answer
+                        +if (answer) "Yes" else "No"
                     }
                     +"."
+                }
+                if (prob == 1.0)
+                ReactHTML.div {
+                    +"This means "
+                    b { +"absolute certainty" }
+                    +" (i.e., more certain than the sun rising tomorrow). "
+                    if (props.question != null && props.question!!.open && !props.resolved){
+                            +"If you'd like to enter a high but non-absolute confidence (e.g. "
+                        +"99.98%), you can do so "
+                        a {
+                            +"numerically"
+                            onClick = { exactOpen = true }
+                        }
+                        +"."
+                    }
                 }
             }
 

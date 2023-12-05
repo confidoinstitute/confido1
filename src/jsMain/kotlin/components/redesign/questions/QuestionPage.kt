@@ -424,6 +424,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
         MyPredictionDescription {
             this.dist = predictionPreview ?: pendingPrediction ?: props.myPrediction?.dist
             this.resolved = props.resolution != null
+            this.question = question
         }
     } else {
         if (groupHistogramOpen) {
