@@ -129,11 +129,6 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                 onClick = { editOpen = true; dialogOpen = false }
             }
         }
-
-        DialogMenuNav {
-            text = "Calibration"
-            this.navigate = "/calibration?room=${room.id}"
-        }
         if (appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)) {
             DialogMenuItem {
                 icon = ExportIcon
