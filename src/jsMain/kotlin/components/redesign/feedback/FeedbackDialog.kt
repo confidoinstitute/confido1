@@ -11,6 +11,8 @@ import hooks.useCoroutineLock
 import io.ktor.client.request.*
 import react.dom.html.ReactHTML.option
 import react.*
+import react.dom.html.ReactHTML.b
+import react.dom.html.ReactHTML.p
 
 
 external interface FeedbackDialogProps : Props {
@@ -121,11 +123,20 @@ val FeedbackDialog = FC<FeedbackDialogProps> { props ->
                     onChange = { e -> connectToPage = e.target.checked }
                 }
 
+
                 Button {
                     +"Send"
                     onClick = { send() }
                     disabled = sendingLock.running
                 }
+            }
+            p {
+                +"Please note that the feedback is anonymous and we are "
+                b{+"not able to reply"}
+                +" to your feedback. If you have a question or a bug report,"
+                +" please reach out to us directly at "
+                b{+"hello@confido.tools"}
+                +"."
             }
         }
     }
