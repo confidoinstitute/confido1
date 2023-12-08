@@ -306,7 +306,7 @@ val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
                     +"This means "
                     b { +"absolute certainty" }
                     +" (i.e., more certain than the sun rising tomorrow). "
-                    if (props.question != null && props.question!!.open && !props.resolved){
+                    if (props.question != null && props.question!!.open && !props.resolved) {
                             +"If you'd like to enter a high but non-absolute confidence (e.g. "
                         +"99.98%), you can do so "
                         a {
