@@ -16,6 +16,7 @@ import kotlinx.js.*
 import react.*
 import rooms.*
 import tools.confido.question.*
+import tools.confido.refs.ref
 
 external interface QuestionListProps : Props {
     var questions: List<Question>
@@ -89,7 +90,11 @@ val QuestionList = FC<QuestionListProps> { props ->
             QuestionItem {
                 this.key = question.id
                 this.question = question
-                this.groupPred = groupPreds[question.id]
+                // When I am the only one prediction, show it as "your prediction" instead of "group prediction",
+                // which is confusing.
+                if (!(appState.myPredictions[question.ref] != null && appState.predictorCount[question.ref] == 1)) {
+                    this.groupPred = groupPreds[question.id]
+                }
                 this.href = room.urlPrefix+question.urlPrefix
             }
         }
