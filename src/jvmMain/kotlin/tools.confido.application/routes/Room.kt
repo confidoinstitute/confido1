@@ -63,6 +63,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                     members = listOf(myMembership), inviteLinks = emptyList(),
                     color = information.color, icon = information.icon,
                     defaultSchedule = information.defaultSchedule,
+                    scoring = information.scoring,
                 )
             )
         }
@@ -85,6 +86,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                     color = information.color,
                     icon = information.icon,
                     defaultSchedule = information.defaultSchedule,
+                    scoring = information.scoring,
                 )
             }
         }

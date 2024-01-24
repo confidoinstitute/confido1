@@ -317,6 +317,18 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                         this.room = room
                     }
                 }
+
+            val sbm = room.scoring?.scoreboardMode ?: ScoreboardMode.NONE
+            val canScore = (
+                    (sbm == ScoreboardMode.PUBLIC  && appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS)) ||
+                            (sbm == ScoreboardMode.PRIVATE && appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS))
+                    )
+            if (canScore)
+            Route {
+                path = "score"
+                this.element = RoomScore.create {
+                }
+            }
             if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
                 Route {
                     path = "manage_questions"

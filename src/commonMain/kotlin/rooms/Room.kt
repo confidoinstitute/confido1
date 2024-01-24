@@ -12,6 +12,17 @@ import tools.confido.utils.HasUrlPrefix
 import users.User
 import users.UserType
 
+enum class ScoreboardMode {
+    NONE, PRIVATE, PUBLIC
+}
+
+@Serializable
+data class ScoringConfig(
+    val scoreboardMode: ScoreboardMode = ScoreboardMode.NONE,
+) {
+    fun identify() = "${scoreboardMode.toString()}"
+}
+
 @Serializable
 data class Room(
     @SerialName("_id")
@@ -25,6 +36,7 @@ data class Room(
     val color: RoomColor = colorFromId(id),
     val icon: String? = null,
     val defaultSchedule: QuestionSchedule = QuestionSchedule(),
+    val scoring: ScoringConfig? = null,
 ) : ImmediateDerefEntity, HasUrlPrefix {
     fun findLink(id: String?): InviteLink? {
         if (id == null || id == "") {

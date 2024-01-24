@@ -278,6 +278,7 @@ fun main() {
                 genericRoutes(this)
                 presenterRoutes(this)
                 calibrationRoutes(this)
+                scoreRoutes(this)
 
                 webSocketST("/state") {
                     val clientVer = call.request.queryParameters["bundleVer"] ?: ""

@@ -1,6 +1,8 @@
 package payloads.requests
 
 import rooms.RoomColor
+import rooms.ScoreboardMode
+import rooms.ScoringConfig
 import tools.confido.question.QuestionSchedule
 
 /**
@@ -13,4 +15,5 @@ data class BaseRoomInformation(
     val color: RoomColor,
     val icon: String?,
     val defaultSchedule: QuestionSchedule = QuestionSchedule(),
+    val scoring: ScoringConfig? = null,
 )

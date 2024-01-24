@@ -8,6 +8,10 @@ import components.rooms.*
 import csstype.*
 import dom.html.*
 import emotion.react.*
+import hooks.useSuspendResult
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.http.*
 import kotlinx.js.*
 import react.*
 import react.dom.html.ReactHTML.div
@@ -92,6 +96,20 @@ val RoomTabs = FC<RoomTabsProps> { props ->
     val locationValue = location.pathname.split('/').getOrNull(3) ?: ""
     val layoutMode = useContext(LayoutModeContext)
 
+    val sbm = room.scoring?.scoreboardMode ?: ScoreboardMode.NONE
+    val canScore = (
+                (sbm == ScoreboardMode.PUBLIC  && appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS)) ||
+                (sbm == ScoreboardMode.PRIVATE && appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS))
+            )
+    val hasScore = useSuspendResult(room.id, canScore) {
+        if (canScore) {
+            val r = Client.httpClient.get("${room.urlPrefix}/scoreboard.api")
+            r.status == HttpStatusCode.OK && r.body<List<Pair<String?, Double>>>().isNotEmpty()
+        } else {
+            false
+        }
+    } ?: false
+
     Stack {
         direction = FlexDirection.row
         css(props.className) {
@@ -118,13 +136,23 @@ val RoomTabs = FC<RoomTabsProps> { props ->
             tab("", "Questions")
 
         if (appState.hasPermission(room, RoomPermission.VIEW_ROOM_COMMENTS))
-            tab("discussion", "Discussion")
+            tab("discussion",
+                if (layoutMode == LayoutMode.PHONE) "Discuss" else "Discussion"
+            )
 
         if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
             tab("members", if (layoutMode >= LayoutMode.TABLET) "Room members" else "Members")
 
         if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
-            tab("calibration", "Calibration")
+            tab("calibration",
+                if (hasScore && layoutMode == LayoutMode.PHONE) "Calib." else "Calibration"
+            )
+
+        if (hasScore) {
+            tab("score", "Score")
+
+        }
+
 
         if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS) && layoutMode >= LayoutMode.TABLET)
             tab("manage_questions", "Question management")
