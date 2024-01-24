@@ -10,17 +10,19 @@ import tools.confido.spaces.NumericValue
 import tools.confido.utils.toInt
 import kotlin.math.pow
 
+
+fun normalizedBrier(pred: Double, res: Boolean): Double {
+    val qdiff = (res.toInt() - pred).pow(2)
+    val norm = (0.25 - qdiff) * 4 // normalize score to range -3..1, with 0 for p=0.5
+    return norm
+}
 fun getScore(q: Question, dist: ProbabilityDistribution?): Double? {
     dist ?: return null
     return when (q.answerSpace) {
         is BinarySpace -> {
             if (q.resolution !is BinaryValue) return null
             if (dist !is BinaryDistribution) return null
-            val correct = q.resolution.value.toInt().toDouble()
-            val pred = dist.yesProb
-            val qdiff = (correct - pred).pow(2)
-            val norm = (0.25 - qdiff) * 4 // normalize score to range -3..1, with 0 for p=0.5
-            norm
+            normalizedBrier(dist.yesProb, q.resolution.value)
         }
         is NumericSpace -> {
             return null
