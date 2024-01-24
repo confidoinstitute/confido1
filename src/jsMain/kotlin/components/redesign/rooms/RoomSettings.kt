@@ -139,7 +139,7 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                     }
                     div {
                         +"Currently, the scoring considers "
-                        b { +"binary questions" }
+                        b { +"yes-no questions" }
                         +" only. "
                     }
                     div {

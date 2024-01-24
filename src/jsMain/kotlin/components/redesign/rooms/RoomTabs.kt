@@ -101,14 +101,6 @@ val RoomTabs = FC<RoomTabsProps> { props ->
                 (sbm == ScoreboardMode.PUBLIC  && appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS)) ||
                 (sbm == ScoreboardMode.PRIVATE && appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS))
             )
-    val hasScore = useSuspendResult(room.id, canScore) {
-        if (canScore) {
-            val r = Client.httpClient.get("${room.urlPrefix}/scoreboard.api")
-            r.status == HttpStatusCode.OK && r.body<List<Pair<String?, Double>>>().isNotEmpty()
-        } else {
-            false
-        }
-    } ?: false
 
     Stack {
         direction = FlexDirection.row
@@ -145,10 +137,10 @@ val RoomTabs = FC<RoomTabsProps> { props ->
 
         if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
             tab("calibration",
-                if (hasScore && layoutMode == LayoutMode.PHONE) "Calib." else "Calibration"
+                if (canScore && layoutMode == LayoutMode.PHONE) "Calib." else "Calibration"
             )
 
-        if (hasScore) {
+        if (canScore) {
             tab("score", "Score")
 
         }

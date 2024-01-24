@@ -1,5 +1,6 @@
 package components.redesign.rooms
 
+import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.forms.InlineHelpButton
 import components.rooms.RoomContext
@@ -17,6 +18,7 @@ import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.i
+import react.dom.html.ReactHTML.li
 import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.table
 import react.dom.html.ReactHTML.tbody
@@ -24,8 +26,10 @@ import react.dom.html.ReactHTML.td
 import react.dom.html.ReactHTML.th
 import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
+import react.dom.html.ReactHTML.ul
 import react.useContext
 import react.useState
+import rooms.RoomPermission
 import tools.confido.utils.formatPercent
 import tools.confido.utils.toFixed
 
@@ -77,6 +81,7 @@ val ScoringHelpDialog = FC<DialogProps> { props->
 
 val RoomScore = FC<Props> {
     val room = useContext(RoomContext)
+    val (appState,stale) = useContext(AppStateContext)
     val scores = useSuspendResult(room.id) {
         Client.httpClient.get("${room.urlPrefix}/scoreboard.api").body<List<Pair<String?, Double>>>()
     }
@@ -102,7 +107,7 @@ val RoomScore = FC<Props> {
             ReactHTML.div { css {flexGrow = number(1.0) } }
             ReactHTML.div {
                 +"This scoring considers "
-                b {+"binary questions"}
+                b {+"yes-no questions"}
                 +" only and uses a normalized Brier score."
                 InlineHelpButton {
                     onClick = { helpOpen = true }
@@ -112,7 +117,28 @@ val RoomScore = FC<Props> {
         }
     }
     LayoutWidthWrapper {
-        scores?.let {
+        if (scores == null) {
+            div {
+                css {
+                    fontStyle = FontStyle.italic
+                    textAlign = TextAlign.center
+                }
+                +"Loading..."
+            }
+        } else if (scores.isEmpty()) {
+            p { b { +"There are no scored predictions in this room yet." } }
+            // Only show the tips to moderators, who can do something about them.
+            if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
+            p {
+                +"In order for a prediction on a question to be scored:"
+                ul {
+                    li { +"The question must be a yes-no question." }
+                    li { +"The question must have a resolution and be in the Resolved state." }
+                    li { +"The question must have a score time configured in its schedule." }
+                    li { +"The prediction must be submitted before the score time." }
+                }
+            }
+        } else {
             table {
                 className = baseTableCSS
                 thead {
