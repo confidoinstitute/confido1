@@ -47,7 +47,7 @@ sealed class CsvExport {
 
     fun exportValue(space: NumericSpace, value: Double) =
         if (space.representsDays) {
-            LocalDate.utcFromUnix(value.toInt()).toString()
+            LocalDate.utcFromUnix(value).toString()
         } else {
             value.toFixed(2)
         }
