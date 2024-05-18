@@ -25,6 +25,7 @@ import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.codec.digest.MessageDigestAlgorithms.SHA_224
 import org.litote.kmongo.serialization.registerModule
 import org.litote.kmongo.serialization.registerSerializer
+import org.simplejavamail.api.mailer.config.TransportStrategy
 import org.simplejavamail.mailer.MailerBuilder
 import rooms.*
 import tools.confido.application.routes.*
@@ -176,12 +177,22 @@ fun main() {
                 urlOrigin = (System.getenv("CONFIDO_BASE_URL") ?: "http://localhost:8081").trimEnd('/')
                 debugMode = System.getenv("CONFIDO_MAIL_DEBUG") == "1"
                 senderAddress = System.getenv("CONFIDO_MAIL_SENDER") ?: "noreply@confido.tools"
-                mailer = MailerBuilder
+                var builder = MailerBuilder
                     .withSMTPServer(
                         System.getenv("CONFIDO_SMTP_HOST") ?: "localhost",
-                        System.getenv("CONFIDO_SMTP_PORT")?.toIntOrNull() ?: 25
+                        System.getenv("CONFIDO_SMTP_PORT")?.toIntOrNull() ?: 25,
+                        System.getenv("CONFIDO_SMTP_USER"),
+                        System.getenv("CONFIDO_SMTP_PASS"),
                     )
-                    .buildMailer()
+                    .withTransportStrategy(
+                        when (System.getenv("CONFIDO_SMTP_TRANSPORT") ?: "plain") {
+                            "plain" -> TransportStrategy.SMTP
+                            "tls" -> TransportStrategy.SMTPS
+                            "starttls" -> TransportStrategy.SMTP_TLS
+                            else -> throw Exception("Invalid CONFIDO_SMTP_TRANSPORT value")
+                        }
+                    )
+                mailer = builder.buildMailer()
             }
             routing {
                 getST("/export.csv") {
