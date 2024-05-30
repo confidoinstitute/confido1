@@ -238,12 +238,14 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
-    getWS("/state$roomUrl/group_pred") {
+    getWS("/api$roomUrl/group_pred_text.ws") {
+        val wantedIds = call.request.queryParameters["qids"]?.split(',')?.toSet()
         withRoom {
             val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
 
             val groupPreds = room.questions.associateWith { ref ->
                 val lastPrediction = serverState.userPred[ref]?.get(user.ref)
+                val wanted = (wantedIds?.contains(ref.id) ?: true)
                 val canView = when (ref.deref()?.groupPredictionVisibility) {
                     GroupPredictionVisibility.EVERYONE -> true
                     GroupPredictionVisibility.ANSWERED -> lastPrediction != null
@@ -251,11 +253,32 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
                     null -> false
                 }
 
-                if (canViewAll || canView) serverState.groupPred[ref] else null
+                if ((canViewAll || canView) && wanted) serverState.groupPred[ref]?.dist?.description else null
             }
             groupPreds
         }
     }
+    getWS("/state$roomUrl/group_pred") {
+        val wantedIds = call.request.queryParameters["qids"]?.split(',')?.toSet()
+        withRoom {
+            val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+
+            val groupPreds = room.questions.associateWith { ref ->
+                val lastPrediction = serverState.userPred[ref]?.get(user.ref)
+                val wanted = (wantedIds?.contains(ref.id) ?: true)
+                val canView = when (ref.deref()?.groupPredictionVisibility) {
+                    GroupPredictionVisibility.EVERYONE -> true
+                    GroupPredictionVisibility.ANSWERED -> lastPrediction != null
+                    GroupPredictionVisibility.MODERATOR_ONLY -> false
+                    null -> false
+                }
+
+                if ((canViewAll || canView) && wanted) serverState.groupPred[ref] else null
+            }
+            groupPreds
+        }
+    }
+
 
     webSocketST("/state$roomUrl/invites/{id}/shortlink") {
         RouteBody(call).withRoom {

@@ -68,6 +68,7 @@ inline fun <reified T> Route.getWS(path: String, crossinline body: suspend Route
         }
 
         val context = RouteBody(call)
+        var lastSent: String? = null
         call.transientUserData?.runRefreshable(closeNotifier) {
             if (call.userSession == null) {
                 closeNotifier.emit(true)
@@ -79,6 +80,7 @@ inline fun <reified T> Route.getWS(path: String, crossinline body: suspend Route
                 WSError(e.wsCode, e.message)
             }
             val encoded = confidoJSON.encodeToString(message)
-            send(Frame.Text(encoded))
+            if (encoded != lastSent) send(Frame.Text(encoded))
+            lastSent = encoded
         }
     }
