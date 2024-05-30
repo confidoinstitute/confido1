@@ -1,5 +1,6 @@
 package tools.confido.state
 
+import Extension
 import kotlinx.serialization.Serializable
 import rooms.Room
 import rooms.RoomPermission
@@ -49,6 +50,8 @@ abstract class GlobalState : BaseState {
         ref.deref() ?: return null
         return ref
     }
+
+    abstract val extensions: List<Extension>
 }
 
 // Client or server will provide concrete implementation

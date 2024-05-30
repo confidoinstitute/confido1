@@ -1,19 +1,29 @@
 package components.redesign.questions.predictions
 
 import BinaryHistogram
-import components.redesign.basic.*
-import components.redesign.forms.ButtonUnstyled
+import ClientExtension
+import components.redesign.basic.MainPalette
+import components.redesign.basic.Stack
+import components.redesign.basic.sansSerif
 import components.redesign.questions.dialog.ExactEstimateDialog
-import csstype.*
-import emotion.react.*
-import react.*
-import react.dom.html.*
+import csstype.Color
+import csstype.Padding
+import csstype.integer
+import csstype.px
+import emotion.react.css
+import react.ChildrenBuilder
+import react.FC
+import react.Props
+import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.a
-import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.b
+import react.dom.html.ReactHTML.div
+import react.useState
 import tools.confido.distributions.*
-import tools.confido.question.*
-import tools.confido.utils.*
+import tools.confido.question.Prediction
+import tools.confido.question.PredictionTerminology
+import tools.confido.question.Question
+import tools.confido.utils.formatPercent
 
 external interface MyPredictionDescriptionProps : Props {
     var resolved: Boolean
@@ -358,6 +368,7 @@ val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
                 }
             }
         }
+        ClientExtension.forEach { it.myPredictionDescriptionExtra(props, this) }
     }
 }
 

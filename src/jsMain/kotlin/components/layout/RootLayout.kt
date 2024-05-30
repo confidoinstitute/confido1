@@ -145,6 +145,7 @@ private val RootLayoutInner = FC<Props> {
                             this.element = AdminView.create()
                         }
                     }
+                    ClientExtension.forEach { it.rootRoutes(this) }
                 }
             }
         }

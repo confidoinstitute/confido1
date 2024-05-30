@@ -17,6 +17,7 @@ import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.*
 import org.litote.kmongo.reactivestreams.KMongo
 import rooms.Room
+import tools.confido.application.ServerExtension
 import tools.confido.distributions.*
 import tools.confido.question.*
 import tools.confido.refs.*
@@ -47,6 +48,9 @@ class TransactionContextElement(val sess: ClientSession) : AbstractCoroutineCont
 fun getenvBool(name: String, default: Boolean = false): Boolean {
     return (System.getenv(name)?.ifEmpty {null} ?: return default) == "1"
 }
+fun getenvList(name: String, default: List<String> = emptyList()): List<String> {
+    return (System.getenv(name)?.ifEmpty {null} ?: return default).split(',')
+}
 
 fun loadConfig() = AppConfig(
     devMode = getenvBool("CONFIDO_DEVMODE"),
@@ -54,6 +58,7 @@ fun loadConfig() = AppConfig(
     betaIndicator = getenvBool("CONFIDO_BETA_INDICATOR"),
     featureFlags = FeatureFlag.values().filter{ getenvBool("CONFIDO_FEAT_${it.name}", it in DEFAULT_FEATURE_FLAGS)}.toSet(),
     privacyPolicyUrl = System.getenv("CONFIDO_PRIVACY_POLICY_URL")?.ifEmpty {null},
+    enabledExtensionIds = getenvList("CONFIDO_EXTENSIONS").toSet(),
 )
 
 actual val appConfig = loadConfig()
@@ -665,9 +670,12 @@ object serverState : GlobalState() {
                 }
                 groupPredHistManager.insertEntity(gp.copy(id = ""))
             }
+            serverState.extensions.forEach { it.onPrediction(q, pred) }
         }
     }
 
+    override val extensions: List<ServerExtension> get() =
+        appConfig.enabledExtensionIds.mapNotNull { ServerExtension.registry[it] }
 }
 suspend inline fun <reified  E: HasId> serverState.IdBasedEntityManager<E>.insertEntity(entity: E, forceId: Boolean = false) =
     insertWithId(entity.assignIdIfNeeded())

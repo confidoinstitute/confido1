@@ -7,6 +7,7 @@ import io.ktor.serialization.kotlinx.json.*
 import browser.document
 import components.showError
 import io.ktor.client.plugins.websocket.*
+import extensions.registerClientExtensions
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.*
@@ -73,6 +74,8 @@ object Client {
 }
 
 fun main() {
+    registerClientExtensions()
+    ClientExtension.forEach { it.clientInit() }
     val app = App.create {}
     createRoot(document.body).render(app)
 }

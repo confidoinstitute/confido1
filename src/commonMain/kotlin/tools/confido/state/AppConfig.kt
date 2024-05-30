@@ -1,5 +1,6 @@
 package tools.confido.state
 
+import Extension
 import kotlinx.serialization.Serializable
 
 enum class FeatureFlag {
@@ -20,6 +21,7 @@ data class AppConfig(
     val betaIndicator: Boolean = false,
     val featureFlags: Set<FeatureFlag> = setOf(),
     val privacyPolicyUrl: String? = null,
+    val enabledExtensionIds: Set<String> = setOf(),
 )
 
 expect val appConfig: AppConfig

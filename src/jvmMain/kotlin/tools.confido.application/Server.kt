@@ -29,15 +29,25 @@ import org.simplejavamail.api.mailer.config.TransportStrategy
 import org.simplejavamail.mailer.MailerBuilder
 import rooms.*
 import tools.confido.application.routes.*
-import tools.confido.application.sessions.*
-import tools.confido.question.Question
-import tools.confido.refs.*
+import tools.confido.application.sessions.Sessions
+import tools.confido.application.sessions.renewUserSession
+import tools.confido.application.sessions.transientUserData
+import tools.confido.application.sessions.userSession
+import tools.confido.extensions.registerServerExtensions
+import tools.confido.refs.RefAsStringSerializer
+import tools.confido.refs.deref
+import tools.confido.refs.ref
 import tools.confido.serialization.confidoJSON
 import tools.confido.serialization.confidoSM
-import tools.confido.state.*
-import users.*
+import tools.confido.state.appConfig
+import tools.confido.state.insertEntity
+import tools.confido.state.serverState
+import users.DebugAdmin
+import users.DebugMember
+import users.User
+import users.UserType
 import java.io.File
-import kotlin.collections.listOf
+import kotlin.collections.set
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -139,9 +149,11 @@ fun main() {
 
     runBlocking {
         serverState.initialize()
+        registerServerExtensions()
         serverState.load()
         if (appConfig.demoMode) initDemo()
         else initData()
+        serverState.extensions.forEach { it.serverInit() }
 
         launch(context= singleThreadContext) {
             val allManagers = serverState.managers.values + serverState.additionalManagers
@@ -368,6 +380,9 @@ fun main() {
                         }
                     }
                 }
+
+                ServerExtension.forEach { it.initRoutes(this) }
+
             }
         }.start(wait = true)
     }
