@@ -94,14 +94,8 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
         }
         when (val dist = props.prediction?.dist) {
             is BinaryDistribution -> {
-                var optionColor = noColor
-                var answer = "No"
-                var prob = dist.noProb
-                if (dist.yesProb > 0.5) {
-                    optionColor = yesColor
-                    answer = "Yes"
-                    prob = dist.yesProb
-                }
+                var optionColor = binaryColors[dist.likelyOutcome]
+                val prob = dist.likelyOutcomeProb
                 div {
                     if (props.resolved) {
                         +"The group thought there was a "
@@ -117,10 +111,7 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
                     } else {
                         +"chance that the answer is "
                     }
-                    b {
-                        css { this.color = optionColor }
-                        +answer
-                    }
+                    yesNoColored(dist.likelyOutcome)
                     +"."
                 }
             }
@@ -171,6 +162,13 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
                 }
             }
         }
+    }
+}
+
+fun ChildrenBuilder.yesNoColored(yn: Boolean) {
+    ReactHTML.b {
+        css { this.color = binaryColors[yn] }
+        +(if (yn) "Yes" else "No")
     }
 }
 
@@ -273,13 +271,8 @@ val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
         css(descriptionClass) {}
         when (val dist = props.dist) {
             is BinaryDistribution -> {
-                var answer = false
-                var prob = dist.noProb
-                if (dist.yesProb >= 0.5) {
-                    answer = true
-                    prob = dist.yesProb
-                }
-                val optionColor = binaryColors[answer]
+                val prob = dist.likelyOutcomeProb
+                val optionColor = binaryColors[dist.likelyOutcome]
                 ReactHTML.div {
                     if (props.resolved) {
                         +"You were "
@@ -295,10 +288,7 @@ val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
                     } else {
                         +"confident that the answer is "
                     }
-                    ReactHTML.b {
-                        css { this.color = optionColor }
-                        +if (answer) "Yes" else "No"
-                    }
+                    yesNoColored(dist.likelyOutcome)
                     +"."
                 }
                 if (prob == 1.0)

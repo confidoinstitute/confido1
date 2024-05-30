@@ -25,6 +25,9 @@ data class BinaryDistribution( // TODO: Make this a special case of a general Ch
     val noProb get() = 1 - yesProb
 
     fun probabilityOf(v: Boolean) = if (v) yesProb else noProb
+    val likelyOutcome get() = yesProb >= 0.5
+    val likelyOutcomeProb get() = probabilityOf(likelyOutcome)
+    val unlikelyOutcomeProb get() = probabilityOf(!likelyOutcome)
 
     override val description get() = formatPercent(yesProb)
 
