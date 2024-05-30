@@ -51,7 +51,12 @@ kotlin {
                         "target" to "http://127.0.0.1:8080/",
                         "secure" to false,
                     ),
-                    "/state" to mapOf(
+                    "/state/**" to mapOf(
+                        "target" to "http://127.0.0.1:8080/",
+                        "secure" to false,
+                        "ws" to true,
+                    ),
+                    "/api/**/*.ws" to mapOf(
                         "target" to "http://127.0.0.1:8080/",
                         "secure" to false,
                         "ws" to true,
