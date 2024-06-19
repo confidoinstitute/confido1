@@ -4,6 +4,9 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.*
 import tools.confido.distributions.ProbabilityDistribution
+import tools.confido.extensions.ExtensionData
+import tools.confido.extensions.ExtensionDataSerializer
+import tools.confido.extensions.ExtensionDataType
 import tools.confido.refs.HasId
 import tools.confido.refs.ImmediateDerefEntity
 import tools.confido.refs.Ref
@@ -148,6 +151,9 @@ data class QuestionScheduleStatus(
     )
 }
 
+val QuestionEDT = ExtensionDataType("QuestionEDT")
+class QuestionEDTSerializer: ExtensionDataSerializer(QuestionEDT)
+
 @Serializable
 data class Question(
     @SerialName("_id")
@@ -185,6 +191,8 @@ data class Question(
     // (created before this feature was introduced) to ex-post start inheriting room schedule.
     val schedule: QuestionSchedule? = QuestionSchedule(),
     val scheduleStatus: QuestionScheduleStatus = QuestionScheduleStatus(),
+    @Serializable(with = QuestionEDTSerializer::class)
+    val extensionData: ExtensionData = ExtensionData(QuestionEDT),
 ) : ImmediateDerefEntity, HasUrlPrefix {
     init {
         if (resolution != null) {
