@@ -11,6 +11,7 @@ import payloads.requests.*
 import react.*
 import react.router.*
 import tools.confido.question.*
+import tools.confido.state.clientState
 import utils.*
 
 external interface QuestionQuickSettingsDialogProps : Props {
@@ -122,6 +123,9 @@ val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props -
                 }
             }
             DialogMenuSeparator {}
+            clientState.extensions.forEach {
+                it.questionQuickSettingsExtra(props, this, props.onClose?: {})
+            }
         }
         DialogMenuCommonActions {
             pageName = props.question.name

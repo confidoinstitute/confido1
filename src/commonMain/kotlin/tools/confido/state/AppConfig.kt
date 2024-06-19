@@ -1,6 +1,5 @@
 package tools.confido.state
 
-import Extension
 import kotlinx.serialization.Serializable
 
 enum class FeatureFlag {

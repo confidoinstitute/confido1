@@ -1,7 +1,6 @@
 package components.redesign.questions.predictions
 
 import BinaryHistogram
-import ClientExtension
 import components.redesign.basic.MainPalette
 import components.redesign.basic.Stack
 import components.redesign.basic.sansSerif
@@ -20,6 +19,7 @@ import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
 import react.useState
 import tools.confido.distributions.*
+import tools.confido.extensions.ClientExtension
 import tools.confido.question.Prediction
 import tools.confido.question.PredictionTerminology
 import tools.confido.question.Question

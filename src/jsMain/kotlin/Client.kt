@@ -7,24 +7,24 @@ import io.ktor.serialization.kotlinx.json.*
 import browser.document
 import components.showError
 import io.ktor.client.plugins.websocket.*
-import extensions.registerClientExtensions
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.*
 import kotlinx.coroutines.delay
 import react.create
 import react.dom.client.createRoot
+import tools.confido.extensions.ClientExtension
 import tools.confido.serialization.confidoJSON
 
 object Client {
-    val httpClient = HttpClient {
+    val httpClient by lazy  { HttpClient {
         install(ContentNegotiation) {
             json(confidoJSON)
         }
         install(WebSockets) {
             contentConverter = KotlinxWebsocketSerializationConverter(confidoJSON)
         }
-    }
+    } }
 
     suspend inline fun <reified T> sendDataRequest(
         url: String,
@@ -74,7 +74,6 @@ object Client {
 }
 
 fun main() {
-    registerClientExtensions()
     ClientExtension.forEach { it.clientInit() }
     val app = App.create {}
     createRoot(document.body).render(app)

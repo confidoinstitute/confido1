@@ -38,6 +38,8 @@ import react.router.useLocation
 import react.router.useNavigate
 import rooms.*
 import tools.confido.distributions.*
+import tools.confido.extensions.ClientExtension
+import tools.confido.extensions.ExtensionContextPlace
 import tools.confido.question.*
 import tools.confido.refs.*
 import tools.confido.serialization.*
@@ -90,6 +92,15 @@ external interface BinaryHistogramSectionProps : Props {
 
 private val bgColor = Color("#f2f2f2")
 
+external interface QuestionPageExtraProps: Props {
+    var question: Question
+    var place: ClientExtension.QuestionPagePlace
+}
+
+val QuestionPageExtra = FC<QuestionPageExtraProps> { props->
+    ClientExtension.forEach { it.questionPageExtra(props.question, props.place, this) }
+}
+
 val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
@@ -103,6 +114,8 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
     var csvDialogOpen by useState(false)
     val loc = useLocation()
     val navigate = useNavigate()
+
+    val extContext = ClientExtension.getContextValues(ExtensionContextPlace.QUESTION_PAGE)
 
     useEffect(props.question.id) { // TODO does not reflect change in question value
         window.asDynamic().curQuestion = confidoJSON.encodeToDynamic(props.question)
@@ -131,81 +144,85 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
     // TODO proper no permission page
         return@FC
 
-    QuestionQuickSettingsDialog {
-        question = props.question
-        open = quickSettingsOpen
-        canEdit = room.hasPermission(appState.session.user, RoomPermission.MANAGE_QUESTIONS)
-        onEdit = { quickSettingsOpen = false; editDialog(props.question) }
-        onOpenResolution = { quickSettingsOpen = false; resolutionDialogOpen = true; }
-        onExport = { quickSettingsOpen = false; csvDialogOpen = true; }
-        onClose = { quickSettingsOpen = false }
-        key="QuickSettingsDialog"
-    }
-
-    QuestionResolveDialog {
-        open = resolutionDialogOpen
-        question = props.question
-        onClose = {
-            resolutionDialogOpen = false
-            if (loc.pathname.endsWith("/resolve")) navigate("..")
-        }
-        key = "ResolveDialog"
-    }
-
-    CsvExportDialog {
-        key = "CsvExportDialog"
-        question = props.question
-        open = csvDialogOpen
-        onClose = { csvDialogOpen = false }
-    }
-
-    RoomNavbar {
-        palette = roomPalette
-        navigateBack = room.urlPrefix
-        onMenu = { quickSettingsOpen = true }
-        Link {
-            className = LinkUnstyled
-            to = room.urlPrefix
-            +room.name
-        }
-    }
-    Stack {
-        component = main
-        css {
-            marginTop = 44.px
-            flexDirection = FlexDirection.column
-            flexGrow = number(1.0)
-            width = layoutMode.contentWidth
-            marginLeft = Auto.auto
-            marginRight = Auto.auto
+    ClientExtension.contexts[ExtensionContextPlace.QUESTION_PAGE]!!.Provider {
+        value = extContext
+        QuestionQuickSettingsDialog {
+            question = props.question
+            open = quickSettingsOpen
+            canEdit = room.hasPermission(appState.session.user, RoomPermission.MANAGE_QUESTIONS)
+            onEdit = { quickSettingsOpen = false; editDialog(props.question) }
+            onOpenResolution = { quickSettingsOpen = false; resolutionDialogOpen = true; }
+            onExport = { quickSettingsOpen = false; csvDialogOpen = true; }
+            onClose = { quickSettingsOpen = false }
+            key="QuickSettingsDialog"
         }
 
-        QuestionHeader {
-            this.text = props.question.name
-            this.questionState = props.question.state
-            this.stateHistory = props.question.stateHistory
-            this.description = props.question.description
-            if (props.question.resolutionVisible) {
-                this.resolution = props.question.resolution
+        QuestionResolveDialog {
+            open = resolutionDialogOpen
+            question = props.question
+            onClose = {
+                resolutionDialogOpen = false
+                if (loc.pathname.endsWith("/resolve")) navigate("..")
             }
-            this.isHidden = !props.question.visible
+            key = "ResolveDialog"
         }
-        QuestionPredictionSection {
-            this.question = props.question
-            if (props.question.state == QuestionState.RESOLVED) {
-                this.resolution = props.question.resolution
+
+        CsvExportDialog {
+            key = "CsvExportDialog"
+            question = props.question
+            open = csvDialogOpen
+            onClose = { csvDialogOpen = false }
+        }
+
+        RoomNavbar {
+            palette = roomPalette
+            navigateBack = room.urlPrefix
+            onMenu = { quickSettingsOpen = true }
+            Link {
+                className = LinkUnstyled
+                to = room.urlPrefix
+                +room.name
             }
-            this.myPrediction = myPrediction
-            this.numPredictors = props.question.numPredictors
-            this.groupPrediction = groupPrediction.data
         }
-        if (props.question.allowComments && appState.hasPermission(room, RoomPermission.VIEW_QUESTION_COMMENTS)) {
-            QuestionCommentSection {
+        Stack {
+            component = main
+            css {
+                marginTop = 44.px
+                flexDirection = FlexDirection.column
+                flexGrow = number(1.0)
+                width = layoutMode.contentWidth
+                marginLeft = Auto.auto
+                marginRight = Auto.auto
+            }
+
+            QuestionHeader {
+                this.text = props.question.name
+                this.questionState = props.question.state
+                this.stateHistory = props.question.stateHistory
+                this.description = props.question.description
+                if (props.question.resolutionVisible) {
+                    this.resolution = props.question.resolution
+                }
+                this.isHidden = !props.question.visible
+            }
+            QuestionPredictionSection {
                 this.question = props.question
+                if (props.question.state == QuestionState.RESOLVED) {
+                    this.resolution = props.question.resolution
+                }
                 this.myPrediction = myPrediction
-                this.allowAddingComment = appState.hasPermission(room, RoomPermission.POST_QUESTION_COMMENT) && props.question.allowComments
+                this.numPredictors = props.question.numPredictors
+                this.groupPrediction = groupPrediction.data
+            }
+            if (props.question.allowComments && appState.hasPermission(room, RoomPermission.VIEW_QUESTION_COMMENTS)) {
+                QuestionCommentSection {
+                    this.question = props.question
+                    this.myPrediction = myPrediction
+                    this.allowAddingComment = appState.hasPermission(room, RoomPermission.POST_QUESTION_COMMENT) && props.question.allowComments
+                }
             }
         }
+        QuestionPageExtra { question = props.question; place = ClientExtension.QuestionPagePlace.QUESTION_PAGE_END }
     }
 }
 

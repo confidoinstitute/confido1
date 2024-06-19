@@ -183,7 +183,6 @@ fun List2<Double>.normalize(): List2<Double> {
 }
 
 fun List2<Double>.length() = sqrt(e1*e1 + e2*e2)
-
 fun <K,V,R> Map<K,V>.mapValuesNotNull(f: (Map.Entry<K,V>) -> R?) = mapNotNull {
     val mapped = f(it)
     if (mapped == null) null
@@ -193,6 +192,9 @@ fun <K,V,R> Map<K,V>.mapValuesNotNull(f: (Map.Entry<K,V>) -> R?) = mapNotNull {
 interface HasUrlPrefix {
     val urlPrefix: String
 }
+
+infix fun <T,U> List<T>.cross(other: List<U>): Sequence<Pair<T,U>> =
+    sequence { forEach { x-> other.forEach { y-> yield(x to y) } } }
 
 const val TOKEN_LEN = 32
 

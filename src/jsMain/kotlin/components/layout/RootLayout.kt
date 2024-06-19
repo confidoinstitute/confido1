@@ -17,6 +17,7 @@ import mui.system.*
 import react.*
 import react.dom.html.ReactHTML.main
 import react.router.*
+import tools.confido.extensions.ClientExtension
 import utils.byTheme
 import utils.roomUrl
 import utils.themed

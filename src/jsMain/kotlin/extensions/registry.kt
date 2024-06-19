@@ -1,6 +1,6 @@
-package extensions
+package tools.confido.extensions
 
-import ClientExtension
 
-fun registerClientExtensions() {
-}
+
+actual val registeredExtensions = listOf<Extension>(
+)

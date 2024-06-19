@@ -1,6 +1,5 @@
 package components.rooms
 
-import ClientExtension
 import components.AppStateContext
 import components.ListItemNavigation
 import icons.AddIcon
@@ -14,6 +13,7 @@ import react.ReactNode
 import react.router.useLocation
 import utils.roomUrl
 import react.useContext
+import tools.confido.extensions.ClientExtension
 
 external interface RoomListProps : Props {
     var newRoomEnabled: Boolean

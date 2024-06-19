@@ -1,9 +1,9 @@
 package tools.confido.state
 
-import Extension
 import kotlinx.serialization.Serializable
 import rooms.Room
 import rooms.RoomPermission
+import tools.confido.extensions.Extension
 import tools.confido.question.*
 import tools.confido.refs.*
 import users.User

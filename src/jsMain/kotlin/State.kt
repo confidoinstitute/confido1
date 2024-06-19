@@ -2,18 +2,19 @@ package tools.confido.state
 
 import browser.window
 import kotlinx.serialization.ExperimentalSerializationApi
-import ClientExtension
+import kotlinx.serialization.json.Json
 import rooms.Room
 import rooms.RoomPermission
 import tools.confido.serialization.confidoJSON
 import kotlinx.serialization.json.decodeFromDynamic
+import tools.confido.extensions.ClientExtension
 
 class ClientState(val sentState: SentState)
     : GlobalState(), BaseState by sentState {
     val session by sentState::session
     val myPredictions by sentState::myPredictions
     override val extensions: List<ClientExtension> get() =
-        appConfig.enabledExtensionIds.mapNotNull { ClientExtension.registry[it] }
+        ClientExtension.enabled
 }
 
 var clientState: ClientState = ClientState(SentState())
@@ -25,4 +26,4 @@ fun Room.havePermission(permission: RoomPermission): Boolean {
 }
 
 @OptIn(ExperimentalSerializationApi::class)
-actual val appConfig: AppConfig = confidoJSON.decodeFromDynamic(window.asDynamic().appConfig)
+actual val appConfig: AppConfig = Json.decodeFromDynamic(window.asDynamic().appConfig)

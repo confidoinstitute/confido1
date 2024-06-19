@@ -33,7 +33,7 @@ import tools.confido.application.sessions.Sessions
 import tools.confido.application.sessions.renewUserSession
 import tools.confido.application.sessions.transientUserData
 import tools.confido.application.sessions.userSession
-import tools.confido.extensions.registerServerExtensions
+import tools.confido.extensions.ServerExtension
 import tools.confido.refs.RefAsStringSerializer
 import tools.confido.refs.deref
 import tools.confido.refs.ref
@@ -149,7 +149,6 @@ fun main() {
 
     runBlocking {
         serverState.initialize()
-        registerServerExtensions()
         serverState.load()
         if (appConfig.demoMode) initDemo()
         else initData()

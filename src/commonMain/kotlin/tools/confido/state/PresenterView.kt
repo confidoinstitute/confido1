@@ -3,7 +3,11 @@ package tools.confido.state
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.polymorphic
+import kotlinx.serialization.modules.subclass
 import rooms.Room
+import tools.confido.extensions.Extension
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.refs.deref
@@ -11,7 +15,7 @@ import tools.confido.utils.unixNow
 import users.User
 
 @Serializable
-sealed class PresenterView {
+abstract class PresenterView {
     open suspend fun isValid() = true
     abstract fun describe(): String
 }
@@ -65,3 +69,13 @@ data class PresenterInfo(
 ) {
     val isValid get() = unixNow() - lastUpdate <= PRESENTER_LIFETIME
 }
+
+val presenterSM by lazy { SerializersModule {
+    polymorphic(PresenterView::class) {
+        subclass(EmptyPV::class)
+        subclass(QuestionPV::class)
+        subclass(GroupPredPV::class)
+        subclass(InviteLinkPV::class)
+        Extension.forEach { it.registerPresenterViews(this) }
+    }
+} }

@@ -7,8 +7,10 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.plus
 import kotlinx.serialization.modules.serializersModuleOf
 import tools.confido.distributions.distributionsSM
+import tools.confido.state.presenterSM
 import tools.confido.utils.List2
 import tools.confido.utils.endpoints
 
@@ -24,11 +26,11 @@ class RangeSerializer<T: Comparable<T>>(private val elementSerializer: KSerializ
     }
 }
 
-val confidoSM = distributionsSM // here we can add other SMs
+val confidoSM by lazy { distributionsSM + presenterSM } // here we can add other SMs
 
 
-val confidoJSON = Json {
+val confidoJSON by lazy { Json {
     allowSpecialFloatingPointValues = true // support e.g. infinite ranges
     serializersModule = confidoSM
     ignoreUnknownKeys = true
-}
+}}

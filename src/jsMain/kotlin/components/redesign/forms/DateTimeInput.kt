@@ -74,6 +74,7 @@ external interface TimeInputProps : PropsWithClassName, InputPropsWithRange<Loca
 val TimeInput = FC<TimeInputProps> { props ->
     var rawValue by useState(props.value?.toString() ?: "")
     val ism = useInputStateManager(props) { rawValue = it?.toString() ?: "" }
+    var focused by useState(false)
 
     fun onRawChange(newValue: String) {
         if (newValue.isEmpty()) {
@@ -100,13 +101,16 @@ val TimeInput = FC<TimeInputProps> { props ->
 
     TextInput {
         this.className = props.className
-        type = InputType.time
+        type = if (rawValue == "" && !props.placeholder.isNullOrEmpty() && !focused) InputType.text else InputType.time
+        placeholder = props.placeholder
         props.min?.let { min = it.toString() }
         props.max?.let { max = it.toString() }
         this.value = rawValue
         required = props.required
         props.disabled?.let { this.disabled = it }
         props.readOnly?.let { this.readOnly = it }
+        onFocus = { focused = true }
+        onBlur = { focused = false }
         onChange = { event ->
             val newValue = event.target.value
             rawValue = newValue
@@ -117,13 +121,14 @@ val TimeInput = FC<TimeInputProps> { props ->
 
 external interface DateTimeInputProps : InputPropsWithRange<LocalDateTime> {
     var defaultTime: LocalTime?
+    var defaultDate: LocalDate?
     var wrap: ((ReactNode, ReactNode) -> ReactNode)?
     var dateProps: DateInputProps?
     var timeProps: TimeInputProps?
 }
 
 val DateTimeInput = FC<DateTimeInputProps> { props->
-    var date by useState(props.value?.date)
+    var date by useState(props.value?.date ?: props.defaultDate)
     var time by useState(props.value?.time)
     val ism = useInputStateManager(props) { date = it?.date; time = it?.time; }
     var dateErr by useState<InputError>()
@@ -164,6 +169,7 @@ val DateTimeInput = FC<DateTimeInputProps> { props->
             this.value = time
             this.disabled = (props.disabled == true || date == null)
             this.readOnly = props.readOnly
+            if (props.defaultDate != null && date == props.defaultDate) placeholder = props.placeholder
             onChange = { newTime, err->
                 time = newTime
                 timeErr = err

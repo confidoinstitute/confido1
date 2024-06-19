@@ -1,10 +1,8 @@
-package tools.confido.application
+package tools.confido.extensions
 
-import Extension
 import io.ktor.server.routing.*
 import tools.confido.question.Prediction
 import tools.confido.question.Question
-import tools.confido.state.appConfig
 
 interface ServerExtension: Extension {
     suspend fun onPrediction(q: Question, p: Prediction) {
@@ -20,11 +18,7 @@ interface ServerExtension: Extension {
     }
 
     companion object {
-        val registry: MutableMap<String, ServerExtension> = mutableMapOf()
-        fun register(ext: ServerExtension) {
-            registry[ext.extensionId] = ext
-        }
-        val enabled get() = appConfig.enabledExtensionIds.mapNotNull { registry[it] }
+        val enabled get() = Extension.enabled.map{ it as ServerExtension }
         inline fun forEach(f: (ServerExtension)->Unit) {  enabled.forEach(f) }
     }
 }

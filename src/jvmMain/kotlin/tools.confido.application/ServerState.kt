@@ -17,8 +17,8 @@ import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.*
 import org.litote.kmongo.reactivestreams.KMongo
 import rooms.Room
-import tools.confido.application.ServerExtension
 import tools.confido.distributions.*
+import tools.confido.extensions.ServerExtension
 import tools.confido.question.*
 import tools.confido.refs.*
 import tools.confido.spaces.*
@@ -375,7 +375,9 @@ object serverState : GlobalState() {
                                                             Prediction::ts lte ts))
                 .sort(descending(Prediction::ts)).first()
 
-        suspend fun at(question: Ref<Question>, user: Ref<User>, ts: Instant) = at(question, user, ts.epochSeconds.toInt())
+        suspend fun at(question: Ref<Question>, user: Ref<User>, ts: Instant) =
+            if (ts == Instant.DISTANT_FUTURE) userPred[question]?.get(user)
+            else at(question, user, ts.epochSeconds.toInt())
         init {
             onEntityAdded {
                 totalPredictions.compute(it.question) { _, cnt -> (cnt ?: 0) + 1 }
@@ -398,7 +400,9 @@ object serverState : GlobalState() {
         suspend fun at(question: Ref<Question>, ts: Int) =
             mongoCollection.find(and(Prediction::question eq question, Prediction::ts lte ts))
                 .sort(descending(Prediction::ts)).first()
-        suspend fun at(question: Ref<Question>, ts: Instant) = at(question, ts.epochSeconds.toInt())
+        suspend fun at(question: Ref<Question>, ts: Instant) =
+            if (ts == Instant.DISTANT_FUTURE) groupPred[question]
+            else at(question, ts.epochSeconds.toInt())
     }
 
     object questionCommentManager: InMemoryEntityManager<QuestionComment>(database.getCollection("questionComments")) {
@@ -674,8 +678,7 @@ object serverState : GlobalState() {
         }
     }
 
-    override val extensions: List<ServerExtension> get() =
-        appConfig.enabledExtensionIds.mapNotNull { ServerExtension.registry[it] }
+    override val extensions: List<ServerExtension> get() = ServerExtension.enabled
 }
 suspend inline fun <reified  E: HasId> serverState.IdBasedEntityManager<E>.insertEntity(entity: E, forceId: Boolean = false) =
     insertWithId(entity.assignIdIfNeeded())
