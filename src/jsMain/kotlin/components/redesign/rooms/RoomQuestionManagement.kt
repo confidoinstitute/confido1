@@ -51,6 +51,7 @@ import react.dom.html.ReactHTML.ul
 import react.router.dom.Link
 import rooms.Room
 import rooms.RoomPermission
+import tools.confido.extensions.ClientExtension
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.question.QuestionState
@@ -318,6 +319,8 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
             }
         }
     }
+
+    ClientExtension.forEach  { it.questionManagementExtra(room, this) }
 }
 
 external interface QuestionRowProps : Props {

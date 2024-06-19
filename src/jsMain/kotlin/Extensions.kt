@@ -1,12 +1,14 @@
 package tools.confido.extensions
 
 import components.presenter.PresenterPageType
+import components.redesign.questions.dialog.EditQuestionDialogProps
 import components.redesign.questions.dialog.QuestionQuickSettingsDialogProps
 import components.redesign.questions.predictions.MyPredictionDescriptionProps
 import components.rooms.RoomListProps
 import react.ChildrenBuilder
 import react.FC
 import react.Props
+import rooms.Room
 import tools.confido.question.Question
 import tools.confido.state.PresenterView
 import tools.confido.state.appConfig
@@ -14,6 +16,7 @@ import kotlin.reflect.KClass
 
 enum class ExtensionContextPlace {
     QUESTION_PAGE,
+    EDIT_QUESTION_DIALOG,
 }
 
 interface ClientExtension : Extension {
@@ -43,6 +46,8 @@ interface ClientExtension : Extension {
         QUESTION_PAGE_END
     }
     fun questionPageExtra(q: Question, place: QuestionPagePlace, cb: ChildrenBuilder) {}
+    fun editQuestionDialogExtra(props: EditQuestionDialogProps, cb: ChildrenBuilder) {}
+    fun assembleQuestion(q: Question, states: Map<String, dynamic>) = q
 
     fun myPredictionDescriptionExtra(props: MyPredictionDescriptionProps, cb: ChildrenBuilder) {}
     fun useExtContext(place: ExtensionContextPlace)  = react.useContext(contexts[place]!!)[extensionId]
@@ -59,6 +64,7 @@ interface ClientExtension : Extension {
         return arrayOf<dynamic>(sVal, ::setter).unsafeCast<react.StateInstance<T>>()
     }
     fun registerPresenterPages(): Map<KClass<out PresenterView>, PresenterPageType> = emptyMap()
+    fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {}
 }
 
 external interface ExtensionContextProviderProps: Props {

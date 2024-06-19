@@ -15,6 +15,8 @@ import react.dom.html.AnchorTarget
 import react.dom.html.ButtonType
 import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.div
+import tools.confido.extensions.ClientExtension
+import tools.confido.extensions.ExtensionContextPlace
 import tools.confido.question.*
 import tools.confido.spaces.*
 
@@ -35,9 +37,14 @@ internal val Space.questionType: QuestionType
             is NumericSpace -> if (representsDays) QuestionType.DATE else QuestionType.NUMERIC
         }
 
+val EditQuestionDialogExtensions = FC<EditQuestionDialogProps> { props->
+    ClientExtension.forEach { it.editQuestionDialogExtra(props, this) }
+}
+
 val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     val room = useContext(RoomContext)
+    val extContext = ClientExtension.getContextValues(ExtensionContextPlace.EDIT_QUESTION_DIALOG)
 
     val isEdit = props.entity != null
 
@@ -112,7 +119,11 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         sensitive = isSensitive,
         schedule = if (customSchedule) schedule else null,
         scheduleStatus = QuestionScheduleStatus(if (customSchedule) schedule else room.defaultSchedule),
-    ).withState(questionStatus) else null
+    ).withState(questionStatus).let{ q->
+        var curQ = q
+        ClientExtension.forEach { curQ = it.assembleQuestion(curQ, extContext[it.extensionId]!!.component1()) }
+        curQ
+    } else null
 
     fun submitQuestion() = submit {
         val question = assembleQuestion() ?: return@submit
@@ -125,6 +136,8 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         }
     }
 
+    ClientExtension.contexts[ExtensionContextPlace.EDIT_QUESTION_DIALOG]!!.Provider {
+        value = extContext
     Dialog {
         open = props.open
         onClose = props.onClose
@@ -325,6 +338,8 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                     }
                 */
             }
+            EditQuestionDialogExtensions { +props }
+
 
             Stack {
                 Button {
@@ -341,6 +356,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 }
             }
         }
+    }
     }
 }
 
