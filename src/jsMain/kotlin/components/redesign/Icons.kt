@@ -271,6 +271,15 @@ val BackIcon = createIcon(10,18, svgAttrs = jso{viewBox = "-1 -1 10 18"}) {
         d = "M8,0 L0,8 L8,16"
     }
 }
+val FwdIcon = createIcon(10,18, svgAttrs = jso{viewBox = "-1 -1 10 18"}) {
+    path {
+        strokeLinecap = StrokeLinecap.round
+        strokeWidth = 2.0
+        fill = "transparent"
+        stroke = "currentColor"
+        d = "M0,0 L8,8 L0,16"
+    }
+}
 
 val NavMenuIcon = createIcon(19, 4) {
     listOf(2.0, 9.5, 17.0).map {

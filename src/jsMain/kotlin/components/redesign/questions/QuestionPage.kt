@@ -21,6 +21,7 @@ import components.redesign.rooms.*
 import components.redesign.rooms.dialog.CsvExportDialog
 import components.rooms.*
 import csstype.*
+import emotion.css.ClassName
 import emotion.react.*
 import hooks.*
 import kotlinx.datetime.Instant
@@ -61,6 +62,8 @@ external interface QuestionHeaderProps : Props {
     var questionState: QuestionState
     var isHidden: Boolean
     var stateHistory: List<QuestionStateChange>
+    var onPrev: (()->Unit)?
+    var onNext: (()->Unit)?
 }
 
 external interface QuestionStatusProps : Props {
@@ -110,6 +113,12 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
     val groupPrediction = useWebSocket<Prediction?>("/state${props.question.urlPrefix}/group_pred")
     val layoutMode = useContext(LayoutModeContext)
     val roomPalette = room.color.palette
+
+    val idx = room.questions.indexOf(props.question.ref)
+    console.log("QIDX $idx")
+    // order in room.questions is reversed
+    val prevQ = room.questions.getOrNull(idx+1)
+    val nextQ = room.questions.getOrNull(idx-1)
 
     var quickSettingsOpen by useState(false)
     var resolutionDialogOpen by useState(props.openResolve ?: false)
@@ -208,6 +217,8 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
                     this.resolution = props.question.resolution
                 }
                 this.isHidden = !props.question.visible
+                this.onNext = nextQ?.let { { navigate(room.urlPrefix + questionUrl(it.id) )  } }
+                this.onPrev = prevQ?.let { { navigate(room.urlPrefix + questionUrl(it.id) )  } }
             }
             QuestionPredictionSection {
                 this.question = props.question
@@ -550,16 +561,81 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
             background = bgColor
         }
 
-        // Question text
-        div {
-            css {
-                fontFamily = sansSerif
-                fontWeight = integer(800)
-                fontSize = 34.px
-                lineHeight = 105.pct
-                color = Color("#000000")
+        if (layoutMode == LayoutMode.PHONE && (props.onNext != null || props.onPrev != null)) {
+            Stack {
+                direction = FlexDirection.row
+                css {
+                    justifyContent = if (props.onPrev == null)  JustifyContent.end
+                        else if (props.onNext == null) JustifyContent.start
+                        else JustifyContent.spaceBetween
+                }
+                val btnCss = ClassName {
+                    fontVariant = FontVariant.smallCaps
+                    color = Color("#666")
+                }
+                if (props.onPrev != null)
+                ButtonUnstyled {
+                    className = btnCss
+                    +"← Previous"
+                    onClick = { props.onPrev?.invoke() }
+                }
+                if (props.onNext != null)
+                    ButtonUnstyled {
+                        className = btnCss
+                        +"Next →"
+                        onClick = { props.onNext?.invoke() }
+                    }
             }
-            +props.text
+        }
+
+        // Question text
+        Stack {
+            direction = FlexDirection.row
+            css {
+                if (layoutMode >= LayoutMode.TABLET) {
+                    if (props.onPrev != null) marginLeft = -30.px
+                    if (props.onNext != null) marginRight = -30.px
+                }
+            }
+            if (props.onPrev != null && layoutMode >= LayoutMode.TABLET) {
+                div {
+                    css {
+                        flexGrow = number(0.0)
+                        alignSelf = AlignSelf.center
+                        width = 30.px
+                        flexBasis = 30.px
+                    }
+                    IconButton {
+                        BackIcon{}
+                        onClick = { props.onPrev?.invoke() }
+                    }
+                }
+            }
+            div {
+                css {
+                    fontFamily = sansSerif
+                    fontWeight = integer(800)
+                    fontSize = 34.px
+                    lineHeight = 105.pct
+                    color = Color("#000000")
+                    flexGrow = number(1.0)
+                }
+                +props.text
+            }
+            if (props.onNext != null && layoutMode >= LayoutMode.TABLET) {
+                div {
+                    css {
+                        flexGrow = number(0.0)
+                        alignSelf = AlignSelf.center
+                        width = 30.px
+                        flexBasis = 30.px
+                    }
+                    IconButton {
+                        FwdIcon{}
+                        onClick = { props.onNext?.invoke() }
+                    }
+                }
+            }
         }
 
         // Question status
