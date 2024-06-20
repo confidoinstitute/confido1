@@ -47,6 +47,8 @@ import tools.confido.spaces.*
 import tools.confido.utils.*
 import utils.*
 
+val QuestionContext = createContext<Question?>(null)
+
 external interface QuestionLayoutProps : Props {
     var question: Question
     var openResolve: Boolean?
@@ -144,8 +146,10 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
     // TODO proper no permission page
         return@FC
 
+    QuestionContext.Provider {
+    value = props.question
     ClientExtension.contexts[ExtensionContextPlace.QUESTION_PAGE]!!.Provider {
-        value = extContext
+    value = extContext
         QuestionQuickSettingsDialog {
             question = props.question
             open = quickSettingsOpen
@@ -223,6 +227,7 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
             }
         }
         QuestionPageExtra { question = props.question; place = ClientExtension.QuestionPagePlace.QUESTION_PAGE_END }
+    }
     }
 }
 
