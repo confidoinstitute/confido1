@@ -32,7 +32,7 @@ data class RoomContext(val inUser: User?, val room: Room) {
     val user: User by lazy { inUser ?: unauthorized("Not logged in.") }
     val ref = room.ref
 
-    fun assertPermission(permission: RoomPermission, message: String) {
+    fun assertPermission(permission: RoomPermission, message: String = "missing root privilege ${permission.name}") {
         if (!room.hasPermission(user, permission)) unauthorized(message)
     }
 }
