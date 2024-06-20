@@ -58,7 +58,7 @@ object QuestionGroupsCE: ClientExtension, QuestionGroupsExtension() {
     }
     override fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {
         val grouped = mutableMapOf<String, MutableList<Question>>()
-        room.questions.forEachDeref { q->
+        room.questions.reversed().forEachDeref { q->
             q.extensionData[QuestionGroupsKey].forEach { g-> grouped.getOrPut(g) {mutableListOf()}.add(q) }
         }
         cb.apply {

@@ -57,7 +57,7 @@ abstract class MillionaireExt : Extension {
     fun computeScore(pred: Prediction?, res: Value): Double? {
         return computeScore((pred?.dist as? BinaryDistribution)?.yesProb ?: return null, (res as BinaryValue).value)
     }
-    fun questions(room: Room) = room.questions.mapDeref().filter {
+    fun questions(room: Room) = room.questions.reversed().mapDeref().filter {
             it.extensionData[QuestionGroupsKey].contains(MIL_GROUP)
         }
     fun getState(room: Room): MillionaireState {
