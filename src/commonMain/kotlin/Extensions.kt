@@ -19,6 +19,8 @@ interface IExtensionDataKey {
 open class ExtensionDataKey<V>(override  val id: String) : IExtensionDataKey {
 }
 
+open class ExtensionDataKeyWithDefault<V>(id: String, val default: V): ExtensionDataKey<V>(id)
+
 class ExtensionDataType(val name: String) {
     val valueSerializers: MutableMap<IExtensionDataKey, KSerializer<Any?>> = mutableMapOf()
     init {
@@ -36,6 +38,7 @@ class ExtensionData(val type: ExtensionDataType, val data: Map<IExtensionDataKey
 }
 inline fun <V> ExtensionData.with(k: ExtensionDataKey<V>, v: V) = ExtensionData(type, data + mapOf(k to v))
 operator inline fun <V> ExtensionData.get(k: ExtensionDataKey<V>): V? = data[k] as? V?
+operator inline fun <V> ExtensionData.get(k: ExtensionDataKeyWithDefault<V>): V = if (data.keys.contains(k)) data[k] as V else k.default
 
 abstract class  ExtensionDataSerializer(val type: ExtensionDataType): KSerializer<ExtensionData> {
     override val descriptor: SerialDescriptor
