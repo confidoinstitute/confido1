@@ -62,6 +62,7 @@ abstract class MillionaireExt : Extension {
         }
     fun getState(room: Room): MillionaireState {
         val qs = questions(room)
+        if (qs.isEmpty()) return MillionaireState(MillionaireStateType.BEFORE_START, -1, null)
         val idx = qs.forEachIndexed { idx,q->
             if (q.state == QuestionState.OPEN) {
                 return MillionaireState(MillionaireStateType.ASKING, idx, q)
