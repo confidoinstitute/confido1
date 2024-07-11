@@ -1,14 +1,15 @@
 package components.presenter
 
+import components.redesign.basic.Stack
 import csstype.*
-import mui.material.Stack
-import mui.material.StackDirection
-import mui.material.Typography
-import mui.material.styles.TypographyVariant
-import mui.system.Box
-import mui.system.responsive
-import mui.system.sx
+import emotion.css.ClassName
+import emotion.react.css
 import react.FC
+import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.h1
+import react.dom.html.ReactHTML.h2
+import react.dom.html.ReactHTML.h4
+import react.dom.html.ReactHTML.h6
 import tools.confido.refs.deref
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.NumericSpace
@@ -21,42 +22,55 @@ val QuestionPP = FC<PresenterPageProps<QuestionPV>> { props ->
     val space = question.answerSpace
 
     Stack {
-        sx {
+        css {
             gap = 30.pt
             width = 100.pct
             height = 100.pct
-            padding = themed(5)
+            padding = 2.5.vh
         }
 
         Stack {
-            sx {
+            css {
                 justifyContent = JustifyContent.center
                 alignItems = AlignItems.center
                 gap = 30.pt
                 flexGrow = number(1.0)
             }
-            Typography {
-                variant = TypographyVariant.h2
+            h1 {
+                css {
+                    fontSize = 7.vh
+                    fontWeight = FontWeight.bold
+                    textAlign = TextAlign.center
+                    lineHeight = number(1.15)
+                }
                 +question.name
             }
 
-            Typography {
-                variant = TypographyVariant.h4
+            div {
+                css {
+                    lineHeight = number(1.15)
+                    fontSize = 3.vh
+                    textAlign = TextAlign.center
+                }
                 +question.description
             }
         }
 
         Stack {
-            direction = responsive(StackDirection.row)
-            sx {
+            direction = FlexDirection.row
+            css {
                 justifyContent = JustifyContent.spaceBetween
+
+                lineHeight = number(1.15)
+                fontSize = 4.vh
             }
-            Typography {
-                variant = TypographyVariant.h6
+            div {
                 +"${question.numPredictors} people answered"
             }
-            Typography {
-                variant = TypographyVariant.h6
+            div {
+                css {
+                    textAlign = TextAlign.right
+                }
                 if (question.open) {
                     +"Please answer "
                 } else {

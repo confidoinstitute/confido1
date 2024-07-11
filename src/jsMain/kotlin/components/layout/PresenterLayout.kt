@@ -3,10 +3,15 @@ package components.layout
 import components.AppStateContext
 import components.AppStateWebsocketProvider
 import components.presenter.PresenterPage
-import csstype.vh
-import csstype.vw
+import components.redesign.DefaultTheme
+import components.redesign.ThemeProvider
+import components.redesign.layout.LayoutMode
+import components.redesign.layout.LayoutModeContext
+import csstype.*
+import emotion.react.css
 import mui.system.sx
 import react.*
+import react.dom.html.ReactHTML.div
 import tools.confido.state.EmptyPV
 import utils.webSocketUrl
 import web.timers.setTimeout
@@ -14,7 +19,13 @@ import websockets.WebSocket
 
 val PresenterLayout = FC<Props> {
     AppStateWebsocketProvider {
-        PresenterLayoutInner {}
+        ThemeProvider {
+            theme = { _ -> DefaultTheme }
+            LayoutModeContext.Provider {
+                value = LayoutMode.DESKTOP
+                PresenterLayoutInner {}
+            }
+        }
     }
 }
 val PresenterLayoutInner = FC<Props> {
@@ -42,10 +53,15 @@ val PresenterLayoutInner = FC<Props> {
         }
     }
 
-    mui.system.Box {
-        sx {
+    div {
+        css {
             height = 100.vh
             width = 100.vw
+            margin = 0.px
+            padding = 0.px
+            overflow = Overflow.hidden
+            display = Display.flex
+            flexDirection = FlexDirection.column
         }
         PresenterPage { view = appState.session.presenterInfo?.view ?: EmptyPV }
     }

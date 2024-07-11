@@ -1,6 +1,7 @@
 package components.presenter
 
 import components.DistributionPlot
+import components.redesign.basic.Stack
 import components.redesign.basic.sansSerif
 import components.redesign.basic.serif
 import components.redesign.questions.predictions.BinaryPrediction
@@ -12,13 +13,6 @@ import dom.html.HTMLDivElement
 import emotion.react.css
 import hooks.useElementSize
 import hooks.useWebSocket
-import mui.material.Stack
-import mui.material.StackDirection
-import mui.material.Typography
-import mui.material.styles.TypographyVariant
-import mui.system.Box
-import mui.system.responsive
-import mui.system.sx
 import payloads.responses.WSData
 import react.FC
 import react.dom.html.ReactHTML.div
@@ -34,11 +28,11 @@ val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
     val response = useWebSocket<Prediction?>("/state${question.urlPrefix}/group_pred")
 
     Stack {
-        sx {
+        css {
             gap = 30.pt
-            width = 100.pct
-            height = 100.pct
-            padding = themed(5)
+            width = 100.vw
+            height = 100.vh
+            padding = 2.5.vh
             alignItems = AlignItems.center
             justifyContent = JustifyContent.spaceBetween
         }
@@ -46,6 +40,7 @@ val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
             css {
                 fontFamily = sansSerif
                 textAlign = TextAlign.center
+                fontWeight = integer(600)
                 fontSize = 7.vh
                 padding = 0.px
                 margin = 0.px
@@ -53,8 +48,8 @@ val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
             +question.name
         }
         if (response is WSData) {
-            Box {
-                sx {
+            div {
+                css {
                     width = 100.pct
                     flexGrow = number(1.0)
                 }
@@ -75,27 +70,27 @@ val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
                         resolutionLine = if (props.view.showResolution) question.resolution?.value as? Double else null
                     }
                   }
-                } ?: Typography {
-                    variant = TypographyVariant.h4
+                } ?: div {
+                    css { fontSize = 6.vh }
                     +"Nobody has yet answered."
                 }
             }
             if (response.data?.dist !is BinaryDistribution)
-            Typography {
-                variant = TypographyVariant.h2
+            div {
+                css { fontSize = 4.vh }
                 response.data?.dist?.let{
                     +it.description
                 }
             }
         }
         Stack {
-            direction = responsive(StackDirection.row)
-            sx {
+            direction = FlexDirection.row
+            css {
                 width = 100.pct
                 justifyContent = JustifyContent.flexStart
+                fontSize = 4.vh
             }
-            Typography {
-                variant = TypographyVariant.h6
+            div {
                 +"${question.numPredictors} people answered"
             }
         }
