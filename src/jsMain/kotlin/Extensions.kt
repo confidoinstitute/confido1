@@ -69,6 +69,7 @@ interface ClientExtension : Extension {
     fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {}
     fun roomTabsExtra(room: Room, appState: SentState, layoutMode: LayoutMode): List<Pair<String, String>>  = emptyList()
     fun roomRoutesExtra(room: Room, cb: ChildrenBuilder) {}
+    fun rootLayoutStartHook() {}
 }
 
 external interface ExtensionContextProviderProps: Props {

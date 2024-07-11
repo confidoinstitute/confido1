@@ -20,6 +20,7 @@ import emotion.react.css
 import hooks.useBreakpoints
 import react.*
 import react.router.*
+import tools.confido.extensions.ClientExtension
 import tools.confido.state.*
 import users.UserType
 
@@ -47,6 +48,9 @@ private val RootLayoutInner = FC<Props> {
     val location = useLocation()
     var showDemoWelcome by useState(appConfig.demoMode && window.asDynamic().demoDismissed != true)
     var showNewDesign by useState {!appConfig.demoMode && web.storage.localStorage.getItem("newDesignMessageSeen") == null }
+    ClientExtension.enabled.forEach {
+        it.rootLayoutStartHook()
+    }
     useEffect(layoutMode.ordinal) {
         document.body.className = when (layoutMode) {
             LayoutMode.PHONE -> "phone tabminus"
