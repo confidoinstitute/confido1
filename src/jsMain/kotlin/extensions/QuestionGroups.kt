@@ -20,6 +20,7 @@ import react.dom.html.ReactHTML.h1
 import react.dom.html.ReactHTML.h2
 import react.dom.html.ReactHTML.h3
 import react.dom.html.ReactHTML.li
+import react.dom.html.ReactHTML.ol
 import react.dom.html.ReactHTML.ul
 import rooms.Room
 import tools.confido.extensions.ClientExtension
@@ -87,7 +88,7 @@ object QuestionGroupsCE: ClientExtension, QuestionGroupsExtension() {
                         }
                     }
                 }
-                ul {
+                ol {
                     qs.forEach { q-> li { +q.name } }
                 }
             }
