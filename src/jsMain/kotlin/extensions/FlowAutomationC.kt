@@ -6,10 +6,12 @@ import components.redesign.forms.FormField
 import components.redesign.forms.MultilineTextInput
 import components.redesign.layout.LayoutMode
 import components.rooms.RoomContext
+import csstype.TextDecoration
 import csstype.em
 import emotion.react.css
 import hooks.useCoroutineLock
 import io.ktor.client.request.*
+import io.ktor.http.*
 import mui.material.FormGroup
 import react.*
 import react.dom.html.ReactHTML.a
@@ -28,6 +30,7 @@ val FlowPage = FC<Props> {
     val flow = room.extensionData[RoomFlowKey]
     var curFlow by useState(flow)
     val sendingLock = useCoroutineLock()
+    var doneSteps by useState(setOf<String>())
 
     var editOpen by useState(false)
     Button {
@@ -79,8 +82,12 @@ val FlowPage = FC<Props> {
     ol {
         dynFlow.forEach { item->
             li {
+                val name = (item.name as String)
+                css {
+                    if (name in doneSteps) textDecoration = TextDecoration.lineThrough
+                }
                 a {
-                    +(item.name as String)
+                    +name
                     suspend fun doAction(act: dynamic) {
                         if (act.multi != undefined) {
                             (act.multi as Array<dynamic>).forEach {
@@ -89,7 +96,7 @@ val FlowPage = FC<Props> {
                         }
                         if (act.path != undefined) {
                             val path = (act.path as String).replace("\$room", room.id)
-                            Client.httpClient.post(path) {
+                            val resp = Client.httpClient.post(path) {
                                 if (act.json != undefined) {
                                     headers.append("Content-Type", "application/json; charset=UTF-8")
                                     setBody(JSON.stringify(act.json).replace("\$room", room.id))
@@ -97,6 +104,8 @@ val FlowPage = FC<Props> {
                                     setBody(act.body as String)
                                 }
                             }
+                            if (resp.status.isSuccess() )
+                                doneSteps = doneSteps + setOf(name)
                         }
                     }
                     onClick = {
