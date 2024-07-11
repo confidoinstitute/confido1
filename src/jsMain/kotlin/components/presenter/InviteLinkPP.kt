@@ -18,7 +18,7 @@ import web.location.location
 
 val InviteLinkPP = FC<PresenterPageProps<InviteLinkPV>> { props->
     val room = props.view.room.deref() ?: return@FC
-    val link = room.inviteLinks.firstOrNull { it.id == props.view.id } ?: return@FC
+    val link = room.inviteLinks.firstOrNull { it.id == props.view.id  || props.view.id == "FIRST" } ?: return@FC
     val url = link.link(location.origin, room)
     val ws = useWebSocket<String>("/state${room.urlPrefix}/invites/${link.id}/shortlink")
     val viewportSize = useViewportSize()
