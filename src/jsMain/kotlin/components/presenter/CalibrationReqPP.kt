@@ -3,14 +3,13 @@ package components.presenter
 import components.redesign.basic.Stack
 import components.redesign.calibration.CalibrationGraph
 import components.redesign.calibration.CalibrationReqView
-import csstype.pct
+import csstype.*
 import emotion.react.css
 import hooks.useSuspendResult
 import io.ktor.client.call.*
 import io.ktor.http.*
-import payloads.requests.CalibrationRequest
-import payloads.requests.Everyone
 import react.FC
+import react.dom.html.ReactHTML.div
 import tools.confido.calibration.CalibrationVector
 import tools.confido.state.CalibrationReqPV
 
@@ -26,9 +25,20 @@ val CalibrationReqPP = FC<PresenterPageProps<CalibrationReqPV>> { props->
         Stack {
             css {
                 margin = 10.pct
+                alignItems = AlignItems.center
+                justifyContent = JustifyContent.center
+                justifySelf = JustifySelf.stretch
+                flexGrow = number(1.0)
             }
-            CalibrationGraph {
-                this.calib = data
+            div {
+                css {
+                    width = 60.vh
+                    transform = scale(2.0)
+                }
+                CalibrationGraph {
+                    this.calib = data
+                    this.height = 40.vh
+                }
             }
         }
     }

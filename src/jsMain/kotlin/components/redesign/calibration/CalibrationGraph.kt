@@ -373,11 +373,13 @@ val CalibrationGraph = FC<CalibrationGraphProps> { props->
             Stack {
                 direction = FlexDirection.row
                 css { flexGrow = number(1.0); alignItems = AlignItems.flexStart }
-                InlineHelpButton {
-                    css {
-                        transform = rotate((90).deg)
+                props.onHelp?.let {
+                    InlineHelpButton {
+                        css {
+                            transform = rotate((90).deg)
+                        }
+                        onClick = { props.onHelp?.invoke(CalibrationHelpSection.ACCURACY) }
                     }
-                    onClick = { props.onHelp?.invoke(CalibrationHelpSection.ACCURACY) }
                 }
             }
         }
@@ -447,8 +449,10 @@ val CalibrationGraph = FC<CalibrationGraphProps> { props->
             Stack {
                 direction = FlexDirection.row
                 css { flexGrow = number(1.0); alignItems = AlignItems.flexStart }
-                InlineHelpButton {
-                    onClick = { props.onHelp?.invoke(CalibrationHelpSection.CONFIDENCE) }
+                props.onHelp?.let {
+                    InlineHelpButton {
+                        onClick = { props.onHelp?.invoke(CalibrationHelpSection.CONFIDENCE) }
+                    }
                 }
             }
         }
