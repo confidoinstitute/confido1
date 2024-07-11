@@ -357,7 +357,7 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
             this.externalHelpOpen = combineRefs(calibrationHelpOpen, props.externalHelpOpen)
             onHelpChange = { helpOpen = it }
         }
-        if (appState.session.user?.type != UserType.GUEST && layoutMode >= LayoutMode.DESKTOP && req.who != Myself)
+        if (appState.session.user?.type != UserType.GUEST && layoutMode >= LayoutMode.TABLET && req.who != Myself)
         div {
             css {
                 position = Position.absolute
