@@ -57,7 +57,7 @@ data class InviteLinkPV(
     val room: Ref<Room>,
     val id: String,
 ) : PresenterView() {
-    override suspend fun isValid() = room.deref()?.inviteLinks?.any { it.id == this.id } ?: false
+    override suspend fun isValid() = this.id == "FIRST" || room.deref()?.inviteLinks?.any { it.id == this.id } ?: false
     override fun describe() = "invite link and QR code"
 }
 
