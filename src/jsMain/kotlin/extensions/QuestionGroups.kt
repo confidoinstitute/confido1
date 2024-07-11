@@ -22,6 +22,7 @@ import react.dom.html.ReactHTML.h3
 import react.dom.html.ReactHTML.li
 import react.dom.html.ReactHTML.ol
 import react.dom.html.ReactHTML.ul
+import react.router.dom.Link
 import rooms.Room
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionContextPlace
@@ -89,7 +90,12 @@ object QuestionGroupsCE: ClientExtension, QuestionGroupsExtension() {
                     }
                 }
                 ol {
-                    qs.forEach { q-> li { +q.name } }
+                    qs.forEach { q-> li {
+                        Link {
+                            to = "${room.urlPrefix}/questions/${q.id}"
+                            +q.name
+                        }
+                    } }
                 }
             }
         }
