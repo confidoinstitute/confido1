@@ -32,8 +32,9 @@ val InviteLinkPP = FC<PresenterPageProps<InviteLinkPV>> { props->
         }
         Stack {
             css {
-                fontSize = 8.vh
+                fontSize = 6.5.vh
                 alignItems = AlignItems.center
+                lineHeight = number(1.1)
             }
             div {
                 +"Join Confido room "
@@ -48,14 +49,14 @@ val InviteLinkPP = FC<PresenterPageProps<InviteLinkPV>> { props->
             }
             QRCodeSVG {
                 value = url
-                size = viewportSize.height / 2
+                size = maxOf(viewportSize.height / 2, 300)
                 level = "M"
             }
         }
         if (ws is WSData<String>)
             div {
                 css {
-                    fontSize = 5.vh
+                    fontSize = 5.5.vh
                 }
                 +location.origin
                 +"/join/"
