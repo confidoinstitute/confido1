@@ -21,6 +21,7 @@ data class AppConfig(
     val featureFlags: Set<FeatureFlag> = setOf(),
     val privacyPolicyUrl: String? = null,
     val enabledExtensionIds: Set<String> = setOf(),
+    val predictionCoalesceInterval: Int = 60,
 )
 
 expect val appConfig: AppConfig

@@ -59,6 +59,7 @@ fun loadConfig() = AppConfig(
     featureFlags = FeatureFlag.values().filter{ getenvBool("CONFIDO_FEAT_${it.name}", it in DEFAULT_FEATURE_FLAGS)}.toSet(),
     privacyPolicyUrl = System.getenv("CONFIDO_PRIVACY_POLICY_URL")?.ifEmpty {null},
     enabledExtensionIds = getenvList("CONFIDO_EXTENSIONS").toSet(),
+    predictionCoalesceInterval = System.getenv("CONFIDO_PREDICTION_COALESCE_INTERVAL")?.toInt() ?: 60,
 )
 
 actual val appConfig = loadConfig()
@@ -652,7 +653,7 @@ object serverState : GlobalState() {
             // metric more meaningful. Exception: if previous prediction was before score time and new one after
             // we need to keep the previous one in order to preserve scoring.
             var lastPredOther: Prediction? = null
-            if (myLastPred != null && pred.ts - myLastPred.ts < 60 &&
+            if (myLastPred != null && pred.ts - myLastPred.ts < appConfig.predictionCoalesceInterval &&
                     !(sched.score != null && myLastPred.ts <= sched.score.epochSeconds && pred.ts > sched.score.epochSeconds)) {
                 userPredHistManager.deleteEntity(myLastPred)
                 lastPredOther = userPredHistManager.mongoCollection.find(and(Prediction::question eq pred.question))
