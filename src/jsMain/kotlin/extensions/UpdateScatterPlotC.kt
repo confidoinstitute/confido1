@@ -206,8 +206,8 @@ val UpdateScatterPlot = FC<UpdateScatterPlotProps> { props->
 
 val UpdateScatterTable = FC<UpdateScatterPlotProps> { props->
     val preds = props.preds.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<Prediction>>>()
-    val dists = preds.mapNotNull { it.map { it as? BinaryDistribution } }.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<BinaryDistribution>>>()
-    val probs = dists.mapNotNull { it.map { it.yesProb } }
+    val dists = preds.map { it.map { it.dist as? BinaryDistribution } }.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<BinaryDistribution>>>()
+    val probs = dists.map { it.map { it.yesProb } }
     val diffs = probs.map { it[1] - it[0] }
     ReactHTML.table {
         css {
