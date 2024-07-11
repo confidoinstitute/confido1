@@ -10,6 +10,7 @@ import rooms.RoomPermission
 import tools.confido.application.routes.*
 import tools.confido.application.sessions.TransientData
 import tools.confido.application.sessions.modifyUserSession
+import tools.confido.application.sessions.userSession
 import tools.confido.question.Question
 import tools.confido.question.QuestionState
 import tools.confido.refs.Ref
@@ -81,9 +82,10 @@ object MillionaireServerExtension : ServerExtension, MillionaireExt() {
                 assertPermission(RoomPermission.MANAGE_QUESTIONS)
                 setState(room, call.receive())
                 val st = getState(room)
+                if (call.userSession?.presenterInfo?.view !is MillionairePV)
                 call.modifyUserSession {
                     val oldInfo = it.presenterInfo ?: PresenterInfo()
-                    val newInfo = oldInfo.copy(view = st.presenterView(room), lastUpdate = unixNow())
+                    val newInfo = oldInfo.copy(view = MillionairePV(room.ref), lastUpdate = unixNow())
                     it.copy(presenterInfo = newInfo)
                 }
                 TransientData.refreshAllWebsockets()

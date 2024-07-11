@@ -37,6 +37,11 @@ data class MillionaireState(
 }
 
 @Serializable
+data class MillionairePV(val room: Ref<Room>) : PresenterView() {
+    override fun describe() = "Dynamically updating millionaire view"
+}
+
+@Serializable
 data class MillionaireScoreboardPV(val room: Ref<Room>) : PresenterView() {
     override fun describe() = "Millionaire scoreboard"
 }
@@ -46,6 +51,7 @@ abstract class MillionaireExt : Extension {
     val MIL_GROUP = "mil"
     override fun registerPresenterViews(builder: PolymorphicModuleBuilder<PresenterView>) {
         builder.subclass(MillionaireScoreboardPV::class)
+        builder.subclass(MillionairePV::class)
     }
     val INITIAL_SCORE = 1000.0
     fun computeScore(pred: Double, res: Boolean) =

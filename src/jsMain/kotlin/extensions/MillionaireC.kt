@@ -1,7 +1,9 @@
 package extensions
 
 import components.AppStateContext
+import components.presenter.PresenterPage
 import components.presenter.PresenterPageProps
+import components.presenter.QuestionPP
 import components.presenter.presenterPageMap
 import components.redesign.forms.Button
 import components.redesign.presenter.PresenterContext
@@ -35,6 +37,7 @@ import tools.confido.refs.Ref
 import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.spaces.BinarySpace
+import tools.confido.state.QuestionPV
 import users.User
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
@@ -49,6 +52,7 @@ val MillionaireScoreboardPP = FC<PresenterPageProps<MillionaireScoreboardPV>> { 
             height = 90.vh
             columnFill = Auto.auto
             columnCount = integer(2)
+            overflowX = Auto.auto
         }
         ReactHTML.table {
             css {
@@ -74,8 +78,17 @@ val MillionaireScoreboardPP = FC<PresenterPageProps<MillionaireScoreboardPV>> { 
     }
 }
 
+val MillionairePP = FC<PresenterPageProps<MillionairePV>> { props->
+    val room = props.view.room.deref() ?: return@FC
+    val ms = MillionaireCE.getState(room)
+    PresenterPage { view = ms.presenterView(room) }
+}
+
 object MillionaireCE : ClientExtension, MillionaireExt() {
-    override fun registerPresenterPages() = mapOf(presenterPageMap(MillionaireScoreboardPP))
+    override fun registerPresenterPages() = mapOf(
+        presenterPageMap(MillionaireScoreboardPP),
+        presenterPageMap(MillionairePP),
+    )
 
     override fun questionPageExtra(q: Question, place: ClientExtension.QuestionPagePlace, cb: ChildrenBuilder) {
         useContext(AppStateContext)
@@ -159,7 +172,7 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
 
             Button {
                 +"Open presenter"
-                onClick = { presenterCtl.offer(st.presenterView(room)) }
+                onClick = { presenterCtl.offer(MillionairePV(room.ref)) }
             }
             Button {
                 +"Reset to start"
