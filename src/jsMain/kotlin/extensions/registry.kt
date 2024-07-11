@@ -1,5 +1,6 @@
 package tools.confido.extensions
 
+import extensions.AutoNavigateCE
 import extensions.MillionaireCE
 import extensions.QuestionGroupsCE
 import extensions.UpdateScatterPlotCE
@@ -11,4 +12,5 @@ actual val registeredExtensions = listOf<Extension>(
     QuestionGroupsCE,
     MillionaireCE,
     FlowAutomationCE,
+    AutoNavigateCE,
 )
