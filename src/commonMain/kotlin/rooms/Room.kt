@@ -4,6 +4,9 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import tools.confido.extensions.ExtensionData
+import tools.confido.extensions.ExtensionDataSerializer
+import tools.confido.extensions.ExtensionDataType
 import tools.confido.question.Question
 import tools.confido.question.QuestionSchedule
 import tools.confido.refs.*
@@ -23,6 +26,10 @@ data class ScoringConfig(
     fun identify() = "${scoreboardMode.toString()}"
 }
 
+
+val RoomEDT = ExtensionDataType("RoomEDT")
+class RoomEDTSerializer: ExtensionDataSerializer(RoomEDT)
+
 @Serializable
 data class Room(
     @SerialName("_id")
@@ -37,6 +44,8 @@ data class Room(
     val icon: String? = null,
     val defaultSchedule: QuestionSchedule = QuestionSchedule(),
     val scoring: ScoringConfig? = null,
+    @Serializable(with = RoomEDTSerializer::class)
+    val extensionData: ExtensionData = ExtensionData(RoomEDT),
 ) : ImmediateDerefEntity, HasUrlPrefix {
     fun findLink(id: String?): InviteLink? {
         if (id == null || id == "") {

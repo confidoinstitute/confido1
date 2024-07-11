@@ -26,6 +26,7 @@ import react.dom.html.ReactHTML.span
 import react.router.*
 import rooms.*
 import tools.confido.refs.*
+import tools.confido.state.clientState
 import tools.confido.utils.mapDeref
 import utils.roomUrl
 import utils.runCoroutine
@@ -337,6 +338,9 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                         this.room = room
                     }
                 }
+            clientState.extensions.forEach {
+                it.roomRoutesExtra(room, this)
+            }
         }
     }
 }

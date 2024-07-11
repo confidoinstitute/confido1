@@ -1,6 +1,7 @@
 package tools.confido.extensions
 
 import components.presenter.PresenterPageType
+import components.redesign.layout.LayoutMode
 import components.redesign.questions.dialog.EditQuestionDialogProps
 import components.redesign.questions.dialog.QuestionQuickSettingsDialogProps
 import components.redesign.questions.predictions.MyPredictionDescriptionProps
@@ -11,6 +12,7 @@ import react.Props
 import rooms.Room
 import tools.confido.question.Question
 import tools.confido.state.PresenterView
+import tools.confido.state.SentState
 import tools.confido.state.appConfig
 import kotlin.reflect.KClass
 
@@ -65,6 +67,8 @@ interface ClientExtension : Extension {
     }
     fun registerPresenterPages(): Map<KClass<out PresenterView>, PresenterPageType> = emptyMap()
     fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {}
+    fun roomTabsExtra(room: Room, appState: SentState, layoutMode: LayoutMode): List<Pair<String, String>>  = emptyList()
+    fun roomRoutesExtra(room: Room, cb: ChildrenBuilder) {}
 }
 
 external interface ExtensionContextProviderProps: Props {

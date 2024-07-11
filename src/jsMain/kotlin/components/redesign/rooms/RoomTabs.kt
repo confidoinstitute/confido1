@@ -18,6 +18,7 @@ import react.dom.html.ReactHTML.div
 import react.router.*
 import react.router.dom.*
 import rooms.*
+import tools.confido.state.clientState
 
 external interface RoomTabsProps : PropsWithPalette<RoomPalette>, PropsWithClassName {
     var onChange: (() -> Unit)?
@@ -148,5 +149,9 @@ val RoomTabs = FC<RoomTabsProps> { props ->
 
         if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS) && layoutMode >= LayoutMode.TABLET)
             tab("manage_questions", "Question management")
+
+        clientState.extensions.forEach {
+            it.roomTabsExtra(room, appState, layoutMode).forEach { (path, title) -> tab(path, title)  }
+        }
     }
 }
