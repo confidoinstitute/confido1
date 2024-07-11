@@ -36,6 +36,7 @@ val CalibrationReqPP = FC<PresenterPageProps<CalibrationReqPV>> { props->
                     transform = scale(2.0)
                 }
                 CalibrationGraph {
+                    this.who = req.who
                     this.calib = data
                     this.height = 40.vh
                 }
