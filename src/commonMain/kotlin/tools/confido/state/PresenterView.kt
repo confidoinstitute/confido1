@@ -1,18 +1,17 @@
 package tools.confido.state
 
-import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
+import payloads.requests.CalibrationRequest
 import rooms.Room
 import tools.confido.extensions.Extension
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.refs.deref
 import tools.confido.utils.unixNow
-import users.User
 
 @Serializable
 abstract class PresenterView {
@@ -47,6 +46,12 @@ data class GroupPredPV(
 }
 
 @Serializable
+@SerialName("calibReq")
+data class CalibrationReqPV(val req: CalibrationRequest) : PresenterView() {
+    override fun describe() = "Calibration graph"
+}
+
+@Serializable
 @SerialName("inviteLink")
 data class InviteLinkPV(
     val room: Ref<Room>,
@@ -76,6 +81,7 @@ val presenterSM by lazy { SerializersModule {
         subclass(QuestionPV::class)
         subclass(GroupPredPV::class)
         subclass(InviteLinkPV::class)
+        subclass(CalibrationReqPV::class)
         Extension.forEach { it.registerPresenterViews(this) }
     }
 } }

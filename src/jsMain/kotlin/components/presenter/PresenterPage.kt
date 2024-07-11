@@ -24,6 +24,7 @@ val view2page by lazy { mapOf(
     presenterPageMap(QuestionPP),
     presenterPageMap(GroupPredPP),
     presenterPageMap(InviteLinkPP),
+    presenterPageMap(CalibrationReqPP),
 ) + ClientExtension.enabled.map { it.registerPresenterPages() }.fold(emptyMap()) { a, b -> a+b } }
 
 val PresenterPage = FC<PresenterPageProps<PresenterView>> { props->

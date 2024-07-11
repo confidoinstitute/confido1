@@ -3,18 +3,20 @@ package components.redesign.calibration
 import Client
 import components.AppStateContext
 import components.redesign.basic.*
-import components.redesign.forms.ButtonUnstyled
-import components.redesign.forms.InlineHelpButton
-import components.redesign.forms.OptionGroup
-import components.redesign.forms.OptionGroupPageTabsVariant
+import components.redesign.forms.*
+import components.redesign.layout.LayoutMode
+import components.redesign.layout.LayoutModeContext
+import components.redesign.presenter.PresenterContext
 import components.redesign.questions.predictions.yesGreen
 import components.showError
 import csstype.*
 import dom.html.HTMLTableCellElement
 import emotion.react.css
+import extensions.UpdateScatterPlotPV
 import hooks.combineRefs
 import hooks.useCoroutineLock
 import hooks.useSuspendResult
+import icons.ProjectorScreenOutlineIcon
 import io.ktor.client.call.*
 import io.ktor.http.*
 import kotlinx.datetime.Instant
@@ -42,11 +44,15 @@ import tools.confido.calibration.CalibrationVector
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.refs.deref
+import tools.confido.refs.ref
+import tools.confido.state.CalibrationReqPV
 import tools.confido.utils.capFirst
 import tools.confido.utils.formatPercent
 import tools.confido.utils.toFixed
+import users.UserType
 import utils.except
 import web.url.URLSearchParams
+import kotlin.math.abs
 
 fun params2request(params: URLSearchParams): CalibrationRequest {
     val rooms = params.getAll("room").map{ Ref<Room>(it) }.toSet().ifEmpty { null }
@@ -266,7 +272,7 @@ val CalibrationView = FC<CalibrationViewProps> { props->
                 }
                 (if (props.graphContentOnly ?: false) CalibrationGraphContent else CalibrationGraph) {
                     this.calib = calib
-                    this.height = props.graphHeight
+                    this.height = props.graphHeight?.px
                     this.grid = props.graphGrid
                     this.who = props.who
                     this.areaLabels = props.graphAreaLabels
@@ -307,6 +313,8 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
     val calibrationHelpOpen = useRef<(CalibrationHelpSection)->Unit>()
     var detail by useState<List<CalibrationQuestion>>()
     var helpOpen by useState(false)
+    val presenterCtl = useContext(PresenterContext )
+    val layoutMode = useContext(LayoutModeContext)
     val canDetail = (
             entries.size > 0 &&
                 (req.who == Myself || (
@@ -326,24 +334,42 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
             }
         }
     }
-    CalibrationView {
-        this.data = data
-        if (canDetail) {
-            this.onDetail = { bin->
-                if (detail == null) {
-                    detailFetch {
-                        Client.sendData("/calibration/detail", props.req, onError = { showError(it) }) {
-                            detail = body<List<CalibrationQuestion>>()
+    div {
+        css {
+            position = Position.relative
+        }
+        CalibrationView {
+            this.data = data
+            if (canDetail) {
+                this.onDetail = { bin ->
+                    if (detail == null) {
+                        detailFetch {
+                            Client.sendData("/calibration/detail", props.req, onError = { showError(it) }) {
+                                detail = body<List<CalibrationQuestion>>()
+                            }
                         }
                     }
+                    detailBin = bin
                 }
-                detailBin = bin
             }
+            this.who = props.req.who
+            +props.except("req", "externalHelpOpen")
+            this.externalHelpOpen = combineRefs(calibrationHelpOpen, props.externalHelpOpen)
+            onHelpChange = { helpOpen = it }
         }
-        this.who = props.req.who
-        +props.except("req", "externalHelpOpen")
-        this.externalHelpOpen = combineRefs(calibrationHelpOpen, props.externalHelpOpen)
-        onHelpChange = { helpOpen = it }
+        if (appState.session.user?.type != UserType.GUEST && layoutMode >= LayoutMode.DESKTOP && req.who != Myself)
+        div {
+            css {
+                position = Position.absolute
+                right = 0.px
+                top = 0.px
+            }
+            IconButton {
+                ProjectorScreenOutlineIcon{}
+                onClick = {  presenterCtl.offer(CalibrationReqPV(req)) }
+            }
+
+        }
     }
 }
 

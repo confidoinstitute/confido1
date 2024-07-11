@@ -26,7 +26,7 @@ import utils.except
 
 external interface CalibrationGraphProps: PropsWithElementSize, PropsWithClassName {
     var calib: CalibrationVector
-    var height: Double?
+    var height: Height?
     var who: CalibrationWho?
     var areaLabels: Boolean?
     var grid: Boolean?
@@ -301,7 +301,7 @@ val CalibrationGraph = FC<CalibrationGraphProps> { props->
             display = Display.grid
             gridTemplateRows = "auto 1fr auto auto".unsafeCast<GridTemplateRows>()
             gridTemplateColumns = "auto auto 1fr".unsafeCast<GridTemplateRows>()
-            height = (props.height?:500.0).px
+            height = props.height?:500.px
             marginTop = 15.px
             marginRight = 25.px
             marginLeft = 10.px
