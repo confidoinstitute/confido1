@@ -284,7 +284,8 @@ val UpdateScatterTable = FC<UpdateScatterPlotProps> { props->
 val UpdateScatterPlotPP = FC<PresenterPageProps<UpdateScatterPlotPV>> { props ->
     val view  = props.view
     val data = useSuspendResult(view.time1, view.time2, view.question.id) {
-        val url = "/api${questionUrl(view.question.id)}/update_plot?t1=${view.time1.epochSeconds}" +
+        val url = "/api${questionUrl(view.question.id)}/update_plot?x" +
+                (if (view.time1 != null) "&t1=${view.time1!!.epochSeconds}" else "") +
                 if (view.time2 != null) "&t2=${view.time2!!.epochSeconds}" else ""
         Client.httpClient.get(url).body<List<List2<Prediction?>>>()
     }?.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<Prediction>>?>()

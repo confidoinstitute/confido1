@@ -12,7 +12,7 @@ import tools.confido.state.PresenterView
 @Serializable
 data class UpdateScatterPlotPV(
     val question: Ref<Question>,
-    val time1: Instant,
+    val time1: Instant?,
     val time2: Instant?,
 ): PresenterView() {
     override fun describe() = "Update scatter plot"
