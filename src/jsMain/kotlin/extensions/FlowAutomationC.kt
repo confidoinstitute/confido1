@@ -88,11 +88,13 @@ val FlowPage = FC<Props> {
                 }
                 a {
                     +name
-                    suspend fun doAction(act: dynamic) {
+                    suspend fun doAction(act: dynamic): Boolean {
                         if (act.multi != undefined) {
+                            var ret = true
                             (act.multi as Array<dynamic>).forEach {
-                                doAction(it)
+                                if (!doAction(it)) ret = false
                             }
+                            return ret
                         }
                         if (act.path != undefined) {
                             val path = (act.path as String).replace("\$room", room.id)
@@ -101,16 +103,18 @@ val FlowPage = FC<Props> {
                                     headers.append("Content-Type", "application/json; charset=UTF-8")
                                     setBody(JSON.stringify(act.json).replace("\$room", room.id))
                                 } else if (act.body != undefined) {
-                                    setBody(act.body as String)
+                                    setBody((act.body as String).replace("\$room", room.id))
                                 }
                             }
-                            if (resp.status.isSuccess() )
-                                doneSteps = doneSteps + setOf(name)
+                            return  (resp.status.isSuccess() )
                         }
+                        return false
                     }
                     onClick = {
                         sendingLock {
-                            doAction(item)
+                            if (doAction(item)) {
+                                doneSteps = doneSteps + setOf(name)
+                            }
                         }
                         it.preventDefault()
                     }
