@@ -26,6 +26,7 @@ import react.ChildrenBuilder
 import react.FC
 import react.Props
 import react.dom.html.ReactHTML
+import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.h1
 import react.router.useNavigate
 import react.useContext
@@ -389,10 +390,22 @@ object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
                             this.preds = data ?: emptyList()
                             this.mode = UpdateScatterMode.DIRECTIONAL
                         }
-                        IconButton {
-                            ProjectorScreenOutlineIcon{}
-                            disabled = time1==null
-                            onClick = { time1?.let { time1-> presenterCtl.offer(UpdateScatterPlotPV(q.ref, time1, time2)) } }
+                        div {
+                            IconButton {
+                                ProjectorScreenOutlineIcon {}
+                                disabled = time1 == null
+                                onClick = {
+                                    time1?.let { time1 ->
+                                        presenterCtl.offer(
+                                            UpdateScatterPlotPV(
+                                                q.ref,
+                                                time1,
+                                                time2
+                                            )
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
