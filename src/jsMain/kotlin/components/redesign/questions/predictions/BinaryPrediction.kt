@@ -295,10 +295,29 @@ val BinaryPredInput = FC<PredictionInputProps> { props->
     var previewDist by useState(propDist)
     val predictionTerminology = props.question?.predictionTerminology ?: PredictionTerminology.ANSWER
     useEffect(propDist?.yesProb) { previewDist = propDist }
+
+    val realSize = useElementSize<HTMLElement>()
+    val clickRE = usePureClick<HTMLElement> { ev->
+        if (previewDist == null) {
+            val elem = ev.currentTarget as HTMLElement
+            val rect = elem.getBoundingClientRect()
+            val width = rect.width
+            val x = ev.clientX - rect.left
+            val zoomParams = PZParams(viewportWidth = width, contentDomain = 0.0..100.0, sidePad = SIDE_PAD)
+            val zoomState = PZState(zoomParams)
+            val pos = zoomState.viewportToContent(x)
+            val newDist = BinaryDistribution(pos / 100.0)
+            console.log("x: $x, pos: $pos, width: $width")
+            previewDist = newDist
+            props.onChange?.invoke(newDist, true)
+        }
+
+    }
     Stack {
         css {
             overflowX = Overflow.hidden
         }
+        ref = clickRE
         div {
             css { position = Position.relative }
             BinaryPrediction {

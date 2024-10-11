@@ -219,7 +219,7 @@ val NumericPredInput = FC<NumericPredInputProps>("NumericPredInput") { props->
                 this.dimLines = (previewDist == null)
                 this.onGraphClick = { spaceX, relY ->
                     console.log("OGC $spaceX $relY ${simulateClickRef.current}")
-                    if (relY >= 2.0/3.0)
+                    //if (relY >= 2.0/3.0)
                     simulateClickRef.current?.invoke(spaceX)
                 }
                 onZoomChange = { newZoomState, newMarks ->
