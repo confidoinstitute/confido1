@@ -6,6 +6,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import rooms.ExportHistory
+import tools.confido.application.calibration.getScoredPrediction
 import tools.confido.distributions.*
 import tools.confido.question.Prediction
 import tools.confido.question.Question
@@ -144,6 +145,7 @@ class PredictionExport  (
     private suspend fun exportQuestion(question: Question, user: User?): Flow<CsvRecord> = flow {
         when(history) {
             ExportHistory.LAST -> getQuestionLastPrediction(question, user)?.let {emit(predictionRow(question, user, it))}
+            ExportHistory.LAST_SCORED -> getScoredPrediction(question, user?.ref)?.let { emit(predictionRow(question, user, it)) }
             ExportHistory.DAILY -> {
                 val dayMap: MutableMap<LocalDate, Prediction> = mutableMapOf()
                 getQuestionAllPredictions(question, user).collect {

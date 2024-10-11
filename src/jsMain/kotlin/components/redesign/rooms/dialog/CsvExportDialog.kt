@@ -48,6 +48,10 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
         selectedQuestions.any { it.deref()?.answerSpace is NumericSpace }
     }
 
+    val canScored = useMemo(selectedQuestions.joinToString(",") { it.id }) {
+        selectedQuestions.all { it.deref()?.effectiveSchedule?.score != null }
+    }
+
     val params = parametersOf(
         "questions" to listOf(selectedQuestions.map { it.id }.joinToString(",")),
         "what" to listOf(exportWhat),
@@ -121,6 +125,8 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
                             title = "Include prediction history"
                             options = buildList {
                                 add(ExportHistory.LAST to "Most recent prediction only")
+                                if (canScored)
+                                    add(ExportHistory.LAST_SCORED to "Most recent scored prediction")
                                 add(ExportHistory.DAILY to "Daily updates")
                                 add(ExportHistory.FULL to "All updates")
                             }

@@ -144,6 +144,7 @@ data class RoomMembership(
 @Serializable
 enum class ExportHistory {
     LAST,
+    LAST_SCORED,
     DAILY,
     FULL,
 }
