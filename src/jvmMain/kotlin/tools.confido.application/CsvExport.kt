@@ -5,6 +5,7 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import normalizedBrier
 import rooms.ExportHistory
 import tools.confido.application.calibration.getScoredPrediction
 import tools.confido.distributions.*
@@ -13,10 +14,13 @@ import tools.confido.question.Question
 import tools.confido.question.QuestionComment
 import tools.confido.refs.deref
 import tools.confido.refs.ref
+import tools.confido.spaces.BinaryValue
 import tools.confido.spaces.NumericSpace
+import tools.confido.spaces.NumericValue
 import tools.confido.state.serverState
 import tools.confido.utils.fromUnix
 import tools.confido.utils.toFixed
+import tools.confido.utils.toInt
 import tools.confido.utils.utcFromUnix
 import users.User
 
@@ -123,6 +127,19 @@ class PredictionExport  (
             bucketNames.zip(discretized.binProbs).map { (name, prob) ->
                 ret[name] = prob.toString()
             }
+        }
+
+        when (question.resolution) {
+            is BinaryValue-> {
+                ret["resolution"] = question.resolution.value.toInt().toString()
+                (prediction.dist as? BinaryDistribution)?.let {
+                    ret["brier"] = normalizedBrier(it.yesProb, question.resolution.value).toString()
+                }
+            }
+            is NumericValue-> {
+                ret["resolution"] = exportValue(question.resolution.space, question.resolution.value)
+            }
+            null-> {}
         }
 
         return ret.toMap()
