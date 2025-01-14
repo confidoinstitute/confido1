@@ -521,7 +521,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
 
             // TODO: Accept happens when not logged in without authentication being required.
             var userAlreadyExists = false
-            serverState.userManager.byEmail[accept.email]?.let { user ->
+            serverState.userManager.byEmail[accept.email?.lowercase()]?.let { user ->
                 if (room.members.none { it.user eqid user }) {
                     // Beware: this is copy-pasted in invite/accept
                     serverState.roomManager.modifyEntity(room.ref) {

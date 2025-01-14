@@ -3,7 +3,11 @@
 package tools.confido.state
 
 import com.mongodb.ConnectionString
+import com.mongodb.MongoException
+import com.mongodb.client.model.Collation
+import com.mongodb.client.model.CollationStrength
 import com.mongodb.client.model.Filters.and
+import com.mongodb.client.model.IndexOptions
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.reactivestreams.client.ClientSession
 import io.ktor.util.*
@@ -296,6 +300,18 @@ object serverState : GlobalState() {
         override suspend fun initialize() {
             super.initialize()
             mongoCollection.ensureIndex(User::email)
+
+            try {
+                mongoCollection.ensureUniqueIndex(
+                    User::email, indexOptions = IndexOptions().collation(
+                        Collation.builder().locale("simple").collationStrength(
+                            CollationStrength.SECONDARY
+                        ).build()
+                    )
+                )
+            } catch (e: MongoException) {
+                println("Creating unique index failed, there are probably duplicate emails already")
+            }
         }
         val byEmail: MutableMap<String, User> = mutableMapOf()
         init {
