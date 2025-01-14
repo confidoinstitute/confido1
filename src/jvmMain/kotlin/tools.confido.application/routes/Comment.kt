@@ -109,7 +109,10 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
                     ) && !(comment.user eqid user)
                 ) unauthorized("No rights.")
 
-                serverState.questionCommentManager.deleteEntity(comment, true)
+                serverState.withTransaction {
+                    serverState.questionCommentManager.deleteEntity(comment, true)
+                    serverState.commentLikeManager.deleteAllCommentLikes(comment.ref)
+                }
             }
         }
 
@@ -190,7 +193,11 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
                     ) && !(comment.user eqid user)
                 ) unauthorized("You cannot delete this comment.")
 
-                serverState.roomCommentManager.deleteEntity(comment, true)
+                serverState.withTransaction {
+                    serverState.roomCommentManager.deleteEntity(comment, true)
+                    // Delete all likes on this comment
+                    serverState.commentLikeManager.deleteAllCommentLikes(comment.ref)
+                }
             }
         }
         TransientData.refreshAllWebsockets()

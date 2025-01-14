@@ -503,6 +503,27 @@ object serverState : GlobalState() {
             if (state) addLike(comment, user)
             else removeLike(comment, user)
         }
+        suspend fun deleteAllUserLikes(user: Ref<User>) {
+            withMutationLock {
+                mongoCollection.deleteMany(CommentLike::user eq user)
+                byUser[user]?.forEach { comment ->
+                    byComment[comment]?.remove(user)
+                    numLikes[comment] = byComment[comment]?.size ?: 0
+                }
+                byUser.remove(user)
+            }
+        }
+
+        suspend fun deleteAllCommentLikes(comment: Ref<Comment>) {
+            withMutationLock {
+                mongoCollection.deleteMany(CommentLike::comment eq comment)
+                byComment[comment]?.forEach { user ->
+                    byUser[user]?.remove(comment)
+                }
+                byComment.remove(comment)
+                numLikes.remove(comment)
+            }
+        }
         init {
             onEntityAdded {
                 byComment.getOrPut(it.comment, {mutableSetOf()}).add(it.user)
@@ -510,8 +531,8 @@ object serverState : GlobalState() {
                 numLikes[it.comment] = byComment[it.comment]?.size ?: 0
             }
             onEntityDeleted { like->
-                byComment[like.comment]?.let { it.remove(like.user) }
-                byUser[like.user]?.let { it.remove(like.comment) }
+                byComment[like.comment]?.remove(like.user)
+                byUser[like.user]?.remove(like.comment)
                 numLikes[like.comment] = byComment[like.comment]?.size ?: 0
             }
         }

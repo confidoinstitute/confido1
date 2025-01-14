@@ -26,6 +26,13 @@ data class User(
     fun isAnonymous(): Boolean {
         return email == null
     }
+    
+    val displayName: String
+        get() = when {
+            type == UserType.GHOST -> "Deleted user"
+            nick != null -> nick
+            else -> "Anonymous user"
+        }
 }
 
 @Serializable
@@ -67,6 +74,11 @@ data class PasswordResetLink(
 
     fun link(origin: String) = "$origin/password_reset?t=$token"
 }
+
+@Serializable
+data class DeleteUserOptions(
+    val deleteComments: Boolean = false, // if false, comments will be anonymized
+)
 
 enum class PasswordCheckResult {
     OK,

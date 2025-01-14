@@ -75,7 +75,7 @@ internal val AddMemberItem = FC<AddMemberItemProps> {props ->
                     lineHeight = 15.px
                 }
                 props.user?.let {
-                    +(it.nick ?: "Anonymous user")
+                    +it.displayName
                 } ?: +(props.email ?: "")
             }
             ReactHTML.div {

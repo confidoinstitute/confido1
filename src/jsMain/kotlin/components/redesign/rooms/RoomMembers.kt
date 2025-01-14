@@ -161,7 +161,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
 
     MemberQuickSettingsDialog {
         open = dialogOpen
-        name = user.nick ?: "Anonymous user"
+        name = user.displayName
         hasEmail = user.email != null
         canDelete = canChangeSelf() && appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS) == true
         onClose = { dialogOpen = false }
@@ -200,7 +200,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
                     fontSize = 12.px
                     lineHeight = 15.px
                 }
-                +(user.nick ?: "Anonymous user")
+                +user.displayName
             }
             ReactHTML.div {
                 css {

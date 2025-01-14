@@ -87,7 +87,7 @@ val Comment = FC<CommentProps> { props ->
             }
         }
         DialogMenuItem {
-            text = "Delete comment"
+            text = "Delete comment" 
             icon = BinIcon
             variant = DialogMenuItemVariant.dangerous
             onClick = {
@@ -250,7 +250,7 @@ val CommentHeader = FC<CommentHeaderProps> { props ->
                 css {
                     fontWeight = integer(600)
                 }
-                +(props.author.nick ?: "Anonymous")
+                +props.author.displayName
             }
             Circle {
                 color = nameColor

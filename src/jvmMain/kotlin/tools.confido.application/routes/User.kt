@@ -596,6 +596,104 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
+    deleteST("/users/{id}") {
+        withAdmin {
+            val userIdToDelete = call.parameters["id"] ?: badRequest("Missing user ID")
+            val userToDelete = serverState.userManager.get(userIdToDelete) ?: notFound("User not found")
+            val options: DeleteUserOptions = call.receive()
+            
+            if (userToDelete eqid user) unauthorized("Cannot delete your own account")
+            
+            // Check if user has any predictions
+            val hasPredictions = serverState.userPred.any { (_, userPreds) ->
+                userPreds.any { it.key eqid userToDelete }
+            }
+            val hasComments = serverState.roomComments.any { (_, comments) ->
+                comments.any { it.value.user eqid userToDelete }
+            } || serverState.questionComments.any { (_, comments) ->
+                comments.any { it.value.user eqid userToDelete }
+            }
+            val willGhost = hasPredictions || (hasComments && !options.deleteComments)
+
+            serverState.withTransaction {
+                // Handle comments based on options
+                if (hasComments && options.deleteComments) {
+                    // Delete all user's comments
+                    serverState.questionComments.values.forEach { questionComments ->
+                        questionComments.values.filter { it.user eqid userToDelete }.forEach { comment ->
+                            serverState.questionCommentManager.deleteEntity(comment.ref)
+                        }
+                    }
+                    serverState.roomComments.values.forEach { roomComments ->
+                        roomComments.values.filter { it.user eqid userToDelete }.forEach { comment ->
+                            serverState.roomCommentManager.deleteEntity(comment.ref)
+                        }
+                    }
+                }
+                // Delete all likes by this user
+                serverState.commentLikeManager.deleteAllUserLikes(userToDelete.ref)
+
+
+                // Remove from all rooms
+                serverState.rooms.values.forEach { room ->
+                    if (room.members.any { it.user eqid userToDelete }) {
+                        serverState.roomManager.modifyEntity(room.ref) { r ->
+                            r.copy(members = r.members.filterNot { it.user eqid userToDelete })
+                        }
+                    }
+                }
+
+                if (!willGhost)
+                serverState.questions.forEach { (_,q)->
+                    if (q.author eqid userToDelete) {
+                        serverState.questionManager.modifyEntity(q.ref) { it.copy(author = null) }
+                    }
+                }
+                
+                // Delete all sessions for this user
+                serverState.userSessionManager.entityMap.values
+                    .filter { it.userRef eqid userToDelete }
+                    .forEach { session ->
+                        serverState.userSessionManager.deleteEntity(session.ref)
+                    }
+                serverState.loginLinkManager.entityMap.values
+                    .filter { it.user eqid userToDelete }
+                    .forEach {
+                        serverState.loginLinkManager.deleteEntity(it.ref)
+                    }
+                serverState.verificationLinkManager.entityMap.values
+                    .filter { it.user eqid userToDelete }
+                    .forEach {
+                        serverState.verificationLinkManager.deleteEntity(it.ref)
+                    }
+                serverState.passwordResetLinkManager.entityMap.values
+                    .filter { it.user eqid userToDelete }
+                    .forEach {
+                        serverState.passwordResetLinkManager.deleteEntity(it.ref)
+                    }
+
+                if (willGhost) {
+                    // Convert to GHOST user if they have predictions
+                    serverState.userManager.modifyEntity(userToDelete.ref) { u ->
+                        u.copy(
+                            type = UserType.GHOST,
+                            email = null,
+                            nick = null,
+                            password = null,
+                            active = false
+                        )
+                    }
+                } else {
+                    // If no predictions, we can safely delete
+                    serverState.userManager.deleteEntity(userToDelete.ref)
+                }
+            }
+            
+            TransientData.refreshAllWebsockets()
+            call.respond(HttpStatusCode.OK)
+        }
+    }
+
     postST("/users/add") {
         withAdmin {
             val sendInvitationEmail = (call.parameters["invite"] != null)

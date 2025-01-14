@@ -88,6 +88,7 @@ fun useBackdrop(open: Boolean, onClick: BackdropClickHandler? = null) {
     val setBackground = useContext(BackdropContext)
     val dialogId = useId()
     useEffect(open, onClick) {
+        println("USEBACKDROP $dialogId $open")
         if (open) setBackground.add(dialogId, onClick) else setBackground.del(dialogId)
         cleanup {
             setBackground.del(dialogId)

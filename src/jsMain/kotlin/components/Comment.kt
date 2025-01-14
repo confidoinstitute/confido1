@@ -140,7 +140,7 @@ val Comment = FC<CommentProps> { props ->
             marginBottom = themed(2)
         }
         CardHeader {
-            val name = user.nick ?: "Anonymous"
+            val name = user.displayName
             title = ReactNode(name)
             subheader = Tooltip.create {
                     this.title = ReactNode(comment.timestamp.toDateTime() + if (comment.modified != null) ", edited ${comment.modified?.toDateTime() ?: ""}" else "")

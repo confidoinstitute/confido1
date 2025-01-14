@@ -215,6 +215,7 @@ val AdminView = FC<Props> {
                             UserType.ADMIN -> 0
                             UserType.MEMBER -> 1
                             UserType.GUEST -> 2
+                            UserType.GHOST -> 3
                         }
                     },
                     { if (it.email != null) 0 else 1 },

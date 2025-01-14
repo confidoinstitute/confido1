@@ -6,12 +6,19 @@ import kotlinx.serialization.Serializable
 enum class UserType {
     ADMIN,
     MEMBER,
-    GUEST;
+    GUEST,
+    GHOST; // Represents a deleted user, preserving their predictions/history
 
     fun isProper() =
         when(this) {
             ADMIN -> true
             MEMBER -> true
             else -> false
+        }
+
+    fun isActive() = 
+        when(this) {
+            GHOST -> false
+            else -> true
         }
 }

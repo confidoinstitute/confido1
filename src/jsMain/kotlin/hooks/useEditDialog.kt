@@ -22,9 +22,10 @@ inline fun <E, DP: EditEntityDialogProps<E>> ChildrenBuilder.useEditDialog(comp:
         if (editOpen)
             editedKey = randomString(20)
     }
+    val uedKey = useId() // We may use multiple useEditDialogs in one place (e.g. in user admin edit dialog + delete dialog)
 
     comp {
-        key = "##editDialog##$editedKey"
+        key = "##editDialog##$uedKey##$editedKey"
         entity = editedEntity
         open = editOpen && !temporaryHide
         onClose = { editOpen = false }

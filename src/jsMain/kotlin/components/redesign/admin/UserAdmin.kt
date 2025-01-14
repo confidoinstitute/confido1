@@ -3,7 +3,9 @@ package components.redesign.admin
 
 import Client
 import components.AppStateContext
+import components.redesign.BinIcon
 import components.redesign.EditIcon
+import components.redesign.ConfirmDialog
 import components.redesign.basic.*
 import components.redesign.forms.*
 import components.redesign.layout.LayoutMode
@@ -16,6 +18,7 @@ import hooks.EditEntityDialogProps
 import hooks.useCoroutineLock
 import hooks.useEditDialog
 import io.ktor.client.request.*
+import io.ktor.http.*
 import kotlinx.datetime.Clock
 import kotlinx.js.jso
 import react.*
@@ -36,13 +39,57 @@ import react.dom.html.ReactHTML.tr
 import react.dom.html.ReactHTML.ul
 import tools.confido.refs.eqid
 import tools.confido.utils.capFirst
+import users.DeleteUserOptions
 import users.User
 import users.UserType
 import utils.isEmailValid
+import utils.runCoroutine
 import utils.toDateTime
 
 external interface EditUserDialogProps : EditEntityDialogProps<User> {
     var onTypeHelp: (()->Unit)?
+}
+
+val DeleteUserDialog = FC<EditEntityDialogProps<User>> { props ->
+    val user = props.entity ?: return@FC
+    
+    ConfirmDialog {
+        open = props.open
+        onClose = { props.onClose?.invoke() }
+        title = "Delete user"
+        confirmText = "Delete"
+        var commentHandling by useState("anonymize")
+        onConfirm = {
+            runCoroutine {
+                val options = DeleteUserOptions(
+                    deleteComments = commentHandling == "delete"
+                )
+                Client.sendData("/users/${user.id}", options, method = HttpMethod.Delete, onError = { showError(it) }) {}
+                props.onClose?.invoke()
+            }
+        }
+        Stack {
+            css { gap = 16.px }
+            +"Are you sure you want to delete user ${user.displayName}?"
+            p {
+                +"If the user has made any predictions, these will be preserved anonymized."
+            }
+            FormSection {
+                FormField {
+                    title = "Comment handling"
+                    FormSwitch {
+                        label = "Delete all comments"
+                        checked = commentHandling == "delete"
+                        onChange = { event -> commentHandling = if (event.target.checked) "delete" else "anonymize" }
+                    }
+                    comment = "If unchecked, comments will be converted to anonymous"
+                }
+            }
+            p {
+                +"This action cannot be undone."
+            }
+        }
+    }
 }
 
 val EditUserDialog = FC<EditUserDialogProps> { props ->
@@ -244,6 +291,7 @@ val UserAdmin = FC<Props> {
     val activate = useCoroutineLock()
     var typeHelpOpen by useDialog(UserTypeHelpDialog)
     val editUserOpen = useEditDialog(EditUserDialog, jso { onTypeHelp = {typeHelpOpen = true} }, temporaryHide=typeHelpOpen)
+    val deleteUserOpen = useEditDialog(DeleteUserDialog)
     val layoutMode = useContext(LayoutModeContext)
 
     PageHeader {
@@ -285,13 +333,14 @@ val UserAdmin = FC<Props> {
                     }
                 }
                 tbody {
-                    appState.users.values.sortedWith(
+                    appState.users.values.filter { it.type != UserType.GHOST }.sortedWith(
                         compareBy(
                             {
                                 when (it.type) {
                                     UserType.ADMIN -> 0
                                     UserType.MEMBER -> 1
                                     UserType.GUEST -> 2
+                                    UserType.GHOST -> 3
                                 }
                             },
                             { if (it.email != null) 0 else 1 },
@@ -308,15 +357,31 @@ val UserAdmin = FC<Props> {
                             td { +(user.email ?: "") }
                             td { StatusChip {
                                 color = userTypeColors[user.type]!!.color
-                                text = user.type.name.lowercase().capFirst()
+                                text = when(user.type) {
+                                    UserType.GHOST -> "Deleted user"
+                                    else -> user.type.name.lowercase().capFirst()
+                                }
                             } }
                             if (layoutMode >= LayoutMode.TABLET)
                                 td { +(user.lastLoginAt?.epochSeconds?.toDateTime() ?: "Never") }
                             td {
-                                IconButton {
-                                    disabled = stale
-                                    onClick = { editUserOpen(user) }
-                                    EditIcon{ size = 14 }
+                                Stack {
+                                    direction = FlexDirection.row
+                                    IconButton {
+                                        disabled = stale
+                                        onClick = { editUserOpen(user) }
+                                        EditIcon{ size = 14 }
+                                    }
+                                    if (!(appState.session.user eqid user)) {
+                                        IconButton {
+                                            disabled = stale
+                                            onClick = { deleteUserOpen(user) }
+                                            css {
+                                                color = RoomPalette.red.color
+                                            }
+                                            BinIcon { size = 14 }
+                                        }
+                                    }
                                 }
                             }
                         }

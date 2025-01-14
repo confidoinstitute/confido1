@@ -83,7 +83,7 @@ val AccountFrame = FC<WorkspaceFrameProps> { props ->
                     lineHeight = 18.px
                     color = Color("#222222")
                 }
-                +(props.user.nick ?: "Anonymous user")
+                +props.user.displayName
             }
             div {
                 css {
