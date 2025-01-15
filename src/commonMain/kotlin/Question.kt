@@ -52,6 +52,13 @@ enum class GroupTerminology : Terminology {
     TEAM;
 }
 
+@Serializable
+enum class CommentVisibility {
+    EVERYONE,
+    ANSWERED,
+    MODERATOR_ONLY;
+}
+
 enum class GroupPredictionVisibility : Terminology {
     EVERYONE,
     ANSWERED,
@@ -181,6 +188,7 @@ data class Question(
     val resolutionVisible: Boolean = false,
     val resolution: Value? = null,
     val allowComments: Boolean = true,
+    val commentVisibility: CommentVisibility = CommentVisibility.EVERYONE,
     val annulled: Boolean = false,
     val sensitive: Boolean = false,
     val author: Ref<User>? = null,
@@ -252,4 +260,3 @@ data class Question(
         fun urlPrefix(id: String) = "/questions/$id"
     }
 }
-

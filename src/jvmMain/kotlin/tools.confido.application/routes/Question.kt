@@ -247,4 +247,3 @@ fun questionRoutes(routing: Routing) = routing.apply {
         }
     }
 }
-

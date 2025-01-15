@@ -71,6 +71,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
 
     // ANCHORING
     var groupPredictionVisibility by useState(props.entity?.groupPredictionVisibility ?: GroupPredictionVisibility.ANSWERED)
+    var commentVisibility by useState(props.entity?.commentVisibility ?: CommentVisibility.EVERYONE)
 
     // LANGUAGE
     var predictionTerminology by useState {
@@ -111,6 +112,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         // ANCHORING
         groupPredVisible = groupPredictionVisibility.groupPredVisible,
         groupPredRequirePrediction = groupPredictionVisibility.groupPredRequirePrediction,
+        commentVisibility = commentVisibility,
         // TERMINOLOGY
         predictionTerminology = predictionTerminology,
         groupTerminology = groupTerminology,
@@ -311,18 +313,30 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                     }
                 }
 
-            FormSection {
-                title = "Comments"
-                FormSwitch {
-                    label = "Allow comments"
-                    checked = allowComments
-                    onChange = { e -> allowComments = e.target.checked }
-                    comment = if (allowComments) {
-                        "It will possible for all room members to comment on the question."
-                    } else {
-                        "No room member can comment on the question."
+                FormSection {
+                    title = "Comments"
+                    FormSwitch {
+                        label = "Allow comments"
+                        checked = allowComments
+                        onChange = { e -> allowComments = e.target.checked }
+                        comment = if (allowComments) {
+                            "Comments are enabled for this question."
+                        } else {
+                            "Comments are disabled for this question."
+                        }
                     }
-                }
+                    if (allowComments) {
+                        RadioGroup<CommentVisibility>()() {
+                            title = "Comments visible to"
+                            options = listOf(
+                                CommentVisibility.EVERYONE to "all room members",
+                                CommentVisibility.ANSWERED to "those who answered",
+                                CommentVisibility.MODERATOR_ONLY to "moderators only",
+                            )
+                            value = commentVisibility
+                            onChange = { visibility -> commentVisibility = visibility }
+                        }
+                    }
                 // TODO: Re-enable once sensitivity is implemented fully.
                 /*
                 if (props.preset != QuestionPreset.SENSITIVE)
@@ -359,4 +373,3 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     }
     }
 }
-

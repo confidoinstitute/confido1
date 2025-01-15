@@ -6,6 +6,7 @@ import rooms.RoomMembership
 import rooms.RoomPermission
 import tools.confido.application.sessions.TransientData
 import tools.confido.question.Comment
+import tools.confido.question.CommentVisibility
 import tools.confido.question.Question
 import tools.confido.question.RoomComment
 import tools.confido.refs.*
@@ -27,6 +28,15 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
             val q = qref.deref() ?: return@forEach
             val room = state.questionRoom[q.ref]?.deref() ?: return@forEach
             if (!room.hasPermission(user, RoomPermission.VIEW_QUESTION_COMMENTS)) return@forEach
+
+            val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+            val lastPrediction = state.userPred[q.ref]?.get(user?.ref)
+            val canView = when (q.commentVisibility) {
+                CommentVisibility.EVERYONE -> true
+                CommentVisibility.ANSWERED -> lastPrediction != null
+                CommentVisibility.MODERATOR_ONLY -> false
+            }
+            if (!(canViewAll || canView)) return@forEach
             referencedUsers.addAll(comments.map { it.value.user })
         }
 

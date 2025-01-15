@@ -230,15 +230,15 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
                 this.groupPrediction = groupPrediction.data
             }
             if (props.question.allowComments && appState.hasPermission(room, RoomPermission.VIEW_QUESTION_COMMENTS)) {
-                QuestionCommentSection {
-                    this.question = props.question
-                    this.myPrediction = myPrediction
-                    this.allowAddingComment = appState.hasPermission(room, RoomPermission.POST_QUESTION_COMMENT) && props.question.allowComments
+                    QuestionCommentSection {
+                        this.question = props.question
+                        this.myPrediction = myPrediction
+                        this.allowAddingComment = appState.hasPermission(room, RoomPermission.POST_QUESTION_COMMENT) && props.question.allowComments
+                    }
                 }
             }
+            QuestionPageExtra { question = props.question; place = ClientExtension.QuestionPagePlace.QUESTION_PAGE_END }
         }
-        QuestionPageExtra { question = props.question; place = ClientExtension.QuestionPagePlace.QUESTION_PAGE_END }
-    }
     }
 }
 
@@ -710,6 +710,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
 
     var addCommentOpen by useState(false)
     var sortType by useState(SortType.NEWEST)
+    val (appState, _) = useContext(AppStateContext )
 
     AddCommentDialog {
         open = addCommentOpen
@@ -757,6 +758,31 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
             marginBottom = 44.px
         }
 
+        val canViewAll = props.question.room?.let { room -> appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS) } ?: false
+        val lastPrediction = appState.myPredictions[props.question.ref]
+        val canView = when (props.question.commentVisibility) {
+            CommentVisibility.EVERYONE -> true
+            CommentVisibility.ANSWERED -> lastPrediction != null
+            CommentVisibility.MODERATOR_ONLY -> false
+        }
+
+
+        if (!canViewAll && !canView) {
+            div {
+                css {
+                    padding = Padding(5.px, 15.px)
+                    fontFamily = sansSerif
+                    fontSize = 15.px
+                    color = Color("#666666")
+                }
+                +when (props.question.commentVisibility) {
+                    CommentVisibility.ANSWERED -> "You will be able to see others' comments once you add your prediction."
+                    CommentVisibility.MODERATOR_ONLY -> "Only moderators can see others' comments."
+                    else -> ""
+                }
+            }
+        }
+
         when (comments) {
             is WSData -> {
                 val sortedComments = when (sortType) {
@@ -780,6 +806,22 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
                         fontSize = 15.px
                     }
                     +"Loading the discussion..."
+                }
+            }
+        }
+
+        if (!canViewAll && !canView && comments is WSData && comments.data.isNotEmpty() ) {
+            div {
+                css {
+                    padding = Padding(5.px, 15.px)
+                    fontFamily = sansSerif
+                    fontSize = 15.px
+                    color = Color("#666666")
+                }
+                +when (props.question.commentVisibility) {
+                    CommentVisibility.ANSWERED -> "Add your prediction to see others' comments."
+                    CommentVisibility.MODERATOR_ONLY -> "Only moderators can see others' comments."
+                    else -> ""
                 }
             }
         }
@@ -817,4 +859,3 @@ private val QuestionStatusLine = FC<QuestionStatusProps> { props ->
         }
     }
 }
-

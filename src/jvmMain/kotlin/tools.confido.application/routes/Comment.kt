@@ -9,10 +9,7 @@ import payloads.responses.CommentInfo
 import rooms.Room
 import rooms.RoomPermission
 import tools.confido.application.sessions.TransientData
-import tools.confido.question.Comment
-import tools.confido.question.Question
-import tools.confido.question.QuestionComment
-import tools.confido.question.RoomComment
+import tools.confido.question.*
 import tools.confido.refs.*
 import tools.confido.state.insertEntity
 import tools.confido.state.modifyEntity
@@ -45,8 +42,19 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
         withQuestion {
             assertPermission(RoomPermission.VIEW_QUESTION_COMMENTS, "You cannot view the discussion for this question.")
 
-            val commentInfo = makeCommentInfo(user, question)
-            commentInfo
+            val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+            val lastPrediction = serverState.userPred[ref]?.get(user.ref)
+            val canView = when (question.commentVisibility) {
+                CommentVisibility.EVERYONE -> true
+                CommentVisibility.ANSWERED -> lastPrediction != null
+                CommentVisibility.MODERATOR_ONLY -> false
+            }
+
+            val comments = serverState.questionComments[ref]?.filterValues { comment ->
+                comment.user == user.ref || (canViewAll || canView)
+            }
+
+            makeCommentInfo(user, comments)
         }
     }
 
