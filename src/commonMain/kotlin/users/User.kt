@@ -26,7 +26,7 @@ data class User(
     fun isAnonymous(): Boolean {
         return email == null
     }
-    
+
     val displayName: String
         get() = when {
             type == UserType.GHOST -> "Deleted user"
@@ -102,4 +102,31 @@ fun checkPassword(password: String): PasswordCheckResult {
     }
 
     return PasswordCheckResult.OK
+}
+
+/**
+ * Sanitize a nickname for storage:
+ * - Remove control characters
+ * - Normalize internal whitespace runs to single space
+ * - Trim leading/trailing whitespace
+ */
+fun sanitizeNick(nick: String): String =
+    nick.replace(Regex("[\\p{Cc}\\p{Cf}\\p{Co}\\p{Cn}]"), "") // Remove control chars
+        .replace(Regex("\\s+"), " ") // Normalize whitespace runs
+        .trim() // Remove leading/trailing whitespace
+
+/**
+ * Normalize a nickname for comparison:
+ * - Convert to lowercase
+ * (More normalization rules can be added here in the future)
+ */
+fun normalizeNickForComparison(nick: String): String =
+    nick.lowercase()
+
+/**
+ * Compare two nicknames for equality after sanitization and normalization
+ */
+fun compareNicks(nick1: String?, nick2: String?): Boolean {
+    if (nick1 == null || nick2 == null) return false
+    return normalizeNickForComparison(sanitizeNick(nick1)) == normalizeNickForComparison(sanitizeNick(nick2))
 }

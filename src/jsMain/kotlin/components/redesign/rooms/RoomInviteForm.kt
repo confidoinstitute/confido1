@@ -23,6 +23,7 @@ import react.router.dom.*
 import rooms.RoomColor
 import tools.confido.refs.*
 import tools.confido.utils.*
+import users.UserType
 import utils.*
 import web.location.*
 
@@ -87,6 +88,9 @@ external interface RoomInviteFormProps : Props {
     var roomColor: RoomColor
     var inviteToken: String
     var allowAnonymous: Boolean
+    var targetUserType: UserType
+    var requireNickname: Boolean
+    var preventDuplicateNicknames: Boolean
 }
 
 
@@ -215,6 +219,9 @@ internal val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
                 this.roomColor = status.roomColor!!
                 this.inviteToken = inviteToken
                 this.allowAnonymous = status.allowAnonymous
+                this.targetUserType = status.targetUserType
+                this.requireNickname = status.requireNickname
+                this.preventDuplicateNicknames = status.preventDuplicateNicknames
             }
         } else {
             InvalidInviteAlert {

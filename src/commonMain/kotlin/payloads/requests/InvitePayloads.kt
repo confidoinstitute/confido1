@@ -5,6 +5,7 @@ import rooms.RoomRole
 import tools.confido.refs.Ref
 import tools.confido.state.UserSessionValidity
 import users.User
+import users.UserType
 
 /**
  * Accept invitation identified by [inviteToken] by an already logged-in user.
@@ -33,7 +34,17 @@ data class CreateNewInvite(
     val description: String?,
     val role: RoomRole,
     val anonymous: Boolean,
-)
+    val targetUserType: UserType = UserType.GUEST,
+    val requireNickname: Boolean = false,
+    val preventDuplicateNicknames: Boolean = false,
+) {
+    init {
+        // Validate that only MEMBER or GUEST types are allowed for invite links
+        require(targetUserType == UserType.MEMBER || targetUserType == UserType.GUEST) {
+            "Invite links can only create MEMBER or GUEST users"
+        }
+    }
+}
 
 /**
  * Delete a given invitation link. If [keepUsers] is set, make all members joined via it permanent. Otherwise revoke their membership.

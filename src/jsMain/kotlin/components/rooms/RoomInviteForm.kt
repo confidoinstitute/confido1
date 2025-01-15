@@ -27,6 +27,7 @@ import tools.confido.refs.eqid
 import tools.confido.state.UserSessionValidity
 import tools.confido.state.UserSessionValidity.*
 import tools.confido.utils.TOKEN_LEN
+import users.UserType
 import utils.*
 import web.location.location
 
@@ -68,6 +69,9 @@ external interface RoomInviteFormProps : Props {
     var roomId: String
     var inviteToken: String
     var allowAnonymous: Boolean
+    var targetUserType: UserType
+    var requireNickname: Boolean
+    var preventDuplicateNicknames: Boolean
 }
 
 private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
@@ -75,6 +79,7 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
     val emailRequired = !props.allowAnonymous
 
     var name by useState("")
+    var nameError by useState<String?>(null)
     var email by useState("")
     var emailError by useState<String?>(null)
 
@@ -86,36 +91,54 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
     fun acceptInvite() {
         val userMail = email.trim().ifEmpty { null }
         val emailValid = userMail?.let { isEmailValid(it) } ?: false
+        val userName = name.trim().ifEmpty { null }
 
         if (userMail != null && !emailValid) {
             emailError = "This email address is not valid."
-        } else {
-            if (emailRequired && userMail == null) {
-                emailError = "An email address is required."
-            } else {
-                runCoroutine {
-                    Client.sendData("${roomUrl(props.roomId)}/invite/accept_newuser",
-                        AcceptInviteAndCreateUser(
-                            props.inviteToken,
-                            name.trim().ifEmpty { null },
-                            userMail,
-                            PERMANENT,
-                        ),
-                        onError = { showError(it) }
-                    ) {
-                        if (body()) {
-                            // We need to log in.
-                            loginRequired = true
-                        } else {
-                            loginState.login()
-                            navigate(roomUrl(props.roomId))
+            return
+        }
+
+        if (emailRequired && userMail == null) {
+            emailError = "An email address is required."
+            return
+        }
+
+        if (props.requireNickname && userName == null) {
+            nameError = "A name is required."
+            return
+        }
+
+        runCoroutine {
+            println("accepting invite")
+            Client.sendData("${roomUrl(props.roomId)}/invite/accept_newuser",
+                AcceptInviteAndCreateUser(
+                    props.inviteToken,
+                    userName,
+                    userMail,
+                    PERMANENT,
+                ),
+                onError = { error ->
+                    when {
+                        error.contains("nickname is already taken", ignoreCase = true) == true -> {
+                            nameError = if (props.targetUserType == UserType.MEMBER)
+                                "This name is already taken in the workspace"
+                            else
+                                "This name is already taken in this room"
                         }
+                        else -> showError(error)
                     }
+                }
+            ) {
+                if (body()) {
+                    // We need to log in.
+                    loginRequired = true
+                } else {
+                    loginState.login()
+                    navigate(roomUrl(props.roomId))
                 }
             }
         }
     }
-
 
     if (!loginRequired) {
         TextField {
@@ -151,10 +174,25 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
             variant = FormControlVariant.outlined
             fullWidth = true
             id = "name-field"
-            label = ReactNode("Name (optional)")
+            required = props.requireNickname
+            label = if (props.requireNickname) {
+                ReactNode("Name")
+            } else {
+                ReactNode("Name (optional)")
+            }
+            error = nameError != null
+            helperText = if (nameError != null) {
+                ReactNode(nameError!!)
+            } else if (props.preventDuplicateNicknames) {
+                if (props.targetUserType == UserType.MEMBER)
+                    ReactNode("Must be unique across workspace")
+                else
+                    ReactNode("Must be unique within room")
+            } else null
             value = name
             onChange = {
                 name = it.eventValue()
+                nameError = null
             }
         }
 
@@ -294,6 +332,9 @@ private val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
                     this.roomId = inviteStatus!!.roomRef!!.id
                     this.inviteToken = inviteToken
                     this.allowAnonymous = inviteStatus!!.allowAnonymous
+                    this.targetUserType = inviteStatus!!.targetUserType
+                    this.requireNickname = inviteStatus!!.requireNickname
+                    this.preventDuplicateNicknames = inviteStatus!!.preventDuplicateNicknames
                 }
             } else {
                 InvalidInviteAlert { tooShort = inviteToken.length < TOKEN_LEN && !POTENTIAL_SHORTLINK_RE.matches(inviteToken) }

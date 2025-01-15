@@ -392,7 +392,16 @@ fun inviteRoutes(routing: Routing) = routing.apply {
     // Verify that this invitation is still valid
     getST("/join/{token}/check") {
         suspend fun invalid() {
-            call.respond(HttpStatusCode.OK, InviteStatus(false, null, null, null, false))
+            call.respond(HttpStatusCode.OK, InviteStatus(
+                valid = false,
+                roomName = null,
+                roomRef = null,
+                roomColor = null,
+                allowAnonymous = false,
+                targetUserType = UserType.GUEST,
+                requireNickname = false,
+                preventDuplicateNicknames = false
+            ))
         }
 
         val token = call.parameters["token"] ?: return@getST invalid()
@@ -408,7 +417,16 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         val room = serverState.rooms.values.firstOrNull { it.inviteLinks.any(linkMatch) } ?: return@getST invalid()
         val invite = room.inviteLinks.find(linkMatch) ?: return@getST invalid()
 
-        call.respond(HttpStatusCode.OK, InviteStatus(true, room.name, room.ref, room.color, invite.allowAnonymous))
+        call.respond(HttpStatusCode.OK, InviteStatus(
+            valid = true,
+            roomName = room.name,
+            roomRef = room.ref,
+            roomColor = room.color,
+            allowAnonymous = invite.allowAnonymous,
+            targetUserType = invite.targetUserType,
+            requireNickname = invite.requireNickname,
+            preventDuplicateNicknames = invite.preventDuplicateNicknames
+        ))
     }
     // Create an invitation link
     postST("$roomUrl/invites/create") {
@@ -427,6 +445,9 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                 createdBy = user.ref,
                 createdAt = Clock.System.now(),
                 allowAnonymous = invited.anonymous,
+                targetUserType = invited.targetUserType,
+                requireNickname = invited.requireNickname,
+                preventDuplicateNicknames = invited.preventDuplicateNicknames,
                 state = InviteLinkState.ENABLED
             )
 
@@ -456,6 +477,9 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                             description = invite.description,
                             role = invite.role,
                             allowAnonymous = invite.allowAnonymous,
+                            targetUserType = invite.targetUserType,
+                            requireNickname = invite.requireNickname,
+                            preventDuplicateNicknames = invite.preventDuplicateNicknames,
                             state = invite.state
                         )
                     else it
@@ -534,12 +558,41 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                     badRequest("An email is required.")
                 }
 
+                if (invite.requireNickname && accept.userNick == null) {
+                    badRequest("A nickname is required.")
+                }
+
+                // Sanitize nickname for storage
+                val sanitizedNick = accept.userNick?.let { sanitizeNick(it) }
+
+                if (invite.preventDuplicateNicknames && sanitizedNick != null) {
+                    // For members, check across workspace
+                    if (invite.targetUserType == UserType.MEMBER) {
+                        // Compare only agains full members as we do not want a rando guest to be able to block
+                        // a name for a full member
+                        if (serverState.users.values.any { user ->
+                            user.type in listOf(UserType.ADMIN, UserType.MEMBER
+                            ) && compareNicks(user.nick, sanitizedNick)
+                        }) {
+                            badRequest("This nickname is already taken.")
+                        }
+                    }
+                    // For guests, check within room
+                    else {
+                        if (room.members.any { member ->
+                            compareNicks(member.user.deref()?.nick, sanitizedNick)
+                        }) {
+                            badRequest("This nickname is already taken in this room.")
+                        }
+                    }
+                }
+
                 val newUser = User(
                     randomString(32),
-                    UserType.GUEST,
+                    invite.targetUserType,
                     accept.email,
                     emailVerified = false,
-                    accept.userNick,
+                    sanitizedNick, // Store sanitized nickname
                     password = null,
                     createdAt = Clock.System.now()
                 )
@@ -601,9 +654,9 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
             val userIdToDelete = call.parameters["id"] ?: badRequest("Missing user ID")
             val userToDelete = serverState.userManager.get(userIdToDelete) ?: notFound("User not found")
             val options: DeleteUserOptions = call.receive()
-            
+
             if (userToDelete eqid user) unauthorized("Cannot delete your own account")
-            
+
             // Check if user has any predictions
             val hasPredictions = serverState.userPred.any { (_, userPreds) ->
                 userPreds.any { it.key eqid userToDelete }
@@ -649,7 +702,7 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
                         serverState.questionManager.modifyEntity(q.ref) { it.copy(author = null) }
                     }
                 }
-                
+
                 // Delete all sessions for this user
                 serverState.userSessionManager.entityMap.values
                     .filter { it.userRef eqid userToDelete }
@@ -688,7 +741,7 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
                     serverState.userManager.deleteEntity(userToDelete.ref)
                 }
             }
-            
+
             TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }

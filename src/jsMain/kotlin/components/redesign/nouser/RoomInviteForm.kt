@@ -15,6 +15,7 @@ import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.p
 import react.router.*
 import tools.confido.state.UserSessionValidity
+import users.UserType
 import utils.*
 
 val RoomInviteNoUser = FC<Props> {
@@ -43,9 +44,14 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
     var name by useState("")
     var email by useState("")
     var emailError by useState<String?>(null)
+    var nameError by useState<String?>(null)
 
     // TODO: Consider just redirecting to login instead to simplify this component.
     var loginRequired by useState(false)
+
+    val nameRequired = props.requireNickname
+    val nameUnique = props.preventDuplicateNicknames
+    val nameScope = if (props.targetUserType == UserType.MEMBER) "workspace" else "room"
 
     val navigate = useNavigate()
 
@@ -68,7 +74,18 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                             userMail,
                             UserSessionValidity.PERMANENT,
                         ),
-                        onError = { showError(it) }
+                        onError = { error ->
+                            when {
+                                // XXX make this more structured
+                                error.contains("nickname is already taken", ignoreCase = true) == true -> {
+                                    nameError = if (props.targetUserType == UserType.MEMBER)
+                                        "This name is already taken in the workspace"
+                                    else
+                                        "This name is already taken in this room"
+                                }
+                                else -> showError(error)
+                            }
+                        }
                     ) {
                         if (body()) {
                             // We need to log in.
@@ -91,13 +108,19 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
             fontFamily = sansSerif
             gap = 12.px
         }
-        div {
-            +"You have been invited to room "
-            b {
-                +props.roomName
+            div {
+                +"You have been invited to room "
+                b {
+                    +props.roomName
+                }
+                +". "
+                if (props.targetUserType == UserType.MEMBER) {
+                    +"You will be able to access all workspace features. "
+                } else {
+                    +"You will have access to this room only. "
+                }
+                +"Use your email to log in so that you can come back later."
             }
-            +". Use your email to log in so that you can come back later."
-        }
 
         if (!loginRequired) {
             Stack {
@@ -126,10 +149,46 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                 }
 
                 LoginInput {
-                    placeholder = "Name (optional)"
+                    css {
+                        if (nameError != null) {
+                            border = Border(1.px, LineStyle.solid, Color("#F35454"))
+                        }
+                    }
+                    placeholder = if (nameRequired) "Name (required)" else "Name (optional)"
                     value = name
                     onChange = {
                         name = it.target.value
+                        nameError = null
+                    }
+                }
+
+                if (nameError != null) {
+                    p {
+                        css {
+                            marginTop = 6.px
+                            color = Color("#F35454")
+                            width = 100.pct
+                            fontSize = 12.px
+                            lineHeight = 15.px
+                            fontWeight = integer(400)
+                            fontFamily = sansSerif
+                        }
+                        +nameError!!
+                    }
+                }
+
+                if (nameUnique) {
+                    p {
+                        css {
+                            marginTop = 6.px
+                            color = Color("#666666")
+                            width = 100.pct
+                            fontSize = 12.px
+                            lineHeight = 15.px
+                            fontWeight = integer(400)
+                            fontFamily = sansSerif
+                        }
+                        +"Name must be unique in this $nameScope"
                     }
                 }
 
@@ -139,7 +198,6 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                             marginTop = 6.px
                             color = Color("#F35454")
                             width = 100.pct
-
                             fontSize = 12.px
                             lineHeight = 15.px
                             fontWeight = integer(400)
@@ -156,7 +214,14 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                     borderRadius = 10.px
                 }
                 this.palette = MainPalette.default
-                onClick = { acceptInvite() }
+                onClick = onClick@{
+                    // Validate name if required
+                    if (nameRequired && name.trim().isEmpty()) {
+                        nameError = "A name is required."
+                        return@onClick
+                    }
+                    acceptInvite()
+                }
                 +"Start forecasting"
             }
         } else {

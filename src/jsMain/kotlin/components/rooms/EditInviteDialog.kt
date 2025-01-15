@@ -4,10 +4,7 @@ import Client
 import components.AppStateContext
 import components.showError
 import hooks.useCoroutineLock
-import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import mui.material.*
 import mui.system.sx
 import payloads.requests.CreateNewInvite
@@ -17,9 +14,9 @@ import react.dom.onChange
 import rooms.*
 import tools.confido.state.FeatureFlag
 import tools.confido.state.appConfig
+import users.UserType
 import utils.eventValue
 import utils.themed
-import kotlin.coroutines.EmptyCoroutineContext
 
 external interface DeleteInviteConfirmationProps : Props {
     var running: Boolean
@@ -82,6 +79,9 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
     var description by useState(i?.description ?: "Shared Invite Link")
     var role by useState(i?.role ?: Forecaster)
     var anonymous by useState(i?.allowAnonymous ?: false)
+    var targetUserType by useState(i?.targetUserType ?: UserType.GUEST)
+    var requireNickname by useState(i?.requireNickname ?: false)
+    var preventDuplicateNicknames by useState(i?.preventDuplicateNicknames ?: false)
     var linkState by useState(i?.state ?: InviteLinkState.ENABLED)
 
     val htmlId = useId()
@@ -91,7 +91,14 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
 
     fun submitInviteLink() = submit {
         if (i == null) {
-            val invite = CreateNewInvite(description, role, anonymous)
+            val invite = CreateNewInvite(
+                description = description,
+                role = role,
+                anonymous = anonymous,
+                targetUserType = targetUserType,
+                requireNickname = requireNickname,
+                preventDuplicateNicknames = preventDuplicateNicknames
+            )
             Client.sendData("${room.urlPrefix}/invites/create", invite, onError = {showError(it)}) {
                 props.onClose?.invoke()
             }
@@ -100,6 +107,9 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                 description = description,
                 role = role,
                 allowAnonymous = anonymous,
+                targetUserType = targetUserType,
+                requireNickname = requireNickname,
+                preventDuplicateNicknames = preventDuplicateNicknames,
                 state = linkState,
             )
             Client.sendData("${room.urlPrefix}/invites/edit", invite, onError = {showError(it)}) {
@@ -176,7 +186,36 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                     paddingTop = themed(2)
                     paddingBottom = themed(2)
                 }
-                // TODO better names
+                FormLabel {
+                    +"User type"
+                }
+                RadioGroup {
+                    value = targetUserType.toString()
+                    onChange = { _, value ->
+                        targetUserType = when(value) {
+                            "MEMBER" -> UserType.MEMBER
+                            "GUEST" -> UserType.GUEST
+                            else -> error("This cannot happen!")
+                        }
+                    }
+                    FormControlLabel {
+                        label = ReactNode("Full member (access to all workspace features)")
+                        value = "MEMBER"
+                        control = Radio.create {}
+                    }
+                    FormControlLabel {
+                        label = ReactNode("Guest (access limited to this room)")
+                        value = "GUEST"
+                        control = Radio.create {}
+                    }
+                }
+            }
+
+            FormControl {
+                sx {
+                    paddingTop = themed(2)
+                    paddingBottom = themed(2)
+                }
                 FormLabel {
                     +"User identification"
                 }
@@ -198,6 +237,27 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                         label = ReactNode("Require e-mail")
                         value = "false"
                         control = Radio.create {}
+                    }
+                }
+            }
+
+            FormGroup {
+                FormControlLabel {
+                    label = ReactNode("Require nickname")
+                    control = Checkbox.create {
+                        checked = requireNickname
+                        onChange = { _, value -> requireNickname = value }
+                    }
+                }
+                FormControlLabel {
+                    label = ReactNode(
+                        if (targetUserType == UserType.MEMBER)
+                            "Prevent duplicate nicknames across workspace"
+                        else "Prevent duplicate nicknames within room"
+                    )
+                    control = Checkbox.create {
+                        checked = preventDuplicateNicknames
+                        onChange = { _, value -> preventDuplicateNicknames = value }
                     }
                 }
             }

@@ -17,6 +17,7 @@ import react.dom.html.ReactHTML.option
 import rooms.*
 import tools.confido.state.FeatureFlag
 import tools.confido.state.appConfig
+import users.UserType
 
 external interface EditInviteDialogProps : EditEntityDialogProps<InviteLink>
 
@@ -29,6 +30,9 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
     var description by useState(i?.description ?: "Shared Invite Link")
     var role by useState(i?.role ?: Forecaster)
     var anonymous by useState(i?.allowAnonymous ?: false)
+    var targetUserType by useState(i?.targetUserType ?: UserType.GUEST)
+    var requireNickname by useState(i?.requireNickname ?: false)
+    var preventDuplicateNicknames by useState(i?.preventDuplicateNicknames ?: false)
     var linkState by useState(i?.state ?: InviteLinkState.ENABLED)
 
 
@@ -36,7 +40,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
 
     fun submitInviteLink() = submit {
         if (i == null) {
-            val invite = CreateNewInvite(description, role, anonymous)
+            val invite = CreateNewInvite(description, role, anonymous, targetUserType, requireNickname, preventDuplicateNicknames)
             Client.sendData("${room.urlPrefix}/invites/create", invite, onError = { showError(it)}) {
                 props.onClose?.invoke()
             }
@@ -45,6 +49,9 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                 description = description,
                 role = role,
                 allowAnonymous = anonymous,
+                targetUserType = targetUserType,
+                requireNickname = requireNickname,
+                preventDuplicateNicknames = preventDuplicateNicknames,
                 state = linkState,
             )
             Client.sendData("${room.urlPrefix}/invites/edit", invite, onError = { showError(it)}) {
@@ -109,17 +116,51 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
             }
 
             FormSection {
-                title = "Identification"
+                title = "User Settings"
 
-                RadioGroup<Boolean>()() {
-                    title = "User identification"
-                    options = listOf(
-                        true to "Allow anonymous access (using only a nickname)",
-                        false to "Require e-mail",
-                    )
-                    value = anonymous
-                    onChange = {value -> anonymous = value}
+                FormField {
+                    title = "User Type"
+                    Select {
+                        css {
+                            width = important(100.pct)
+                        }
+                        value = targetUserType.name
+                        onChange = { event ->
+                            targetUserType = UserType.valueOf(event.target.value)
+                        }
+                        option {
+                            value = UserType.GUEST.name
+                            +"Guest (limited to this room)"
+                        }
+                        option {
+                            value = UserType.MEMBER.name
+                            +"Member (full workspace access)"
+                        }
+                    }
                 }
+
+            }
+            FormSection {
+                title = "Identification"
+                FormSwitch {
+                    label = "Require nickname"
+                    checked = requireNickname
+                    onChange = { requireNickname = it.target.checked }
+                }
+
+                FormSwitch {
+                    label = "Prevent duplicate nicknames"
+                    checked = preventDuplicateNicknames
+                    onChange = { preventDuplicateNicknames = it.target.checked }
+                    comment = "For members, duplicates are checked across workspace. For guests, within room only."
+                }
+
+                FormSwitch {
+                    label = "Require e-mail"
+                    checked = !anonymous
+                    onChange = { anonymous = !it.target.checked }
+                }
+
             }
 
             if (i != null)

@@ -4,14 +4,8 @@ import kotlinx.serialization.Serializable
 import rooms.Room
 import rooms.RoomColor
 import tools.confido.refs.Ref
+import users.UserType
 
-/**
- * Status of an invitation link returned by [payloads.requests.CheckInvite]:
- *
- * - Is the invitation [valid]?
- * - The [room name][roomName] given to the client as they cannot access it yet
- * - If a new user uses the invitation link, [can][allowAnonymous] they join without e-mail?
- */
 @Serializable
 data class InviteStatus(
     val valid: Boolean,
@@ -19,4 +13,7 @@ data class InviteStatus(
     val roomRef: Ref<Room>?,
     val roomColor: RoomColor?,
     val allowAnonymous: Boolean,
+    val targetUserType: UserType = UserType.GUEST,
+    val requireNickname: Boolean = false,
+    val preventDuplicateNicknames: Boolean = false,
 )

@@ -123,11 +123,24 @@ data class InviteLink(
     val createdBy: Ref<User>,
     /* Time of creation of the invite link. */
     val createdAt: Instant,
+    /* Type of users created by this link (MEMBER or GUEST) */
+    val targetUserType: UserType = UserType.GUEST,
+    /* Whether to require nickname when joining */
+    val requireNickname: Boolean = false,
+    /* Whether to prevent duplicate nicknames */
+    val preventDuplicateNicknames: Boolean = false,
     /* Indicates whether guests are anonymous. */
     val allowAnonymous: Boolean = false,
     /* Indicates whether this link can be used by new users. */
     val state: InviteLinkState = InviteLinkState.ENABLED
 ) : HasId {
+    init {
+        // Validate that only MEMBER or GUEST types are allowed for invite links
+        require(targetUserType == UserType.MEMBER || targetUserType == UserType.GUEST) {
+            "Invite links can only create MEMBER or GUEST users"
+        }
+    }
+
     fun link(origin: String, room: Room) = "$origin/join/$token"
 
     val canJoin get() = state == InviteLinkState.ENABLED
