@@ -57,12 +57,13 @@ interface ClientExtension : Extension {
     fun <T> useContextState(place: ExtensionContextPlace, key: String = "", default: T? = null): react.StateInstance<T> {
         var ctxS by (useExtContext(place).unsafeCast<react.StateInstance<Map<String, dynamic>>>())
         var ctxVal = ctxS
-        val sVal = ctxVal[key] ?: default
         fun setter(newVal: T) {
             val newCtxS = ctxVal + mapOf(key to newVal)
             ctxVal = newCtxS
             ctxS = newCtxS
         }
+        if (key !in ctxVal && default != null) setter(default)
+        val sVal = ctxVal[key] ?: default
         return arrayOf<dynamic>(sVal, ::setter).unsafeCast<react.StateInstance<T>>()
     }
     fun registerPresenterPages(): Map<KClass<out PresenterView>, PresenterPageType> = emptyMap()
