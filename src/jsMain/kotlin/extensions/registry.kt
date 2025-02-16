@@ -1,16 +1,13 @@
 package tools.confido.extensions
 
-import extensions.AutoNavigateCE
-import extensions.MillionaireCE
-import extensions.QuestionGroupsCE
-import extensions.UpdateScatterPlotCE
+import extensions.*
 import extensions.flow_automation.FlowAutomationCE
 
-
-actual val registeredExtensions = listOf<Extension>(
+actual val registeredExtensions: List<Extension> = listOf(
     UpdateScatterPlotCE,
     QuestionGroupsCE,
     MillionaireCE,
     FlowAutomationCE,
     AutoNavigateCE,
+    ReferenceForecastCE,
 )

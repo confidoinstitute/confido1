@@ -8,5 +8,6 @@ actual val registeredExtensions = listOf<Extension>(
     QuestionGroupsSE,
     MillionaireServerExtension,
     FlowAutomationSE,
-    AutoNavigateSE
+    AutoNavigateSE,
+    ReferenceForecastSE
 )
