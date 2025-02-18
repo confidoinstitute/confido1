@@ -1,31 +1,23 @@
 package extensions
 
-import Client
-import components.AppStateContext
 import components.presenter.PresenterPageProps
 import components.presenter.presenterPageMap
 import components.redesign.basic.Stack
 import components.redesign.basic.rowStyleTableCSS
-import emotion.css.ClassName
 import components.redesign.forms.*
 import components.redesign.presenter.PresenterContext
 import components.redesign.questions.dialog.EditQuestionDialogProps
+import components.redesign.forms.Button
 import csstype.*
 import emotion.react.css
-import hooks.useSuspendResult
 import hooks.useWebSocket
 import payloads.responses.WSData
 import tools.confido.question.Prediction
 import icons.ProjectorScreenOutlineIcon
-import io.ktor.client.call.*
-import io.ktor.client.request.*
 import react.*
 import react.dom.html.InputType
-import react.dom.html.ReactHTML.b
-import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.h1
 import react.dom.html.ReactHTML.h3
-import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.table
 import react.dom.html.ReactHTML.tbody
 import react.dom.html.ReactHTML.td
@@ -33,7 +25,6 @@ import react.dom.html.ReactHTML.th
 import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
 import rooms.Room
-import rooms.RoomPermission
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionContextPlace
@@ -43,8 +34,64 @@ import tools.confido.question.Question
 import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.spaces.BinarySpace
-import tools.confido.state.globalState
+import tools.confido.utils.toFixed
 import utils.questionUrl
+import utils.roomUrl
+
+val ReferenceForcastScoreboardPP = FC<PresenterPageProps<ReferenceForcastScoreboardPV>> { props ->
+    val room = props.view.room.deref() ?: return@FC
+    val scores = useWebSocket<List<UserScore>>("/api${roomUrl(room.id)}/ext/reference_forecast/scoreboard.ws")
+    if (scores !is WSData) return@FC
+
+    Stack {
+        css {
+            alignItems = AlignItems.center
+            maxWidth = 100.vw
+            width = 100.vw
+            maxHeight = 100.vh
+            height = 100.vh
+            padding = 20.px
+        }
+
+        h1 {
+            css {
+                fontSize = 52.px
+            }
+            +"Reference Forecast Scoreboard"
+        }
+
+        table {
+            css {
+                fontSize = 32.px
+                borderCollapse = BorderCollapse.collapse
+                "tr" {
+                    borderTop = Border(1.px, LineStyle.solid, NamedColor.black)
+                    borderBottom = Border(1.px, LineStyle.solid, NamedColor.black)
+                }
+                "th, td" {
+                    padding = Padding(8.px, 16.px)
+                }
+                "th" {
+                    textAlign = TextAlign.left
+                }
+            }
+            thead {
+                tr {
+                    th { +"User" }
+                    th { +"Score" }
+                }
+            }
+            tbody {
+                scores.data.forEach { score ->
+                    tr {
+                        td { +score.nickname }
+                        td { +"${score.score.toFixed(1)}" }
+                    }
+                }
+            }
+        }
+    }
+}
 
 val ReferenceForcastPP = FC<PresenterPageProps<ReferenceForcastPV>> { props ->
     val view = props.view
@@ -96,7 +143,7 @@ val ReferenceForcastPP = FC<PresenterPageProps<ReferenceForcastPV>> { props ->
                 predictions.data.sortedBy { it.probability }.forEach { pred ->
                     tr {
                         css {
-                            if (pred.isReference) {
+                            if (pred.isSpecial) {
                                 fontWeight = FontWeight.bold
                                 backgroundColor = Color("#e3f2fd")
                             }
@@ -116,6 +163,7 @@ object ReferenceForecastCE : ClientExtension, ReferenceForecastExtension() {
         val groupPredsWS = useWebSocket<Map<String, Prediction?>>("/state${room.urlPrefix}/group_pred")
         val groupPreds = groupPredsWS.data ?: emptyMap()
 
+
         val questionsWithRef = room.questions.reversed().mapNotNull { qRef ->
             qRef.deref()?.let { q ->
                 if (q.extensionData[ReferenceForcastKey] != null) q else null
@@ -125,6 +173,13 @@ object ReferenceForecastCE : ClientExtension, ReferenceForecastExtension() {
         if (questionsWithRef.isNotEmpty()) {
             cb.apply {
                 h3 { +"Questions with Reference Forecasts" }
+                // Add scoreboard button
+                Button {
+                    +"Show Scoreboard"
+                    onClick = {
+                        presenterCtl.offer(ReferenceForcastScoreboardPV(room.ref))
+                    }
+                }
                 table {
                     css(ClassName("qmgmt-tab"), rowStyleTableCSS) {
                     }
@@ -207,5 +262,8 @@ object ReferenceForecastCE : ClientExtension, ReferenceForecastExtension() {
     }
 
     override fun registerPresenterPages() =
-        mapOf(presenterPageMap(ReferenceForcastPP))
+        mapOf(
+            presenterPageMap(ReferenceForcastPP),
+            presenterPageMap(ReferenceForcastScoreboardPP)
+        )
 }
