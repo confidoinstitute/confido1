@@ -7,6 +7,7 @@ import tools.confido.extensions.*
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.state.PresenterView
+import rooms.Room
 
 val ReferenceForcastKey = ExtensionDataKeyWithDefault<Double?>("reference_forecast", null)
 
@@ -14,7 +15,7 @@ val ReferenceForcastKey = ExtensionDataKeyWithDefault<Double?>("reference_foreca
 data class PredictionWithUser(
     val nickname: String,
     val probability: Double,
-    val isReference: Boolean = false
+    val isSpecial: Boolean = false
 )
 
 @Serializable
@@ -23,6 +24,20 @@ data class ReferenceForcastPV(
 ): PresenterView() {
     override fun describe() = "Individual predictions with reference forecast"
 }
+
+@Serializable
+data class ReferenceForcastScoreboardPV(
+    val room: Ref<Room>,
+): PresenterView() {
+    override fun describe() = "Reference forecast scoreboard"
+}
+
+@Serializable
+data class UserScore(
+    val nickname: String,
+    val score: Double,
+    val numQuestions: Int
+)
 
 open class ReferenceForecastExtension: Extension {
     override val extensionId = "reference_forecast"
@@ -36,5 +51,6 @@ open class ReferenceForecastExtension: Extension {
 
     override fun registerPresenterViews(builder: PolymorphicModuleBuilder<PresenterView>) {
         builder.subclass(ReferenceForcastPV::class)
+        builder.subclass(ReferenceForcastScoreboardPV::class)
     }
 }
