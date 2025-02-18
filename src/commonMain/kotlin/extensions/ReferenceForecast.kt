@@ -12,13 +12,6 @@ import rooms.Room
 val ReferenceForcastKey = ExtensionDataKeyWithDefault<Double?>("reference_forecast", null)
 
 @Serializable
-data class ReferenceForcastPV(
-    val question: Ref<Question>,
-): PresenterView() {
-    override fun describe() = "Individual predictions with reference forecast"
-}
-
-@Serializable
 data class ReferenceForcastScoreboardPV(
     val room: Ref<Room>,
 ): PresenterView() {
@@ -43,7 +36,6 @@ open class ReferenceForecastExtension: Extension {
     }
 
     override fun registerPresenterViews(builder: PolymorphicModuleBuilder<PresenterView>) {
-        builder.subclass(ReferenceForcastPV::class)
         builder.subclass(ReferenceForcastScoreboardPV::class)
     }
 }

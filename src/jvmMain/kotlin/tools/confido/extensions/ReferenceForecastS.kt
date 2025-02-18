@@ -17,7 +17,6 @@ import users.User
 import kotlin.math.pow
 
 object ReferenceForecastSE : ServerExtension, ReferenceForecastExtension() {
-    val referenceText = System.getenv("CONFIDO_REFERENCE_FORECAST_LABEL") ?: "Reference"
     val groupPredText = System.getenv("CONFIDO_GROUP_PRED_LABEL") ?: "Group prediction"
     private fun calculateScore(prediction: Double, reference: Double): Double {
         // 10 points if exactly match prediction
@@ -29,33 +28,6 @@ object ReferenceForecastSE : ServerExtension, ReferenceForecastExtension() {
     }
 
     override fun initRoutes(r: Routing) {
-        r.getWS("/api$questionUrl/ext/reference_forecast/predictions.ws") {
-            withQuestion {
-                assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, "You cannot view individual predictions.")
-                val predictions = mutableListOf<ValueWithUser>()
-
-                // Add reference forecast if it exists
-                question.extensionData[ReferenceForcastKey]?.let { probability ->
-                    predictions.add(ValueWithUser(referenceText, probability, true))
-                }
-
-                // Add group prediction
-                serverState.groupPred[question.ref]?.let { pred->
-                    predictions.add(ValueWithUser(groupPredText, (pred.dist as? BinaryDistribution)?.yesProb ?: return@let, true))
-                }
-
-                // Add user predictions
-                serverState.userPred[question.ref]?.forEach { (userRef, pred) ->
-                    val user = userRef.deref() ?: return@forEach
-                    val dist = pred.dist as? BinaryDistribution ?: return@forEach
-                    predictions.add(ValueWithUser(user.nick ?: "(Anonymous)", dist.yesProb, false))
-                }
-
-                // Return predictions sorted by probability
-                predictions.sortedBy { it.value }
-            }
-        }
-
         r.getWS("/api$roomUrl/ext/reference_forecast/scoreboard.ws") {
             withRoom {
                 assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, "You cannot view individual predictions.")

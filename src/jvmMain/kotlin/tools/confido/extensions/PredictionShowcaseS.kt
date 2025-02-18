@@ -13,12 +13,20 @@ import tools.confido.state.serverState
 object PredictionShowcaseSE : ServerExtension, PredictionShowcaseExtension() {
     val groupPredText = System.getenv("CONFIDO_GROUP_PRED_LABEL") ?: "Group prediction"
     val resolutionText = System.getenv("CONFIDO_RESOLUTION_LABEL") ?: "Resolution"
+    val referenceText = System.getenv("CONFIDO_REFERENCE_FORECAST_LABEL") ?: "Reference"
 
     override fun initRoutes(r: Routing) {
         r.getWS("/api$questionUrl/ext/prediction_showcase/predictions.ws") {
             withQuestion {
                 assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, "You cannot view individual predictions.")
                 val predictions = mutableListOf<ValueWithUser>()
+
+                // Add reference forecast for binary questions
+                if (question.answerSpace is BinarySpace) {
+                    question.extensionData[ReferenceForcastKey]?.let { probability ->
+                        predictions.add(ValueWithUser(referenceText, probability, true))
+                    }
+                }
 
                 // Add resolution if visible
                 if (question.resolutionVisible && question.resolution != null) {
@@ -43,14 +51,14 @@ object PredictionShowcaseSE : ServerExtension, PredictionShowcaseExtension() {
                 serverState.userPred[question.ref]?.forEach { (userRef, pred) ->
                     val user = userRef.deref() ?: return@forEach
                     when (val dist = pred.dist) {
-                        is PointEstimateContinuousDistribution -> predictions.add(ValueWithUser(user.nick ?: "(Anonymous)", dist.value, false))
+                        is ContinuousProbabilityDistribution -> predictions.add(ValueWithUser(user.nick ?: "(Anonymous)", dist.mean, false))
                         is BinaryDistribution -> predictions.add(ValueWithUser(user.nick ?: "(Anonymous)", dist.yesProb, false))
                         else -> {} // Ignore other types for now
                     }
                 }
 
-                // Return predictions
-                predictions
+                // Return predictions sorted by value
+                predictions.sortedBy { it.value }
             }
         }
     }

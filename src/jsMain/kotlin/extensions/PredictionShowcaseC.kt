@@ -28,6 +28,9 @@ import tools.confido.refs.deref
 import tools.confido.refs.ref
 import utils.questionUrl
 import extensions.shared.ValueWithUser
+import react.dom.html.ReactHTML.h2
+import tools.confido.spaces.BinarySpace
+import tools.confido.spaces.NumericSpace
 
 val PredictionShowcasePP = FC<PresenterPageProps<PredictionShowcasePV>> { props ->
     val view = props.view
@@ -85,11 +88,11 @@ val PredictionShowcasePP = FC<PresenterPageProps<PredictionShowcasePV>> { props 
                         }
                         td { +pred.nickname }
                         td {
-                            // Format as percentage if value is between 0 and 1, otherwise as a number
-                            if (pred.value in 0.0..1.0) {
-                                +"${(pred.value * 100).toInt()}%"
-                            } else {
-                                +pred.value.toString()
+                            // Format based on question type
+                            when (question.answerSpace) {
+                                is BinarySpace -> +"${(pred.value * 100).toInt()}%"
+                                is NumericSpace -> +(question.answerSpace as NumericSpace).formatValue(pred.value)
+                                else -> +pred.value.toString()
                             }
                         }
                     }
@@ -104,6 +107,7 @@ object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
         val presenterCtl = useContext(PresenterContext)
 
         cb.apply {
+            h2 {+"Prediction showcase"}
             table {
                 css(ClassName("qmgmt-tab"), rowStyleTableCSS) {
                 }

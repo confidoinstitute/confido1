@@ -94,70 +94,6 @@ val ReferenceForcastScoreboardPP = FC<PresenterPageProps<ReferenceForcastScorebo
     }
 }
 
-val ReferenceForcastPP = FC<PresenterPageProps<ReferenceForcastPV>> { props ->
-    val view = props.view
-    val question = view.question.deref() ?: return@FC
-    val referenceForecast = question.extensionData[ReferenceForcastKey]
-
-    val predictions = useWebSocket<List<ValueWithUser>>("/api${questionUrl(question.id)}/ext/reference_forecast/predictions.ws")
-    if (predictions !is WSData) return@FC
-
-    Stack {
-        css {
-            alignItems = AlignItems.center
-            maxWidth = 100.vw
-            width = 100.vw
-            maxHeight = 100.vh
-            height = 100.vh
-            padding = 20.px
-        }
-
-        h1 {
-            css {
-                fontSize = 52.px
-            }
-            +question.name
-        }
-
-        table {
-            css {
-                fontSize = 32.px
-                borderCollapse = BorderCollapse.collapse
-                "tr" {
-                    borderTop = Border(1.px, LineStyle.solid, NamedColor.black)
-                    borderBottom = Border(1.px, LineStyle.solid, NamedColor.black)
-                }
-                "th, td" {
-                    padding = Padding(8.px, 16.px)
-                }
-                "th" {
-                    textAlign = TextAlign.left
-                }
-            }
-            thead {
-                tr {
-                    th { +"User" }
-                    th { +"Prediction" }
-                }
-            }
-            tbody {
-                predictions.data.sortedBy { it.value }.forEach { pred ->
-                    tr {
-                        css {
-                            if (pred.isSpecial) {
-                                fontWeight = FontWeight.bold
-                                backgroundColor = Color("#e3f2fd")
-                            }
-                        }
-                        td { +pred.nickname }
-                        td { +"${(pred.value * 100).toInt()}%" }
-                    }
-                }
-            }
-        }
-    }
-}
-
 object ReferenceForecastCE : ClientExtension, ReferenceForecastExtension() {
     override fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {
         val presenterCtl = useContext(PresenterContext)
@@ -165,61 +101,13 @@ object ReferenceForecastCE : ClientExtension, ReferenceForecastExtension() {
         val groupPreds = groupPredsWS.data ?: emptyMap()
 
 
-        val questionsWithRef = room.questions.reversed().mapNotNull { qRef ->
-            qRef.deref()?.let { q ->
-                if (q.extensionData[ReferenceForcastKey] != null) q else null
-            }
-        }
-
-        if (questionsWithRef.isNotEmpty()) {
+        // Show scoreboard button if there are any questions with reference forecasts
+        if (room.questions.any { qRef -> qRef.deref()?.extensionData?.get(ReferenceForcastKey) != null }) {
             cb.apply {
-                h3 { +"Questions with Reference Forecasts" }
-                // Add scoreboard button
                 Button {
-                    +"Show Scoreboard"
+                    +"Show Reference Forecast Scoreboard"
                     onClick = {
                         presenterCtl.offer(ReferenceForcastScoreboardPV(room.ref))
-                    }
-                }
-                table {
-                    css(ClassName("qmgmt-tab"), rowStyleTableCSS) {
-                    }
-                    thead {
-                        tr {
-                            th { +"Question" }
-                            th { +"Reference" }
-                            th { +"Group Prediction" }
-                            th { +"# Predictors" }
-                            th { +"Actions" }
-                        }
-                    }
-                    tbody {
-                        questionsWithRef.forEach { q ->
-                            tr {
-                                td { +q.name }
-                                td {
-                                    val ref = q.extensionData[ReferenceForcastKey]
-                                    +"${(ref!! * 100).toInt()}%"
-                                }
-                                td {
-                                    val groupPred = groupPreds[q.id]?.dist as? BinaryDistribution
-                                    groupPred?.let {
-                                        +"${(it.yesProb * 100).toInt()}%"
-                                    } ?: +"-"
-                                }
-                                td {
-                                    +"${q.numPredictors}"
-                                }
-                                td {
-                                    IconButton {
-                                        ProjectorScreenOutlineIcon {}
-                                        onClick = {
-                                            presenterCtl.offer(ReferenceForcastPV(q.ref))
-                                        }
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -264,7 +152,6 @@ object ReferenceForecastCE : ClientExtension, ReferenceForecastExtension() {
 
     override fun registerPresenterPages() =
         mapOf(
-            presenterPageMap(ReferenceForcastPP),
             presenterPageMap(ReferenceForcastScoreboardPP)
         )
 }
