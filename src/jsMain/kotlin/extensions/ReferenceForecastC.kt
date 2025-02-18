@@ -37,6 +37,7 @@ import tools.confido.spaces.BinarySpace
 import tools.confido.utils.toFixed
 import utils.questionUrl
 import utils.roomUrl
+import extensions.shared.ValueWithUser
 
 val ReferenceForcastScoreboardPP = FC<PresenterPageProps<ReferenceForcastScoreboardPV>> { props ->
     val room = props.view.room.deref() ?: return@FC
@@ -98,7 +99,7 @@ val ReferenceForcastPP = FC<PresenterPageProps<ReferenceForcastPV>> { props ->
     val question = view.question.deref() ?: return@FC
     val referenceForecast = question.extensionData[ReferenceForcastKey]
 
-    val predictions = useWebSocket<List<PredictionWithUser>>("/api${questionUrl(question.id)}/ext/reference_forecast/predictions.ws")
+    val predictions = useWebSocket<List<ValueWithUser>>("/api${questionUrl(question.id)}/ext/reference_forecast/predictions.ws")
     if (predictions !is WSData) return@FC
 
     Stack {
@@ -140,7 +141,7 @@ val ReferenceForcastPP = FC<PresenterPageProps<ReferenceForcastPV>> { props ->
                 }
             }
             tbody {
-                predictions.data.sortedBy { it.probability }.forEach { pred ->
+                predictions.data.sortedBy { it.value }.forEach { pred ->
                     tr {
                         css {
                             if (pred.isSpecial) {
@@ -149,7 +150,7 @@ val ReferenceForcastPP = FC<PresenterPageProps<ReferenceForcastPV>> { props ->
                             }
                         }
                         td { +pred.nickname }
-                        td { +"${(pred.probability * 100).toInt()}%" }
+                        td { +"${(pred.value * 100).toInt()}%" }
                     }
                 }
             }

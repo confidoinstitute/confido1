@@ -2,24 +2,14 @@ package extensions
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
-import tools.confido.state.PresenterView
 import kotlinx.serialization.modules.PolymorphicModuleBuilder
 import kotlinx.serialization.modules.subclass
 import tools.confido.distributions.*
 import tools.confido.extensions.*
-import tools.confido.question.Question
-import tools.confido.refs.Ref
 import tools.confido.spaces.*
 import kotlin.math.*
 
 val PointEstimateKey = ExtensionDataKeyWithDefault<Boolean>("point_estimate", false)
-
-@Serializable
-data class PointEstimatePV(
-    val question: Ref<Question>,
-): PresenterView() {
-    override fun describe() = "Individual point estimates with group estimate"
-}
 
 @Serializable
 data class WeightedPointEstimate(
@@ -130,10 +120,6 @@ data class PointEstimateWithUser(
 
 open class PointEstimateExtension : Extension {
     override val extensionId = "point_estimate"
-
-    override fun registerPresenterViews(builder: PolymorphicModuleBuilder<PresenterView>) {
-        builder.subclass(PointEstimatePV::class)
-    }
 
     override fun registerEdtKeys(edt: ExtensionDataType) {
         when (edt.name) {

@@ -12,13 +12,6 @@ import rooms.Room
 val ReferenceForcastKey = ExtensionDataKeyWithDefault<Double?>("reference_forecast", null)
 
 @Serializable
-data class PredictionWithUser(
-    val nickname: String,
-    val probability: Double,
-    val isSpecial: Boolean = false
-)
-
-@Serializable
 data class ReferenceForcastPV(
     val question: Ref<Question>,
 ): PresenterView() {

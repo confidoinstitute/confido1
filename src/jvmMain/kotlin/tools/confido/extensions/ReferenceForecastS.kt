@@ -2,8 +2,8 @@ package tools.confido.extensions
 
 import extensions.ReferenceForecastExtension
 import extensions.ReferenceForcastKey
-import extensions.PredictionWithUser
 import extensions.UserScore
+import extensions.shared.ValueWithUser
 import io.ktor.server.routing.*
 import rooms.RoomPermission
 import tools.confido.application.routes.*
@@ -32,27 +32,27 @@ object ReferenceForecastSE : ServerExtension, ReferenceForecastExtension() {
         r.getWS("/api$questionUrl/ext/reference_forecast/predictions.ws") {
             withQuestion {
                 assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, "You cannot view individual predictions.")
-                val predictions = mutableListOf<PredictionWithUser>()
+                val predictions = mutableListOf<ValueWithUser>()
 
                 // Add reference forecast if it exists
                 question.extensionData[ReferenceForcastKey]?.let { probability ->
-                    predictions.add(PredictionWithUser(referenceText, probability, true))
+                    predictions.add(ValueWithUser(referenceText, probability, true))
                 }
 
                 // Add group prediction
                 serverState.groupPred[question.ref]?.let { pred->
-                    predictions.add(PredictionWithUser(groupPredText, (pred.dist as? BinaryDistribution)?.yesProb ?: return@let ))
+                    predictions.add(ValueWithUser(groupPredText, (pred.dist as? BinaryDistribution)?.yesProb ?: return@let, true))
                 }
 
                 // Add user predictions
                 serverState.userPred[question.ref]?.forEach { (userRef, pred) ->
                     val user = userRef.deref() ?: return@forEach
                     val dist = pred.dist as? BinaryDistribution ?: return@forEach
-                    predictions.add(PredictionWithUser(user.nick ?: "(Anonymous)", dist.yesProb))
+                    predictions.add(ValueWithUser(user.nick ?: "(Anonymous)", dist.yesProb, false))
                 }
 
                 // Return predictions sorted by probability
-                predictions.sortedBy { it.probability }
+                predictions.sortedBy { it.value }
             }
         }
 

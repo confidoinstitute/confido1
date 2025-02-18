@@ -11,4 +11,5 @@ actual val registeredExtensions: List<Extension> = listOf(
     AutoNavigateCE,
     ReferenceForecastCE,
     PointEstimateCE,
+    PredictionShowcaseCE,
 )
