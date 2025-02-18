@@ -23,7 +23,6 @@ enum class ExtensionContextPlace {
 
 interface ClientExtension : Extension {
 
-
     companion object {
 
         val enabled get() = Extension.enabled.map { it as ClientExtension }
@@ -71,6 +70,7 @@ interface ClientExtension : Extension {
     fun roomTabsExtra(room: Room, appState: SentState, layoutMode: LayoutMode): List<Pair<String, String>>  = emptyList()
     fun roomRoutesExtra(room: Room, cb: ChildrenBuilder) {}
     fun rootLayoutStartHook() {}
+    fun renderPredictionInput(props: components.redesign.questions.predictions.PredictionInputProps): react.ReactNode? = null
 }
 
 external interface ExtensionContextProviderProps: Props {

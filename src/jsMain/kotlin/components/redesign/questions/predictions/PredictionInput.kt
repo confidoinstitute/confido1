@@ -15,6 +15,14 @@ external interface PredictionInputProps : Props {
 }
 
 val PredictionInput = FC<PredictionInputProps> { props->
+    // Try extensions first
+    tools.confido.extensions.ClientExtension.forEach { ext ->
+        ext.renderPredictionInput(props)?.let {
+            +it
+            return@FC
+
+        }
+    }
     val space = props.space
     when (space) {
         is NumericSpace -> NumericPredInput {
