@@ -9,5 +9,6 @@ actual val registeredExtensions = listOf<Extension>(
     MillionaireServerExtension,
     FlowAutomationSE,
     AutoNavigateSE,
-    ReferenceForecastSE
+    ReferenceForecastSE,
+    PointEstimateSE,
 )

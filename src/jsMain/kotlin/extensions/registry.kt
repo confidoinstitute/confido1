@@ -10,4 +10,5 @@ actual val registeredExtensions: List<Extension> = listOf(
     FlowAutomationCE,
     AutoNavigateCE,
     ReferenceForecastCE,
+    PointEstimateCE,
 )
