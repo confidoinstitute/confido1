@@ -83,6 +83,7 @@ external interface SliderThumbProps : Props {
     var disabled: Boolean?
     var kind: ThumbKind
     var signpostEnabled: Boolean?
+    var signpostHeight: Double?
 }
 val SliderThumb = FC<SliderThumbProps>("SliderThumb") { props->
     val pos = props.pos
@@ -152,9 +153,10 @@ val SliderThumb = FC<SliderThumbProps>("SliderThumb") { props->
     }
     if (props.signpostEnabled ?: true) {
         ReactHTML.div {// signpost stem
+            val height = props.signpostHeight ?: 120.0
             css {
                 position = Position.absolute
-                height = 120.px
+                this.height = height.px
                 width = 2.px
                 transform = translatex((-50).pct)
                 backgroundColor = Color(kind.signpostColor)
@@ -167,10 +169,11 @@ val SliderThumb = FC<SliderThumbProps>("SliderThumb") { props->
             }
         }
         ReactHTML.div {
+            val height = props.signpostHeight ?: 120.0
             css {
                 position = Position.absolute
                 backgroundColor = Color(kind.signpostColor)
-                bottom = 132.px
+                bottom = (height + 12.0).px
                 zIndex = integer(4)
                 borderRadius = 5.px
                 padding = Padding(4.px, 6.px)
