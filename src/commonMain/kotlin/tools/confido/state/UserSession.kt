@@ -4,6 +4,7 @@ import kotlinx.datetime.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import tools.confido.refs.*
+import tools.confido.serialization.CoercingNullSerializer
 import users.User
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -21,12 +22,15 @@ enum class UserSessionValidity(val validTime: Duration) {
     }
 }
 
+object PresenterInfoSerializer: CoercingNullSerializer<PresenterInfo>(PresenterInfo.serializer()) {}
+
 @Serializable
 data class UserSession(
     @SerialName("_id")
     override val id: String = "",
     val userRef: Ref<User>? = null,
     val language: String = "en",
+    @Serializable(with=PresenterInfoSerializer::class)
     val presenterInfo: PresenterInfo? = null,
     val validity: UserSessionValidity = UserSessionValidity.PERMANENT,
     override val expiryTime: Instant = Clock.System.now() + validity.validTime,

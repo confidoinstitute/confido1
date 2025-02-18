@@ -26,6 +26,26 @@ class RangeSerializer<T: Comparable<T>>(private val elementSerializer: KSerializ
     }
 }
 
+open class CoercingNullSerializer<T : Any>(
+    private val delegate: KSerializer<T>
+) : KSerializer<T?> {
+    override val descriptor: SerialDescriptor = delegate.descriptor
+
+    override fun deserialize(decoder: Decoder): T? {
+        return try {
+            delegate.deserialize(decoder)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    override fun serialize(encoder: Encoder, value: T?) {
+        if (value != null) {
+            delegate.serialize(encoder, value)
+        }
+    }
+}
+
 val confidoSM by lazy { distributionsSM + presenterSM } // here we can add other SMs
 
 
