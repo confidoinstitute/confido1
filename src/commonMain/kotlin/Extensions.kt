@@ -1,6 +1,8 @@
 package tools.confido.extensions
 
 import kotlinx.serialization.KSerializer
+import tools.confido.distributions.ContinuousProbabilityDistribution
+import tools.confido.distributions.ProbabilityDistribution
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.*
@@ -78,6 +80,12 @@ abstract class  ExtensionDataSerializer(val type: ExtensionDataType): KSerialize
 
 interface Extension {
     fun registerPresenterViews(builder: PolymorphicModuleBuilder<PresenterView>) {
+    }
+
+    fun registerProbabilityDistributions(builder: PolymorphicModuleBuilder<ProbabilityDistribution>) {
+    }
+
+    fun registerContinuousProbabilityDistributions(builder: PolymorphicModuleBuilder<ContinuousProbabilityDistribution>) {
     }
 
     fun registerEdtKeys(edt: ExtensionDataType) {}

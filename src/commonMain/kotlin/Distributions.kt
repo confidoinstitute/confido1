@@ -1,6 +1,7 @@
 package tools.confido.distributions
 import kotlinx.serialization.*
 import kotlinx.serialization.modules.*
+import tools.confido.extensions.Extension
 import tools.confido.spaces.*
 import tools.confido.utils.*
 import kotlin.math.*
@@ -527,6 +528,7 @@ val distributionsSM = SerializersModule {
         subclass(NormalDistribution::class)
         subclass(CanonicalNormalDistribution::class)
         subclass(TruncatedSplitNormalDistribution::class)
+        Extension.forEach { it.registerProbabilityDistributions(this) }
     }
     polymorphic(ContinuousProbabilityDistribution::class) {
         subclass(DiscretizedContinuousDistribution::class)
@@ -535,5 +537,6 @@ val distributionsSM = SerializersModule {
         subclass(NormalDistribution::class)
         subclass(CanonicalNormalDistribution::class)
         subclass(TruncatedSplitNormalDistribution::class)
+        Extension.forEach { it.registerContinuousProbabilityDistributions(this) }
     }
 }
