@@ -13,6 +13,8 @@ interface ServerExtension: Extension {
 
     }
 
+    fun calculateGroupPred(q: Question, pred: Collection<Prediction>): Prediction? = null
+
     fun initRoutes(r: Routing) {
 
     }

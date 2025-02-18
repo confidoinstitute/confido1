@@ -611,6 +611,9 @@ object serverState : GlobalState() {
             0 -> null
             1 -> preds.first().copy(user = null, id = "") // id contains uid of predicting user; don't want to leak
             else -> {
+                ServerExtension.enabled.mapNotNull {
+                    it.calculateGroupPred(question, preds)
+                }.firstOrNull() ?:
                 Prediction(user = null, ts = preds.map{it.ts}.max(), question = question.ref,
                             dist = calculateGroupDist(question.answerSpace, preds.map{it.dist}))
             }

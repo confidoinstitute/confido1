@@ -44,6 +44,7 @@ val GraphButtonContainer = FC<PropsWithChildren> { props->
             gap = 4.px
             zIndex = integer(10)
         }
+        onPointerDown = { it.stopPropagation() }
         +props.children
     }
 }
