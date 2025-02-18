@@ -8,7 +8,9 @@ import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.input
 import react.dom.html.ReactHTML.textarea
+import tools.confido.utils.toFixed
 import utils.except
+import kotlin.math.pow
 
 val textInputClass = emotion.css.ClassName {
     padding = Padding(10.px, 12.px)
@@ -74,7 +76,7 @@ class InputTooLarge(val limit: Any): InputOutOfRange() {
 class InputTooSmall(val limit: Any): InputOutOfRange() {
     override fun toString() = "Value too small (minimum: $limit)"
 }
-external interface InputProps<T>: Props {
+external interface InputProps<T>: PropsWithClassName {
     var value: T?
     var placeholder: String?
     var onChange: ((newVal: T?, errType: InputError?) -> Unit)?
@@ -133,10 +135,14 @@ useInputStateManager(props: P,
 
 external interface NumericInputProps : InputPropsWithRange<Double> {
     var step: Double?
+    var decimals: Int?
 }
 val NumericInput = FC<NumericInputProps>("NumericInput") { props ->
-    var rawValue by useState(props.value?.toString() ?: "")
-    val ism = useInputStateManager(props) { rawValue = it?.toString() ?: "" }
+    val decimals = props.decimals ?: 1
+    val step = props.step ?: 0.1.pow(decimals)
+
+    var rawValue by useState(props.value?.toFixed(decimals) ?: "")
+    val ism = useInputStateManager(props) { rawValue = it?.toFixed(decimals) ?: "" }
 
     fun onRawUpdate(newRaw: String) {
         val newValue = newRaw.toDoubleOrNull()
@@ -156,7 +162,9 @@ val NumericInput = FC<NumericInputProps>("NumericInput") { props ->
         onRawUpdate(rawValue)
     }
 
+
     TextInput {
+        className =  props.className
         type = InputType.number
         // TODO: Proper step
         //step = kotlin.math.min(0.1, props.space.binner.binSize)
@@ -165,7 +173,7 @@ val NumericInput = FC<NumericInputProps>("NumericInput") { props ->
         required = props.required
         props.min?.let { this.min = it }
         props.max?.let { this.max = it }
-        props.step?.let { this.step = it }
+        this.step = step
         props.disabled?.let { this.disabled = it }
         props.readOnly?.let { this.readOnly = it }
         onChange = { event ->
