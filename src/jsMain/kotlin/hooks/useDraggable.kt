@@ -171,6 +171,12 @@ fun <T: HTMLElement> useDraggable(
         draggableRef,
         useEventListener("mousedown", callback =  mgr::onMouseDown, passive = false, preventDefault = true),
         useEventListener("touchstart", callback =  mgr::onTouchStart, passive = false, preventDefault = true),
+        // XXX We currently do not use pointer events here (maybe we should) but we need to prevent
+        // them from propagation otherwise this breaks horribly if the slider is e.g. embedded in
+        // a PanZoom1D
+        useEventListener<HTMLElement>("pointerdown", passive=false) { ev-> ev.stopPropagation()},
+        useEventListener<HTMLElement>("pointermove", passive=false) { ev-> ev.stopPropagation()},
+        useEventListener<HTMLElement>("pointerup", passive=false) { ev-> ev.stopPropagation()},
     )
     return ref
 }
