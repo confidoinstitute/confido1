@@ -36,14 +36,18 @@ import space.kscience.plotly.models.*
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionContextPlace
+import tools.confido.question.GroupTerminology
 import tools.confido.question.Prediction
+import tools.confido.question.PredictionTerminology
 import tools.confido.question.Question
 import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.state.PresenterView
 import tools.confido.state.QuestionPV
 import tools.confido.utils.List2
+import tools.confido.utils.capFirst
 import tools.confido.utils.cross
+import tools.confido.utils.formatPercent
 import utils.questionUrl
 import kotlin.math.abs
 import kotlin.reflect.KClass
@@ -283,12 +287,14 @@ val UpdateScatterTable = FC<UpdateScatterPlotProps> { props->
 
 val UpdateScatterPlotPP = FC<PresenterPageProps<UpdateScatterPlotPV>> { props ->
     val view  = props.view
-    val data = useSuspendResult(view.time1, view.time2, view.question.id) {
+    val rawData = useSuspendResult(view.time1, view.time2, view.question.id) {
         val url = "/api${questionUrl(view.question.id)}/update_plot?x" +
                 (if (view.time1 != null) "&t1=${view.time1!!.epochSeconds}" else "") +
                 if (view.time2 != null) "&t2=${view.time2!!.epochSeconds}" else ""
         Client.httpClient.get(url).body<List<List2<Prediction?>>>()
-    }?.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<Prediction>>?>()
+    }
+    val data = rawData?.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<Prediction>>?>()
+    val q = view.question.deref()
 
     Stack {
         css {
@@ -298,7 +304,7 @@ val UpdateScatterPlotPP = FC<PresenterPageProps<UpdateScatterPlotPV>> { props ->
             maxHeight = 100.vh
             height = 100.vh
         }
-        view.question.deref()?.name?.let { h1 { +it } }
+        q?.name?.let { h1 { +it } }
         Stack {
             direction = FlexDirection.row
             UpdateScatterPlot {
@@ -312,6 +318,28 @@ val UpdateScatterPlotPP = FC<PresenterPageProps<UpdateScatterPlotPV>> { props ->
             }
             UpdateScatterTable {
                 this.preds = data ?: emptyList()
+            }
+        }
+        if (rawData != null)
+        Stack {
+            direction = FlexDirection.row
+            css {
+                flexGrow = number(0.0)
+                fontSize = 200.pct
+                justifyContent = JustifyContent.spaceEvenly
+                marginTop = 20.px
+                alignSelf = AlignSelf.stretch
+
+            }
+            listOf(0,1).map { which->
+                val gp = rawData.mapNotNull { (it[which]?.dist as? BinaryDistribution)?.yesProb }.average()
+                if (gp.isNaN()) return@map
+                div {
+                    val adverb = listOf("before", "after")[which]
+                    +"${(q?.groupTerminology ?: GroupTerminology.GROUP).term.capFirst()}"
+                    +" ${(q?.predictionTerminology ?: PredictionTerminology.PREDICTION).term}"
+                    +" $adverb: ${formatPercent(gp)}"
+                }
             }
         }
     }
@@ -381,8 +409,8 @@ object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
                         }
 
                         val data = useSuspendResult(state, time1, time2, q.id) {
-                            if (state != UpdatePlotState.CONFIG_OPEN || time1 == null) return@useSuspendResult null
-                            val url = "/api${questionUrl(q.id)}/update_plot?t1=${time1!!.epochSeconds}" +
+                            if (state != UpdatePlotState.CONFIG_OPEN) return@useSuspendResult null
+                            val url = "/api${questionUrl(q.id)}/update_plot?t1=${time1?.epochSeconds}" +
                                 if (time2 != null) "&t2=${time2!!.epochSeconds}" else ""
                             Client.httpClient.get(url).body<List<List2<Prediction?>>>()
                         }?.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<Prediction>>?>()
