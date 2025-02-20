@@ -1,11 +1,13 @@
 package tools.confido.question
 
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import rooms.Room
 import tools.confido.refs.ImmediateDerefEntity
 import tools.confido.refs.Ref
 import tools.confido.utils.HasUrlPrefix
+import tools.confido.utils.unixNow
 import users.User
 
 @Serializable
@@ -35,11 +37,12 @@ data class RoomComment(
     @SerialName("_id")
     override val id: String,
     override val user: Ref<User>,
-    override val timestamp: Int,
+    @EncodeDefault
+    override val timestamp: Int = unixNow(),
     override val content: String,
     override val modified: Int? = null,
     val room: Ref<Room>,
-    val isAnnotation: Boolean,
+    val isAnnotation: Boolean = false,
 ) : Comment() {
     override val urlPrefix get() = "${Room.urlPrefix(room.id)}/comments/$id"
 }
