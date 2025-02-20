@@ -9,9 +9,9 @@ import tools.confido.distributions.*
 import tools.confido.refs.*
 import tools.confido.spaces.*
 import tools.confido.state.serverState
+import tools.confido.utils.capFirst
 
 object PredictionShowcaseSE : ServerExtension, PredictionShowcaseExtension() {
-    val groupPredText = System.getenv("CONFIDO_GROUP_PRED_LABEL") ?: "Group prediction"
     val resolutionText = System.getenv("CONFIDO_RESOLUTION_LABEL") ?: "Resolution"
     val referenceText = System.getenv("CONFIDO_REFERENCE_FORECAST_LABEL") ?: "Reference"
 
@@ -38,6 +38,7 @@ object PredictionShowcaseSE : ServerExtension, PredictionShowcaseExtension() {
                     }
                 }
 
+                val groupPredText = "${question.groupTerminology.term.capFirst()} ${question.predictionTerminology.term}"
                 // Add group prediction
                 serverState.groupPred[question.ref]?.let { pred->
                     when (val dist = pred.dist) {

@@ -1,5 +1,6 @@
 package extensions
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.PolymorphicModuleBuilder
 import kotlinx.serialization.modules.subclass
@@ -12,6 +13,7 @@ import rooms.Room
 val ReferenceForcastKey = ExtensionDataKeyWithDefault<Double?>("reference_forecast", null)
 
 @Serializable
+@SerialName("reference_forecast_scoreboard")
 data class ReferenceForcastScoreboardPV(
     val room: Ref<Room>,
 ): PresenterView() {

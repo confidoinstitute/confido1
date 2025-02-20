@@ -1,5 +1,6 @@
 package extensions
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.PolymorphicModuleBuilder
 import kotlinx.serialization.modules.subclass
@@ -10,6 +11,7 @@ import tools.confido.refs.Ref
 import tools.confido.state.PresenterView
 
 @Serializable
+@SerialName("prediction_showcase")
 data class PredictionShowcasePV(
     val question: Ref<Question>
 ): PresenterView() {
