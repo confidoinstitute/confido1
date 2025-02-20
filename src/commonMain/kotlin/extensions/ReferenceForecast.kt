@@ -24,7 +24,8 @@ data class ReferenceForcastScoreboardPV(
 data class UserScore(
     val nickname: String,
     val score: Double,
-    val numQuestions: Int
+    val numQuestions: Int,
+    val isSpecial: Boolean = false,
 )
 
 open class ReferenceForecastExtension: Extension {

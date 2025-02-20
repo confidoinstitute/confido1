@@ -42,23 +42,37 @@ object ReferenceForecastSE : ServerExtension, ReferenceForecastExtension() {
                 }
 
                 // Calculate scores for each user
-                val userScores = mutableMapOf<Ref<User>, MutableList<Double>>()
+                val userScores = mutableMapOf<Ref<User>?, MutableList<Double>>()
                 questionsWithRef.forEach { (question, reference) ->
                     serverState.userPred[question.ref]?.forEach { (userRef, pred) ->
                         val dist = pred.dist as? BinaryDistribution ?: return@forEach
+
                         userScores.getOrPut(userRef) { mutableListOf() }
                             .add(calculateScore(dist.yesProb, reference))
+                    }
+                    (serverState.groupPred[question.ref]?.dist as? BinaryDistribution)?.let { gp->
+                        userScores.getOrPut(null) { mutableListOf() }
+                            .add(calculateScore(gp.yesProb, reference))
                     }
                 }
 
                 // Compute average scores and create response
                 userScores.mapNotNull { (userRef, scores) ->
-                    val user = userRef.deref() ?: return@mapNotNull null
-                    UserScore(
-                        nickname = user.nick ?: "(Anonymous)",
-                        score = scores.average(),
-                        numQuestions = scores.size
-                    )
+                    if (userRef == null)
+                        UserScore(
+                            "Crowd",
+                            scores.sum(),
+                            numQuestions = scores.size,
+                            isSpecial = true
+                        )
+                    else {
+                        val user = userRef.deref() ?: return@mapNotNull null
+                        UserScore(
+                            nickname = user.nick ?: "(Anonymous)",
+                            score = scores.sum(),
+                            numQuestions = scores.size
+                        )
+                    }
                 }.sortedByDescending { it.score }
             }
         }

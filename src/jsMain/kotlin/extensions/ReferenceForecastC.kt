@@ -58,7 +58,7 @@ val ReferenceForcastScoreboardPP = FC<PresenterPageProps<ReferenceForcastScorebo
             css {
                 fontSize = 52.px
             }
-            +"Reference Forecast Scoreboard"
+            +"Scoreboard"
         }
 
         table {
@@ -85,6 +85,12 @@ val ReferenceForcastScoreboardPP = FC<PresenterPageProps<ReferenceForcastScorebo
             tbody {
                 scores.data.forEach { score ->
                     tr {
+                        css {
+                            if (score.isSpecial) {
+                                fontWeight = FontWeight.bold
+                                backgroundColor = Color("#e3f2fd")
+                            }
+                        }
                         td { +score.nickname }
                         td { +"${score.score.toFixed(1)}" }
                     }
