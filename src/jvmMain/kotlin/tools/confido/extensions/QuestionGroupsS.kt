@@ -12,6 +12,7 @@ import tools.confido.application.routes.postST
 import tools.confido.application.routes.roomUrl
 import tools.confido.application.routes.withRoom
 import tools.confido.application.sessions.TransientData
+import tools.confido.question.GroupPredictionVisibility
 import tools.confido.question.QuestionState
 import tools.confido.state.serverState
 import tools.confido.utils.forEachDeref
@@ -23,13 +24,14 @@ object QuestionGroupsSE : ServerExtension, QuestionGroupsExtension() {
             postST("/api$roomUrl/groups/{gid}/set_state") {
                 println("ROUTE")
                 val gid = call.parameters["gid"]?.ifEmpty { null } ?: badRequest("missing group id")
+                val gpv = call.request.queryParameters["gpv"]?.toInt()?.let { it != 0 }
                 val newState = call.receive<QuestionState>()
                 withRoom {
                     assertPermission(RoomPermission.MANAGE_QUESTIONS, "need moderator privilege to alter state")
                     serverState.withTransaction {
                         room.questions.forEachDeref { q ->
                             if (q.extensionData[QuestionGroupsKey].contains(gid))
-                                serverState.questionManager.modifyEntity(q.id) { it.withState(newState) }
+                                serverState.questionManager.modifyEntity(q.id) { it.withState(newState).copy(groupPredVisible = gpv ?: it.groupPredVisible) }
                         }
                     }
 
