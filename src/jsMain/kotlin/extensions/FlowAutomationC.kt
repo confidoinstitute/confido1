@@ -44,7 +44,7 @@ external interface FlowItem {
 fun getCollection(spec: String): List<Question> =
     if (spec.startsWith("@")) {
         val grp = spec.substring(1)
-        globalState.questions.values.filter { grp in it.extensionData[QuestionGroupsKey] }.toList()
+        globalState.questions.values.reversed().filter { grp in it.extensionData[QuestionGroupsKey] }.toList()
     } else {
         spec.split(",").mapNotNull { globalState.questions[it] }
     }
