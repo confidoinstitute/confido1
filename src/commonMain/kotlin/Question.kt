@@ -161,6 +161,12 @@ data class QuestionScheduleStatus(
 val QuestionEDT = ExtensionDataType("QuestionEDT")
 class QuestionEDTSerializer: ExtensionDataSerializer(QuestionEDT)
 
+enum class ExtremeProbabilityMode {
+    NORMAL,
+    EXTREME_LOW,
+    EXTREME_HIGH
+}
+
 @Serializable
 data class Question(
     @SerialName("_id")
@@ -201,6 +207,7 @@ data class Question(
     val scheduleStatus: QuestionScheduleStatus = QuestionScheduleStatus(),
     @Serializable(with = QuestionEDTSerializer::class)
     val extensionData: ExtensionData = ExtensionData(QuestionEDT),
+    val extremeProbabilityMode: ExtremeProbabilityMode = ExtremeProbabilityMode.NORMAL,
 ) : ImmediateDerefEntity, HasUrlPrefix {
     init {
         if (resolution != null) {

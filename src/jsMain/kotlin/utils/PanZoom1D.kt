@@ -136,8 +136,15 @@ open class PZController(var params: PZParams, initialState: PZState = PZState(pa
         set(value)  { field = value; onChange?.invoke(value) }
 }
 
+data class PZRet<T: HTMLElement>(
+    val re: MutableRefObject<T>,
+    val state: PZState,
+    val ctl: PZController
+) {
+}
+
 fun <T:HTMLElement> usePanZoom(params: PZParams, initialState: PZState = PZState(params),
-               onZoomChange: ((PZState)->Unit)?=null): Pair<MutableRefObject<T>, PZState> {
+               onZoomChange: ((PZState)->Unit)?=null): PZRet<T> {
     var zoomState by useState(initialState)
     val ctl = useMemo { PZController(params, initialState, onChange = { zoomState = it; onZoomChange?.invoke(it) }) }
     useEffect(params.key()) {
@@ -148,6 +155,6 @@ fun <T:HTMLElement> usePanZoom(params: PZParams, initialState: PZState = PZState
         usePan(ctl::onPanStart),
         useEventListener("wheel", callback = ctl::onWheel, passive = false, preventDefault = true),
     )
-    return refEffect to zoomState
+    return PZRet(refEffect, zoomState, ctl)
 }
 

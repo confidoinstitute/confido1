@@ -1,22 +1,29 @@
 package components.redesign.questions.predictions
 
+import browser.*
 import components.redesign.basic.*
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.*
 import csstype.*
+import dom.events.*
 import dom.html.*
 import emotion.react.*
 import hooks.*
 import kotlinx.js.*
 import react.*
 import react.dom.html.ReactHTML.div
+import tools.confido.calibration.CalibrationEntry
 import tools.confido.distributions.*
+import tools.confido.question.ExtremeProbabilityMode
 import tools.confido.question.PredictionTerminology
 import tools.confido.spaces.*
 import tools.confido.utils.List2
+import tools.confido.utils.toFixed
+import utils.markSpacing
 import utils.panzoom1d.PZParams
 import utils.panzoom1d.PZState
+import utils.panzoom1d.usePanZoom
 import kotlin.math.*
 
 external interface BinaryPredictionProps : Props, BasePredictionGraphProps {
@@ -70,12 +77,20 @@ fun ChildrenBuilder.proportionalCircle(text: String, color: Color, prob: Double?
                 // When the font is too small, hide the text
                 if (scalar >= 0.3) {
                     div {
+                        val percent = prob * 100
+                        val (decimals, fontSize) = if (percent <= 1 || percent >= 99 && percent < 100) {
+                            2 to 38.px
+                        } else if (percent <= 10 || percent >= 90 && percent < 100) {
+                            1 to 44.px
+                        } else {
+                            0 to 50.px
+                        }
                         css {
                             fontWeight = integer(700)
-                            fontSize = 50.px
+                            this.fontSize = fontSize
                             lineHeight = 60.px
                         }
-                        +"${round(prob * 100)}%"
+                        +"${percent.toFixed(decimals)}%"
                     }
                     div {
                         css {
@@ -136,14 +151,82 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
     }
 }
 
+data class ZoomPreset(
+    val zoom: Double,
+    val center: Double, // content coordinates
+)
+
+val EXTREME_PRESETS = { mode: ExtremeProbabilityMode ->
+    when (mode) {
+        ExtremeProbabilityMode.NORMAL -> null
+        ExtremeProbabilityMode.EXTREME_LOW -> mapOf(
+            "0-100%" to ZoomPreset(1.0, 50.0),
+            "0-10%" to ZoomPreset(10.0, 5.0),
+            "0-1%" to ZoomPreset(100.0, 0.5)
+        )
+        ExtremeProbabilityMode.EXTREME_HIGH -> mapOf(
+            "0-100%" to ZoomPreset(1.0, 50.0),
+            "90-100%" to ZoomPreset(10.0, 95.0),
+            "99-100%" to ZoomPreset(100.0, 99.5)
+        )
+    }
+}
+
+external interface RangeSelectorProps : PropsWithClassName {
+    var extremeProbabilityMode: ExtremeProbabilityMode
+    var zoomState: PZState
+    var elementWidth: Double
+    var onSelectRange: (ZoomPreset) -> Unit
+}
+
+val RangeSelector = FC<RangeSelectorProps> { props ->
+    val presets = EXTREME_PRESETS(props.extremeProbabilityMode) ?: return@FC
+    val centerOrigin : Transform = translate((-50).pct, (-50).pct)
+
+    Stack {
+        direction = FlexDirection.row
+        css(override=props.className) {
+            gap = 8.px
+            marginTop = 8.px
+        }
+        +"Range: "
+        presets.forEach { (label, preset) ->
+            val isActive = abs(props.zoomState.zoom - preset.zoom) < 0.001 &&
+                          abs(props.zoomState.viewportToContent(props.elementWidth / 2) - preset.center) < preset.zoom * 0.01
+            div {
+                css {
+                    cursor = Cursor.pointer
+                    color = if (isActive) Color("#6319FF") else Color("rgba(0,0,0,0.3)")
+                    fontWeight = if (isActive) integer(600) else integer(400)
+                }
+                onClick = { props.onSelectRange(preset) }
+                +label
+            }
+        }
+    }
+}
+
 external interface BinaryPredSliderProps : PredictionInputProps, PropsWithElementSize {
+    var extremeProbabilityMode: ExtremeProbabilityMode?
 }
 val BIN_PRED_SPACE = NumericSpace(0.0, 100.0, unit="%")
 val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
     val layoutMode = useContext(LayoutModeContext)
     val predictionTerminology = props.question?.predictionTerminology ?: PredictionTerminology.ANSWER
-    val zoomParams = PZParams(viewportWidth = props.elementWidth, contentDomain = 0.0..100.0, sidePad = SIDE_PAD)
-    val zoomState = PZState(zoomParams)
+    val extremeProbabilityMode = props.extremeProbabilityMode ?:  ExtremeProbabilityMode.NORMAL
+
+    val maxZoom = if (extremeProbabilityMode == ExtremeProbabilityMode.NORMAL) 1.0 else 100.0
+    val zoomParams = PZParams(viewportWidth = props.elementWidth, contentDomain = 0.0..100.0, sidePad = SIDE_PAD, maxZoom = maxZoom)
+    val (pzRef, zoomState, ctl) = usePanZoom<HTMLElement >(zoomParams)
+
+    fun formatPercentage(value: Double): String {
+        val decimals = when {
+            zoomState.zoom >= 100.0 -> 2 // Show 2 decimals at highest zoom (e.g. 0.45%)
+            zoomState.zoom >= 10.0 -> 1  // Show 1 decimal at medium zoom (e.g. 4.5%)
+            else -> 0                    // Show no decimals at default zoom (e.g. 45%)
+        }
+        return "${value.toFixed(decimals)}%"
+    }
     val propProb = (props.dist as? BinaryDistribution)?.yesProb
     var yesProb by useState(propProb)
     var shouldAutoFocus by useState(false)
@@ -156,7 +239,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
         yesProb = newProb
         props.onChange?.invoke(BinaryDistribution(newProb), isCommit)
     }
-    val clickRE = usePureClick<HTMLDivElement> { ev->
+    val clickRE = usePureClick<HTMLElement> { ev->
         if (yesProb == null) {
             val rect = (ev.currentTarget as HTMLElement).getBoundingClientRect()
             val x = ev.clientX - rect.left
@@ -167,26 +250,32 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
     }
     val interactVerb = if (layoutMode >= LayoutMode.TABLET) { "Click" } else { "Tap" }
 
-    div {
+    Stack {
 
-        ref = clickRE
+        ref = combineRefs(clickRE, pzRef)
+    val marks = useMemo(zoomState.paperWidth) {
+        markSpacing(zoomState.paperWidth, 0.0, 100.0) { v: Number -> formatPercentage(v.toDouble()) }
+    }
+    val filteredMarks = marks.filter { it in zoomState.visibleContentRange }
+    console.log("M: ${marks.toTypedArray()} FM: ${filteredMarks.toTypedArray() } ")
+
     div {
         key="percent_labels"
         css {
             height = 16.px
             flexGrow = number(0.0)
             flexShrink = number(0.0)
-            fontSize = 10.px // TODO: use larger font on desktop
+            fontSize = 10.px
             color = Color("rgba(0,0,0,30%)")
             lineHeight = 12.1.px
             position = Position.relative
             fontFamily = sansSerif
             fontWeight = integer(600)
         }
-        (0..100 step 10).forEachIndexed {idx, value->
+        filteredMarks.forEachIndexed { idx, value ->
             div {
                 style = jso {
-                    left = zoomState.contentToViewport(value.toDouble()).px
+                    left = zoomState.contentToViewport(value).px
                     top = 50.pct
                 }
                 css {
@@ -197,7 +286,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
                     transform = translate(xtrans, (-50).pct)
                     position = Position.absolute
                 }
-                + "${value}%"
+                +formatPercentage(value)
             }
         }
     }
@@ -232,7 +321,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
         } else {
             SliderTrack {
                 key = "track"
-                marks = (0..100 step 10).map{ it.toDouble() }
+                this.marks = filteredMarks
                 this.zoomState = zoomState
             }
 
@@ -253,51 +342,76 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
         }
 
     }
-    div {
-        key="word_labels"
-        css {
-            height = 16.px
-            flexGrow = number(0.0)
-            flexShrink = number(0.0)
-            fontSize = 10.px // TODO: use larger font on desktop
-            color = Color("rgba(0,0,0,30%)")
-            lineHeight = 12.1.px
-            position = Position.relative
-            fontFamily = sansSerif
-            fontWeight = integer(600)
-        }
-        listOf(
-            0 to "No",
-            25 to "Improbable",
-            50 to "Even odds",
-            75 to "Probable",
-            100 to "Yes",
-        ).forEachIndexed {idx, (value, text)->
-            div {
-                style = jso {
-                    left = zoomState.contentToViewport(value.toDouble()).px
-                    top = 50.pct
-                }
-                css {
-                    val xtrans = when(idx) {
-                        0 -> max((-50).pct, (-SIDE_PAD).px)
-                        else -> (-50).pct
+    // Only show verbal labels at default zoom
+    if (abs(zoomState.zoom - 1.0) < 0.001) {
+        div {
+            key="word_labels"
+            css {
+                height = 16.px
+                flexGrow = number(0.0)
+                flexShrink = number(0.0)
+                fontSize = 10.px
+                color = Color("rgba(0,0,0,30%)")
+                lineHeight = 12.1.px
+                position = Position.relative
+                fontFamily = sansSerif
+                fontWeight = integer(600)
+            }
+            listOf(
+                0 to "No",
+                25 to "Improbable",
+                50 to "Even odds",
+                75 to "Probable",
+                100 to "Yes",
+            ).forEachIndexed { idx, (value, text) ->
+                div {
+                    style = jso {
+                        left = zoomState.contentToViewport(value.toDouble()).px
+                        top = 50.pct
                     }
-                    transform = translate(xtrans, (-50).pct)
-                    position = Position.absolute
+                    css {
+                        val xtrans = when(idx) {
+                            0 -> max((-50).pct, (-SIDE_PAD).px)
+                            else -> (-50).pct
+                        }
+                        transform = translate(xtrans, (-50).pct)
+                        position = Position.absolute
+                    }
+                    +text
                 }
-                + text
             }
         }
     }
+        if (extremeProbabilityMode != ExtremeProbabilityMode.NORMAL) {
+            RangeSelector {
+                css {
+                    alignSelf = AlignSelf.center
+                }
+                this.extremeProbabilityMode = extremeProbabilityMode
+                this.zoomState = zoomState
+                this.elementWidth = props.elementWidth
+                this.onSelectRange = { preset: ZoomPreset ->
+                    val paperCenter = zoomState.contentToPaper(preset.center)
+                    val viewportCenter = props.elementWidth / 2
+                    val pan = paperCenter - viewportCenter
+                    val newState = PZState(zoomState.params, preset.zoom, pan)
+                    ctl.state = newState
+                }
+            }
+        }
     }
 })
 
-val BinaryPredInput = FC<PredictionInputProps> { props->
+external interface BinaryPredInputProps : PredictionInputProps {
+    var extremeProbabilityMode: ExtremeProbabilityMode?
+}
+
+val BinaryPredInput = FC<BinaryPredInputProps> { props->
     val propDist = (props.dist as? BinaryDistribution)
     var previewDist by useState(propDist)
     val predictionTerminology = props.question?.predictionTerminology ?: PredictionTerminology.ANSWER
     useEffect(propDist?.yesProb) { previewDist = propDist }
+    val extremeProbabilityMode = props.extremeProbabilityMode ?: props.question?.extremeProbabilityMode ?: ExtremeProbabilityMode.NORMAL
 
     val realSize = useElementSize<HTMLElement>()
     val clickRE = usePureClick<HTMLElement> { ev->
@@ -340,6 +454,7 @@ val BinaryPredInput = FC<PredictionInputProps> { props->
         BinaryPredSlider {
             this.space = props.space
             this.dist = props.dist
+            this.extremeProbabilityMode = extremeProbabilityMode
             this.onChange = { newDist, isCommit->
                 previewDist = (newDist as BinaryDistribution)
                 props.onChange?.invoke(newDist, isCommit)
