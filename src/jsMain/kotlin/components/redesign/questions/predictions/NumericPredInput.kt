@@ -51,7 +51,13 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
     val minCIRadiusThumb = props.zoomState.paperDistToContent(20.0) // do not allow the thumbs to overlap too much
     val predictionTerminology = props.question?.predictionTerminology ?: PredictionTerminology.ANSWER
     var didChange by useState(false)
+    var shouldAutoFocusCenter by useState(false)
+    var autoFocusSide by useState<Int?>(null)
     useEffectOnce { console.log("SLIDER INIT") }
+    useEffect(spec) {
+        shouldAutoFocusCenter = false
+        autoFocusSide = null
+    }
     fun updateSpec(isCommit: Boolean, fn: (NormalishDistSpec) -> NormalishDistSpec) {
         val newSpec = fn(spec)
         props.onSpecChange?.invoke(newSpec, isCommit)
@@ -59,6 +65,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
     val createEstimateRE = usePureClick<HTMLDivElement> { ev->
         if (spec.center == null) {
             val newCenter = props.zoomState.viewportToContent(ev.offsetX)
+            shouldAutoFocusCenter = true
             updateSpec(true) { NumericDistSpecSym(space, newCenter, null) }
         }
     }
@@ -67,11 +74,20 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
         console.log("zs=${props.zoomState} center=${spec.center}")
         val desiredCIBoundary =
             props.zoomState.viewportToContent(ev.clientX.toDouble() - props.element.getBoundingClientRect().left)
+        val clickedSide = if (desiredCIBoundary < spec.center!!) 0 else 1
+        autoFocusSide = clickedSide
         updateSpec(true) { it.setCiBoundary(desiredCIBoundary).coerceToRealistic() }
     }
     fun simulateClick(spaceX: Double) {
-        if (spec.center == null) updateSpec(true) { it.setCenter(spaceX) }
-        else if (spec.ci == null) updateSpec(true) { it.setCiBoundary(spaceX) }
+        if (spec.center == null) {
+            shouldAutoFocusCenter = true
+            updateSpec(true) { it.setCenter(spaceX) }
+        }
+        else if (spec.ci == null) {
+            val clickedSide = if (spaceX < spec.center!!) 0 else 1
+            autoFocusSide = clickedSide
+            updateSpec(true) { it.setCiBoundary(spaceX) }
+        }
     }
     props.simulateClickRef?.let { it.current = ::simulateClick }
     val interactVerb = if (layoutMode >= LayoutMode.TABLET) { "Click" } else { "Tap" }
@@ -105,6 +121,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
                     else minOf(space.max, center + minCIRadiusThumb)..space.max
                     thumbPos = pos.coerceIn(coerceRangeThumb)
                     this.disabled = disabled
+                    this.autoFocus = (side == autoFocusSide)
                     onDrag = { pos, isCommit ->
                         updateSpec(isCommit) { it.setCiBoundary(pos, side).coerceToRealistic() }
                     }
@@ -121,6 +138,7 @@ val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPr
                 kind = ThumbKind.Center
                 pos = spec.center!!
                 this.disabled = disabled
+                this.autoFocus = shouldAutoFocusCenter
                 onDrag = { pos, isCommit ->
                     updateSpec(isCommit) { it.setCenter(pos)  }
                     didChange = true

@@ -84,6 +84,7 @@ external interface SliderThumbProps : Props {
     var kind: ThumbKind
     var signpostEnabled: Boolean?
     var signpostHeight: Double?
+    var autoFocus: Boolean?
 }
 val SliderThumb = FC<SliderThumbProps>("SliderThumb") { props->
     val pos = props.pos
@@ -121,6 +122,12 @@ val SliderThumb = FC<SliderThumbProps>("SliderThumb") { props->
             dragFocused = false
         }
     )
+    useLayoutEffect(props.autoFocus, thumbRef.current) {
+        if (props.autoFocus == true && thumbRef.current != null) {
+            thumbRef.current?.focus()
+        }
+    }
+
     ReactHTML.div {
         css {
             position = Position.absolute

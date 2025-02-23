@@ -51,13 +51,19 @@ val PointEstimateSlider = elementSizeWrapper(FC<PointEstimateSliderProps>("Point
     }
     val filteredMarks = marks.filter { it in zoomState.visibleContentRange }
     val disabled = props.disabled ?: false
+    var shouldAutoFocus by useState(false)
     val interactVerb = if (layoutMode >= LayoutMode.TABLET) "Click" else "Tap"
+
+    useEffect(props.value) {
+        shouldAutoFocus = false // Reset when value changes
+    }
 
     val createEstimateRE = usePureClick<HTMLElement> { ev ->
         if (props.value == null && !disabled) {
             val rect = (ev.currentTarget as HTMLElement).getBoundingClientRect()
             val x = ev.clientX - rect.left
             val newValue = zoomState.viewportToContent(x)
+            shouldAutoFocus = true
             props.onChange?.invoke(newValue, true)
         }
     }
@@ -151,6 +157,7 @@ val PointEstimateSlider = elementSizeWrapper(FC<PointEstimateSliderProps>("Point
                     this.disabled = disabled
                     this.signpostHeight = 60.0
                     this.onDrag = props.onChange
+                    this.autoFocus = shouldAutoFocus
                 }
             }
         }

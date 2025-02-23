@@ -146,20 +146,22 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
     val zoomState = PZState(zoomParams)
     val propProb = (props.dist as? BinaryDistribution)?.yesProb
     var yesProb by useState(propProb)
+    var shouldAutoFocus by useState(false)
     val disabled = props.disabled?:false
     useEffect(propProb) {
         propProb?.let { yesProb = propProb }
+        shouldAutoFocus = false // Reset when prop changes
     }
     fun update(newProb: Double, isCommit: Boolean) {
         yesProb = newProb
         props.onChange?.invoke(BinaryDistribution(newProb), isCommit)
     }
     val clickRE = usePureClick<HTMLDivElement> { ev->
-
         if (yesProb == null) {
             val rect = (ev.currentTarget as HTMLElement).getBoundingClientRect()
             val x = ev.clientX - rect.left
             val newProb = zoomState.viewportToContent(x) / 100.0
+            shouldAutoFocus = true
             update(newProb, true)
         }
     }
@@ -246,6 +248,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
                 }
                 signpostEnabled = false
                 this.disabled = disabled
+                this.autoFocus = shouldAutoFocus
             }
         }
 
