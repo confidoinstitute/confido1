@@ -1,6 +1,7 @@
 package extensions
 
 import components.*
+import components.AppStateContext
 import components.presenter.PresenterButton
 import components.presenter.PresenterPageProps
 import components.presenter.PresenterPageType
@@ -11,6 +12,7 @@ import components.redesign.basic.Stack
 import components.redesign.forms.*
 import components.redesign.presenter.PresenterContext
 import components.redesign.questions.dialog.QuestionQuickSettingsDialogProps
+import components.redesign.questions.dialog.EditQuestionDialogProps
 import components.rooms.RoomContext
 import csstype.*
 import dom.html.HTML.h1
@@ -22,26 +24,31 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import kotlinx.datetime.*
 import kotlinx.js.jso
-import react.ChildrenBuilder
-import react.FC
-import react.Props
+import react.*
+import react.dom.html.AutoComplete
 import react.dom.html.ReactHTML
+import react.dom.html.ReactHTML.datalist
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.h1
+import react.dom.html.ReactHTML.input
+import react.dom.html.ReactHTML.option
 import react.router.useNavigate
-import react.useContext
 import rooms.RoomPermission
 import space.kscience.plotly.layout
 import space.kscience.plotly.models.*
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionContextPlace
+import tools.confido.extensions.get
+import tools.confido.extensions.with
 import tools.confido.question.GroupTerminology
 import tools.confido.question.Prediction
 import tools.confido.question.PredictionTerminology
 import tools.confido.question.Question
 import tools.confido.refs.deref
 import tools.confido.refs.ref
+import tools.confido.refs.Ref
+import tools.confido.spaces.BinarySpace
 import tools.confido.state.PresenterView
 import tools.confido.state.QuestionPV
 import tools.confido.utils.List2
@@ -52,11 +59,64 @@ import utils.questionUrl
 import kotlin.math.abs
 import kotlin.reflect.KClass
 
+external interface QuestionSelectorProps : Props {
+    var value: String?
+    var onChange: ((Ref<Question>?) -> Unit)?
+    var disabled: Boolean?
+}
+
+val QID_RE = Regex("\\[([a-zA-Z0-9_-]+)\\]\$")
+val QuestionSelector = FC<QuestionSelectorProps>("QuestionSelector") { props ->
+    val (appState, _) = useContext(AppStateContext)
+    val datalistId = "question-list"
+    fun fmtq(q: Question) = "${q.name} [${q.id}]"
+    var internalVal by useState(props.value?.let { appState.questions[it] }?.let {fmtq(it)} ?: "")
+
+
+    div {
+        css {
+            width = 100.pct
+        }
+        input {
+            css {
+                width = 100.pct
+                padding = 8.px
+                fontSize = 16.px
+            }
+            type = react.dom.html.InputType.text
+            placeholder = "Search for a question..."
+            list = datalistId
+            value = internalVal
+            disabled = props.disabled == true
+            autoComplete = AutoComplete.off
+            onChange = { event ->
+                val newVal = event.target.value
+                internalVal = newVal
+                val m = QID_RE.find(newVal)
+                if (m!=null) {
+                    props.onChange?.invoke(Ref(m.groups[1]!!.value))
+                } else {
+                    props.onChange?.invoke(null)
+                }
+            }
+        }
+        datalist {
+            id = datalistId
+            appState.questions.values.filter{it.answerSpace == BinarySpace }.forEach { question ->
+                option {
+                    value = fmtq(question)
+                    +fmtq(question)
+                }
+             }
+        }
+    }
+}
 
 enum class UpdateScatterMode {
     DIRECTIONAL,
     EXTREMES,
 }
+
 external interface UpdateScatterPlotProps : Props {
     var preds: List<List2<Prediction?>>
     var mode: UpdateScatterMode
@@ -72,6 +132,7 @@ data class UpdateSize(
         return abs(diff) in probRange && abs(diff) != probRange.endInclusive && diff != 0.0
     }
 }
+
 fun hues(hUp: Int, hDown: Int) = List2("hsl($hUp,35,80)", "hsl($hDown,35,80)")
 
 val updateSizes = listOf(
@@ -80,12 +141,6 @@ val updateSizes = listOf(
     UpdateSize(0.15..0.3, "Large (15-30%)", List2("#8bc34a", "#ff5722")),
     UpdateSize(0.3..1.0, "XL (>30%)", List2("#7cb342", "#f4511e")),
 )
-//val updateSizes = listOf(
-//    UpdateSize(0.0..0.05, "Small (0-5%)", List2("#dcedc8", "#ff8a65")),
-//    UpdateSize(0.05..0.15, "Medium (5-15%)", List2("#aed581", "#ff7043")),
-//    UpdateSize(0.15..0.3, "Large (15-30%)", List2("#8bc34a", "#ff5722")),
-//    UpdateSize(0.3..1.0, "XL (>30%)", List2("#689f38", "#f4511e")),
-//)
 
 val UpdateScatterPlot = FC<UpdateScatterPlotProps> { props->
     val preds = props.preds.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<Prediction>>>()
@@ -94,10 +149,6 @@ val UpdateScatterPlot = FC<UpdateScatterPlotProps> { props->
     val diffCoords = props.diffCoords?: false
     fun transform(xy: List2<Double>) = if (diffCoords) List2(xy.e1, xy.e2-xy.e1 ) else xy
     ReactPlotly {
-        //css {
-        //    width = 50.vh
-        //    height = 50.vh
-        //}
         config = jso { responsive = true }
         traces = listOf(Scatter {
             console.log(ensureTwo(before).toTypedArray())
@@ -123,7 +174,6 @@ val UpdateScatterPlot = FC<UpdateScatterPlotProps> { props->
                     if (diffCoords) yaxis{
                         range(plotlyVal(-0.3), plotlyVal(0.3))
                         tickvals = (listOf(0.0) + (updateSizes.map{it.probRange.endInclusive} cross listOf(-1.0,1.0)).map{ (x,y)->x*y }.toList()).map(::plotlyVal)
-                        //this.type = AxisType.log
                     }
                 }
                 xaxis {
@@ -139,7 +189,6 @@ val UpdateScatterPlot = FC<UpdateScatterPlotProps> { props->
                         if (diffCoords) {
                             y0 = plotlyVal(-1)
                             y1 = plotlyVal(1)
-
                         } else {
                             y0 = plotlyVal(0)
                             y1 = plotlyVal(1)
@@ -159,7 +208,6 @@ val UpdateScatterPlot = FC<UpdateScatterPlotProps> { props->
                             listOf(0,1).forEach { direction->
                                 val coords = if (diffCoords)
                                     listOf(
-
                                         List2(0.0, us.probRange.start),
                                         List2(0.0, us.probRange.endInclusive),
                                         List2(1.0, us.probRange.endInclusive),
@@ -189,16 +237,10 @@ val UpdateScatterPlot = FC<UpdateScatterPlotProps> { props->
                 }
                 margin {
                     this.t = 20
-                    //this.b = 20
-                    //this.l = 20
-                    //this.r = 20
-                    //this.pad = 5
                 }
             }
         }
         fixupLayout = {layout ->
-            //layout.yaxis.scaleanchor = "x"
-            //layout.yaxis.scale = 1
             layout.xaxis.mirror = "ticks"
             layout.yaxis.mirror = true
             layout.xaxis.tickformat = ",.0%"
@@ -329,7 +371,6 @@ val UpdateScatterPlotPP = FC<PresenterPageProps<UpdateScatterPlotPV>> { props ->
                 justifyContent = JustifyContent.spaceEvenly
                 marginTop = 20.px
                 alignSelf = AlignSelf.stretch
-
             }
             listOf(0,1).map { which->
                 val gp = rawData.mapNotNull { (it[which]?.dist as? BinaryDistribution)?.yesProb }.average()
@@ -346,6 +387,35 @@ val UpdateScatterPlotPP = FC<PresenterPageProps<UpdateScatterPlotPV>> { props ->
 }
 
 object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
+    override fun editQuestionDialogExtra(props: EditQuestionDialogProps, cb: ChildrenBuilder) {
+        var referenceQuestionId by useContextState<Ref<Question>?>(
+            ExtensionContextPlace.EDIT_QUESTION_DIALOG,
+            "reference_question",
+            props.entity?.extensionData?.get(UpdateReferenceQuestionKey)
+        )
+
+        cb.apply {
+            FormSection {
+                title = "Reference Question"
+                FormField {
+                    title = "Reference question for updates"
+                    comment = "Select a question to compare updates against"
+                    QuestionSelector {
+                        value = referenceQuestionId?.id
+                        onChange = { newId -> referenceQuestionId = newId }
+                        disabled = false
+                    }
+                }
+            }
+        }
+    }
+
+    override fun assembleQuestion(q: Question, states: Map<String, dynamic>): Question {
+        val refQuestionId = states["reference_question"] as? String
+        return q.copy(extensionData = q.extensionData.with(UpdateReferenceQuestionKey,
+            refQuestionId?.let { id -> Ref<Question>(id) }
+        ))
+    }
 
     override fun questionQuickSettingsExtra(props: QuestionQuickSettingsDialogProps, cb: ChildrenBuilder, onClose: ()->Unit) {
         var updatePlotState  by useContextState(ExtensionContextPlace.QUESTION_PAGE, "state", default = UpdatePlotState.NONE)
