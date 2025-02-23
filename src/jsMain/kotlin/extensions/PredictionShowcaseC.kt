@@ -14,6 +14,7 @@ import payloads.responses.WSData
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.h1
+import react.dom.html.ReactHTML.h2
 import react.dom.html.ReactHTML.table
 import react.dom.html.ReactHTML.tbody
 import react.dom.html.ReactHTML.td
@@ -23,14 +24,19 @@ import react.dom.html.ReactHTML.tr
 import rooms.Room
 import tools.confido.distributions.*
 import tools.confido.extensions.ClientExtension
+import tools.confido.extensions.ExtensionDataKeyWithDefault
 import tools.confido.question.Prediction
+import tools.confido.question.Question
 import tools.confido.refs.deref
 import tools.confido.refs.ref
-import utils.questionUrl
-import extensions.shared.ValueWithUser
-import react.dom.html.ReactHTML.h2
+import tools.confido.refs.eqid
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.NumericSpace
+import utils.questionUrl
+import extensions.shared.ValueWithUser
+import tools.confido.extensions.get
+import tools.confido.refs.Ref
+import tools.confido.utils.formatPercent
 
 val PredictionShowcasePP = FC<PresenterPageProps<PredictionShowcasePV>> { props ->
     val view = props.view
@@ -102,6 +108,79 @@ val PredictionShowcasePP = FC<PresenterPageProps<PredictionShowcasePV>> { props 
     }
 }
 
+val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> { props ->
+    val view = props.view
+    val room = view.room.deref() ?: return@FC
+
+    val questions = room.questions.mapNotNull { it.deref() }.filter { q ->
+        view.questionGroup?.let { group ->
+            q.extensionData[QuestionGroupsKey]?.contains(group)
+        } ?: true
+    }
+
+    val groupPreds = useWebSocket<Map<Ref<Question>, Prediction?>>("/state${room.urlPrefix}/group_pred")
+    if (groupPreds !is WSData) return@FC
+    val data = groupPreds.data
+
+    Stack {
+        css {
+            alignItems = AlignItems.center
+            maxWidth = 100.vw
+            width = 100.vw
+            maxHeight = 100.vh
+            height = 100.vh
+            padding = 20.px
+        }
+
+        table {
+            css {
+                fontSize = 32.px
+                borderCollapse = BorderCollapse.collapse
+                "tr" {
+                    borderTop = Border(1.px, LineStyle.solid, NamedColor.black)
+                    borderBottom = Border(1.px, LineStyle.solid, NamedColor.black)
+                }
+                "th, td" {
+                    padding = Padding(8.px, 16.px)
+                }
+                "th" {
+                    textAlign = TextAlign.left
+                }
+            }
+            thead {
+                tr {
+                    th { +"Question" }
+                    th { +"Group Prediction" }
+                    th { +"# Forecasters" }
+                }
+            }
+            val vals =  questions.mapNotNull { q->
+                val pred = data[q.ref]?.dist
+                q to when {
+                    pred == null -> return@mapNotNull null
+                    q.answerSpace is BinarySpace ->   (pred as BinaryDistribution).yesProb
+                    q.answerSpace is NumericSpace ->  (pred as ContinuousProbabilityDistribution).mean
+                    else ->  return@mapNotNull null
+                }
+            }.sortedByDescending { it.second }
+            tbody {
+                vals.forEach { (q,v) ->
+                    tr {
+                        td { +q.name }
+                        td {
+                            when (q.answerSpace) {
+                                is BinarySpace -> +formatPercent(v)
+                                is NumericSpace -> +q.answerSpace.formatValue(v)
+                            }
+                        }
+                        td { +"${q.numPredictors}" }
+                    }
+                }
+            }
+        }
+    }
+}
+
 object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
     override fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {
         val presenterCtl = useContext(PresenterContext)
@@ -131,6 +210,12 @@ object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
                                         presenterCtl.offer(PredictionShowcasePV(q.ref))
                                     }
                                 }
+                                IconButton {
+                                    ProjectorScreenOutlineIcon {}
+                                    onClick = {
+                                        presenterCtl.offer(GroupPredictionComparePV(room.ref))
+                                    }
+                                }
                             }
                         }
                     }
@@ -141,6 +226,7 @@ object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
 
     override fun registerPresenterPages() =
         mapOf(
-            presenterPageMap(PredictionShowcasePP)
+            presenterPageMap(PredictionShowcasePP),
+            presenterPageMap(GroupPredictionComparePP)
         )
 }

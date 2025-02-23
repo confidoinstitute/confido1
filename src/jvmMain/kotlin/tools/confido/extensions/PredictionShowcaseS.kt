@@ -59,7 +59,7 @@ object PredictionShowcaseSE : ServerExtension, PredictionShowcaseExtension() {
                 }
 
                 // Return predictions sorted by value
-                predictions.sortedBy { it.value }
+                predictions.sortedByDescending { it.value }
             }
         }
     }
