@@ -13,6 +13,7 @@ import hooks.*
 import kotlinx.js.*
 import react.*
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.span
 import tools.confido.calibration.CalibrationEntry
 import tools.confido.distributions.*
 import tools.confido.question.ExtremeProbabilityMode
@@ -80,8 +81,8 @@ fun ChildrenBuilder.proportionalCircle(text: String, color: Color, prob: Double?
                         val percent = prob * 100
                         val (decimals, fontSize) = if (percent <= 1 || percent >= 99 && percent < 100) {
                             2 to 38.px
-                        } else if (percent <= 10 || percent >= 90 && percent < 100) {
-                            1 to 44.px
+                        //} else if (percent <= 10 || percent >= 90 && percent < 100) {
+                        //    1 to 44.px
                         } else {
                             0 to 50.px
                         }
@@ -188,15 +189,26 @@ val RangeSelector = FC<RangeSelectorProps> { props ->
         css(override=props.className) {
             gap = 8.px
             marginTop = 8.px
+            marginBottom = 8.px
+            border = Border(1.px, LineStyle.solid, Color("rgba(0,0,0,0.3)"))
+            borderRadius = 5.px
+            padding = 5.px
+            fontSize = 80.pct
         }
-        +"Range: "
+        span {
+            css {
+                color = Color("rgba(0,0,0,0.3)")
+                fontWeight = integer(600)
+            }
+            +"Range: "
+        }
         presets.forEach { (label, preset) ->
             val isActive = abs(props.zoomState.zoom - preset.zoom) < 0.001 &&
                           abs(props.zoomState.viewportToContent(props.elementWidth / 2) - preset.center) < preset.zoom * 0.01
             div {
                 css {
                     cursor = Cursor.pointer
-                    color = if (isActive) Color("#6319FF") else Color("rgba(0,0,0,0.3)")
+                    color = if (isActive) Color("#6319FF") else NamedColor.black
                     fontWeight = if (isActive) integer(600) else integer(400)
                 }
                 onClick = { props.onSelectRange(preset) }
