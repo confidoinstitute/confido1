@@ -12,6 +12,7 @@ import dom.html.HTML.div
 import emotion.react.css
 import react.*
 import react.dom.html.ReactHTML.div
+import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionContextPlace
 import tools.confido.extensions.get
@@ -126,4 +127,7 @@ object PointEstimateCE : ClientExtension, PointEstimateExtension() {
         val pointEstimate = states["point_estimate"]
         return q.copy(extensionData = q.extensionData.with(PointEstimateKey, pointEstimate))
     }
+
+    override fun  hideDefaultPredictionDesc(dist: ProbabilityDistribution?, question: Question?, b: Boolean) =
+        (dist is PointEstimateContinuousDistribution)
 }

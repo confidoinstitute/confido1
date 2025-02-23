@@ -277,8 +277,10 @@ val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
         open = exactOpen
         onClose = {exactOpen = false}
     }
+    val hideDefault = ClientExtension.enabled.any { it.hideDefaultPredictionDesc(props.dist, props.question, false) }
     Stack {
         css(descriptionClass) {}
+        if (!hideDefault)
         when (val dist = props.dist) {
             is BinaryDistribution -> {
                 val prob = dist.likelyOutcomeProb

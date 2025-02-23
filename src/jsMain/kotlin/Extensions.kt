@@ -10,6 +10,7 @@ import react.ChildrenBuilder
 import react.FC
 import react.Props
 import rooms.Room
+import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.Question
 import tools.confido.state.PresenterView
 import tools.confido.state.SentState
@@ -71,6 +72,7 @@ interface ClientExtension : Extension {
     fun roomRoutesExtra(room: Room, cb: ChildrenBuilder) {}
     fun rootLayoutStartHook() {}
     fun renderPredictionInput(props: components.redesign.questions.predictions.PredictionInputProps): react.ReactNode? = null
+    fun  hideDefaultPredictionDesc(dist: ProbabilityDistribution?, question: Question?, b: Boolean) = false
 }
 
 external interface ExtensionContextProviderProps: Props {
