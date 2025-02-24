@@ -350,7 +350,8 @@ val CalibrationDetail = FC<CalibrationDetailProps> { props ->
             table {
                 css(gridTableCSS) {
                     gridTemplateColumns =
-                        "1fr min-content min-content min-content min-content".unsafeCast<GridTemplateColumns>()
+                        "minmax(10em, 1fr) min-content min-content min-content min-content".unsafeCast<GridTemplateColumns>()
+                    overflowX = Overflow.scroll
                 }
                 thead {
                     th { +"Question" }
