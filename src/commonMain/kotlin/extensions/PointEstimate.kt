@@ -99,6 +99,8 @@ data class PointEstimateContinuousDistribution(
         else -> value
     }
 
+    override fun confidenceInterval(p: Double, preferredCenter: Double): ClosedFloatingPointRange<Double> = value..value
+
     override val mean: Double = value
     override val stdev: Double = 0.0
     override val maxDensity: Double = Double.POSITIVE_INFINITY
