@@ -1,5 +1,8 @@
 package extensions.flow_automation
 
+import components.presenter.PresenterPageProps
+import components.presenter.PresenterPageType
+import components.presenter.presenterPageMap
 import components.redesign.basic.Dialog
 import components.redesign.forms.Button
 import components.redesign.forms.FormField
@@ -19,6 +22,7 @@ import mui.material.FormGroup
 import react.*
 import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.body
+import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.li
 import react.dom.html.ReactHTML.ol
 import react.router.Route
@@ -27,9 +31,11 @@ import rooms.RoomPermission
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.get
 import tools.confido.question.Question
+import tools.confido.state.PresenterView
 import tools.confido.state.SentState
 import tools.confido.state.clientState
 import tools.confido.state.globalState
+import kotlin.reflect.KClass
 
 external interface FlowItem {
     var name: String?
@@ -172,6 +178,18 @@ val FlowPage = FC<Props> {
     }
 }
 
+val HTML_PP = FC<PresenterPageProps<HTML_PV>> { props ->
+    val view = props.view
+    div {
+        css {
+            width = 100.vw
+            height = 100.vh
+        }
+        dangerouslySetInnerHTML = jso { __html = view.html }
+    }
+}
+
+
 object FlowAutomationCE : ClientExtension, FlowAutomationExtension() {
     override fun roomTabsExtra(room: Room, appState: SentState, layoutMode: LayoutMode): List<Pair<String, String>> =
         if (layoutMode >= LayoutMode.TABLET && appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
@@ -186,5 +204,9 @@ object FlowAutomationCE : ClientExtension, FlowAutomationExtension() {
             }
         }
     }
+
+    override fun registerPresenterPages(): Map<KClass<out PresenterView>, PresenterPageType> = mapOf(
+        presenterPageMap(HTML_PP)
+    )
 
 }
