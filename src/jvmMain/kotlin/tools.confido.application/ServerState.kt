@@ -3,6 +3,7 @@
 package tools.confido.state
 
 import com.mongodb.ConnectionString
+import com.mongodb.MongoCommandException
 import com.mongodb.MongoException
 import com.mongodb.client.model.Collation
 import com.mongodb.client.model.CollationStrength
@@ -17,6 +18,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
+import org.bson.Document
 import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.*
 import org.litote.kmongo.reactivestreams.KMongo
@@ -300,14 +302,42 @@ object serverState : GlobalState() {
         override suspend fun initialize() {
             super.initialize()
             mongoCollection.ensureIndex(User::email)
+            // Bugfix: originally we created a unique index on email without a null filter.
+            // This prevented multiple user entries with null email. And also it had incorrect
+            // collation so it wasn't case-insensitive.
+            mongoCollection.listIndexes<Document>()
+                .toList().find { index ->
+                    val isEmailIndex = index.get("key", Document::class.java)
+                        ?.containsKey(User::email.name) == true
+                    val isUnique = index.getBoolean("unique") ?: false
+                    val hasNoPartialFilter = !index.containsKey("partialFilterExpression")
 
+                    isEmailIndex && isUnique && hasNoPartialFilter
+                }
+                ?.let {
+                    try {
+                        mongoCollection.dropIndex(it)
+                        println("Dropped old email index without partial filter: $it")
+                    } catch (e: MongoCommandException) {
+                        if (e.errorCode != 27) { // 27 is "index not found"
+                            throw e
+                        }
+                    }
+                }
             try {
+                // Unique constraint on emails, case insensitive, ignores nulls.
                 mongoCollection.ensureUniqueIndex(
-                    User::email, indexOptions = IndexOptions().collation(
-                        Collation.builder().locale("simple").collationStrength(
-                            CollationStrength.SECONDARY
-                        ).build()
-                    )
+                    User::email,
+                    indexOptions = IndexOptions()
+                        .collation(
+                            Collation.builder()
+                                .locale("simple")
+                                .collationStrength(CollationStrength.SECONDARY)
+                                .build()
+                        )
+                        .partialFilterExpression(
+                            Document(User::email.name, Document("\$type", "string"))
+                        )
                 )
             } catch (e: MongoException) {
                 println("Creating unique index failed, there are probably duplicate emails already")
