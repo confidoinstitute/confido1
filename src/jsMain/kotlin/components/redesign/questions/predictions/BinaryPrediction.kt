@@ -227,7 +227,7 @@ val RangeSelector = FC<RangeSelectorProps> { props ->
                 color = Color("rgba(0,0,0,0.3)")
                 fontWeight = integer(600)
             }
-            +"Range: "
+            +"Zoom: "
         }
         presets.forEach { (label, preset) ->
             val isActive = abs(props.zoomState.zoom - preset.zoom) < 0.001 &&
@@ -430,7 +430,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
                 this.zoomState = zoomState
                 this.elementWidth = props.elementWidth
                 this.onSelectRange = { preset: ZoomPreset ->
-                    val paperCenter = zoomState.contentToPaper(preset.center)
+                    val paperCenter = zoomState.copy(zoom=preset.zoom).contentToPaper(preset.center)
                     val viewportCenter = props.elementWidth / 2
                     val pan = paperCenter - viewportCenter
                     val newState = PZState(zoomState.params, preset.zoom, pan)

@@ -96,8 +96,8 @@ val PredictionShowcasePP = FC<PresenterPageProps<PredictionShowcasePV>> { props 
                         td {
                             // Format based on question type
                             when (question.answerSpace) {
-                                is BinarySpace -> +"${(pred.value * 100).toInt()}%"
-                                is NumericSpace -> +(question.answerSpace as NumericSpace).formatValue(pred.value)
+                                is BinarySpace -> +formatPercent(pred.value)
+                                is NumericSpace -> +(question.answerSpace).formatValue(pred.value)
                                 else -> +pred.value.toString()
                             }
                         }

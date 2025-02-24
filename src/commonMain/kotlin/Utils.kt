@@ -118,7 +118,9 @@ fun randomString(length: Int) =
 
 fun generateId() = randomString(16)
 
-fun formatPercent(value: Number, space: Boolean=false, decimals: Int=0): String = "${(value.toDouble()*100).toFixed(decimals)}${if (space) " " else ""}%"
+fun percDecimals(value: Double) =
+    if (value < 1 || value > 99) 2 else 0
+fun formatPercent(value: Number, space: Boolean=false, decimals: Int?=null): String = "${(value.toDouble()*100).toFixed(decimals ?: percDecimals(value.toDouble()))}${if (space) " " else ""}%"
 
 fun Double.clamp(range: ClosedRange<Double>): Double {
     if (this < range.start) return range.start
