@@ -11,8 +11,12 @@ import components.redesign.layout.LayoutMode
 import components.rooms.RoomContext
 import csstype.TextDecoration
 import csstype.em
+import csstype.vh
+import csstype.vw
 import emotion.react.css
 import extensions.QuestionGroupsKey
+import extensions.UpdateReferenceQuestionKey
+import extensions.UpdateScatterPlotPV
 import hooks.useCoroutineLock
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -64,7 +68,11 @@ fun expandFlowItem(item: FlowItem): Array<FlowItem> {
         bodyTemplate.forEach = null
         val r = mutableListOf<FlowItem>()
         getCollection(forEach).forEachIndexed { idx,q->
-            val body = JSON.parse<FlowItem>(JSON.stringify(bodyTemplate).replace("\$qid", q.id).replace("\$qname", q.name).replace("\$idx", (idx+1).toString()))
+            var bodyJson = JSON.stringify(bodyTemplate).replace("\$qid", q.id).replace("\$qname", q.name).replace("\$idx", (idx+1).toString())
+            q.extensionData[UpdateReferenceQuestionKey]?.let { qref->
+                bodyJson = bodyJson.replace("\$qref", qref.id)
+            }
+            val body =JSON.parse<FlowItem>(bodyJson)
             r.addAll(expandFlowItem(body))
         }
         return r.toTypedArray()
