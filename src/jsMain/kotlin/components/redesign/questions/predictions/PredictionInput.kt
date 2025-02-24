@@ -1,5 +1,6 @@
 package components.redesign.questions.predictions
 
+import dom.html.HTMLElement
 import react.*
 import tools.confido.distributions.*
 import tools.confido.question.Question
@@ -35,7 +36,7 @@ val PredictionInput = FC<PredictionInputProps> { props->
     }
 }
 
-external interface BasePredictionGraphProps {
+external interface BasePredictionGraphProps : PropsWithRef<HTMLElement>, PropsWithClassName {
     // HACK: Need 'val' here to allow subclasses to narrow down the type
     val space: Space
     val dist: ProbabilityDistribution?

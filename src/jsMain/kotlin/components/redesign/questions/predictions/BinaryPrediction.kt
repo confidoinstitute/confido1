@@ -147,9 +147,9 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
     val circleSize: Double = min(realSize.height, realSize.width / 2)
 
     Stack {
-        ref = realSize.ref
+        ref = combineRefs(realSize.ref.unsafeCast<MutableRefObject<HTMLElement>>(), props.ref.unsafeCast<MutableRefObject<HTMLElement>>())
         direction = FlexDirection.row
-        css {
+        css(override=props.className) {
             width = 100.pct
             height = baseHeight
             justifyContent = JustifyContent.center
@@ -210,9 +210,12 @@ external interface RangeSelectorProps : PropsWithClassName {
 val RangeSelector = FC<RangeSelectorProps> { props ->
     val presets = EXTREME_PRESETS(props.extremeProbabilityMode) ?: return@FC
     val centerOrigin : Transform = translate((-50).pct, (-50).pct)
+    // Prevent creating estimate when clicking on zoom
+    val pointerRE = useEventListener<HTMLElement>("pointerdown") { it.stopPropagation() }
 
     Stack {
         direction = FlexDirection.row
+        ref = pointerRE
         css(override=props.className) {
             gap = 8.px
             marginTop = 8.px
@@ -247,6 +250,7 @@ val RangeSelector = FC<RangeSelectorProps> { props ->
 
 external interface BinaryPredSliderProps : PredictionInputProps, PropsWithElementSize {
     var extremeProbabilityMode: ExtremeProbabilityMode?
+    var onZoomChange: ((PZState)->Unit)?
 }
 val BIN_PRED_SPACE = NumericSpace(0.0, 100.0, unit="%")
 val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
@@ -257,6 +261,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
     val maxZoom = if (extremeProbabilityMode == ExtremeProbabilityMode.NORMAL) 1.0 else 100.0
     val zoomParams = PZParams(viewportWidth = props.elementWidth, contentDomain = 0.0..100.0, sidePad = SIDE_PAD, maxZoom = maxZoom)
     val (pzRef, zoomState, ctl) = usePanZoom<HTMLElement >(zoomParams)
+    useEffect(zoomState.zoom, zoomState.pan) { props.onZoomChange?.invoke(zoomState)}
 
     fun formatPercentage(value: Double): String {
         val decimals = when {
@@ -451,6 +456,7 @@ val BinaryPredInput = FC<BinaryPredInputProps> { props->
     val predictionTerminology = props.question?.predictionTerminology ?: PredictionTerminology.ANSWER
     useEffect(propDist?.yesProb) { previewDist = propDist }
     val extremeProbabilityMode = props.extremeProbabilityMode ?: props.question?.extremeProbabilityMode ?: ExtremeProbabilityMode.NORMAL
+    var sliderZoom by useState<PZState>()
 
     val realSize = useElementSize<HTMLElement>()
     val clickRE = usePureClick<HTMLElement> { ev->
@@ -460,7 +466,7 @@ val BinaryPredInput = FC<BinaryPredInputProps> { props->
             val width = rect.width
             val x = ev.clientX - rect.left
             val zoomParams = PZParams(viewportWidth = width, contentDomain = 0.0..100.0, sidePad = SIDE_PAD)
-            val zoomState = PZState(zoomParams)
+            val zoomState = sliderZoom ?: PZState(zoomParams)
             val pos = zoomState.viewportToContent(x)
             val newDist = BinaryDistribution(pos / 100.0)
             console.log("x: $x, pos: $pos, width: $width")
@@ -498,6 +504,7 @@ val BinaryPredInput = FC<BinaryPredInputProps> { props->
                 previewDist = (newDist as BinaryDistribution)
                 props.onChange?.invoke(newDist, isCommit)
             }
+            onZoomChange = { sliderZoom = it }
             this.disabled = props.disabled
         }
     }

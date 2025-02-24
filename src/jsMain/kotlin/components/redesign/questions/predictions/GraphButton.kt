@@ -12,7 +12,9 @@ import components.redesign.layout.LayoutModeContext
 import components.redesign.presenter.PresenterContext
 import components.redesign.questions.dialog.ExactEstimateDialog
 import csstype.*
+import dom.html.HTMLElement
 import emotion.react.css
+import hooks.useEventListener
 import react.*
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ProbabilityDistribution
@@ -34,6 +36,8 @@ val GraphButton = Button.withStyle {
 }
 
 val GraphButtonContainer = FC<PropsWithChildren> { props->
+    // Prevent creating estimate when clicking on graph buttons
+    val pointerRE = useEventListener<HTMLElement>("pointerdown") { it.stopPropagation() }
     Stack {
         direction = FlexDirection.row
         css {
@@ -44,7 +48,7 @@ val GraphButtonContainer = FC<PropsWithChildren> { props->
             gap = 4.px
             zIndex = integer(10)
         }
-        onPointerDown = { it.stopPropagation() }
+        ref = pointerRE
         +props.children
     }
 }
