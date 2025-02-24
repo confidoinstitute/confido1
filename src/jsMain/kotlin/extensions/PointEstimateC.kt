@@ -26,10 +26,12 @@ private val PointEstimateInput = FC<PredictionInputProps>("PointEstimateInput") 
     val space = props.space as NumericSpace
     val propDist = props.dist as? PointEstimateContinuousDistribution?
     var value by useState(propDist?.value)
+    var err by useState<InputError>()
 
     useEffect(props.dist?.identify()) {
         if (propDist != null && propDist.value != value) {
             value = propDist.value
+            err = null
         }
     }
 
@@ -71,6 +73,9 @@ private val PointEstimateInput = FC<PredictionInputProps>("PointEstimateInput") 
                 css {
                     flexGrow = number(1.0)
                     flexShrink = number(1.0)
+                    if (err != null) {
+                        backgroundColor = Color("rgba(255,0,0,0.4)")
+                    }
                 }
                 this.value = value
                 min = space.min
@@ -79,9 +84,11 @@ private val PointEstimateInput = FC<PredictionInputProps>("PointEstimateInput") 
                 disabled = props.disabled
                 placeholder = "Enter value"
                 onChange = { newValue, error ->
+                    console.log("Numeric change $newValue err=$error")
+                    err = error
                     if (error == null) {
-                        value = newValue
                         newValue?.let { v ->
+                            value = newValue
                             val dist = PointEstimateContinuousDistribution(space, v)
                             props.onChange?.invoke(dist, true)
                         }
@@ -89,6 +96,17 @@ private val PointEstimateInput = FC<PredictionInputProps>("PointEstimateInput") 
                 }
             }
         }
+        if (err !=null)
+            div {
+                css {
+                    textAlign = TextAlign.right
+                    color = NamedColor.red
+                    fontSize = 12.px
+                    fontWeight = integer(600)
+                    marginRight = SIDE_PAD.px
+                }
+                +err.toString()
+            }
     }
 }
 
