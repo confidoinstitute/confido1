@@ -34,9 +34,10 @@ external interface BinaryPredictionProps : Props, BasePredictionGraphProps {
     var baseHeight: Length?
 }
 
-fun ChildrenBuilder.proportionalCircle(text: String, color: Color, prob: Double?, size: Double = 145.0) {
+fun ChildrenBuilder.proportionalCircle(text: String, color: Color, prob: Double?, size: Double = 145.0, leftText:Boolean=false) {
     // Base size from Figma is 145 px, scale accordingly
     val scalar = size / 145.0
+    var wantAlt = false
     div {
         css {
             display = Display.flex
@@ -46,6 +47,7 @@ fun ChildrenBuilder.proportionalCircle(text: String, color: Color, prob: Double?
             fontFamily = sansSerif
             width = size.px
             height = size.px
+            position = Position.relative
         }
 
         if (prob == null) {
@@ -72,23 +74,25 @@ fun ChildrenBuilder.proportionalCircle(text: String, color: Color, prob: Double?
                     borderRadius = 100.pct
                     backgroundColor = color
                 }
+                val scale = scalar*sqrt(prob)
                 style = jso {
                     transform = scale(scalar*sqrt(prob))
                 }
+                val percent = prob * 100
+                val (decimals, fontSize) = if (percent <= 1 || percent >= 99 && percent < 100) {
+                    2 to 38.0
+                    //} else if (percent <= 10 || percent >= 90 && percent < 100) {
+                    //    1 to 44.0
+                } else {
+                    0 to 50.0
+                }
+                val effectiveFontSize = scale*fontSize
                 // When the font is too small, hide the text
-                if (scalar >= 0.3) {
+                if (effectiveFontSize >= 10.0 || leftText) {
                     div {
-                        val percent = prob * 100
-                        val (decimals, fontSize) = if (percent <= 1 || percent >= 99 && percent < 100) {
-                            2 to 38.px
-                        //} else if (percent <= 10 || percent >= 90 && percent < 100) {
-                        //    1 to 44.px
-                        } else {
-                            0 to 50.px
-                        }
                         css {
                             fontWeight = integer(700)
-                            this.fontSize = fontSize
+                            this.fontSize = fontSize.px
                             lineHeight = 60.px
                         }
                         +"${percent.toFixed(decimals)}%"
@@ -96,10 +100,33 @@ fun ChildrenBuilder.proportionalCircle(text: String, color: Color, prob: Double?
                     div {
                         css {
                             fontWeight = integer(600)
-                            fontSize = 30.px
+                            this.fontSize = 30.px
                             lineHeight = 35.px
                         }
                         +text
+                    }
+                } else {
+                    div {
+                        css {
+                            position = Position.absolute
+                            top = 50.pct
+                            transform = translatey(-50.pct)
+                            if (leftText) right = 0.px
+                            else left = 100.pct
+                            this.color = color
+                            marginLeft = (5 / scale).px
+                        }
+                        Stack {
+                            div {
+                                css { this.fontSize = (20/scale).px }
+                                +"${percent.toFixed(decimals)}%"
+
+                            }
+                            div {
+                                css { this.fontSize = (16/scale).px }
+                                +text
+                            }
+                        }
                     }
                 }
             }
@@ -139,7 +166,7 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
         } else {
             yesGreen
         }
-        proportionalCircle("No", noColor, props.dist?.yesProb?.let { 1 - it }, size = circleSize)
+        proportionalCircle("No", noColor, props.dist?.yesProb?.let { 1 - it }, size = circleSize, leftText=true)
         proportionalCircle("Yes", yesColor, props.dist?.yesProb, size = circleSize)
         if (props.interactive ?: true) {
             GraphButtons {
