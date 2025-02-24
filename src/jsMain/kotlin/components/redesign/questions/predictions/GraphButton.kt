@@ -66,12 +66,14 @@ val GraphPresenterButton = FC<GraphPresenterButtonProps> { props->
 
 external interface GraphExactPredictionButtonProps: Props {
     var question: Question
+    var dist: ProbabilityDistribution?
 }
 
 val GraphExactPredictionButton: FC<GraphExactPredictionButtonProps> = FC { props ->
     var open by useState(false)
     ExactEstimateDialog {
         this.open = open
+        dist = props.dist
         onClose = { open = false }
         question = props.question
     }
@@ -108,7 +110,7 @@ val GraphButtons = FC<GraphButtonsProps>("GraphButtons") { props->
             props.question?.let { GraphPresenterButton { question = it } }
         }
         if (props.isInput == true && props.question?.state == QuestionState.OPEN) {
-            props.question?.let { GraphExactPredictionButton { question = it } }
+            props.question?.let { GraphExactPredictionButton { question = it; dist = props.dist } }
         }
         if (props.isGroup && props.space is BinarySpace) {
             props.onHistogramClick?.let { GraphHistogramButton { onClick = it } }

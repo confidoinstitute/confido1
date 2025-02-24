@@ -37,36 +37,42 @@ external interface ExactEstimateDialogProps : Props {
     var open: Boolean
     var question: Question
     var onClose: (() -> Unit)?
+    val dist: ProbabilityDistribution?
 }
 
+external interface GenericExactEstimateDialogProps : ExactEstimateDialogProps {
+    override var dist: ProbabilityDistribution?
+    override var space: Space
+}
 external interface BinaryExactEstimateDialogProps : ExactEstimateDialogProps {
-    var myPredictionDist: BinaryDistribution?
     override var space: BinarySpace
+    override var dist: BinaryDistribution?
 }
 
 external interface NumericExactEstimateDialogProps : ExactEstimateDialogProps {
-    var myPredictionDist: ContinuousProbabilityDistribution?
     override var space: NumericSpace
+    override var dist: ContinuousProbabilityDistribution?
 }
 
-val ExactEstimateDialog = FC<ExactEstimateDialogProps> { props ->
+val ExactEstimateDialog = FC<GenericExactEstimateDialogProps> { props ->
     val (appState, stale) = useContext(AppStateContext)
     props.question.answerSpace.let { answerSpace ->
         when (answerSpace) {
             BinarySpace -> {
-                val dist = appState.myPredictions[props.question.ref]?.dist as BinaryDistribution?
+                val dist = (props.dist  ?: appState.myPredictions[props.question.ref]?.dist) as? BinaryDistribution?
                 BinaryExactEstimateDialog {
                     +props
-                    myPredictionDist = dist
                     this.space = BinarySpace
+                    this.dist = dist
                 }
             }
 
             is NumericSpace -> {
-                val dist = appState.myPredictions[props.question.ref]?.dist
+
+                val dist = ( props.dist  ?: appState.myPredictions[props.question.ref]?.dist) as? ContinuousProbabilityDistribution
                 NumericExactEstimateDialog {
                     +props
-                    myPredictionDist = dist as? ContinuousProbabilityDistribution
+                    this.dist = dist
                     this.space = answerSpace
                 }
             }
@@ -124,11 +130,11 @@ val ProbabilityInput = FC<ProbabilityInputProps> { props ->
 }
 
 val BinaryExactEstimateDialog = FC<BinaryExactEstimateDialogProps> { props ->
-    var estimate by useState(props.myPredictionDist)
+    var estimate by useState(props.dist)
     val submitLock = useCoroutineLock()
 
-    useEffect(props.myPredictionDist) {
-        estimate = props.myPredictionDist
+    useEffect(props.dist) {
+        estimate = props.dist
     }
 
     fun estimate() {
@@ -188,7 +194,7 @@ private val numericTextBoxClass = emotion.css.ClassName {
 
 val NumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { props ->
     val space = props.space
-    val propDist = props.myPredictionDist
+    val propDist = props.dist
     var spec by useState(propDist?.let { NormalishDistSpec.fromDist(it) }
                                         ?: NumericDistSpecSym(space, null, null))
     val previewDist = spec.useDist()
