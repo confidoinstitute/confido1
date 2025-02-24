@@ -51,16 +51,16 @@ fun ChildrenBuilder.proportionalCircle(text: String, color: Color, prob: Double?
         }
 
         if (prob == null) {
-            div {
-                css {
-                    borderRadius = 100.pct
-                    border = Border(1.px, LineStyle.solid, rgba(0,0,0,0.05))
-                }
-                style = jso {
-                    width = (sqrt(0.5) * size).px
-                    height = (sqrt(0.5) * size).px
-                }
-            }
+            //div {
+            //    css {
+            //        borderRadius = 100.pct
+            //        border = Border(1.px, LineStyle.solid, rgba(0,0,0,0.05))
+            //    }
+            //    style = jso {
+            //        width = (sqrt(0.5) * size).px
+            //        height = (sqrt(0.5) * size).px
+            //    }
+            //}
         } else {
             div {
                 css {
