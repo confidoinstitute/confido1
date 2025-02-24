@@ -121,6 +121,7 @@ external interface UpdateScatterPlotProps : Props {
     var preds: List<List2<Prediction?>>
     var mode: UpdateScatterMode
     var diffCoords: Boolean?
+    var referenceForecast: Double?
 }
 
 data class UpdateSize(
@@ -171,9 +172,11 @@ val UpdateScatterPlot = FC<UpdateScatterPlotProps> { props->
                         tickmode = TickMode.array
                         tickvals = listOf(0, 0.25, 0.5, 0.75, 1).map(::plotlyVal).toList()
                     }
-                    if (diffCoords) yaxis{
-                        range(plotlyVal(-0.3), plotlyVal(0.3))
-                        tickvals = (listOf(0.0) + (updateSizes.map{it.probRange.endInclusive} cross listOf(-1.0,1.0)).map{ (x,y)->x*y }.toList()).map(::plotlyVal)
+                    if (diffCoords) {
+                        yaxis {
+                            range(plotlyVal(-0.3), plotlyVal(0.3))
+                            tickvals = (listOf(0.0) + (updateSizes.map{it.probRange.endInclusive} cross listOf(-1.0,1.0)).map{ (x,y)->x*y }.toList()).map(::plotlyVal)
+                        }
                     }
                 }
                 xaxis {
@@ -194,14 +197,62 @@ val UpdateScatterPlot = FC<UpdateScatterPlotProps> { props->
                             y1 = plotlyVal(1)
                         }
                     }
-                    if (!diffCoords)
-                        addShape{ // main diagonal
+                    if (!diffCoords) {
+                        addShape { // main diagonal
                             type = ShapeType.line
                             x0 = plotlyVal(0)
                             y0 = plotlyVal(0)
                             x1 = plotlyVal(1)
                             y1 = plotlyVal(1)
                         }
+                        props.referenceForecast?.let { ref ->
+                            // Vertical reference line
+                            addShape {
+                                type = ShapeType.line
+                                x0 = plotlyVal(ref)
+                                y0 = plotlyVal(0)
+                                x1 = plotlyVal(ref)
+                                y1 = plotlyVal(1)
+                                fillcolor("rgba(0, 0, 255, 0.5)")
+                                line {
+                                    width = 2
+                                    dash = Dash.dash
+                                }
+                            }
+                            // Horizontal reference line
+                            addShape {
+                                type = ShapeType.line
+                                x0 = plotlyVal(0)
+                                y0 = plotlyVal(ref)
+                                x1 = plotlyVal(1)
+                                y1 = plotlyVal(ref)
+                                fillcolor("rgba(0, 0, 255, 0.5)")
+                                line {
+                                    width = 2
+                                    dash = Dash.dash
+                                }
+                            }
+                        }
+                    } else {
+                        props.referenceForecast?.let { ref ->
+                            // Vertical reference line
+                            addShape {
+                                type = ShapeType.line
+                                x0 = plotlyVal(ref)
+                                y0 = plotlyVal(-0.3)
+                                x1 = plotlyVal(ref)
+                                y1 = plotlyVal(0.3)
+                                fillcolor("rgba(0, 0, 255, 0.5)")
+
+
+                                line {
+                                    width = 2
+                                    dash = Dash.dash
+                                }
+                            }
+                        }
+
+                    }
                     if (props.mode == UpdateScatterMode.DIRECTIONAL) {
                         var last = 0.0
                         updateSizes.forEach {us->
@@ -328,7 +379,9 @@ val UpdateScatterTable = FC<UpdateScatterPlotProps> { props->
 }
 
 val UpdateScatterPlotPP = FC<PresenterPageProps<UpdateScatterPlotPV>> { props ->
-    val view  = props.view
+    val view = props.view
+    val q = view.question.deref()
+    val referenceForecast = q?.extensionData?.get(ReferenceForcastKey)
     val rawData = useSuspendResult(view.time1, view.time2, view.question.id) {
         val url = "/api${questionUrl(view.question.id)}/update_plot?x" +
                 (if (view.time1 != null) "&t1=${view.time1!!.epochSeconds}" else "") +
@@ -336,7 +389,6 @@ val UpdateScatterPlotPP = FC<PresenterPageProps<UpdateScatterPlotPV>> { props ->
         Client.httpClient.get(url).body<List<List2<Prediction?>>>()
     }
     val data = rawData?.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<Prediction>>?>()
-    val q = view.question.deref()
 
     Stack {
         css {
@@ -352,11 +404,13 @@ val UpdateScatterPlotPP = FC<PresenterPageProps<UpdateScatterPlotPV>> { props ->
             UpdateScatterPlot {
                 this.preds = data ?: emptyList()
                 this.mode = UpdateScatterMode.DIRECTIONAL
+                this.referenceForecast = referenceForecast
             }
             UpdateScatterPlot {
                 this.preds = data ?: emptyList()
                 this.mode = UpdateScatterMode.DIRECTIONAL
                 this.diffCoords = true
+                this.referenceForecast = referenceForecast
             }
             UpdateScatterTable {
                 this.preds = data ?: emptyList()
@@ -488,13 +542,12 @@ object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
                         UpdateScatterPlot {
                             this.preds = data ?: emptyList()
                             this.mode = UpdateScatterMode.DIRECTIONAL
+                            this.referenceForecast = q?.extensionData?.get(ReferenceForcastKey)
                         }
                         div {
                             IconButton {
                                 ProjectorScreenOutlineIcon {}
-                                disabled = time1 == null
                                 onClick = {
-                                    time1?.let { time1 ->
                                         presenterCtl.offer(
                                             UpdateScatterPlotPV(
                                                 q.ref,
@@ -502,7 +555,6 @@ object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
                                                 time2
                                             )
                                         )
-                                    }
                                 }
                             }
                         }
