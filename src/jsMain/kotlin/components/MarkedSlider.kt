@@ -1,5 +1,6 @@
 package components
 
+import components.redesign.questions.predictions.markSpacing
 import csstype.*
 import dom.html.HTMLSpanElement
 import hooks.useElementSize
@@ -36,7 +37,7 @@ val MarkedSlider = FC<MarkedSliderProps> { props ->
     val sliderSize = useElementSize<HTMLSpanElement>()
 
     val marks = useMemo(sliderSize.width, props.min, props.max, props.madePrediction) {
-        (props.widthToMarks?.invoke(sliderSize.width) ?: utils.markSpacing(
+        (props.widthToMarks?.invoke(sliderSize.width) ?: markSpacing(
             sliderSize.width,
             props.min?.toDouble() ?: 0.0,
             props.max?.toDouble() ?: 0.0,

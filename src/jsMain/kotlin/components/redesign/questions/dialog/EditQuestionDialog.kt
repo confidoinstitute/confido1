@@ -95,11 +95,6 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         props.entity?.sensitive ?: (props.preset == QuestionPreset.SENSITIVE)
     }
 
-    // BINARY SETTINGS
-    var extremeProbabilityMode by useState {
-        props.entity?.extremeProbabilityMode ?: ExtremeProbabilityMode.NORMAL
-    }
-
     // Validity
     val questionValid = questionTitle.isNotEmpty() && answerSpaceValid && resolutionValid && (scheduleValid || !customSchedule)
 
@@ -127,7 +122,6 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         schedule = if (customSchedule) schedule else null,
         scheduleStatus = QuestionScheduleStatus(if (customSchedule) schedule else room.defaultSchedule),
         // BINARY SETTINGS
-        extremeProbabilityMode = extremeProbabilityMode,
     ).withState(questionStatus).let{ q->
         var curQ = q
         ClientExtension.forEach { curQ = it.assembleQuestion(curQ, extContext[it.extensionId]!!.component1()) }
@@ -203,21 +197,6 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 }
             }
 
-            if (answerSpace == BinarySpace) {
-                FormSection {
-                    title = "Binary Question Settings"
-                    RadioGroup<ExtremeProbabilityMode>()() {
-                        title = "Probability Range Mode"
-                        options = listOf(
-                            ExtremeProbabilityMode.NORMAL to "Normal (0-100%)",
-                            ExtremeProbabilityMode.EXTREME_LOW to "Extreme Low (near 0%)",
-                            ExtremeProbabilityMode.EXTREME_HIGH to "Extreme High (near 100%)"
-                        )
-                        value = extremeProbabilityMode
-                        onChange = { mode -> extremeProbabilityMode = mode }
-                    }
-                }
-            }
 
             // TODO properly
             if (props.preset == QuestionPreset.KNOWLEDGE || props.preset == QuestionPreset.NONE) {

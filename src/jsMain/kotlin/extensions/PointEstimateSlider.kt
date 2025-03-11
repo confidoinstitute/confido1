@@ -6,11 +6,7 @@ import components.redesign.basic.elementSizeWrapper
 import components.redesign.basic.sansSerif
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
-import components.redesign.questions.predictions.LABELS_HEIGHT
-import components.redesign.questions.predictions.SIDE_PAD
-import components.redesign.questions.predictions.SliderThumb
-import components.redesign.questions.predictions.SliderTrack
-import components.redesign.questions.predictions.ThumbKind
+import components.redesign.questions.predictions.*
 import csstype.*
 import dom.html.HTMLElement
 import emotion.react.css
@@ -20,7 +16,6 @@ import react.dom.html.ReactHTML.div
 import tools.confido.question.PredictionTerminology
 import tools.confido.question.Question
 import tools.confido.spaces.NumericSpace
-import utils.markSpacing
 import utils.panzoom1d.*
 import kotlinx.js.jso
 

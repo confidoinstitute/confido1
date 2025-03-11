@@ -35,15 +35,24 @@ val GraphButton = Button.withStyle {
     alignItems = AlignItems.center
 }
 
-val GraphButtonContainer = FC<PropsWithChildren> { props->
+enum class Side { LEFT, RIGHT}
+external interface GraphButtonContainerProps: PropsWithChildren {
+    var side: Side?
+}
+
+val GraphButtonContainer = FC<GraphButtonContainerProps> { props->
     // Prevent creating estimate when clicking on graph buttons
     val pointerRE = useEventListener<HTMLElement>("pointerdown") { it.stopPropagation() }
+    val side = props.side ?: Side.RIGHT
     Stack {
         direction = FlexDirection.row
         css {
             position = Position.absolute
             top = 8.px
-            right = 8.px
+            if (side == Side.RIGHT)
+                right = 8.px
+            else
+                left = 8.px
             height = 30.px
             gap = 4.px
             zIndex = integer(10)
