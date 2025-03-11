@@ -8,6 +8,7 @@ import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.*
 import csstype.*
+import dom.Node
 import dom.events.*
 import dom.html.*
 import emotion.react.*
@@ -147,67 +148,83 @@ external interface  BinaryZoomButtonProps : PropsWithClassName {
 
 val BinaryZoomButton = FC<BinaryZoomButtonProps> { props->
     var expanded by useState(false)
-    Stack {
-        direction = FlexDirection.row
-        css {
-            alignItems = AlignItems.center
-            borderRadius = 5.px
-            height = 30.px
-            border = Border(1.px, LineStyle.solid, MainPalette.primary.color)
-            background = NamedColor.white
-        }
-        GraphButton {
-            ZoomIcon {
-                css { transform = scalex(-1) }
+        Stack {
+            direction = FlexDirection.row
+            tabIndex = 0
+            onBlur = { ev->
+                // Auto close if focus gets outside out subtree
+                // (check is needed as clicking one of the individual preset buttons focuses it causing
+                //  the toplevel element to lose focus)
+                if (ev.relatedTarget == null || !ev.currentTarget.contains(ev.relatedTarget as Node)) expanded = false
             }
-            onClick = { expanded = !expanded }
-        }
-        div {
             css {
-                fontSize = 12.px
-                color = NamedColor.black
+                alignItems = AlignItems.center
+                borderRadius = 5.px
+                height = 30.px
+                border = Border(1.px, LineStyle.solid, MainPalette.primary.color)
+                background = NamedColor.white
+                position = Position.relative
             }
-            if (expanded) {
-                EXTREME_PRESETS.forEach { (name, preset)->
-                    val zoomState = props.curZoom
-                    val paperCenter = zoomState.copy(zoom=preset.zoom).contentToPaper(preset.center)
-                    val viewportCenter = props.curZoom.params.viewportWidth / 2
-                    val pan = paperCenter - viewportCenter
-                    val newState = PZState(zoomState.params, preset.zoom, pan)
+            GraphButton {
+                ZoomIcon {
+                    css { transform = scalex(-1) }
+                }
+                onClick = { expanded = !expanded }
+            }
+            div {
+                css {
+                    fontSize = 12.px
+                    color = NamedColor.black
+                    display = Display.flex
+                    flexDirection = FlexDirection.row
+                    overflow = Overflow.hidden
+                    maxWidth = if (expanded) 300.px else if (props.curZoom.zoom > 1.0) 80.px else 0.px
 
+                    transition = Transition(
+                        property = PropertyName.maxWidth,
+                        duration = 200.ms,
+                        timingFunction = TransitionTimingFunction.easeInOut
+                    )
+                }
+                if (expanded) {
+                    EXTREME_PRESETS.forEach { (name, preset)->
+                        val zoomState = props.curZoom
+                        val paperCenter = zoomState.copy(zoom=preset.zoom).contentToPaper(preset.center)
+                        val viewportCenter = props.curZoom.params.viewportWidth / 2
+                        val pan = paperCenter - viewportCenter
+                        val newState = PZState(zoomState.params, preset.zoom, pan)
+
+                        ButtonUnstyled {
+                            css {
+                                padding = Padding(2.px, 5.px)
+                                whiteSpace = WhiteSpace.nowrap
+                                if (newState == props.curZoom)
+                                    fontWeight = integer(700)
+                            }
+                            onClick = {
+                                props.onZoomChange?.invoke(
+                                    newState
+                                )
+                                expanded = false
+                            }
+                            +name
+                        }
+                    }
+                } else {
+                    if (props.curZoom.zoom > 1.0)
                     ButtonUnstyled {
                         css {
                             padding = Padding(2.px, 5.px)
-                            if (newState == props.curZoom)
-                                fontWeight = integer(700)
-                            //if (newState.zoom == 1.0) {
-                            //    borderLeft = Border(1.px, LineStyle.solid, MainPalette.primary.color)
-                            //    borderRight = Border(1.px, LineStyle.solid, MainPalette.primary.color)
-                            //}
+                            whiteSpace = WhiteSpace.nowrap
                         }
-                        onClick = {
-                            props.onZoomChange?.invoke(
-                                newState
-                            )
-                            expanded = false
-                        }
-                        +name
+                        onClick = {expanded=true}
+                        +(props.curZoom.visibleContentRange.endpoints.joinToString("-") {
+                            it.toFixed(0)
+                        }+"%")
                     }
-                }
-            } else {
-                if (props.curZoom.zoom > 1.0)
-                ButtonUnstyled {
-                    css {
-                        padding = Padding(2.px, 5.px)
-                    }
-                    onClick = {expanded=true}
-                    +(props.curZoom.visibleContentRange.endpoints.joinToString("-") {
-                        it.toFixed(0)
-                    }+"%")
                 }
             }
         }
-    }
 }
 
 val yesGreen = Color("#00CC2E")
