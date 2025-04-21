@@ -179,10 +179,13 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 FormField {
                     title = "Description"
                     comment = "The description should contain all resolution criteria."
-                    TextInput {
+                    MultilineTextInput {
                         placeholder = "Tell others more about the question"
                         value = questionDescription
                         onChange = { e -> questionDescription = e.target.value }
+                        autoHeight = true
+                        autoHeightMin = 2
+                        autoHeightMax = 6
                     }
                 }
             }

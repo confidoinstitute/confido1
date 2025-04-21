@@ -1,5 +1,6 @@
 package components.redesign.forms
 
+import browser.window
 import components.redesign.basic.*
 import csstype.*
 import dom.html.*
@@ -47,12 +48,53 @@ val TextInput = FC<InputHTMLAttributes<HTMLInputElement>> {
         }
     }
 }
-val MultilineTextInput = FC<TextareaHTMLAttributes<HTMLTextAreaElement>> {
+external interface MultilineTextInputProps: TextareaHTMLAttributes<HTMLTextAreaElement> {
+    var autoHeight: Boolean?
+    var autoHeightMin: Int?
+    var autoHeightMax: Int?
+}
+val MultilineTextInput = FC<MultilineTextInputProps> { props->
     val theme = useTheme()
-    textarea {
-        +it
 
-        css(textInputClass, override=it) {
+    fun autoResize(textarea: HTMLTextAreaElement) {
+        val compStyle = window.asDynamic().getComputedStyle(textarea)
+        fun getPx(s: dynamic) = if (s == null)  { 0.0 } else {  s.toString().replace("px","").trim().toDouble() }
+        val lineHeight = getPx(compStyle.lineHeight)
+
+        // Get min and max valraints
+        val minRows = props.autoHeightMin ?: 2
+        val maxRows = props.autoHeightMax ?: 8
+
+        // Calculate min and max heights
+        val extraHeight = getPx(compStyle.paddingTop) +
+                            getPx(compStyle.paddingBottom) +
+                            getPx(compStyle.borderTopWidth) +
+                            getPx(compStyle.borderBottomWidht)
+
+        val minHeight = (minRows * lineHeight) + extraHeight
+        val maxHeight = (maxRows * lineHeight) + extraHeight
+
+        textarea.style.height = "auto"
+
+        val newHeight = minOf(maxOf(textarea.scrollHeight.toDouble(), minHeight), maxHeight);
+        textarea.style.height = "${newHeight}px"
+
+        textarea.style.overflowY = if (textarea.scrollHeight.toDouble() > maxHeight)  {"auto"} else {"hidden"}
+    }
+    val setInitialHeight = useRefEffect<HTMLTextAreaElement> {
+        autoResize(current)
+    }
+    val onInput = useEventListener<HTMLTextAreaElement>("input") { ev->
+        autoResize(ev.target as HTMLTextAreaElement)
+    }
+    textarea {
+        +props
+
+        if (props.autoHeight == true) {
+            ref = combineRefs(setInitialHeight, onInput)
+        }
+
+        css(textInputClass, override=props) {
             backgroundColor = theme.colors.form.inputBackground
         }
     }

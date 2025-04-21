@@ -689,6 +689,8 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
                 fontSize = 15.px
                 lineHeight = 18.px
                 color = Color("#000000")
+
+                whiteSpace = WhiteSpace.preLine
             }
             SeeMore {
                 maxLines = 3

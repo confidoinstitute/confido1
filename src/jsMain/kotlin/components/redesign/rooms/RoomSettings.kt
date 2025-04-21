@@ -68,6 +68,7 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
             FormField {
                 title = "Description"
                 MultilineTextInput {
+                    autoHeight= true
                     placeholder = "Explain what the questions in this room will be about"
                     value = description
                     onChange = { description = it.target.value }
