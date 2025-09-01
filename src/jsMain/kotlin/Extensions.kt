@@ -9,6 +9,7 @@ import components.rooms.RoomListProps
 import react.ChildrenBuilder
 import react.FC
 import react.Props
+import react.createContext
 import rooms.Room
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.Question
@@ -31,12 +32,13 @@ interface ClientExtension : Extension {
         inline fun forEach(f: (ClientExtension)->Unit) {  enabled.forEach(f) }
 
         val contexts: Map<ExtensionContextPlace, react.Context<Map<String, Any>>> by lazy {
-            ExtensionContextPlace.entries.map {
-                it to react.createContext<Map<String,dynamic>>()
-            }.toMap()
+            ExtensionContextPlace.entries.associate {
+                it to createContext<Map<String, dynamic>>()
+            }
         }
 
-        fun getContextValues(place: ExtensionContextPlace) = enabled.map { it.extensionId to it.getContextValue(place) }.toMap()
+        fun getContextValues(place: ExtensionContextPlace) =
+            enabled.associate { it.extensionId to it.getContextValue(place) }
     }
 
     fun rootRoutes(cb: ChildrenBuilder) {}
