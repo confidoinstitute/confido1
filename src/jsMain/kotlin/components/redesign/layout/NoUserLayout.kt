@@ -140,6 +140,6 @@ val LandingPage = FC<Props> {
     }
 
     if (appConfig.devMode) {
-        DevModeSection {}
+        LoginByUserSelectForm {}
     }
 }

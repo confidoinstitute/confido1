@@ -6,6 +6,7 @@ import components.presenter.presenterPageMap
 import components.redesign.basic.Dialog
 import components.redesign.forms.Button
 import components.redesign.forms.FormField
+import components.redesign.forms.FormSection
 import components.redesign.forms.MultilineTextInput
 import components.redesign.layout.LayoutMode
 import components.rooms.RoomContext
@@ -22,7 +23,6 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.js.Object
 import kotlinx.js.jso
-import mui.material.FormGroup
 import react.*
 import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.body
@@ -101,7 +101,7 @@ val FlowPage = FC<Props> {
     Dialog {
         open = editOpen
         onClose = { editOpen = false }
-        FormGroup {
+        FormSection {
             FormField {
                 title = "Flow JSON"
                 MultilineTextInput {
