@@ -5,7 +5,7 @@ import components.redesign.layout.LayoutMode
 import components.redesign.questions.dialog.EditQuestionDialogProps
 import components.redesign.questions.dialog.QuestionQuickSettingsDialogProps
 import components.redesign.questions.predictions.MyPredictionDescriptionProps
-import components.rooms.RoomListProps
+import components.redesign.rooms.RoomListProps
 import react.ChildrenBuilder
 import react.FC
 import react.Props

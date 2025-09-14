@@ -8,8 +8,6 @@ import components.redesign.forms.Button
 import components.redesign.layout.LayoutModeContext
 import components.redesign.rooms.dialog.CsvExportDialog
 import components.redesign.rooms.dialog.EditRoomSettingsDialog
-import components.rooms.RoomContext
-import components.showError
 import csstype.*
 import dom.ScrollBehavior
 import dom.html.*
@@ -298,7 +296,6 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                     this.element = QuestionList.create {
                         questions = room.questions.mapDeref()
                         showHiddenQuestions = appState.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
-                        allowEditingQuestions = appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
                     }
                 }
             if (appState.hasPermission(room, RoomPermission.VIEW_ROOM_COMMENTS))

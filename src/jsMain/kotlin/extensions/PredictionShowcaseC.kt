@@ -2,6 +2,7 @@ package extensions
 
 import components.presenter.PresenterPageProps
 import components.presenter.presenterPageMap
+import components.redesign.PresenterIcon
 import components.redesign.basic.Stack
 import components.redesign.basic.rowStyleTableCSS
 import components.redesign.forms.IconButton
@@ -9,7 +10,6 @@ import components.redesign.presenter.PresenterContext
 import csstype.*
 import emotion.react.css
 import hooks.useWebSocket
-import icons.ProjectorScreenOutlineIcon
 import payloads.responses.WSData
 import react.*
 import react.dom.html.ReactHTML.div
@@ -205,13 +205,13 @@ object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
                             td { +"${q.numPredictors}" }
                             td {
                                 IconButton {
-                                    ProjectorScreenOutlineIcon {}
+                                    PresenterIcon {}
                                     onClick = {
                                         presenterCtl.offer(PredictionShowcasePV(q.ref))
                                     }
                                 }
                                 IconButton {
-                                    ProjectorScreenOutlineIcon {}
+                                    PresenterIcon{}
                                     onClick = {
                                         presenterCtl.offer(GroupPredictionComparePV(room.ref))
                                     }

@@ -3,13 +3,13 @@ package components.redesign.rooms
 import browser.window
 import components.*
 import components.redesign.questions.*
-import components.rooms.*
 import kotlinx.js.*
 import react.*
 import react.router.*
 import rooms.*
 import web.url.URLSearchParams
 
+val RoomContext = createContext<Room>()
 val Room = FC<Props> {
     val (appState, stale) = useContext(AppStateContext)
     val roomId = useParams()["roomID"] ?: return@FC

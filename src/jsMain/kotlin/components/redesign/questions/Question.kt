@@ -2,7 +2,7 @@ package components.redesign.questions
 
 import browser.window
 import components.*
-import components.rooms.*
+import components.redesign.rooms.RoomContext
 import kotlinx.js.*
 import react.*
 import react.router.*

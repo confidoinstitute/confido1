@@ -3,8 +3,6 @@ package components.redesign.layout
 import browser.*
 import components.AppStateContext
 import components.AppStateWebsocketProvider
-import components.layout.RoomRedirect
-import components.nouser.EmailLoginAlreadyLoggedIn
 import components.redesign.*
 import components.redesign.admin.UserAdmin
 import components.redesign.basic.*
@@ -18,12 +16,32 @@ import components.redesign.rooms.*
 import csstype.*
 import emotion.react.css
 import hooks.useBreakpoints
+import kotlinx.js.jso
 import react.*
 import react.router.*
 import tools.confido.extensions.ClientExtension
 import tools.confido.state.*
 import users.UserType
 
+val RoomRedirect = FC<Props> {
+    val navigate = useNavigate()
+    val location = useLocation().pathname.split('/').drop(2).joinToString("/")
+    console.log("Redirecting to /rooms/$location")
+    useEffect {
+        navigate("/rooms/" + location, jso {
+            replace = true
+        })
+    }
+}
+
+
+val EmailLoginAlreadyLoggedIn = FC<Props> {
+    val navigate = useNavigate()
+
+    useEffect {
+        navigate("/")
+    }
+}
 val RootLayout = FC<Props> {
     ThemeProvider {
         theme = { _ -> DefaultTheme }
@@ -45,9 +63,7 @@ val LayoutModeContext = createContext<LayoutMode>()
 private val RootLayoutInner = FC<Props> {
     val (appState, _) = useContext(AppStateContext)
     val layoutMode = useBreakpoints(LayoutMode.PHONE to 740, LayoutMode.TABLET to 1020, default =LayoutMode.DESKTOP)
-    val location = useLocation()
     var showDemoWelcome by useState(appConfig.demoMode && window.asDynamic().demoDismissed != true)
-    var showNewDesign by useState {!appConfig.demoMode && web.storage.localStorage.getItem("newDesignMessageSeen") == null }
     ClientExtension.enabled.forEach {
         it.rootLayoutStartHook()
     }

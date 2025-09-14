@@ -1,6 +1,5 @@
 package components.redesign.questions.dialog
 
-import components.ValueEntry
 import components.redesign.forms.*
 import kotlinx.datetime.*
 import kotlinx.js.jso

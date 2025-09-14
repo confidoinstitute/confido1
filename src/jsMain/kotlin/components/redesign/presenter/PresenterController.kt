@@ -2,12 +2,12 @@ package components.redesign.presenter
 
 import browser.window
 import components.AppStateContext
-import components.Message
-import components.MessageType
 import components.redesign.basic.Dialog
 import components.redesign.basic.DialogMainButton
+import components.redesign.basic.Message
+import components.redesign.basic.MessageType
+import components.redesign.basic.showMessage
 import components.redesign.forms.Button
-import components.showMessage
 import csstype.Margin
 import csstype.integer
 import csstype.px

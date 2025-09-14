@@ -4,7 +4,7 @@ import Client
 import components.*
 import components.redesign.*
 import components.redesign.basic.*
-import components.rooms.*
+import components.redesign.rooms.RoomContext
 import hooks.*
 import io.ktor.http.*
 import payloads.requests.*

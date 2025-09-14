@@ -2,10 +2,10 @@ package extensions
 
 import components.*
 import components.AppStateContext
-import components.presenter.PresenterButton
 import components.presenter.PresenterPageProps
 import components.presenter.PresenterPageType
 import components.presenter.presenterPageMap
+import components.redesign.PresenterIcon
 import components.redesign.basic.Dialog
 import components.redesign.basic.DialogMenuItem
 import components.redesign.basic.Stack
@@ -13,13 +13,12 @@ import components.redesign.forms.*
 import components.redesign.presenter.PresenterContext
 import components.redesign.questions.dialog.QuestionQuickSettingsDialogProps
 import components.redesign.questions.dialog.EditQuestionDialogProps
-import components.rooms.RoomContext
+import components.redesign.rooms.RoomContext
 import csstype.*
 import dom.html.HTML.h1
 import emotion.react.css
 import extensions.UpdateScatterPlotCE.UpdatePlotState
 import hooks.useSuspendResult
-import icons.ProjectorScreenOutlineIcon
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import kotlinx.datetime.*
@@ -546,7 +545,7 @@ object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
                         }
                         div {
                             IconButton {
-                                ProjectorScreenOutlineIcon {}
+                                PresenterIcon {}
                                 onClick = {
                                         presenterCtl.offer(
                                             UpdateScatterPlotPV(

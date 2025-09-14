@@ -4,7 +4,7 @@ import Client
 import components.*
 import components.redesign.basic.*
 import components.redesign.forms.*
-import components.rooms.*
+import components.redesign.rooms.RoomContext
 import csstype.*
 import emotion.react.*
 import hooks.*

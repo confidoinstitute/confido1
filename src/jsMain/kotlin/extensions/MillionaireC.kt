@@ -5,13 +5,13 @@ import components.presenter.PresenterPage
 import components.presenter.PresenterPageProps
 import components.presenter.QuestionPP
 import components.presenter.presenterPageMap
+import components.redesign.basic.showError
 import components.redesign.forms.Button
 import components.redesign.presenter.PresenterContext
 import components.redesign.questions.QuestionContext
 import components.redesign.questions.predictions.MyPredictionDescriptionProps
 import components.redesign.questions.predictions.yesNoColored
-import components.rooms.RoomContext
-import components.showError
+import components.redesign.rooms.RoomContext
 import csstype.*
 import emotion.react.css
 import hooks.useCoroutineLock

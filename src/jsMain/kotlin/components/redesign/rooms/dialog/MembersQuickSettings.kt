@@ -7,7 +7,7 @@ import components.redesign.basic.DialogMenuHeader
 import components.redesign.basic.DialogMenuItem
 import components.redesign.basic.DialogMenuItemVariant
 import components.redesign.presenter.PresenterContext
-import components.rooms.RoomContext
+import components.redesign.rooms.RoomContext
 import csstype.px
 import emotion.react.css
 import react.FC

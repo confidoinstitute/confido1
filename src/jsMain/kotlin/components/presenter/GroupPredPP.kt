@@ -21,7 +21,6 @@ import tools.confido.question.Prediction
 import tools.confido.refs.deref
 import tools.confido.spaces.BinaryValue
 import tools.confido.state.GroupPredPV
-import utils.themed
 
 val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
     val question = props.view.question.deref() ?: return@FC

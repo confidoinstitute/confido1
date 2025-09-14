@@ -14,8 +14,6 @@ import tools.confido.refs.deref
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.NumericSpace
 import tools.confido.state.QuestionPV
-import utils.byTheme
-import utils.themed
 
 val QuestionPP = FC<PresenterPageProps<QuestionPV>> { props ->
     val question = props.view.question.deref() ?: return@FC

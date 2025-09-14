@@ -2,16 +2,14 @@ package components.redesign.layout
 
 import components.LoginContext
 import components.cookieSet
-import components.nouser.DevModeSection
-import components.profile.*
 import components.redesign.AboutIcon
 import components.redesign.basic.*
 import components.redesign.nouser.*
 import components.redesign.nouser.EmailLogin
 import components.redesign.nouser.LoginForm
+import components.redesign.profile.VerifyToken
 import csstype.*
 import emotion.react.*
-import icons.LockOpenIcon
 import react.*
 import react.dom.html.AnchorTarget
 import react.dom.html.ReactHTML.a
@@ -112,15 +110,15 @@ val NoUserLayout = FC<Props> {
                 css { flexGrow = number(1.0) }
             }
             if (appConfig.privacyPolicyUrl != null) {
-                a {
-                    href = appConfig.privacyPolicyUrl
-                    target = AnchorTarget._blank
-                    LockOpenIcon{
-                        css {
-                            transform = scale(0.75)
-                        }
-                    }
-                }
+                // a {
+                //     href = appConfig.privacyPolicyUrl
+                //     target = AnchorTarget._blank
+                //     LockOpenIcon{
+                //         css {
+                //             transform = scale(0.75)
+                //         }
+                //     }
+                // }
                 a {
                     href = appConfig.privacyPolicyUrl
                     target = AnchorTarget._blank

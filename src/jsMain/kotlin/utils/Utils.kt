@@ -16,9 +16,12 @@ import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
+import kotlinx.js.Object
 import kotlinx.js.WeakMap
+import kotlinx.js.delete
 import kotlinx.js.get
 import kotlinx.js.jso
+import react.Props
 import react.StateInstance
 import react.useEffect
 import react.useMemo
@@ -148,3 +151,10 @@ inline operator fun <T, U> StateInstance<T>.setValue(
 
 
 fun buildProps(builder: PropertiesBuilder.() -> Unit): Properties = jso(builder)
+
+fun <T> T.except(vararg except: String): T  where T: Props {
+    var newProps = jso<dynamic> {  }
+    Object.assign(newProps, this)
+    except.forEach { delete(newProps[it]) }
+    return newProps as T
+}

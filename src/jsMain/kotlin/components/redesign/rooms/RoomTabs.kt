@@ -4,7 +4,6 @@ import components.*
 import components.redesign.basic.*
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
-import components.rooms.*
 import csstype.*
 import dom.html.*
 import emotion.react.*

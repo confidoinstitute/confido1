@@ -13,7 +13,6 @@ import emotion.react.css
 import hooks.useWebSocket
 import payloads.responses.WSData
 import tools.confido.question.Prediction
-import icons.ProjectorScreenOutlineIcon
 import react.*
 import react.dom.html.InputType
 import react.dom.html.ReactHTML.h1

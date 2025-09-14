@@ -3,9 +3,9 @@ package components.redesign
 import components.AppStateContext
 import components.redesign.basic.PageHeader
 import components.redesign.basic.Stack
+import components.redesign.basic.showError
 import components.redesign.forms.Button
 import components.redesign.rooms.RoomSettings
-import components.showError
 import csstype.Display
 import csstype.Margin
 import csstype.integer

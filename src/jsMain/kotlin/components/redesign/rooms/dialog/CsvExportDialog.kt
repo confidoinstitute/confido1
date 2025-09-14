@@ -8,7 +8,7 @@ import components.redesign.forms.*
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.dialog.QuestionType
-import components.rooms.RoomContext
+import components.redesign.rooms.RoomContext
 import csstype.*
 import dom.html.HTMLAnchorElement
 import emotion.react.css

@@ -9,7 +9,7 @@ import components.redesign.forms.FormField
 import components.redesign.forms.FormSection
 import components.redesign.forms.MultilineTextInput
 import components.redesign.layout.LayoutMode
-import components.rooms.RoomContext
+import components.redesign.rooms.RoomContext
 import csstype.TextDecoration
 import csstype.em
 import csstype.vh

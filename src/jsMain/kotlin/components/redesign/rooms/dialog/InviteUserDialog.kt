@@ -3,8 +3,7 @@ package components.redesign.rooms.dialog
 import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.forms.*
-import components.rooms.RoomContext
-import components.showError
+import components.redesign.rooms.RoomContext
 import csstype.*
 import emotion.react.css
 import payloads.requests.AddedExistingMember

@@ -4,7 +4,6 @@ import components.redesign.basic.palette
 import components.redesign.forms.*
 import components.redesign.questions.ChipCSS
 import components.redesign.questions.dialog.EditQuestionDialogProps
-import components.showError
 import csstype.Border
 import csstype.LineStyle
 import csstype.NamedColor

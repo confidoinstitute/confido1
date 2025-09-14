@@ -9,7 +9,6 @@ import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import csstype.*
 import emotion.react.css
-import mui.system.sx
 import react.*
 import react.dom.html.ReactHTML.div
 import tools.confido.state.EmptyPV

@@ -1,14 +1,12 @@
 package components.redesign.rooms
 
 import components.*
-import components.questions.QuestionListProps
 import components.redesign.*
 import components.redesign.basic.*
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.*
 import components.redesign.questions.dialog.*
-import components.rooms.*
 import csstype.*
 import emotion.react.*
 import hooks.*

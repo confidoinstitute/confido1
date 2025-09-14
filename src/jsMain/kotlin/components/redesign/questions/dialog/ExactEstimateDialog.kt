@@ -7,7 +7,6 @@ import components.redesign.questions.predictions.NormalishDistSpec
 import components.redesign.questions.predictions.NumericDistSpecSym
 import components.redesign.questions.predictions.NumericPredGraph
 import components.redesign.questions.predictions.SymmetrySwitch
-import components.showError
 import csstype.*
 import dom.html.HTMLInputElement
 import emotion.react.css

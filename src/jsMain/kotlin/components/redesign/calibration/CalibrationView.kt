@@ -2,13 +2,13 @@ package components.redesign.calibration
 
 import Client
 import components.AppStateContext
+import components.redesign.PresenterIcon
 import components.redesign.basic.*
 import components.redesign.forms.*
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.presenter.PresenterContext
 import components.redesign.questions.predictions.yesGreen
-import components.showError
 import csstype.*
 import dom.html.HTMLTableCellElement
 import emotion.react.css
@@ -16,7 +16,6 @@ import extensions.UpdateScatterPlotPV
 import hooks.combineRefs
 import hooks.useCoroutineLock
 import hooks.useSuspendResult
-import icons.ProjectorScreenOutlineIcon
 import io.ktor.client.call.*
 import io.ktor.http.*
 import kotlinx.datetime.Instant
@@ -365,7 +364,7 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
                 top = 0.px
             }
             IconButton {
-                ProjectorScreenOutlineIcon{}
+                PresenterIcon{}
                 onClick = {  presenterCtl.offer(CalibrationReqPV(req)) }
             }
 

@@ -12,7 +12,6 @@ import csstype.*
 import emotion.react.Global
 import emotion.react.css
 import emotion.react.styles
-import icons.LockOpenIcon
 import react.*
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.aside
@@ -261,7 +260,7 @@ val Sidebar = FC<SidebarProps> { props ->
             }
             if (appConfig.privacyPolicyUrl != null)
             SidebarAction {
-                icon = (LockOpenIcon as FC<PropsWithClassName>).withStyle {
+                icon = (LockIcon as FC<PropsWithClassName>).withStyle {
                     transform = scale(0.75)
                     position = Position.relative
                     top = (-2).px

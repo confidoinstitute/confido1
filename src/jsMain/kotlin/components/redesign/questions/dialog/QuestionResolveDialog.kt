@@ -4,8 +4,8 @@ import Client
 import components.redesign.basic.BaseDialogProps
 import components.redesign.basic.Dialog
 import components.redesign.basic.dialogStateWrapper
+import components.redesign.basic.showError
 import components.redesign.forms.*
-import components.showError
 import hooks.useCoroutineLock
 import kotlinx.datetime.*
 import kotlinx.js.jso

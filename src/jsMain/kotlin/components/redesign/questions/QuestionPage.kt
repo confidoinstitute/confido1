@@ -4,7 +4,6 @@ import BinaryHistogram
 import Client
 import browser.window
 import components.*
-import components.questions.PendingPredictionState
 import components.redesign.*
 import components.redesign.TextWithLinks
 import components.redesign.basic.*
@@ -19,7 +18,6 @@ import components.redesign.questions.dialog.EditQuestionDialog
 import components.redesign.questions.predictions.*
 import components.redesign.rooms.*
 import components.redesign.rooms.dialog.CsvExportDialog
-import components.rooms.*
 import csstype.*
 import emotion.css.ClassName
 import emotion.react.*
@@ -49,7 +47,13 @@ import tools.confido.utils.*
 import utils.*
 
 val QuestionContext = createContext<Question?>(null)
-
+enum class PendingPredictionState {
+    NONE,
+    MAKING,
+    SENDING,
+    ACCEPTED,
+    ERROR,
+}
 external interface QuestionLayoutProps : Props {
     var question: Question
     var openResolve: Boolean?

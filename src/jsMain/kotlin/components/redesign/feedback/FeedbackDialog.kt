@@ -2,8 +2,8 @@ package components.redesign.feedback
 
 import components.redesign.*
 import components.redesign.basic.Dialog
+import components.redesign.basic.showError
 import components.redesign.forms.*
-import components.showError
 import csstype.*
 import emotion.react.css
 import emotion.styled.styled

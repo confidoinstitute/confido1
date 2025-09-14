@@ -11,6 +11,12 @@ import react.dom.html.ReactHTML.div
 import web.timers.*
 import kotlin.time.Duration.Companion.seconds
 
+enum class MessageType { SUCCESS, INFO, WARNING, ERROR }
+data class Message(val text: String, val type: MessageType = MessageType.INFO)
+
+var showMessage: ((Message) -> Unit) = {}
+fun showError(msg: String) = showMessage(Message(msg, MessageType.ERROR))
+
 val GlobalErrorMessage = FC<PropsWithChildren> {
 
     val ref = useRef<HTMLDivElement>()

@@ -562,13 +562,6 @@ val DialogMenuCommonActions = FC<DialogMenuCommonActionsProps> { props ->
             window.open("https://confido.institute/confido-app.html", "_blank")
         }
     }
-    DialogMenuItem {
-        text = "Switch to old UI"
-        onClick = {
-            localStorage.setItem("layoutVersion", "legacy")
-            location.reload()
-        }
-    }
 }
 
 val DialogMainButton = Button.withStyle {

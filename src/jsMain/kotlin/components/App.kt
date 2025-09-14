@@ -1,14 +1,10 @@
 package components
 
 import browser.document
-import components.layout.*
+import components.layout.PresenterLayout
 import components.redesign.Header
 import csstype.*
 import kotlinx.js.jso
-import mui.material.*
-import mui.material.styles.PaletteColor
-import mui.material.styles.createTheme
-import mui.system.ThemeProvider
 import react.*
 import react.router.Route
 import react.router.Routes
@@ -33,75 +29,12 @@ data class Login(val isLoggedIn: Boolean, private val changeState: (Boolean) -> 
     }
 }
 
-val globalTheme = createTheme(
-    jso {
-        palette = jso {
-            primary = jso<PaletteColor> {
-                main = Color("#675491")
-                light = Color("#9681c2")
-                dark = Color("#3a2b63")
-                contrastText = Color("#ffffff")
-            }
-            secondary = jso<PaletteColor> {
-                main = Color("#55a3b5")
-                light = Color("#88d4e7")
-                dark = Color("#1c7485")
-                contrastText = Color("#ffffff")
-            }
-        }
-    }
-)
 
 external interface AppProps : Props {
     var isLoggedIn: Boolean
 }
 
-val AppLegacy = memo(FC<AppProps> { props ->
-    val isLoggedIn = props.isLoggedIn
-    val isDemo = appConfig.demoMode
-    val layout = if (isLoggedIn) {
-        RootLayout
-    } else {
-        NoUserLayout
-    }
 
-    ThemeProvider {
-        this.theme = globalTheme
-        CssBaseline {}
-        GlobalErrorMessage {
-            BrowserRouter {
-                Routes {
-                    if (isDemo)
-                        Route {
-                            path = "/"
-                            index = true
-                            element = DemoLayout.create {}
-                        }
-                    Route {
-                        path = "/*"
-                        index = !isDemo
-                        element = layout.create {
-                            key = "layout"
-                        }
-                    }
-                    Route {
-                        path = "presenter"
-                        element = PresenterLayout.create()
-                    }
-                }
-            }
-        }
-    }
-})
-
-val PresenterWrapper = FC<Props> {
-
-    ThemeProvider {
-        this.theme = globalTheme
-        CssBaseline {}
-        PresenterLayout {}
-    }
-}
 
 val AppMobile = memo(FC<AppProps> {props ->
     val isLoggedIn = props.isLoggedIn
@@ -119,7 +52,7 @@ val AppMobile = memo(FC<AppProps> {props ->
             }
             Route {
                 path = "presenter"
-                element = PresenterWrapper.create()
+                element = PresenterLayout.create()
             }
         }
     }
@@ -149,10 +82,6 @@ val App = FC<Props> {
     LoginContext.Provider {
         value = Login(isLoggedIn) { isLoggedIn = it }
 
-        if (mobileFlag || !isLoggedIn) {
-            AppMobile { this.isLoggedIn = isLoggedIn }
-        } else {
-            AppLegacy { this.isLoggedIn = isLoggedIn }
-        }
+        AppMobile { this.isLoggedIn = isLoggedIn }
     }
 }

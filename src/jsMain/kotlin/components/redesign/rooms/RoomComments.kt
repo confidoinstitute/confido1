@@ -8,7 +8,6 @@ import components.redesign.comments.Comment
 import components.redesign.comments.CommentInputVariant
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
-import components.rooms.*
 import csstype.*
 import emotion.react.*
 import hooks.*

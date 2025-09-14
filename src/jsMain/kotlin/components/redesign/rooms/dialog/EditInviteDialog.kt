@@ -3,9 +3,9 @@ package components.redesign.rooms.dialog
 import components.AppStateContext
 import components.redesign.basic.Dialog
 import components.redesign.basic.Stack
+import components.redesign.basic.showError
 import components.redesign.forms.*
-import components.rooms.RoomContext
-import components.showError
+import components.redesign.rooms.RoomContext
 import csstype.*
 import emotion.react.css
 import hooks.EditEntityDialogProps

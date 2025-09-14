@@ -7,7 +7,7 @@ import components.redesign.TextWithLinks
 import components.redesign.basic.*
 import components.redesign.forms.*
 import components.redesign.questions.predictions.PredictionGraph
-import components.rooms.*
+import components.redesign.rooms.RoomContext
 import csstype.*
 import emotion.react.*
 import hooks.*
