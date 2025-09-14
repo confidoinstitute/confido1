@@ -12,4 +12,6 @@ actual val registeredExtensions: List<Extension> = listOf(
     ReferenceForecastCE,
     PointEstimateCE,
     PredictionShowcaseCE,
+    ONNNuclearHintsCE,
+    ConditionalBaselineCE,
 )

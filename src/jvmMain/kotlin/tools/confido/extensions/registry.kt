@@ -12,4 +12,5 @@ actual val registeredExtensions = listOf<Extension>(
     ReferenceForecastSE,
     PointEstimateSE,
     PredictionShowcaseSE,
+    ConditionalBaselineSE,
 )
