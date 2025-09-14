@@ -39,7 +39,8 @@ class ExtensionData(val type: ExtensionDataType, val data: Map<IExtensionDataKey
 
 }
 inline fun <V> ExtensionData.with(k: ExtensionDataKey<V>, v: V) = ExtensionData(type, data + mapOf(k to v))
-operator inline fun <V> ExtensionData.get(k: ExtensionDataKey<V>): V? = data[k] as? V?
+inline fun <V:Any> ExtensionData.withOrWithout(k: ExtensionDataKey<V>, v: V?) = if (v==null) ExtensionData(type, data.filterKeys{it != k}) else ExtensionData(type, data + mapOf(k to v))
+operator inline fun <V> ExtensionData?.get(k: ExtensionDataKey<V>): V? = this?.let { data[k] as? V? }
 operator inline fun <V> ExtensionData.get(k: ExtensionDataKeyWithDefault<V>): V = if (data.keys.contains(k)) data[k] as V else k.default
 
 abstract class  ExtensionDataSerializer(val type: ExtensionDataType): KSerializer<ExtensionData> {

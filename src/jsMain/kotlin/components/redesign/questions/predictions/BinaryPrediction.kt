@@ -16,6 +16,7 @@ import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 import tools.confido.calibration.CalibrationEntry
 import tools.confido.distributions.*
+import tools.confido.extensions.ClientExtension
 import tools.confido.question.ExtremeProbabilityMode
 import tools.confido.question.PredictionTerminology
 import tools.confido.spaces.*
@@ -601,16 +602,20 @@ val BinaryPredInput = FC<BinaryPredInputProps> { props->
                 }
             }
         }
-        BinaryPredSlider {
-            this.space = props.space
-            this.dist = props.dist
-            this.onChange = { newDist, isCommit->
-                previewDist = (newDist as BinaryDistribution)
-                props.onChange?.invoke(newDist, isCommit)
+        div {
+            css { position = Position.relative }
+            BinaryPredSlider {
+                this.space = props.space
+                this.dist = props.dist
+                this.onChange = { newDist, isCommit ->
+                    previewDist = (newDist as BinaryDistribution)
+                    props.onChange?.invoke(newDist, isCommit)
+                }
+                this.zoom = sliderZoom
+                onZoomChange = { sliderZoom = it }
+                this.disabled = props.disabled
             }
-            this.zoom = sliderZoom
-            onZoomChange = { sliderZoom = it }
-            this.disabled = props.disabled
+            ClientExtension.forEach { it.binarySliderExtra(props, sliderZoom, this) }
         }
     }
 }

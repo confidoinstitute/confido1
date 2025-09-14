@@ -4,6 +4,7 @@ import components.presenter.PresenterPageType
 import components.redesign.layout.LayoutMode
 import components.redesign.questions.dialog.EditQuestionDialogProps
 import components.redesign.questions.dialog.QuestionQuickSettingsDialogProps
+import components.redesign.questions.predictions.BinaryPredInputProps
 import components.redesign.questions.predictions.MyPredictionDescriptionProps
 import components.redesign.rooms.RoomListProps
 import react.ChildrenBuilder
@@ -17,6 +18,7 @@ import tools.confido.question.Question
 import tools.confido.state.PresenterView
 import tools.confido.state.SentState
 import tools.confido.state.appConfig
+import utils.panzoom1d.PZState
 import kotlin.reflect.KClass
 
 enum class ExtensionContextPlace {
@@ -76,6 +78,7 @@ interface ClientExtension : Extension {
     fun rootLayoutStartHook() {}
     fun renderPredictionInput(props: components.redesign.questions.predictions.PredictionInputProps): react.ReactNode? = null
     fun  hideDefaultPredictionDesc(dist: ProbabilityDistribution?, question: Question?, b: Boolean) = false
+    fun binarySliderExtra(props: BinaryPredInputProps, zoom: PZState?, cb: ChildrenBuilder) {}
 }
 
 external interface ExtensionContextProviderProps: Props {
@@ -85,3 +88,4 @@ external interface ExtensionContextProviderProps: Props {
 val ExtensionContextProvider = FC<ExtensionContextProviderProps> {
 
 }
+

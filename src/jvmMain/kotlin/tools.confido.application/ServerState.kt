@@ -18,6 +18,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.bson.Document
 import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.*
@@ -27,6 +28,7 @@ import tools.confido.distributions.*
 import tools.confido.extensions.ServerExtension
 import tools.confido.question.*
 import tools.confido.refs.*
+import tools.confido.serialization.confidoJSON
 import tools.confido.spaces.*
 import tools.confido.utils.*
 import users.EmailVerificationLink
@@ -66,6 +68,8 @@ fun loadConfig() = AppConfig(
     privacyPolicyUrl = System.getenv("CONFIDO_PRIVACY_POLICY_URL")?.ifEmpty {null},
     enabledExtensionIds = getenvList("CONFIDO_EXTENSIONS").toSet(),
     predictionCoalesceInterval = System.getenv("CONFIDO_PREDICTION_COALESCE_INTERVAL")?.toInt() ?: 60,
+    // XXX      vvvv-- cannot use confidoJSON here at this would create an initialization cycle
+    extraData = Json.decodeFromString(System.getenv("CONFIDO_EXTRA_DATA") ?: "{}"),
 )
 
 actual val appConfig = loadConfig()
