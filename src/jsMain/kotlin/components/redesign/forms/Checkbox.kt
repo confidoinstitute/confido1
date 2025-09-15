@@ -12,6 +12,7 @@ import react.dom.html.ReactHTML.span
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.svg
 import utils.except
+import web.cssom.LineStyle.Companion.solid
 
 external interface CheckboxProps: InputHTMLAttributes<HTMLInputElement>, PropsWithPalette<PaletteWithText> {
     var alwaysColorBackground: Boolean
@@ -19,9 +20,13 @@ external interface CheckboxProps: InputHTMLAttributes<HTMLInputElement>, PropsWi
     var maskColor: Color?
     var noCheckmark: Boolean?
     var wrapLabel: Boolean?
+    var sz: Double?
 }
 
 val Checkbox = FC<CheckboxProps> { props ->
+    val nominalSize = 30.0
+    val size = props.sz ?: nominalSize
+    val sizeMult = size / nominalSize
     val palette = props.palette ?: MainPalette.primary
     val checkboxRef = useRef<HTMLInputElement>()
 
@@ -33,8 +38,8 @@ val Checkbox = FC<CheckboxProps> { props ->
         css(override=props.className) {
             position = Position.relative
             display = Display.inlineBlock
-            width = 30.px
-            height = 30.px
+            width = size.px
+            height = size.px
             flexShrink = number(0.0)
         }
 
@@ -66,6 +71,7 @@ val Checkbox = FC<CheckboxProps> { props ->
                 //    backgroundColor = Color("#DDDDDD")
 
                 cursor = Cursor.pointer
+                border = Border(1.px, solid, Color("#666"))
 
                 "input:checked ~ &" {
                     backgroundColor = palette.color
@@ -96,8 +102,8 @@ val Checkbox = FC<CheckboxProps> { props ->
             svg {
                 css {
                     position = Position.absolute
-                    left = 8.px
-                    top = 9.px
+                    left = (8 * sizeMult).px
+                    top = (9 * sizeMult).px
                     opacity = number(0.0)
                     cursor = Cursor.pointer
                     transition = 0.1.s
@@ -105,8 +111,8 @@ val Checkbox = FC<CheckboxProps> { props ->
                         opacity = number(1.0)
                     }
                 }
-                width = 14.0
-                height = 12.0
+                width = 14.0 * sizeMult
+                height = 12.0 * sizeMult
                 viewBox = "0 0 14 12"
                 fill = palette.text.color.toString()
                 path {

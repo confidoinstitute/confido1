@@ -372,6 +372,11 @@ object serverState : GlobalState() {
         fun get(question: Ref<Question>, user: Ref<User>) =
             userPred[question]?.get(user)
 
+        suspend fun clear(q: Ref<Question>) {
+            mongoCollection.deleteMany(Prediction::question eq q)
+            userPred.remove(q)
+        }
+
         suspend fun save(savedPred: Prediction)  = withMutationLock {
             require(savedPred.user != null)
             val pred = savedPred.copy(id = "${savedPred.question.id}:${savedPred.user.id}")
@@ -420,6 +425,11 @@ object serverState : GlobalState() {
             mongoCollection.find(and(Prediction::question eq question, Prediction::user eq user))
                 .sort(ascending(Prediction::ts)).toFlow()
 
+        suspend fun clear(q: Ref<Question>) {
+            mongoCollection.deleteMany(Prediction::question eq q)
+            totalPredictions[q] = 0
+        }
+
         suspend fun at(question: Ref<Question>, user: Ref<User>, ts: Int) =
             mongoCollection.find(and(Prediction::question eq question,
                                                             Prediction::user eq user,
@@ -448,6 +458,11 @@ object serverState : GlobalState() {
             mongoCollection.find(and(Prediction::question eq question))
                 .sort(ascending(Prediction::ts)).toFlow()
 
+        suspend fun clear(q: Ref<Question>) {
+            mongoCollection.deleteMany(Prediction::question eq q)
+            groupPred.remove(q)
+            predictorCount.remove(q)
+        }
         suspend fun at(question: Ref<Question>, ts: Int) =
             mongoCollection.find(and(Prediction::question eq question, Prediction::ts lte ts))
                 .sort(descending(Prediction::ts)).first()

@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.datetime.Clock
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.encodeToByteArray
+import org.litote.kmongo.eq
 import payloads.requests.*
 import payloads.responses.*
 import rooms.Room
@@ -81,57 +82,88 @@ fun questionRoutes(routing: Routing) = routing.apply {
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
+
+    suspend fun doEditQuestion(question: Question, edit: EditQuestion, user: User) {
+        val ref = question.ref
+        when (edit) {
+            is EditQuestionFlag -> {
+                serverState.questionManager.modifyEntity(ref) {
+                    when (edit.fieldType) {
+                        EditQuestionFieldType.VISIBLE ->
+                            it.copy(visible = edit.value)
+                        EditQuestionFieldType.OPEN ->
+                            it.copy(open = edit.value)
+                        EditQuestionFieldType.GROUP_PRED_VISIBLE ->
+                            it.copy(groupPredVisible = edit.value)
+                        EditQuestionFieldType.RESOLUTION_VISIBLE ->
+                            it.copy(resolutionVisible = it.resolution != null && edit.value)
+                    }
+                }
+            }
+            is EditQuestionComplete -> {
+                serverState.withTransaction {
+                    serverState.questionManager.modifyEntity(ref) { orig->
+                        if (question.numPredictions > 0 && question.answerSpace != edit.question.answerSpace) {
+                            badRequest("Cannot change answer space of a question with predictions.")
+                        }
+
+                        // If withState wasn't used, this will fill in the history automatically.
+                        val newHistory = if (orig.state != edit.question.state && orig.stateHistory.lastOrNull()?.newState != edit.question.state) {
+                            orig.stateHistory + QuestionStateChange(edit.question.state, Clock.System.now(), user.ref)
+                        } else {
+                            orig.stateHistory
+                        }
+                        edit.question.copy(id = question.id, stateHistory = newHistory, author = orig.author)
+                    }
+                }
+            }
+            is EditQuestionState -> {
+                serverState.withTransaction {
+                    serverState.questionManager.modifyEntity(ref) { orig->
+                        // If withState wasn't used, this will fill in the history automatically.
+                        val newHistory = if (orig.state != edit.newState && orig.stateHistory.lastOrNull()?.newState != edit.newState) {
+                            orig.stateHistory + QuestionStateChange(edit.newState, Clock.System.now(), user.ref)
+                        } else {
+                            orig.stateHistory
+                        }
+                        orig.withState(edit.newState).copy(id = question.id, stateHistory = newHistory)
+                    }
+                }
+            }
+            is EditQuestionResolution -> {
+                if (question.answerSpace != edit.resolution.space) badRequest("resolution space does not match answer space")
+                serverState.questionManager.modifyEntity(ref) {
+                    orig -> orig.copy(resolution=edit.resolution)
+                }
+            }
+            is EditQuestionClearAnswers -> {
+                serverState.withTransaction {
+                    serverState.userPredManager.clear(question.ref)
+                    serverState.userPredHistManager.clear(question.ref)
+                    serverState.groupPredHistManager.clear(question.ref)
+                }
+            }
+        }
+    }
+
     // Edit a question
     postST("$questionUrl/edit") {
         call.withQuestion {
-            val editQuestion: EditQuestion = call.receive()
+            val edit: EditQuestion = call.receive()
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "You cannot edit this question.")
-
-            when (editQuestion) {
-                is EditQuestionFlag -> {
-                    serverState.questionManager.modifyEntity(ref) {
-                        when (editQuestion.fieldType) {
-                            EditQuestionFieldType.VISIBLE ->
-                                it.copy(visible = editQuestion.value)
-                            EditQuestionFieldType.OPEN ->
-                                it.copy(open = editQuestion.value)
-                            EditQuestionFieldType.GROUP_PRED_VISIBLE ->
-                                it.copy(groupPredVisible = editQuestion.value)
-                            EditQuestionFieldType.RESOLUTION_VISIBLE ->
-                                it.copy(resolutionVisible = it.resolution != null && editQuestion.value)
-                        }
-                    }
-                }
-                is EditQuestionComplete -> {
-                    serverState.withTransaction {
-                        serverState.questionManager.modifyEntity(ref) { orig->
-                            if (question.numPredictions > 0 && question.answerSpace != editQuestion.question.answerSpace) {
-                                badRequest("Cannot change answer space of a question with predictions.")
-                            }
-
-                            // If withState wasn't used, this will fill in the history automatically.
-                            val newHistory = if (orig.state != editQuestion.question.state && orig.stateHistory.lastOrNull()?.newState != editQuestion.question.state) {
-                                orig.stateHistory + QuestionStateChange(editQuestion.question.state, Clock.System.now(), user.ref)
-                            } else {
-                                orig.stateHistory
-                            }
-                            editQuestion.question.copy(id = question.id, stateHistory = newHistory, author = orig.author)
-                        }
-                    }
-                }
-                is EditQuestionState -> {
-                    serverState.withTransaction {
-                        serverState.questionManager.modifyEntity(ref) { orig->
-                            // If withState wasn't used, this will fill in the history automatically.
-                            val newHistory = if (orig.state != editQuestion.newState && orig.stateHistory.lastOrNull()?.newState != editQuestion.newState) {
-                                orig.stateHistory + QuestionStateChange(editQuestion.newState, Clock.System.now(), user.ref)
-                            } else {
-                                orig.stateHistory
-                            }
-                            orig.withState(editQuestion.newState).copy(id = question.id, stateHistory = newHistory)
-                        }
-                    }
-                }
+            doEditQuestion(question, edit, user)
+        }
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
+    postST("/questions/multiedit") {
+        call.withUser {
+            val req = call.receive<EditQuestionMulti>()
+            val questions = req.questions.mapNotNull { it.deref() }
+            val rooms = questions.map{ it.room ?: badRequest("cannot modify roomless question") }
+            if (!rooms.all { it.hasPermission(user, RoomPermission.MANAGE_QUESTIONS)}) unauthorized("missing permissions")
+            questions.forEach {  q->
+                doEditQuestion(q, req.edit, user)
             }
         }
         TransientData.refreshAllWebsockets()

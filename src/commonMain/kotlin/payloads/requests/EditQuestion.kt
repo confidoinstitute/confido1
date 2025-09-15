@@ -3,6 +3,7 @@ package payloads.requests
 import kotlinx.serialization.Serializable
 import tools.confido.question.Question
 import tools.confido.question.QuestionState
+import tools.confido.refs.Ref
 import tools.confido.spaces.Value
 
 @Serializable
@@ -20,13 +21,19 @@ enum class EditQuestionFieldType {
 sealed class EditQuestion ()
 
 /**
+ * Marks edit types that make sense to apply to multiple questions in a batch
+ */
+@Serializable
+sealed class EditQuestionCanMulti : EditQuestion()
+
+/**
  * Quickly change a binary option [fieldType] of a question to a given [value].
  */
 @Serializable
 data class EditQuestionFlag(
     val fieldType: EditQuestionFieldType,
     val value: Boolean,
-) : EditQuestion()
+) : EditQuestionCanMulti()
 
 
 /**
@@ -35,7 +42,7 @@ data class EditQuestionFlag(
 @Serializable
 data class EditQuestionResolution(
     val resolution: Value,
-)
+) : EditQuestionCanMulti()
 
 /**
  * Edit question as a whole, some of the fields may be ignored.
@@ -48,4 +55,13 @@ data class EditQuestionComplete(
 @Serializable
 data class EditQuestionState(
     val newState: QuestionState
-): EditQuestion()
+): EditQuestionCanMulti()
+
+@Serializable
+object EditQuestionClearAnswers: EditQuestionCanMulti()
+
+@Serializable
+data class EditQuestionMulti(
+    val questions: Set<Ref<Question>>,
+    val edit: EditQuestionCanMulti,
+)

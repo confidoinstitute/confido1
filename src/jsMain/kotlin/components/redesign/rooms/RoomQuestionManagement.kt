@@ -6,6 +6,7 @@ import components.redesign.*
 import components.redesign.basic.*
 import components.redesign.forms.Button
 import components.redesign.forms.ButtonUnstyled
+import components.redesign.forms.Checkbox
 import components.redesign.forms.IconButton
 import components.redesign.forms.IconLink
 import components.redesign.questions.ChipCSS
@@ -30,15 +31,19 @@ import hooks.useEditDialog
 import hooks.useWebSocket
 import js.objects.unsafeJso as jso
 import payloads.requests.EditQuestion
+import payloads.requests.EditQuestionClearAnswers
+import payloads.requests.EditQuestionMulti
 import payloads.requests.EditQuestionState
 import payloads.requests.ReorderQuestions
 import payloads.responses.WSError
 import react.*
 import react.dom.aria.AriaRole
 import react.dom.html.ReactHTML
+import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.li
+import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.table
 import react.dom.html.ReactHTML.tbody
@@ -55,10 +60,16 @@ import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.question.QuestionState
 import tools.confido.refs.Ref
+import tools.confido.refs.ref
 import tools.confido.state.havePermission
 import tools.confido.utils.capFirst
 import tools.confido.utils.toInt
+import utils.except
 import utils.runCoroutine
+import web.cssom.FlexDirection.Companion.row
+import web.cssom.FontStyle.Companion.italic
+import web.cssom.Position.Companion.sticky
+import web.cssom.TextOverflow.Companion.ellipsis
 import web.window.WindowTarget
 import web.window._blank
 
@@ -134,6 +145,7 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
 
     val mouseSensor = useSensor<MouseSensorOptions>(MouseSensor)
     val sensors = useSensors(mouseSensor)
+    val submitLock = useCoroutineLock()
 
     // We maintain the order of questions separately to allow
     // for instant UI updates when swapping them around.
@@ -151,6 +163,8 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
     var preset by useState(QuestionPreset.NONE)
     var presetOpen by useState(false)
     var helpOpen by useState(false)
+    var selectedRows by useState<Set<Ref<Question>>>(emptySet())
+    fun selectedQuestions() = props.questions.filter { it.ref in selectedRows }
 
     val editQuestionOpen = useEditDialog(EditQuestionDialog, jso {
         this.preset = preset
@@ -269,6 +283,7 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
                     autoSizedCol()
                     autoSizedCol()
                     autoSizedCol()
+                    autoSizedCol()
                     ReactHTML.col {}
                     repeat(3) {
                         autoSizedCol()
@@ -278,34 +293,59 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
                     tr {
                         th {}
                         th {}
+
+                        th {
+                            Stack {
+                                direction = FlexDirection.row
+                                css {
+                                    alignItems = AlignItems.center
+                                }
+                                Checkbox {
+                                    sz = 20.0
+                                    checked = selectedQuestions().size == props.questions.size
+                                    onChange = { ev->
+                                        if (ev.target.checked) {
+                                            selectedRows = props.questions.map {it.ref}.toSet()
+                                        } else {
+                                            selectedRows = emptySet()
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         th { +"State" }
-                        th {  +"Question" }
+                        th { +"Question" }
                         th {
                             autoSized()
                             ReactHTML.abbr {
                                 title = "Number of people predicting, total number of prediction updates"
-                                    css {
-                                        whiteSpace = WhiteSpace.nowrap
-                                        textDecoration = None.none
-                                        borderBottom = Border(1.px, LineStyle.dotted)
-                                    }
-                                    GroupsIcon { size = 16 }
-                                    +" / "
-                                    TimelineIcon { size = 16 }
+                                css {
+                                    whiteSpace = WhiteSpace.nowrap
+                                    textDecoration = None.none
+                                    borderBottom = Border(1.px, LineStyle.dotted)
+                                }
+                                GroupsIcon { size = 16 }
+                                +" / "
+                                TimelineIcon { size = 16 }
                             }
                         }
                         if (showGroupPredCol) th { autoSized(); +"Group pred." }
                         if (showResolutionCol) th { autoSized(); +"Resolution" }
                     }
                 }
-                SortableContext {
-                    items = questionOrderReversed
-                    strategy = verticalListSortingStrategy
-                    tbody {
+                tbody {
+                    SortableContext {
+                        items = questionOrderReversed
+                        strategy = verticalListSortingStrategy
                         questionOrderReversed.map { questionId ->
                             props.questions.find { it.id == questionId }?.let { question ->
                                 QuestionRow {
                                     key = question.id
+                                    this.checked = question.ref in selectedRows
+                                    this.onCheck = { checked ->
+                                        if (checked) selectedRows += question.ref
+                                        else selectedRows -= question.ref
+                                    }
                                     this.question = question
                                     this.room = room
                                     this.showGroupPredCol = showGroupPredCol
@@ -316,6 +356,12 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
                             }
                         }
                     }
+                    if (!selectedQuestions().isEmpty()) {
+                        SelectionActionRow {
+                            this.selectedQuestions = selectedQuestions().toSet()
+                            onClose = { selectedRows=emptySet() }
+                        }
+                    }
                 }
             }
         }
@@ -324,6 +370,7 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
     ClientExtension.forEach  { it.questionManagementExtra(room, this) }
 }
 
+
 external interface QuestionRowProps : Props {
     var room: Room
     var question: Question
@@ -331,6 +378,8 @@ external interface QuestionRowProps : Props {
     var groupPred: Prediction?
     var showResolutionCol: Boolean
     var onEdit: (() -> Unit)?
+    var checked: Boolean?
+    var onCheck: ((Boolean) -> Unit)?
 }
 
 external interface DragHandleProps : Props {
@@ -347,6 +396,59 @@ val DragHandle = FC<DragHandleProps> { props ->
         }
         color = "#666"
         applyListeners(props.listeners)
+    }
+}
+
+external interface StatusSelectorProps: PropsWithClassName {
+    var choices: Set<QuestionState>?
+    var exclude: Set<QuestionState>?
+    var onSelect: ((QuestionState)->Unit)?
+    var onClose: (()->Unit)?
+    var arrow: Boolean?
+}
+val StatusSelector = FC<StatusSelectorProps> { props->
+    val choices = QuestionState.entries.filter {
+        (props.choices?.contains(it) ?: true)
+                && !(props.exclude?.contains(it) ?: false)
+    }
+    Stack {
+        direction = FlexDirection.row
+        css {
+            gap = 10.px
+            alignItems = AlignItems.center
+        }
+
+        if (props.arrow ?: false)
+        span {
+            css {
+                fontSize = 16.px
+                lineHeight = 16.px
+                fontWeight = FontWeight.bold
+            }
+            +"⭢"
+        }
+        choices.forEach {newState->
+            button {
+                css(ChipCSS) {
+                    border = Border(1.px, LineStyle.solid, newState.palette.color)
+                    color = newState.palette.color
+                    backgroundColor = NamedColor.white
+                }
+                +newState.name.lowercase().capFirst()
+                onClick = {
+                    props.onSelect?.invoke(newState)
+                }
+            }
+        }
+        if (props.onClose != null)
+        IconButton {
+            CloseIcon{
+                css {
+                    height = 12.px
+                }
+            }
+            onClick = { props.onClose?.invoke() }
+        }
     }
 }
 
@@ -414,6 +516,7 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                 direction = FlexDirection.row
                 css {
                     alignItems = AlignItems.center
+                    gap = 8.px
                 }
                 ButtonUnstyled {
                     css {
@@ -422,6 +525,25 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                     }
                     SettingsIcon {}
                     onClick = { changingState = false; props.onEdit?.invoke() }
+                }
+            }
+        }
+        td {
+            css {
+                autoSized()
+            }
+
+            Stack {
+                direction = FlexDirection.row
+                css {
+                    alignItems = AlignItems.center
+                }
+                Checkbox {
+                    sz = 20.0
+                    checked = props.checked ?: false
+                    onChange = {
+                        props.onCheck?.invoke(it.target.checked)
+                    }
                 }
             }
         }
@@ -465,44 +587,23 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                         gap = 10.px
                         alignItems = AlignItems.center
                     }
-                    span {
-                        css {
-                            fontSize = 16.px
-                            lineHeight = 16.px
-                            fontWeight = FontWeight.bold
-                        }
-                        +"⭢"
-                    }
-                    QuestionState.entries.filter { it != state }.forEach {newState->
-                        button {
-                            css(ChipCSS) {
-                                border = Border(1.px, LineStyle.solid, newState.palette.color)
-                                color = newState.palette.color
-                                backgroundColor = NamedColor.white
-                            }
-                            +newState.name.lowercase().capFirst()
-                            onClick = {
-                                if (newState == QuestionState.RESOLVED && question.resolution == null) {
-                                    resolveOpen = true
-                                } else submitLock {
-                                    val edit: EditQuestion = EditQuestionState(newState)
-                                    Client.sendData(
-                                        "${props.question.urlPrefix}/edit",
-                                        edit,
-                                        onError = { showError(it); changingState = false }) {
-                                        changingState = false
-                                    }
+                    StatusSelector {
+                        arrow = true
+                        exclude = setOf(question.state)
+                        onSelect = { newState ->
+                            if (newState == QuestionState.RESOLVED && question.resolution == null) {
+                                resolveOpen = true
+                            } else submitLock {
+                                val edit: EditQuestion = EditQuestionState(newState)
+                                Client.sendData(
+                                    "${props.question.urlPrefix}/edit",
+                                    edit,
+                                    onError = { showError(it); changingState = false }) {
+                                    changingState = false
                                 }
                             }
                         }
-                    }
-                    IconButton {
-                        CloseIcon{
-                            css {
-                                height = 12.px
-                            }
-                        }
-                        onClick = { changingState = false }
+                        onClose = { changingState = false }
                     }
                 }
             }
@@ -565,6 +666,136 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                         onClick = { changingState = false; resolveOpen = true; }
                     }
                 }
+        }
+    }
+}
+
+external interface SelectionActionMenuProps: DialogMenuProps {
+    var selectedQuestions: Set<Question>
+    var onActionDone: (()->Unit)?
+
+}
+
+val SelectionActionMenu = FC<SelectionActionMenuProps> { props->
+    var clearConfirmOpen by useState(false)
+    val submitLock = useCoroutineLock()
+    val selectedQuestions = props.selectedQuestions
+    ConfirmDialog {
+        open = clearConfirmOpen
+        onClose = { clearConfirmOpen = false }
+        title = "Clear all answers?"
+        p { +"This will result in loss of all answers made for the following questions:" }
+        ul {
+            selectedQuestions.forEach {
+                li {
+                    css {
+                        textOverflow = ellipsis
+                        fontStyle = italic
+                    }
+                    +it.name
+                }
+            }
+        }
+        p { +"This action cannot be undone." }
+        onConfirm = {
+            submitLock {
+                Client.sendData(
+                    "/questions/multiedit",
+                    EditQuestionMulti(
+                        selectedQuestions.map { it.ref }.toSet(),
+                        EditQuestionClearAnswers
+                    ),
+                    onError = { showError(it); clearConfirmOpen=false }) {
+                    clearConfirmOpen=false
+                    props.onActionDone?.invoke()
+                }
+            }
+        }
+    }
+    DialogMenu {
+        +props.except("selectedQuestions")
+
+        DialogMenuItem {
+            text = "Clear answers"
+            icon = BinIcon
+            variant = DialogMenuItemVariant.dangerous
+            onClick = {
+                props.onClose?.invoke()
+                clearConfirmOpen = true
+            }
+        }
+    }
+}
+
+external interface SelectionActionRowProps : PropsWithClassName {
+    var selectedQuestions: Set<Question>
+    var onClose: (()->Unit)?
+}
+
+val SelectionActionRow = FC<SelectionActionRowProps> { props->
+    val selectedQuestions = props.selectedQuestions
+    val submitLock = useCoroutineLock()
+    var menuOpen by useState(false)
+    SelectionActionMenu {
+        open = menuOpen
+        onClose = { menuOpen = false }
+        this.selectedQuestions = selectedQuestions
+        onActionDone = { props.onClose?.invoke() }
+    }
+    tr {
+        css(override = props.className) {
+            height = 30.px
+            position = sticky
+            bottom = 0.px
+            "&& td" {
+                //backgroundColor = Color("#72cde9")
+                backgroundColor = Color("#adecff")
+            }
+        }
+        td {
+            colSpan = 2
+        }
+        td {
+        colSpan = 10
+        Stack {
+            direction = row
+            css {
+                gap = 10.px
+                justifyContent = JustifyContent.spaceBetween
+                alignItems = AlignItems.center
+            }
+            b {
+                +"${selectedQuestions.size} question${if (selectedQuestions.size > 1) "s" else ""} selected"
+            }
+            StatusSelector {
+                arrow = true
+                onSelect={ newState->
+                    submitLock {
+                        Client.sendData(
+                            "/questions/multiedit",
+                            EditQuestionMulti(
+                                selectedQuestions.map { it.ref }.toSet(),
+                                EditQuestionState(newState)
+                            ),
+                            onError = { showError(it) }) {  props.onClose?.invoke() }
+                    }
+                }
+            }
+            Stack { // right-aligned buttons
+                direction = row
+                IconButton {
+                    NavMenuIcon {}
+                    onClick = { menuOpen = true }
+                }
+                if (props.onClose!=null)
+                IconButton {
+                    CloseIcon {}
+                    onClick = {
+                        props.onClose?.invoke()
+                    }
+                }
+            }
+        }
         }
     }
 }
