@@ -718,12 +718,16 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
     var sortType by useState(SortType.NEWEST)
     val (appState, _) = use(AppStateContext )!!
 
+    val isFirst = (comments.data?.size ?: 0) == 0
+
+    if (comments.data != null)
     AddCommentDialog {
         open = addCommentOpen
         onClose = { addCommentOpen = false }
         id = props.question.id
         variant = CommentInputVariant.QUESTION
         prediction = props.myPrediction
+        template = if (isFirst) props.question.room?.commentTemplate?:"" else ""
     }
 
     Stack {
@@ -748,11 +752,12 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
             }
         }
 
-        if (layoutMode >= LayoutMode.TABLET) {
+        if (layoutMode >= LayoutMode.TABLET && comments.data != null) {
             AddCommentField {
                 id = props.question.id
                 variant = CommentInputVariant.QUESTION
                 prediction = props.myPrediction
+                template = props.question.room?.commentTemplate?: ""
             }
         }
     }

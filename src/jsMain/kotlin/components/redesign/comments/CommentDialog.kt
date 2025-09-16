@@ -34,6 +34,7 @@ external interface AddCommentDialogProps : Props {
     /** The type of the entity containing this comment. */
     var variant: CommentInputVariant
     var prediction: Prediction?
+    var template: String?
 }
 
 external interface EditCommentDialogProps : Props {
@@ -65,6 +66,7 @@ val AddCommentDialog = FC<AddCommentDialogProps> { props ->
         this.open = props.open
         this.onClose = props.onClose
         this.onSubmit = ::createComment
+        this.initialContent = props.template ?: ""
         this.title = "Writing a new comment"
         if (props.variant == CommentInputVariant.QUESTION) {
             this.attachablePrediction = props.prediction

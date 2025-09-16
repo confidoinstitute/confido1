@@ -46,6 +46,7 @@ data class Room(
     val scoring: ScoringConfig? = null,
     @Serializable(with = RoomEDTSerializer::class)
     val extensionData: ExtensionData = ExtensionData(RoomEDT),
+    val commentTemplate: String = "",
 ) : ImmediateDerefEntity, HasUrlPrefix {
     fun findLink(id: String?): InviteLink? {
         if (id == null || id == "") {

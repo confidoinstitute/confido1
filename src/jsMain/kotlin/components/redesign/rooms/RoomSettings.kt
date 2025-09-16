@@ -43,11 +43,12 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
     var scoringConfig by useState(props.room?.scoring)
     var showScore by useState(scoringConfig != null)
     var scheduleValid by useState(true)
+    var commentTemplate by useState(props.room?.commentTemplate ?: "")
     val valid = !name.isEmpty() && scheduleValid
 
-    useEffect(name, description, color, icon, defaultSchedule.identify(), scoringConfig?.identify()) {
+    useEffect(name, description, color, icon, defaultSchedule.identify(), scoringConfig?.identify(), commentTemplate) {
         if (valid)
-            props.onChange?.invoke(BaseRoomInformation(name, description, color, icon, defaultSchedule, scoringConfig))
+            props.onChange?.invoke(BaseRoomInformation(name, description, color, icon, defaultSchedule, scoringConfig, commentTemplate))
         else
             props.onChange?.invoke(null)
     }
@@ -197,6 +198,20 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                         it.preventDefault()
                     }
                 }
+            }
+        }
+        FormSection {
+            title = "Comment"
+            FormField {
+
+                title = "Comment template"
+                MultilineTextInput {
+                    autoHeight= true
+                    placeholder = "A template for the first comment made by a given user on a given question. Here you can e.g. put some section headers or prompts to encourage the user to structure their answer accordingly."
+                    value = commentTemplate
+                    onChange = { commentTemplate = it.target.value }
+                }
+
             }
         }
         FormSection {

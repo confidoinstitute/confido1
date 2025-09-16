@@ -16,4 +16,5 @@ data class BaseRoomInformation(
     val icon: String?,
     val defaultSchedule: QuestionSchedule = QuestionSchedule(),
     val scoring: ScoringConfig? = null,
+    val commentTemplate: String = "",
 )

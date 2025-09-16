@@ -24,6 +24,7 @@ external interface AddCommentFieldProps : Props {
     /** The type of the entity containing this comment. */
     var variant: CommentInputVariant
     var prediction: Prediction?
+    var template: String?
 }
 
 val AddCommentField = FC<AddCommentFieldProps> { props ->
@@ -33,7 +34,7 @@ val AddCommentField = FC<AddCommentFieldProps> { props ->
     }
 
     var attachPrediction by useState(false)
-    var commentText by useState("")
+    var commentText by useState(props.template ?: "")
 
     val submit = useCoroutineLock()
 
