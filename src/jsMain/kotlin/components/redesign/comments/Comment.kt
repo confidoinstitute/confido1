@@ -6,6 +6,7 @@ import components.redesign.*
 import components.redesign.TextWithLinks
 import components.redesign.basic.*
 import components.redesign.forms.*
+import components.redesign.questions.ShortenedTextExpanderClass
 import components.redesign.questions.predictions.PredictionGraph
 import components.redesign.rooms.RoomContext
 import web.cssom.*
@@ -286,8 +287,16 @@ val CommentContents = FC<CommentContentsProps> { props ->
             fontFamily = sansSerif
             fontSize = 15.px
             lineHeight = 18.px
+            whiteSpace = WhiteSpace.preLine
         }
-        TextWithLinks { text = props.content }
+        SeeMore {
+            maxLines = 10
+            lineHeight = 18.0
+            linkCss = ShortenedTextExpanderClass
+            backgroundColor = NamedColor.white
+
+            TextWithLinks { text = props.content }
+        }
     }
 }
 

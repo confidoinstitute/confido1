@@ -547,7 +547,7 @@ private val BinaryHistogramSection = FC<BinaryHistogramSectionProps> { props ->
     }
 }
 
-private val ShortenedTextExpanderClass = emotion.css.ClassName {
+val ShortenedTextExpanderClass = emotion.css.ClassName {
     textDecoration = None.none
     color = MainPalette.primary.color
     cursor = Cursor.pointer
