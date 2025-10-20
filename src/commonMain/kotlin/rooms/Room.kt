@@ -112,6 +112,8 @@ enum class InviteLinkState {
     DISABLED_FULL,
 }
 
+enum class InviteFieldPolicy { DONT_ASK, OPTIONAL, REQUIRED }
+
 @Serializable
 data class InviteLink(
     @SerialName("_id")
@@ -126,12 +128,14 @@ data class InviteLink(
     val createdAt: Instant,
     /* Type of users created by this link (MEMBER or GUEST) */
     val targetUserType: UserType = UserType.GUEST,
-    /* Whether to require nickname when joining */
-    val requireNickname: Boolean = false,
+    val nicknamePolicy: InviteFieldPolicy = InviteFieldPolicy.OPTIONAL,
+    val emailPolicy: InviteFieldPolicy = InviteFieldPolicy.OPTIONAL,
+    // /* Whether to require nickname when joining */
+    // val requireNickname: Boolean = false,
+    // /* Allow joining without email */
+    // val allowAnonymous: Boolean = false,
     /* Whether to prevent duplicate nicknames */
     val preventDuplicateNicknames: Boolean = false,
-    /* Indicates whether guests are anonymous. */
-    val allowAnonymous: Boolean = false,
     /* Indicates whether this link can be used by new users. */
     val state: InviteLinkState = InviteLinkState.ENABLED
 ) : HasId {

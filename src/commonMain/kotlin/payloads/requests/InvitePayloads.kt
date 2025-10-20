@@ -1,6 +1,7 @@
 package payloads.requests
 
 import kotlinx.serialization.Serializable
+import rooms.InviteFieldPolicy
 import rooms.RoomRole
 import tools.confido.refs.Ref
 import tools.confido.state.UserSessionValidity
@@ -33,9 +34,9 @@ data class AcceptInviteAndCreateUser(
 data class CreateNewInvite(
     val description: String?,
     val role: RoomRole,
-    val anonymous: Boolean,
+    val nicknamePolicy: InviteFieldPolicy = InviteFieldPolicy.OPTIONAL,
+    val emailPolicy: InviteFieldPolicy = InviteFieldPolicy.OPTIONAL,
     val targetUserType: UserType = UserType.GUEST,
-    val requireNickname: Boolean = false,
     val preventDuplicateNicknames: Boolean = false,
 ) {
     init {

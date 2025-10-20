@@ -14,6 +14,7 @@ import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.p
 import react.router.*
+import rooms.InviteFieldPolicy
 import tools.confido.state.UserSessionValidity
 import users.UserType
 import utils.*
@@ -41,7 +42,7 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
     val palette = MainPalette.login
 
     val loginState = use(LoginContext)!!
-    val emailRequired = !props.allowAnonymous
+    val emailRequired = props.emailPolicy == InviteFieldPolicy.REQUIRED
 
     var name by useState("")
     var email by useState("")
@@ -51,7 +52,7 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
     // TODO: Consider just redirecting to login instead to simplify this component.
     var loginRequired by useState(false)
 
-    val nameRequired = props.requireNickname
+    val nameRequired = props.nicknamePolicy == InviteFieldPolicy.REQUIRED
     val nameUnique = props.preventDuplicateNicknames
     val nameScope = if (props.targetUserType == UserType.MEMBER) "workspace" else "room"
 
@@ -121,7 +122,9 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                 } else {
                     +"You will have access to this room only. "
                 }
-                +"Use your email to log in so that you can come back later."
+                if (props.emailPolicy != InviteFieldPolicy.DONT_ASK) {
+                    +"Use your email to log in so that you can come back later."
+                }
             }
 
         if (!loginRequired) {
@@ -129,42 +132,49 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                 css {
                     gap = 1.px
                 }
-                LoginInput {
-                    css {
-                        if (emailError != null) {
-                            border = Border(1.px, LineStyle.solid, Color("#F35454"))
+                // Only show email input if email policy is not DONT_ASK
+                if (props.emailPolicy != InviteFieldPolicy.DONT_ASK) {
+                    LoginInput {
+                        css {
+                            if (emailError != null) {
+                                border = Border(1.px, LineStyle.solid, Color("#F35454"))
+                            }
                         }
-                    }
-                    type = InputType.email
-                    required = emailRequired
-                    value = email
-                    placeholder = if (emailRequired) {
-                        "Email"
-                    } else {
-                        "Email (optional)"
-                    }
-                    value = email
-                    onChange = {
-                        email = it.target.value
-                        emailError = null
+                        type = InputType.email
+                        required = emailRequired
+                        value = email
+                        placeholder = if (emailRequired) {
+                            "Email"
+                        } else {
+                            "Email (optional)"
+                        }
+                        value = email
+                        onChange = {
+                            email = it.target.value
+                            emailError = null
+                        }
                     }
                 }
 
-                LoginInput {
-                    css {
-                        if (nameError != null) {
-                            border = Border(1.px, LineStyle.solid, Color("#F35454"))
+                // Only show name input if nickname policy is not DONT_ASK
+                if (props.nicknamePolicy != InviteFieldPolicy.DONT_ASK) {
+                    LoginInput {
+                        css {
+                            if (nameError != null) {
+                                border = Border(1.px, LineStyle.solid, Color("#F35454"))
+                            }
                         }
-                    }
-                    placeholder = if (nameRequired) "Name (required)" else "Name (optional)"
-                    value = name
-                    onChange = {
-                        name = it.target.value
-                        nameError = null
+                        placeholder = if (nameRequired) "Name (required)" else "Name (optional)"
+                        value = name
+                        onChange = {
+                            name = it.target.value
+                            nameError = null
+                        }
                     }
                 }
 
-                if (nameError != null) {
+                // Only show name error if nickname field is visible
+                if (props.nicknamePolicy != InviteFieldPolicy.DONT_ASK && nameError != null) {
                     p {
                         css {
                             marginTop = 6.px
@@ -179,7 +189,8 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                     }
                 }
 
-                if (nameUnique) {
+                // Only show unique name message if nickname field is visible
+                if (props.nicknamePolicy != InviteFieldPolicy.DONT_ASK && nameUnique) {
                     p {
                         css {
                             marginTop = 6.px
@@ -194,7 +205,8 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                     }
                 }
 
-                if (emailError != null) {
+                // Only show email error if email field is visible
+                if (props.emailPolicy != InviteFieldPolicy.DONT_ASK && emailError != null) {
                     p {
                         css {
                             marginTop = 6.px

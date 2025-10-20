@@ -30,18 +30,25 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
     // Invitation link values
     var description by useState(i?.description ?: "Shared Invite Link")
     var role by useState(i?.role ?: Forecaster)
-    var anonymous by useState(i?.allowAnonymous ?: false)
+    var nicknamePolicy by useState(i?.nicknamePolicy ?: InviteFieldPolicy.OPTIONAL)
+    var emailPolicy by useState(i?.emailPolicy ?: InviteFieldPolicy.OPTIONAL)
     var targetUserType by useState(i?.targetUserType ?: UserType.GUEST)
-    var requireNickname by useState(i?.requireNickname ?: false)
     var preventDuplicateNicknames by useState(i?.preventDuplicateNicknames ?: false)
     var linkState by useState(i?.state ?: InviteLinkState.ENABLED)
+
+    // Reset preventDuplicateNicknames when nicknamePolicy is DONT_ASK
+    useEffect(nicknamePolicy) {
+        if (nicknamePolicy == InviteFieldPolicy.DONT_ASK) {
+            preventDuplicateNicknames = false
+        }
+    }
 
 
     val submit = useCoroutineLock()
 
     fun submitInviteLink() = submit {
         if (i == null) {
-            val invite = CreateNewInvite(description, role, anonymous, targetUserType, requireNickname, preventDuplicateNicknames)
+            val invite = CreateNewInvite(description, role, nicknamePolicy, emailPolicy, targetUserType, preventDuplicateNicknames)
             Client.sendData("${room.urlPrefix}/invites/create", invite, onError = { showError(it)}) {
                 props.onClose?.invoke()
             }
@@ -49,9 +56,9 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
             val invite = i.copy(
                 description = description,
                 role = role,
-                allowAnonymous = anonymous,
+                nicknamePolicy = nicknamePolicy,
+                emailPolicy = emailPolicy,
                 targetUserType = targetUserType,
-                requireNickname = requireNickname,
                 preventDuplicateNicknames = preventDuplicateNicknames,
                 state = linkState,
             )
@@ -143,23 +150,67 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
             }
             FormSection {
                 title = "Identification"
-                FormSwitch {
-                    label = "Require nickname"
-                    checked = requireNickname
-                    onChange = { requireNickname = it.target.checked }
+                
+                FormField {
+                    title = "Ask for nickname"
+                    Select {
+                        css {
+                            width = important(100.pct)
+                        }
+                        value = nicknamePolicy.name
+                        onChange = { event ->
+                            nicknamePolicy = InviteFieldPolicy.valueOf(event.target.value)
+                        }
+                        option {
+                            value = InviteFieldPolicy.DONT_ASK.name
+                            +"Don't ask"
+                        }
+                        option {
+                            value = InviteFieldPolicy.OPTIONAL.name
+                            +"Optional"
+                        }
+                        option {
+                            value = InviteFieldPolicy.REQUIRED.name
+                            +"Required"
+                        }
+                    }
+                    comment = "Whether users can/must provide a nickname when joining."
                 }
 
-                FormSwitch {
-                    label = "Prevent duplicate nicknames"
-                    checked = preventDuplicateNicknames
-                    onChange = { preventDuplicateNicknames = it.target.checked }
-                    comment = "For members, duplicates are checked across workspace. For guests, within room only."
+                // Only show "Prevent duplicate nicknames" switch when nickname is not DONT_ASK
+                if (nicknamePolicy != InviteFieldPolicy.DONT_ASK) {
+                    FormSwitch {
+                        label = "Prevent duplicate nicknames"
+                        checked = preventDuplicateNicknames
+                        onChange = { preventDuplicateNicknames = it.target.checked }
+                        comment = "For members, duplicates are checked across workspace. For guests, within room only."
+                    }
                 }
 
-                FormSwitch {
-                    label = "Require e-mail"
-                    checked = !anonymous
-                    onChange = { anonymous = !it.target.checked }
+                FormField {
+                    title = "Ask for e-mail"
+                    Select {
+                        css {
+                            width = important(100.pct)
+                        }
+                        value = emailPolicy.name
+                        onChange = { event ->
+                            emailPolicy = InviteFieldPolicy.valueOf(event.target.value)
+                        }
+                        option {
+                            value = InviteFieldPolicy.DONT_ASK.name
+                            +"Don't ask"
+                        }
+                        option {
+                            value = InviteFieldPolicy.OPTIONAL.name
+                            +"Optional"
+                        }
+                        option {
+                            value = InviteFieldPolicy.REQUIRED.name
+                            +"Required"
+                        }
+                    }
+                    comment = "Whether users can/must provide an e-mail when joining."
                 }
 
             }

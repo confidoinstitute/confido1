@@ -397,9 +397,9 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                 roomName = null,
                 roomRef = null,
                 roomColor = null,
-                allowAnonymous = false,
+                nicknamePolicy = InviteFieldPolicy.OPTIONAL,
+                emailPolicy = InviteFieldPolicy.OPTIONAL,
                 targetUserType = UserType.GUEST,
-                requireNickname = false,
                 preventDuplicateNicknames = false
             ))
         }
@@ -422,9 +422,9 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             roomName = room.name,
             roomRef = room.ref,
             roomColor = room.color,
-            allowAnonymous = invite.allowAnonymous,
+            nicknamePolicy = invite.nicknamePolicy,
+            emailPolicy = invite.emailPolicy,
             targetUserType = invite.targetUserType,
-            requireNickname = invite.requireNickname,
             preventDuplicateNicknames = invite.preventDuplicateNicknames
         ))
     }
@@ -444,10 +444,11 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                 role = invited.role,
                 createdBy = user.ref,
                 createdAt = Clock.System.now(),
-                allowAnonymous = invited.anonymous,
+                nicknamePolicy = invited.nicknamePolicy,
+                emailPolicy = invited.emailPolicy,
                 targetUserType = invited.targetUserType,
-                requireNickname = invited.requireNickname,
-                preventDuplicateNicknames = invited.preventDuplicateNicknames,
+                // Reset preventDuplicateNicknames to false if nicknamePolicy is DONT_ASK
+                preventDuplicateNicknames = if (invited.nicknamePolicy == InviteFieldPolicy.DONT_ASK) false else invited.preventDuplicateNicknames,
                 state = InviteLinkState.ENABLED
             )
 
@@ -476,10 +477,11 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                         it.copy(
                             description = invite.description,
                             role = invite.role,
-                            allowAnonymous = invite.allowAnonymous,
+                            nicknamePolicy = invite.nicknamePolicy,
+                            emailPolicy = invite.emailPolicy,
                             targetUserType = invite.targetUserType,
-                            requireNickname = invite.requireNickname,
-                            preventDuplicateNicknames = invite.preventDuplicateNicknames,
+                            // Reset preventDuplicateNicknames to false if nicknamePolicy is DONT_ASK
+                            preventDuplicateNicknames = if (invite.nicknamePolicy == InviteFieldPolicy.DONT_ASK) false else invite.preventDuplicateNicknames,
                             state = invite.state
                         )
                     else it
@@ -519,7 +521,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             val invite = room.inviteLinks.find { it.token == accept.inviteToken && it.canJoin }
                 ?: unauthorized("The invite does not exist or is currently not active.")
 
-            if (user.email == null && !invite.allowAnonymous) unauthorized("This invite requires an email.")
+            if (user.email == null && invite.emailPolicy == InviteFieldPolicy.REQUIRED) unauthorized("This invite requires an email.")
 
             serverState.withMutationLock {
                 // Add the user as a member only if they are not yet in
@@ -554,11 +556,11 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                 }
                 userAlreadyExists = true
             } ?: run {
-                if (!invite.allowAnonymous && accept.email == null) {
+                if (invite.emailPolicy == InviteFieldPolicy.REQUIRED && accept.email == null) {
                     badRequest("An email is required.")
                 }
 
-                if (invite.requireNickname && accept.userNick == null) {
+                if (invite.nicknamePolicy == InviteFieldPolicy.REQUIRED && accept.userNick == null) {
                     badRequest("A nickname is required.")
                 }
 

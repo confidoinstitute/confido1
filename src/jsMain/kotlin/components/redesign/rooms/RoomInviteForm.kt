@@ -20,6 +20,7 @@ import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
 import react.router.*
 import react.router.dom.*
+import rooms.InviteFieldPolicy
 import rooms.RoomColor
 import tools.confido.refs.*
 import tools.confido.utils.*
@@ -87,9 +88,9 @@ external interface RoomInviteFormProps : Props {
     var roomName: String
     var roomColor: RoomColor
     var inviteToken: String
-    var allowAnonymous: Boolean
+    var nicknamePolicy: InviteFieldPolicy
+    var emailPolicy: InviteFieldPolicy
     var targetUserType: UserType
-    var requireNickname: Boolean
     var preventDuplicateNicknames: Boolean
 }
 
@@ -99,7 +100,7 @@ private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
     val navigate = useNavigate()
 
     val user = appState.session.user
-    val missingRequiredEmail = user != null && user.email == null && !props.allowAnonymous
+    val missingRequiredEmail = user != null && user.email == null && props.emailPolicy == InviteFieldPolicy.REQUIRED
 
     useEffectOnce {
         val alreadyAccepted = appState.rooms[props.roomId]?.let { room ->
@@ -150,7 +151,7 @@ private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
 }
 
 external interface RoomInviteAlertProps : Props {
-    var allowAnonymous: Boolean
+    var emailPolicy: InviteFieldPolicy
 }
 
 val POTENTIAL_SHORTLINK_RE = Regex("^[0-9]+$")
@@ -159,7 +160,7 @@ private val MissingEmailConditionalAlert = FC<RoomInviteAlertProps> { props ->
     val (appState, _) = use(AppStateContext)!!
 
     val user = appState.session.user
-    val missingRequiredEmail = user != null && user.email == null && !props.allowAnonymous
+    val missingRequiredEmail = user != null && user.email == null && props.emailPolicy == InviteFieldPolicy.REQUIRED
     if (missingRequiredEmail) {
         Alert {
             h3 {
@@ -209,7 +210,7 @@ internal val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
 
     inviteStatus?.let { status ->
         +props.topAlert?.create {
-            this.allowAnonymous = status.allowAnonymous
+            this.emailPolicy = status.emailPolicy
         }
 
         if (status.valid) {
@@ -218,9 +219,9 @@ internal val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
                 this.roomName = status.roomName!!
                 this.roomColor = status.roomColor!!
                 this.inviteToken = inviteToken
-                this.allowAnonymous = status.allowAnonymous
+                this.nicknamePolicy = status.nicknamePolicy
+                this.emailPolicy = status.emailPolicy
                 this.targetUserType = status.targetUserType
-                this.requireNickname = status.requireNickname
                 this.preventDuplicateNicknames = status.preventDuplicateNicknames
             }
         } else {

@@ -1,6 +1,7 @@
 package payloads.responses
 
 import kotlinx.serialization.Serializable
+import rooms.InviteFieldPolicy
 import rooms.Room
 import rooms.RoomColor
 import tools.confido.refs.Ref
@@ -12,8 +13,8 @@ data class InviteStatus(
     val roomName: String?,
     val roomRef: Ref<Room>?,
     val roomColor: RoomColor?,
-    val allowAnonymous: Boolean,
+    val nicknamePolicy: InviteFieldPolicy = InviteFieldPolicy.OPTIONAL,
+    val emailPolicy: InviteFieldPolicy = InviteFieldPolicy.OPTIONAL,
     val targetUserType: UserType = UserType.GUEST,
-    val requireNickname: Boolean = false,
     val preventDuplicateNicknames: Boolean = false,
 )
