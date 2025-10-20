@@ -35,7 +35,7 @@ data class QuestionContext(val inUser: User?, val question: Question) {
     val ref = question.ref
 
     fun assertPermission(permission: RoomPermission, message: String) {
-        if (!room.hasPermission(user, permission)) unauthorized(message)
+        if (!room.hasPermission(user, permission)) forbidden(message)
     }
 
     fun assertGroupPredictionAccess(message: String) {
