@@ -12,6 +12,7 @@ import components.redesign.basic.Dialog
 import components.redesign.basic.DialogMenuItem
 import components.redesign.basic.DialogProps
 import components.redesign.basic.Stack
+import components.redesign.basic.dialogStateWrapper
 import components.redesign.basic.rowStyleTableCSS
 import components.redesign.basic.showError
 import components.redesign.forms.*
@@ -219,7 +220,7 @@ external interface UpdatePlotConfigDialogProps : BaseDialogProps {
     var question: Question
 }
 
-val UpdatePlotConfigDialog = FC<UpdatePlotConfigDialogProps> { props ->
+val UpdatePlotConfigDialog = dialogStateWrapper(FC<UpdatePlotConfigDialogProps> { props ->
     var time1 by useState<Instant?>(null)
     var time2 by useState<Instant?>(null)
     val presenterCtl = use(PresenterContext)!!
@@ -289,7 +290,7 @@ val UpdatePlotConfigDialog = FC<UpdatePlotConfigDialogProps> { props ->
             }
         }
     }
-}
+})
 
 external interface SnapshotManagerDialogProps : BaseDialogProps {
     var room: Room?
