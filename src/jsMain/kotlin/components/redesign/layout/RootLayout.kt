@@ -1,6 +1,5 @@
 package components.redesign.layout
 
-import browser.*
 import components.AppStateContext
 import components.AppStateWebsocketProvider
 import components.redesign.*
@@ -13,22 +12,24 @@ import components.redesign.presenter.PresenterControllerProvider
 import components.redesign.profile.UserProfile
 import components.redesign.profile.VerifyToken
 import components.redesign.rooms.*
-import csstype.*
+import web.cssom.*
 import emotion.react.css
 import hooks.useBreakpoints
-import kotlinx.js.jso
+import js.objects.unsafeJso as jso
 import react.*
 import react.router.*
 import tools.confido.extensions.ClientExtension
 import tools.confido.state.*
 import users.UserType
+import web.dom.document
+import web.window.window
 
 val RoomRedirect = FC<Props> {
     val navigate = useNavigate()
     val location = useLocation().pathname.split('/').drop(2).joinToString("/")
     console.log("Redirecting to /rooms/$location")
     useEffect {
-        navigate("/rooms/" + location, jso {
+        navigate("/rooms/" + location, jso<dynamic> {
             replace = true
         })
     }
@@ -61,7 +62,7 @@ enum class LayoutMode(val contentWidth: Length, val contentSidePad: Length) {
 val LayoutModeContext = createContext<LayoutMode>()
 
 private val RootLayoutInner = FC<Props> {
-    val (appState, _) = useContext(AppStateContext)
+    val (appState, _) = use(AppStateContext)!!
     val layoutMode = useBreakpoints(LayoutMode.PHONE to 740, LayoutMode.TABLET to 1020, default =LayoutMode.DESKTOP)
     var showDemoWelcome by useState(appConfig.demoMode && window.asDynamic().demoDismissed != true)
     ClientExtension.enabled.forEach {
@@ -69,11 +70,83 @@ private val RootLayoutInner = FC<Props> {
     }
     useEffect(layoutMode.ordinal) {
         document.body.className = when (layoutMode) {
-            LayoutMode.PHONE -> "phone tabminus"
-            LayoutMode.TABLET -> "tablet tabplus tabminus"
-            LayoutMode.DESKTOP -> "desktop tabplus"
+            LayoutMode.PHONE -> ClassName("phone tabminus")
+            LayoutMode.TABLET -> ClassName("tablet tabplus tabminus")
+            LayoutMode.DESKTOP -> ClassName("desktop tabplus")
         }
     }
+    
+    val routes = useMemo(appState.session.user?.type) {
+        buildList {
+            add(jso<RouteObject> {
+                index = true
+                path = "/"
+                element = Dashboard.create()
+            })
+            add(jso<RouteObject> {
+                element = SidebarLayout.create()
+                children = buildList {
+                    add(jso<RouteObject> {
+                        path = "rooms/:roomID/*"
+                        element = Room.create()
+                    })
+                    add(jso<RouteObject> {
+                        path = "room/:roomID/*"
+                        element = RoomRedirect.create()
+                    })
+                    add(jso<RouteObject> {
+                        path = "/join/:inviteToken"
+                        element = RoomInviteLoggedIn.create()
+                    })
+                    add(jso<RouteObject> {
+                        path = "email_verify"
+                        element = VerifyToken.create {
+                            url = "/profile/email/verify"
+                            failureTitle = "Email verification failed"
+                            successTitle = "Email verification success"
+                            failureText = "The verification link is expired or invalid."
+                            successText = "Your email address has been successfully verified."
+                        }
+                    })
+                    add(jso<RouteObject> {
+                        path = "password_reset"
+                        element = VerifyToken.create {
+                            url = "/profile/password/reset/finish"
+                            failureTitle = "Password reset failed"
+                            successTitle = "Password was reset"
+                            failureText = "The link is expired or invalid."
+                            successText = "Your password has been successfully reset. You can log in by e-mail only now."
+                        }
+                    })
+                    add(jso<RouteObject> {
+                        path = "email_login"
+                        element = EmailLoginAlreadyLoggedIn.create()
+                    })
+                    if (appState.session.user?.type?.isProper() == true) {
+                        add(jso<RouteObject> {
+                            path = "new_room"
+                            element = CreateRoom.create()
+                        })
+                    }
+                    add(jso<RouteObject> {
+                        path = "profile"
+                        element = UserProfile.create()
+                    })
+                    add(jso<RouteObject> {
+                        path = "calibration"
+                        element = CalibrationPage.create()
+                    })
+                    if (appState.session.user?.type == UserType.ADMIN) {
+                        add(jso<RouteObject> {
+                            path = "admin/users"
+                            element = UserAdmin.create()
+                        })
+                    }
+                }.toTypedArray()
+            })
+        }.toTypedArray()
+    }
+    
     LayoutModeContext.Provider {
         value = layoutMode
         Backdrop {
@@ -90,16 +163,6 @@ private val RootLayoutInner = FC<Props> {
             DemoWelcomeBox { dismiss = { showDemoWelcome = false; window.asDynamic().demoDismissed = true } }
         }
 
-        //Backdrop {
-        //    this.`in` = showNewDesign
-        //    css {
-        //        backdropFilter = blur(10.px)
-        //    }
-        //    NewDesignBox {
-        //        dismiss = { showNewDesign = false; web.storage.localStorage.setItem("newDesignMessageSeen", "yes") }
-        //    }
-        //}
-
         GlobalCss {
             backgroundColor = UIGrayBg
         }
@@ -108,81 +171,7 @@ private val RootLayoutInner = FC<Props> {
         SidebarStateProvider {
         FeedbackProvider {
         PresenterControllerProvider {
-            Routes {
-                Route {
-                    index = true
-                    path = "/"
-                    this.element = Dashboard.create()
-                }
-                Route {
-                    this.element = SidebarLayout.create()
-                    Route {
-                        path = "rooms/:roomID/*"
-                        this.element = Room.create()
-                    }
-                    Route {
-                        path = "room/:roomID/*"
-                        this.element = RoomRedirect.create()
-                    }
-                    Route {
-                        path = "/join/:inviteToken"
-                        this.element = RoomInviteLoggedIn.create()
-                    }
-                    Route {
-                        path = "email_verify"
-                        this.element = VerifyToken.create {
-                            url = "/profile/email/verify"
-                            failureTitle = "Email verification failed"
-                            successTitle = "Email verification success"
-                            failureText = "The verification link is expired or invalid."
-                            successText = "Your email address has been successfully verified."
-                        }
-                    }
-                    Route {
-                        path = "password_reset"
-                        this.element = VerifyToken.create {
-                            url = "/profile/password/reset/finish"
-                            failureTitle = "Password reset failed"
-                            successTitle = "Password was reset"
-                            failureText = "The link is expired or invalid."
-                            successText =
-                                "Your password has been successfully reset. You can log in by e-mail only now."
-                        }
-                    }
-                    Route {
-                        path = "email_login"
-                        this.element = EmailLoginAlreadyLoggedIn.create()
-                    }
-                    if (appState.session.user?.type?.isProper() == true) {
-                        Route {
-                            path = "new_room"
-                            this.element = CreateRoom.create()
-                        }
-                    }
-                    Route {
-                        path = "profile"
-                        this.element = UserProfile.create()
-                    }
-                    Route {
-                        path = "calibration"
-                        this.element = CalibrationPage.create()
-                    }
-                    if (appState.session.user?.type == UserType.ADMIN) {
-                        Route {
-                            path = "admin/users"
-                            this.element = UserAdmin.create()
-                        }
-                    }
-                }
-                /*
-        if (appState.isAdmin()) {
-            Route {
-                path = "admin/users"
-                this.element = AdminView.create()
-            }
-        }
-         */
-            }
+            +useRoutes(routes)
         } } } }
     }
 }

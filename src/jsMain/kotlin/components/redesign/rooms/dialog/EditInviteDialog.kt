@@ -6,25 +6,26 @@ import components.redesign.basic.Stack
 import components.redesign.basic.showError
 import components.redesign.forms.*
 import components.redesign.rooms.RoomContext
-import csstype.*
+import web.cssom.*
 import emotion.react.css
 import hooks.EditEntityDialogProps
 import hooks.useCoroutineLock
 import payloads.requests.CreateNewInvite
 import react.*
-import react.dom.html.ButtonType
 import react.dom.html.ReactHTML.option
 import rooms.*
 import tools.confido.state.FeatureFlag
 import tools.confido.state.appConfig
 import users.UserType
+import web.html.ButtonType
+import web.html.submit
 
 external interface EditInviteDialogProps : EditEntityDialogProps<InviteLink>
 
 val EditInviteDialog = FC<EditInviteDialogProps> { props ->
     val i = props.entity
-    val room = useContext(RoomContext)
-    val stale = useContext(AppStateContext).stale
+    val room = use(RoomContext)!!
+    val stale = use(AppStateContext)!!.stale
 
     // Invitation link values
     var description by useState(i?.description ?: "Shared Invite Link")

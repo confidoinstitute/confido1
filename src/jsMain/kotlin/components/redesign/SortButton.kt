@@ -2,7 +2,7 @@ package components.redesign
 
 import components.redesign.basic.*
 import components.redesign.forms.*
-import csstype.*
+import web.cssom.*
 import emotion.react.*
 import react.*
 
@@ -40,7 +40,7 @@ var HeaderGrayButton = ButtonBase.withStyle {
     }
 
     ".ripple" {
-        backgroundColor = rgba(0, 0, 0, 0.2)
+        backgroundColor = rgb(0, 0, 0, 0.2)
     }
 
 }

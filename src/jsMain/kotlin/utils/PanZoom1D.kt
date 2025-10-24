@@ -1,12 +1,12 @@
 package utils.panzoom1d
 
-import dom.events.WheelEvent
-import dom.html.HTMLElement
+import web.html.HTMLElement
 import hooks.*
 import io.ktor.util.*
 import react.*
 import tools.confido.utils.List2
 import tools.confido.utils.size
+import web.mouse.WheelEvent
 import kotlin.lazy
 import kotlin.math.abs
 
@@ -137,7 +137,7 @@ open class PZController(var params: PZParams, initialState: PZState = PZState(pa
 }
 
 data class PZRet<T: HTMLElement>(
-    val re: MutableRefObject<T>,
+    val re: RefObject<T>,
     val state: PZState,
     val ctl: PZController
 ) {

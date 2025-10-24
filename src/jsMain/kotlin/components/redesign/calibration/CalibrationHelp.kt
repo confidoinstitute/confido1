@@ -10,7 +10,7 @@ import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.predictions.BinaryPrediction
 import components.redesign.questions.predictions.NumericDistSpecSym
 import components.redesign.questions.predictions.NumericPredGraph
-import csstype.*
+import web.cssom.*
 import emotion.css.ClassName
 import emotion.react.css
 import react.ChildrenBuilder
@@ -33,7 +33,7 @@ import react.dom.html.ReactHTML.th
 import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
 import react.dom.html.ReactHTML.ul
-import react.useContext
+import react.use
 import react.useState
 import tools.confido.calibration.CalibrationBin
 import tools.confido.calibration.CalibrationEntry
@@ -59,7 +59,7 @@ external interface CalibrationHelpDialogProps: BaseDialogProps {
 val CalibrationHelpDialog = dialogStateWrapper(FC<CalibrationHelpDialogProps> { props->
     var section by useState(props.initialSection ?: CalibrationHelpSection.INTRO)
     var numeric by useState(false)
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
     fun ChildrenBuilder.sectionLink(target: CalibrationHelpSection, text: String) {
         a {
             css { color = Globals.inherit }

@@ -25,8 +25,8 @@ external interface QuestionQuickSettingsDialogProps : Props {
 }
 
 val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props ->
-    val (appState, stale) = useContext(AppStateContext)
-    val room = useContext(RoomContext)
+    val (appState, stale) = use(AppStateContext)!!
+    val room = use(RoomContext)!!
     val navigate = useNavigate()
 
     val editLock = useCoroutineLock()

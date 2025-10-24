@@ -1,14 +1,14 @@
 package components
 
-import browser.document
+import web.dom.document
 import components.layout.PresenterLayout
 import components.redesign.Header
-import csstype.*
-import kotlinx.js.jso
+import web.cssom.*
+import js.objects.unsafeJso as jso
 import react.*
-import react.router.Route
-import react.router.Routes
-import react.router.dom.BrowserRouter
+import react.router.RouteObject
+import react.router.RouterProvider
+import react.router.dom.createBrowserRouter
 import tools.confido.state.SentState
 import tools.confido.state.appConfig
 import web.location.location
@@ -38,23 +38,27 @@ external interface AppProps : Props {
 
 val AppMobile = memo(FC<AppProps> {props ->
     val isLoggedIn = props.isLoggedIn
-    val layout = if (!isLoggedIn)
-        components.redesign.layout.NoUserLayout
-    else
-        components.redesign.layout.RootLayout
-
-    BrowserRouter {
-        Routes {
-            Route {
+    
+    val router = useMemo(isLoggedIn) {
+        val layout = if (!isLoggedIn)
+            components.redesign.layout.NoUserLayout
+        else
+            components.redesign.layout.RootLayout
+            
+        createBrowserRouter(arrayOf(
+            jso<RouteObject> {
                 path = "/*"
-                index = true
                 element = layout.create {}
-            }
-            Route {
-                path = "presenter"
+            },
+            jso<RouteObject> {
+                path = "/presenter"
                 element = PresenterLayout.create()
             }
-        }
+        ))
+    }
+    
+    RouterProvider {
+        this.router = router
     }
 })
 

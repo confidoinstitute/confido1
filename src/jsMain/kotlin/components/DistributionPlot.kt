@@ -1,8 +1,6 @@
 package components
 
-import csstype.FontSize
-import io.ktor.util.reflect.*
-import kotlinx.js.jso
+import js.objects.unsafeJso as jso
 import react.FC
 import react.Props
 import space.kscience.plotly.layout

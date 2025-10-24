@@ -4,8 +4,8 @@ import io.ktor.http.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToDynamic
-import dom.html.HTMLDivElement
-import kotlinx.js.jso
+import web.html.HTMLDivElement
+import js.objects.unsafeJso as jso
 import react.*
 import react.dom.html.ReactHTML.div
 import space.kscience.dataforge.meta.MetaSerializer
@@ -68,13 +68,13 @@ val ReactPlotly = FC<PlotlyProps> {props ->
             props.plotlyInit?.invoke(this)
         }
 
-    useEffectOnce {
+    useEffectOnceWithCleanup {
         val element = container.current ?: error("Div not found")
         val dynLayout = plot.layout.toDynamic()
         props.fixupLayout?.invoke(dynLayout)
         PlotlyJs.newPlot(element.unsafeCast<org.w3c.dom.Element>(), props.traces.toDynamic(), dynLayout, props.config)
 
-        cleanup {
+        onCleanup {
             PlotlyJs.asDynamic().purge(element)
         }
     }

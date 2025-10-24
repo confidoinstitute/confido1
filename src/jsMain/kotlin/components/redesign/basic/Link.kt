@@ -1,6 +1,6 @@
 package components.redesign.basic
 
-import csstype.*
+import web.cssom.*
 import emotion.css.*
 
 // helper to undo usual browser link styling

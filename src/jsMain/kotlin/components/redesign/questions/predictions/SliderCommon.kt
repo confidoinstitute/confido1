@@ -1,21 +1,16 @@
 package components.redesign.questions.predictions
 
-import browser.*
 import components.redesign.basic.*
-import csstype.*
-import dom.events.*
-import dom.html.*
+import web.cssom.*
+import web.html.*
 import emotion.react.*
 import hooks.combineRefs
 import hooks.useDraggable
-import hooks.useEventListener
-import hooks.useRefEffect
-import kotlinx.js.*
+import js.objects.unsafeJso as jso
 import react.*
 import react.dom.html.*
 import tools.confido.utils.toFixed
 import utils.panzoom1d.PZState
-import kotlin.math.*
 
 external interface SliderTrackProps: Props {
     var zoomState: PZState

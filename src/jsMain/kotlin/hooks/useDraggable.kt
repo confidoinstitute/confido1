@@ -1,14 +1,16 @@
 package hooks
 
-import browser.window
-import dom.events.MouseEvent
-import dom.events.TouchEvent
-import dom.html.HTMLElement
-import kotlinx.js.asList
-import kotlinx.js.jso
+import js.array.asList
+import web.window.window
+import web.mouse.MouseEvent
+import web.touch.TouchEvent
+import web.html.HTMLElement
+import js.objects.unsafeJso as jso
 import react.*
 import utils.*
 import web.events.Event
+import web.events.EventHandler
+import web.events.EventType
 import kotlin.math.abs
 
 private class DragEventManager<T: HTMLElement>(
@@ -26,7 +28,7 @@ private class DragEventManager<T: HTMLElement>(
     enum class PressType { MOUSE, TOUCH }
     var pressType: PressType = PressType.MOUSE
     var pressOffset: Double = 0.0
-    var touchId: Double = 0.0
+    var touchId: Int = 0
     var maxDist: Double = 0.0
     var startClientX: Double = 0.0
 
@@ -43,9 +45,8 @@ private class DragEventManager<T: HTMLElement>(
         ev.stopPropagation()
         ev.preventDefault()
     }
-    private fun onWindowTouchMove(ev: Event) {
-        val touchEvent = ev as dom.events.TouchEvent
-        val touch = touchEvent.touches.asList().firstOrNull { it.identifier == touchId }
+    private fun onWindowTouchMove(ev: TouchEvent) {
+        val touch = ev.touches.asList().firstOrNull { it.identifier == touchId }
         if (touch != null)
             doMove(touch.clientX)
         ev.stopPropagation()
@@ -68,14 +69,12 @@ private class DragEventManager<T: HTMLElement>(
         }
         this.onDragEnd?.invoke()
     }
-    private fun onWindowMouseUp(ev: Event) {
-        val mouseEvent = ev as MouseEvent
-        doRelease(mouseEvent.clientX.toDouble())
+    private fun onWindowMouseUp(ev: MouseEvent) {
+        doRelease(ev.clientX.toDouble())
         ev.stopPropagation()
         ev.preventDefault()
     }
-    private fun onWindowTouchEnd(ev: Event) {
-        val touchEvent = ev as dom.events.TouchEvent
+    private fun onWindowTouchEnd(ev: TouchEvent) {
         val touch = ev.changedTouches.asList().firstOrNull { it.identifier == touchId }
         if (touch != null)
             doRelease(touch.clientX)
@@ -89,9 +88,9 @@ private class DragEventManager<T: HTMLElement>(
         val options: dynamic,
     )
     private val installedWindowListeners: MutableSet<EventListenerSpec> = mutableSetOf()
-    private fun installWindowListener(
-        eventName: String,
-        handler: ((Event)->Unit),
+    private fun  <E: Event,>installWindowListener(
+        eventName: EventType<E>,
+        handler: ((E)->Unit),
         options: dynamic,
     ) {
         // We have to save the exact parameters used to call addEventHandler so that
@@ -100,7 +99,7 @@ private class DragEventManager<T: HTMLElement>(
         // wrapper function each time you reference this::method, so
         // removeEventHandler(this::method) would never work
         installedWindowListeners.add(EventListenerSpec(eventName, handler, options))
-        window.addEventListener(eventName, handler, options)
+        window.addEventListener(eventName, EventHandler(handler), options)
     }
     private fun uninstallWindowListeners() {
         installedWindowListeners.forEach {
@@ -133,10 +132,9 @@ private class DragEventManager<T: HTMLElement>(
         event.preventDefault()
         event.stopPropagation()
     }
-    fun onTouchStart(event: Event) {
+    fun onTouchStart(event: TouchEvent) {
         if (pressed) return
-        val touchEvent = (event as TouchEvent)
-        val touch = touchEvent.changedTouches.item(0) ?: return
+        val touch = event.changedTouches.item(0) ?: return
         //PPdraggable.style.outline="2px solid red"
         // XXX for some reason, using event.target does not work
         val br = (event.target as HTMLElement).getBoundingClientRect()
@@ -157,7 +155,7 @@ fun <T: HTMLElement> useDraggable(
     onDragStart: (() -> Unit)? = null,
     onDrag: ((Double, Boolean) -> Unit)? = null,
     onDragEnd: (() -> Unit)? = null,
-): MutableRefObject<T> {
+): RefObject<T> {
     val draggableRef = useRef<T>()
     val mgr = useMemo { DragEventManager(container, draggableRef=draggableRef,
         onClick=onClick, onDragStart=onDragStart, onDrag=onDrag, onDragEnd=onDragEnd) }

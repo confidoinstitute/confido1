@@ -1,8 +1,8 @@
 package components.redesign.layout
 
 import components.redesign.basic.*
-import csstype.*
-import dom.html.*
+import web.cssom.*
+import web.html.*
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.img

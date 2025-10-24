@@ -1,6 +1,6 @@
 package components.redesign
 
-import csstype.Color
+import web.cssom.Color
 import ext.helmet.Helmet
 import react.dom.html.ReactHTML.title
 import react.dom.html.ReactHTML.meta

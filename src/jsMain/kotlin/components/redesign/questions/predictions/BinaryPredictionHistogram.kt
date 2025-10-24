@@ -1,19 +1,19 @@
 package components.redesign.questions.predictions
 
 import BinaryHistogram
-import browser.window
+import web.window.window
 import components.redesign.basic.*
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
-import csstype.*
+import web.cssom.*
 import dom.events.MouseEvent
-import dom.html.HTMLCanvasElement
-import dom.html.HTMLDivElement
-import dom.html.HTMLElement
-import dom.html.RenderingContextId
+import web.html.HTMLCanvasElement
+import web.html.HTMLDivElement
+import web.html.HTMLElement
+import web.html.RenderingContextId
 import emotion.react.css
 import hooks.*
-import kotlinx.js.jso
+import js.objects.unsafeJso as jso
 import react.*
 import react.dom.html.ReactHTML.canvas
 import react.dom.html.ReactHTML.div
@@ -25,6 +25,8 @@ import utils.addEventListener
 import utils.panzoom1d.PZParams
 import utils.panzoom1d.usePanZoom
 import utils.removeEventListener
+import web.canvas.CanvasRenderingContext2D
+import web.canvas.ID
 import web.events.Event
 
 external interface BinaryPredictionHistogramProps : PropsWithElementSize {
@@ -54,7 +56,7 @@ private data class BinRectangle(
 }
 
 val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeWrapper(FC { props ->
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
     // TODO: This is heavily based on NumericPredGraph, consider refactoring
     val ABOVE_GRAPH_PAD = 8.0
     val GRAPH_TOP_PAD = 33.0
@@ -111,12 +113,11 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
     }
 
     var hoveredBin by useState<Int?>(null)
-    useEffect {
+    useEffectWithCleanup {
         // This must not be a fun, as referencing it through ::onMouseMove would result
         // in a different function being created in addEventListener and removeEventListener,
         // and removal would fail.
-        val onMouseMove = { e: Event ->
-            e as MouseEvent
+        val onMouseMove = { e: MouseEvent ->
             val target = canvas.current as HTMLCanvasElement
             val boundingRect = target.getBoundingClientRect()
             val x = e.clientX - boundingRect.left
@@ -133,7 +134,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
         }
 
         window.addEventListener("mousemove", onMouseMove);
-        cleanup {
+        onCleanup {
             window.removeEventListener("mousemove", onMouseMove);
         }
     }
@@ -147,16 +148,16 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
         rectangles,
         horizontalMarks,
     ) {
-        val context = canvas.current?.getContext(RenderingContextId.canvas)
+        val context = canvas.current?.getContext(CanvasRenderingContext2D.ID)
         context?.apply {
-            clearRect(0.0, 0.0, physicalWidth, physicalHeight)
+            clearRect(0.0, 0.0, physicalWidth.toDouble(), physicalHeight.toDouble())
             rectangles.map { rect ->
                 fillStyle = if (rect.id == hoveredBin) {
                     Color("#7CF77F")
                 } else {
                     Color("#8BF08E")
                 }
-                strokeStyle = rgba(0, 0, 0, 0.1)
+                strokeStyle = rgb(0, 0, 0, 0.1)
                 val x = rect.x * dpr
                 val y = rect.y * dpr
                 val width = rect.width * dpr
@@ -174,7 +175,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                 val y = logicalHeight * dpr - markY * yScale * dpr
                 moveTo(SIDE_PAD, y)
                 lineTo(physicalWidth - SIDE_PAD, y)
-                strokeStyle = rgba(0, 0, 0, 0.1)
+                strokeStyle = rgb(0, 0, 0, 0.1)
                 stroke()
             }
         }
@@ -263,7 +264,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                     flexGrow = number(0.0)
                     flexShrink = number(0.0)
                     alignSelf = AlignSelf.flexStart
-                    color = rgba(0, 0, 0, 0.3)
+                    color = rgb(0, 0, 0, 0.3)
                     position = Position.relative
                     fontFamily = sansSerif
                     fontWeight = integer(200)
@@ -281,7 +282,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                                 left = zoomState.contentToViewport(rect.rangeMidpoint).px
                                 top = 0.pct
                                 if (rect.id == hoveredBin) {
-                                    color = rgba(0, 0, 0, 0.8)
+                                    color = rgb(0, 0, 0, 0.8)
                                 }
                                 transition = Transition(ident("color"), 0.2.s, 0.s)
                             }
@@ -328,7 +329,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                 flexGrow = number(0.0)
                 flexShrink = number(0.0)
                 fontSize = 12.px
-                color = rgba(0, 0, 0, 0.3)
+                color = rgb(0, 0, 0, 0.3)
                 lineHeight = 14.52.px
                 position = Position.absolute
                 fontFamily = sansSerif
@@ -354,7 +355,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                 flexGrow = number(0.0)
                 flexShrink = number(0.0)
                 fontSize = 14.px
-                color = rgba(0, 0, 0, 0.6)
+                color = rgb(0, 0, 0, 0.6)
                 lineHeight = 14.52.px
                 position = Position.absolute
                 fontFamily = sansSerif

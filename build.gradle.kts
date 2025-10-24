@@ -1,13 +1,15 @@
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import kotlin.text.set
 
 val ktorVersion = "2.3.1"
 val serializationVersion = "1.5.0"
 val kmongoVersion = "4.7.2"
-val kotlinWrappersVersion = "1.0.0-pre.444"
+val kotlinWrappersVersion = "2025.10.8"
 
 plugins {
-    kotlin("multiplatform") version "2.0.0"
-    kotlin("plugin.serialization") version "2.0.0"
-    application
+    kotlin("multiplatform") version "2.2.0"
+    kotlin("plugin.serialization") version "2.2.0"
 }
 
 group = "tools.confido"
@@ -26,9 +28,18 @@ fun kotlinw(target: String): String = "org.jetbrains.kotlin-wrappers:kotlin-$tar
 kotlin {
     jvm {
         compilations.all {
-            kotlinOptions.jvmTarget = "17"
+            //kotlinOptions.jvmTarget = "17"
         }
-        withJava()
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        binaries {
+            executable {
+                mainClass.set("tools.confido.application.ServerKt")
+            }
+        }
+        //withJava()
     }
     js(IR) {
         binaries.executable()
@@ -40,28 +51,6 @@ kotlin {
                 }
                 devServer?.open = false
                 devServer?.port = 8081
-                devServer?.proxy = mutableMapOf(
-                    "/" to mapOf(
-                        // XXX does not work with 'localhost' instead of 127.0.0.1. Tries to connect
-                        // via IPv6 (::1) and fails.
-                        "target" to "http://127.0.0.1:8080/",
-                        "secure" to false,
-                    ),
-                    "/api/**" to mapOf(
-                        "target" to "http://127.0.0.1:8080/",
-                        "secure" to false,
-                    ),
-                    "/state/**" to mapOf(
-                        "target" to "http://127.0.0.1:8080/",
-                        "secure" to false,
-                        "ws" to true,
-                    ),
-                    "/api/**/*.ws" to mapOf(
-                        "target" to "http://127.0.0.1:8080/",
-                        "secure" to false,
-                        "ws" to true,
-                    ),
-                )
             }
         }
     }
@@ -95,10 +84,16 @@ kotlin {
         }
         val jsMain by getting {
             dependencies {
+                implementation(kotlinw("js"))
+                implementation(kotlinw("css"))
+                implementation(kotlinw("csstype"))
+                implementation(kotlinw("browser"))
                 implementation(kotlinw("react"))
                 implementation(kotlinw("react-dom"))
-                implementation(kotlinw("emotion"))
-                implementation(kotlinw("react-router-dom"))
+                implementation(kotlinw("emotion-css"))
+                implementation(kotlinw("emotion-styled"))
+                implementation(kotlinw("emotion-react"))
+                implementation(kotlinw("react-router"))
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
                 implementation("io.ktor:ktor-client-core:$ktorVersion")
                 implementation("io.ktor:ktor-client-serialization:$ktorVersion")
@@ -124,7 +119,7 @@ kotlin {
     sourceSets.all {
         languageSettings.apply {
             // needed (at least) for OpenEndRange support
-            languageVersion = "2.0"
+            languageVersion = "2.2"
             optIn("kotlin.ExperimentalStdlibApi")
         }
     }
@@ -137,9 +132,6 @@ dependencies {
     "jsMainImplementation"(enforcedPlatform(kotlinw("wrappers-bom:$kotlinWrappersVersion")))
 }
 
-application {
-    mainClass.set("tools.confido.application.ServerKt")
-}
 
 // FŠ: XXX weirdly needed to fix hot restart
 // Otherwise we get a warning:
@@ -161,9 +153,9 @@ val jsBrowserProductionRun by tasks.getting
 val jsProductionExecutableCompileSync by tasks.getting
 jsBrowserProductionRun.dependsOn(jsProductionExecutableCompileSync)
 
-tasks.named<JavaExec>("run") {
-    dependsOn(tasks.named<Jar>("jvmJar"))
-    classpath(tasks.named<Jar>("jvmJar"))
-}
+//tasks.named<JavaExec>("run") {
+//    dependsOn(tasks.named<Jar>("jvmJar"))
+//    classpath(tasks.named<Jar>("jvmJar"))
+//}
 
 //tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> { kotlinOptions.languageVersion = "1.8" }

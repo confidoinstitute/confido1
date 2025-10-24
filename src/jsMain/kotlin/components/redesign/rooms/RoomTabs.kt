@@ -4,20 +4,15 @@ import components.*
 import components.redesign.basic.*
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
-import csstype.*
-import dom.html.*
+import web.cssom.*
 import emotion.react.*
-import hooks.useSuspendResult
-import io.ktor.client.call.*
-import io.ktor.client.request.*
-import io.ktor.http.*
-import kotlinx.js.*
 import react.*
 import react.dom.html.ReactHTML.div
 import react.router.*
 import react.router.dom.*
 import rooms.*
 import tools.confido.state.clientState
+import utils.except
 
 external interface RoomTabsProps : PropsWithPalette<RoomPalette>, PropsWithClassName {
     var onChange: (() -> Unit)?
@@ -26,7 +21,7 @@ external interface RoomTabProps : LinkProps, PropsWithPalette<RoomPalette> {
     var active: Boolean
 }
 
-val RoomTab = ForwardRef<HTMLAnchorElement, RoomTabProps> { props, fRef ->
+val RoomTab = FC<RoomTabProps> { props->
     val palette = props.palette ?: RoomPalette.red
     div {
         css {
@@ -44,9 +39,7 @@ val RoomTab = ForwardRef<HTMLAnchorElement, RoomTabProps> { props, fRef ->
         }
     }
     Link {
-        +props
-        delete(asDynamic().active)
-        ref = fRef
+        +props.except("active")
         css(props.className) {
             if (props.active) {
                 backgroundColor = Color("#FFFFFF")
@@ -90,11 +83,11 @@ val RoomTab = ForwardRef<HTMLAnchorElement, RoomTabProps> { props, fRef ->
 val RoomTabs = FC<RoomTabsProps> { props ->
     val palette = props.palette ?: RoomPalette.red
 
-    val (appState, _) = useContext(AppStateContext)
-    val room = useContext(RoomContext)
+    val (appState, _) = use(AppStateContext)!!
+    val room = use(RoomContext)!!
     val location = useLocation()
     val locationValue = location.pathname.split('/').getOrNull(3) ?: ""
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
 
     val sbm = room.scoring?.scoreboardMode ?: ScoreboardMode.NONE
     val canScore = (

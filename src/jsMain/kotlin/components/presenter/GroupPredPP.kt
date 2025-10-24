@@ -5,13 +5,8 @@ import components.redesign.basic.Stack
 import components.redesign.basic.sansSerif
 import components.redesign.basic.serif
 import components.redesign.questions.predictions.BinaryPrediction
-import csstype.*
-import dom.html.HTML.div
-import dom.html.HTML.h3
-import dom.html.HTML.h4
-import dom.html.HTMLDivElement
+import web.cssom.*
 import emotion.react.css
-import hooks.useElementSize
 import hooks.useWebSocket
 import payloads.responses.WSData
 import react.FC

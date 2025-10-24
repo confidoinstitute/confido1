@@ -1,7 +1,7 @@
 package components.redesign.questions
 
 import components.redesign.basic.*
-import csstype.*
+import web.cssom.*
 import emotion.react.*
 import react.*
 import react.dom.html.ReactHTML.div

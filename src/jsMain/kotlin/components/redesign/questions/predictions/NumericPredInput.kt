@@ -7,8 +7,8 @@ import components.redesign.basic.sansSerif
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.PredictionOverlay
-import csstype.*
-import dom.html.HTMLDivElement
+import web.cssom.*
+import web.html.HTMLDivElement
 import emotion.react.css
 import hooks.usePureClick
 import react.*
@@ -25,7 +25,7 @@ import utils.panzoom1d.PZState
 external interface NumericPredInputProps : PredictionInputProps {
 }
 
-typealias SimulateClickRef = react.MutableRefObject<(Double)->Unit>
+typealias SimulateClickRef = react.RefObject<(Double)->Unit>
 external interface NumericPredSliderProps :  PropsWithElementSize {
     var space: NumericSpace
     var disabled: Boolean?
@@ -40,7 +40,7 @@ external interface NumericPredSliderProps :  PropsWithElementSize {
 
 
 val NumericPredSlider = elementSizeWrapper(FC<NumericPredSliderProps>("NumericPredSlider") { props->
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
     val space = props.space
     val zoomState = props.zoomState
     val spec = props.spec ?: NumericDistSpecSym(space, null, null)

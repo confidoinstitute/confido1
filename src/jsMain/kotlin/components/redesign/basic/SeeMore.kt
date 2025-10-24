@@ -1,7 +1,7 @@
 package components.redesign.basic
 
-import csstype.*
-import dom.html.HTMLDivElement
+import web.cssom.*
+import web.html.HTMLDivElement
 import emotion.react.css
 import hooks.useElementSize
 import react.FC

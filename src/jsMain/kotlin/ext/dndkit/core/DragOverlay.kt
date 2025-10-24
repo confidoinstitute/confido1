@@ -4,7 +4,7 @@
 package dndkit.core
 
 import react.Props
-import react.NamedExoticComponent
+import react.ExoticComponent
 
 external interface DragOverlayProps : Props {
     var dropAnimation: dynamic /* DropAnimationFunction? | DropAnimationOptions? */
@@ -13,4 +13,4 @@ external interface DragOverlayProps : Props {
     var zIndex: Number?
 }
 
-external val DragOverlay: NamedExoticComponent<DragOverlayProps>
+external val DragOverlay: ExoticComponent<DragOverlayProps>

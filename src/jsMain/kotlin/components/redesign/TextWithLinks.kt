@@ -1,11 +1,13 @@
 package components.redesign
 
 import components.*
-import csstype.Globals
+import web.cssom.Globals
 import emotion.styled.styled
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.a
+import web.window.WindowTarget
+import web.window._blank
 
 
 /**
@@ -52,7 +54,7 @@ external interface TextWithLinksProps : Props {
     var text: String
 }
 
-val A = a.styled {props, theme ->
+val A = a.styled {props->
     color = Globals.inherit
 }
 
@@ -64,7 +66,7 @@ val TextWithLinks = FC<TextWithLinksProps> { props ->
             SplitLinkPart.LINK -> A {
                 href = if (it.second.contains("://")) it.second else "http://${it.second}"
                 rel = "noreferrer"
-                target = AnchorTarget._blank
+                target = WindowTarget._blank
                 +it.second
             }
         }

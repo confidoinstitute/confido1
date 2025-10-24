@@ -5,9 +5,9 @@ import components.redesign.basic.LayoutWidthWrapper
 import components.redesign.basic.MobileSidePad
 import components.redesign.basic.PageHeader
 import components.redesign.forms.IconButton
-import csstype.Color
-import csstype.px
-import csstype.rem
+import web.cssom.Color
+import web.cssom.px
+import web.cssom.rem
 import emotion.react.css
 import payloads.requests.CalibrationRequest
 import payloads.requests.Myself

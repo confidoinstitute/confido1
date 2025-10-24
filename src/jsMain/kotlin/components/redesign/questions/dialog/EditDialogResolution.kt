@@ -2,7 +2,7 @@ package components.redesign.questions.dialog
 
 import components.redesign.forms.*
 import kotlinx.datetime.*
-import kotlinx.js.jso
+import js.objects.unsafeJso as jso
 import react.*
 import tools.confido.question.PredictionTerminology
 import tools.confido.question.QuestionState

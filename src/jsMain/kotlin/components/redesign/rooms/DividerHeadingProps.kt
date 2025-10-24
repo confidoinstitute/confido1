@@ -3,7 +3,7 @@ package components.redesign.rooms
 import components.redesign.basic.*
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
-import csstype.*
+import web.cssom.*
 import emotion.react.css
 import react.*
 import react.dom.html.ReactHTML.div
@@ -26,7 +26,7 @@ external interface DividerBarProps : PropsWithChildren {
  * The children are placed to the right of the heading.
  */
 val DividerHeading = FC<DividerHeadingProps> { props ->
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
 
     if (layoutMode == LayoutMode.PHONE && props.hiddenOnPhone) {
         return@FC

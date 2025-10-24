@@ -1,20 +1,24 @@
 package components.redesign.forms
 
 import components.redesign.basic.Stack
-import csstype.FlexDirection
-import csstype.pct
-import csstype.px
+import web.cssom.FlexDirection
+import web.cssom.pct
+import web.cssom.px
 import emotion.react.css
 import hooks.useEffectNotFirst
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import react.*
-import react.dom.html.InputType
 import tools.confido.utils.multiletNotNull
+import web.dom.ElementId
+import web.html.InputType
+import web.html.date
+import web.html.text
+import web.html.time
 
 external interface DateInputProps : PropsWithClassName, InputPropsWithRange<LocalDate> {
-    var id: String?
+    var id: ElementId?
 }
 
 val DateInput = FC<DateInputProps> { props ->

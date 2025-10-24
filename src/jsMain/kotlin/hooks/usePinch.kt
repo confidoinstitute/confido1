@@ -1,12 +1,12 @@
 package hooks
 
-import dom.events.Touch
-import dom.events.TouchEvent
-import dom.events.TouchList
-import dom.html.HTMLElement
+import web.touch.Touch
+import web.touch.TouchEvent
+import web.touch.TouchList
+import web.html.HTMLElement
 import kotlinx.js.get
 import web.events.Event
-import react.MutableRefObject
+import react.RefObject
 import react.useMemo
 import tools.confido.utils.*
 
@@ -79,7 +79,7 @@ class PinchController(var startHandler: PinchStartHandler) {
  * Helper to handle pinch gestures on an element.
  * You need to set touch-action: none CSS property on the element in order for this to work.
  */
-fun <T:HTMLElement> usePinch(handler: PinchStartHandler): MutableRefObject<T> {
+fun <T:HTMLElement> usePinch(handler: PinchStartHandler): RefObject<T> {
     val ctl = useMemo{ PinchController(handler) }
     ctl.startHandler = handler // must update handler to reflect captured variables
     return combineRefs(

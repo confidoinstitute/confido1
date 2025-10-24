@@ -1,9 +1,8 @@
 package components.redesign.questions
 
-import browser.window
+import web.window.window
 import components.*
 import components.redesign.rooms.RoomContext
-import kotlinx.js.*
 import react.*
 import react.router.*
 
@@ -12,8 +11,8 @@ external interface QuestionProps : Props {
 }
 
 val Question = FC<QuestionProps> { props->
-    val (appState, stale) = useContext(AppStateContext)
-    val roomCtx = useContext(RoomContext)
+    val (appState, stale) = use(AppStateContext)!!
+    val roomCtx = use(RoomContext)!!
 
     val questionID = useParams()["questionID"] ?: return@FC
     val question = appState.questions[questionID]
@@ -22,10 +21,10 @@ val Question = FC<QuestionProps> { props->
         if (question == null) navigate(roomCtx.urlPrefix)
     }
 
-    useEffect(questionID) {
-        window.scrollTo(0, 0)
-        cleanup {
-            window.scrollTo(0, 0)
+    useEffectWithCleanup(questionID) {
+        window.scrollTo(0.0, 0.0)
+        onCleanup {
+            window.scrollTo(0.0, 0.0)
         }
     }
 

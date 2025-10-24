@@ -14,17 +14,15 @@ import components.redesign.presenter.PresenterContext
 import components.redesign.questions.dialog.QuestionQuickSettingsDialogProps
 import components.redesign.questions.dialog.EditQuestionDialogProps
 import components.redesign.rooms.RoomContext
-import csstype.*
-import dom.html.HTML.h1
+import web.cssom.*
 import emotion.react.css
 import extensions.UpdateScatterPlotCE.UpdatePlotState
 import hooks.useSuspendResult
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import kotlinx.datetime.*
-import kotlinx.js.jso
+import js.objects.unsafeJso as jso
 import react.*
-import react.dom.html.AutoComplete
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.datalist
 import react.dom.html.ReactHTML.div
@@ -55,6 +53,10 @@ import tools.confido.utils.capFirst
 import tools.confido.utils.cross
 import tools.confido.utils.formatPercent
 import utils.questionUrl
+import web.autofill.AutoFill
+import web.dom.ElementId
+import web.html.InputType
+import web.html.text
 import kotlin.math.abs
 import kotlin.reflect.KClass
 
@@ -66,8 +68,8 @@ external interface QuestionSelectorProps : Props {
 
 val QID_RE = Regex("\\[([a-zA-Z0-9_-]+)\\]\$")
 val QuestionSelector = FC<QuestionSelectorProps>("QuestionSelector") { props ->
-    val (appState, _) = useContext(AppStateContext)
-    val datalistId = "question-list"
+    val (appState, _) = use(AppStateContext)!!
+    val datalistId = useId()
     fun fmtq(q: Question) = "${q.name} [${q.id}]"
     var internalVal by useState(props.value?.let { appState.questions[it] }?.let {fmtq(it)} ?: "")
 
@@ -82,12 +84,12 @@ val QuestionSelector = FC<QuestionSelectorProps>("QuestionSelector") { props ->
                 padding = 8.px
                 fontSize = 16.px
             }
-            type = react.dom.html.InputType.text
+            type = InputType.text
             placeholder = "Search for a question..."
-            list = datalistId
+            list = datalistId.toString()
             value = internalVal
             disabled = props.disabled == true
-            autoComplete = AutoComplete.off
+            autoComplete = "off" as AutoFill
             onChange = { event ->
                 val newVal = event.target.value
                 internalVal = newVal
@@ -472,8 +474,8 @@ object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
 
     override fun questionQuickSettingsExtra(props: QuestionQuickSettingsDialogProps, cb: ChildrenBuilder, onClose: ()->Unit) {
         var updatePlotState  by useContextState(ExtensionContextPlace.QUESTION_PAGE, "state", default = UpdatePlotState.NONE)
-        val room = useContext(RoomContext)
-        val (appState,_) = useContext(AppStateContext)
+        val room = use(RoomContext)!!
+        val (appState,_) = use(AppStateContext)!!
         if (appState.hasPermission(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS))
         cb.apply {
             DialogMenuItem {
@@ -493,11 +495,11 @@ object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
                 var state  by useContextState(ExtensionContextPlace.QUESTION_PAGE, "state", default = UpdatePlotState.NONE)
                 var time1  by useContextState<Instant?>(ExtensionContextPlace.QUESTION_PAGE, "time1", default = null)
                 var time2  by useContextState<Instant?>(ExtensionContextPlace.QUESTION_PAGE, "time2", default = null)
-                val presenterCtl = useContext(PresenterContext)
+                val presenterCtl = use(PresenterContext)!!
                 val tz = TimeZone.currentSystemDefault()
                 val today = Clock.System.now().toLocalDateTime(tz).date
                 val nav = useNavigate()
-                val room = useContext(RoomContext)
+                val room = use(RoomContext)!!
                 cb.apply {
                     Dialog {
                         open = (state == UpdatePlotState.CONFIG_OPEN)

@@ -3,7 +3,7 @@ package components.redesign.rooms
 import components.redesign.*
 import components.redesign.basic.*
 import components.redesign.forms.*
-import csstype.*
+import web.cssom.*
 import emotion.react.*
 import react.*
 import react.dom.html.*
@@ -15,7 +15,7 @@ external interface RoomNavbarProps : PropsWithChildren, PropsWithPalette<RoomPal
 }
 
 val RoomNavbar = FC<RoomNavbarProps> { props ->
-    val sidebar = useContext(SidebarContext)
+    val sidebar = use(SidebarContext)!!
     val palette = props.palette ?: RoomPalette.red
 
     ReactHTML.nav {

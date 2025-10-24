@@ -2,7 +2,7 @@ package components.redesign.layout
 
 import components.*
 import components.redesign.basic.*
-import csstype.*
+import web.cssom.*
 import emotion.css.*
 import emotion.react.*
 import icons.*

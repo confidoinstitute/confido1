@@ -1,6 +1,6 @@
 package components.redesign
 
-import csstype.*
+import web.cssom.*
 import react.*
 
 external interface ThemeProviderProps : PropsWithChildren {

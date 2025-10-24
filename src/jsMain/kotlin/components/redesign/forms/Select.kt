@@ -2,7 +2,7 @@ package components.redesign.forms
 
 import components.redesign.basic.sansSerif
 import components.redesign.basic.withStyle
-import csstype.*
+import web.cssom.*
 import emotion.styled.*
 import react.dom.html.ReactHTML.select
 

@@ -2,8 +2,8 @@ package components.redesign.basic
 
 import components.*
 import components.redesign.transitions.*
-import csstype.*
-import dom.html.*
+import web.cssom.*
+import web.html.*
 import emotion.react.*
 import react.*
 import react.dom.html.ReactHTML.b
@@ -25,7 +25,7 @@ val GlobalErrorMessage = FC<PropsWithChildren> {
 
     val (queuedMsgs, setQueuedMsgs) = useState(emptyList<Message>())
 
-    useEffectOnce {
+    useEffectOnceWithCleanup {
         showMessage = { message ->
             console.log("Queueing error", message)
             setQueuedMsgs {
@@ -34,7 +34,7 @@ val GlobalErrorMessage = FC<PropsWithChildren> {
             console.log("Queue contains", queuedMsgs.toTypedArray())
         }
 
-        cleanup {
+        onCleanup {
             showMessage = {}
         }
     }

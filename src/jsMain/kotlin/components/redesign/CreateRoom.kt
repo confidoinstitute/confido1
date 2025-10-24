@@ -6,24 +6,23 @@ import components.redesign.basic.Stack
 import components.redesign.basic.showError
 import components.redesign.forms.Button
 import components.redesign.rooms.RoomSettings
-import csstype.Display
-import csstype.Margin
-import csstype.integer
-import csstype.px
+import web.cssom.Display
+import web.cssom.Margin
+import web.cssom.integer
+import web.cssom.px
 import emotion.react.css
 import hooks.useCoroutineLock
 import io.ktor.client.call.*
 import payloads.requests.BaseRoomInformation
 import react.FC
 import react.Props
-import react.dom.html.ButtonType
 import react.router.useNavigate
-import react.useContext
+import react.use
 import react.useState
 import utils.roomUrl
 
 val CreateRoom = FC<Props> {
-    val stale = useContext(AppStateContext).stale
+    val stale = use(AppStateContext)!!.stale
 
     val navigate = useNavigate()
     val create = useCoroutineLock()

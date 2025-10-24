@@ -1,6 +1,5 @@
 package components.redesign.rooms
 
-import browser.window
 import components.AppStateContext
 import components.redesign.*
 import components.redesign.basic.*
@@ -8,14 +7,13 @@ import components.redesign.forms.Button
 import components.redesign.layout.LayoutModeContext
 import components.redesign.rooms.dialog.CsvExportDialog
 import components.redesign.rooms.dialog.EditRoomSettingsDialog
-import csstype.*
-import dom.ScrollBehavior
-import dom.html.*
+import web.cssom.*
+import web.html.*
 import emotion.css.ClassName
 import emotion.react.*
 import hooks.*
 import io.ktor.http.*
-import kotlinx.js.*
+import js.objects.unsafeJso as jso
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.header
@@ -28,7 +26,9 @@ import tools.confido.state.clientState
 import tools.confido.utils.mapDeref
 import utils.roomUrl
 import utils.runCoroutine
+import web.animations.requestAnimationFrame
 import web.timers.*
+import web.window.window
 
 val RoomHeaderButton = Button.withStyle {
         margin = 0.px
@@ -43,7 +43,7 @@ external interface RoomHeaderProps: PropsWithChildren, PropsWithClassName {
     var innerClass: ClassName?
 }
 val RoomHeader = FC<RoomHeaderProps> { props ->
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
     Stack {
         direction = FlexDirection.row
         css(ClassName("room-header"), override=props) {
@@ -73,8 +73,8 @@ external interface RoomLayoutProps : Props {
 }
 
 val RoomLayout = FC<RoomLayoutProps> { props->
-    val (appState, _) = useContext(AppStateContext)
-    val room = useContext(RoomContext)
+    val (appState, _) = use(AppStateContext)!!
+    val room = use(RoomContext)!!
     val navigate = useNavigate()
     val location = useLocation()
 
@@ -172,13 +172,13 @@ val RoomLayout = FC<RoomLayoutProps> { props->
         }
     }
 
-    useEffectOnce {
+    useEffectOnceWithCleanup {
         val onScroll = { event: dynamic ->
             scrollY = window.scrollY
         }
 
         window.addEventListener("scroll", onScroll)
-        cleanup {
+        onCleanup {
             window.removeEventListener("scroll", onScroll)
         }
     }
@@ -283,61 +283,73 @@ val RoomLayout = FC<RoomLayoutProps> { props->
         }
         onChange = ::scrollDownTabs
     }
-    main {
-        css {
-            flexGrow = number(1.0)
-            display = Display.flex
-            flexDirection = FlexDirection.column
-        }
-        Routes {
-            if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
-                Route {
-                    index = true
-                    this.element = QuestionList.create {
-                        questions = room.questions.mapDeref()
-                        showHiddenQuestions = appState.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
+        main {
+            css {
+                flexGrow = number(1.0)
+                display = Display.flex
+                flexDirection = FlexDirection.column
+            }
+            
+            val routes = useMemo(room.id, appState.session) {
+                buildList {
+                    if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS)) {
+                        add(jso<RouteObject> {
+                            index = true
+                            element = QuestionList.create {
+                                questions = room.questions.mapDeref()
+                                showHiddenQuestions = appState.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
+                            }
+                        })
                     }
-                }
-            if (appState.hasPermission(room, RoomPermission.VIEW_ROOM_COMMENTS))
-                Route {
-                    path = "discussion"
-                    this.element = RoomComments.create()
-                }
-            if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
-                Route {
-                    path = "members"
-                    this.element = RoomMembers.create()
-                }
-            if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
-                Route {
-                    path = "calibration"
-                    this.element = RoomCalibration.create {
-                        this.room = room
+                    if (appState.hasPermission(room, RoomPermission.VIEW_ROOM_COMMENTS)) {
+                        add(jso<RouteObject> {
+                            path = "discussion"
+                            element = RoomComments.create()
+                        })
                     }
-                }
+                    if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS)) {
+                        add(jso<RouteObject> {
+                            path = "members"
+                            element = RoomMembers.create()
+                        })
+                    }
+                    if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS)) {
+                        add(jso<RouteObject> {
+                            path = "calibration"
+                            element = RoomCalibration.create {
+                                this.room = room
+                            }
+                        })
+                    }
 
-            val sbm = room.scoring?.scoreboardMode ?: ScoreboardMode.NONE
-            val canScore = (
-                    (sbm == ScoreboardMode.PUBLIC  && appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS)) ||
-                            (sbm == ScoreboardMode.PRIVATE && appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS))
-                    )
-            if (canScore)
-            Route {
-                path = "score"
-                this.element = RoomScore.create {
-                }
-            }
-            if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
-                Route {
-                    path = "manage_questions"
-                    this.element = QuestionManagement.create {
-                        questions = room.questions.mapDeref()
-                        this.room = room
+                    val sbm = room.scoring?.scoreboardMode ?: ScoreboardMode.NONE
+                    val canScore = (
+                            (sbm == ScoreboardMode.PUBLIC  && appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS)) ||
+                                    (sbm == ScoreboardMode.PRIVATE && appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS))
+                            )
+                    if (canScore) {
+                        add(jso<RouteObject> {
+                            path = "score"
+                            element = RoomScore.create()
+                        })
                     }
-                }
-            clientState.extensions.forEach {
-                it.roomRoutesExtra(room, this)
+                    if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)) {
+                        add(jso<RouteObject> {
+                            path = "manage_questions"
+                            element = QuestionManagement.create {
+                                questions = room.questions.mapDeref()
+                                this.room = room
+                            }
+                        })
+                    }
+                    
+                    // Add extension routes
+                    clientState.extensions.forEach { extension ->
+                        addAll(extension.roomRoutesExtra(room))
+                    }
+                }.toTypedArray()
             }
+            
+            +useRoutes(routes)
         }
-    }
 }

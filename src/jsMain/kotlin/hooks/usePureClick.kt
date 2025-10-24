@@ -1,11 +1,10 @@
 package hooks
 
-import dom.events.PointerEvent
-import dom.events.PointerEventInit
-import dom.html.HTMLElement
-import kotlinx.js.Object
-import kotlinx.js.jso
-import react.MutableRefObject
+import web.pointer.PointerEvent
+import web.html.HTMLElement
+import js.objects.Object
+import js.objects.unsafeJso as jso
+import react.RefObject
 import react.useMemo
 import tools.confido.utils.List2
 import tools.confido.utils.`Z-`
@@ -16,7 +15,7 @@ import web.events.Event
  * A ref-effect that will detec "pure click" events, i.e., click without drag or hold.
  * (there are some tolerances for accidental movement)
  */
-fun <T: HTMLElement> usePureClick(allowTouch: Boolean = true, callback: (PointerEvent)->Unit): MutableRefObject<T> {
+fun <T: HTMLElement> usePureClick(allowTouch: Boolean = true, callback: (PointerEvent)->Unit): RefObject<T> {
     data class EventInfo(val offsetPos: List2<Double>, val timeStamp: Double)
     val ctl = useMemo{ object {
         var savedCallback = callback

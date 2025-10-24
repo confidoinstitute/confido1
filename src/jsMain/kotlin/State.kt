@@ -1,6 +1,5 @@
 package tools.confido.state
 
-import browser.window
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import rooms.Room
@@ -8,6 +7,7 @@ import rooms.RoomPermission
 import tools.confido.serialization.confidoJSON
 import kotlinx.serialization.json.decodeFromDynamic
 import tools.confido.extensions.ClientExtension
+import web.window.window
 
 class ClientState(val sentState: SentState)
     : GlobalState(), BaseState by sentState {

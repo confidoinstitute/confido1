@@ -5,11 +5,11 @@ import components.redesign.basic.LinkUnstyled
 import components.redesign.basic.Stack
 import components.redesign.forms.*
 import components.redesign.questions.dialog.EditQuestionDialogSchedule
-import csstype.*
+import web.cssom.*
+import web.html.ButtonType
 import emotion.react.css
 import payloads.requests.BaseRoomInformation
 import react.*
-import react.dom.html.ButtonType
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.abbr
@@ -22,6 +22,7 @@ import rooms.ScoreboardMode
 import rooms.ScoringConfig
 import tools.confido.question.QuestionSchedule
 import tools.confido.refs.deref
+import web.html.submit
 
 external interface RoomSettingsProps : Props {
     var room: Room?
@@ -31,7 +32,7 @@ external interface RoomSettingsProps : Props {
 }
 
 val RoomSettings = FC<RoomSettingsProps> { props ->
-    val (appState, stale) = useContext(AppStateContext)
+    val (appState, stale) = use(AppStateContext)!!
 
     var name by useState(props.room?.name ?: "")
     var description by useState(props.room?.description ?: "")

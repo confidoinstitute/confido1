@@ -1,6 +1,6 @@
 package components.redesign.questions.predictions
 
-import dom.html.HTMLElement
+import web.html.HTMLElement
 import react.*
 import tools.confido.distributions.*
 import tools.confido.question.Question

@@ -8,7 +8,7 @@ import components.redesign.basic.Stack
 import components.redesign.basic.showError
 import components.redesign.forms.*
 import emotion.react.css
-import csstype.*
+import web.cssom.*
 import hooks.useCoroutineLock
 import io.ktor.client.call.*
 import io.ktor.http.*
@@ -16,16 +16,20 @@ import payloads.requests.EditProfile
 import payloads.responses.EditProfileResult
 import react.FC
 import react.Props
-import react.dom.html.ButtonType
-import react.dom.html.InputType
-import react.useContext
+import react.use
 import react.useState
 import users.*
 import utils.isEmailValid
 import utils.runCoroutine
+import web.html.ButtonType
+import web.html.InputType
+import web.html.button
+import web.html.email
+import web.html.password
+import web.html.submit
 
 val UserProfile = FC<Props> {
-    val (appState, stale) = useContext(AppStateContext)
+    val (appState, stale) = use(AppStateContext)!!
     val user = appState.session.user
 
     var nick by useState(user?.nick ?: "")

@@ -3,7 +3,7 @@ package components.redesign.rooms
 import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.forms.InlineHelpButton
-import csstype.*
+import web.cssom.*
 import emotion.react.css
 import hooks.useSuspendResult
 import io.ktor.client.call.*
@@ -11,7 +11,6 @@ import io.ktor.client.request.*
 import normalizedBrier
 import react.FC
 import react.Props
-import react.dom.html.AnchorTarget
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.b
@@ -26,11 +25,13 @@ import react.dom.html.ReactHTML.th
 import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
 import react.dom.html.ReactHTML.ul
-import react.useContext
+import react.use
 import react.useState
 import rooms.RoomPermission
 import tools.confido.utils.formatPercent
 import tools.confido.utils.toFixed
+import web.window.WindowTarget
+import web.window._blank
 
 val ScoringHelpDialog = FC<DialogProps> { props->
     Dialog {
@@ -42,7 +43,7 @@ val ScoringHelpDialog = FC<DialogProps> { props->
                 css { color = Globals.inherit }
                 +"Brier score"
                 href = "https://en.wikipedia.org/wiki/Brier_score"
-                target = AnchorTarget._blank
+                target = WindowTarget._blank
             }
             +". Scores can be both positive and negative. Example prediction scores:"
         }
@@ -79,8 +80,8 @@ val ScoringHelpDialog = FC<DialogProps> { props->
 }
 
 val RoomScore = FC<Props> {
-    val room = useContext(RoomContext)
-    val (appState,stale) = useContext(AppStateContext)
+    val room = use(RoomContext)!!
+    val (appState,stale) = use(AppStateContext)!!
     val scores = useSuspendResult(room.id) {
         Client.httpClient.get("${room.urlPrefix}/scoreboard.api").body<List<Pair<String?, Double>>>()
     }

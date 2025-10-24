@@ -3,9 +3,11 @@ package components.redesign.questions.dialog
 import components.redesign.forms.*
 import kotlinx.datetime.*
 import react.*
-import react.dom.html.*
 import tools.confido.spaces.*
 import tools.confido.utils.*
+import web.html.InputType
+import web.html.date
+import web.html.number
 
 internal enum class AnswerSpaceError {
     INVALID,

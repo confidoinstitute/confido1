@@ -11,7 +11,7 @@ import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.*
 import components.redesign.rooms.*
-import csstype.*
+import web.cssom.*
 import emotion.react.*
 import hooks.useSuspendResult
 import io.ktor.client.call.*
@@ -51,7 +51,7 @@ external interface WorkspaceFrameProps : PropsWithClassName {
 }
 
 val AccountFrame = FC<WorkspaceFrameProps> { props ->
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
     Stack {
         direction = FlexDirection.row
         css(props.className) {
@@ -135,8 +135,8 @@ val DemoPill = FC<DemoPillProps> { props ->
 }
 
 val DesktopHeader = FC<DashboardHeaderProps> { props ->
-    val (appState, stale) = useContext(AppStateContext)
-    val layoutMode = useContext(LayoutModeContext)
+    val (appState, stale) = use(AppStateContext)!!
+    val layoutMode = use(LayoutModeContext)!!
     header {
         css {
             display = Display.flex
@@ -208,8 +208,8 @@ val DesktopHeader = FC<DashboardHeaderProps> { props ->
 }
 
 val PhoneHeader = FC<DashboardHeaderProps> { props ->
-    val (appState, stale) = useContext(AppStateContext)
-    val layoutMode = useContext(LayoutModeContext)
+    val (appState, stale) = use(AppStateContext)!!
+    val layoutMode = use(LayoutModeContext)!!
     header {
         css {
             display = Display.flex
@@ -248,8 +248,8 @@ val PhoneHeader = FC<DashboardHeaderProps> { props ->
 }
 
 val Dashboard = FC<Props> {
-    val (appState, stale) = useContext(AppStateContext)
-    val layoutMode = useContext(LayoutModeContext)
+    val (appState, stale) = use(AppStateContext)!!
+    val layoutMode = use(LayoutModeContext)!!
 
     var dialogOpen by useState(false)
     UserMenu {
@@ -385,9 +385,9 @@ external interface UserMenuProps : Props {
 }
 
 val UserMenu = FC<UserMenuProps> { props ->
-    val loginState = useContext(LoginContext)
+    val loginState = use(LoginContext)!!
     val navigate = useNavigate()
-    val (appState, stale) = useContext(AppStateContext)
+    val (appState, stale) = use(AppStateContext)!!
 
     DialogMenu {
         open = props.open

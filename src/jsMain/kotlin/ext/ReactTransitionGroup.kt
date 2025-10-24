@@ -7,8 +7,6 @@
 )
 package ext.reacttransitiongroup
 
-import cssom.CSS
-import dom.html.HTMLElement
 import react.*
 
 external interface TransitionProps : PropsWithChildren {

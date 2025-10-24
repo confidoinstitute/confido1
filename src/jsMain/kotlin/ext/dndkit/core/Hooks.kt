@@ -58,7 +58,7 @@ external interface Active {
     var id: Any /* String | Number */
     /*
     data: DataRef;
-    rect: MutableRefObject<{
+    rect: RefObject<{
         initial: ClientRect | null;
         translated: ClientRect | null;
     }>;

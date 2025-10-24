@@ -7,8 +7,8 @@ import components.redesign.basic.sansSerif
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.predictions.*
-import csstype.*
-import dom.html.HTMLElement
+import web.cssom.*
+import web.html.HTMLElement
 import emotion.react.css
 import hooks.usePureClick
 import react.*
@@ -17,7 +17,7 @@ import tools.confido.question.PredictionTerminology
 import tools.confido.question.Question
 import tools.confido.spaces.NumericSpace
 import utils.panzoom1d.*
-import kotlinx.js.jso
+import js.objects.unsafeJso as jso
 
 external interface PointEstimateSliderProps : PropsWithElementSize {
     var space: NumericSpace
@@ -29,7 +29,7 @@ external interface PointEstimateSliderProps : PropsWithElementSize {
 
 val PointEstimateSlider = elementSizeWrapper(FC<PointEstimateSliderProps>("PointEstimateSlider") { props ->
     val space = props.space
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
     val predictionTerminology = props.question?.predictionTerminology ?: PredictionTerminology.ANSWER
     val zoomParams = PZParams(
         contentDomain = space.range,

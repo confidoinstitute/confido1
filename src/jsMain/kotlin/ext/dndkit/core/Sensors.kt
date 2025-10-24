@@ -50,7 +50,7 @@ external interface SensorProps<T> {
     var active: UniqueIdentifier;
     var activeNode: DraggableNode;
     var event: Event;
-    var context: MutableRefObject<SensorContext>;
+    var context: RefObject<SensorContext>;
      */
     var options: T
     /*

@@ -20,7 +20,7 @@ external interface FeedbackMenuItemProps : Props {
  * The feedback dialog is persisted within the [FeedbackContext] for ease of use.
  */
 val FeedbackMenuItem = FC<FeedbackMenuItemProps> { props ->
-    val feedback = useContext(FeedbackContext)
+    val feedback = use(FeedbackContext)!!
 
     DialogMenuItem {
         text = "Give feedback"

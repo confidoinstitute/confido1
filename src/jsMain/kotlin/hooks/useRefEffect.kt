@@ -1,14 +1,21 @@
 package hooks
 
-import dom.html.HTMLElement
+import web.html.HTMLElement
 import io.ktor.client.fetch.*
-import kotlinx.js.Object
-import kotlinx.js.PropertyDescriptor
-import kotlinx.js.ReadonlyArray
-import kotlinx.js.jso
+import js.array.ReadonlyArray
+import js.objects.Object
+import js.objects.TypedPropertyDescriptor
+import js.objects.unsafeJso as jso
 import react.*
 import tools.confido.utils.multilet
 import tools.confido.utils.multiletNotNull
+import web.events.Event
+import web.events.EventHandler
+import web.events.EventTarget
+import web.events.EventType
+import web.events.HasTargets
+import web.events.addEventListener
+import kotlin.js.unsafeCast
 
 // Based on ideas from https://github.com/jantimon/react-use-ref-effect
 // Copyright (c) 2021 Jan Nicklas under MIT license
@@ -21,7 +28,7 @@ class RefEffectContext<T>(val current: T) {
     }
 }
 
-fun <T: Any> useRefEffect(vararg dependencies: Any?, body: RefEffectContext<T>.() -> Unit): MutableRefObject<T> {
+fun <T: Any> useRefEffect(vararg dependencies: Any?, body: RefEffectContext<T>.() -> Unit): RefObject<T> {
     val internalState = useMemo { object {
         var callback = body
         var currentValue: T? = null
@@ -49,45 +56,48 @@ fun <T: Any> useRefEffect(vararg dependencies: Any?, body: RefEffectContext<T>.(
             }
         }
         val refCallback = { newValue: T? -> this.update(newValue, this.currentDeps) }
-        fun onDepEffect(effectBuilder: EffectBuilder, newDeps: ReadonlyArray<Any?>) {
+        fun onDepEffect(effectBuilder: CleanupBuilder, newDeps: ReadonlyArray<Any?>) {
             update(currentValue, newDeps)
-            effectBuilder.cleanup { cleanupIfNeeded() }
+            effectBuilder.onCleanup { cleanupIfNeeded() }
         }
         init {
-            Object.defineProperty(refCallback, "current", jso<PropertyDescriptor<T?>>{
+            Object.defineProperty(refCallback, "current", jso<TypedPropertyDescriptor<T?>>{
                 get = { currentValue }
                 set = refCallback
             })
         }
-        val refObject = refCallback.unsafeCast<MutableRefObject<T>>()
+        val refObject = refCallback.unsafeCast<RefObject<T>>()
     } }
     // must update with latest version of the callback in order for variables captured from render
     // function to have up-to-date values
     internalState.callback = body
     if (dependencies.isNotEmpty()) {
-        useEffect(*dependencies) { (internalState::onDepEffect)(this, dependencies) }
+        useEffectWithCleanup(*dependencies) { (internalState::onDepEffect)(this, dependencies) }
     }
     return internalState.refObject
 }
 
-fun <T: Any> combineRefs(vararg refs: MutableRefObject<in T>?) = useMemo {
+fun <T: Any> combineRefs(vararg refs: RefObject<in T>?) = useMemo {
     var currentValue: T? = null
     val refCallback = { newValue: T? -> currentValue = newValue; refs.forEach { it?.current = newValue } }
-    Object.defineProperty(refCallback, "current", jso<PropertyDescriptor<T?>>{
+    Object.defineProperty(refCallback, "current", jso<TypedPropertyDescriptor<T?>>{
         get = { currentValue }
         set = refCallback
     })
-    refCallback.unsafeCast<MutableRefObject<T>>()
+    refCallback.unsafeCast<RefObject<T>>()
 }
 
-fun <T: Any> combineRefs(builder: MutableList<MutableRefObject<in T>>.()->Unit) =
+fun <T: Any> combineRefs(builder: MutableList<RefObject<in T>>.()->Unit) =
     combineRefs(*buildList(builder).toTypedArray())
 
 
-fun <T: HTMLElement> useEventListener(vararg types: String,
+inline fun <E : Event, C : EventTarget, T : EventTarget, D> useEventListener(vararg types: EventType<E>,
                                       capture: Boolean? = null, passive: Boolean? = null,
                                       preventDefault:Boolean = false,
-                                      callback: (web.events.Event)->Unit): MutableRefObject<T> {
+                                       noinline callback: (D)->Unit): RefObject<T>
+
+        where D : E, D : HasTargets<C, T>
+{
     val callbackHolder = useRef(callback)
     callbackHolder.current = callback
     return useRefEffect {
@@ -95,18 +105,18 @@ fun <T: HTMLElement> useEventListener(vararg types: String,
             capture?.let { this.capture = it }
             passive?.let { this.passive = it }
         }
-        val effectiveCallback = { event: org.w3c.dom.events.Event ->
-            callbackHolder.current?.invoke(event as web.events.Event)
+        val effectiveCallback = { event: D ->
+            callbackHolder.current?.invoke(event)
             if (preventDefault) event.preventDefault()
             Unit
         }
         types.forEach {
-            current.addEventListener(it, effectiveCallback, opts)
+            current.addEventListener(it, EventHandler<E,C,T,D>(effectiveCallback), opts)
         }
         cleanup {
             types.forEach {
 
-                current.removeEventListener(it, effectiveCallback, opts)
+                current.removeEventListener(it, EventHandler<E,C,T,D>(effectiveCallback), opts)
             }
         }
     }

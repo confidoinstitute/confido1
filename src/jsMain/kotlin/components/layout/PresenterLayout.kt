@@ -7,14 +7,21 @@ import components.redesign.DefaultTheme
 import components.redesign.ThemeProvider
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
-import csstype.*
 import emotion.react.css
 import react.*
 import react.dom.html.ReactHTML.div
 import tools.confido.state.EmptyPV
 import utils.webSocketUrl
+import web.cssom.Display
+import web.cssom.FlexDirection
+import web.cssom.Overflow
+import web.cssom.px
+import web.cssom.vh
+import web.cssom.vw
+import web.events.EventHandler
+import web.messaging.MessageEvent
 import web.timers.setTimeout
-import websockets.WebSocket
+import web.sockets.WebSocket
 
 val PresenterLayout = FC<Props> {
     AppStateWebsocketProvider {
@@ -29,25 +36,25 @@ val PresenterLayout = FC<Props> {
 }
 val PresenterLayoutInner = FC<Props> {
     val webSocket = useRef<WebSocket>(null)
-    val (appState, stale) = useContext(AppStateContext)
+    val (appState, stale) = use(AppStateContext)!!
 
     fun startWebSocket() {
         val ws = WebSocket(webSocketUrl("/state/presenter/track"))
 
         ws.apply {
-            onmessage = {
-                console.log(it.data)
+            onmessage = EventHandler { event: MessageEvent<*> ->
+                console.log(event.data)
             }
-            onclose = {
+            onclose = EventHandler {
                 setTimeout(::startWebSocket, 5000)
             }
         }
         webSocket.current = ws
     }
 
-    useEffectOnce {
+    useEffectOnceWithCleanup {
         startWebSocket()
-        cleanup {
+        onCleanup {
             webSocket.current?.close()
         }
     }

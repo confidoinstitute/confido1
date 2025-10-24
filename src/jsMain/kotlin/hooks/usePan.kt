@@ -1,9 +1,9 @@
 package hooks
 
-import dom.events.MouseEvent
-import dom.events.PointerEvent
-import dom.html.HTMLElement
-import react.MutableRefObject
+import web.mouse.MouseEvent
+import web.pointer.PointerEvent
+import web.html.HTMLElement
+import react.RefObject
 import react.useMemo
 import tools.confido.utils.List2
 import tools.confido.utils.multiletNotNull
@@ -61,7 +61,7 @@ typealias PanUpdateHandler = (start: List2<Double>, current: List2<Double>, comm
 typealias PanStartHandler = (List2<Double>) -> PanUpdateHandler
 
 
-fun <T: HTMLElement> usePan(handler: PanStartHandler): MutableRefObject<T> {
+fun <T: HTMLElement> usePan(handler: PanStartHandler): RefObject<T> {
     val ctl = useMemo{ PanController(handler) }
     ctl.startHandler = handler // must update handler to reflect captured variables
     return combineRefs(

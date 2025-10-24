@@ -4,7 +4,7 @@ import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.forms.*
 import components.redesign.rooms.RoomContext
-import csstype.*
+import web.cssom.*
 import emotion.react.css
 import payloads.requests.AddedExistingMember
 import payloads.requests.AddedNewMember
@@ -28,7 +28,7 @@ internal external interface AddMemberItemProps : Props {
 }
 
 internal val AddMemberItem = FC<AddMemberItemProps> {props ->
-    val room = useContext(RoomContext)
+    val room = use(RoomContext)!!
     fun add() {
         val member = props.user?.let {
             AddedExistingMember(it.ref, props.role)
@@ -82,7 +82,7 @@ internal val AddMemberItem = FC<AddMemberItemProps> {props ->
                     fontFamily = sansSerif
                     fontSize = 12.px
                     lineHeight = 15.px
-                    color = rgba(0, 0, 0, 0.5)
+                    color = rgb(0, 0, 0, 0.5)
                 }
                 props.user?.let {
                     +(it.email ?: "")
@@ -106,8 +106,8 @@ internal val AddMemberItem = FC<AddMemberItemProps> {props ->
 }
 
 val AddMemberDialog = dialogStateWrapper(FC<BaseDialogProps> { props ->
-    val (appState, stale) = useContext(AppStateContext)
-    val room = useContext(RoomContext)
+    val (appState, stale) = use(AppStateContext)!!
+    val room = use(RoomContext)!!
 
     var role by useState<RoomRole>(Forecaster)
     var search by useState("")

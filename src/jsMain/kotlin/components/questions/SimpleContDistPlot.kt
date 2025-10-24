@@ -1,14 +1,16 @@
 package components.questions
-import canvas.CanvasRenderingContext2D
 import hooks.useElementSize
-import dom.html.HTMLCanvasElement
-import dom.html.HTMLDivElement
-import dom.html.RenderingContextId
+import web.html.HTMLCanvasElement
+import web.html.HTMLDivElement
 import react.*
 import react.dom.html.ReactHTML.canvas
 import react.dom.html.ReactHTML.div
 import space.kscience.dataforge.values.Value
 import tools.confido.distributions.ContinuousProbabilityDistribution
+import web.canvas.CanvasRenderingContext2D
+import web.canvas.ID
+import web.rendering.RenderingContext
+import web.rendering.RenderingContextId
 
 data class ConfidenceColor(
     val p: Double,
@@ -46,7 +48,7 @@ val SimpleContDistPlot = FC<SimpleCondDistPlotProps> { props ->
 
     val canvas = useRef<HTMLCanvasElement>()
     useLayoutEffect(yTicks, elementSize.width, elementSize.height, props.visible) {
-        val context = canvas.current?.getContext(RenderingContextId.canvas)
+        val context = canvas.current?.getContext(CanvasRenderingContext2D.ID)
         val scale = height / (yTicks.maxByOrNull { (value, _) -> value }?.first ?: 1.0)
         context?.apply {
             clearRect(0.0, 0.0, elementSize.width, height)

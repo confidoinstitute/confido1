@@ -1,7 +1,7 @@
 package components.redesign.forms
 
 import components.redesign.basic.*
-import csstype.*
+import web.cssom.*
 import emotion.react.*
 import io.ktor.client.call.*
 import io.ktor.http.*

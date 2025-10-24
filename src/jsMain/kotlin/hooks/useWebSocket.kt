@@ -2,18 +2,10 @@ package hooks
 
 import io.ktor.client.plugins.websocket.*
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.delay
-import kotlinx.serialization.decodeFromString
 import payloads.responses.*
-import react.useEffect
-import react.useEffectOnce
-import react.useRef
 import react.useState
-import tools.confido.serialization.confidoJSON
 import utils.webSocketUrl
-import web.timers.setTimeout
-import websockets.WebSocket
 
 enum class WebSocketState {
     LOADING,

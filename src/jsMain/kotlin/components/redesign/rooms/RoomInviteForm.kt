@@ -5,11 +5,11 @@ import components.*
 import components.redesign.Header
 import components.redesign.basic.*
 import components.redesign.forms.*
-import csstype.*
+import web.cssom.*
 import emotion.react.*
 import io.ktor.client.call.*
 import io.ktor.http.*
-import kotlinx.js.*
+import js.objects.unsafeJso as jso
 import payloads.requests.*
 import payloads.responses.*
 import react.*
@@ -95,7 +95,7 @@ external interface RoomInviteFormProps : Props {
 
 
 private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
-    val (appState, stale) = useContext(AppStateContext)
+    val (appState, stale) = use(AppStateContext)!!
     val navigate = useNavigate()
 
     val user = appState.session.user
@@ -156,7 +156,7 @@ external interface RoomInviteAlertProps : Props {
 val POTENTIAL_SHORTLINK_RE = Regex("^[0-9]+$")
 
 private val MissingEmailConditionalAlert = FC<RoomInviteAlertProps> { props ->
-    val (appState, _) = useContext(AppStateContext)
+    val (appState, _) = use(AppStateContext)!!
 
     val user = appState.session.user
     val missingRequiredEmail = user != null && user.email == null && !props.allowAnonymous

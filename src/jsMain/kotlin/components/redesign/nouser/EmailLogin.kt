@@ -4,9 +4,11 @@ import Client
 import components.*
 import components.redesign.basic.*
 import components.redesign.forms.*
-import csstype.*
+import web.cssom.*
 import emotion.react.*
 import io.ktor.client.call.*
+import js.array.component1
+import js.array.component2
 import payloads.requests.*
 import react.*
 import react.dom.html.ReactHTML.b
@@ -17,8 +19,8 @@ import react.router.dom.*
 import utils.*
 
 val EmailLogin = FC<Props> {
-    val loginState = useContext(LoginContext)
-    val searchParams by useSearchParams()
+    val loginState = use(LoginContext)!!
+    val (searchParams,_) = useSearchParams()
     val navigate = useNavigate()
     val loginToken = searchParams.get("t") ?: ""
 

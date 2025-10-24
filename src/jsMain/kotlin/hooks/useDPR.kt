@@ -1,8 +1,9 @@
 package hooks
 
-import browser.window
-import dom.html.Window
+import web.window.window
+import web.window.Window
 import react.useEffect
+import react.useEffectWithCleanup
 import react.useState
 
 
@@ -12,10 +13,10 @@ val Window.devicePixelRatio get() = (window.asDynamic().devicePixelRatio ?: 1.0)
 fun useDPR(): Double {
     var curDPR by useState(window.devicePixelRatio)
 
-    useEffect(curDPR) {
+    useEffectWithCleanup(curDPR) {
         val matchMedia = window.asDynamic().matchMedia
         if (!matchMedia == null) {
-            return@useEffect
+            return@useEffectWithCleanup
         }
 
         // add some tolerance as DPR is a floating point value, and it might not match
@@ -28,7 +29,7 @@ fun useDPR(): Double {
 
         if (!mediaMatcher.matches) {
             updateDPR()
-            return@useEffect
+            return@useEffectWithCleanup
         }
 
         // Safari 13.1 does not have `addEventListener`, but does have `addListener`
@@ -38,7 +39,7 @@ fun useDPR(): Double {
             mediaMatcher.addListener(::updateDPR)
         }
 
-        cleanup {
+        onCleanup {
             if (mediaMatcher.removeEventListener != null) {
                 mediaMatcher.removeEventListener("change", ::updateDPR)
             } else {

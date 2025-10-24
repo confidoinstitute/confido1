@@ -7,12 +7,12 @@ import components.redesign.questions.predictions.NormalishDistSpec
 import components.redesign.questions.predictions.NumericDistSpecSym
 import components.redesign.questions.predictions.NumericPredGraph
 import components.redesign.questions.predictions.SymmetrySwitch
-import csstype.*
-import dom.html.HTMLInputElement
+import web.cssom.*
+import web.html.HTMLInputElement
 import emotion.react.css
 import hooks.useCoroutineLock
 import kotlinx.datetime.*
-import kotlinx.js.jso
+import js.objects.unsafeJso as jso
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.div
@@ -28,6 +28,14 @@ import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.NumericSpace
 import tools.confido.spaces.Space
 import tools.confido.utils.*
+import web.html.ButtonType
+import web.html.InputMode
+import web.html.InputType
+import web.html.date
+import web.html.decimal
+import web.html.numeric
+import web.html.submit
+import web.html.text
 import kotlin.math.abs
 
 external interface ExactEstimateDialogProps : Props {
@@ -54,7 +62,7 @@ external interface NumericExactEstimateDialogProps : ExactEstimateDialogProps {
 }
 
 val ExactEstimateDialog = FC<GenericExactEstimateDialogProps> { props ->
-    val (appState, stale) = useContext(AppStateContext)
+    val (appState, stale) = use(AppStateContext)!!
     props.question.answerSpace.let { answerSpace ->
         when (answerSpace) {
             BinarySpace -> {

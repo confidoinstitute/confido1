@@ -10,10 +10,7 @@ import components.redesign.forms.FormSection
 import components.redesign.forms.MultilineTextInput
 import components.redesign.layout.LayoutMode
 import components.redesign.rooms.RoomContext
-import csstype.TextDecoration
-import csstype.em
-import csstype.vh
-import csstype.vw
+import web.cssom.*
 import emotion.react.css
 import extensions.QuestionGroupsKey
 import extensions.UpdateReferenceQuestionKey
@@ -21,15 +18,15 @@ import extensions.UpdateScatterPlotPV
 import hooks.useCoroutineLock
 import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.js.Object
-import kotlinx.js.jso
+import js.objects.unsafeJso as jso
+import js.objects.Object
 import react.*
 import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.body
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.li
 import react.dom.html.ReactHTML.ol
-import react.router.Route
+import react.router.RouteObject
 import rooms.Room
 import rooms.RoomPermission
 import tools.confido.extensions.ClientExtension
@@ -87,7 +84,7 @@ fun expandFlow(flow: Array<FlowItem>) =
     flow.flatMap { expandFlowItem(it).toList() }.toTypedArray()
 
 val FlowPage = FC<Props> {
-    val room = useContext(RoomContext)
+    val room = use(RoomContext)!!
     val flow = room.extensionData[RoomFlowKey]
     var curFlow by useState(flow)
     val sendingLock = useCoroutineLock()
@@ -204,14 +201,12 @@ object FlowAutomationCE : ClientExtension, FlowAutomationExtension() {
             listOf("flow" to "Flow")
         else emptyList()
 
-    override fun roomRoutesExtra(room: Room, cb: ChildrenBuilder) {
-        cb.apply {
-            Route {
-                path = "flow"
-                element = FlowPage.create {}
-            }
+    override fun roomRoutesExtra(room: Room): Array<RouteObject> = arrayOf(
+        jso {
+            path = "flow"
+            element = FlowPage.create {}
         }
-    }
+    )
 
     override fun registerPresenterPages(): Map<KClass<out PresenterView>, PresenterPageType> = mapOf(
         presenterPageMap(HTML_PP)

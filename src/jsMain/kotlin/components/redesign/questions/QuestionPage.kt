@@ -2,7 +2,7 @@ package components.redesign.questions
 
 import BinaryHistogram
 import Client
-import browser.window
+import web.window.window
 import components.*
 import components.redesign.*
 import components.redesign.TextWithLinks
@@ -18,14 +18,14 @@ import components.redesign.questions.dialog.EditQuestionDialog
 import components.redesign.questions.predictions.*
 import components.redesign.rooms.*
 import components.redesign.rooms.dialog.CsvExportDialog
-import csstype.*
+import web.cssom.*
 import emotion.css.ClassName
 import emotion.react.*
 import hooks.*
+import js.objects.unsafeJso as jso
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import kotlinx.js.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.encodeToDynamic
 import payloads.responses.*
@@ -111,11 +111,11 @@ val QuestionPageExtra = FC<QuestionPageExtraProps> { props->
 }
 
 val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
-    val (appState, stale) = useContext(AppStateContext)
-    val room = useContext(RoomContext)
+    val (appState, stale) = use(AppStateContext)!!
+    val room = use(RoomContext)!!
     val myPrediction = appState.myPredictions[props.question.ref]
     val groupPrediction = useWebSocket<Prediction?>("/state${props.question.urlPrefix}/group_pred")
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
     val roomPalette = room.color.palette
 
     val idx = room.questions.indexOf(props.question.ref)
@@ -132,16 +132,16 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
 
     val extContext = ClientExtension.getContextValues(ExtensionContextPlace.QUESTION_PAGE)
 
-    useEffect(props.question.id) { // TODO does not reflect change in question value
+    useEffectWithCleanup(props.question.id) { // TODO does not reflect change in question value
         window.asDynamic().curQuestion = confidoJSON.encodeToDynamic(props.question)
-        cleanup {
+        onCleanup {
             window.asDynamic().curQuestion = undefined
         }
     }
 
-    useEffect(props.question.id) { // TODO does not reflect change in question value
+    useEffectWithCleanup(props.question.id) { // TODO does not reflect change in question value
         window.asDynamic().curQuestion = confidoJSON.encodeToDynamic(props.question)
-        cleanup {
+        onCleanup {
             window.asDynamic().curQuestion = undefined
         }
     }
@@ -291,7 +291,7 @@ val PredictionOverlay = FC<PredictionOverlayProps> { props ->
             width = 100.pct
             height = 100.pct
             if (props.dimBackground ?: true)
-            backgroundColor = rgba(255, 255, 255, 0.75)
+            backgroundColor = rgb(255, 255, 255, 0.75)
             fontFamily = sansSerif
             padding = Padding(52.px, 44.px)
             textAlign = TextAlign.center
@@ -306,9 +306,9 @@ val PredictionOverlay = FC<PredictionOverlayProps> { props ->
 }
 
 private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props ->
-    val (appState, stale) = useContext(AppStateContext)
-    val layoutMode = useContext(LayoutModeContext)
-    val room = useContext(RoomContext)
+    val (appState, stale) = use(AppStateContext)!!
+    val layoutMode = use(LayoutModeContext)!!
+    val room = use(RoomContext)!!
     val hasPredictPermission = appState.hasPermission(room, RoomPermission.SUBMIT_PREDICTION)
 
     val question = props.question
@@ -385,7 +385,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                             transform = translatex(-50.pct)
                             top = 12.px
                             padding = Padding(4.px, 6.px)
-                            background = rgba(0, 0, 0, 0.7)
+                            background = rgb(0, 0, 0, 0.7)
                             color = NamedColor.white
                             fontWeight = integer(500)
                             fontSize = 12.px
@@ -557,7 +557,7 @@ private val ShortenedTextExpanderClass = emotion.css.ClassName {
 }
 
 private val QuestionHeader = FC<QuestionHeaderProps> { props ->
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
     Stack {
         css {
             padding = Padding(20.px, if (layoutMode >= LayoutMode.TABLET) 0.px else 15.px, 5.px)
@@ -712,11 +712,11 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
 
 private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
     val comments = useWebSocket<Map<String, CommentInfo>>("/state${props.question.urlPrefix}/comments")
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
 
     var addCommentOpen by useState(false)
     var sortType by useState(SortType.NEWEST)
-    val (appState, _) = useContext(AppStateContext )
+    val (appState, _) = use(AppStateContext )!!
 
     AddCommentDialog {
         open = addCommentOpen

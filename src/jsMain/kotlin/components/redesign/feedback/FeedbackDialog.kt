@@ -4,7 +4,7 @@ import components.redesign.*
 import components.redesign.basic.Dialog
 import components.redesign.basic.showError
 import components.redesign.forms.*
-import csstype.*
+import web.cssom.*
 import emotion.react.css
 import emotion.styled.styled
 import hooks.useCoroutineLock
@@ -39,7 +39,7 @@ private enum class SendFeedbackTo(val value: String, val optionName: String) {
     }
 }
 
-private val FullWidthSelect = Select.styled { _, _ ->
+private val FullWidthSelect = Select.styled { _->
     width = 100.pct
 }
 

@@ -7,10 +7,11 @@ import components.redesign.forms.DateTimeInput
 import components.redesign.forms.FormErrorCSS
 import components.redesign.forms.FormField
 import components.redesign.forms.IconButton
-import csstype.FontStyle
-import csstype.px
+import web.cssom.FontStyle
+import web.cssom.px
+import web.dom.ElementId
 import kotlinx.datetime.*
-import kotlinx.js.jso
+import js.objects.unsafeJso as jso
 import emotion.react.*
 import react.*
 import react.dom.html.ReactHTML.div
@@ -60,7 +61,7 @@ val EditQuestionDialogSchedule = FC<EditQuestionDialogScheduleProps> { props ->
             key = id
             td {
                 label {
-                    htmlFor = dateId
+                    htmlFor = ElementId(dateId)
                     +title
                 }
             }
@@ -83,7 +84,7 @@ val EditQuestionDialogSchedule = FC<EditQuestionDialogScheduleProps> { props ->
                     //this.disabled = disabled
                     //this.readOnly = readOnly
                     dateProps = jso {
-                        this.id = dateId
+                        this.id = ElementId(dateId)
                     }
                     this.onChange = { newLDT, err ->
                         if (!disabled && !readOnly) {

@@ -3,7 +3,7 @@ package components.redesign.calibration
 import components.redesign.basic.*
 import components.redesign.forms.InlineHelpButton
 import components.redesign.questions.predictions.binaryColors
-import csstype.*
+import web.cssom.*
 import emotion.react.css
 import emotion.css.ClassName
 import payloads.requests.CalibrationWho
@@ -23,6 +23,7 @@ import tools.confido.calibration.CalibrationEntry
 import tools.confido.calibration.CalibrationVector
 import tools.confido.utils.*
 import utils.except
+import web.dom.ElementId
 
 external interface CalibrationGraphProps: PropsWithElementSize, PropsWithClassName {
     var calib: CalibrationVector
@@ -125,7 +126,7 @@ val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { pro
 
         defs {
             ReactSVG.clipPath {
-                id = "graph"
+                id = ElementId("graph")
                 rect {
                     x = 0.0
                     y = 0.0

@@ -2,6 +2,7 @@ package hooks
 
 import react.useEffect
 import react.useEffectOnce
+import react.useEffectOnceWithCleanup
 import react.useRef
 
 /**
@@ -12,8 +13,8 @@ fun <T: Any> useOnUnmount(value: T?, callback: ((T) -> Unit)) {
     useEffect(value) {
         ref.current = value
     }
-    useEffectOnce {
-        cleanup {
+    useEffectOnceWithCleanup {
+        onCleanup {
             ref.current?.let { callback(it) }
         }
     }

@@ -8,12 +8,12 @@ import components.redesign.basic.DialogMenuItem
 import components.redesign.basic.DialogMenuItemVariant
 import components.redesign.presenter.PresenterContext
 import components.redesign.rooms.RoomContext
-import csstype.px
+import web.cssom.px
 import emotion.react.css
 import react.FC
 import react.Props
 import react.dom.html.ReactHTML.div
-import react.useContext
+import react.use
 import react.useState
 import rooms.InviteLink
 import rooms.RoomPermission
@@ -41,7 +41,7 @@ external interface InvitationQuickSettingsDialogProps : Props {
 }
 
 val MemberQuickSettingsDialog = FC<MemberQuickSettingsDialogProps> {props ->
-    val (appState, stale) = useContext(AppStateContext)
+    val (appState, stale) = use(AppStateContext)!!
 
     DialogMenu {
         open = props.open
@@ -72,9 +72,9 @@ val MemberQuickSettingsDialog = FC<MemberQuickSettingsDialogProps> {props ->
 }
 
 val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {props ->
-    val (appState, stale) = useContext(AppStateContext)
-    val room = useContext(RoomContext)
-    val presenterCtl = useContext(PresenterContext)
+    val (appState, stale) = use(AppStateContext)!!
+    val room = use(RoomContext)!!
+    val presenterCtl = use(PresenterContext)!!
 
     var deleting by useState(false)
 

@@ -3,7 +3,7 @@ package components.presenter
 import components.redesign.basic.Stack
 import components.redesign.calibration.CalibrationGraph
 import components.redesign.calibration.CalibrationReqView
-import csstype.*
+import web.cssom.*
 import emotion.react.css
 import hooks.useSuspendResult
 import io.ktor.client.call.*

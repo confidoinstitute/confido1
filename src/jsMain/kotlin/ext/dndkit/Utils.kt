@@ -1,7 +1,7 @@
 package dndkit
 
 import dndkit.sortable.SyntheticListenerMap
-import kotlinx.js.Object
+import js.objects.Object
 import react.ChildrenBuilder
 
 

@@ -1,6 +1,6 @@
 package components.redesign.rooms
 
-import browser.window
+import web.window.window
 import components.AppStateContext
 import components.redesign.InviteLinkIcon
 import components.redesign.NavMenuIcon
@@ -17,7 +17,7 @@ import components.redesign.rooms.dialog.AddMemberDialog
 import components.redesign.rooms.dialog.EditInviteDialog
 import components.redesign.rooms.dialog.InvitationQuickSettingsDialog
 import components.redesign.rooms.dialog.MemberQuickSettingsDialog
-import csstype.*
+import web.cssom.*
 import emotion.react.css
 import hooks.useCoroutineLock
 import hooks.useEditDialog
@@ -31,7 +31,7 @@ import react.Props
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.option
-import react.useContext
+import react.use
 import react.useState
 import rooms.*
 import tools.confido.refs.deref
@@ -42,16 +42,19 @@ import tools.confido.state.appConfig
 import tools.confido.utils.pluralize
 import utils.runCoroutine
 import utils.stringToColor
+import web.clipboard.writeText
 import web.location.location
 import web.navigator.navigator
+import web.window.WindowTarget
+import web.window._blank
 
 fun canChangeRole(appState: SentState, room: Room, role: RoomRole) =
     canChangeRole(room.userRole(appState.session.user), role)
 
 val RoomMembers = FC<Props> {
-    val (appState, stale) = useContext(AppStateContext)
-    val room = useContext(RoomContext)
-    val layoutMode = useContext(LayoutModeContext)
+    val (appState, stale) = use(AppStateContext)!!
+    val room = use(RoomContext)!!
+    val layoutMode = use(LayoutModeContext)!!
 
     val groupedMembership = room.members.groupBy {
         it.invitedVia ?: if (it.user.deref()?.type?.isProper()?:false) "internal" else "guest"
@@ -143,8 +146,8 @@ external interface RoomMemberProps : Props {
 }
 
 val RoomMember = FC<RoomMemberProps> {props ->
-    val (appState, stale) = useContext(AppStateContext)
-    val room = useContext(RoomContext)
+    val (appState, stale) = use(AppStateContext)!!
+    val room = use(RoomContext)!!
     val user = props.membership.user.deref() ?: return@FC
 
     var dialogOpen by useState(false)
@@ -164,7 +167,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
         hasEmail = user.email != null
         canDelete = canChangeSelf() && appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS) == true
         onClose = { dialogOpen = false }
-        onMail = { window.open("mailto:${user.email}", "_blank") }
+        onMail = { window.open("mailto:${user.email}", WindowTarget._blank) }
         onDelete = ::memberDelete
     }
 
@@ -206,7 +209,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
                     fontFamily = sansSerif
                     fontSize = 12.px
                     lineHeight = 15.px
-                    color = rgba(0,0,0,0.5)
+                    color = rgb(0,0,0,0.5)
                 }
                 +(user.email ?: "")
             }
@@ -234,8 +237,8 @@ external interface InvitationMembersProps : Props {
 }
 
 val InvitationMembers = FC<InvitationMembersProps> { props ->
-    val (appState, stale) = useContext(AppStateContext)
-    val room = useContext(RoomContext)
+    val (appState, stale) = use(AppStateContext)!!
+    val room = use(RoomContext)!!
 
     val active = props.invitation.canJoin && props.invitation.canAccess
 
@@ -253,7 +256,7 @@ val InvitationMembers = FC<InvitationMembersProps> { props ->
         onClose = { dialogOpen = false }
         onCopy = {
             val url = props.invitation.link(location.origin, room)
-            navigator.clipboard.writeText(url)
+            runCoroutine {  navigator.clipboard.writeText(url) }
         }
         onEdit = { props.onEditDialog?.invoke(props.invitation) }
         onDelete = { deleteInviteLink(it) }
@@ -306,7 +309,7 @@ val InvitationMembers = FC<InvitationMembersProps> { props ->
                         fontFamily = sansSerif
                         fontSize = 12.px
                         lineHeight = 15.px
-                        color = rgba(0, 0, 0, 0.5)
+                        color = rgb(0, 0, 0, 0.5)
                     }
                     val count = props.members?.size ?: 0
                     +pluralize("member", count, includeCount = true)
@@ -349,8 +352,8 @@ external interface MemberRoleSelectProps : Props {
 }
 
 val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
-    val (appState, stale) = useContext(AppStateContext)
-    val room = useContext(RoomContext)
+    val (appState, stale) = use(AppStateContext)!!
+    val room = use(RoomContext)!!
     val canChange = canChangeRole(appState, room, props.value)
 
     Select {

@@ -1,7 +1,7 @@
 package components.redesign.forms
 
 import components.redesign.basic.*
-import csstype.*
+import web.cssom.*
 import emotion.react.css
 import hooks.*
 import react.*

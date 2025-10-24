@@ -1,9 +1,9 @@
 package components.redesign.forms
 
-import browser.window
+import web.window.window
 import components.redesign.basic.*
-import csstype.*
-import dom.html.*
+import web.cssom.*
+import web.html.*
 import hooks.*
 import react.*
 import react.dom.html.*

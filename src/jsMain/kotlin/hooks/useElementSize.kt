@@ -1,10 +1,15 @@
 package hooks
 
-import browser.window
-import dom.html.HTMLDivElement
-import dom.html.HTMLElement
-import dom.observers.ResizeObserver
+import web.window.window
+import web.html.HTMLDivElement
+import web.html.HTMLElement
 import react.*
+import web.events.Event
+import web.events.EventType
+import web.events.RESIZE
+import web.events.addEventListener
+import web.events.removeEventListener
+import web.resize.ResizeObserver
 
 data class ElementSize<T: HTMLElement>(
     val ref: RefObject<T>,
@@ -48,14 +53,14 @@ fun useViewportSize(): ViewportSize {
     val (width, setWidth) = useState(0)
     val (height, setHeight) = useState(0)
 
-    val handleResize = useCallback { _: dynamic ->
+    val handleResize = useCallback { _: Event ->
         setWidth(window.innerWidth)
         setHeight(window.innerHeight)
     }
 
-    useEffect {
-        window.addEventListener("resize", handleResize)
-        cleanup { window.removeEventListener("resize", handleResize) }
+    useEffectWithCleanup {
+        window.addEventListener(Event.RESIZE, handleResize)
+        onCleanup { window.removeEventListener(Event.RESIZE, handleResize) }
     }
 
     return ViewportSize(width, height)

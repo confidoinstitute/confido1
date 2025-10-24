@@ -1,6 +1,6 @@
 package components.redesign.basic
 
-import csstype.*
+import web.cssom.*
 import react.*
 import rooms.RoomColor
 import tools.confido.question.QuestionState
@@ -70,7 +70,7 @@ fun Color.addAlpha(alpha: Double): Color {
     val r = m.groupValues[1].toInt(16)
     val g = m.groupValues[2].toInt(16)
     val b = m.groupValues[3].toInt(16)
-    return rgba(r,g,b,alpha)
+    return rgb(r,g,b,alpha)
 }
 
 val RoomColor.palette: RoomPalette get() {

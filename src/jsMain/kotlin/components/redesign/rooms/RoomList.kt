@@ -4,7 +4,7 @@ import components.*
 import components.redesign.basic.*
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
-import csstype.*
+import web.cssom.*
 import emotion.react.*
 import react.*
 import react.dom.html.ReactHTML.div
@@ -53,14 +53,14 @@ val RoomLink = Link.withRipple().withStyleLM<RoomLinkProps>("small") { props, la
     }
 
     hover {
-        backgroundColor = rgba(0,0,0, 0.05)
+        backgroundColor = rgb(0,0,0, 0.05)
     }
 }
 
 val RoomList = FC<RoomListProps> {props ->
-    val (appState, stale) = useContext(AppStateContext)
+    val (appState, stale) = use(AppStateContext)!!
     val location = useLocation()
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
 
     val iconSize = if(props.small) 36.px else 48.px
 
@@ -74,7 +74,7 @@ val RoomList = FC<RoomListProps> {props ->
                 key = id
                 to = room.urlPrefix
                 small = props.small
-                highlighted = location.pathname.startsWith(to)
+                highlighted = location.pathname.startsWith(room.urlPrefix)
                 div {
                     css {
                         backgroundColor = room.color.palette.color

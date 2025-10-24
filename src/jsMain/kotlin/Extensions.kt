@@ -10,6 +10,7 @@ import react.ChildrenBuilder
 import react.FC
 import react.Props
 import react.createContext
+import react.router.RouteObject
 import rooms.Room
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.Question
@@ -33,7 +34,7 @@ interface ClientExtension : Extension {
 
         val contexts: Map<ExtensionContextPlace, react.Context<Map<String, Any>>> by lazy {
             ExtensionContextPlace.entries.associate {
-                it to createContext<Map<String, dynamic>>()
+                it to createContext<Map<String, dynamic>>(emptyMap())
             }
         }
 
@@ -54,7 +55,7 @@ interface ClientExtension : Extension {
     fun assembleQuestion(q: Question, states: Map<String, dynamic>) = q
 
     fun myPredictionDescriptionExtra(props: MyPredictionDescriptionProps, cb: ChildrenBuilder) {}
-    fun useExtContext(place: ExtensionContextPlace)  = react.useContext(contexts[place]!!)[extensionId]
+    fun useExtContext(place: ExtensionContextPlace)  = react.use(contexts[place]!!)[extensionId]
     fun getContextValue(place: ExtensionContextPlace) = react.useState<Map<String, dynamic>>(emptyMap())
     fun <T> useContextState(place: ExtensionContextPlace, key: String = "", default: T? = null): react.StateInstance<T> {
         var ctxS by (useExtContext(place).unsafeCast<react.StateInstance<Map<String, dynamic>>>())
@@ -71,7 +72,7 @@ interface ClientExtension : Extension {
     fun registerPresenterPages(): Map<KClass<out PresenterView>, PresenterPageType> = emptyMap()
     fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {}
     fun roomTabsExtra(room: Room, appState: SentState, layoutMode: LayoutMode): List<Pair<String, String>>  = emptyList()
-    fun roomRoutesExtra(room: Room, cb: ChildrenBuilder) {}
+    fun roomRoutesExtra(room: Room): Array<RouteObject> = emptyArray()
     fun rootLayoutStartHook() {}
     fun renderPredictionInput(props: components.redesign.questions.predictions.PredictionInputProps): react.ReactNode? = null
     fun  hideDefaultPredictionDesc(dist: ProbabilityDistribution?, question: Question?, b: Boolean) = false

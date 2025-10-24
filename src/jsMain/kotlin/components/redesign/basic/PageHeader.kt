@@ -6,13 +6,13 @@ import components.redesign.SidebarIcon
 import components.redesign.forms.IconButton
 import components.redesign.forms.IconLink
 import components.redesign.forms.TextButton
-import csstype.*
+import web.cssom.*
 import react.FC
 import react.Props
 import emotion.react.css
 import react.ReactNode
 import react.dom.html.ReactHTML.div
-import react.useContext
+import react.use
 
 external interface PageHeaderProps : Props {
     var title: String
@@ -25,7 +25,7 @@ external interface PageHeaderProps : Props {
 }
 
 val PageHeader = FC<PageHeaderProps> { props ->
-    val sidebar = useContext(SidebarContext)
+    val sidebar = use(SidebarContext)!!
     Stack {
         direction = FlexDirection.row
         css {

@@ -4,7 +4,6 @@ import io.ktor.client.call.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.serialization.kotlinx.json.*
-import browser.document
 import io.ktor.client.plugins.websocket.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -14,6 +13,7 @@ import react.create
 import react.dom.client.createRoot
 import tools.confido.extensions.ClientExtension
 import tools.confido.serialization.confidoJSON
+import web.dom.document
 
 object Client {
     val httpClient by lazy  { HttpClient {

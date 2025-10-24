@@ -1,6 +1,6 @@
 package components.redesign
 
-import browser.window
+import web.window.window
 import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.feedback.FeedbackContext
@@ -8,7 +8,7 @@ import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.rooms.RoomLink
 import components.redesign.rooms.RoomList
-import csstype.*
+import web.cssom.*
 import emotion.react.Global
 import emotion.react.css
 import emotion.react.styles
@@ -24,6 +24,8 @@ import react.router.dom.Link
 import react.router.useLocation
 import tools.confido.state.appConfig
 import web.location.location
+import web.window.WindowTarget
+import web.window._blank
 
 external interface SidebarProps : PropsWithChildren {
     var open: Boolean?
@@ -67,7 +69,7 @@ class SidebarState internal constructor(
 val SidebarContext = createContext<SidebarState>()
 
 val SidebarStateProvider = FC<PropsWithChildren> { props ->
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
     val (open, setOpen) = useState(true)
     val (availableInPage, setAvailableInPage) = useState(false)
     val location = useLocation()
@@ -98,11 +100,11 @@ val SidebarStateProvider = FC<PropsWithChildren> { props ->
 }
 
 val SidebarLayout = FC<Props> {
-    val sidebarState = useContext(SidebarContext)
+    val sidebarState = use(SidebarContext)!!
 
-    useEffect {
+    useEffectWithCleanup {
         sidebarState.setAvailableState(true)
-        cleanup {
+        onCleanup {
             sidebarState.setAvailableState(false)
         }
     }
@@ -121,7 +123,7 @@ external interface SidebarActionsProps: Props {
 val SidebarActions = FC<SidebarActionsProps> {props->
     val iconSize = if(props.small) 36.px else 48.px
     val iconSizeInner = if(props.small) 34 else 46
-    val (appState, _) = useContext(AppStateContext)
+    val (appState, _) = use(AppStateContext)!!
 
     if (!props.hideCalib)
     RoomLink {
@@ -179,8 +181,8 @@ val SidebarActions = FC<SidebarActionsProps> {props->
 }
 
 val Sidebar = FC<SidebarProps> { props ->
-    val (appState, stale) = useContext(AppStateContext)
-    val layoutMode = useContext(LayoutModeContext)
+    val (appState, stale) = use(AppStateContext)!!
+    val layoutMode = use(LayoutModeContext)!!
 
     Stack {
         component = aside
@@ -203,7 +205,7 @@ val Sidebar = FC<SidebarProps> { props ->
             bottom = 0.px
             flexShrink = number(0.0)
             overflowX = Overflow.hidden
-            boxShadow = BoxShadow(0.px, 0.px, 20.px, rgba(0, 0, 0, 0.2))
+            boxShadow = BoxShadow(0.px, 0.px, 20.px, rgb(0, 0, 0, 0.2))
         }
         Global {
             this.styles {
@@ -255,7 +257,7 @@ val Sidebar = FC<SidebarProps> { props ->
                 icon = AboutIcon
                 onClick = {
                     // Warning: This is currently duplicated in DialogMenuCommonActions
-                    window.open("https://confido.institute/confido-app.html", "_blank")
+                    window.open("https://confido.institute/confido-app.html", WindowTarget._blank)
                 }
             }
             if (appConfig.privacyPolicyUrl != null)
@@ -268,7 +270,7 @@ val Sidebar = FC<SidebarProps> { props ->
                 text = "Privacy policy"
                 onClick = {
                     // Warning: This is currently duplicated in DialogMenuCommonActions
-                    window.open(appConfig.privacyPolicyUrl, "_blank")
+                    window.open(appConfig.privacyPolicyUrl, WindowTarget._blank)
                 }
             }
         }
@@ -276,7 +278,7 @@ val Sidebar = FC<SidebarProps> { props ->
 }
 
 val FeedbackSidebarAction = FC<Props> {
-    val feedback = useContext(FeedbackContext)
+    val feedback = use(FeedbackContext)!!
 
     SidebarAction {
         text = "Give feedback"
@@ -301,7 +303,7 @@ private val SidebarAction = FC<SidebarActionProps> { props ->
     // We have an extra Stack rather than using the button directly
     // to avoid the padding from being clickable.
     val disabled = props.disabled ?: false
-    val sidebarState = useContext(SidebarContext)
+    val sidebarState = use(SidebarContext)!!
     Stack {
         css {
             padding = Padding(6.px, 8.px)

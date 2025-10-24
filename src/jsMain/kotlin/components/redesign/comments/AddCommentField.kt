@@ -5,7 +5,7 @@ import components.*
 import components.redesign.*
 import components.redesign.basic.*
 import components.redesign.forms.*
-import csstype.*
+import web.cssom.*
 import emotion.react.*
 import hooks.*
 import payloads.requests.*
@@ -15,6 +15,8 @@ import react.dom.html.ReactHTML.div
 import tools.confido.question.*
 import tools.confido.utils.*
 import utils.*
+import web.html.ButtonType
+import web.html.submit
 
 external interface AddCommentFieldProps : Props {
     /** The id of the entity containing this comment. Make sure to specify the correct [variant]. */

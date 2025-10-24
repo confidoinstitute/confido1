@@ -12,7 +12,7 @@ import components.redesign.questions.QuestionContext
 import components.redesign.questions.predictions.MyPredictionDescriptionProps
 import components.redesign.questions.predictions.yesNoColored
 import components.redesign.rooms.RoomContext
-import csstype.*
+import web.cssom.*
 import emotion.react.css
 import hooks.useCoroutineLock
 import hooks.useWebSocket
@@ -91,8 +91,8 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
     )
 
     override fun questionPageExtra(q: Question, place: ClientExtension.QuestionPagePlace, cb: ChildrenBuilder) {
-        useContext(AppStateContext)
-        val room = useContext(RoomContext)
+        use(AppStateContext)!!
+        val room = use(RoomContext)!!
         val nav = useNavigate()
         val qs = questions(room)
         val st = getState(room)
@@ -104,9 +104,9 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
     }
 
     override fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {
-        useContext(AppStateContext)
+        use(AppStateContext)!!
         val qs = questions(room)
-        val presenterCtl = useContext(PresenterContext)
+        val presenterCtl = use(PresenterContext)!!
         val st = getState(room)
         val lk = useCoroutineLock()
 
@@ -187,9 +187,9 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
     }
 
     override fun myPredictionDescriptionExtra(props: MyPredictionDescriptionProps, cb: ChildrenBuilder) {
-        val room = useContext(RoomContext)
-        val q = useContext(QuestionContext) ?: return
-        val (appState,_) = useContext(AppStateContext)
+        val room = use(RoomContext)!!
+        val q = use(QuestionContext)!! ?: return
+        val (appState,_) = use(AppStateContext)!!
         val qs = questions(room)
         val qids = qs.map {it.id}
         //val myScoreWS = useWebSocket<Double?>("/api${room.urlPrefix}/ext/millionaire/my_score.ws")

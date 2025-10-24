@@ -7,10 +7,10 @@ import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.*
 import components.redesign.questions.dialog.*
-import csstype.*
+import web.cssom.*
+import js.objects.unsafeJso as jso
 import emotion.react.*
 import hooks.*
-import kotlinx.js.*
 import react.*
 import rooms.*
 import tools.confido.question.*
@@ -22,11 +22,11 @@ external interface QuestionListProps : Props {
 }
 
 val QuestionList = FC<QuestionListProps> { props ->
-    val (appState, _) = useContext(AppStateContext)
-    val room = useContext(RoomContext)
+    val (appState, _) = use(AppStateContext)!!
+    val room = use(RoomContext)!!
     val groupPredsWS = useWebSocket<Map<String, Prediction?>>("/state${room.urlPrefix}/group_pred")
     val groupPreds = groupPredsWS.data ?: emptyMap()
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
 
     var sortType by useState(SortType.SET_BY_MODERATOR)
 

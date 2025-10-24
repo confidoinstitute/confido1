@@ -1,6 +1,6 @@
 package components.redesign.rooms.dialog
 
-import browser.document
+import web.dom.document
 import components.AppStateContext
 import components.redesign.basic.Dialog
 import components.redesign.basic.Stack
@@ -9,13 +9,11 @@ import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.dialog.QuestionType
 import components.redesign.rooms.RoomContext
-import csstype.*
-import dom.html.HTMLAnchorElement
+import web.cssom.*
+import web.html.HTMLAnchorElement
 import emotion.react.css
 import io.ktor.http.*
 import react.*
-import react.dom.html.ButtonType
-import react.dom.html.InputType
 import react.dom.html.ReactHTML.i
 import react.dom.html.ReactHTML.option
 import react.dom.html.ReactHTML.p
@@ -27,6 +25,10 @@ import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.spaces.NumericSpace
 import tools.confido.utils.forEachDeref
+import web.html.ButtonType
+import web.html.InputType
+import web.html.number
+import web.html.submit
 
 external  interface  CsvExportDialogProps : Props {
     var open: Boolean
@@ -34,15 +36,15 @@ external  interface  CsvExportDialogProps : Props {
     var question: Question?
 }
 val CsvExportDialog = FC<CsvExportDialogProps> {props->
-    val (appState,stale) = useContext(AppStateContext)
+    val (appState,stale) = use(AppStateContext)!!
     var exportWhat by useState("predictions")
-    val room = useContext(RoomContext)
+    val room = use(RoomContext)!!
     var individual by useState(false)
     var exportHistory by useState(ExportHistory.LAST)
     var bucketsStr by useState("32")
     var buckets by useState(32)
     val selectedQuestions = props.question?.let { listOf(it.ref) } ?: room.questions
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
 
     val selectedNumeric = useMemo(selectedQuestions) {
         selectedQuestions.any { it.deref()?.answerSpace is NumericSpace }

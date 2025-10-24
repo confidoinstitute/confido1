@@ -11,7 +11,7 @@ import components.redesign.forms.*
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.StatusChip
-import csstype.*
+import web.cssom.*
 import emotion.react.css
 import hooks.EditEntityDialogProps
 import hooks.useCoroutineLock
@@ -19,9 +19,8 @@ import hooks.useEditDialog
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.datetime.Clock
-import kotlinx.js.jso
+import js.objects.unsafeJso as jso
 import react.*
-import react.dom.html.InputType
 import react.dom.html.OlType
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.i
@@ -44,6 +43,8 @@ import users.UserType
 import utils.isEmailValid
 import utils.runCoroutine
 import utils.toDateTime
+import web.html.InputType
+import web.html.email
 
 external interface EditUserDialogProps : EditEntityDialogProps<User> {
     var onTypeHelp: (()->Unit)?
@@ -92,7 +93,7 @@ val DeleteUserDialog = FC<EditEntityDialogProps<User>> { props ->
 }
 
 val EditUserDialog = FC<EditUserDialogProps> { props ->
-    val (appState, stale) = useContext(AppStateContext)
+    val (appState, stale) = use(AppStateContext)!!
 
     val newUser = props.entity == null
     val htmlId = useId()
@@ -283,7 +284,7 @@ val userTypeColors = mapOf(
 )
 
 val UserAdmin = FC<Props> {
-    val (appState, stale) = useContext(AppStateContext)
+    val (appState, stale) = use(AppStateContext)!!
     if (!appState.isAdmin()) return@FC
 
 
@@ -291,7 +292,7 @@ val UserAdmin = FC<Props> {
     var typeHelpOpen by useDialog(UserTypeHelpDialog)
     val editUserOpen = useEditDialog(EditUserDialog, jso { onTypeHelp = {typeHelpOpen = true} }, temporaryHide=typeHelpOpen)
     val deleteUserOpen = useEditDialog(DeleteUserDialog)
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
 
     PageHeader {
         title = "User management"

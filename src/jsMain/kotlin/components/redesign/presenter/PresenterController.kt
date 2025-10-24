@@ -1,6 +1,6 @@
 package components.redesign.presenter
 
-import browser.window
+import web.window.window
 import components.AppStateContext
 import components.redesign.basic.Dialog
 import components.redesign.basic.DialogMainButton
@@ -8,15 +8,17 @@ import components.redesign.basic.Message
 import components.redesign.basic.MessageType
 import components.redesign.basic.showMessage
 import components.redesign.forms.Button
-import csstype.Margin
-import csstype.integer
-import csstype.px
+import web.cssom.Margin
+import web.cssom.integer
+import web.cssom.px
 import emotion.react.css
 import react.*
 import react.dom.html.ReactHTML.p
 import tools.confido.state.PresenterView
 import tools.confido.utils.capFirst
 import utils.runCoroutine
+import web.window.WindowTarget
+import web.window._blank
 
 suspend fun setPresenterView(view: PresenterView) {
     Client.sendData("/presenter/set", view, onError ={}) {}
@@ -28,7 +30,7 @@ enum class  PresenterButtonState {
 
 fun openPresenterWindow() {
     // this seems to force new window (not tab) in both Firefox and Chrome
-    window.open("/presenter", "_blank", "popup")
+    window.open("/presenter", WindowTarget._blank, "popup")
 }
 
 external interface PresenterDialogProps : Props {
@@ -82,7 +84,7 @@ val PresenterContext = react.createContext<PresenterController>()
 
 val PresenterControllerProvider = FC<PropsWithChildren> { props->
     var offeredView by useState<PresenterView>()
-    val (appState, stale) = useContext(AppStateContext)
+    val (appState, stale) = use(AppStateContext)!!
 
     val ctl = useMemo { PresenterController()}
     fun offer(view: PresenterView) {

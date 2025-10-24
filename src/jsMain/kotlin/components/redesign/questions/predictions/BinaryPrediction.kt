@@ -1,19 +1,16 @@
 package components.redesign.questions.predictions
 
-import browser.*
 import components.redesign.ZoomIcon
 import components.redesign.basic.*
 import components.redesign.forms.ButtonUnstyled
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.*
-import csstype.*
-import dom.Node
-import dom.events.*
-import dom.html.*
+import js.objects.unsafeJso as jso
+import web.cssom.*
+import web.html.*
 import emotion.react.*
 import hooks.*
-import kotlinx.js.*
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
@@ -29,6 +26,7 @@ import tools.confido.utils.toFixed
 import utils.panzoom1d.PZParams
 import utils.panzoom1d.PZState
 import utils.panzoom1d.usePanZoom
+import web.dom.Node
 import kotlin.math.*
 
 external interface BinaryPredictionProps : Props, BasePredictionGraphProps {
@@ -60,7 +58,7 @@ fun ChildrenBuilder.proportionalCircle(text: String, color: Color, prob: Double?
             //div {
             //    css {
             //        borderRadius = 100.pct
-            //        border = Border(1.px, LineStyle.solid, rgba(0,0,0,0.05))
+            //        border = Border(1.px, LineStyle.solid, rgb(0,0,0,0.05))
             //    }
             //    style = jso {
             //        width = (sqrt(0.5) * size).px
@@ -238,7 +236,7 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
     val circleSize: Double = min(realSize.height, realSize.width / 2)
 
     Stack {
-        ref = combineRefs(realSize.ref.unsafeCast<MutableRefObject<HTMLElement>>(), props.ref.unsafeCast<MutableRefObject<HTMLElement>>())
+        ref = combineRefs(realSize.ref.unsafeCast<RefObject<HTMLElement>>(), props.ref.unsafeCast<RefObject<HTMLElement>>())
         direction = FlexDirection.row
         css(override=props.className) {
             width = 100.pct
@@ -359,7 +357,7 @@ external interface BinaryPredSliderProps : PredictionInputProps, PropsWithElemen
 }
 val BIN_PRED_SPACE = NumericSpace(0.0, 100.0, unit="%")
 val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
     val predictionTerminology = props.question?.predictionTerminology ?: PredictionTerminology.ANSWER
 
     val maxZoom = 100.0

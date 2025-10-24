@@ -1,6 +1,5 @@
 package components.redesign.basic
 
-import browser.*
 import components.AppStateContext
 import components.redesign.AboutIcon
 import components.redesign.IconProps
@@ -10,11 +9,11 @@ import components.redesign.forms.*
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.transitions.*
-import csstype.*
-import dom.html.*
+import web.cssom.*
+import web.html.*
 import emotion.react.*
 import hooks.useEffectNotFirst
-import kotlinx.js.jso
+import js.objects.unsafeJso as jso
 import react.*
 import react.dom.*
 import react.dom.html.*
@@ -27,6 +26,10 @@ import react.router.dom.Link
 import tools.confido.utils.generateId
 import web.location.*
 import web.storage.*
+import web.dom.document
+import web.window.WindowTarget
+import web.window._blank
+import web.window.window
 
 external interface DialogProps : BaseDialogProps, PropsWithChildren, PropsWithRef<HTMLElement> {
     var title: String
@@ -36,9 +39,9 @@ external interface DialogProps : BaseDialogProps, PropsWithChildren, PropsWithRe
     var fullSize: Boolean
 }
 
-val Dialog = ForwardRef<HTMLElement, DialogProps> { props, fRef ->
+val Dialog = FC<DialogProps> { props->
     DialogCore {
-        ref = fRef
+        ref = props.ref
         open = props.open
         onClose = props.onClose
         fullSize = props.fullSize
@@ -72,9 +75,9 @@ external interface DialogMenuProps : PropsWithChildren, PropsWithRef<HTMLElement
     var hasCloseButton: Boolean?
 }
 
-val DialogMenu = ForwardRef<HTMLElement, DialogMenuProps> { props, fRef ->
+val DialogMenu = FC<DialogMenuProps> { props->
     DialogCore {
-        this.ref = fRef
+        this.ref = props.ref
         this.open = props.open
         this.onClose = props.onClose
         Stack {
@@ -149,8 +152,8 @@ external interface DialogCoreProps : PropsWithChildren, PropsWithRef<HTMLElement
 
 val DialogCore = FC<DialogCoreProps> { props ->
     val nodeRef = useRef<HTMLElement>()
-    val layoutMode = useContext(LayoutModeContext)
-    val sidebarState = useContext(SidebarContext)
+    val layoutMode = use(LayoutModeContext)!!
+    val sidebarState = use(SidebarContext)!!
 
     // This can be null in case we are not within a layout that has a sidebar.
     @Suppress("SENSELESS_COMPARISON")
@@ -399,7 +402,7 @@ val DialogMenuItem = FC<DialogMenuItemProps> { props ->
 
             if (!disabled) {
                 hover {
-                    backgroundColor = rgba(0, 0, 0, 0.05)
+                    backgroundColor = rgb(0, 0, 0, 0.05)
                 }
             }
 
@@ -473,7 +476,7 @@ val DialogMenuNav = FC<DialogMenuNavProps> { props ->
 
             if (!disabled) {
                 hover {
-                    backgroundColor = rgba(0, 0, 0, 0.05)
+                    backgroundColor = rgb(0, 0, 0, 0.05)
                 }
             }
 
@@ -539,7 +542,7 @@ external interface DialogMenuCommonActionsProps : Props {
 }
 
 val DialogMenuCommonActions = FC<DialogMenuCommonActionsProps> { props ->
-    val (appState, stale) = useContext(AppStateContext)
+    val (appState, stale) = use(AppStateContext)!!
     FeedbackMenuItem {
         pageName = props.pageName
         onClick = {
@@ -559,7 +562,7 @@ val DialogMenuCommonActions = FC<DialogMenuCommonActionsProps> { props ->
         icon = AboutIcon
         onClick = {
             // Warning: This is currently duplicated in DialogMenuCommonActions
-            window.open("https://confido.institute/confido-app.html", "_blank")
+            window.open("https://confido.institute/confido-app.html", WindowTarget._blank)
         }
     }
 }

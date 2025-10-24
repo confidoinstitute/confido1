@@ -5,7 +5,7 @@ package dndkit.core
 
 import dndkit.utilities.Transform
 import react.Context
-import react.NamedExoticComponent
+import react.ExoticComponent
 import react.PropsWithChildren
 
 /*
@@ -36,6 +36,6 @@ external interface DndContextProps : PropsWithChildren {
 external interface CancelDropArguments : DragEndEvent
 
 external val ActiveDraggableContext: Context<Transform>
-external val DndContext: NamedExoticComponent<DndContextProps>
+external val DndContext: ExoticComponent<DndContextProps>
 
 external fun useDndContext(): Any // stores.PublicContextDescriptor

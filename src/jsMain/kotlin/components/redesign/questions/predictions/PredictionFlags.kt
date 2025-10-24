@@ -1,12 +1,12 @@
 package components.redesign.questions.predictions
 
-import browser.window
-import csstype.*
-import dom.html.HTMLDivElement
+import web.window.window
+import web.cssom.*
+import web.html.HTMLDivElement
 import emotion.react.css
 import hooks.ElementSize
 import hooks.useElementSize
-import kotlinx.js.jso
+import js.objects.unsafeJso as jso
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.svg.ReactSVG
@@ -15,6 +15,7 @@ import tools.confido.utils.intersects
 import utils.addEventListener
 import utils.removeEventListener
 import web.events.Event
+import web.mouse.MouseEvent
 
 data class PredictionFlag(
     val color: Color,
@@ -113,12 +114,11 @@ val PredictionFlagContent = FC<PredictionFlagContentProps> { props ->
     var hidden by useState(collapseUntilHovered)
     val background = useRef<HTMLDivElement>()
 
-    useEffect {
+    useEffectWithCleanup {
         // This must not be a fun, as referencing it through ::onMouseMove would result
         // in a different function being created in addEventListener and removeEventListener,
         // and removal would fail.
-        val onMouseMove = { e: Event ->
-            e as dom.events.MouseEvent
+        val onMouseMove = { e: MouseEvent ->
             val target = background.current as HTMLDivElement
             val boundingRect = target.getBoundingClientRect()
             val x = when (pos.anchor) {
@@ -135,7 +135,7 @@ val PredictionFlagContent = FC<PredictionFlagContentProps> { props ->
         }
 
         window.addEventListener("mousemove", onMouseMove);
-        cleanup {
+        onCleanup {
             window.removeEventListener("mousemove", onMouseMove);
         }
     }

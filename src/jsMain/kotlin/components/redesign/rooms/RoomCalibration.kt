@@ -11,7 +11,7 @@ import components.redesign.forms.IconButton
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.QuestionEstimateTabButton
-import csstype.*
+import web.cssom.*
 import emotion.react.css
 import payloads.requests.CalibrationRequest
 import payloads.requests.CalibrationWho
@@ -32,7 +32,7 @@ external interface RoomCalibrationProps: Props {
 
 private val bgColor = Color("#f2f2f2")
 val RoomCalibration = FC<RoomCalibrationProps> { props->
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
     val calibrationHelpOpen = useRef<(CalibrationHelpSection)->Unit>()
 
     RoomHeader {

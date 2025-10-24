@@ -7,8 +7,7 @@ import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.dialog.EditQuestionDialogProps
 import components.redesign.questions.predictions.PredictionInputProps
 import components.redesign.questions.predictions.SIDE_PAD
-import csstype.*
-import dom.html.HTML.div
+import web.cssom.*
 import emotion.react.css
 import react.*
 import react.dom.html.ReactHTML.div

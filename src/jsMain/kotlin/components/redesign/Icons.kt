@@ -1,10 +1,8 @@
 package components.redesign
 
 import components.redesign.basic.css
-import csstype.px
-import dom.svg.SVGElement
-import dom.svg.SVGSVGElement
-import kotlinx.js.jso
+import web.cssom.px
+import js.objects.unsafeJso as jso
 import react.*
 import react.dom.aria.AriaRole
 import react.dom.svg.*
@@ -17,6 +15,8 @@ import react.dom.svg.ReactSVG.rect
 import react.dom.svg.ReactSVG.svg
 import tools.confido.utils.List2
 import utils.except
+import web.dom.ElementId
+import web.svg.SVGSVGElement
 
 /*
 TODO: This needs to be revamped to be easier to use.
@@ -704,7 +704,7 @@ val UsersIcon = createIcon(24) {
     }
     defs {
         clipPath {
-            id = "clip0_1251_98416"
+            id = ElementId("clip0_1251_98416")
             rect {
                 width = 24.0
                 height = 24.0

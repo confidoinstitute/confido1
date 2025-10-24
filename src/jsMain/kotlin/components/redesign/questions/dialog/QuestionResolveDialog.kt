@@ -8,15 +8,16 @@ import components.redesign.basic.showError
 import components.redesign.forms.*
 import hooks.useCoroutineLock
 import kotlinx.datetime.*
-import kotlinx.js.jso
+import js.objects.unsafeJso as jso
 import payloads.requests.EditQuestion
 import payloads.requests.EditQuestionComplete
 import react.FC
-import react.dom.html.ButtonType
 import react.useState
 import tools.confido.question.Question
 import tools.confido.question.QuestionState
 import tools.confido.spaces.Value
+import web.html.ButtonType
+import web.html.submit
 
 
 external interface QuestionResolveDialogProps : BaseDialogProps{

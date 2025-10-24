@@ -1,8 +1,9 @@
 package hooks
 
-import browser.window
+import web.window.window
 import react.useCallback
 import react.useEffect
+import react.useEffectWithCleanup
 import react.useMemo
 import react.useState
 import web.events.Event
@@ -20,7 +21,7 @@ fun useMediaQuery(query: String): Boolean {
         cur = mediaMatcher.matches
     }
 
-    useEffect {
+    useEffectWithCleanup {
         // Safari 13.1 does not have `addEventListener`, but does have `addListener`
         if (mediaMatcher.addEventListener != null) {
             mediaMatcher.addEventListener("change", onChange)
@@ -29,7 +30,7 @@ fun useMediaQuery(query: String): Boolean {
         }
         cur = mediaMatcher.matches
 
-        cleanup {
+        onCleanup {
             if (mediaMatcher.removeEventListener != null) {
                 mediaMatcher.removeEventListener("change", onChange)
             } else {

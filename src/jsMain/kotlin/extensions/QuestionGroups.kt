@@ -4,10 +4,10 @@ import components.redesign.basic.palette
 import components.redesign.forms.*
 import components.redesign.questions.ChipCSS
 import components.redesign.questions.dialog.EditQuestionDialogProps
-import csstype.Border
-import csstype.LineStyle
-import csstype.NamedColor
-import csstype.px
+import web.cssom.Border
+import web.cssom.LineStyle
+import web.cssom.NamedColor
+import web.cssom.px
 import emotion.react.css
 import kotlinx.coroutines.coroutineScope
 import payloads.requests.EditQuestion

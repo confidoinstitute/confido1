@@ -1,7 +1,7 @@
 package components.presenter
 
 import components.redesign.basic.Stack
-import csstype.*
+import web.cssom.*
 import emotion.css.ClassName
 import emotion.react.css
 import react.FC

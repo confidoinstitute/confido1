@@ -2,7 +2,7 @@ package components.redesign.questions.dialog
 
 import components.redesign.basic.*
 import components.redesign.forms.*
-import csstype.*
+import web.cssom.*
 import emotion.react.*
 import react.*
 import react.dom.html.ReactHTML.div
@@ -37,7 +37,7 @@ val AddQuestionPresetDialog = FC<AddQuestionPresetDialogProps> { props ->
                 backgroundColor = Color("#f2f2f2")
                 padding = 15.px
                 fontFamily = sansSerif
-                color = rgba(0,0,0,0.3)
+                color = rgb(0,0,0,0.3)
                 fontSize = 14.px
                 lineHeight = 17.px
                 gap = 12.px

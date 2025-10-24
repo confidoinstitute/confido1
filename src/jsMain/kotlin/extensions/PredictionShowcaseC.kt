@@ -7,7 +7,7 @@ import components.redesign.basic.Stack
 import components.redesign.basic.rowStyleTableCSS
 import components.redesign.forms.IconButton
 import components.redesign.presenter.PresenterContext
-import csstype.*
+import web.cssom.*
 import emotion.react.css
 import hooks.useWebSocket
 import payloads.responses.WSData
@@ -183,7 +183,7 @@ val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> 
 
 object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
     override fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {
-        val presenterCtl = useContext(PresenterContext)
+        val presenterCtl = use(PresenterContext)!!
 
         cb.apply {
             h2 {+"Prediction showcase"}

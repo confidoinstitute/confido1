@@ -1,10 +1,10 @@
 package components.redesign.basic
 
 import components.redesign.layout.LayoutMode
-import csstype.*
+import web.cssom.*
 import emotion.css.ClassName
 import emotion.react.*
-import kotlinx.js.jso
+import js.objects.unsafeJso as jso
 import react.*
 import utils.buildProps
 

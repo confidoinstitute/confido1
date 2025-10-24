@@ -5,10 +5,10 @@ import components.redesign.basic.MainPalette
 import components.redesign.basic.Stack
 import components.redesign.basic.sansSerif
 import components.redesign.questions.dialog.ExactEstimateDialog
-import csstype.Color
-import csstype.Padding
-import csstype.integer
-import csstype.px
+import web.cssom.Color
+import web.cssom.Padding
+import web.cssom.integer
+import web.cssom.px
 import emotion.react.css
 import react.ChildrenBuilder
 import react.FC

@@ -5,7 +5,9 @@ import components.redesign.basic.Backdrop
 import components.redesign.basic.Stack
 import components.redesign.basic.sansSerif
 import emotion.react.css
-import csstype.*
+import js.array.component1
+import js.array.component2
+import web.cssom.*
 import payloads.requests.TokenVerification
 import react.FC
 import react.Props
@@ -33,7 +35,7 @@ external interface VerifyTokenProps : Props {
 }
 
 val VerifyToken = FC<VerifyTokenProps> { props ->
-    val searchParams by useSearchParams()
+    val (searchParams,_) = useSearchParams()
     val navigate = useNavigate()
     val verificationToken = searchParams.get("t") ?: ""
 

@@ -1,7 +1,7 @@
 package components.redesign.basic
 
-import csstype.*
-import dom.html.*
+import web.cssom.*
+import web.html.*
 import emotion.react.*
 import react.*
 import react.dom.html.*

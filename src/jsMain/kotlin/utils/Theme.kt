@@ -1,6 +1,6 @@
 package utils
 
-import csstype.Color
+import web.cssom.Color
 
 object ConfidoColors {
     val RED = Color("#b55a55")

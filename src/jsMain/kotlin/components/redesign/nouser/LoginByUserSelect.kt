@@ -4,15 +4,14 @@ import Client
 import components.*
 import components.redesign.basic.*
 import components.redesign.forms.Select
-import csstype.*
-import dom.html.*
+import web.cssom.*
+import web.html.*
 import emotion.css.css
 import emotion.react.*
 import hooks.*
 import io.ktor.client.call.*
 import io.ktor.client.request.get
 import io.ktor.http.*
-import kotlinx.js.*
 import payloads.requests.UsernameLogin
 import react.*
 import react.dom.html.*
@@ -35,7 +34,7 @@ external interface LoginByUserSelectFormProps : Props {
 }
 
 val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
-    val loginState = useContext(LoginContext)
+    val loginState = use(LoginContext)!!
     var chosenUser by useState<User?>(null)
 
     val login = useCoroutineLock()

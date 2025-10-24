@@ -1,13 +1,14 @@
 package components.redesign.forms
 
 import components.redesign.basic.*
-import csstype.*
+import web.cssom.*
 import emotion.css.*
 import emotion.react.*
 import react.*
-import react.dom.html.*
 import react.dom.html.ReactHTML.input
 import react.dom.html.ReactHTML.label
+import web.html.InputType
+import web.html.radio
 
 data class OptionGroupVariant(
     val stackCSS: ClassName,
@@ -46,7 +47,7 @@ val  OptionGroupFormVariant = OptionGroupVariant(
             backgroundColor = Color("#ffffff")
             color = Color("#000000")
         } else {
-            color = rgba(0,0,0,0.5)
+            color = rgb(0,0,0,0.5)
         }
 
         ".ripple" {

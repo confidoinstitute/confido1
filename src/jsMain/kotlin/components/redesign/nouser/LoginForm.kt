@@ -5,8 +5,8 @@ import components.*
 import components.redesign.Header
 import components.redesign.basic.*
 import components.redesign.forms.*
-import csstype.*
-import dom.html.*
+import web.cssom.*
+import web.html.*
 import emotion.react.*
 import ext.helmet.Helmet
 import hooks.*
@@ -93,7 +93,7 @@ val LoginForm = FC<LoginFormProps> { props ->
         appBarColor = Color("#6733DA")
     }
 
-    val loginState = useContext(LoginContext)
+    val loginState = use(LoginContext)!!
     var email by useState(props.prefilledEmail ?: "")
     var password by useState("")
     var permanent by useState(true)

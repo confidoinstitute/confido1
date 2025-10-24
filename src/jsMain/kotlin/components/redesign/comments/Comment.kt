@@ -8,7 +8,7 @@ import components.redesign.basic.*
 import components.redesign.forms.*
 import components.redesign.questions.predictions.PredictionGraph
 import components.redesign.rooms.RoomContext
-import csstype.*
+import web.cssom.*
 import emotion.react.*
 import hooks.*
 import io.ktor.http.*
@@ -32,8 +32,8 @@ external interface CommentProps : Props {
 }
 
 val Comment = FC<CommentProps> { props ->
-    val room = useContext(RoomContext)
-    val (appState, stale) = useContext(AppStateContext)
+    val room = use(RoomContext)!!
+    val (appState, stale) = use(AppStateContext)!!
 
     val comment = props.commentInfo.comment
     val author = comment.user.deref() ?: return@FC

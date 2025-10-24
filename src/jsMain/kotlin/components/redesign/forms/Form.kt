@@ -1,11 +1,13 @@
 package components.redesign.forms
 
-import dom.html.*
+import web.html.*
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.form
 
-val Form = ForwardRef<HTMLFormElement, FormHTMLAttributes<HTMLFormElement>> { props, fRef ->
+external interface FormProps : FormHTMLAttributes<HTMLFormElement>, PropsWithRef<HTMLFormElement>
+
+val Form = FC<FormProps> { props->
     form {
         +props
         onSubmit = {

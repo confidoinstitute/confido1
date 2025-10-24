@@ -8,7 +8,7 @@ import components.redesign.comments.Comment
 import components.redesign.comments.CommentInputVariant
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
-import csstype.*
+import web.cssom.*
 import emotion.react.*
 import hooks.*
 import payloads.responses.*
@@ -17,9 +17,9 @@ import react.dom.html.ReactHTML.div
 import rooms.*
 
 val RoomComments = FC<Props> {
-    val (appState, _) = useContext(AppStateContext)
-    val room = useContext(RoomContext)
-    val layoutMode = useContext(LayoutModeContext)
+    val (appState, _) = use(AppStateContext)!!
+    val room = use(RoomContext)!!
+    val layoutMode = use(LayoutModeContext)!!
     val roomComments = useWebSocket<Map<String, CommentInfo>>("/state${room.urlPrefix}/comments")
 
     var addCommentOpen by useState(false)

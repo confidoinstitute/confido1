@@ -1,15 +1,16 @@
 package components.redesign.basic
 
-import browser.*
 import components.redesign.transitions.*
-import csstype.*
-import dom.html.*
+import web.cssom.*
+import web.html.*
 import emotion.react.*
 import react.*
 import react.dom.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.div
 import utils.*
+import web.dom.ElementId
+import web.dom.document
 import web.events.Event
 
 external interface BackdropProps: HTMLAttributes<HTMLDivElement> {
@@ -18,12 +19,12 @@ external interface BackdropProps: HTMLAttributes<HTMLDivElement> {
 }
 
 typealias BackdropClickHandler = ()->Unit
-class BackdropCounter(val add: (String, BackdropClickHandler?) -> Unit, val del: (String) -> Unit)
+class BackdropCounter(val add: (ElementId, BackdropClickHandler?) -> Unit, val del: (ElementId) -> Unit)
 
 val BackdropContext = createContext<BackdropCounter>()
 
 val BackdropProvider = FC<PropsWithChildren> {
-    val (counter, setCounter) = useState(mapOf<String, BackdropClickHandler?>())
+    val (counter, setCounter) = useState(mapOf<ElementId, BackdropClickHandler?>())
 
     val counterSetter = useMemo {
         BackdropCounter(
@@ -69,7 +70,7 @@ val Backdrop = FC<BackdropProps> {props ->
                         right = 0.px
                         bottom = 0.px
                         overflow = Overflow.hidden
-                        backgroundColor = rgba(0, 0, 0, 0.5)
+                        backgroundColor = rgb(0, 0, 0, 0.5)
                         zIndex = integer(2000)
                     }
                 }
@@ -85,12 +86,12 @@ val Backdrop = FC<BackdropProps> {props ->
 }
 
 fun useBackdrop(open: Boolean, onClick: BackdropClickHandler? = null) {
-    val setBackground = useContext(BackdropContext)
+    val setBackground = use(BackdropContext)!!
     val dialogId = useId()
-    useEffect(open, onClick) {
+    useEffectWithCleanup(open, onClick) {
         println("USEBACKDROP $dialogId $open")
         if (open) setBackground.add(dialogId, onClick) else setBackground.del(dialogId)
-        cleanup {
+        onCleanup {
             setBackground.del(dialogId)
         }
     }

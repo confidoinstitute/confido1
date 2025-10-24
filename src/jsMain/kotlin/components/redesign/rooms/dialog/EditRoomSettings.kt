@@ -10,7 +10,7 @@ import components.redesign.rooms.RoomSettings
 import hooks.EditEntityDialogProps
 import payloads.requests.BaseRoomInformation
 import react.FC
-import react.useContext
+import react.use
 import react.useState
 import utils.runCoroutine
 
@@ -19,8 +19,8 @@ external interface EditRoomSettingsDialogProps: DialogCoreProps {
 }
 
 val EditRoomSettingsDialog = FC<EditRoomSettingsDialogProps> { props ->
-    val room = useContext(RoomContext)
-    val stale = useContext(AppStateContext).stale
+    val room = use(RoomContext)!!
+    val stale = use(AppStateContext)!!.stale
 
     var baseInfo by useState<BaseRoomInformation?>(null)
 

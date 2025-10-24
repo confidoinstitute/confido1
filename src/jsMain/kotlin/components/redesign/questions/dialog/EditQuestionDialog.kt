@@ -5,20 +5,22 @@ import components.*
 import components.redesign.basic.*
 import components.redesign.forms.*
 import components.redesign.rooms.RoomContext
-import csstype.*
+import web.cssom.*
 import emotion.react.*
 import hooks.*
 import kotlinx.datetime.Clock
 import payloads.requests.*
 import react.*
-import react.dom.html.AnchorTarget
-import react.dom.html.ButtonType
 import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.div
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionContextPlace
 import tools.confido.question.*
 import tools.confido.spaces.*
+import web.html.ButtonType
+import web.html.submit
+import web.window.WindowTarget
+import web.window._blank
 
 external interface EditQuestionDialogProps : EditEntityDialogProps<Question> {
     var preset: QuestionPreset
@@ -42,8 +44,8 @@ val EditQuestionDialogExtensions = FC<EditQuestionDialogProps> { props->
 }
 
 val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
-    val (appState, stale) = useContext(AppStateContext)
-    val room = useContext(RoomContext)
+    val (appState, stale) = use(AppStateContext)!!
+    val room = use(RoomContext)!!
     val extContext = ClientExtension.getContextValues(ExtensionContextPlace.EDIT_QUESTION_DIALOG)
 
     val isEdit = props.entity != null
@@ -165,7 +167,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                                 textDecoration = TextDecoration.underline
                             }
                             href = "https://confido.institute/encyclopedia/what-makes-a-good-forecasting-question.html"
-                            target = AnchorTarget._blank
+                            target = WindowTarget._blank
                             +"More on how to write a good question."
                         }
                     }
@@ -262,7 +264,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                         +"You can also set a default schedule for the whole room in "
                         a {
                             href = "/rooms/${room.id}/edit?schedule=1"
-                            target = AnchorTarget._blank
+                            target = WindowTarget._blank
                             +"room settings"
                         }
                         +"."

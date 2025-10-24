@@ -4,9 +4,9 @@ import components.redesign.basic.Dialog
 import components.redesign.basic.Stack
 import components.redesign.basic.sansSerif
 import components.redesign.layout.LayoutModeContext
-import csstype.FlexDirection
-import csstype.Padding
-import csstype.px
+import web.cssom.FlexDirection
+import web.cssom.Padding
+import web.cssom.px
 import emotion.react.css
 import react.*
 import react.dom.html.ReactHTML.div
@@ -23,7 +23,7 @@ external interface ConfirmDialogProps : PropsWithChildren {
 }
 
 val ConfirmDialog = FC<ConfirmDialogProps> { props ->
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
 
     val cancelText = props.cancelText ?: "Cancel"
     val confirmText = props.confirmText ?: "Confirm"
@@ -47,22 +47,22 @@ val ConfirmDialog = FC<ConfirmDialogProps> { props ->
                     direction = FlexDirection.row
                     css {
                         gap = 15.px
-                        justifyContent = csstype.JustifyContent.end
+                        justifyContent = web.cssom.JustifyContent.end
                     }
                 } else {
                     direction = FlexDirection.column
                 }
                 components.redesign.forms.Button {
                     css {
-                        backgroundColor = csstype.Color("#F2F2F2")
-                        color = csstype.Color("#000000")
+                        backgroundColor = web.cssom.Color("#F2F2F2")
+                        color = web.cssom.Color("#000000")
                     }
                     onClick = { props.onClose?.invoke() }
                     +cancelText
                 }
                 components.redesign.forms.Button {
                     css {
-                        backgroundColor = csstype.Color("#FF0000")
+                        backgroundColor = web.cssom.Color("#FF0000")
                     }
                     +confirmText
                     onClick = { props.onConfirm?.invoke() }

@@ -2,7 +2,7 @@ package components.redesign.questions
 
 import components.*
 import components.redesign.basic.*
-import csstype.*
+import web.cssom.*
 import emotion.react.*
 import emotion.css.*
 import hooks.*
@@ -31,7 +31,7 @@ external interface StatusChipProps : PropsWithClassName {
 }
 
 val QuestionItem = FC<QuestionItemProps> { props ->
-    val (appState, stale) = useContext(AppStateContext)
+    val (appState, stale) = use(AppStateContext)!!
     val prediction = appState.myPredictions[props.question.ref]
 
     val questionState = props.question.state

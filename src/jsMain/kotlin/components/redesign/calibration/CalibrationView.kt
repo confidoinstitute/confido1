@@ -9,8 +9,8 @@ import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.presenter.PresenterContext
 import components.redesign.questions.predictions.yesGreen
-import csstype.*
-import dom.html.HTMLTableCellElement
+import web.cssom.*
+import web.html.HTMLTableCellElement
 import emotion.react.css
 import extensions.UpdateScatterPlotPV
 import hooks.combineRefs
@@ -18,15 +18,14 @@ import hooks.useCoroutineLock
 import hooks.useSuspendResult
 import io.ktor.client.call.*
 import io.ktor.http.*
+import js.array.tupleOf
 import kotlinx.datetime.Instant
-import kotlinx.js.tupleOf
 import payloads.requests.CalibrationRequest
 import payloads.requests.CalibrationWho
 import payloads.requests.Everyone
 import payloads.requests.Myself
 import payloads.responses.CalibrationQuestion
 import react.*
-import react.dom.aria.ariaLabel
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.table
@@ -232,7 +231,7 @@ external interface CalibrationViewBaseProps: PropsWithClassName {
     var showGraph: Boolean?
     var showTable: Boolean?
     var graphContentOnly: Boolean?
-    var externalHelpOpen: MutableRefObject<(CalibrationHelpSection)->Unit>?
+    var externalHelpOpen: RefObject<(CalibrationHelpSection)->Unit>?
     var onHelpChange: ((Boolean)->Unit)?
 }
 external interface CalibrationViewProps : CalibrationViewBaseProps {
@@ -252,9 +251,9 @@ val CalibrationView = FC<CalibrationViewProps> { props->
     useEffect(helpSectionOpen != null) {
         props.onHelpChange?.invoke(helpSectionOpen != null)
     }
-    useEffect {
+    useEffectWithCleanup {
         props.externalHelpOpen?.current = { helpSectionOpen = it }
-        cleanup { props.externalHelpOpen?.current = null }
+        onCleanup { props.externalHelpOpen?.current = null }
     }
     // Format with one decimal points because midpoints of 50-55 and 95-100 bins are
     // decimal numbers that seem weird when rounded
@@ -306,14 +305,14 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
     }
     val req = props.req
     val entries = data?.entries?.filter { it.value.total > 0 } ?: emptyList()
-    val (appState,stale) = useContext(AppStateContext)
+    val (appState,stale) = use(AppStateContext)!!
     val detailFetch = useCoroutineLock()
     var detailBin by useState<CalibrationBin>()
     val calibrationHelpOpen = useRef<(CalibrationHelpSection)->Unit>()
     var detail by useState<List<CalibrationQuestion>>()
     var helpOpen by useState(false)
-    val presenterCtl = useContext(PresenterContext )
-    val layoutMode = useContext(LayoutModeContext)
+    val presenterCtl = use(PresenterContext )!!
+    val layoutMode = use(LayoutModeContext)!!
     val canDetail = (
             entries.size > 0 &&
                 (req.who == Myself || (

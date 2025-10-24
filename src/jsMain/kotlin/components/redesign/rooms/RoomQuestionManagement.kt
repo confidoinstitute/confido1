@@ -14,27 +14,27 @@ import components.redesign.questions.dialog.AddQuestionPresetDialog
 import components.redesign.questions.dialog.EditQuestionDialog
 import components.redesign.questions.dialog.QuestionPreset
 import components.redesign.questions.dialog.QuestionResolveDialog
-import csstype.*
+import web.cssom.*
 import dndkit.applyListeners
 import dndkit.core.*
 import dndkit.modifiers.restrictToVerticalAxis
 import dndkit.modifiers.restrictToWindowEdges
 import dndkit.sortable.*
 import dndkit.utilities.closestCenter
-import dom.html.HTMLElement
+import web.html.HTMLElement
+import csstype.PropertiesBuilder
 import emotion.css.ClassName
 import emotion.react.css
 import hooks.useCoroutineLock
 import hooks.useEditDialog
 import hooks.useWebSocket
-import kotlinx.js.jso
+import js.objects.unsafeJso as jso
 import payloads.requests.EditQuestion
 import payloads.requests.EditQuestionState
 import payloads.requests.ReorderQuestions
 import payloads.responses.WSError
 import react.*
 import react.dom.aria.AriaRole
-import react.dom.html.AnchorTarget
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
@@ -59,6 +59,8 @@ import tools.confido.state.havePermission
 import tools.confido.utils.capFirst
 import tools.confido.utils.toInt
 import utils.runCoroutine
+import web.window.WindowTarget
+import web.window._blank
 
 external interface QuestionManagementProps : Props {
     var room: Room
@@ -124,7 +126,7 @@ private val QMHelpDialog = FC<DialogProps> { props->
 }
 
 val QuestionManagement = FC<QuestionManagementProps> { props ->
-    val (appState, stale) = useContext(AppStateContext)
+    val (appState, stale) = use(AppStateContext)!!
     val room = props.room
 
     val groupPredsWS = useWebSocket<Map<String, Prediction?>>("/state${room.urlPrefix}/group_pred")
@@ -349,7 +351,7 @@ val DragHandle = FC<DragHandleProps> { props ->
 }
 
 val QuestionRow = FC<QuestionRowProps> { props ->
-    val (_, stale) = useContext(AppStateContext)
+    val (_, stale) = use(AppStateContext)!!
     val question = props.question
 
     val sortable = useSortable(jso {
@@ -507,7 +509,7 @@ val QuestionRow = FC<QuestionRowProps> { props ->
         } else {
             td { Link {
                 this.to = props.room.urlPrefix  + question.urlPrefix
-                this.target = AnchorTarget._blank
+                this.target = WindowTarget._blank
                 css(LinkUnstyled) {}
                 +question.name
             } }

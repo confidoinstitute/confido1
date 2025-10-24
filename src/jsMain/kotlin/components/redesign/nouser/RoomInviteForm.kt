@@ -4,7 +4,7 @@ import Client
 import components.*
 import components.redesign.basic.*
 import components.redesign.rooms.*
-import csstype.*
+import web.cssom.*
 import emotion.react.*
 import io.ktor.client.call.*
 import payloads.requests.*
@@ -17,6 +17,8 @@ import react.router.*
 import tools.confido.state.UserSessionValidity
 import users.UserType
 import utils.*
+import web.html.InputType
+import web.html.email
 
 val RoomInviteNoUser = FC<Props> {
     Stack {
@@ -38,7 +40,7 @@ val RoomInviteNoUser = FC<Props> {
 private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
     val palette = MainPalette.login
 
-    val loginState = useContext(LoginContext)
+    val loginState = use(LoginContext)!!
     val emailRequired = !props.allowAnonymous
 
     var name by useState("")

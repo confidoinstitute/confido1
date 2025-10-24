@@ -11,8 +11,8 @@ import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.presenter.PresenterContext
 import components.redesign.questions.dialog.ExactEstimateDialog
-import csstype.*
-import dom.html.HTMLElement
+import web.cssom.*
+import web.html.HTMLElement
 import emotion.react.css
 import hooks.useEventListener
 import react.*
@@ -67,7 +67,7 @@ external interface GraphPresenterButtonProps: Props {
 }
 
 val GraphPresenterButton = FC<GraphPresenterButtonProps> { props->
-    val presenterCtl = useContext(PresenterContext)
+    val presenterCtl = use(PresenterContext)!!
     GraphButton {
         this.palette = MainPalette.secondary
         PresenterIcon {}
@@ -117,7 +117,7 @@ external interface GraphButtonsProps : Props, BasePredictionGraphProps {
 }
 
 val GraphButtons = FC<GraphButtonsProps>("GraphButtons") { props->
-    val layoutMode = useContext(LayoutModeContext)
+    val layoutMode = use(LayoutModeContext)!!
     GraphButtonContainer {
         if (props.isGroup && layoutMode >= LayoutMode.TABLET && props.dist != null) {
             props.question?.let { GraphPresenterButton { question = it } }

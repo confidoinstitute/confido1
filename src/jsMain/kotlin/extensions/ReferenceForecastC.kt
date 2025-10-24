@@ -8,13 +8,12 @@ import components.redesign.forms.*
 import components.redesign.presenter.PresenterContext
 import components.redesign.questions.dialog.EditQuestionDialogProps
 import components.redesign.forms.Button
-import csstype.*
+import web.cssom.*
 import emotion.react.css
 import hooks.useWebSocket
 import payloads.responses.WSData
 import tools.confido.question.Prediction
 import react.*
-import react.dom.html.InputType
 import react.dom.html.ReactHTML.h1
 import react.dom.html.ReactHTML.h3
 import react.dom.html.ReactHTML.table
@@ -37,6 +36,8 @@ import tools.confido.utils.toFixed
 import utils.questionUrl
 import utils.roomUrl
 import extensions.shared.ValueWithUser
+import web.html.InputType
+import web.html.number
 
 val ReferenceForcastScoreboardPP = FC<PresenterPageProps<ReferenceForcastScoreboardPV>> { props ->
     val room = props.view.room.deref() ?: return@FC
@@ -101,7 +102,7 @@ val ReferenceForcastScoreboardPP = FC<PresenterPageProps<ReferenceForcastScorebo
 
 object ReferenceForecastCE : ClientExtension, ReferenceForecastExtension() {
     override fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {
-        val presenterCtl = useContext(PresenterContext)
+        val presenterCtl = use(PresenterContext)!!
         val groupPredsWS = useWebSocket<Map<String, Prediction?>>("/state${room.urlPrefix}/group_pred")
         val groupPreds = groupPredsWS.data ?: emptyMap()
 

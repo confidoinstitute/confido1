@@ -3,11 +3,10 @@ package components.redesign.questions.predictions
 import components.questions.*
 import components.redesign.basic.*
 import components.redesign.basic.Stack
-import csstype.*
-import dom.html.*
+import web.cssom.*
+import web.html.*
 import emotion.react.*
 import hooks.*
-import kotlinx.js.*
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.div
@@ -16,6 +15,8 @@ import tools.confido.spaces.*
 import utils.panzoom1d.PZParams
 import utils.panzoom1d.PZState
 import utils.panzoom1d.usePanZoom
+import web.canvas.CanvasRenderingContext2D
+import web.canvas.ID
 
 external interface NumericPredGraphProps : PropsWithElementSize, BasePredictionGraphProps {
     override var space: NumericSpace
@@ -108,9 +109,9 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
     val yScale = graphHeight / maxDensity
 
     useLayoutEffect(yTicks, yScale, physicalWidth, physicalHeight) {
-        val context = canvas.current?.getContext(RenderingContextId.canvas)
+        val context = canvas.current?.getContext(CanvasRenderingContext2D.ID)
         context?.apply {
-            clearRect(0.0, 0.0, physicalWidth, physicalHeight)
+            clearRect(0.0, 0.0, physicalWidth.toDouble(), physicalHeight.toDouble())
             val left = (zoomState.leftPadVisible*dpr).toInt()
             yTicks.mapIndexed {index, yTick ->
                 fillStyle = yTick.second

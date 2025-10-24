@@ -3,7 +3,7 @@ package components.redesign.layout
 import components.redesign.basic.*
 import components.redesign.forms.*
 import components.redesign.nouser.*
-import csstype.*
+import web.cssom.*
 import emotion.css.*
 import emotion.react.*
 import emotion.styled.styled
@@ -67,7 +67,7 @@ val demoWelcomeKeyframes = keyframes {
     }
 }
 
-val MessageBox = div.styled {props, theme ->
+val MessageBox = div.styled {props->
     position = Position.absolute
     left = 50.pct
     top = 50.pct
@@ -80,7 +80,7 @@ val MessageBox = div.styled {props, theme ->
     padding = 20.px
     borderRadius =  10.px
     backgroundColor = Color("#fff")
-    boxShadow = BoxShadow(0.px, 0.px, 40.px, 0.px, rgba(0, 0, 0, 0.2))
+    boxShadow = BoxShadow(0.px, 0.px, 40.px, 0.px, rgb(0, 0, 0, 0.2))
     fontFamily = sansSerif
     fontSize = 15.px
     lineHeight = 18.px

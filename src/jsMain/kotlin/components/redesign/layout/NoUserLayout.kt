@@ -8,10 +8,10 @@ import components.redesign.nouser.*
 import components.redesign.nouser.EmailLogin
 import components.redesign.nouser.LoginForm
 import components.redesign.profile.VerifyToken
-import csstype.*
+import web.cssom.*
 import emotion.react.*
+import js.objects.unsafeJso as jso
 import react.*
-import react.dom.html.AnchorTarget
 import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.main
@@ -19,20 +19,50 @@ import react.router.*
 import tools.confido.state.*
 import web.timers.clearInterval
 import web.timers.setInterval
+import web.window.WindowTarget
+import web.window._blank
 import kotlin.time.Duration.Companion.seconds
 
 val NoUserLayout = FC<Props> {
     val palette = MainPalette.login
-    val loginContext = useContext(LoginContext)
+    val loginContext = use(LoginContext)!!
 
-    useEffect {
+    useEffectWithCleanup {
         val interval = setInterval(5.seconds) {
             if (cookieSet())
                 loginContext.login()
         }
-        cleanup {
+        onCleanup {
             clearInterval(interval)
         }
+    }
+
+    val routes = useMemo {
+        arrayOf(
+            jso<RouteObject> {
+                index = true
+                path = "/*"
+                element = LandingPage.create()
+            },
+            jso<RouteObject> {
+                path = "/email_login"
+                element = EmailLogin.create()
+            },
+            jso<RouteObject> {
+                path = "/join/:inviteToken"
+                element = RoomInviteNoUser.create()
+            },
+            jso<RouteObject> {
+                path = "password_reset"
+                element = VerifyToken.create {
+                    url = "/profile/password/reset/finish"
+                    failureTitle = "Password reset failed"
+                    successTitle = "Password was reset"
+                    failureText = "The link is expired or invalid."
+                    successText = "Your password has been successfully reset. You can log in by e-mail only now."
+                }
+            }
+        )
     }
 
     GlobalCss {
@@ -48,32 +78,8 @@ val NoUserLayout = FC<Props> {
         }
         LogoWithText {}
 
-        Routes {
-            Route {
-                index = true
-                path = "/*"
-                this.element = LandingPage.create()
-            }
-            Route {
-                index = true
-                path = "/email_login"
-                this.element = EmailLogin.create()
-            }
-            Route {
-                path = "/join/:inviteToken"
-                this.element = RoomInviteNoUser.create()
-            }
-            Route {
-                path = "password_reset"
-                this.element = VerifyToken.create {
-                    url = "/profile/password/reset/finish"
-                    failureTitle = "Password reset failed"
-                    successTitle = "Password was reset"
-                    failureText = "The link is expired or invalid."
-                    successText = "Your password has been successfully reset. You can log in by e-mail only now."
-                }
-            }
-        }
+        +useRoutes(routes)
+
         div {
             css { flexGrow = number(1.0) }
         }
@@ -99,12 +105,12 @@ val NoUserLayout = FC<Props> {
                         marginRight = (-2).px
                     }
                 }
-                target = AnchorTarget._blank
+                target = WindowTarget._blank
             }
             a {
                 href = "https://confido.institute/confido-app.html"
                 +"About Confido"
-                target = AnchorTarget._blank
+                target = WindowTarget._blank
             }
             div {
                 css { flexGrow = number(1.0) }
@@ -112,7 +118,7 @@ val NoUserLayout = FC<Props> {
             if (appConfig.privacyPolicyUrl != null) {
                 // a {
                 //     href = appConfig.privacyPolicyUrl
-                //     target = AnchorTarget._blank
+                //     target = WindowTarget._blank
                 //     LockOpenIcon{
                 //         css {
                 //             transform = scale(0.75)
@@ -121,7 +127,7 @@ val NoUserLayout = FC<Props> {
                 // }
                 a {
                     href = appConfig.privacyPolicyUrl
-                    target = AnchorTarget._blank
+                    target = WindowTarget._blank
                     +"Privacy policy"
                     css { marginRight = 10.px }
                 }

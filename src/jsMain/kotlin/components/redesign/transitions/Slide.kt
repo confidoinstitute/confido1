@@ -1,6 +1,7 @@
 package components.redesign.transitions
 
-import csstype.*
+import csstype.PropertiesBuilder
+import web.cssom.*
 import ext.reacttransitiongroup.*
 import react.*
 

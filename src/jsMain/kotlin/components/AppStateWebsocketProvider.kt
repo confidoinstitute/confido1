@@ -1,6 +1,6 @@
 package components
 
-import browser.window
+import web.window.window
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.encodeToDynamic
@@ -11,11 +11,13 @@ import tools.confido.state.SentState
 import tools.confido.state.appConfig
 import tools.confido.state.clientState
 import utils.webSocketUrl
+import web.events.EventHandler
 import web.location.location
+import web.messaging.MessageEvent
 import web.timers.clearInterval
 import web.timers.setInterval
-import websockets.CloseEvent
-import websockets.WebSocket
+import web.sockets.CloseEvent
+import web.sockets.WebSocket
 
 enum class WebsocketState {
     CONNECTING,
@@ -32,7 +34,7 @@ external interface AppStateWebsocketProviderProps : PropsWithChildren {
 }
 
 val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
-    val loginState = useContext(LoginContext)
+    val loginState = use(LoginContext)!!
     var appState by useState<SentState?>(null)
     var stale by useState(false)
     val (_, setWebsocketState) = useState(WebsocketState.DISCONNECTED)
@@ -48,8 +50,8 @@ val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
 
             val ws = WebSocket(webSocketUrl("/state?bundleVer=${bundleVer}&appConfigVer=${appConfigVer}"))
             ws.apply {
-                onmessage = {
-                    val decodedState = confidoJSON.decodeFromString<SentState>(it.data.toString())
+                onmessage = EventHandler { event: MessageEvent<*> ->
+                    val decodedState = confidoJSON.decodeFromString<SentState>(event.data.toString())
                     clientState = ClientState(decodedState)
                     appState = decodedState
                     stale = false
@@ -61,26 +63,22 @@ val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
                             confidoJSON.encodeToDynamic(decodedState) // for easy inspection in devtools
                     } catch (e: Exception) {
                     }
-                    @Suppress("RedundantUnitExpression")
-                    Unit // This is not redundant, because assignment fails some weird type checks
                 }
-                onclose = {
+                onclose = EventHandler { event: CloseEvent->
                     console.log("Closed websocket")
                     setWebsocketState(WebsocketState.DISCONNECTED)
                     stale = true
                     webSocket.current = null
-                    (it as? CloseEvent)?.let { event ->
-                        if (appConfig.devMode) console.log("AppState Websocket closed: code ${event.code}")
-                        if (event.code == 4001) {
-                            if (appConfig.devMode) console.log("AppState Websocket closed: incompatible frontend version")
-                            // Incompatible frontend version
-                            location.reload()
-                        }
-                        if (event.code == 3000) {
-                            // Unauthorized
-                            if (appConfig.devMode) console.log("AppState Websocket closed: unauthorized")
-                            loginState.logout()
-                        }
+                    if (appConfig.devMode) console.log("AppState Websocket closed: code ${event.code}")
+                    if (event.code.toInt() == 4001) {
+                        if (appConfig.devMode) console.log("AppState Websocket closed: incompatible frontend version")
+                        // Incompatible frontend version
+                        location.reload()
+                    }
+                    if (event.code.toInt() == 3000) {
+                        // Unauthorized
+                        if (appConfig.devMode) console.log("AppState Websocket closed: unauthorized")
+                        loginState.logout()
                     }
                 }
             }
@@ -89,11 +87,11 @@ val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
         }
     }
 
-    useEffectOnce {
+    useEffectOnceWithCleanup {
         val retryInterval = setInterval(::startWebSocket, 5000)
         startWebSocket()
 
-        cleanup {
+         onCleanup {
             clearInterval(retryInterval)
             webSocket.current?.apply {
                 onclose = null

@@ -10,7 +10,7 @@ import components.redesign.forms.InlineHelpButton
 import components.redesign.forms.OptionGroup
 import components.redesign.questions.predictions.binaryColors
 import components.redesign.questions.predictions.binaryNames
-import csstype.*
+import web.cssom.*
 import emotion.css.ClassName
 import emotion.react.css
 import hooks.useEffectNotFirst
@@ -18,7 +18,6 @@ import payloads.responses.BinaryCalibrationQuestion
 import payloads.responses.CalibrationQuestion
 import payloads.responses.NumericCalibrationQuestion
 import react.*
-import react.dom.html.AnchorTarget
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.b
@@ -42,6 +41,8 @@ import tools.confido.utils.endpoints
 import tools.confido.utils.size
 import tools.confido.utils.toFixed
 import utils.except
+import web.window.WindowTarget
+import web.window._blank
 
 
 external interface ConfidenceBarProps: Props {
@@ -273,7 +274,7 @@ val CalibrationDetail = FC<CalibrationDetailProps> { props ->
                 }
             }
             title = q.name
-            target = AnchorTarget._blank
+            target = WindowTarget._blank
             href = q.room?.urlPrefix?.let { it + q.urlPrefix } ?: ""
             div {
                 css {

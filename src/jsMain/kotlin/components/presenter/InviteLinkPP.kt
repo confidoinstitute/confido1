@@ -1,8 +1,8 @@
 package components.presenter
 
 import components.redesign.basic.Stack
-import csstype.*
-import dom.html.HTMLDivElement
+import web.cssom.*
+import web.html.HTMLDivElement
 import ext.qrcodereact.QRCodeSVG
 import emotion.react.css
 import hooks.useElementSize
