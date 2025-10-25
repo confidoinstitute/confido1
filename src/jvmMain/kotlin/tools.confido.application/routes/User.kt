@@ -22,26 +22,26 @@ import kotlin.time.Duration.Companion.minutes
 
 data class UserContext(val user: User, val session: UserSession, val transientData: TransientData, val call: ApplicationCall)
 
-suspend fun <T> RouteBody.withUser(body: suspend UserContext.() -> T): T {
-    val session = call.userSession ?: unauthorized("Not logged in.")
+suspend fun <T> ApplicationCall.withUser(body: suspend UserContext.() -> T): T {
+    val session = userSession ?: unauthorized("Not logged in.")
     val user = session.user ?: unauthorized("Not logged in.")
-    val transientData = call.transientUserData ?: unauthorized("Not logged in.")
-    return body(UserContext(user, session, transientData, call))
+    val transientData = transientUserData ?: unauthorized("Not logged in.")
+    return body(UserContext(user, session, transientData, this))
 }
-suspend fun <T> RouteBody.withAdmin(body: suspend UserContext.() -> T): T =
+suspend fun <T> ApplicationCall.withAdmin(body: suspend UserContext.() -> T): T =
     withUser {
         if (user.type != UserType.ADMIN) unauthorized("This operation requires administrator privileges.")
         body(this@withUser)
     }
 
-fun RouteBody.assertSession() = call.userSession ?: badRequest("Missing session.")
+fun ApplicationCall.assertSession() = userSession ?: badRequest("Missing session.")
 
-suspend fun RouteBody.initSession(user: User, validity: UserSessionValidity) {
-    if (call.userSession != null) {
-        call.destroyUserSession()
+suspend fun ApplicationCall.initSession(user: User, validity: UserSessionValidity) {
+    if (userSession != null) {
+        destroyUserSession()
     }
 
-    call.setUserSession(UserSession(userRef = user.ref, validity = validity))
+    setUserSession(UserSession(userRef = user.ref, validity = validity))
 }
 
 
@@ -60,7 +60,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
             it.copy(lastLoginAt = Clock.System.now())
         }
 
-        initSession(user, validity = login.validity)
+        call.initSession(user, validity = login.validity)
         call.loginUserSession(user, login.validity)
 
         TransientData.refreshAllWebsockets()
@@ -106,7 +106,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
                     it.copy(lastLoginAt = Clock.System.now())
             }
 
-            initSession(user, loginLink.validity)
+            call.initSession(user, loginLink.validity)
             call.loginUserSession(user, loginLink.validity)
             TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK, loginLink.url)
@@ -132,7 +132,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
                 it.copy(lastLoginAt = Clock.System.now())
             }
 
-            initSession(user, login.validity)
+            call.initSession(user, login.validity)
             call.loginUserSession(user, login.validity)
             TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
@@ -227,7 +227,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
     // E-mail verification: Step one (sending e-mail)
     postST("/profile/email/start_verification") {
         // TODO: Rate limiting
-        withUser {
+        call.withUser {
             val mail: StartEmailVerification = call.receive()
 
             if (user.emailVerified && user.email?.lowercase() == mail.email.lowercase())
@@ -239,7 +239,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
     }
     // E-mail verification: Step two (accepting token)
     postST("/profile/email/verify") {
-        assertSession()
+        call.assertSession()
 
         val validation: TokenVerification = call.receive()
         val verificationLink = serverState.verificationLinkManager.byToken[validation.token] ?: unauthorized("No such token exists.")
@@ -259,7 +259,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
     }
     // Change password
     postST("/profile/password") {
-        withUser {
+        call.withUser {
             if (user.email == null) badRequest("You cannot reset password without e-mail.")
             val passwordChange: SetPassword = call.receive()
 
@@ -271,7 +271,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
     }
     // Remove password
     postST("/profile/password/reset") {
-        withUser {
+        call.withUser {
             if (user.email == null) badRequest("You cannot reset password without e-mail.")
             // Prepare password change notification
             val expiration = 15.minutes
@@ -296,7 +296,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
     }
     // Undo password change
     postST("/profile/password/reset/finish") {
-        assertSession()
+        call.assertSession()
 
         val validation: TokenVerification = call.receive()
         val verificationLink = serverState.passwordResetLinkManager.byToken[validation.token] ?: unauthorized("No such token exists.")
@@ -317,7 +317,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
     }
     // Change nick
     postST("/profile/nick") {
-        withUser {
+        call.withUser {
             val setNick: SetNick = call.receive()
             val newNick = setNick.name.ifEmpty { null }
 
@@ -332,7 +332,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
 
     // Edit profile (everything, redesign)
     postST("/profile/edit") {
-        val response = withUser {
+        val response = call.withUser {
             val profileData: EditProfile = call.receive()
 
             var nickChange = false
@@ -430,7 +430,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
     }
     // Create an invitation link
     postST("$roomUrl/invites/create") {
-        val inviteLink = withRoom {
+        val inviteLink = call.withRoom {
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members")
 
             val invited: CreateNewInvite = call.receive()
@@ -462,7 +462,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
     }
     // Edit an invitation link
     postST("$roomUrl/invites/edit") {
-        withRoom {
+        call.withRoom {
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members")
 
             val invite: InviteLink = call.receive()
@@ -493,7 +493,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
     }
     // Delete an invitation link
     deleteST("$roomUrl/invite") {
-        withRoom {
+        call.withRoom {
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members")
 
             val delete: DeleteInvite = call.receive()
@@ -514,7 +514,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
     }
     // Accept an invitation link as an existing user (requires login)
     postST("$roomUrl/invite/accept") {
-        withRoom {
+        call.withRoom {
             val accept: AcceptInvite = call.receive()
             val invite = room.inviteLinks.find { it.token == accept.inviteToken && it.canJoin }
                 ?: unauthorized("The invite does not exist or is currently not active.")
@@ -538,7 +538,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
     }
     postST("$roomUrl/invite/accept_newuser") {
         if (call.userSession?.user != null) badRequest("You are already logged in.")
-        val userAlreadyExists = withRoom {
+        val userAlreadyExists = call.withRoom {
             val accept: AcceptInviteAndCreateUser = call.receive()
             val invite = room.inviteLinks.find { it.token == accept.inviteToken && it.canJoin }
                 ?: unauthorized("The invite does not exist or is currently not active.")
@@ -603,7 +603,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                         it.copy(members = it.members + listOf(RoomMembership(newUser.ref, invite.role, invite.id)))
                     }
                 }
-                initSession(newUser, accept.validity)
+                call.initSession(newUser, accept.validity)
                 call.loginUserSession(newUser, accept.validity)
             }
             userAlreadyExists
@@ -616,7 +616,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
 
 fun adminUserRoutes(routing: Routing) = routing.apply {
     postST("/users/edit") {
-        withAdmin {
+        call.withAdmin {
             var editedUser: User = call.receive()
             editedUser = editedUser.copy(email = editedUser.email?.lowercase()?.ifEmpty { null },
                 nick = editedUser.nick?.ifEmpty { null })
@@ -650,7 +650,7 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK)
     }
     deleteST("/users/{id}") {
-        withAdmin {
+        call.withAdmin {
             val userIdToDelete = call.parameters["id"] ?: badRequest("Missing user ID")
             val userToDelete = serverState.userManager.get(userIdToDelete) ?: notFound("User not found")
             val options: DeleteUserOptions = call.receive()
@@ -748,7 +748,7 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
     }
 
     postST("/users/add") {
-        withAdmin {
+        call.withAdmin {
             val sendInvitationEmail = (call.parameters["invite"] != null)
 
             var addedUser: User = call.receive()

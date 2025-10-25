@@ -76,7 +76,7 @@ fun calibrationRoutes(routing: Routing) = routing.apply {
         }
 
     postST("/calibration") {
-        withUser {
+        call.withUser {
             val req = call.receive<CalibrationRequest>()
             val questions = calibQuestions(req, user)
             val qpred = calibAddPredictions(questions, req, user)
@@ -86,7 +86,7 @@ fun calibrationRoutes(routing: Routing) = routing.apply {
         }
     }
     postST("/calibration/detail") {
-        withUser {
+        call.withUser {
             val req = call.receive<CalibrationRequest>()
             val questions = calibQuestions(req, user, exposingPredictions = true)
             val qpred = calibAddPredictions(questions, req, user)

@@ -16,7 +16,7 @@ fun sendCookie(call: ApplicationCall, value: String, persistent: Boolean) {
     val cookie = Cookie(
         COOKIE_NAME,
         value = value,
-        maxAge = if (persistent) SESSION_MAX_AGE.coerceAtMost(Int.MAX_VALUE.toLong()).toInt() else 0,
+        maxAge = if (persistent) SESSION_MAX_AGE.coerceAtMost(Int.MAX_VALUE.toLong()).toInt() else null,
         expires = if (persistent) GMTDate() + SESSION_MAX_AGE * 1000L else null,
         path = "/",
         extensions = mapOf("SameSite" to "Lax")

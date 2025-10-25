@@ -39,7 +39,7 @@ inline fun <reified T: Entity> makeCommentInfo(user: User, entity: T) = makeComm
 fun questionCommentsRoutes(routing: Routing) = routing.apply {
     // View comments
     getWS("/state$questionUrl/comments") {
-        withQuestion {
+        call.withQuestion {
             assertPermission(RoomPermission.VIEW_QUESTION_COMMENTS, "You cannot view the discussion for this question.")
 
             val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
@@ -59,7 +59,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
     }
 
     postST("$questionUrl/comments/add") {
-        withQuestion {
+        call.withQuestion {
             assertPermission(RoomPermission.POST_QUESTION_COMMENT, "You cannot post a comment to this question.")
 
             if (!question.allowComments) unauthorized("Commenting is not allowed for this question.")
@@ -81,7 +81,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
     }
 
     postST("$questionUrl$commentUrl/edit") {
-        withQuestion {
+        call.withQuestion {
             val id = call.parameters["cID"]
             val comment = serverState.questionComments[question.ref]?.get(id)
                 ?: notFound("No such comment.")
@@ -105,7 +105,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
     }
 
     deleteST("$questionUrl$commentUrl") {
-        withQuestion {
+        call.withQuestion {
             serverState.withMutationLock {
                 val id = call.parameters["cID"]
                 val comment = serverState.questionComments[question.ref]?.get(id)
@@ -128,7 +128,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK)
     }
     postST("$questionUrl$commentUrl/like") {
-        withQuestion {
+        call.withQuestion {
             val id = call.parameters["cID"] ?: ""
             val state = call.receive<Boolean>()
 
@@ -144,7 +144,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
 
 fun roomCommentsRoutes(routing: Routing) = routing.apply {
     getWS("/state$roomUrl/comments") {
-        withRoom {
+        call.withRoom {
             assertPermission( RoomPermission.VIEW_ROOM_COMMENTS, "You cannot view the discussion.")
 
             val commentInfo = makeCommentInfo(user, room)
@@ -153,7 +153,7 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
     }
 
     postST("$roomUrl/comments/add") {
-        withRoom {
+        call.withRoom {
             assertPermission(RoomPermission.POST_ROOM_COMMENT, "You cannot add comments to this room.")
 
             val createdComment: CreateComment = call.receive()
@@ -168,7 +168,7 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK)
     }
     postST("$roomUrl/comments/{cID}/edit") {
-        withRoom {
+        call.withRoom {
             val id = call.parameters["cID"]
             val comment = serverState.roomComments[room.ref]?.get(id) ?: notFound("No such comment.")
 
@@ -190,7 +190,7 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK)
     }
     deleteST("$roomUrl/comments/{cID}") {
-        withRoom {
+        call.withRoom {
             serverState.withMutationLock {
                 val id = call.parameters["cID"]
                 val comment = serverState.roomComments[room.ref]?.get(id) ?: notFound("No such comment.")
@@ -212,7 +212,7 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK)
     }
     postST("$roomUrl/comments/{cID}/like") {
-        withRoom {
+        call.withRoom {
             val id = call.parameters["cID"] ?: ""
             val state = call.receive<Boolean>()
 

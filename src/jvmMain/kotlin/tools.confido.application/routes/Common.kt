@@ -25,19 +25,19 @@ import tools.confido.application.sessions.userSession
 import tools.confido.application.singleThreadContext
 import tools.confido.serialization.confidoJSON
 
-typealias RouteBodyCall = suspend RouteBody.() -> Unit
+typealias RouteBodyCall = suspend RoutingContext.() -> Unit
 
-data class RouteBody(val call: ApplicationCall)
+//data class RouteBody(val call: ApplicationCall)
 
-suspend fun RouteBody.serveFrontend() {
+suspend fun RoutingContext.serveFrontend() {
     call.respondHtml(HttpStatusCode.OK, HTML::index)
 }
 
-fun Route.performST(route: Route.(String, PipelineInterceptor<Unit, ApplicationCall>) -> Route, path: String, body: RouteBodyCall): Route =
-    this.route(path) {
+fun Route.performST(routeMeth: Route.(String, suspend RoutingContext.()->Unit) -> Route, path: String, body: RouteBodyCall): Route =
+    routeMeth(this, path) {
         withContext(singleThreadContext) {
             try {
-                body(RouteBody(call))
+                body()
             } catch (e: ResponseError) {
                 call.application.log.info("Responding ${e.httpCode.value} (${e.httpCode.description}): ${e.message}")
                 call.respond(e.httpCode, e.message)
@@ -57,7 +57,9 @@ fun Route.webSocketST(
 ) = webSocket(path, protocol) {  handler(this) }
 
 
-inline fun <reified T> Route.getWS(path: String, crossinline body: suspend RouteBody.() -> T) =
+data class WSBody(val call: ApplicationCall)
+
+inline fun <reified T> Route.getWS(path: String, crossinline body: suspend WSBody.() -> T) =
     webSocketST(path) {
         val closeNotifier = MutableStateFlow(false)
 
@@ -67,7 +69,7 @@ inline fun <reified T> Route.getWS(path: String, crossinline body: suspend Route
             }
         }
 
-        val context = RouteBody(call)
+        val context = WSBody(call)
         var lastSent: String? = null
         call.transientUserData?.runRefreshable(closeNotifier) {
             if (call.userSession == null) {

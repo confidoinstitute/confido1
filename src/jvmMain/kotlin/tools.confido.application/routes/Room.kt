@@ -1,6 +1,7 @@
 package tools.confido.application.routes
 
 import io.ktor.http.*
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -37,9 +38,9 @@ data class RoomContext(val inUser: User?, val room: Room) {
     }
 }
 
-suspend fun <T> RouteBody.withRoom(body: suspend RoomContext.() -> T): T {
-    val user = call.userSession?.user
-    val rRef = Ref<Room>(call.parameters["rID"] ?: "")
+suspend fun <T> ApplicationCall.withRoom(body: suspend RoomContext.() -> T): T {
+    val user = userSession?.user
+    val rRef = Ref<Room>(parameters["rID"] ?: "")
     val room = rRef.deref() ?: notFound("No such room.")
     return body(RoomContext(user, room))
 }
@@ -51,7 +52,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
     }
     // Create a room
     postST("/rooms/add") {
-        val room = withUser {
+        val room = call.withUser {
             if (!user.type.isProper()) unauthorized("Guests cannot do this.")
             val information: BaseRoomInformation = call.receive()
 
@@ -73,7 +74,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
     }
     // Edit a room's details
     postST("$roomUrl/edit") {
-        withRoom {
+        call.withRoom {
             val information: BaseRoomInformation = call.receive()
 
             assertPermission(RoomPermission.ROOM_OWNER, "You cannot edit room details.")
@@ -96,7 +97,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
     }
     // Add a new member, either an existing user directly or a new user by e-mail
     postST("$roomUrl/members/add") {
-        withRoom {
+        call.withRoom {
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members.")
             val member: AddedMember = call.receive()
             if (!(user.type == UserType.ADMIN || canChangeRole(
@@ -178,7 +179,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK)
     }
     deleteST(roomUrl) {
-        withRoom {
+        call.withRoom {
             assertPermission(RoomPermission.ROOM_OWNER, "You cannot delete this room.")
             serverState.withTransaction {
                 room.questions.forEach { question ->
@@ -197,7 +198,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
     }
     // Remove a room's member
     deleteST("$roomUrl/members/{cID}") {
-        withRoom {
+        call.withRoom {
             val id = call.parameters["cID"] ?: ""
             val membership = room.members.find { it.user eqid id } ?: notFound("No such member.")
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members.")
@@ -216,7 +217,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
 
 fun roomQuestionRoutes(routing: Routing) = routing.apply {
     postST("$roomUrl/questions/reorder") {
-        withRoom {
+        call.withRoom {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot manage questions.")
             val move: ReorderQuestions = call.receive()
 
@@ -240,7 +241,7 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
     }
     getWS("/api$roomUrl/group_pred_text.ws") {
         val wantedIds = call.request.queryParameters["qids"]?.split(',')?.toSet()
-        withRoom {
+        call.withRoom {
             val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
 
             val groupPreds = room.questions.associateWith { ref ->
@@ -260,7 +261,7 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
     }
     getWS("/state$roomUrl/group_pred") {
         val wantedIds = call.request.queryParameters["qids"]?.split(',')?.toSet()
-        withRoom {
+        call.withRoom {
             val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
 
             val groupPreds = room.questions.associateWith { ref ->
@@ -281,7 +282,7 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
 
 
     webSocketST("/state$roomUrl/invites/{id}/shortlink") {
-        RouteBody(call).withRoom {
+        call.withRoom {
             val linkId = call.parameters["id"] ?: return@withRoom
             val link = room.inviteLinks.firstOrNull { it.id == linkId } ?: return@withRoom
 

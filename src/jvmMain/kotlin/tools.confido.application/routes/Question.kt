@@ -2,6 +2,7 @@ package tools.confido.application.routes
 
 import BinaryHistogramBinner
 import io.ktor.http.*
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -49,9 +50,9 @@ data class QuestionContext(val inUser: User?, val question: Question) {
     }
 }
 
-suspend fun <T> RouteBody.withQuestion(body: suspend QuestionContext.() -> T): T {
-    val user = call.userSession?.user
-    val qRef = Ref<Question>(call.parameters["qID"] ?: "")
+suspend fun <T> ApplicationCall.withQuestion(body: suspend QuestionContext.() -> T): T {
+    val user = userSession?.user
+    val qRef = Ref<Question>(parameters["qID"] ?: "")
     val question = qRef.deref() ?: notFound("No such question.")
     return body(QuestionContext(user, question))
 }
@@ -59,7 +60,7 @@ suspend fun <T> RouteBody.withQuestion(body: suspend QuestionContext.() -> T): T
 fun questionRoutes(routing: Routing) = routing.apply {
     // Add a new question
     postST("$roomUrl/questions/add") {
-        withRoom {
+        call.withRoom {
             assertPermission(RoomPermission.ADD_QUESTION, "You cannot add questions.")
 
             var q: Question = call.receive()
@@ -81,7 +82,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
     }
     // Edit a question
     postST("$questionUrl/edit") {
-        withQuestion {
+        call.withQuestion {
             val editQuestion: EditQuestion = call.receive()
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "You cannot edit this question.")
 
@@ -136,7 +137,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK)
     }
     postST("$questionUrl/state") {
-        withQuestion {
+        call.withQuestion {
             val newState: QuestionState = call.receive()
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "You cannot edit this question.")
             serverState.questionManager.modifyEntity(ref) {
@@ -149,7 +150,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
     }
     // Delete question
     deleteST("$questionUrl") {
-        withQuestion {
+        call.withQuestion {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "You cannot delete this question.")
 
             serverState.withTransaction {
@@ -168,8 +169,11 @@ fun questionRoutes(routing: Routing) = routing.apply {
 
     // Make prediction!
     postST("$questionUrl/predict") {
-        withQuestion {
+        println("pre")
+        call.withQuestion {
+            println("post")
             val dist: ProbabilityDistribution = call.receive()
+            println("rec")
 
             assertPermission(RoomPermission.SUBMIT_PREDICTION, "You cannot submit a prediction.")
             if (!question.open) badRequest("You cannot predict to closed questions.")
@@ -185,7 +189,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
 
     // Get question updates
     getST("$questionUrl/updates") {
-        val updates = withQuestion {
+        val updates = call.withQuestion {
             assertGroupPredictionAccess("You cannot view this group prediction.")
 
             val updates = serverState.groupPredHistManager.query(ref).map {
@@ -217,7 +221,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
 
     // View group predictions
     getWS("/state$questionUrl/group_pred") {
-        withQuestion {
+        call.withQuestion {
             assertPermission(RoomPermission.VIEW_QUESTIONS, "You cannot view this group prediction.")
             assertGroupPredictionAccess("You cannot view this group prediction.")
 
@@ -229,7 +233,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
 
     // View a histogram
     getWS("/state$questionUrl/histogram") {
-        withQuestion {
+        call.withQuestion {
             assertPermission(RoomPermission.VIEW_QUESTIONS, "You cannot view this group prediction.")
             assertGroupPredictionAccess("You cannot view this group prediction.")
 

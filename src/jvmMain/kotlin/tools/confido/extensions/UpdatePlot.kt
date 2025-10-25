@@ -26,7 +26,7 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
                 call.respond(referenceTime.epochSeconds)
             }
             getST("/api$questionUrl/update_plot") {
-                withQuestion {
+                call.withQuestion {
                     assertPermission(
                         RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS,
                         "need permession to view individual predictions"

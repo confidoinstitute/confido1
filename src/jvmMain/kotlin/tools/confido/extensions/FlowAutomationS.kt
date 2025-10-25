@@ -18,7 +18,7 @@ object FlowAutomationSE: ServerExtension, FlowAutomationExtension() {
     override fun initRoutes(r: Routing) {
         r.postST("/api/$roomUrl/ext/flow_automation/flow") {
             val newFlow = call.receiveText().trim().ifEmpty { null }
-            withRoom {
+            call.withRoom {
                 serverState.roomManager.modifyEntity(room.id) {
                     it.copy(extensionData = it.extensionData.with(RoomFlowKey, newFlow))
                }

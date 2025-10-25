@@ -17,8 +17,8 @@ import tools.confido.utils.mapDeref
 fun scoreRoutes(routing: Routing) = routing.apply {
 
     getST("$roomUrl/scoreboard.api") {
-        withUser {
-            withRoom {
+        call.withUser {
+            call.withRoom {
                 val questions = room.questions.mapDeref().filter { q ->
                         q.answerSpace is BinarySpace && q.state == QuestionState.RESOLVED && q.resolution != null &&
                                 q.effectiveSchedule.score != null
@@ -35,8 +35,8 @@ fun scoreRoutes(routing: Routing) = routing.apply {
     }
 
     getST("$questionUrl/my_score") {
-        withUser {
-            withQuestion {
+        call.withUser {
+            call.withQuestion {
                 val pred = getScoredPrediction(question, user.ref)
                 val resp = if (question.state != QuestionState.RESOLVED || question.resolution == null
                                 || question.answerSpace !is BinarySpace || pred == null) {

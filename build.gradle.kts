@@ -2,8 +2,8 @@ import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import kotlin.text.set
 
-val ktorVersion = "2.3.1"
-val serializationVersion = "1.5.0"
+val ktorVersion = "3.3.1"
+val serializationVersion = "1.9.0"
 val kmongoVersion = "4.7.2"
 val kotlinWrappersVersion = "2025.10.8"
 
@@ -102,7 +102,7 @@ kotlin {
                 implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
                 // Plotly
                 implementation("space.kscience:plotlykt-core:0.5.0")
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
                 // DND Kit
                 implementation(npm("@dnd-kit/core", "6.0.5"))
                 implementation(npm("@dnd-kit/modifiers", "6.0.0"))

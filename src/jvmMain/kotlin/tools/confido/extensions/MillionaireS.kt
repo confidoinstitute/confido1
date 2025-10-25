@@ -40,14 +40,14 @@ object MillionaireServerExtension : ServerExtension, MillionaireExt() {
     }
     override fun initRoutes(r: Routing) {
         r.getWS("/api$roomUrl/ext/millionaire/my_score.ws") {
-            withRoom {
-                withUser {
+            call.withRoom {
+                call.withUser {
                     userScore(room, user.ref) ?: INITIAL_SCORE
                 }
             }
         }
         r.getWS("/api$roomUrl/ext/millionaire/scoreboard.ws") {
-            withRoom {
+            call.withRoom {
                 assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
                 room.members.mapNotNull {
                     it.user to (userScore(room, it.user) ?: return@mapNotNull null)
@@ -78,7 +78,7 @@ object MillionaireServerExtension : ServerExtension, MillionaireExt() {
         }
 
         r.postST("/api/$roomUrl/ext/millionaire/state") {
-            withRoom {
+            call.withRoom {
                 assertPermission(RoomPermission.MANAGE_QUESTIONS)
                 setState(room, call.receive())
                 val st = getState(room)

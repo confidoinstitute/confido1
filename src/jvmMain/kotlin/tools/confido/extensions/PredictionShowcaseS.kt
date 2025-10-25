@@ -17,7 +17,7 @@ object PredictionShowcaseSE : ServerExtension, PredictionShowcaseExtension() {
 
     override fun initRoutes(r: Routing) {
         r.getWS("/api$questionUrl/ext/prediction_showcase/predictions.ws") {
-            withQuestion {
+            call.withQuestion {
                 assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, "You cannot view individual predictions.")
                 val predictions = mutableListOf<ValueWithUser>()
 

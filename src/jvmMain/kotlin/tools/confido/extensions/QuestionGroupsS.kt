@@ -26,7 +26,7 @@ object QuestionGroupsSE : ServerExtension, QuestionGroupsExtension() {
                 val gid = call.parameters["gid"]?.ifEmpty { null } ?: badRequest("missing group id")
                 val gpv = call.request.queryParameters["gpv"]?.toInt()?.let { it != 0 }
                 val newState = call.receive<QuestionState>()
-                withRoom {
+                call.withRoom {
                     assertPermission(RoomPermission.MANAGE_QUESTIONS, "need moderator privilege to alter state")
                     serverState.withTransaction {
                         room.questions.forEachDeref { q ->
