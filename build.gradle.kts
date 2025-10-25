@@ -8,8 +8,8 @@ val kmongoVersion = "4.7.2"
 val kotlinWrappersVersion = "2025.10.8"
 
 plugins {
-    kotlin("multiplatform") version "2.2.0"
-    kotlin("plugin.serialization") version "2.2.0"
+    kotlin("multiplatform") version "2.2.20"
+    kotlin("plugin.serialization") version "2.2.20"
 }
 
 group = "tools.confido"
