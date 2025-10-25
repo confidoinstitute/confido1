@@ -19,6 +19,7 @@ import tools.confido.application.sessions.*
 import tools.confido.distributions.*
 import tools.confido.question.*
 import tools.confido.refs.*
+import tools.confido.serialization.confidoJSON
 import tools.confido.spaces.BinarySpace
 import tools.confido.state.*
 import tools.confido.utils.unixNow
@@ -172,7 +173,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
         println("pre")
         call.withQuestion {
             println("post")
-            val dist: ProbabilityDistribution = call.receive()
+            val dist: ProbabilityDistribution = confidoJSON.decodeFromString(call.receiveText()) // XXX WORKAROUND KTRO-8835
             println("rec")
 
             assertPermission(RoomPermission.SUBMIT_PREDICTION, "You cannot submit a prediction.")

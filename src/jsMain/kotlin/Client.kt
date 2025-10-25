@@ -32,9 +32,12 @@ object Client {
         crossinline req: HttpRequestBuilder.() -> Unit = {},
     ) = httpClient.request(url) {
         this.method = method
+        this.fetchOptions { credentials = "include" }
         if (payload !is String)
             contentType(ContentType.Application.Json.withParameter("charset", "utf-8"))
-        setBody(payload)
+        val encodedPayload = if (payload is String) payload else confidoJSON.encodeToString(payload)
+        println("encoded payload: $encodedPayload")
+        setBody(encodedPayload)
         req()
     }
 
@@ -47,6 +50,7 @@ object Client {
     ) {
         val resp = httpClient.request(url) {
             this.method = method
+            this.fetchOptions { credentials = "include" }
             req()
         }
         if (resp.status.isSuccess())
