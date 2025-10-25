@@ -6,6 +6,7 @@ import io.ktor.util.*
 import react.*
 import tools.confido.utils.List2
 import tools.confido.utils.size
+import web.mouse.WHEEL
 import web.mouse.WheelEvent
 import kotlin.lazy
 import kotlin.math.abs
@@ -114,8 +115,7 @@ open class PZController(var params: PZParams, initialState: PZState = PZState(pa
         }
     }
 
-    fun onWheel(ev: org.w3c.dom.events.Event) {
-        ev as WheelEvent
+    fun onWheel(ev: WheelEvent) {
         val mouseContent = state.viewportToContent(ev.offsetX)
         val zoomDelta = kotlin.math.exp(ev.deltaY * -0.005)
         val newZoom = (state.zoom * zoomDelta).coerceIn(1.0..params.maxZoom)
@@ -153,7 +153,7 @@ fun <T:HTMLElement> usePanZoom(params: PZParams, initialState: PZState = PZState
     val refEffect = combineRefs<T>(
         usePinch(ctl::onPinchStart),
         usePan(ctl::onPanStart),
-        useEventListener("wheel", callback = ctl::onWheel, passive = false, preventDefault = true),
+        useEventListener(WheelEvent.WHEEL, callback = ctl::onWheel, passive = false, preventDefault = true),
     )
     return PZRet(refEffect, zoomState, ctl)
 }

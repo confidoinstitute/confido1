@@ -1,7 +1,6 @@
 package hooks
 
 import web.html.HTMLElement
-import io.ktor.client.fetch.*
 import js.array.ReadonlyArray
 import js.objects.Object
 import js.objects.TypedPropertyDescriptor
@@ -9,12 +8,15 @@ import js.objects.unsafeJso as jso
 import react.*
 import tools.confido.utils.multilet
 import tools.confido.utils.multiletNotNull
+import web.events.AddEventListenerOptions
 import web.events.Event
 import web.events.EventHandler
 import web.events.EventTarget
 import web.events.EventType
 import web.events.HasTargets
+import web.events.addEventHandler
 import web.events.addEventListener
+import web.events.removeEventListener
 import kotlin.js.unsafeCast
 
 // Based on ideas from https://github.com/jantimon/react-use-ref-effect
@@ -91,12 +93,11 @@ fun <T: Any> combineRefs(builder: MutableList<RefObject<in T>>.()->Unit) =
     combineRefs(*buildList(builder).toTypedArray())
 
 
-inline fun <E : Event, C : EventTarget, T : EventTarget, D> useEventListener(vararg types: EventType<E>,
+inline fun <T: EventTarget, E : Event> useEventListener(vararg types: EventType<E>,
                                       capture: Boolean? = null, passive: Boolean? = null,
                                       preventDefault:Boolean = false,
-                                       noinline callback: (D)->Unit): RefObject<T>
+                                       noinline callback: (E)->Unit): RefObject<T>
 
-        where D : E, D : HasTargets<C, T>
 {
     val callbackHolder = useRef(callback)
     callbackHolder.current = callback
@@ -105,18 +106,18 @@ inline fun <E : Event, C : EventTarget, T : EventTarget, D> useEventListener(var
             capture?.let { this.capture = it }
             passive?.let { this.passive = it }
         }
-        val effectiveCallback = { event: D ->
+        val effectiveCallback = { event: E ->
             callbackHolder.current?.invoke(event)
             if (preventDefault) event.preventDefault()
             Unit
         }
         types.forEach {
-            current.addEventListener(it, EventHandler<E,C,T,D>(effectiveCallback), opts)
+            current.addEventHandler(it, opts, effectiveCallback)
         }
         cleanup {
             types.forEach {
 
-                current.removeEventListener(it, EventHandler<E,C,T,D>(effectiveCallback), opts)
+                current.removeEventListener(it, effectiveCallback, opts)
             }
         }
     }

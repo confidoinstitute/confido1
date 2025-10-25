@@ -8,6 +8,10 @@ import react.useMemo
 import tools.confido.utils.List2
 import tools.confido.utils.multiletNotNull
 import web.events.Event
+import web.pointer.POINTER_CANCEL
+import web.pointer.POINTER_DOWN
+import web.pointer.POINTER_MOVE
+import web.pointer.POINTER_UP
 
 val MouseEvent.offsetPos get() = List2(offsetX, offsetY)
 
@@ -17,9 +21,8 @@ class PanController(var startHandler: PanStartHandler) {
     var panOrigin: List2<Double>? = null
     var panLast: List2<Double>? = null
     var updateHandler: PanUpdateHandler? = null
-    fun onPointerChange(ev: Event) {
-        ev as PointerEvent
-        val down = ev.type == "pointerdown"
+    fun onPointerChange(ev: PointerEvent) {
+        val down = ev.type == PointerEvent.POINTER_DOWN
         if (down)  {
             activePointers[ev.pointerId] = ev.offsetPos
             (ev.target as? HTMLElement)?.setPointerCapture(ev.pointerId)
@@ -44,8 +47,7 @@ class PanController(var startHandler: PanStartHandler) {
         panOrigin = null
         updateHandler = null
     }
-    fun onPointerMove(ev: Event) {
-        ev as PointerEvent
+    fun onPointerMove(ev: PointerEvent) {
         if (ev.pointerId !in activePointers) return
         activePointers[ev.pointerId] = ev.offsetPos
         if (activePointers.keys == setOf(ev.pointerId)) {
@@ -65,7 +67,7 @@ fun <T: HTMLElement> usePan(handler: PanStartHandler): RefObject<T> {
     val ctl = useMemo{ PanController(handler) }
     ctl.startHandler = handler // must update handler to reflect captured variables
     return combineRefs(
-        useEventListener("pointerdown", "pointerup", "pointercancel", passive=false, callback = ctl::onPointerChange),
-        useEventListener("pointermove", passive=false, callback = ctl::onPointerMove),
+        useEventListener(PointerEvent.POINTER_DOWN, PointerEvent.POINTER_UP, PointerEvent.POINTER_CANCEL, passive=false, callback = ctl::onPointerChange),
+        useEventListener(PointerEvent.POINTER_MOVE, passive=false, callback = ctl::onPointerMove),
     )
 }

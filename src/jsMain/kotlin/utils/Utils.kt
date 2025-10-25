@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalWasmJsInterop::class)
+
 package utils
 
 import csstype.Properties
@@ -6,17 +8,25 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import js.array.component1
+import js.array.component2
 import js.collections.WeakMap
 import js.objects.Object
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
+import react.FC
 import react.Props
+import react.PropsWithRef
 import react.StateInstance
+import react.router.dom.Link
+import remix.run.router.RelativeRoutingType
+import remix.run.router.To
 import rooms.Room
 import tools.confido.question.Question
 import tools.confido.utils.*
 import web.cssom.Color
+import web.html.HTMLAnchorElement
 import web.location.location
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.js.Date
@@ -138,10 +148,27 @@ inline operator fun <T, U> StateInstance<T>.setValue(
 fun buildProps(builder: PropertiesBuilder.() -> Unit): Properties = jso(builder)
 
 
-external fun delete(p: dynamic): Boolean
 fun <T> T.except(vararg except: String): T  where T: Props {
-    var newProps = jso<dynamic> {  }
-    Object.assign(newProps, this)
-    except.forEach { delete(newProps[it]) }
+    val newProps = jso<dynamic> {  }
+    Object.entries(this).forEach { (k,v)->
+        if (k !in except) newProps[k] = this.asDynamic()[k]
+    }
     return newProps as T
 }
+
+// It is sealed in react, cannot extend
+external interface ExtendableLinkProps: Props, PropsWithRef<HTMLAnchorElement>,
+    react.dom.html.AnchorHTMLAttributes<HTMLAnchorElement> {
+    var reloadDocument: Boolean?
+    var replace: Boolean?
+    var state: Any?
+    var preventScrollReset: Boolean?
+    var relative: RelativeRoutingType?
+    var to: To
+    var viewTransition: Boolean?
+
+    @Deprecated(message = "don't use href", level = DeprecationLevel.HIDDEN)
+    override var href: String?
+}
+
+val ExtendableLink = Link.unsafeCast<FC<ExtendableLinkProps>>()

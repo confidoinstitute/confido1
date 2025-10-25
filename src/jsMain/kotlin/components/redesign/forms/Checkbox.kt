@@ -11,7 +11,6 @@ import react.dom.html.ReactHTML.label
 import react.dom.html.ReactHTML.span
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.svg
-import utils.delete
 import utils.except
 
 external interface CheckboxProps: InputHTMLAttributes<HTMLInputElement>, PropsWithPalette<PaletteWithText> {

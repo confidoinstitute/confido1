@@ -6,11 +6,10 @@ import components.redesign.basic.*
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import web.cssom.*
-import dom.events.MouseEvent
 import web.html.HTMLCanvasElement
 import web.html.HTMLDivElement
 import web.html.HTMLElement
-import web.html.RenderingContextId
+import web.mouse.MouseEvent
 import emotion.react.css
 import hooks.*
 import js.objects.unsafeJso as jso
@@ -21,13 +20,14 @@ import tools.confido.question.Question
 import tools.confido.spaces.NumericSpace
 import tools.confido.spaces.NumericValue
 import tools.confido.utils.toFixed
-import utils.addEventListener
 import utils.panzoom1d.PZParams
 import utils.panzoom1d.usePanZoom
-import utils.removeEventListener
 import web.canvas.CanvasRenderingContext2D
 import web.canvas.ID
 import web.events.Event
+import web.events.addEventHandler
+import web.events.removeEventListener
+import web.mouse.MOUSE_MOVE
 
 external interface BinaryPredictionHistogramProps : PropsWithElementSize {
     var question: Question
@@ -133,9 +133,10 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
             hoveredBin = foundIndex
         }
 
-        window.addEventListener("mousemove", onMouseMove);
+
+        window.addEventHandler(MouseEvent.MOUSE_MOVE, onMouseMove)
         onCleanup {
-            window.removeEventListener("mousemove", onMouseMove);
+            window.removeEventListener(MouseEvent.MOUSE_MOVE, onMouseMove)
         }
     }
 

@@ -13,18 +13,20 @@ import react.dom.svg.*
 import react.dom.svg.ReactSVG.svg
 import react.router.*
 import react.router.dom.*
+import utils.ExtendableLink
+import utils.ExtendableLinkProps
 
 external interface RoomListProps : Props {
     var small: Boolean
     var canCreate: Boolean
 }
 
-external interface RoomLinkProps : LinkProps {
+external interface RoomLinkProps : ExtendableLinkProps {
     var small: Boolean
     var highlighted: Boolean
 }
 
-val RoomLink = Link.withRipple().withStyleLM<RoomLinkProps>("small") { props, layoutMode ->
+val RoomLink = ExtendableLink.withRipple().withStyleLM<RoomLinkProps>("small") { props, layoutMode ->
     display = Display.flex
     flexDirection = FlexDirection.row
     gap = 12.px
@@ -109,7 +111,7 @@ val RoomList = FC<RoomListProps> {props ->
                 key = "::new_room"
                 to = "/new_room"
                 small = props.small
-                highlighted = location.pathname.startsWith(to)
+                highlighted = location.pathname.startsWith("/new_room")
                 div {
                     css {
                         border = Border(1.px, LineStyle.solid, Color("#BBBBBB"))

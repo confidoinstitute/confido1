@@ -24,6 +24,8 @@ import tools.confido.refs.ref
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.Space
 import tools.confido.state.GroupPredPV
+import web.pointer.POINTER_DOWN
+import web.pointer.PointerEvent
 
 val GraphButton = Button.withStyle {
     width = 30.px
@@ -42,7 +44,7 @@ external interface GraphButtonContainerProps: PropsWithChildren {
 
 val GraphButtonContainer = FC<GraphButtonContainerProps> { props->
     // Prevent creating estimate when clicking on graph buttons
-    val pointerRE = useEventListener<HTMLElement>("pointerdown") { it.stopPropagation() }
+    val pointerRE = useEventListener<HTMLElement, PointerEvent>(PointerEvent.POINTER_DOWN) { it.stopPropagation() }
     val side = props.side ?: Side.RIGHT
     Stack {
         direction = FlexDirection.row

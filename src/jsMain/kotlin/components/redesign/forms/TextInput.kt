@@ -11,6 +11,8 @@ import react.dom.html.ReactHTML.input
 import react.dom.html.ReactHTML.textarea
 import tools.confido.utils.toFixed
 import utils.except
+import web.input.INPUT
+import web.input.InputEvent
 import kotlin.math.pow
 
 val textInputClass = emotion.css.ClassName {
@@ -84,7 +86,7 @@ val MultilineTextInput = FC<MultilineTextInputProps> { props->
     val setInitialHeight = useRefEffect<HTMLTextAreaElement> {
         autoResize(current)
     }
-    val onInput = useEventListener<HTMLTextAreaElement>("input") { ev->
+    val onInput = useEventListener<HTMLTextAreaElement, InputEvent>(web.input.InputEvent.INPUT) { ev->
         autoResize(ev.target as HTMLTextAreaElement)
     }
     textarea {

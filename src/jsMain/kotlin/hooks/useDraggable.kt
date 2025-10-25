@@ -7,10 +7,20 @@ import web.touch.TouchEvent
 import web.html.HTMLElement
 import js.objects.unsafeJso as jso
 import react.*
-import utils.*
 import web.events.Event
-import web.events.EventHandler
 import web.events.EventType
+import web.events.addEventHandler
+import web.events.removeEventListener
+import web.mouse.MOUSE_DOWN
+import web.mouse.MOUSE_MOVE
+import web.mouse.MOUSE_UP
+import web.pointer.POINTER_DOWN
+import web.pointer.POINTER_MOVE
+import web.pointer.POINTER_UP
+import web.pointer.PointerEvent
+import web.touch.TOUCH_END
+import web.touch.TOUCH_MOVE
+import web.touch.TOUCH_START
 import kotlin.math.abs
 
 private class DragEventManager<T: HTMLElement>(
@@ -39,9 +49,8 @@ private class DragEventManager<T: HTMLElement>(
         if (maxDist >= 3)
             this.onDrag?.invoke(newPos, false)
     }
-    private fun onWindowMouseMove(ev: Event) {
-        val mouseEvent = ev as MouseEvent
-        doMove(mouseEvent.clientX.toDouble())
+    private fun onWindowMouseMove(ev: MouseEvent) {
+        doMove(ev.clientX.toDouble())
         ev.stopPropagation()
         ev.preventDefault()
     }
@@ -83,13 +92,13 @@ private class DragEventManager<T: HTMLElement>(
     }
 
     data class EventListenerSpec(
-        val eventName: String,
+        val eventType: EventType<Event>,
         val handler: ((Event)->Unit),
         val options: dynamic,
     )
     private val installedWindowListeners: MutableSet<EventListenerSpec> = mutableSetOf()
     private fun  <E: Event,>installWindowListener(
-        eventName: EventType<E>,
+        eventType: EventType<Event>,
         handler: ((E)->Unit),
         options: dynamic,
     ) {
@@ -98,12 +107,12 @@ private class DragEventManager<T: HTMLElement>(
         // removeEventHandler checks function identity. And Kotlin generates a new
         // wrapper function each time you reference this::method, so
         // removeEventHandler(this::method) would never work
-        installedWindowListeners.add(EventListenerSpec(eventName, handler, options))
-        window.addEventListener(eventName, EventHandler(handler), options)
+        installedWindowListeners.add(EventListenerSpec(eventType, handler.unsafeCast<(Event)->Unit>(), options))
+        window.addEventHandler(eventType, options, handler)
     }
     private fun uninstallWindowListeners() {
         installedWindowListeners.forEach {
-            window.removeEventListener(it.eventName, it.handler, it.options)
+            window.removeEventListener(it.eventType, it.handler, it.options)
         }
         installedWindowListeners.clear()
     }
@@ -121,14 +130,11 @@ private class DragEventManager<T: HTMLElement>(
         console.log("start thumb drag")
         onDragStart?.invoke()
     }
-    fun onMouseDown(event: Event) {
-        console.log("mousedown1")
-        event as MouseEvent
-        console.log("mousedown2")
+    fun onMouseDown(event: MouseEvent) {
         val off = event.offsetX - (event.target as HTMLElement).clientWidth / 2
         startDrag(PressType.MOUSE, off, event.clientX.toDouble())
-        installWindowListener("mousemove", this::onWindowMouseMove, windowEventOpts)
-        installWindowListener("mouseup", this::onWindowMouseUp, windowEventOpts)
+        installWindowListener(MouseEvent.MOUSE_MOVE, this::onWindowMouseMove, windowEventOpts)
+        installWindowListener(MouseEvent.MOUSE_UP, this::onWindowMouseUp, windowEventOpts)
         event.preventDefault()
         event.stopPropagation()
     }
@@ -142,8 +148,8 @@ private class DragEventManager<T: HTMLElement>(
         val off = touch.clientX - midX
         startDrag(PressType.TOUCH, off, touch.clientX)
         touchId = touch.identifier
-        installWindowListener("touchmove", this::onWindowTouchMove, windowEventOpts)
-        installWindowListener("touchend", this::onWindowTouchEnd, windowEventOpts)
+        installWindowListener(TouchEvent.TOUCH_MOVE, this::onWindowTouchMove, windowEventOpts)
+        installWindowListener(TouchEvent.TOUCH_END, this::onWindowTouchEnd, windowEventOpts)
         event.preventDefault()
         event.stopPropagation()
     }
@@ -167,14 +173,14 @@ fun <T: HTMLElement> useDraggable(
     }
     val ref = combineRefs(
         draggableRef,
-        useEventListener("mousedown", callback =  mgr::onMouseDown, passive = false, preventDefault = true),
-        useEventListener("touchstart", callback =  mgr::onTouchStart, passive = false, preventDefault = true),
+        useEventListener(MouseEvent.MOUSE_DOWN, callback =  mgr::onMouseDown, passive = false, preventDefault = true),
+        useEventListener(TouchEvent.TOUCH_START, callback =  mgr::onTouchStart, passive = false, preventDefault = true),
         // XXX We currently do not use pointer events here (maybe we should) but we need to prevent
         // them from propagation otherwise this breaks horribly if the slider is e.g. embedded in
         // a PanZoom1D
-        useEventListener<HTMLElement>("pointerdown", passive=false) { ev-> ev.stopPropagation()},
-        useEventListener<HTMLElement>("pointermove", passive=false) { ev-> ev.stopPropagation()},
-        useEventListener<HTMLElement>("pointerup", passive=false) { ev-> ev.stopPropagation()},
+        useEventListener<HTMLElement, PointerEvent>(PointerEvent.POINTER_DOWN, passive=false) { ev-> ev.stopPropagation()},
+        useEventListener<HTMLElement, PointerEvent>(PointerEvent.POINTER_MOVE, passive=false) { ev-> ev.stopPropagation()},
+        useEventListener<HTMLElement, PointerEvent>(PointerEvent.POINTER_UP, passive=false) { ev-> ev.stopPropagation()},
     )
     return ref
 }

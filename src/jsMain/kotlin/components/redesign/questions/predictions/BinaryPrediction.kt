@@ -27,6 +27,8 @@ import utils.panzoom1d.PZParams
 import utils.panzoom1d.PZState
 import utils.panzoom1d.usePanZoom
 import web.dom.Node
+import web.pointer.POINTER_DOWN
+import web.pointer.PointerEvent
 import kotlin.math.*
 
 external interface BinaryPredictionProps : Props, BasePredictionGraphProps {
@@ -303,7 +305,7 @@ external interface RangeSelectorProps : PropsWithClassName {
 val RangeSelector = FC<RangeSelectorProps> { props ->
     val presets = EXTREME_PRESETS
     // Prevent creating estimate when clicking on zoom
-    val pointerRE = useEventListener<HTMLElement>("pointerdown") { it.stopPropagation() }
+    val pointerRE = useEventListener<HTMLElement, PointerEvent>(PointerEvent.POINTER_DOWN) { it.stopPropagation() }
 
     Stack {
         direction = FlexDirection.row

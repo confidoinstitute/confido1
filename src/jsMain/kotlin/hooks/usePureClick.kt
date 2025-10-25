@@ -9,7 +9,15 @@ import react.useMemo
 import tools.confido.utils.List2
 import tools.confido.utils.`Z-`
 import tools.confido.utils.length
+import web.cssom.atrule.Pointer
 import web.events.Event
+import web.mouse.MAIN
+import web.mouse.MouseButton
+import web.pointer.POINTER_CANCEL
+import web.pointer.POINTER_DOWN
+import web.pointer.POINTER_MOVE
+import web.pointer.POINTER_OUT
+import web.pointer.POINTER_UP
 
 /**
  * A ref-effect that will detec "pure click" events, i.e., click without drag or hold.
@@ -24,12 +32,11 @@ fun <T: HTMLElement> usePureClick(allowTouch: Boolean = true, callback: (Pointer
         fun onPointerDown(ev: Event) {
             ev as PointerEvent
             if (ev.pointerType == "touch" && !savedAllowTouch) return
-            if (ev.pointerType == "mouse" && ev.button.toInt() != 0) return
+            if (ev.pointerType == "mouse" && ev.button != MouseButton.MAIN) return
             downEvents[ev.pointerId] = EventInfo(ev.offsetPos, ev.timeStamp.toDouble())
             console.log("PUR DOWN ${ev.offsetPos.e1}")
         }
-        fun onPointerMoveUp(ev: Event) {
-            ev as PointerEvent
+        fun onPointerMoveUp(ev: PointerEvent) {
             val downEv = downEvents[ev.pointerId] ?: return
             if ((ev.offsetPos `Z-` downEv.offsetPos).length() > 5
                 || ev.timeStamp.toDouble() - downEv.timeStamp.toDouble() > 660.0) {
@@ -37,13 +44,12 @@ fun <T: HTMLElement> usePureClick(allowTouch: Boolean = true, callback: (Pointer
                 console.log("PUR ABORT ${ev.target} ${ev.offsetPos.toTypedArray()} ${downEv.offsetPos.toTypedArray()} ${ev.timeStamp.toDouble() - downEv.timeStamp.toDouble() }")
                 return
             }
-            if (ev.type == "pointerup") {
+            if (ev.type == PointerEvent.POINTER_UP) {
                 console.log("PUR COMMIT ${downEv.offsetPos.e1}")
                 savedCallback(ev)
             }
         }
-        fun onPointerCancelOut(ev: org.w3c.dom.events.Event) {
-            ev as PointerEvent
+        fun onPointerCancelOut(ev: PointerEvent) {
             console.log("PUR CANCEL")
             downEvents.remove(ev.pointerId)
         }
@@ -51,8 +57,8 @@ fun <T: HTMLElement> usePureClick(allowTouch: Boolean = true, callback: (Pointer
     ctl.savedCallback = callback
     ctl.savedAllowTouch = allowTouch
     return combineRefs(
-        useEventListener("pointerdown", callback=ctl::onPointerDown),
-        useEventListener("pointermove", "pointerup", callback=ctl::onPointerMoveUp),
-        useEventListener("pointercancel", "pointerout", callback=ctl::onPointerCancelOut),
+        useEventListener(PointerEvent.POINTER_DOWN, callback=ctl::onPointerDown),
+        useEventListener(PointerEvent.POINTER_MOVE, PointerEvent.POINTER_UP, callback=ctl::onPointerMoveUp),
+        useEventListener(PointerEvent.POINTER_CANCEL, PointerEvent.POINTER_OUT, callback=ctl::onPointerCancelOut),
     )
 }

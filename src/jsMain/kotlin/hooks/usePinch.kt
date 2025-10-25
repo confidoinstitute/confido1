@@ -4,11 +4,13 @@ import web.touch.Touch
 import web.touch.TouchEvent
 import web.touch.TouchList
 import web.html.HTMLElement
-import kotlinx.js.get
 import web.events.Event
 import react.RefObject
 import react.useMemo
 import tools.confido.utils.*
+import web.touch.TOUCH_END
+import web.touch.TOUCH_MOVE
+import web.touch.TOUCH_START
 
 data class PinchState(
     val target: HTMLElement,
@@ -30,7 +32,7 @@ typealias PinchStartHandler = (PinchState) -> PinchUpdateHandler
 fun TouchList.toList() = List(this.length) { this[it] }
 
 class PinchController(var startHandler: PinchStartHandler) {
-    var touchIds: List2<Double>?  = null
+    var touchIds: List2<Int>?  = null
     var updateHandler: PinchUpdateHandler? = null
     var startState: PinchState? = null
     var lastState: PinchState? = null
@@ -44,8 +46,7 @@ class PinchController(var startHandler: PinchStartHandler) {
         lastState = null
     }
 
-    fun onTouchChange(e: Event) {
-        if (e !is TouchEvent) return
+    fun onTouchChange(e: TouchEvent) {
         maybeCommit()
         if (e.touches.length == 2) {
             val touches = List2(e.touches.toList().sortedBy { it.clientX })
@@ -58,8 +59,7 @@ class PinchController(var startHandler: PinchStartHandler) {
             e.preventDefault()
         }
     }
-    fun onTouchMove(e: Event) {
-        if (e !is TouchEvent) return
+    fun onTouchMove(e: TouchEvent) {
         if (e.touches.length != 2) return
         multiletNotNull(this.touchIds, this.startState) { touchIds, startState->
             val newTouches = List2(e.touches.toList())
@@ -83,7 +83,7 @@ fun <T:HTMLElement> usePinch(handler: PinchStartHandler): RefObject<T> {
     val ctl = useMemo{ PinchController(handler) }
     ctl.startHandler = handler // must update handler to reflect captured variables
     return combineRefs(
-        useEventListener("touchstart", "touchend", passive=false, callback = ctl::onTouchChange),
-        useEventListener("touchmove", passive=false, callback = ctl::onTouchMove),
+        useEventListener(TouchEvent.TOUCH_START, TouchEvent.TOUCH_END, passive=false, callback = ctl::onTouchChange),
+        useEventListener(TouchEvent.TOUCH_MOVE, passive=false, callback = ctl::onTouchMove),
     )
 }

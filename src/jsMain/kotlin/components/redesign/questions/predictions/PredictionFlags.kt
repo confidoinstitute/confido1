@@ -12,9 +12,10 @@ import react.dom.html.ReactHTML.div
 import react.dom.svg.ReactSVG
 import react.dom.svg.ReactSVG.svg
 import tools.confido.utils.intersects
-import utils.addEventListener
-import utils.removeEventListener
 import web.events.Event
+import web.events.addEventHandler
+import web.events.removeEventListener
+import web.mouse.MOUSE_MOVE
 import web.mouse.MouseEvent
 
 data class PredictionFlag(
@@ -134,9 +135,9 @@ val PredictionFlagContent = FC<PredictionFlagContentProps> { props ->
             }
         }
 
-        window.addEventListener("mousemove", onMouseMove);
+        window.addEventHandler(MouseEvent.MOUSE_MOVE, onMouseMove);
         onCleanup {
-            window.removeEventListener("mousemove", onMouseMove);
+            window.removeEventListener(MouseEvent.MOUSE_MOVE, onMouseMove);
         }
     }
 

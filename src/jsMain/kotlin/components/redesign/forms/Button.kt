@@ -11,6 +11,8 @@ import react.FC
 import react.dom.html.*
 import react.dom.html.ReactHTML.button
 import react.router.dom.*
+import utils.ExtendableLink
+import utils.ExtendableLinkProps
 
 typealias ButtonBaseProps = ButtonHTMLAttributes<HTMLButtonElement>
 external interface ButtonProps: ButtonBaseProps, PropsWithPalette<PaletteWithText>
@@ -120,9 +122,9 @@ val ButtonUnstyled = button.withStyle {
     fontSize = "inherit".unsafeCast<FontSize>()
 }
 
-external interface IconLinkProps: LinkProps, PropsWithPalette<TextPalette>
+external interface IconLinkProps: ExtendableLinkProps, PropsWithPalette<TextPalette>
 
-val IconLink = Link.withRipple().withStyle<IconLinkProps>("palette") {props ->
+val IconLink = ExtendableLink.withRipple().withStyle<IconLinkProps>("palette") { props ->
     val palette = props.palette ?: TextPalette.black
 
     iconButton(palette)

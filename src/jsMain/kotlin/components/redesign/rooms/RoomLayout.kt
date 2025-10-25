@@ -27,6 +27,12 @@ import tools.confido.utils.mapDeref
 import utils.roomUrl
 import utils.runCoroutine
 import web.animations.requestAnimationFrame
+import web.events.Event
+import web.events.EventType
+import web.events.addEventHandler
+import web.events.addEventListener
+import web.events.removeEventListener
+import web.scroll.smooth
 import web.timers.*
 import web.window.window
 
@@ -166,20 +172,20 @@ val RoomLayout = FC<RoomLayoutProps> { props->
             requestAnimationFrame {
                 scrollIntoView(jso {
                     if (scrollY < offsetTop)
-                        behavior = ScrollBehavior.smooth
+                        behavior = web.scroll.ScrollBehavior.smooth
                 })
             }
         }
     }
 
     useEffectOnceWithCleanup {
-        val onScroll = { event: dynamic ->
+        val onScroll = { event: Event ->
             scrollY = window.scrollY
         }
 
-        window.addEventListener("scroll", onScroll)
+        window.addEventHandler(EventType("scroll"), onScroll)
         onCleanup {
-            window.removeEventListener("scroll", onScroll)
+            window.removeEventListener(EventType<Event>("scroll"), onScroll)
         }
     }
 

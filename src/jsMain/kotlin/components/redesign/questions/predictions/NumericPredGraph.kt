@@ -7,6 +7,7 @@ import web.cssom.*
 import web.html.*
 import emotion.react.*
 import hooks.*
+import js.objects.unsafeJso as jso
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.div
@@ -115,7 +116,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
             val left = (zoomState.leftPadVisible*dpr).toInt()
             yTicks.mapIndexed {index, yTick ->
                 fillStyle = yTick.second
-                fillRect(left+index, (GRAPH_TOP_PAD+graphHeight)*dpr, 1, -yTick.first*yScale*dpr)
+                fillRect((left+index).toDouble(), (GRAPH_TOP_PAD+graphHeight)*dpr, 1.0, -yTick.first*yScale*dpr)
                 //beginPath()
                 //moveTo(left + index, (GRAPH_TOP_PAD + GRAPH_HEIGHT)*dpr)
                 //lineTo(left + index, (GRAPH_TOP_PAD + GRAPH_HEIGHT - yTick.first*yScale)*dpr)
@@ -124,7 +125,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
             }
             filteredMarks.forEach { x->
                 beginPath()
-                moveTo(space2canvasPhysPx(x), 0)
+                moveTo(space2canvasPhysPx(x), 0.0)
                 lineTo(space2canvasPhysPx(x), (GRAPH_TOP_PAD + graphHeight)*dpr)
                 strokeStyle = "rgba(0,0,0,${if (props.dimLines?:false) 15 else 30}%)"
                 stroke()

@@ -12,12 +12,13 @@ import react.router.*
 import react.router.dom.*
 import rooms.*
 import tools.confido.state.clientState
+import utils.ExtendableLinkProps
 import utils.except
 
 external interface RoomTabsProps : PropsWithPalette<RoomPalette>, PropsWithClassName {
     var onChange: (() -> Unit)?
 }
-external interface RoomTabProps : LinkProps, PropsWithPalette<RoomPalette> {
+external interface RoomTabProps : ExtendableLinkProps, PropsWithPalette<RoomPalette> {
     var active: Boolean
 }
 
