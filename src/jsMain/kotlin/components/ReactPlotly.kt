@@ -96,4 +96,4 @@ val ReactPlotly = FC<PlotlyProps> {props ->
 }
 
 
-fun plotlyVal(x: Number) = space.kscience.dataforge.values.NumberValue(x)
+fun plotlyVal(x: Number) = space.kscience.dataforge.meta.NumberValue(x)

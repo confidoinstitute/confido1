@@ -1,4 +1,4 @@
-@file:JsModule("@dnd-kit/utilities")
+@file:JsModule("@dnd-kit/core")
 @file:JsNonModule
 
 package dndkit.utilities

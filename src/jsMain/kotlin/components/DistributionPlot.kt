@@ -76,7 +76,7 @@ val DistributionPlot = FC<DistributionPlotProps> { props ->
 
                     fun addLine(x: Double, clr: String, text: String) {
                         val xPlotly = if ((props.distribution.space as? NumericSpace)?.representsDays ?: false)
-                            space.kscience.dataforge.values.StringValue(x.toIsoDateTime())
+                            space.kscience.dataforge.meta.StringValue(x.toIsoDateTime())
                         else plotlyVal(x)
                         annot.add(Text().apply {
                             this.x = xPlotly

@@ -172,9 +172,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
     postST("$questionUrl/predict") {
         println("pre")
         call.withQuestion {
-            println("post")
             val dist: ProbabilityDistribution = confidoJSON.decodeFromString(call.receiveText()) // XXX WORKAROUND KTRO-8835
-            println("rec")
 
             assertPermission(RoomPermission.SUBMIT_PREDICTION, "You cannot submit a prediction.")
             if (!question.open) badRequest("You cannot predict to closed questions.")

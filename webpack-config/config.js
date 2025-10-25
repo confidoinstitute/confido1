@@ -10,3 +10,15 @@ config.devServer.proxy = [
     {context: ["/api/**"], "target":  "http://127.0.0.1:8080/", secure: false },
 ];
 }
+
+config.module.rules.push({
+  test: /\.m?js/,
+  resolve: {
+    fullySpecified: false
+  }
+});
+
+// Or use alias approach
+if (!config.resolve) config.resolve = {};
+if (!config.resolve.alias) config.resolve.alias = {};
+config.resolve.alias['plotly.js/dist/plotly'] = 'plotly.js/dist/plotly.js';
