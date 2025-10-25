@@ -93,10 +93,10 @@ fun <T: Any> combineRefs(builder: MutableList<RefObject<in T>>.()->Unit) =
     combineRefs(*buildList(builder).toTypedArray())
 
 
-inline fun <T: EventTarget, E : Event> useEventListener(vararg types: EventType<E>,
+fun <T: EventTarget, E : Event> useEventListener(vararg types: EventType<E>,
                                       capture: Boolean? = null, passive: Boolean? = null,
                                       preventDefault:Boolean = false,
-                                       noinline callback: (E)->Unit): RefObject<T>
+                                       callback: (E)->Unit): RefObject<T>
 
 {
     val callbackHolder = useRef(callback)
