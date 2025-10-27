@@ -63,6 +63,7 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:$serializationVersion")
                 implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+                implementation("org.jetbrains:markdown:0.7.3")
             }
         }
         val jvmMain by getting {
@@ -116,6 +117,10 @@ kotlin {
                 implementation(npm("react-transition-group","4.4.5"))
                 // Helmet
                 implementation(npm("react-helmet", "6.1.0"))
+                // Milkdown markdown editor
+                implementation(npm("@milkdown/crepe", "7.15.3"))
+                implementation(npm("@milkdown/kit", "7.15.3"))
+                implementation(npm("@milkdown/react", "7.15.3"))
             }
         }
     }

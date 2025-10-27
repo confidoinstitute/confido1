@@ -181,13 +181,10 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                 FormField {
                     title = "Description"
                     comment = "The description should contain all resolution criteria."
-                    MultilineTextInput {
+                    MarkdownEditor {
                         placeholder = "Tell others more about the question"
                         value = questionDescription
-                        onChange = { e -> questionDescription = e.target.value }
-                        autoHeight = true
-                        autoHeightMin = 2
-                        autoHeightMax = 6
+                        onChange = {  questionDescription = it }
                     }
                 }
             }

@@ -1,6 +1,7 @@
 package components.redesign.basic
 
 import components.redesign.layout.LayoutMode
+import csstype.PropertiesBuilder
 import web.cssom.*
 import emotion.css.ClassName
 import emotion.react.*
@@ -59,8 +60,7 @@ val baseTableCSS = ClassName {
         fontSize = 90.pct
     }
 }
-val rowStyleTableCSS = ClassName(baseTableCSS) {
-
+fun PropertiesBuilder.rowStyleTableStyles( ) {
     borderSpacing = "0 3px".unsafeCast<BorderSpacing>()
     "th" {
         fontWeight = integer(600)
@@ -77,6 +77,10 @@ val rowStyleTableCSS = ClassName(baseTableCSS) {
         paddingLeft = 5.px
         paddingRight = 5.px
     }
+}
+val rowStyleTableCSS = ClassName(baseTableCSS) {
+
+    rowStyleTableStyles()
 }
 
 val GlobalCss = FC<GlobalCssProps> { props ->

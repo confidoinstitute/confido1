@@ -28,6 +28,12 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.*
 import kotlinx.serialization.json.encodeToDynamic
+import org.intellij.markdown.ast.ASTNode
+import org.intellij.markdown.flavours.commonmark.CommonMarkFlavourDescriptor
+import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
+import org.intellij.markdown.html.HtmlGenerator
+import org.intellij.markdown.html.HtmlGenerator.Companion.getSrcPosAttribute
+import org.intellij.markdown.parser.MarkdownParser
 import payloads.responses.*
 import react.*
 import react.dom.html.ReactHTML.div
@@ -702,8 +708,11 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
                 linkCss = ShortenedTextExpanderClass
                 backgroundColor = UIGrayBg
 
-                TextWithLinks {
-                    text = props.description
+                //TextWithLinks {
+                //    text = props.description
+                //}
+                MarkdownText {
+                    source = props.description
                 }
             }
         }

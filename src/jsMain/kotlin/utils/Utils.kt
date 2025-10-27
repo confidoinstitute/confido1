@@ -2,6 +2,8 @@
 
 package utils
 
+import components.redesign.basic.css
+import components.redesign.basic.rowStyleTableCSS
 import csstype.Properties
 import csstype.PropertiesBuilder
 import io.ktor.client.*
@@ -15,17 +17,29 @@ import js.objects.Object
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
+import org.intellij.markdown.ast.ASTNode
+import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
+import org.intellij.markdown.html.HtmlGenerator
+import org.intellij.markdown.parser.MarkdownParser
 import react.FC
 import react.Props
+import react.PropsWithClassName
 import react.PropsWithRef
 import react.StateInstance
+import react.dom.html.ReactHTML.div
 import react.router.dom.Link
+import react.useMemo
 import remix.run.router.RelativeRoutingType
 import remix.run.router.To
 import rooms.Room
 import tools.confido.question.Question
 import tools.confido.utils.*
+import web.cssom.Border
+import web.cssom.BorderCollapse
 import web.cssom.Color
+import web.cssom.LineStyle
+import web.cssom.LineStyle.Companion.solid
+import web.cssom.px
 import web.html.HTMLAnchorElement
 import web.location.location
 import kotlin.coroutines.EmptyCoroutineContext
@@ -172,3 +186,61 @@ external interface ExtendableLinkProps: Props, PropsWithRef<HTMLAnchorElement>,
 }
 
 val ExtendableLink = Link.unsafeCast<FC<ExtendableLinkProps>>()
+
+fun md2html(md: String): String {
+    val flavour = GFMFlavourDescriptor()
+    val parsedTree = MarkdownParser(flavour).buildMarkdownTreeFromString(md)
+    val html = HtmlGenerator(md, parsedTree, flavour).generateHtml(object : HtmlGenerator.TagRenderer {
+        override fun openTag(
+            node: ASTNode,
+            tagName: CharSequence,
+            vararg attributes: CharSequence?,
+            autoClose: Boolean
+        ): CharSequence {
+            return buildString {
+                append("<$tagName")
+                for (attribute in attributes) {
+                    if (attribute != null) {
+                        append(" $attribute")
+                    }
+                }
+
+                if (tagName == "a") {
+                    append(" target='_blank'")
+                }
+
+                if (autoClose) {
+                    append(" />")
+                } else {
+                    append(">")
+                }
+            }
+        }
+
+        override fun closeTag(tagName: CharSequence): CharSequence = "</$tagName>"
+
+        override fun printHtml(html: CharSequence): CharSequence = html
+    })
+    return html
+}
+
+external interface MarkdownTextProps : PropsWithClassName {
+    var source: String
+}
+val MarkdownText = FC<MarkdownTextProps> { props->
+    val src = props.source
+
+    val html = useMemo(src) { md2html(src) }
+    div {
+        css(override=props) {
+            "table" { borderCollapse = BorderCollapse.collapse }
+            "table td, table th" {
+                border = Border(1.px, solid, Color("#333"))
+                padding = 4.px
+            }
+        }
+        dangerouslySetInnerHTML = jso {
+            __html = html
+        }
+    }
+}
