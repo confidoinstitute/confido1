@@ -403,6 +403,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
     val interactVerb = if (layoutMode >= LayoutMode.TABLET) { "Click" } else { "Tap" }
 
     Stack {
+        className = ClassName("prediction-slider-box")
 
         ref = combineRefs(clickRE, pzRef)
         val marks = useMemo(zoomState.paperWidth) {
@@ -444,7 +445,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
         }
         div {
             key = "sliderArea"
-            css {
+            css(ClassName("slider-area")) {
                 height = 40.px
                 minHeight = 40.px
                 flexShrink = number(0.0)

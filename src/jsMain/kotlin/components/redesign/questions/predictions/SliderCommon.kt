@@ -23,7 +23,7 @@ val SliderTrack = FC<SliderTrackProps>("SliderTrack") { props->
     val zoomState = props.zoomState
     val marks = props.marks ?: emptyList()
     ReactHTML.div {
-        css {
+        css(ClassName("slider-track")) {
             height = 4.px
             backgroundColor = Color("#4c4c4c")
             borderRadius = 2.px
@@ -124,7 +124,7 @@ val SliderThumb = FC<SliderThumbProps>("SliderThumb") { props->
     }
 
     ReactHTML.div {
-        css {
+        css(ClassName("slider-thumb"), ClassName("slider-thumb-${props.kind.name.lowercase()}")) {
             position = Position.absolute
             width = 38.px
             height = 40.px

@@ -95,6 +95,7 @@ val GraphExactPredictionButton: FC<GraphExactPredictionButtonProps> = FC { props
 
     GraphButton {
         this.palette = MainPalette.primary
+        this.className = ClassName("pencil-button")
         ExactPredictionIcon {}
         onClick = { open = true }
     }
