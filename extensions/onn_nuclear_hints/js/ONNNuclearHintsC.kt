@@ -1,4 +1,4 @@
-package extensions
+package extensions.onn_nuclear_hints
 
 import components.AppStateContext
 import components.redesign.questions.predictions.MyPredictionDescriptionProps
@@ -13,7 +13,7 @@ import tools.confido.state.globalState
 import tools.confido.utils.formatPercent
 import tools.confido.utils.toFixed
 
-object ONNNuclearHintsCE : ClientExtension, ONNNuclearHintsExtension() {
+object OnnNuclearHintsCE : ClientExtension, ONNNuclearHintsExtension() {
     override fun myPredictionDescriptionExtra(props: MyPredictionDescriptionProps, cb: ChildrenBuilder) {
         val (appState,_) = use(AppStateContext)!!
         val q = props.question ?: return
