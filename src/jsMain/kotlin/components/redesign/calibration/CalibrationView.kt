@@ -12,7 +12,6 @@ import components.redesign.questions.predictions.yesGreen
 import web.cssom.*
 import web.html.HTMLTableCellElement
 import emotion.react.css
-import extensions.UpdateScatterPlotPV
 import hooks.combineRefs
 import hooks.useCoroutineLock
 import hooks.useSuspendResult

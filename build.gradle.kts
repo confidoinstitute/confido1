@@ -23,6 +23,55 @@ repositories {
 
 fun kotlinw(target: String): String = "org.jetbrains.kotlin-wrappers:kotlin-$target"
 
+// Extension system configuration
+val extensionsDir = file("extensions")
+val extensionDirs = extensionsDir.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList()
+
+fun String.toPascalCase() = split("_").joinToString("") { it.replaceFirstChar { c -> c.uppercase() } }
+
+val generateExtensionRegistries by tasks.registering {
+    val jsOutDir = file("build/generated-src/jsMain/kotlin/tools/confido/extensions")
+    val jvmOutDir = file("build/generated-src/jvmMain/kotlin/tools/confido/extensions")
+
+    inputs.dir(extensionsDir).optional()
+    outputs.dir(jsOutDir)
+    outputs.dir(jvmOutDir)
+
+    doLast {
+        val currentExtDirs = extensionsDir.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList()
+
+        val jsExtensions = currentExtDirs.filter { file("${it.path}/js").isDirectory }
+            .map { "extensions.${it.name}.${it.name.toPascalCase()}CE" }
+
+        val jvmExtensions = currentExtDirs.filter { file("${it.path}/jvm").isDirectory }
+            .map { "extensions.${it.name}.${it.name.toPascalCase()}SE" }
+
+        jsOutDir.mkdirs()
+        file("$jsOutDir/registry.kt").writeText("""
+            |package tools.confido.extensions
+            |
+            |// AUTO-GENERATED FILE - DO NOT EDIT
+            |// Generated from extensions/ directory structure
+            |
+            |actual val registeredExtensions: List<Extension> = listOf(
+            |${jsExtensions.joinToString(",\n") { "    $it" }}
+            |)
+        """.trimMargin())
+
+        jvmOutDir.mkdirs()
+        file("$jvmOutDir/registry.kt").writeText("""
+            |package tools.confido.extensions
+            |
+            |// AUTO-GENERATED FILE - DO NOT EDIT
+            |// Generated from extensions/ directory structure
+            |
+            |actual val registeredExtensions: List<Extension> = listOf(
+            |${jvmExtensions.joinToString(",\n") { "    $it" }}
+            |)
+        """.trimMargin())
+    }
+}
+
 // https://kotlinlang.org/docs/multiplatform-dsl-reference.html
 // https://docs.gradle.org/current/userguide/kotlin_dsl.html
 kotlin {
@@ -59,6 +108,10 @@ kotlin {
     }
     sourceSets {
         val commonMain by getting {
+            // Add extension common sources
+            kotlin.srcDirs(extensionDirs.mapNotNull { ext ->
+                file("extensions/${ext.name}/common").takeIf { it.isDirectory }
+            })
             dependencies {
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:$serializationVersion")
@@ -67,6 +120,11 @@ kotlin {
             }
         }
         val jvmMain by getting {
+            // Add extension JVM sources and generated registry
+            kotlin.srcDirs(extensionDirs.mapNotNull { ext ->
+                file("extensions/${ext.name}/jvm").takeIf { it.isDirectory }
+            })
+            kotlin.srcDir("build/generated-src/jvmMain/kotlin")
             dependencies {
                 implementation("io.ktor:ktor-server-cio:$ktorVersion")
                 implementation("io.ktor:ktor-server-html-builder-jvm:$ktorVersion")
@@ -87,6 +145,11 @@ kotlin {
             }
         }
         val jsMain by getting {
+            // Add extension JS sources and generated registry
+            kotlin.srcDirs(extensionDirs.mapNotNull { ext ->
+                file("extensions/${ext.name}/js").takeIf { it.isDirectory }
+            })
+            kotlin.srcDir("build/generated-src/jsMain/kotlin")
             dependencies {
                 implementation(kotlinw("js"))
                 implementation(kotlinw("css"))
@@ -167,3 +230,8 @@ jsBrowserProductionRun.dependsOn(jsProductionExecutableCompileSync)
 //}
 
 //tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> { kotlinOptions.languageVersion = "1.8" }
+
+// Ensure extension registries are generated before compilation
+tasks.matching { it.name.startsWith("compileKotlin") }.configureEach {
+    dependsOn(generateExtensionRegistries)
+}
