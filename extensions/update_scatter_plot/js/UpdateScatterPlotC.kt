@@ -1,16 +1,13 @@
 package extensions.update_scatter_plot
 
-import components.*
 import components.AppStateContext
 import components.presenter.PresenterPageProps
-import components.presenter.PresenterPageType
 import components.presenter.presenterPageMap
 import components.redesign.BinIcon
 import components.redesign.PresenterIcon
 import components.redesign.basic.BaseDialogProps
 import components.redesign.basic.Dialog
 import components.redesign.basic.DialogMenuItem
-import components.redesign.basic.DialogProps
 import components.redesign.basic.Stack
 import components.redesign.basic.dialogStateWrapper
 import components.redesign.basic.rowStyleTableCSS
@@ -22,13 +19,11 @@ import components.redesign.questions.dialog.EditQuestionDialogProps
 import components.redesign.rooms.RoomContext
 import web.cssom.*
 import emotion.react.css
-import extensions.update_scatter_plot.UpdateScatterPlotCE.UpdatePlotState
 import extensions.reference_forecast.ReferenceForcastKey
 import hooks.useCoroutineLock
 import hooks.useSuspendResult
 import io.ktor.client.call.*
 import io.ktor.client.request.*
-import io.ktor.http.path
 import kotlinx.datetime.*
 import js.objects.unsafeJso as jso
 import react.*
@@ -48,8 +43,6 @@ import react.dom.html.ReactHTML.tr
 import react.router.useNavigate
 import rooms.Room
 import rooms.RoomPermission
-import space.kscience.plotly.layout
-import space.kscience.plotly.models.*
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionContextPlace
@@ -63,24 +56,18 @@ import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.refs.Ref
 import tools.confido.spaces.BinarySpace
-import tools.confido.state.PresenterView
-import tools.confido.state.QuestionPV
 import tools.confido.utils.List2
 import tools.confido.utils.capFirst
-import tools.confido.utils.cross
 import tools.confido.utils.formatPercent
 import tools.confido.utils.unixNow
 import utils.questionUrl
 import web.autofill.AutoFill
-import web.dom.ElementId
 import web.html.InputType
 import web.html.text
 import utils.roomUrl
 import web.html.ButtonType
 import web.html.submit
 import web.prompts.confirm
-import kotlin.math.abs
-import kotlin.reflect.KClass
 
 external interface QuestionSelectorProps : Props {
     var value: String?
@@ -271,9 +258,9 @@ val UpdatePlotConfigDialog = dialogStateWrapper(FC<UpdatePlotConfigDialogProps> 
             Client.httpClient.get(url).body<List<List2<Prediction?>>>()
         }?.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<Prediction>>?>()
 
-        UpdateScatterPlot {
+        UpdateSlopeChart {
+            height = 300.0
             this.preds = data ?: emptyList()
-            this.mode = UpdateScatterMode.DIRECTIONAL
             this.referenceForecast = q.extensionData?.get(ReferenceForcastKey)
         }
         div {
@@ -281,7 +268,7 @@ val UpdatePlotConfigDialog = dialogStateWrapper(FC<UpdatePlotConfigDialogProps> 
                 PresenterIcon {}
                 onClick = {
                     presenterCtl.offer(
-                        UpdateScatterPlotPV(
+                        UpdatePlotPV(
                             q.ref,
                             time1,
                             time2
@@ -414,273 +401,14 @@ val SnapshotManagerDialog = FC<SnapshotManagerDialogProps> { props->
     }
 }
 
-enum class UpdateScatterMode {
-    DIRECTIONAL,
-    EXTREMES,
-}
 
-external interface UpdateScatterPlotProps : Props {
-    var preds: List<List2<Prediction?>>
-    var mode: UpdateScatterMode
-    var diffCoords: Boolean?
+
+external interface UpdatePlotProps : Props {
+    var preds: List<List<Prediction?>>
     var referenceForecast: Double?
+    var timepointLabels: List<String?>?
 }
-
-data class UpdateSize(
-    val probRange: kotlin.ranges.ClosedFloatingPointRange<Double>,
-    val name: String,
-    val colors: List2<String>,
-) {
-    operator fun contains(diff: Double):Boolean {
-        return abs(diff) in probRange && abs(diff) != probRange.endInclusive && diff != 0.0
-    }
-}
-
-fun hues(hUp: Int, hDown: Int) = List2("hsl($hUp,35,80)", "hsl($hDown,35,80)")
-
-val updateSizes = listOf(
-    UpdateSize(0.0..0.05, "Small (0-5%)", List2("#aed581", "#ff8a65")),
-    UpdateSize(0.05..0.15, "Medium (5-15%)", List2("#9ccc65", "#ff7043")),
-    UpdateSize(0.15..0.3, "Large (15-30%)", List2("#8bc34a", "#ff5722")),
-    UpdateSize(0.3..1.0, "XL (>30%)", List2("#7cb342", "#f4511e")),
-)
-
-val UpdateScatterPlot = FC<UpdateScatterPlotProps> { props->
-    val preds = props.preds.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<Prediction>>>()
-    val before = preds.map { (it[0].dist as BinaryDistribution).yesProb }
-    val after = preds.map { (it[1].dist as BinaryDistribution).yesProb }
-    val diffCoords = props.diffCoords?: false
-    fun transform(xy: List2<Double>) = if (diffCoords) List2(xy.e1, xy.e2-xy.e1 ) else xy
-    ReactPlotly {
-        config = jso { responsive = true }
-        traces = listOf(Scatter {
-            console.log(ensureTwo(before).toTypedArray())
-            console.log(ensureTwo(before.zip(after) { b,a -> transform(List2(b,a)).e2 }).toTypedArray())
-            x.set(ensureTwo(before).toTypedArray())
-            y.set(ensureTwo(before.zip(after) { b,a -> transform(List2(b,a)).e2 }).toTypedArray())
-            this.mode = ScatterMode.markers
-            marker {
-                size = 10
-                color("blue")
-            }
-        })
-        plotlyInit = {plot->
-            plot.layout {
-                width = 400
-                height = 400
-                listOf(xaxis, yaxis).forEach { ax->
-                    ax.apply {
-                        range(plotlyVal(0), plotlyVal(1))
-                        tickmode = TickMode.array
-                        tickvals = listOf(0, 0.25, 0.5, 0.75, 1).map(::plotlyVal).toList()
-                    }
-                    if (diffCoords) {
-                        yaxis {
-                            range(plotlyVal(-0.3), plotlyVal(0.3))
-                            tickvals = (listOf(0.0) + (updateSizes.map{it.probRange.endInclusive} cross listOf(-1.0,1.0)).map{ (x,y)->x*y }.toList()).map(::plotlyVal)
-                        }
-                    }
-                }
-                xaxis {
-                    title = "Credence before"
-                }
-                yaxis {
-                    title = if (diffCoords) "Credence change" else "Credence after"
-                }
-                buildShapes {
-                    addShape { // frame
-                        x0 = plotlyVal(0)
-                        x1 = plotlyVal(1)
-                        if (diffCoords) {
-                            y0 = plotlyVal(-1)
-                            y1 = plotlyVal(1)
-                        } else {
-                            y0 = plotlyVal(0)
-                            y1 = plotlyVal(1)
-                        }
-                    }
-                    if (!diffCoords) {
-                        addShape { // main diagonal
-                            type = ShapeType.line
-                            x0 = plotlyVal(0)
-                            y0 = plotlyVal(0)
-                            x1 = plotlyVal(1)
-                            y1 = plotlyVal(1)
-                        }
-                        props.referenceForecast?.let { ref ->
-                            // Vertical reference line
-                            addShape {
-                                type = ShapeType.line
-                                x0 = plotlyVal(ref)
-                                y0 = plotlyVal(0)
-                                x1 = plotlyVal(ref)
-                                y1 = plotlyVal(1)
-                                fillcolor("rgba(0, 0, 255, 0.5)")
-                                line {
-                                    width = 2
-                                    dash = Dash.dash
-                                }
-                            }
-                            // Horizontal reference line
-                            addShape {
-                                type = ShapeType.line
-                                x0 = plotlyVal(0)
-                                y0 = plotlyVal(ref)
-                                x1 = plotlyVal(1)
-                                y1 = plotlyVal(ref)
-                                fillcolor("rgba(0, 0, 255, 0.5)")
-                                line {
-                                    width = 2
-                                    dash = Dash.dash
-                                }
-                            }
-                        }
-                    } else {
-                        props.referenceForecast?.let { ref ->
-                            // Vertical reference line
-                            addShape {
-                                type = ShapeType.line
-                                x0 = plotlyVal(ref)
-                                y0 = plotlyVal(-0.3)
-                                x1 = plotlyVal(ref)
-                                y1 = plotlyVal(0.3)
-                                fillcolor("rgba(0, 0, 255, 0.5)")
-
-
-                                line {
-                                    width = 2
-                                    dash = Dash.dash
-                                }
-                            }
-                        }
-
-                    }
-                    if (props.mode == UpdateScatterMode.DIRECTIONAL) {
-                        var last = 0.0
-                        updateSizes.forEach {us->
-                            listOf(0,1).forEach { direction->
-                                val coords = if (diffCoords)
-                                    listOf(
-                                        List2(0.0, us.probRange.start),
-                                        List2(0.0, us.probRange.endInclusive),
-                                        List2(1.0, us.probRange.endInclusive),
-                                        List2(1.0, us.probRange.start),
-                                    )
-                                else
-                                    listOf(
-                                        List2(0.0, us.probRange.start),
-                                        List2(0.0, us.probRange.endInclusive),
-                                        List2(1.0 - us.probRange.endInclusive, 1.0),
-                                        List2(1.0 - us.probRange.start, 1.0 ),
-                                    )
-                                val flippedCoords = coords.map{
-                                    if (diffCoords) List2(it.e1, -it.e2) else it.reversed() }
-                                addShape {
-                                    type = ShapeType.path
-                                    path = pathToSvg(if (direction == 1) flippedCoords else coords, close=true)
-                                    layer = ShapeLayer.below
-                                    fillcolor(us.colors[direction] + "cc")
-                                    line {
-                                        width=0
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                margin {
-                    this.t = 20
-                }
-            }
-        }
-        fixupLayout = {layout ->
-            layout.xaxis.mirror = "ticks"
-            layout.yaxis.mirror = true
-            layout.xaxis.tickformat = ",.0%"
-            layout.yaxis.tickformat = ",.0%"
-            layout.font = jso{ size = 20 }
-        }
-    }
-}
-
-val UpdateScatterTable = FC<UpdateScatterPlotProps> { props->
-    val preds = props.preds.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<Prediction>>>()
-    val dists = preds.map { it.map { it.dist as? BinaryDistribution } }.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<BinaryDistribution>>>()
-    val probs = dists.map { it.map { it.yesProb } }
-    val diffs = probs.map { it[1] - it[0] }
-    ReactHTML.table {
-        css {
-            fontSize = 22.px
-            "td, th" {
-                border = Border(1.px, LineStyle.solid, Color("#666"))
-                padding = 4.px
-            }
-            "tbody td" {
-                textAlign = TextAlign.right
-            }
-            "tbody th" {
-                textAlign = TextAlign.left
-            }
-            borderCollapse = BorderCollapse.collapse
-        }
-        ReactHTML.thead {
-            ReactHTML.tr {
-                ReactHTML.th {
-                    rowSpan = 2
-                    +"Update size"
-                }
-                ReactHTML.th {
-                    colSpan = 3
-                    +"Update direction"
-                }
-            }
-            ReactHTML.tr {
-                ReactHTML.th { +"Up" }
-                ReactHTML.th { +"Down" }
-                ReactHTML.th { +"Total" }
-            }
-        }
-        ReactHTML.tbody {
-            ReactHTML.tr {
-                ReactHTML.th { +"No change" }
-                ReactHTML.td {}
-                ReactHTML.td {}
-                ReactHTML.td { +diffs.filter{ it == 0.0 }.size.toString() }
-            }
-            updateSizes.forEach { sz ->
-                ReactHTML.tr {
-                    ReactHTML.th { +sz.name }
-                    val sizeGroup = diffs.filter{ it in sz }
-                    val upGroup = sizeGroup.filter { it > 0.0 }
-                    val downGroup = sizeGroup.filter { it < 0.0 }
-                    ReactHTML.td {
-                        css {
-                            backgroundColor = Color(sz.colors[0])
-                        }
-                        +upGroup.size.toString()
-                    }
-                    ReactHTML.td {
-                        css {
-                            backgroundColor = Color(sz.colors[1])
-                        }
-                        +downGroup.size.toString()
-                    }
-                    ReactHTML.td { +sizeGroup.size.toString() }
-                }
-            }
-            ReactHTML.tr {
-                ReactHTML.th { +"Total" }
-                val upGroup = diffs.filter { it > 0.0 }
-                val downGroup = diffs.filter { it < 0.0 }
-                ReactHTML.td { +upGroup.size.toString() }
-                ReactHTML.td { +downGroup.size.toString() }
-                ReactHTML.td { +diffs.size.toString() }
-            }
-        }
-    }
-}
-
-val UpdateScatterPlotPP = FC<PresenterPageProps<UpdateScatterPlotPV>> { props ->
+val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
     val view = props.view
     val q = view.question.deref()
     val referenceForecast = q?.extensionData?.get(ReferenceForcastKey)
@@ -701,22 +429,9 @@ val UpdateScatterPlotPP = FC<PresenterPageProps<UpdateScatterPlotPV>> { props ->
             height = 100.vh
         }
         q?.name?.let { h1 { +it } }
-        Stack {
-            direction = FlexDirection.row
-            UpdateScatterPlot {
-                this.preds = data ?: emptyList()
-                this.mode = UpdateScatterMode.DIRECTIONAL
-                this.referenceForecast = referenceForecast
-            }
-            UpdateScatterPlot {
-                this.preds = data ?: emptyList()
-                this.mode = UpdateScatterMode.DIRECTIONAL
-                this.diffCoords = true
-                this.referenceForecast = referenceForecast
-            }
-            UpdateScatterTable {
-                this.preds = data ?: emptyList()
-            }
+        if (rawData!=null)
+        UpdateSlopeChart {
+            preds = rawData
         }
         if (rawData != null)
         Stack {
@@ -733,7 +448,7 @@ val UpdateScatterPlotPP = FC<PresenterPageProps<UpdateScatterPlotPV>> { props ->
                 if (gp.isNaN()) return@map
                 div {
                     val adverb = listOf("before", "after")[which]
-                    +"${(q?.groupTerminology ?: GroupTerminology.GROUP).term.capFirst()}"
+                    +(q?.groupTerminology ?: GroupTerminology.GROUP).term.capFirst()
                     +" ${(q?.predictionTerminology ?: PredictionTerminology.PREDICTION).term}"
                     +" $adverb: ${formatPercent(gp)}"
                 }
@@ -823,5 +538,5 @@ object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
     }
 
     override fun registerPresenterPages() =
-        mapOf(presenterPageMap(UpdateScatterPlotPP))
+        mapOf(presenterPageMap(UpdatePlotPP))
 }

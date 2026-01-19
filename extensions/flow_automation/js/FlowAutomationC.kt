@@ -14,7 +14,6 @@ import web.cssom.*
 import emotion.react.css
 import extensions.question_groups.QuestionGroupsKey
 import extensions.update_scatter_plot.UpdateReferenceQuestionKey
-import extensions.update_scatter_plot.UpdateScatterPlotPV
 import hooks.useCoroutineLock
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -22,7 +21,6 @@ import js.objects.unsafeJso as jso
 import js.objects.Object
 import react.*
 import react.dom.html.ReactHTML.a
-import react.dom.html.ReactHTML.body
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.li
 import react.dom.html.ReactHTML.ol
@@ -34,7 +32,6 @@ import tools.confido.extensions.get
 import tools.confido.question.Question
 import tools.confido.state.PresenterView
 import tools.confido.state.SentState
-import tools.confido.state.clientState
 import tools.confido.state.globalState
 import kotlin.reflect.KClass
 

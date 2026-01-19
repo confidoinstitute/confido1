@@ -431,7 +431,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
                         left = zoomState.contentToViewport(value).px
                         top = 50.pct
                     }
-                    css {
+                    css(ClassName("slider-tick")) {
                         val xtrans = when(idx) {
                             0 -> max((-50).pct, (-SIDE_PAD).px)
                             else -> (-50).pct

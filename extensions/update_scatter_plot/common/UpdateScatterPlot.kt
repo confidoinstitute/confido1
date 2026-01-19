@@ -14,12 +14,12 @@ import tools.confido.state.PresenterView
 import users.User
 
 @Serializable
-data class UpdateScatterPlotPV(
+data class UpdatePlotPV(
     val question: Ref<Question>,
     val time1: Instant?,
     val time2: Instant?,
 ): PresenterView() {
-    override fun describe() = "Update scatter plot"
+    override fun describe() = "Update plot"
 }
 
 val UpdateReferenceQuestionKey = ExtensionDataKeyWithDefault<Ref<Question>?>("update_reference_question", null)
@@ -38,7 +38,7 @@ val SnapshotsKey = ExtensionDataKeyWithDefault<List<Snapshot>>("snapshots", empt
 interface UpdateScatterPlotExt: Extension {
     override val extensionId get() = "update_scatter_plot"
     override fun registerPresenterViews(builder: PolymorphicModuleBuilder<PresenterView>) {
-        builder.subclass(UpdateScatterPlotPV::class)
+        builder.subclass(UpdatePlotPV::class)
     }
     override fun registerEdtKeys(edt: ExtensionDataType) {
         when (edt.name) {
