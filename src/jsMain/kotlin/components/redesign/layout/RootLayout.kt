@@ -142,6 +142,10 @@ private val RootLayoutInner = FC<Props> {
                             element = UserAdmin.create()
                         })
                     }
+                    // Extension routes
+                    ClientExtension.forEach { ext ->
+                        addAll(ext.rootRoutesExtra())
+                    }
                 }.toTypedArray()
             })
         }.toTypedArray()

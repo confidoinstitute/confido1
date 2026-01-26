@@ -22,6 +22,8 @@ import react.dom.svg.ReactSVG
 import react.router.Outlet
 import react.router.dom.Link
 import react.router.useLocation
+import tools.confido.extensions.ClientExtension
+import tools.confido.extensions.SidebarPlace
 import tools.confido.state.appConfig
 import web.location.location
 import web.window.WindowTarget
@@ -125,6 +127,9 @@ val SidebarActions = FC<SidebarActionsProps> {props->
     val iconSizeInner = if(props.small) 34 else 46
     val (appState, _) = use(AppStateContext)!!
 
+    // Extension hook for items before workspace actions
+    ClientExtension.forEach { it.sidebarExtra(SidebarPlace.WORKSPACE_TOP, props.small, this) }
+
     if (!props.hideCalib)
     RoomLink {
         key = "::calibration"
@@ -148,9 +153,12 @@ val SidebarActions = FC<SidebarActionsProps> {props->
             }
         }
         ReactHTML.span {
-            +"Calibration"
+            +"Calibration stats"
         }
     }
+
+    // Extension hook for workspace items
+    ClientExtension.forEach { it.sidebarExtra(SidebarPlace.WORKSPACE_BOTTOM, props.small, this) }
 
     if (appState.isAdmin())
     RoomLink {
@@ -234,15 +242,18 @@ val Sidebar = FC<SidebarProps> { props ->
                 SidebarActions { small = true }
             }
             title("Rooms", layoutMode.contentSidePad)
+            ClientExtension.forEach { it.sidebarExtra(SidebarPlace.ROOMS_TOP, true, this) }
             RoomList {
                 canCreate = appState.session.user?.type?.isProper() ?: false
                 small = true
             }
+            ClientExtension.forEach { it.sidebarExtra(SidebarPlace.ROOMS_BOTTOM, true, this) }
         }
         Stack {
             css {
                 gap = 2.px
             }
+            ClientExtension.forEach { it.sidebarExtra(SidebarPlace.ACTIONS_TOP, false, this) }
             FeedbackSidebarAction {}
             /*
             When implementing these, see also the DialogMenuCommonActions, this is duplicated there.
@@ -273,6 +284,7 @@ val Sidebar = FC<SidebarProps> { props ->
                     window.open(appConfig.privacyPolicyUrl, WindowTarget._blank)
                 }
             }
+            ClientExtension.forEach { it.sidebarExtra(SidebarPlace.ACTIONS_BOTTOM, false, this) }
         }
     }
 }

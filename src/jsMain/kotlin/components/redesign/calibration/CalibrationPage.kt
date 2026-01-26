@@ -22,7 +22,7 @@ import react.useRef
 val CalibrationPage = FC<Props> {
     val calibrationHelpOpen = useRef<(CalibrationHelpSection)->Unit>()
     PageHeader {
-        title = "Calibration"
+        title = "Calibration stats"
         allowSidebar = true
         navigateBack = "/"
         rightExtra = IconButton.create {

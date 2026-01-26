@@ -26,6 +26,15 @@ enum class ExtensionContextPlace {
     EDIT_QUESTION_DIALOG,
 }
 
+enum class SidebarPlace {
+    WORKSPACE_TOP,      // Before existing workspace items (Calibration stats, etc.)
+    WORKSPACE_BOTTOM,   // After existing workspace items
+    ROOMS_TOP,          // Before room list
+    ROOMS_BOTTOM,       // After room list
+    ACTIONS_TOP,        // Before "Give feedback"
+    ACTIONS_BOTTOM,     // After "Privacy policy"
+}
+
 interface ClientExtension : Extension {
 
     companion object {
@@ -79,6 +88,8 @@ interface ClientExtension : Extension {
     fun renderPredictionInput(props: components.redesign.questions.predictions.PredictionInputProps): react.ReactNode? = null
     fun  hideDefaultPredictionDesc(dist: ProbabilityDistribution?, question: Question?, b: Boolean) = false
     fun binarySliderExtra(props: BinaryPredInputProps, zoom: PZState?, cb: ChildrenBuilder) {}
+    fun sidebarExtra(place: SidebarPlace, small: Boolean, cb: ChildrenBuilder) {}
+    fun rootRoutesExtra(): List<RouteObject> = emptyList()
 }
 
 external interface ExtensionContextProviderProps: Props {
