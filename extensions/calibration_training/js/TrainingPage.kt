@@ -334,6 +334,14 @@ val TrainingFeedbackView = FC<TrainingFeedbackViewProps> { props ->
         div {
             QuestionText {
                 +fb.question.text
+                +" "
+                span {
+                    css {
+                        color = binaryColors[correctAnswer]
+                    }
+                    +correctSide
+                    +"."
+                }
             }
         }
         Stack {
