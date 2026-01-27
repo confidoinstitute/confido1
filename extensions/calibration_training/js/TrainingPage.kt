@@ -21,6 +21,8 @@ import react.*
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.br
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.li
+import react.dom.html.ReactHTML.ol
 import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
 import tools.confido.distributions.BinaryDistribution
@@ -28,6 +30,7 @@ import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.BinaryValue
 import tools.confido.utils.formatPercent
 import web.cssom.*
+import web.cssom.FontStyle.Companion.italic
 import web.cssom.TextAlign.Companion.center
 
 /**
@@ -361,22 +364,24 @@ val TrainingFeedbackView = FC<TrainingFeedbackViewProps> { props ->
         (1 - fb.userPrediction)
     
     Stack {
-        css { gap = 24.px }
-        
-        // Question text
-        div {
-            QuestionText {
-                +fb.question.text
-                +" "
-                span {
-                    css {
-                        color = binaryColors[correctAnswer]
-                    }
-                    +correctSide
-                    +"."
+        css { gap = 16.px }
+        QuestionText {
+            +fb.question.text
+            +" "
+            span {
+                css {
+                    color = binaryColors[correctAnswer]
                 }
+                +correctSide
+                +"."
             }
         }
+        if (!fb.question.comment.isNullOrBlank())
+            div{
+                css { fontStyle = italic}
+                +fb.question.comment
+            }
+
         Stack {
             div {
                 css {
@@ -594,7 +599,7 @@ val TrainingWelcomeView = FC<TrainingWelcomeViewProps> { props ->
                 color = Color("#555")
                 maxWidth = 500.px
             }
-            p{+"Calibration training helps you become better at understanding and expressing how sure you are of something. "}
+            p{+"Calibration training helps you get better at understanding and expressing how sure you are of something. "}
             p{+"You'll answer a series of yes/no trivia questions by giving your confidence level."}
         }
         
@@ -619,46 +624,37 @@ val TrainingWelcomeView = FC<TrainingWelcomeViewProps> { props ->
                 +"How it works:"
             }
 
-            Stack {
-                css { gap = 8.px }
-
-                div {
-                    css {
-                        fontSize = 14.px
-                        color = Color("#555")
-                        lineHeight = 1.5.em
+            ol {
+                css {
+                    fontSize = 14.px
+                    color = Color("#555")
+                    lineHeight = 1.5.em
+                    margin = 0.px
+                    paddingLeft = 20.px
+                    "li::marker" {
+                        fontWeight = integer(700)
                     }
-                    ReactHTML.b { +"1. " }
+                    li {  marginBottom = 8.px  }
+                }
+
+                li {
                     +"Read each question, estimate whether you think the answer is more likely \"Yes\" or \"No\" and how certain you are about it."
                 }
 
-                div {
-                    css {
-                        fontSize = 14.px
-                        color = Color("#555")
-                        lineHeight = 1.5.em
-                    }
-                    ReactHTML.b { +"2. " }
+                li {
                     +"After answering, you'll see if you were right and how your calibration is developing."
                 }
 
-                div {
-                    css {
-                        fontSize = 14.px
-                        color = Color("#555")
-                        lineHeight = 1.5.em
-                    }
-                    ReactHTML.b { +"3. " }
+                li {
                     +"Good calibration means when you say 70%, you're right about 70% of the time."
                 }
-                div {
-                    css {
-                        fontSize = 14.px
-                        color = Color("#555")
-                        lineHeight = 1.5.em
-                    }
-                    ReactHTML.b { +"4. " }
+                
+                li {
                     +"It's not a knowledge contest. Knowing the answer for sure is not better than being uncertain. The improtant thing is knowing how (un)sure you are."
+                }
+                
+                li {
+                    +"Don't look the answers up. Use only your own knowledge, guesses, inferences, logic, intuitions."
                 }
             }
         }
