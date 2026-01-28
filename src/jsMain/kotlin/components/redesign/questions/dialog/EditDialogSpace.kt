@@ -8,6 +8,7 @@ import tools.confido.utils.*
 import web.html.InputType
 import web.html.date
 import web.html.number
+import kotlin.js.Date
 
 internal enum class AnswerSpaceError {
     INVALID,
@@ -48,8 +49,8 @@ internal val EditQuestionDialogSpace = FC<EditQuestionDialogSpaceProps> { props 
             }
             QuestionType.DATE -> {
                 val dSpace = outSpace as NumericSpace
-                minDateValue = LocalDate.fromUnix(dSpace.min).toString()
-                maxDateValue = LocalDate.fromUnix(dSpace.max).toString()
+                minDateValue = LocalDate.utcFromUnix(dSpace.min).toString()
+                maxDateValue = LocalDate.utcFromUnix(dSpace.max).toString()
             }
         }
     }
