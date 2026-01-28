@@ -1,5 +1,6 @@
 config.output.publicPath = '/static';
 if (config.devServer) {
+config.devServer.allowedHosts = 'all';
 config.devServer.proxy = [
     {context: ["/api/**.ws"], "target":  "http://127.0.0.1:8080/", secure: false, ws: true },
     {context: ["/state/**"], "target":  "http://127.0.0.1:8080/", secure: false, ws: true, onProxyReqWs: function onProxyReqWs(proxyReq, req, socket, options, head) {
