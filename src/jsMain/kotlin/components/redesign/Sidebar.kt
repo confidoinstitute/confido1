@@ -157,6 +157,30 @@ val SidebarActions = FC<SidebarActionsProps> {props->
         }
     }
 
+    RoomLink {
+        key = "::scores"
+        to = "/scores"
+        small = props.small
+        highlighted = location.pathname == "/scores"
+        div {
+            css {
+                width = iconSize
+                height = iconSize
+                display = Display.flex
+                alignItems = AlignItems.center
+                justifyContent = JustifyContent.center
+                flexShrink = number(0.0)
+            }
+            ScoresIcon {
+                size = iconSizeInner
+                color = "#bbb"
+            }
+        }
+        ReactHTML.span {
+            +"Your scores"
+        }
+    }
+
     // Extension hook for workspace items
     ClientExtension.forEach { it.sidebarExtra(SidebarPlace.WORKSPACE_BOTTOM, props.small, this) }
 

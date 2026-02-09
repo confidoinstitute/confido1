@@ -721,3 +721,7 @@ val ZoomIcon = createIcon(24) {
         strokeLinecap=StrokeLinecap.round
         strokeLinejoin=StrokeLinejoin.round }
 }
+
+// Source: Material Symbols (Google), License: Apache 2.0
+// "leaderboard" icon
+val ScoresIcon = createIcon(d = "M7.5 21q-.625 0-1.062-.437T6 19.5v-9q0-.625.438-1.062T7.5 9h3q.625 0 1.063.438T12 10.5v9q0 .625-.437 1.063T10.5 21Zm6 0q-.625 0-1.062-.437T12 19.5v-15q0-.625.438-1.062T13.5 3h3q.625 0 1.063.438T18 4.5v15q0 .625-.437 1.063T16.5 21Zm-12 0q-.625 0-1.062-.437T0 19.5v-5q0-.625.438-1.062T1.5 13h3q.625 0 1.063.438T6 14.5v5q0 .625-.437 1.063T4.5 21Z", boxSize = List2(18, 24))

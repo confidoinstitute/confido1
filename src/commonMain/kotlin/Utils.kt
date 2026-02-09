@@ -118,8 +118,15 @@ fun randomString(length: Int) =
 
 fun generateId() = randomString(16)
 
-fun percDecimals(value: Double) =
-    if (value < 1 || value > 99) 2 else 0
+fun percDecimals(value: Double): Int {
+    val pct = value * 100.0 // convert probability to percentage
+    val distFromExtreme = minOf(pct, 100.0 - pct) // distance from 0% or 100%
+    return when {
+        distFromExtreme < 0.1 -> 2   // e.g. 99.97%, 0.03%
+        distFromExtreme < 1.0 -> 1   // e.g. 99.5%, 0.5%
+        else -> 0                     // e.g. 33%, 73%
+    }
+}
 fun formatPercent(value: Number, space: Boolean=false, decimals: Int?=null): String = "${(value.toDouble()*100).toFixed(decimals ?: percDecimals(value.toDouble()))}${if (space) " " else ""}%"
 
 fun Double.clamp(range: ClosedRange<Double>): Double {

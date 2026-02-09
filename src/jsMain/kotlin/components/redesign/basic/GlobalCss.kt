@@ -46,13 +46,13 @@ val baseTableCSS = ClassName {
         "tbody tr:first-child td:first-child" {
             borderTopLeftRadius = 10.px
         }
-        "tbody tr:last-child td:first-child" {
-            borderBottomLeftRadius = 10.px
-        }
         "tbody tr:first-child td:last-child" {
             borderTopRightRadius = 10.px
         }
-        "tbody tr:last-child td:last-child" {
+        "tbody:not(:has(+tfoot)) tr:last-child td:first-child" {
+            borderBottomLeftRadius = 10.px
+        }
+        "tbody:not(:has(+tfoot)) tr:last-child td:last-child" {
             borderBottomRightRadius = 10.px
         }
     }

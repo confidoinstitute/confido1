@@ -8,3 +8,9 @@ val LinkUnstyled = ClassName {
     textDecoration = None.none
     color = Color("inherit")
 }
+
+val LinkSemistyled = ClassName(LinkUnstyled) {
+    "&:hover" {
+        textDecoration = TextDecoration.underline
+    }
+}

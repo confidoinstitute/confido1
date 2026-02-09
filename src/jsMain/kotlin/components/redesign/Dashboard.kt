@@ -15,8 +15,10 @@ import web.cssom.*
 import emotion.react.*
 import hooks.useSuspendResult
 import io.ktor.client.call.*
+import io.ktor.client.request.*
 import io.ktor.http.*
 import payloads.requests.CalibrationRequest
+import payloads.responses.MyScoresResponse
 import payloads.requests.Myself
 import react.*
 import react.dom.html.ReactHTML.a
@@ -28,6 +30,7 @@ import react.dom.html.ReactHTML.span
 import react.router.dom.Link
 import react.router.useNavigate
 import tools.confido.calibration.CalibrationVector
+import tools.confido.utils.toFixed
 import tools.confido.question.QuestionState
 import tools.confido.refs.deref
 import tools.confido.state.appConfig
@@ -366,7 +369,71 @@ val Dashboard = FC<Props> {
             }
         }
 
-        if (!showCalibGraph || appState.isAdmin()) {
+        val myScores = useSuspendResult {
+            val resp = Client.httpClient.get("/scores/my")
+            if (resp.status.isSuccess()) resp.body<MyScoresResponse>()
+            else null
+        }
+        val showScores = myScores != null && myScores.items.isNotEmpty()
+
+        if (showScores) {
+            title("Your scores", layoutMode.contentSidePad)
+            Link {
+                to = "/scores"
+                css(LinkUnstyled) {
+                    display = Display.flex
+                    flexDirection = FlexDirection.column
+                    gap = 3.px
+                    fontWeight = integer(500)
+                }
+                div {
+                    css {
+                        paddingLeft = layoutMode.contentSidePad
+                        paddingRight = layoutMode.contentSidePad
+                        display = Display.flex
+                        flexDirection = FlexDirection.row
+                        alignItems = AlignItems.baseline
+                        gap = 8.px
+                        border = Border(1.px, LineStyle.solid, Color("#666"))
+                        borderRadius = 10.px
+                        padding = Padding(12.px, 16.px)
+                    }
+                    span {
+                        css {
+                            fontWeight = integer(700)
+                            fontSize = 22.px
+                        }
+                        +"Total: ${myScores!!.totalScore.toFixed(1)}"
+                    }
+                    span {
+                        css {
+                            color = Color("#666")
+                            fontSize = 14.px
+                        }
+                        val numRooms = myScores.items.map { it.roomRef.id }.distinct().size
+                        +"${myScores.items.size} question${if (myScores.items.size != 1) "s" else ""}"
+                        +" in $numRooms room${if (numRooms != 1) "s" else ""}"
+                    }
+                }
+                div {
+                    css {
+                        textAlign = TextAlign.right
+                        paddingRight = layoutMode.contentSidePad
+                    }
+                    a {
+                        css {
+                            color = MainPalette.primary.color
+                            textDecoration = TextDecoration.underline
+                            fontSize = 14.px
+                        }
+                        href = "/scores"
+                        +"Open scoring dashboard >"
+                    }
+                }
+            }
+        }
+
+        if ((!showCalibGraph && !showScores) || appState.isAdmin()) {
             title("Workspace", layoutMode.contentSidePad)
             SidebarActions { hideCalib = showCalibGraph }
         }
@@ -401,6 +468,10 @@ val UserMenu = FC<UserMenuProps> { props ->
         DialogMenuNav {
             text = "Calibration"
             this.navigate = "/calibration"
+        }
+        DialogMenuNav {
+            text = "Your scores"
+            this.navigate = "/scores"
         }
 
         DialogMenuItem {
