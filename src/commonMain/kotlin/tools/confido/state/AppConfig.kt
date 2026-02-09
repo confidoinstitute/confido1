@@ -23,6 +23,7 @@ data class AppConfig(
     val enabledExtensionIds: Set<String> = setOf(),
     val predictionCoalesceInterval: Int = 60,
     val extraData: Map<String,String> = emptyMap(),
+    val commentSpoiler: Boolean = false,
 )
 
 expect val appConfig: AppConfig

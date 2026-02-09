@@ -49,6 +49,7 @@ import tools.confido.question.*
 import tools.confido.refs.*
 import tools.confido.serialization.*
 import tools.confido.spaces.*
+import tools.confido.state.appConfig
 import tools.confido.utils.*
 import utils.*
 
@@ -728,6 +729,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
     val (appState, _) = use(AppStateContext )!!
 
     val isFirst = (comments.data?.size ?: 0) == 0
+    var spoilerExpanded by useState(false)
 
     if (comments.data != null)
     AddCommentDialog {
@@ -785,6 +787,8 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
             CommentVisibility.ANSWERED -> lastPrediction != null
             CommentVisibility.MODERATOR_ONLY -> false
         }
+        val didComment = comments.data?.any  {  it.value.comment.user == appState.session.user?.ref } ?: false
+        val spoiler = canView && appConfig.commentSpoiler && !(didComment && lastPrediction != null)
 
 
         if (!canViewAll && !canView) {
@@ -810,6 +814,19 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
                     SortType.OLDEST -> comments.data.entries.sortedBy { it.value.comment.timestamp }
                     else -> emptyList()
                 }
+
+                if (spoiler && !spoilerExpanded)
+                    Link {
+                        css {
+                            textAlign = TextAlign.center
+                            fontWeight = FontWeight.bold
+                        }
+                        +"Show ${sortedComments.size} comments"
+                        onClick = {
+                            spoilerExpanded  = true
+                        }
+                    }
+                else
                 sortedComments.map {
                     Comment {
                         commentInfo = it.value
