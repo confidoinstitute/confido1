@@ -62,7 +62,7 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
 
     fun censorRoom(room: Room): Room? {
         if (!room.hasPermission(user, RoomPermission.VIEW_QUESTIONS)) return null
-        return room.copy(
+        var censored = room.copy(
             questions = room.questions.filter {
                 (it.deref() ?: return@filter false).visible || room.hasPermission(user, RoomPermission.VIEW_HIDDEN_QUESTIONS)
             },
@@ -70,6 +70,8 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
             members = room.members.mapNotNull { censorMembership(room, it) },
             inviteLinks = if (user?.type in setOf(UserType.ADMIN, UserType.MEMBER)) room.inviteLinks.mapNotNull { censorInviteLink(room, it) } else emptyList(),
         )
+        ServerExtension.forEach { censored = it.censorRoom(censored, user) }
+        return censored
     }
 
 
@@ -83,6 +85,7 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
         if (!ret.resolutionVisible && !room.hasPermission(user, RoomPermission.VIEW_ALL_RESOLUTIONS)) {
             ret = ret.copy(resolution = null)
         }
+        ServerExtension.forEach { ret = it.censorQuestion(ret, room, user) }
         return ret
     }
 
