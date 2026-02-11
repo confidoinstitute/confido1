@@ -1,6 +1,7 @@
 package extensions.pseudonyms
 
 import rooms.Room
+import rooms.RoomPermission
 import tools.confido.application.UserPresentationContext
 import tools.confido.extensions.*
 import tools.confido.state.serverState
@@ -61,6 +62,14 @@ object PseudonymsSE : ServerExtension, PseudonymsExtension() {
             extensionData = room.extensionData
                 .with(PseudonymsListKey, cleanedList)
                 .with(PseudonymAssignmentsKey, newAssignments.toMap())
+        )
+    }
+
+    override fun censorRoom(room: Room, user: User?): Room {
+        // Only moderators/owners can see the userId-to-pseudonym assignment mapping
+        if (room.hasPermission(user, RoomPermission.MANAGE_MEMBERS)) return room
+        return room.copy(
+            extensionData = room.extensionData.without(PseudonymAssignmentsKey)
         )
     }
 
