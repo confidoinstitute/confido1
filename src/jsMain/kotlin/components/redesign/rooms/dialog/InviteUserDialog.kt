@@ -17,9 +17,9 @@ import rooms.Viewer
 import tools.confido.refs.ref
 import tools.confido.state.FeatureFlag
 import tools.confido.state.appConfig
+import tools.confido.utils.stringToColor
 import users.User
 import utils.runCoroutine
-import utils.stringToColor
 
 internal external interface AddMemberItemProps : Props {
     var user: User?
@@ -54,7 +54,7 @@ internal val AddMemberItem = FC<AddMemberItemProps> {props ->
                 width = 32.px
                 height = 32.px
                 borderRadius = 50.pct
-                backgroundColor = stringToColor(props.user?.id ?: props.email ?: "")
+                backgroundColor = Color(stringToColor(props.user?.id ?: props.email ?: ""))
                 flexShrink = number(0.0)
             }
         }

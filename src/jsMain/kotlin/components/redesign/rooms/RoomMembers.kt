@@ -40,8 +40,8 @@ import tools.confido.state.FeatureFlag
 import tools.confido.state.SentState
 import tools.confido.state.appConfig
 import tools.confido.utils.pluralize
+import tools.confido.utils.stringToColor
 import utils.runCoroutine
-import utils.stringToColor
 import web.clipboard.writeText
 import web.location.location
 import web.navigator.navigator
@@ -183,7 +183,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
                 width = 32.px
                 height = 32.px
                 borderRadius = 50.pct
-                backgroundColor = stringToColor(user.id)
+                backgroundColor = Color(stringToColor(user.id))
                 flexShrink = number(0.0)
             }
         }

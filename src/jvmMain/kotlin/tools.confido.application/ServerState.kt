@@ -70,7 +70,7 @@ fun loadConfig() = AppConfig(
     predictionCoalesceInterval = System.getenv("CONFIDO_PREDICTION_COALESCE_INTERVAL")?.toInt() ?: 60,
     // XXX      vvvv-- cannot use confidoJSON here at this would create an initialization cycle
     extraData = Json.decodeFromString(System.getenv("CONFIDO_EXTRA_DATA") ?: "{}"),
-    commentSpoiler = getenvBool("CONFIDO_COMMENT_SPOILER")
+    commentSpoiler = getenvBool("CONFIDO_COMMENT_")
 )
 
 actual val appConfig = loadConfig()

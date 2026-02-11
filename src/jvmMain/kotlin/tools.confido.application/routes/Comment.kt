@@ -5,9 +5,13 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import payloads.requests.CreateComment
-import payloads.responses.CommentInfo
+import payloads.responses.CommentExtraData
+import payloads.responses.CommentPresentation
+import payloads.responses.QuestionCommentExtraData
 import rooms.Room
 import rooms.RoomPermission
+import tools.confido.application.UserPresentationContext
+import tools.confido.application.getUserPresentation
 import tools.confido.application.sessions.TransientData
 import tools.confido.question.*
 import tools.confido.refs.*
@@ -25,16 +29,19 @@ inline fun <reified T: Entity> commentList(entity: T) = when(entity) {
     else -> error("This entity does not have comments")
 }
 
-fun makeCommentInfo(user: User, comments: Map<String, Comment>?) = comments?.mapValues {
-    val comment = it.value
-    CommentInfo(
-        comment,
-        serverState.commentLikeManager.numLikes[comment.ref] ?: 0,
-        comment.ref in (serverState.commentLikeManager.byUser[user.ref] ?: emptySet())
-    )
-} ?: emptyMap()
 
-inline fun <reified T: Entity> makeCommentInfo(user: User, entity: T) = makeCommentInfo(user, commentList(entity))
+fun<T: CommentExtraData> makeCommentPresentation(comment: Comment, extraData: T?, observer: User, room: Room) =
+    CommentPresentation(
+        comment.ref,
+        comment.urlPrefix,
+        getUserPresentation(comment.user.deref(), observer, UserPresentationContext.COMMENT_AUTHOR, room),
+        comment.timestamp,
+        comment.content,
+        comment.modified,
+        serverState.commentLikeManager.numLikes[comment.ref] ?: 0,
+        comment.ref in (serverState.commentLikeManager.byUser[observer.ref] ?: emptySet()),
+        extraData
+    )
 
 fun questionCommentsRoutes(routing: Routing) = routing.apply {
     // View comments
@@ -50,11 +57,12 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
                 CommentVisibility.MODERATOR_ONLY -> false
             }
 
-            val comments = serverState.questionComments[ref]?.filterValues { comment ->
+            val comments = serverState.questionComments[ref]?.values?.filter { comment ->
                 comment.user == user.ref || (canViewAll || canView)
-            }
-
-            makeCommentInfo(user, comments)
+            }?.map { comment->
+                makeCommentPresentation(comment, QuestionCommentExtraData(comment.prediction?.dist), user, room)
+            }?:emptyList()
+            comments
         }
     }
 
@@ -147,8 +155,9 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
         call.withRoom {
             assertPermission( RoomPermission.VIEW_ROOM_COMMENTS, "You cannot view the discussion.")
 
-            val commentInfo = makeCommentInfo(user, room)
-            commentInfo
+            (serverState.roomComments[room.ref] ?: emptyMap()).values.map { comment->
+                makeCommentPresentation(comment, null, user, room)
+            }
         }
     }
 

@@ -19,32 +19,31 @@ import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 import rooms.*
+import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.*
 import tools.confido.refs.*
 import users.*
 import utils.*
+import web.cssom.LineStyle.Companion.solid
 
 private enum class VoteState {
     NO_VOTE, UPVOTED, DOWNVOTED,
 }
 
 external interface CommentProps : Props {
-    var commentInfo: CommentInfo
+    var comment: CommentPresentation<CommentExtraData>
 }
 
 val Comment = FC<CommentProps> { props ->
+    val comment = props.comment
     val room = use(RoomContext)!!
     val (appState, stale) = use(AppStateContext)!!
-
-    val comment = props.commentInfo.comment
-    val author = comment.user.deref() ?: return@FC
-    val isAuthor = author == appState.session.user
 
     var moreDialogOpen by useState(false)
     var editDialogOpen by useState(false)
 
     // TODO: backend support for downvotes
-    val voteState = if (props.commentInfo.likedByMe) {
+    val voteState = if (props.comment.likedByMe) {
         VoteState.UPVOTED
     } else {
         VoteState.NO_VOTE
@@ -77,7 +76,7 @@ val Comment = FC<CommentProps> { props ->
     DialogMenu {
         open = moreDialogOpen
         onClose = { moreDialogOpen = false }
-        if (isAuthor) {
+        if (comment.isMine) {
             DialogMenuItem {
                 text = "Edit comment"
                 icon = EditIcon
@@ -87,6 +86,7 @@ val Comment = FC<CommentProps> { props ->
                 }
             }
         }
+        if (comment.isMine || appState.hasPermission(room, RoomPermission.MANAGE_COMMENTS))
         DialogMenuItem {
             text = "Delete comment" 
             icon = BinIcon
@@ -104,10 +104,15 @@ val Comment = FC<CommentProps> { props ->
             flexDirection = FlexDirection.column
             background = Color("#FFFFFF")
             fontFamily = sansSerif
+            if (comment.isMine) {
+                backgroundColor = Color("#ebfaff")
+                borderLeft = Border(4.px, solid, Color("#72cde9"))
+                marginLeft = -4.px
+            }
         }
 
         CommentHeader {
-            this.author = author
+            this.author = comment.user
             this.timestamp = comment.timestamp
             this.modified = comment.modified
         }
@@ -116,12 +121,11 @@ val Comment = FC<CommentProps> { props ->
             this.content = comment.content
         }
 
-        when (comment) {
-            is QuestionComment -> {
-                if (comment.prediction != null) {
+        when (comment.extraData) {
+            is QuestionCommentExtraData -> {
+                comment.extraData.dist?.let {
                     AttachedPredictionSection {
-                        key = comment.id
-                        prediction = comment.prediction
+                        dist = it
                     }
                 }
             }
@@ -141,7 +145,7 @@ val Comment = FC<CommentProps> { props ->
                 lineHeight = 14.px
             }
 
-            val moreDialogVisible = isAuthor || appState.hasPermission(room, RoomPermission.MANAGE_COMMENTS)
+            val moreDialogVisible = comment.isMine || appState.hasPermission(room, RoomPermission.MANAGE_COMMENTS)
             if (moreDialogVisible) {
                 FooterAction {
                     icon = MoreIcon
@@ -155,7 +159,7 @@ val Comment = FC<CommentProps> { props ->
                 text = "Reply"
             }
             */
-            if (props.commentInfo.likeCount == 0 && voteState == VoteState.NO_VOTE) {
+            if (props.comment.likeCount == 0 && voteState == VoteState.NO_VOTE) {
                 FooterAction {
                     icon = UpvoteIcon
                     text = "Upvote"
@@ -189,7 +193,7 @@ val Comment = FC<CommentProps> { props ->
                         onClick = { upvote() }
                     }
 
-                    +"${props.commentInfo.likeCount}"
+                    +"${props.comment.likeCount}"
 
                     // TODO: Implement downvotes or remove
                     /*
@@ -209,7 +213,7 @@ val Comment = FC<CommentProps> { props ->
 }
 
 external interface CommentHeaderProps : Props {
-    var author: User
+    var author: UserPresentation
     var timestamp: Int
     var modified: Int?
 }
@@ -229,7 +233,7 @@ val CommentHeader = FC<CommentHeaderProps> { props ->
         // Avatar
         // TODO: Proper avatar
         Circle {
-            color = stringToColor(props.author.id)
+            color = props.author.color?.let { Color(it) }
             size = 32.px
         }
 
@@ -301,7 +305,7 @@ val CommentContents = FC<CommentContentsProps> { props ->
 }
 
 external interface CommentAttachedPredictionProps : Props {
-    var prediction: Prediction
+    var dist: ProbabilityDistribution
 }
 
 private val AttachedPredictionSection = FC<CommentAttachedPredictionProps> { props ->
@@ -333,8 +337,8 @@ private val AttachedPredictionSection = FC<CommentAttachedPredictionProps> { pro
             }
             PredictionGraph {
                 key = "${props.key}-vis"
-                space = props.prediction.dist.space
-                dist = props.prediction.dist
+                space = props.dist.space
+                dist = props.dist
                 isGroup = false
             }
         }

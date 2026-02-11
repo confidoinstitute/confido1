@@ -5,7 +5,6 @@ import Client
 import web.window.window
 import components.*
 import components.redesign.*
-import components.redesign.TextWithLinks
 import components.redesign.basic.*
 import components.redesign.comments.*
 import components.redesign.comments.Comment
@@ -26,14 +25,7 @@ import js.objects.unsafeJso as jso
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import kotlinx.serialization.*
 import kotlinx.serialization.json.encodeToDynamic
-import org.intellij.markdown.ast.ASTNode
-import org.intellij.markdown.flavours.commonmark.CommonMarkFlavourDescriptor
-import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
-import org.intellij.markdown.html.HtmlGenerator
-import org.intellij.markdown.html.HtmlGenerator.Companion.getSrcPosAttribute
-import org.intellij.markdown.parser.MarkdownParser
 import payloads.responses.*
 import react.*
 import react.dom.html.ReactHTML.div
@@ -721,7 +713,7 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
 }
 
 private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
-    val comments = useWebSocket<Map<String, CommentInfo>>("/state${props.question.urlPrefix}/comments")
+    val comments = useWebSocket<List<CommentPresentation<QuestionCommentExtraData>>>("/state${props.question.urlPrefix}/comments")
     val layoutMode = use(LayoutModeContext)!!
 
     var addCommentOpen by useState(false)
@@ -787,7 +779,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
             CommentVisibility.ANSWERED -> lastPrediction != null
             CommentVisibility.MODERATOR_ONLY -> false
         }
-        val didComment = comments.data?.any  {  it.value.comment.user == appState.session.user?.ref } ?: false
+        val didComment = comments.data?.any  {  it.isMine } ?: false
         val spoiler = canView && appConfig.commentSpoiler && !(didComment && lastPrediction != null)
 
 
@@ -810,8 +802,8 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
         when (comments) {
             is WSData -> {
                 val sortedComments = when (sortType) {
-                    SortType.NEWEST -> comments.data.entries.sortedByDescending { it.value.comment.timestamp }
-                    SortType.OLDEST -> comments.data.entries.sortedBy { it.value.comment.timestamp }
+                    SortType.NEWEST -> comments.data.sortedByDescending { it.timestamp }
+                    SortType.OLDEST -> comments.data.sortedBy { it.timestamp }
                     else -> emptyList()
                 }
 
@@ -829,8 +821,8 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
                 else
                 sortedComments.map {
                     Comment {
-                        commentInfo = it.value
-                        key = it.key
+                        comment = it
+                        key = it.commentId.id
                     }
                 }
             }

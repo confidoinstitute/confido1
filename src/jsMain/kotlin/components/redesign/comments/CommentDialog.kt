@@ -10,6 +10,8 @@ import web.html.*
 import emotion.react.*
 import hooks.*
 import payloads.requests.*
+import payloads.responses.CommentExtraData
+import payloads.responses.CommentPresentation
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.button
@@ -40,7 +42,7 @@ external interface AddCommentDialogProps : Props {
 external interface EditCommentDialogProps : Props {
     var open: Boolean
     var onClose: (() -> Unit)?
-    var comment: Comment
+    var comment: CommentPresentation<CommentExtraData>
 }
 
 val AddCommentDialog = FC<AddCommentDialogProps> { props ->

@@ -20,7 +20,7 @@ val RoomComments = FC<Props> {
     val (appState, _) = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val layoutMode = use(LayoutModeContext)!!
-    val roomComments = useWebSocket<Map<String, CommentInfo>>("/state${room.urlPrefix}/comments")
+    val roomComments = useWebSocket<List<CommentPresentation<CommentExtraData>>>("/state${room.urlPrefix}/comments")
 
     var addCommentOpen by useState(false)
     var sortType by useState(SortType.NEWEST)
@@ -85,15 +85,15 @@ val RoomComments = FC<Props> {
             when (roomComments) {
                 is WSData -> {
                     val sortedComments = when (sortType) {
-                        SortType.NEWEST -> roomComments.data.entries.sortedByDescending { it.value.comment.timestamp }
-                        SortType.OLDEST -> roomComments.data.entries.sortedBy { it.value.comment.timestamp }
+                        SortType.NEWEST -> roomComments.data.sortedByDescending { it.timestamp }
+                        SortType.OLDEST -> roomComments.data.sortedBy { it.timestamp }
                         else -> emptyList()
                     }
 
                     sortedComments.map {
                         Comment {
-                            this.commentInfo = it.value
-                            this.key = it.key
+                            this.comment = it
+                            this.key = it.commentId.id
                         }
                     }
                 }

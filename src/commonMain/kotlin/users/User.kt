@@ -35,6 +35,17 @@ data class User(
         }
 }
 
+/**
+ * A potentially pseudonimized way of presenting a user identity to a given observer.
+ */
+@Serializable
+data class UserPresentation(
+    val isMyself: Boolean,
+    val displayName: String? = null,
+    val userId: Ref<User>? = null,
+    val color: String? = null,
+)
+
 @Serializable
 data class LoginLink(
     @SerialName("_id")

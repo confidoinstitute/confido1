@@ -5,6 +5,7 @@ import rooms.Room
 import rooms.RoomMembership
 import rooms.RoomPermission
 import tools.confido.application.sessions.TransientData
+import tools.confido.extensions.ServerExtension
 import tools.confido.question.Comment
 import tools.confido.question.CommentVisibility
 import tools.confido.question.Question
@@ -13,6 +14,7 @@ import tools.confido.refs.*
 import tools.confido.state.*
 import tools.confido.utils.*
 import users.User
+import users.UserPresentation
 import users.UserType
 
 /**
@@ -121,4 +123,16 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
             presenterWindowActive = transientData.activePresenterWindows > 0,
         )
     }
+}
+
+enum class UserPresentationContext {
+    COMMENT_AUTHOR,
+    SCOREBOARD,
+}
+
+fun getUserPresentation(user: User?, observer: User, context: UserPresentationContext, room: Room?): UserPresentation {
+    ServerExtension.forEach { ext-> ext.getUserPresentation(user, observer, context, room)?.let { return it } }
+    if (user == null) return UserPresentation(false, "(Deleted user)")
+    return UserPresentation(user.id == observer.id, user.nick ?: "(Anonymous)",
+    color = stringToColor(user.id))
 }

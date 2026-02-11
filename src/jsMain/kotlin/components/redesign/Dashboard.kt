@@ -34,6 +34,7 @@ import tools.confido.utils.toFixed
 import tools.confido.question.QuestionState
 import tools.confido.refs.deref
 import tools.confido.state.appConfig
+import tools.confido.utils.stringToColor
 import users.User
 import utils.runCoroutine
 
@@ -66,7 +67,7 @@ val AccountFrame = FC<WorkspaceFrameProps> { props ->
                 width = 36.px
                 height = 36.px
                 borderRadius = 50.pct
-                backgroundColor = utils.stringToColor(props.user.id)
+                backgroundColor = Color(stringToColor(props.user.id))
                 flexShrink = number(0.0)
             }
         }
