@@ -34,6 +34,7 @@ import react.dom.html.ReactHTML.option
 import react.use
 import react.useState
 import rooms.*
+import tools.confido.extensions.ClientExtension
 import tools.confido.refs.deref
 import tools.confido.refs.eqid
 import tools.confido.state.FeatureFlag
@@ -213,6 +214,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
                 }
                 +(user.email ?: "")
             }
+            ClientExtension.forEach { it.roomMemberExtra(room, props.membership, user, this) }
         }
         MemberRoleSelect {
             value = props.membership.role
