@@ -12,8 +12,8 @@ import kotlin.random.Random
 
 object PseudonymsSE : ServerExtension, PseudonymsExtension() {
     override suspend fun serverInit() {
-        serverState.roomManager.beforeEntitySave { entity, _, _ ->
-            recomputeAssignments(entity)
+        serverState.roomManager.beforeEntitySave { _, new ->
+            recomputeAssignments(new)
         }
     }
 

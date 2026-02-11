@@ -105,24 +105,22 @@ object serverState : GlobalState() {
 
     val shortInviteLinks = mutableMapOf<String, ShortLink>()
 
-    enum class EntitySaveType { INSERT, UPDATE }
-
     abstract class EntityManager<E: HasId>(val mongoCollection: CoroutineCollection<E>) {
         var isLoading = false
         val updateCallbacks: MutableList<EntityManager<E>.(E, E) -> Unit> = mutableListOf()
         val addCallbacks: MutableList<EntityManager<E>.(E) -> Unit> = mutableListOf()
         val deleteCallbacks: MutableList<EntityManager<E>.(E) -> Unit> = mutableListOf()
-        val beforeSaveCallbacks: MutableList<EntityManager<E>.(E, E?, EntitySaveType) -> E> = mutableListOf()
+        val beforeSaveCallbacks: MutableList<EntityManager<E>.(E?, E) -> E> = mutableListOf()
 
         /** Register a callback that transforms an entity before it is persisted.
-         * The callback receives (newEntity, oldEntity?, saveType) where oldEntity is null for inserts.
+         * The callback receives (oldEntity?, newEntity) where oldEntity is null for inserts.
          */
-        fun beforeEntitySave(cb: EntityManager<E>.(E, E?, EntitySaveType) -> E) {
+        fun beforeEntitySave(cb: EntityManager<E>.(E?, E) -> E) {
             beforeSaveCallbacks.add(cb)
         }
 
-        fun applyBeforeSave(entity: E, old: E?, type: EntitySaveType): E =
-            beforeSaveCallbacks.fold(entity) { acc, cb -> cb(acc, old, type) }
+        fun applyBeforeSave(old: E?, new: E): E =
+            beforeSaveCallbacks.fold(new) { acc, cb -> cb(old, acc) }
         fun onEntityUpdated(cb: EntityManager<E>.(E, E) -> Unit) {
             updateCallbacks.add(cb)
         }
@@ -177,7 +175,7 @@ object serverState : GlobalState() {
             withMutationLock {
                 val orig = this.get(id) ?: throw NoSuchElementException()
                 check(orig.id == id)
-                val new = applyBeforeSave(modify(orig), orig, EntitySaveType.UPDATE)
+                val new = applyBeforeSave(orig, modify(orig))
                 when (val sess = coroutineContext.getSession()) {
                     null -> mongoCollection.replaceOneById(new.id, new, ReplaceOptions())
                     else -> mongoCollection.replaceOneById(sess, new.id, new, ReplaceOptions())
@@ -202,7 +200,7 @@ object serverState : GlobalState() {
                     if (compare.id != new.id) throw IllegalArgumentException()
                     if (orig != compare) throw ConcurrentModificationException()
                 }
-                val merged = applyBeforeSave(merge(orig, new), orig, EntitySaveType.UPDATE)
+                val merged = applyBeforeSave(orig, merge(orig, new))
                 check(merged.id == new.id)
                 when (val sess = coroutineContext.getSession()) {
                     null -> mongoCollection.replaceOneById(merged.id, merged, ReplaceOptions())
@@ -240,7 +238,7 @@ object serverState : GlobalState() {
                 require(!entity.id.isEmpty())
                 val old: E? = get(entity.id)
                 if (old != null) throw DuplicateIdException()
-                val transformed = applyBeforeSave(entity, null, EntitySaveType.INSERT)
+                val transformed = applyBeforeSave(null, entity)
                 when (val sess = coroutineContext.getSession()) {
                     null -> mongoCollection.insertOne(transformed)
                     else -> mongoCollection.insertOne(sess, transformed)
