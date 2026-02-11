@@ -39,7 +39,8 @@ class ExtensionData(val type: ExtensionDataType, val data: Map<IExtensionDataKey
 
 }
 inline fun <V> ExtensionData.with(k: ExtensionDataKey<V>, v: V) = ExtensionData(type, data + mapOf(k to v))
-inline fun <V:Any> ExtensionData.withOrWithout(k: ExtensionDataKey<V>, v: V?) = if (v==null) ExtensionData(type, data.filterKeys{it != k}) else ExtensionData(type, data + mapOf(k to v))
+inline fun <V> ExtensionData.without(k: ExtensionDataKey<V>) = ExtensionData(type, data.filterKeys{it != k})
+inline fun <V:Any> ExtensionData.withOrWithout(k: ExtensionDataKey<V>, v: V?) = if (v==null) without(k) else with(k,v)
 inline fun <V:Any> ExtensionData.modify(k: ExtensionDataKeyWithDefault<V>, mod: (V)->V) = with(k,mod(get(k)))
 operator inline fun <V> ExtensionData?.get(k: ExtensionDataKey<V>): V? = this?.let { data[k] as? V? }
 operator inline fun <V> ExtensionData.get(k: ExtensionDataKeyWithDefault<V>): V = if (data.keys.contains(k)) data[k] as V else k.default
