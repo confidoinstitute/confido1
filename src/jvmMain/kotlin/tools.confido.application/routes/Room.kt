@@ -66,6 +66,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                     defaultSchedule = information.defaultSchedule,
                     scoring = information.scoring,
                     commentTemplate = information.commentTemplate,
+                    extensionData = information.extensionData,
                 )
             )
         }
@@ -90,6 +91,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                     defaultSchedule = information.defaultSchedule,
                     scoring = information.scoring,
                     commentTemplate = information.commentTemplate,
+                    extensionData = information.extensionData,
                 )
             }
         }

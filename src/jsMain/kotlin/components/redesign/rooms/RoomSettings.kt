@@ -16,10 +16,9 @@ import react.dom.html.ReactHTML.abbr
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.p
-import rooms.Room
-import rooms.RoomColor
-import rooms.ScoreboardMode
-import rooms.ScoringConfig
+import rooms.*
+import tools.confido.extensions.ClientExtension
+import tools.confido.extensions.ExtensionData
 import tools.confido.question.QuestionSchedule
 import tools.confido.refs.deref
 import web.html.submit
@@ -44,11 +43,15 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
     var showScore by useState(scoringConfig != null)
     var scheduleValid by useState(true)
     var commentTemplate by useState(props.room?.commentTemplate ?: "")
+    var extensionData by useState(props.room?.extensionData ?: ExtensionData(RoomEDT))
+    val onExtensionDataChange: ((ExtensionData) -> ExtensionData) -> Unit = { transform ->
+        extensionData = transform(extensionData)
+    }
     val valid = !name.isEmpty() && scheduleValid
 
-    useEffect(name, description, color, icon, defaultSchedule.identify(), scoringConfig?.identify(), commentTemplate) {
+    useEffect(name, description, color, icon, defaultSchedule.identify(), scoringConfig?.identify(), commentTemplate, extensionData) {
         if (valid)
-            props.onChange?.invoke(BaseRoomInformation(name, description, color, icon, defaultSchedule, scoringConfig, commentTemplate))
+            props.onChange?.invoke(BaseRoomInformation(name, description, color, icon, defaultSchedule, scoringConfig, commentTemplate, extensionData))
         else
             props.onChange?.invoke(null)
     }
@@ -214,6 +217,7 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
 
             }
         }
+        ClientExtension.forEach { it.editRoomSettingsExtra(props.room, onExtensionDataChange, this) }
         FormSection {
             Stack {
                 Button {

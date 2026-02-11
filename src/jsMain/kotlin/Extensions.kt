@@ -14,6 +14,7 @@ import react.createContext
 import react.router.RouteObject
 import rooms.Room
 import tools.confido.distributions.ProbabilityDistribution
+import tools.confido.extensions.ExtensionData
 import tools.confido.question.Question
 import tools.confido.state.PresenterView
 import tools.confido.state.SentState
@@ -81,6 +82,7 @@ interface ClientExtension : Extension {
         return arrayOf<dynamic>(sVal, ::setter).unsafeCast<react.StateInstance<T>>()
     }
     fun registerPresenterPages(): Map<KClass<out PresenterView>, PresenterPageType> = emptyMap()
+    fun editRoomSettingsExtra(room: Room?, onExtensionDataChange: ((ExtensionData) -> ExtensionData) -> Unit, cb: ChildrenBuilder) {}
     fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {}
     fun roomTabsExtra(room: Room, appState: SentState, layoutMode: LayoutMode): List<Pair<String, String>>  = emptyList()
     fun roomRoutesExtra(room: Room): Array<RouteObject> = emptyArray()
