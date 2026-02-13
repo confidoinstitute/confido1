@@ -66,10 +66,13 @@ object PseudonymsSE : ServerExtension, PseudonymsExtension() {
     }
 
     override fun censorRoom(room: Room, user: User?): Room {
-        // Only moderators/owners can see the userId-to-pseudonym assignment mapping
+        // Moderators/owners can see the full userId-to-pseudonym assignment mapping
         if (room.hasPermission(user, RoomPermission.MANAGE_MEMBERS)) return room
+        // Non-moderators can only see their own assignment (so they know their pseudonym)
+        val assignments = room.extensionData[PseudonymAssignmentsKey]
+        val ownEntry = user?.id?.let { id -> assignments[id]?.let { mapOf(id to it) } } ?: emptyMap()
         return room.copy(
-            extensionData = room.extensionData.without(PseudonymAssignmentsKey)
+            extensionData = room.extensionData.with(PseudonymAssignmentsKey, ownEntry)
         )
     }
 

@@ -5,6 +5,7 @@ import components.*
 import components.redesign.*
 import components.redesign.basic.*
 import components.redesign.forms.*
+import components.redesign.rooms.RoomContext
 import web.cssom.*
 import web.html.*
 import emotion.react.*
@@ -18,6 +19,7 @@ import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.textarea
+import tools.confido.extensions.ClientExtension
 import tools.confido.question.*
 import tools.confido.spaces.*
 import tools.confido.utils.*
@@ -105,6 +107,8 @@ private external interface CommentDialogProps : Props {
 }
 
 private val CommentDialog = FC<CommentDialogProps> { props ->
+    val (appState, _) = use(AppStateContext)!!
+    val room = use(RoomContext)
     val initialContent = props.initialContent ?: ""
 
     var lastInitialContent by useState(initialContent)
@@ -208,42 +212,51 @@ private val CommentDialog = FC<CommentDialogProps> { props ->
                         lineHeight = 18.px
                     }
 
-                    props.attachablePrediction?.let { pred ->
-                        if (!attachPrediction) {
-                            TextButton {
-                                palette = TextPalette.action
-                                css {
-                                    cursor = Cursor.pointer
+                    Stack {
+                        direction = FlexDirection.row
+                        css {
+                            alignItems = AlignItems.center
+                            gap = 10.px
+                            flexGrow = number(1.0)
+                        }
+                        room?.let { r -> ClientExtension.forEach { it.commentFieldExtra(r, appState, this) } }
+                        props.attachablePrediction?.let { pred ->
+                            if (!attachPrediction) {
+                                TextButton {
+                                    palette = TextPalette.action
+                                    css {
+                                        cursor = Cursor.pointer
 
-                                    fontFamily = sansSerif
-                                    fontSize = 15.px
-                                    lineHeight = 18.px
-                                    fontWeight = integer(400)
-                                    padding = 0.px
-                                    margin = 0.px
+                                        fontFamily = sansSerif
+                                        fontSize = 15.px
+                                        lineHeight = 18.px
+                                        fontWeight = integer(400)
+                                        padding = 0.px
+                                        margin = 0.px
+                                    }
+                                    +"Attach your current estimate"
+                                    onClick = { attachPrediction = true }
                                 }
-                                +"Attach your current estimate"
-                                onClick = { attachPrediction = true }
-                            }
-                        } else {
-                            Stack {
-                                direction = FlexDirection.row
-                                css {
-                                    alignItems = AlignItems.center
-                                    gap = 18.px
-                                }
+                            } else {
+                                Stack {
+                                    direction = FlexDirection.row
+                                    css {
+                                        alignItems = AlignItems.center
+                                        gap = 18.px
+                                    }
 
-                                PredictionAttachment {
-                                    prediction = pred
-                                }
-                                IconButton {
-                                    onClick = { attachPrediction = false }
-                                    palette = TextPalette.gray
-                                    CloseIcon {}
+                                    PredictionAttachment {
+                                        prediction = pred
+                                    }
+                                    IconButton {
+                                        onClick = { attachPrediction = false }
+                                        palette = TextPalette.gray
+                                        CloseIcon {}
+                                    }
                                 }
                             }
                         }
-                    } ?: div {} // This is needed to properly justify the "Post" button.
+                    }
 
                     val buttonDisabled = commentContent.isBlank()
                     Button {

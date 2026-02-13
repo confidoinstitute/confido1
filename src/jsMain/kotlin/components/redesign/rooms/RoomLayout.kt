@@ -21,6 +21,7 @@ import react.dom.html.ReactHTML.main
 import react.dom.html.ReactHTML.span
 import react.router.*
 import rooms.*
+import tools.confido.extensions.ClientExtension
 import tools.confido.refs.*
 import tools.confido.state.clientState
 import tools.confido.utils.mapDeref
@@ -204,6 +205,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
         component = header
         css {
             backgroundColor = palette.color
+            color = palette.text.color
             flexDirection = FlexDirection.column
             paddingBottom = 32.px
         }
@@ -241,7 +243,6 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                 fontWeight = integer(800)
                 fontFamily = sansSerif
                 textAlign = TextAlign.center
-                color = palette.text.color
                 padding = Padding(0.px, 10.px)
             }
             +room.name
@@ -253,7 +254,6 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                 paddingLeft = 60.px
                 paddingRight = 60.px
                 textAlign = TextAlign.center
-                color = palette.text.color
                 fontFamily = sansSerif
                 fontSize = 16.px
                 lineHeight = 19.px
@@ -270,6 +270,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                     text = room.description
                 }
             }
+            ClientExtension.forEach { it.roomInfoExtra(room, appState, this) }
         }
         div {
             css {
