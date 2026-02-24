@@ -175,7 +175,7 @@ private val CommentDialog = FC<CommentDialogProps> { props ->
         Form {
             onSubmit = {
                 props.onSubmit?.invoke(commentContent, attachPrediction)
-                commentContent = ""
+                commentContent = initialContent
                 props.onClose?.invoke()
             }
             Stack {
@@ -258,7 +258,7 @@ private val CommentDialog = FC<CommentDialogProps> { props ->
                         }
                     }
 
-                    val buttonDisabled = commentContent.isBlank()
+                    val buttonDisabled = commentContent.isBlank() || (initialContent.isNotBlank() && commentContent.trim() == initialContent.trim())
                     Button {
                         type = ButtonType.submit
                         disabled = buttonDisabled

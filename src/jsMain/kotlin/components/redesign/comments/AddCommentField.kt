@@ -138,7 +138,8 @@ val AddCommentField = FC<AddCommentFieldProps> { props ->
                     lineHeight = 18.px
                 }
                 onClick = {
-                    if (commentText.isNotBlank()) {
+                    val tpl = props.template?.trim() ?: ""
+                    if (commentText.isNotBlank() && !(tpl.isNotBlank() && commentText.trim() == tpl)) {
                         createComment()
                     }
                 }

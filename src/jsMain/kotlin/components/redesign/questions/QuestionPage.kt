@@ -720,8 +720,10 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
     var sortType by useState(SortType.NEWEST)
     val (appState, _) = use(AppStateContext )!!
 
-    val isFirst = (comments.data?.size ?: 0) == 0
     var spoilerExpanded by useState(false)
+
+    val isFirstByMe = comments.data?.none { it.isMine } ?: true
+    val effectiveTemplate = if (isFirstByMe) props.question.room?.commentTemplate ?: "" else ""
 
     if (comments.data != null)
     AddCommentDialog {
@@ -730,7 +732,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
         id = props.question.id
         variant = CommentInputVariant.QUESTION
         prediction = props.myPrediction
-        template = if (isFirst) props.question.room?.commentTemplate?:"" else ""
+        template = effectiveTemplate
     }
 
     Stack {
@@ -760,7 +762,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
                 id = props.question.id
                 variant = CommentInputVariant.QUESTION
                 prediction = props.myPrediction
-                template = props.question.room?.commentTemplate?: ""
+                template = effectiveTemplate
             }
         }
     }
@@ -807,7 +809,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
                     else -> emptyList()
                 }
 
-                if (spoiler && !spoilerExpanded)
+                if (spoiler && !spoilerExpanded && sortedComments.size > 0)
                     Link {
                         css {
                             textAlign = TextAlign.center

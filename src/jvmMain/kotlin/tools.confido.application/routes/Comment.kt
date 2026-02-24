@@ -74,6 +74,8 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
 
             val createdComment: CreateComment = call.receive()
             if (createdComment.content.isEmpty()) badRequest("No comment content.")
+            if (room.commentTemplate.isNotBlank() && createdComment.content.trim() == room.commentTemplate.trim())
+                badRequest("Please modify the comment template before posting.")
 
             val prediction = if (createdComment.attachPrediction) {
                 serverState.userPred[question.ref]?.get(user.ref)
