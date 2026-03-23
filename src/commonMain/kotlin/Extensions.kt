@@ -93,6 +93,12 @@ interface Extension {
 
     fun registerEdtKeys(edt: ExtensionDataType) {}
 
+    /**
+     * Register custom [RoomPermission]s for this extension.
+     * Called at startup before role definitions are loaded.
+     */
+    fun registerPermissions() {}
+
     val extensionId: String
     companion object {
         val enabled by lazy { registeredExtensions.filter { it.extensionId in appConfig.enabledExtensionIds } }

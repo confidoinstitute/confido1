@@ -10,6 +10,7 @@ import tools.confido.extensions.ExtensionDataType
 import tools.confido.question.Question
 import tools.confido.question.QuestionSchedule
 import tools.confido.refs.*
+import tools.confido.state.appConfig
 import tools.confido.utils.generateId
 import tools.confido.utils.HasUrlPrefix
 import users.User
@@ -57,7 +58,7 @@ data class Room(
 
     fun userRole(user: User?): RoomRole? {
         if (user == null) return null
-        if (user.type == UserType.ADMIN) return Owner
+        if (user.type == UserType.ADMIN) return appConfig.roleById("owner")
         return members.find { user eqid it.user }?.role
     }
 
@@ -121,6 +122,7 @@ data class InviteLink(
     val token: String,
     val description: String,
     /* Role granted by the invite link. */
+    @Serializable(with = RoomRoleRefSerializer::class)
     val role: RoomRole,
     /* User who created the invite link. */
     val createdBy: Ref<User>,
@@ -155,6 +157,7 @@ data class InviteLink(
 @Serializable
 data class RoomMembership(
     val user: Ref<User>,
+    @Serializable(with = RoomRoleRefSerializer::class)
     val role: RoomRole,
     val invitedVia: String? = null,
 )

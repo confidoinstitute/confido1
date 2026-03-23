@@ -66,8 +66,12 @@ CONFIDO_MAIL_FEEDBACK_TO=feedback@confido.tools
 # Enable viewing of the update history; experimental
 CONFIDO_FEAT_UPDATE_HISTORY=1
 
-# Add a Question Writer role
-#CONFIDO_FEAT_QUESTION_WRITER_ROLE=1
-
 # Add a popup to encourage users to comment when they make a prediction
 #CONFIDO_FEAT_ENCOURAGE_COMMENTS=1
+
+# Path to TOML file for adding/overriding room roles.
+# Built-in roles (viewer, forecaster, moderator, owner) are always present.
+# The config file can add new roles or override built-in ones.
+# If not set, defaults to roles.toml in the working directory.
+# If the file does not exist, only built-in defaults are used.
+#CONFIDO_ROLES_FILE=roles.toml

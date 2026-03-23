@@ -33,7 +33,7 @@ data class RoomContext(val inUser: User?, val room: Room) {
     val user: User by lazy { inUser ?: unauthorized("Not logged in.") }
     val ref = room.ref
 
-    fun assertPermission(permission: RoomPermission, message: String = "missing root privilege ${permission.name}") {
+    fun assertPermission(permission: RoomPermission, message: String = "missing room privilege ${permission.id}") {
         if (!room.hasPermission(user, permission)) unauthorized(message)
     }
 }
@@ -56,7 +56,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
             if (!user.type.isProper()) unauthorized("Guests cannot do this.")
             val information: BaseRoomInformation = call.receive()
 
-            val myMembership = RoomMembership(user.ref, Owner, null)
+            val myMembership = RoomMembership(user.ref, appConfig.roleById("owner") ?: error("Role 'owner' not found"), null)
             serverState.roomManager.insertEntity(
                 Room(
                     id = "", name = information.name, description = information.description,
@@ -127,13 +127,13 @@ fun roomRoutes(routing: Routing) = routing.apply {
                 is AddedExistingMember -> {
                     // TODO: prevent in frontend
                     val existingUser = member.user.deref() ?: badRequest("User does not exist.")
-                    if (!member.role.isAvailableToGuests && !existingUser.type.isProper()) badRequest("This role cannot be used for a guest.")
+                    if (!member.role.availableToGuests && !existingUser.type.isProper()) badRequest("This role cannot be used for a guest.")
                     addExistingMember(existingUser, member.role)
                 }
                 is AddedNewMember -> {
                     serverState.userManager.byEmail[member.email.lowercase()]?.let {
                         // In this case just add a new member directly
-                        if (!member.role.isAvailableToGuests && !it.type.isProper())  badRequest("This role cannot be used for a guest")
+                        if (!member.role.availableToGuests && !it.type.isProper())  badRequest("This role cannot be used for a guest")
                         addExistingMember(it, member.role)
                     } ?: run {
                         val newUser = User(

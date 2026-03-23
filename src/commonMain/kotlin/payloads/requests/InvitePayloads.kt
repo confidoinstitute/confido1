@@ -3,6 +3,7 @@ package payloads.requests
 import kotlinx.serialization.Serializable
 import rooms.InviteFieldPolicy
 import rooms.RoomRole
+import rooms.RoomRoleRefSerializer
 import tools.confido.refs.Ref
 import tools.confido.state.UserSessionValidity
 import users.User
@@ -33,6 +34,7 @@ data class AcceptInviteAndCreateUser(
 @Serializable
 data class CreateNewInvite(
     val description: String?,
+    @Serializable(with = RoomRoleRefSerializer::class)
     val role: RoomRole,
     val nicknamePolicy: InviteFieldPolicy = InviteFieldPolicy.OPTIONAL,
     val emailPolicy: InviteFieldPolicy = InviteFieldPolicy.OPTIONAL,
@@ -70,6 +72,7 @@ sealed class AddedMember {
 @Serializable
 data class AddedNewMember(
     val email: String,
+    @Serializable(with = RoomRoleRefSerializer::class)
     override val role: RoomRole,
 ) : AddedMember()
 
@@ -79,5 +82,6 @@ data class AddedNewMember(
 @Serializable
 data class AddedExistingMember(
     val user: Ref<User>,
+    @Serializable(with = RoomRoleRefSerializer::class)
     override val role: RoomRole,
 ) : AddedMember()

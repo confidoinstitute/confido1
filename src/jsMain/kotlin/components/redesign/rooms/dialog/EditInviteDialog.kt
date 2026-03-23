@@ -14,7 +14,6 @@ import payloads.requests.CreateNewInvite
 import react.*
 import react.dom.html.ReactHTML.option
 import rooms.*
-import tools.confido.state.FeatureFlag
 import tools.confido.state.appConfig
 import users.UserType
 import web.html.ButtonType
@@ -27,9 +26,12 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
     val room = use(RoomContext)!!
     val stale = use(AppStateContext)!!.stale
 
+    // Default to the first guest-available role, or the first role
+    val defaultRole = appConfig.roles.firstOrNull { it.availableToGuests } ?: appConfig.roles.first()
+
     // Invitation link values
     var description by useState(i?.description ?: "Shared Invite Link")
-    var role by useState(i?.role ?: Forecaster)
+    var role by useState(i?.role ?: defaultRole)
     var nicknamePolicy by useState(i?.nicknamePolicy ?: InviteFieldPolicy.OPTIONAL)
     var emailPolicy by useState(i?.emailPolicy ?: InviteFieldPolicy.OPTIONAL)
     var targetUserType by useState(i?.targetUserType ?: UserType.GUEST)
@@ -101,21 +103,14 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                         }
                         value = role.id
                         onChange = { event ->
-                            role = when(event.target.value) {
-                                "viewer" -> Viewer
-                                "forecaster" -> Forecaster
-                                "question_writer" -> QuestionWriter
-                                else -> error("This should not happen!")
-                            }
+                            role = appConfig.roleById(event.target.value)
+                                ?: error("Unknown role: ${event.target.value}")
                         }
-                        ( mapOf("viewer" to "Viewer", "forecaster" to "Forecaster")
-                                        + if (FeatureFlag.QUESTION_WRITER_ROLE in appConfig.featureFlags)
-                                    mapOf("question_writer" to "Question Writer")
-                                else emptyMap()
-                        ).map { (value, label) ->
+                        // Show guest-available roles for invite links
+                        appConfig.roles.filter { it.availableToGuests }.map { r ->
                             option {
-                                this.value = value
-                                +label
+                                this.value = r.id
+                                +r.name
                             }
                         }
                     }

@@ -114,9 +114,9 @@ suspend fun initDemo() {
     }
     val rooms = listOf(
         Room(id = "demoroom1", name = "Testing room", members = listOf(
-            RoomMembership(admin.ref, role = Moderator),
-            RoomMembership(user1.ref, role = Forecaster),
-            RoomMembership(user2.ref, role = Forecaster),
+            RoomMembership(admin.ref, role = appConfig.roleById("moderator") ?: error("Role 'moderator' not found")),
+            RoomMembership(user1.ref, role = appConfig.roleById("forecaster") ?: error("Role 'forecaster' not found")),
+            RoomMembership(user2.ref, role = appConfig.roleById("forecaster") ?: error("Role 'forecaster' not found")),
         ))
     )
 
@@ -147,6 +147,7 @@ fun main() {
     // serialize Ref by default. So we must create a custom serializer and also register it
     // with KMongo.
     registerSerializer(RefAsStringSerializer)
+    registerSerializer(rooms.RoomRoleRefSerializer)
 
     runBlocking {
         serverState.initialize()

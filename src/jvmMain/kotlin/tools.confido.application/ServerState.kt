@@ -60,18 +60,26 @@ fun getenvList(name: String, default: List<String> = emptyList()): List<String> 
     return (System.getenv(name)?.ifEmpty {null} ?: return default).split(',')
 }
 
-fun loadConfig() = AppConfig(
-    devMode = getenvBool("CONFIDO_DEVMODE"),
-    demoMode = getenvBool("CONFIDO_DEMO"),
-    betaIndicator = getenvBool("CONFIDO_BETA_INDICATOR"),
-    featureFlags = FeatureFlag.values().filter{ getenvBool("CONFIDO_FEAT_${it.name}", it in DEFAULT_FEATURE_FLAGS)}.toSet(),
-    privacyPolicyUrl = System.getenv("CONFIDO_PRIVACY_POLICY_URL")?.ifEmpty {null},
-    enabledExtensionIds = getenvList("CONFIDO_EXTENSIONS").toSet(),
-    predictionCoalesceInterval = System.getenv("CONFIDO_PREDICTION_COALESCE_INTERVAL")?.toInt() ?: 60,
-    // XXX      vvvv-- cannot use confidoJSON here at this would create an initialization cycle
-    extraData = Json.decodeFromString(System.getenv("CONFIDO_EXTRA_DATA") ?: "{}"),
-    commentSpoiler = getenvBool("CONFIDO_COMMENT_SPOILER")
-)
+fun loadConfig(): AppConfig {
+    val enabledExtensionIds = getenvList("CONFIDO_EXTENSIONS").toSet()
+    return AppConfig(
+        devMode = getenvBool("CONFIDO_DEVMODE"),
+        demoMode = getenvBool("CONFIDO_DEMO"),
+        betaIndicator = getenvBool("CONFIDO_BETA_INDICATOR"),
+        featureFlags = FeatureFlag.values().filter{ getenvBool("CONFIDO_FEAT_${it.name}", it in DEFAULT_FEATURE_FLAGS)}.toSet(),
+        privacyPolicyUrl = System.getenv("CONFIDO_PRIVACY_POLICY_URL")?.ifEmpty {null},
+        enabledExtensionIds = enabledExtensionIds,
+        predictionCoalesceInterval = System.getenv("CONFIDO_PREDICTION_COALESCE_INTERVAL")?.toInt() ?: 60,
+        // XXX      vvvv-- cannot use confidoJSON here at this would create an initialization cycle
+        extraData = Json.decodeFromString(System.getenv("CONFIDO_EXTRA_DATA") ?: "{}"),
+        commentSpoiler = getenvBool("CONFIDO_COMMENT_SPOILER"),
+        // Roles must be loaded after enabledExtensionIds is known (for extension permission registration)
+        // but before appConfig is assigned (since role deserialization depends on appConfig).
+        // We pass enabledExtensionIds directly to avoid the circular dependency:
+        // appConfig -> loadRoles() -> Extension.enabled -> appConfig
+        roles = loadRoles(enabledExtensionIds),
+    )
+}
 
 actual val appConfig = loadConfig()
 

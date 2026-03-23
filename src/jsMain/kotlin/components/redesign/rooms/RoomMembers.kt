@@ -37,7 +37,6 @@ import rooms.*
 import tools.confido.extensions.ClientExtension
 import tools.confido.refs.deref
 import tools.confido.refs.eqid
-import tools.confido.state.FeatureFlag
 import tools.confido.state.SentState
 import tools.confido.state.appConfig
 import tools.confido.utils.pluralize
@@ -362,23 +361,16 @@ val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
         value = props.value.id
         disabled = props.disabled || stale || !canChange
         onChange = { event ->
-            val changedRole = when(event.target.value) {
-                "viewer" -> Viewer
-                "forecaster" -> Forecaster
-                "question_writer" -> QuestionWriter
-                "moderator" -> Moderator
-                "owner" -> Owner
-                else -> error("This role does not exist")
-            }
+            val changedRole = appConfig.roleById(event.target.value)
+                ?: error("Unknown role: ${event.target.value}")
             if (canChangeRole(appState, room, changedRole))
                 props.onChange?.invoke(changedRole)
         }
-        val qw = if (FeatureFlag.QUESTION_WRITER_ROLE in appConfig.featureFlags) arrayOf(QuestionWriter) else emptyArray()
-        listOf(Viewer, Forecaster, *qw, Moderator, Owner).map { role ->
+        appConfig.roles.map { role ->
             option {
                 value = role.id
                 +role.name
-                if (!canChangeRole(appState, room, role) || (props.isGuest && !role.isAvailableToGuests))
+                if (!canChangeRole(appState, room, role) || (props.isGuest && !role.availableToGuests))
                     disabled = true
             }
         }

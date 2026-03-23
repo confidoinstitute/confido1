@@ -1,0 +1,39 @@
+# Role configuration for Confido.
+#
+# Built-in roles (viewer, forecaster, moderator, owner) are always present.
+# This file can add new roles or override built-in ones.
+#
+# Each [[role]] block defines or overrides a role:
+#   id                  - Unique string identifier
+#   name                - Human-readable display name (optional for overrides)
+#   permissions         - List of permission IDs to grant
+#   inherit             - (Optional) ID of another role whose permissions to include
+#   available_to_guests - (Optional) Whether guests can be assigned this role
+#   all_permissions     - (Optional) Grants all registered permissions
+#
+# For overrides (same id as a built-in), only specified fields are changed;
+# unspecified fields keep their built-in defaults.
+#
+# Core permissions:
+#   view_questions, view_question_comments, view_room_comments,
+#   post_question_comment, post_room_comment, submit_prediction,
+#   add_question, suggest_question, view_hidden_questions,
+#   view_all_invite_tokens, create_invite_link,
+#   view_all_group_predictions, view_all_resolutions, view_individual_predictions,
+#   manage_questions, manage_members, manage_comments,
+#   room_owner, view_group_calibration
+#
+# Example: add a "Question Writer" role that extends Forecaster with add_question:
+#
+# [[role]]
+# id = "question_writer"
+# name = "Question Writer"
+# inherit = "forecaster"
+# permissions = ["add_question"]
+# available_to_guests = true
+#
+# Example: rename the built-in "viewer" role:
+#
+# [[role]]
+# id = "viewer"
+# name = "Spectator"

@@ -1,10 +1,10 @@
 package tools.confido.state
 
 import kotlinx.serialization.Serializable
+import rooms.RoomRole
 
 enum class FeatureFlag {
     UPDATE_HISTORY,
-    QUESTION_WRITER_ROLE,
     ENCOURAGE_COMMENTS,
 }
 
@@ -24,6 +24,11 @@ data class AppConfig(
     val predictionCoalesceInterval: Int = 60,
     val extraData: Map<String,String> = emptyMap(),
     val commentSpoiler: Boolean = false,
-)
+    /** Role definitions loaded from the roles config file. Order determines UI display order. */
+    val roles: List<RoomRole> = emptyList(),
+) {
+    /** Look up a role by its string ID. */
+    fun roleById(id: String): RoomRole? = roles.find { it.id == id }
+}
 
 expect val appConfig: AppConfig

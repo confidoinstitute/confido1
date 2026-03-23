@@ -10,12 +10,8 @@ import payloads.requests.AddedExistingMember
 import payloads.requests.AddedNewMember
 import react.*
 import react.dom.html.ReactHTML
-import rooms.Forecaster
-import rooms.QuestionWriter
 import rooms.RoomRole
-import rooms.Viewer
 import tools.confido.refs.ref
-import tools.confido.state.FeatureFlag
 import tools.confido.state.appConfig
 import tools.confido.utils.stringToColor
 import users.User
@@ -109,7 +105,9 @@ val AddMemberDialog = dialogStateWrapper(FC<BaseDialogProps> { props ->
     val (appState, stale) = use(AppStateContext)!!
     val room = use(RoomContext)!!
 
-    var role by useState<RoomRole>(Forecaster)
+    // Default to the first guest-available role, or the first role
+    val defaultRole = appConfig.roles.firstOrNull { it.availableToGuests } ?: appConfig.roles.first()
+    var role by useState<RoomRole>(defaultRole)
     var search by useState("")
 
     val members = room.members.filter {it.invitedVia == null}.map {it.user.id}.toSet()
@@ -151,23 +149,16 @@ val AddMemberDialog = dialogStateWrapper(FC<BaseDialogProps> { props ->
                     }
                     value = role.id
                     onChange = { event ->
-                        role = when (event.target.value) {
-                            "viewer" -> Viewer
-                            "forecaster" -> Forecaster
-                            "question_writer" -> QuestionWriter
-                            else -> error("This should not happen!")
+                        role = appConfig.roleById(event.target.value)
+                            ?: error("Unknown role: ${event.target.value}")
+                    }
+                    // Show guest-available roles for adding members
+                    appConfig.roles.filter { it.availableToGuests }.map { r ->
+                        ReactHTML.option {
+                            this.value = r.id
+                            +r.name
                         }
                     }
-                    (mapOf("viewer" to "Viewer", "forecaster" to "Forecaster")
-                            + if (FeatureFlag.QUESTION_WRITER_ROLE in appConfig.featureFlags)
-                        mapOf("question_writer" to "Question Writer")
-                    else emptyMap()
-                            ).map { (value, label) ->
-                            ReactHTML.option {
-                                this.value = value
-                                +label
-                            }
-                        }
                 }
                 comment = "The added member will get this role."
             }

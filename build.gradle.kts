@@ -6,6 +6,7 @@ val ktorVersion = "3.3.1"
 val serializationVersion = "1.9.0"
 val kmongoVersion = "4.7.2"
 val kotlinWrappersVersion = "2025.10.8"
+val ktomlVersion = "0.7.1"
 
 plugins {
     kotlin("multiplatform") version "2.2.20"
@@ -142,6 +143,8 @@ kotlin {
                 implementation("org.simplejavamail:simple-java-mail:7.5.0")
                 implementation("com.github.jnr:jnr-unixsocket:0.38.19") // for mongodb unix socket connection (faster)
                 implementation("commons-codec:commons-codec:1.15")
+                implementation("com.akuleshov7:ktoml-core:$ktomlVersion")
+                implementation("com.akuleshov7:ktoml-file:$ktomlVersion")
             }
         }
         val jsMain by getting {
