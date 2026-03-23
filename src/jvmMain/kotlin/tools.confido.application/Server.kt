@@ -150,6 +150,7 @@ fun main() {
 
     runBlocking {
         serverState.initialize()
+        tools.confido.application.migrations.MigrationRunner.runPending(serverState.database)
         serverState.load()
         if (appConfig.demoMode) initDemo()
         else initData()
