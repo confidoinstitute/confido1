@@ -160,7 +160,7 @@ data class NumericSpace(
             val min = minDate.toEpochDays() * 86400.0
             val max = maxDate.toEpochDays() * 86400.0
             val diff = maxDate.toEpochDays() - minDate.toEpochDays() + 1
-            val bins = diff.coerceAtMost(1000)
+            val bins = diff.coerceAtMost(1000).toInt()
             return NumericSpace( min, max, bins=bins, representsDays = true)
         }
     }
