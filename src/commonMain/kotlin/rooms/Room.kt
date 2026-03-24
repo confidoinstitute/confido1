@@ -48,6 +48,13 @@ data class Room(
     @Serializable(with = RoomEDTSerializer::class)
     val extensionData: ExtensionData = ExtensionData(RoomEDT),
     val commentTemplate: String = "",
+    // Computed fields: populated by StateCensor before sending to clients, never persisted to DB.
+    /** Effective member list including implied members (e.g. inherited from parent group).
+     *  On the client, Room.effectiveMembers reads this field.
+     *  On the server, Room.effectiveMembers computes via extension hooks. */
+    val _effectiveMembers: List<RoomMembership>? = null,
+    /** Effective question list (e.g. aggregated from child rooms) with per-question flags. */
+    val _effectiveQuestions: List<EffectiveQuestion>? = null,
 ) : ImmediateDerefEntity, HasUrlPrefix {
     fun findLink(id: String?): InviteLink? {
         if (id == null || id == "") {
@@ -58,8 +65,9 @@ data class Room(
 
     fun userRole(user: User?): RoomRole? {
         if (user == null) return null
-        if (user.type == UserType.ADMIN) return appConfig.roleById("owner")
-        return members.find { user eqid it.user }?.role
+        // Admins are injected as implied owners in effectiveMembers (server-side),
+        // so no special case needed here.
+        return effectiveMembers.find { user eqid it.user }?.role
     }
 
     fun hasPermission(user: User?, permission: RoomPermission): Boolean {
@@ -68,13 +76,14 @@ data class Room(
             return false
         }
 
-        if (user.type == UserType.ADMIN) {
-            return true
-        }
+        // Admins are injected as implied owners in effectiveMembers (server-side),
+        // so no special case needed here. Their permissions are subject to
+        // memberEffectivePermissions like everyone else.
 
         // Note that one user could have multiple memberships here.
-        return members.any {
-            it.user eqid user && findLink(it.invitedVia)?.canAccess ?: true && it.role.hasPermission(permission)
+        return effectiveMembers.any {
+            it.user eqid user && findLink(it.invitedVia)?.canAccess ?: true &&
+                    permission in memberEffectivePermissions(it)
         }
     }
 
@@ -160,6 +169,14 @@ data class RoomMembership(
     @Serializable(with = RoomRoleRefSerializer::class)
     val role: RoomRole,
     val invitedVia: String? = null,
+    // Computed fields: populated server-side via extension hooks, sent over wire, never persisted to DB.
+    /** Whether this membership is implied (e.g. inherited from a parent room group). */
+    val implied: Boolean = false,
+    /** Human-readable description of the implication source (e.g. the group name). */
+    val impliedFrom: String? = null,
+    /** Pre-computed effective permissions for this membership in this room context.
+     *  When non-null, takes precedence over role.effectivePermissions. */
+    val effectivePermissions: Set<@Serializable(with = RoomPermissionSerializer::class) RoomPermission>? = null,
 )
 
 @Serializable

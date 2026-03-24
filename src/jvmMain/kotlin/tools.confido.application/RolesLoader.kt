@@ -161,6 +161,7 @@ fun builtinDefaultRoles(): List<RoomRole> {
         RoomPermission.VIEW_ROOM_COMMENTS,
         RoomPermission.VIEW_ALL_GROUP_PREDICTIONS,
         RoomPermission.VIEW_GROUP_CALIBRATION,
+        RoomPermission.VIEW_SCORES,
     )
     val forecasterPerms = viewerPerms + setOf(
         RoomPermission.SUBMIT_PREDICTION,
@@ -177,6 +178,7 @@ fun builtinDefaultRoles(): List<RoomRole> {
         RoomPermission.MANAGE_MEMBERS,
         RoomPermission.CREATE_INVITE_LINK,
         RoomPermission.VIEW_ALL_INVITE_TOKENS,
+        RoomPermission.VIEW_ALL_SCORES,
         RoomPermission.VIEW_GROUP_CALIBRATION,
     )
 

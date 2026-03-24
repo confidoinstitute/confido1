@@ -96,6 +96,13 @@ interface ClientExtension : Extension {
     fun  hideDefaultPredictionDesc(dist: ProbabilityDistribution?, question: Question?, b: Boolean) = false
     fun binarySliderExtra(props: BinaryPredInputProps, zoom: PZState?, cb: ChildrenBuilder) {}
     fun sidebarExtra(place: SidebarPlace, small: Boolean, cb: ChildrenBuilder) {}
+
+    /** Override room entries rendering in the sidebar (the room links portion, not the "Create room" link).
+     *  Return true if the extension handled rendering (default entries are skipped).
+     *  Return false to fall back to default rendering.
+     *  The extension can reuse [components.redesign.rooms.RoomListEntries] for rendering room entries. */
+    fun renderSidebarRoomEntries(rooms: Map<String, Room>, small: Boolean, cb: ChildrenBuilder): Boolean = false
+
     fun rootRoutesExtra(): List<RouteObject> = emptyList()
 }
 

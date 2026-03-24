@@ -119,6 +119,7 @@ object serverState : GlobalState() {
         val addCallbacks: MutableList<EntityManager<E>.(E) -> Unit> = mutableListOf()
         val deleteCallbacks: MutableList<EntityManager<E>.(E) -> Unit> = mutableListOf()
         val beforeSaveCallbacks: MutableList<EntityManager<E>.(E?, E) -> E> = mutableListOf()
+        val beforeDeleteCallbacks: MutableList<suspend EntityManager<E>.(E) -> Unit> = mutableListOf()
 
         /** Register a callback that transforms an entity before it is persisted.
          * The callback receives (oldEntity?, newEntity) where oldEntity is null for inserts.
@@ -127,8 +128,18 @@ object serverState : GlobalState() {
             beforeSaveCallbacks.add(cb)
         }
 
+        /** Register a callback that is called before an entity is deleted.
+         *  Can be used for cascade operations, cleanup, or to prevent deletion (by throwing). */
+        fun beforeEntityDelete(cb: suspend EntityManager<E>.(E) -> Unit) {
+            beforeDeleteCallbacks.add(cb)
+        }
+
         fun applyBeforeSave(old: E?, new: E): E =
             beforeSaveCallbacks.fold(new) { acc, cb -> cb(old, acc) }
+
+        suspend fun notifyBeforeDelete(entity: E) {
+            beforeDeleteCallbacks.forEach { it(entity) }
+        }
         fun onEntityUpdated(cb: EntityManager<E>.(E, E) -> Unit) {
             updateCallbacks.add(cb)
         }
@@ -222,6 +233,7 @@ object serverState : GlobalState() {
         suspend fun deleteEntity(id: String, ignoreNonexistent: Boolean = false) : E? =
             withMutationLock {
                 val orig: E = get(id) ?: if (ignoreNonexistent) return@withMutationLock null else throw NoSuchElementException()
+                notifyBeforeDelete(orig)
                 when (val sess = coroutineContext.getSession()) {
                     null -> mongoCollection.deleteOneById(id)
                     else -> mongoCollection.deleteOneById(sess, id)
@@ -234,6 +246,7 @@ object serverState : GlobalState() {
             withMutationLock {
                 val orig: E = get(entity.id) ?: if (ignoreNonexistent) return@withMutationLock null else throw NoSuchElementException()
                 if (orig != entity) throw ConcurrentModificationException()
+                notifyBeforeDelete(orig)
                 when (val sess = coroutineContext.getSession()) {
                     null -> mongoCollection.deleteOneById(entity.id)
                     else -> mongoCollection.deleteOneById(sess, entity.id)
@@ -304,6 +317,16 @@ object serverState : GlobalState() {
     val questionRoom: MutableMap<Ref<Question>, Ref<Room>> = mutableMapOf()
     object roomManager : InMemoryEntityManager<Room>(database.getCollection<Room>("rooms")) {
         init {
+            // Strip computed fields before persisting to DB (safety net against accidental persistence)
+            beforeEntitySave { _, room ->
+                room.copy(
+                    _effectiveMembers = null,
+                    _effectiveQuestions = null,
+                    members = room.members.map {
+                        it.copy(implied = false, impliedFrom = null, effectivePermissions = null)
+                    }
+                )
+            }
             onEntityAdded { room->
                 room.questions.forEach { questionRoom[it] = room.ref }
             }

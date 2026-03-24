@@ -49,6 +49,8 @@ class RoomPermission private constructor(val id: String, val description: String
         val MANAGE_COMMENTS = register("manage_comments", "Manage (edit/delete) other users' comments")
         val ROOM_OWNER = register("room_owner", "Full room owner privileges")
         val VIEW_GROUP_CALIBRATION = register("view_group_calibration", "View group calibration data")
+        val VIEW_SCORES = register("view_scores", "View the scoreboard")
+        val VIEW_ALL_SCORES = register("view_all_scores", "View the scoreboard even in private mode")
     }
 
     override fun equals(other: Any?) = other is RoomPermission && id == other.id

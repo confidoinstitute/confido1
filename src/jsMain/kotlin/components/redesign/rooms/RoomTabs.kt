@@ -90,11 +90,7 @@ val RoomTabs = FC<RoomTabsProps> { props ->
     val locationValue = location.pathname.split('/').getOrNull(3) ?: ""
     val layoutMode = use(LayoutModeContext)!!
 
-    val sbm = room.scoring?.scoreboardMode ?: ScoreboardMode.NONE
-    val canScore = (
-                (sbm == ScoreboardMode.PUBLIC  && appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS)) ||
-                (sbm == ScoreboardMode.PRIVATE && appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS))
-            )
+    val canScore = appState.hasPermission(room, RoomPermission.VIEW_SCORES)
 
     Stack {
         direction = FlexDirection.row

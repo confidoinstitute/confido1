@@ -37,6 +37,17 @@ import web.scroll.smooth
 import web.timers.*
 import web.window.window
 
+/** Simple component that redirects to a relative path. Used for first-available-tab redirect. */
+private external interface RedirectToProps : Props {
+    var to: String
+}
+private val RedirectTo = FC<RedirectToProps> { props ->
+    val navigate = useNavigate()
+    useEffect(props.to) {
+        navigate(props.to, jso<dynamic> { replace = true })
+    }
+}
+
 val RoomHeaderButton = Button.withStyle {
         margin = 0.px
         padding = 7.px
@@ -303,7 +314,12 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                         add(jso<RouteObject> {
                             index = true
                             element = QuestionList.create {
-                                questions = room.questions.mapDeref()
+                                // Use effective questions for display if provided (e.g. aggregated from child rooms),
+                                // otherwise use the room's own questions.
+                                val effQuestions = room._effectiveQuestions
+                                    ?.filter { it.visibleInList }
+                                    ?.mapNotNull { it.question.deref() }
+                                questions = effQuestions ?: room.questions.mapDeref()
                                 showHiddenQuestions = appState.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
                             }
                         })
@@ -329,12 +345,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                         })
                     }
 
-                    val sbm = room.scoring?.scoreboardMode ?: ScoreboardMode.NONE
-                    val canScore = (
-                            (sbm == ScoreboardMode.PUBLIC  && appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS)) ||
-                                    (sbm == ScoreboardMode.PRIVATE && appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS))
-                            )
-                    if (canScore) {
+                    if (appState.hasPermission(room, RoomPermission.VIEW_SCORES)) {
                         add(jso<RouteObject> {
                             path = "score"
                             element = RoomScore.create()
@@ -353,6 +364,16 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                     // Add extension routes
                     clientState.extensions.forEach { extension ->
                         addAll(extension.roomRoutesExtra(room))
+                    }
+
+                    // If no index route exists (e.g. VIEW_QUESTIONS permission was stripped for group rooms),
+                    // redirect to the first available tab.
+                    if (none { it.index == true } && isNotEmpty()) {
+                        val firstPath = firstNotNullOfOrNull { it.path } ?: ""
+                        add(0, jso<RouteObject> {
+                            index = true
+                            element = RedirectTo.create { to = firstPath }
+                        })
                     }
                 }.toTypedArray()
             }

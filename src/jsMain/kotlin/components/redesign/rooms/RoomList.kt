@@ -13,6 +13,8 @@ import react.dom.svg.*
 import react.dom.svg.ReactSVG.svg
 import react.router.*
 import react.router.dom.*
+import rooms.Room
+import tools.confido.extensions.ClientExtension
 import utils.ExtendableLink
 import utils.ExtendableLinkProps
 
@@ -59,9 +61,55 @@ val RoomLink = ExtendableLink.withRipple().withStyleLM<RoomLinkProps>("small") {
     }
 }
 
+external interface RoomListEntriesProps : Props {
+    var rooms: List<Room>
+    var small: Boolean
+}
+
+/** Renders a list of rooms as RoomLink entries (icon + name). Reusable by extensions. */
+val RoomListEntries = FC<RoomListEntriesProps> { props ->
+    val location = useLocation()
+    val iconSize = if (props.small) 36.px else 48.px
+
+    props.rooms.map { room ->
+        RoomLink {
+            key = room.id
+            to = room.urlPrefix
+            small = props.small
+            highlighted = location.pathname.startsWith(room.urlPrefix)
+            div {
+                css {
+                    backgroundColor = room.color.palette.color
+                    borderRadius = 8.px
+                    width = iconSize
+                    height = iconSize
+                    flexShrink = number(0.0)
+                    display = Display.flex
+                    alignItems = AlignItems.center
+                    justifyContent = JustifyContent.center
+                    padding = 6.px
+                }
+                room.icon?.let {
+                    div {
+                        css {
+                            mask = url("/static/icons/$it")
+                            maskSize = MaskSize.contain
+                            backgroundColor = room.color.palette.text.color
+                            width = 100.pct
+                            height = 100.pct
+                        }
+                    }
+                }
+            }
+            span {
+                +room.name
+            }
+        }
+    }
+}
+
 val RoomList = FC<RoomListProps> {props ->
     val (appState, stale) = use(AppStateContext)!!
-    val location = useLocation()
     val layoutMode = use(LayoutModeContext)!!
 
     val iconSize = if(props.small) 36.px else 48.px
@@ -71,47 +119,24 @@ val RoomList = FC<RoomListProps> {props ->
         css {
             gap = 4.px
         }
-        appState.rooms.map {(id, room) ->
-            RoomLink {
-                key = id
-                to = room.urlPrefix
+
+        // Let extensions override room entries rendering (e.g. for grouped/hierarchical display)
+        val handled = ClientExtension.enabled.any { ext ->
+            ext.renderSidebarRoomEntries(appState.rooms, props.small, this)
+        }
+        if (!handled) {
+            RoomListEntries {
+                rooms = appState.rooms.values.toList()
                 small = props.small
-                highlighted = location.pathname.startsWith(room.urlPrefix)
-                div {
-                    css {
-                        backgroundColor = room.color.palette.color
-                        borderRadius = 8.px
-                        width = iconSize
-                        height = iconSize
-                        flexShrink = number(0.0)
-                        display = Display.flex
-                        alignItems = AlignItems.center
-                        justifyContent = JustifyContent.center
-                        padding = 6.px
-                    }
-                    room.icon?.let {
-                        div {
-                            css {
-                                mask = url("/static/icons/$it")
-                                maskSize = MaskSize.contain
-                                backgroundColor = room.color.palette.text.color
-                                width = 100.pct
-                                height = 100.pct
-                            }
-                        }
-                    }
-                }
-                span {
-                    +room.name
-                }
             }
         }
+
         if (props.canCreate)
             RoomLink {
                 key = "::new_room"
                 to = "/new_room"
                 small = props.small
-                highlighted = location.pathname.startsWith("/new_room")
+                highlighted = useLocation().pathname.startsWith("/new_room")
                 div {
                     css {
                         border = Border(1.px, LineStyle.solid, Color("#BBBBBB"))

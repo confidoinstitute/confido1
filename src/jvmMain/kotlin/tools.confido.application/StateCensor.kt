@@ -1,9 +1,6 @@
 package tools.confido.application
 
-import rooms.InviteLink
-import rooms.Room
-import rooms.RoomMembership
-import rooms.RoomPermission
+import rooms.*
 import tools.confido.application.sessions.TransientData
 import tools.confido.extensions.ServerExtension
 import tools.confido.question.Comment
@@ -61,13 +58,29 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
             inviteLink.copy(token = "")
 
     fun censorRoom(room: Room): Room? {
-        if (!room.hasPermission(user, RoomPermission.VIEW_QUESTIONS)) return null
+        // Room is visible if the user is an effective member (with any permission).
+        // Which tabs/content they see is controlled by their effective permissions.
+        if (user == null || room.effectiveMembers.none { it.user eqid user }) return null
+
+        // Compute effective members with their effective permissions for wire transmission.
+        val effMembers = room.effectiveMembers.map { m ->
+            m.copy(effectivePermissions = room.memberEffectivePermissions(m))
+        }
+
+        // Compute effective questions if an extension provides them.
+        val effQuestions = ServerExtension.enabled.firstNotNullOfOrNull {
+            it.effectiveQuestions(room)
+        }
+
         var censored = room.copy(
             questions = room.questions.filter {
                 (it.deref() ?: return@filter false).visible || room.hasPermission(user, RoomPermission.VIEW_HIDDEN_QUESTIONS)
             },
-            // guests cannot see member list
+            // guests cannot see member list; members stays as direct members only
             members = room.members.mapNotNull { censorMembership(room, it) },
+            // _effectiveMembers carries the full effective list (including implied) for the client
+            _effectiveMembers = effMembers.mapNotNull { censorMembership(room, it) },
+            _effectiveQuestions = effQuestions,
             inviteLinks = if (user?.type in setOf(UserType.ADMIN, UserType.MEMBER)) room.inviteLinks.mapNotNull { censorInviteLink(room, it) } else emptyList(),
         )
         ServerExtension.forEach { censored = it.censorRoom(censored, user) }

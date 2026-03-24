@@ -56,7 +56,11 @@ val RoomMembers = FC<Props> {
     val room = use(RoomContext)!!
     val layoutMode = use(LayoutModeContext)!!
 
-    val groupedMembership = room.members.groupBy {
+    // Separate implied (inherited) members from direct members
+    val impliedMembers = room.effectiveMembers.filter { it.implied }
+    val directMembers = room.members.filter { !it.implied }
+
+    val groupedMembership = directMembers.groupBy {
         it.invitedVia ?: if (it.user.deref()?.type?.isProper()?:false) "internal" else "guest"
     }
     val invitations = room.inviteLinks.associateWith { groupedMembership[it.id] }
@@ -127,6 +131,22 @@ val RoomMembers = FC<Props> {
                         this.invitation = invitation
                         this.members = maybeMembers
                         this.onEditDialog = { editInviteLinkDialog(it) }
+                    }
+                }
+            }
+        }
+        if (impliedMembers.isNotEmpty()) {
+            // Group implied members by their source (impliedFrom)
+            val groupedImplied = impliedMembers.groupBy { it.impliedFrom ?: "Inherited" }
+            groupedImplied.forEach { (source, members) ->
+                DividerHeading { text = "Inherited from $source" }
+                Stack {
+                    css { gap = 10.px; padding = 15.px; backgroundColor = bgColor; opacity = number(0.7) }
+                    members.map {
+                        RoomMember {
+                            disabled = true
+                            membership = it
+                        }
                     }
                 }
             }
