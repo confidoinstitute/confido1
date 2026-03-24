@@ -10,6 +10,15 @@ package rooms
 expect val Room.effectiveMembers: List<RoomMembership>
 
 /**
+ * The effective question list for this room, including aggregated questions (e.g. from child rooms).
+ *
+ * On the server, this is computed via [ServerExtension.effectiveQuestions] hooks.
+ * On the client, this reads [Room._effectiveQuestions] which was populated by the server.
+ * Returns null if no extension overrides the room's question list.
+ */
+expect val Room.effectiveQuestions: List<EffectiveQuestion>?
+
+/**
  * The effective permissions for a specific membership in this room.
  *
  * On the server, this is computed via [ServerExtension.effectivePermissions] hooks.

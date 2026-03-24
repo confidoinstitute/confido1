@@ -316,7 +316,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                             element = QuestionList.create {
                                 // Use effective questions for display if provided (e.g. aggregated from child rooms),
                                 // otherwise use the room's own questions.
-                                val effQuestions = room._effectiveQuestions
+                                val effQuestions = room.effectiveQuestions
                                     ?.filter { it.visibleInList }
                                     ?.mapNotNull { it.question.deref() }
                                 questions = effQuestions ?: room.questions.mapDeref()
@@ -345,7 +345,8 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                         })
                     }
 
-                    if (appState.hasPermission(room, RoomPermission.VIEW_SCORES)) {
+                    // Score tab visible when scoring is enabled (not just when scoreboard is visible)
+                    if (room.scoring != null) {
                         add(jso<RouteObject> {
                             path = "score"
                             element = RoomScore.create()

@@ -1,6 +1,7 @@
 package components.redesign.scores
 
 import Client
+import components.AppStateContext
 import components.redesign.HelpIcon
 import components.redesign.basic.*
 import components.redesign.forms.IconButton
@@ -8,7 +9,6 @@ import components.redesign.forms.Select
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.rooms.ScoringHelpDialog
-import emotion.css.ClassName
 import emotion.react.css
 import hooks.useSuspendResult
 import io.ktor.client.call.*
@@ -17,6 +17,7 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import normalizedBrier
+import payloads.responses.MyRankResponse
 import payloads.responses.MyScoreItem
 import payloads.responses.MyScoresResponse
 import react.*
@@ -61,7 +62,7 @@ private fun formatShortDate(instant: Instant): String {
  * Maps a normalized Brier score (-3..+1) to a pastel background color
  * on a red-to-green gradient via HSL interpolation.
  */
-private fun scoreColor(score: Double): Color {
+internal fun scoreColor(score: Double): Color {
     // Map score from [-3, +1] to [0, 1]
     val t = ((score + 3.0) / 4.0).coerceIn(0.0, 1.0)
     // Interpolate hue: 0 (red) -> 60 (yellow) -> 120 (green)
@@ -77,22 +78,26 @@ private fun sortItems(items: List<MyScoreItem>, sort: ScoreSortMode): List<MySco
     ScoreSortMode.BY_ROOM -> items.sortedWith(compareBy({ it.roomName }, { -it.score }))
 }
 
-val MyScoresPage = FC<Props> {
-    val layoutMode = use(LayoutModeContext)!!
-    val isDesktop = layoutMode >= LayoutMode.DESKTOP
-    val isPhone = layoutMode == LayoutMode.PHONE
+internal fun ordinalSuffix(n: Int): String = when {
+    n % 100 in 11..13 -> "th"
+    n % 10 == 1 -> "st"
+    n % 10 == 2 -> "nd"
+    n % 10 == 3 -> "rd"
+    else -> "th"
+}
 
+internal fun formatRank(rank: MyRankResponse): String {
+    val n = rank.rank
+    return "${n}${ordinalSuffix(n)} of ${rank.totalParticipants}"
+}
+
+/** Standalone "Your scores" page (global, across all rooms). */
+val MyScoresPage = FC<Props> {
     var helpOpen by useState(false)
-    var sortMode by useState(ScoreSortMode.BEST_FIRST)
-    var roomFilter by useState<String?>(null) // null = all rooms
 
     ScoringHelpDialog {
         open = helpOpen
         onClose = { helpOpen = false }
-    }
-
-    val response = useSuspendResult {
-        Client.httpClient.get("/scores/my").body<MyScoresResponse>()
     }
 
     PageHeader {
@@ -105,69 +110,139 @@ val MyScoresPage = FC<Props> {
         }
     }
 
-        if (response == null) {
-            MobileSidePad {
-                div {
-                    css {
-                        fontStyle = FontStyle.italic
-                        textAlign = TextAlign.center
-                        padding = 20.px
-                    }
-                    +"Loading..."
-                }
-            }
-        } else if (response.items.isEmpty()) {
-            MobileSidePad {
-                p { b { +"You have no scored predictions yet." } }
-                p {
-                    +"In order for your prediction on a question to be scored:"
-                    ul {
-                        li { +"The question must be a yes-no question." }
-                        li { +"The question must have a resolution and be in the Resolved state." }
-                        li { +"The question must have a score time configured in its schedule." }
-                        li { +"Your prediction must be submitted before the score time." }
-                        li { +"Scoring must be enabled for the room." }
-                    }
-                }
-            }
-        } else {
-            val filteredItems = if (roomFilter != null)
-                response.items.filter { it.roomRef.id == roomFilter }
-            else
-                response.items
-            val sortedItems = sortItems(filteredItems, sortMode)
-            val filteredTotal = filteredItems.sumOf { it.score }
-            val numQuestions = filteredItems.size
+    MyScoresContent {
+        roomId = null
+    }
+}
 
-            // Achievable score range for this number of questions
-            // Best case: all correct with 100% confidence -> score = +1 per question
-            // Worst case: all wrong with 100% confidence -> score = -3 per question
-            val maxPossible = numQuestions * normalizedBrier(1.0, true)   // +1 per question
-            val minPossible = numQuestions * normalizedBrier(1.0, false)  // -3 per question
+external interface MyScoresContentProps : Props {
+    /** When set, auto-filter to this room and hide the room filter dropdown. */
+    var roomId: String?
+}
 
-            // Available rooms for the filter dropdown
-            val availableRooms = response.items
-                .map { it.roomRef.id to it.roomName }
-                .distinct()
-                .sortedBy { it.second }
+/**
+ * Reusable component showing the user's personal per-question scores.
+ * Used both on the standalone "Your scores" page and in the room Score tab.
+ */
+val MyScoresContent = FC<MyScoresContentProps> { props ->
+    val (appState, _) = use(AppStateContext)!!
+    val layoutMode = use(LayoutModeContext)!!
+    val isDesktop = layoutMode >= LayoutMode.DESKTOP
+    val isPhone = layoutMode == LayoutMode.PHONE
 
-            // Summary card
-            Stack {
+    val isRoomScoped = props.roomId != null
+
+    var sortMode by useState(ScoreSortMode.BEST_FIRST)
+    var roomFilter by useState<String?>(props.roomId) // pre-set when room-scoped
+
+    // When roomId prop changes, sync the filter
+    useEffect(props.roomId) {
+        if (props.roomId != null) roomFilter = props.roomId
+    }
+
+    val response = useSuspendResult {
+        Client.httpClient.get("/scores/my").body<MyScoresResponse>()
+    }
+
+    if (response == null) {
+        MobileSidePad {
+            div {
                 css {
-                    padding = if (isPhone) 0.px else 15.px
-                    paddingTop = 0.px
-                    alignItems = AlignItems.stretch
+                    fontStyle = FontStyle.italic
+                    textAlign = TextAlign.center
+                    padding = 20.px
+                }
+                +"Loading..."
+            }
+        }
+    } else if (response.items.isEmpty()) {
+        MobileSidePad {
+            p { b { +"You have no scored predictions yet." } }
+            p {
+                +"In order for your prediction on a question to be scored:"
+                ul {
+                    li { +"The question must be a yes-no question." }
+                    li { +"The question must have a resolution and be in the Resolved state." }
+                    li { +"The question must have a score time configured in its schedule." }
+                    li { +"Your prediction must be submitted before the score time." }
+                    li { +"Scoring must be enabled for the room." }
+                }
+            }
+        }
+    } else {
+        val filteredItems = if (roomFilter != null)
+            // Show questions whose primary room matches OR that are aggregated by this room
+            response.items.filter {
+                it.roomRef.id == roomFilter || it.additionalRooms.any { r -> r.id == roomFilter }
+            }
+        else
+            response.items
+
+        // If room-scoped and no items match this room, show a message
+        if (isRoomScoped && filteredItems.isEmpty()) {
+            MobileSidePad {
+                p { b { +"You have no scored predictions in this room yet." } }
+            }
+            return@FC
+        }
+
+        // Determine whether items span multiple primary rooms (e.g. group room with child rooms)
+        val distinctPrimaryRooms = filteredItems.map { it.roomRef.id }.distinct()
+        val hasMultiplePrimaryRooms = distinctPrimaryRooms.size > 1
+
+        val sortedItems = sortItems(filteredItems, sortMode)
+        val filteredTotal = filteredItems.sumOf { it.score }
+        val numQuestions = filteredItems.size
+
+        // Achievable score range for this number of questions
+        val maxPossible = numQuestions * normalizedBrier(1.0, true)   // +1 per question
+        val minPossible = numQuestions * normalizedBrier(1.0, false)  // -3 per question
+
+        // Available rooms for the filter dropdown (only when not room-scoped)
+        val availableRooms = if (!isRoomScoped) buildSet {
+            response.items.forEach { item ->
+                add(item.roomRef.id to item.roomName)
+                item.additionalRooms.forEach { ref ->
+                    val room = appState.rooms[ref.id]
+                    if (room != null) add(ref.id to room.name)
+                }
+            }
+        }.sortedBy { it.second } else emptyList()
+
+        val isByRoom = sortMode == ScoreSortMode.BY_ROOM && hasMultiplePrimaryRooms
+
+        // Per-room ranks come from the server in the response
+        val roomRanks = response.roomRanks
+
+        // The rank to display in the summary bar: for the filtered/scoped room
+        val summaryRank = roomFilter?.let { roomRanks[it] }
+
+        // Summary card
+        Stack {
+            css {
+                padding = if (isPhone) 0.px else 15.px
+                paddingTop = 0.px
+                alignItems = AlignItems.stretch
+            }
+            div {
+                css {
+                    backgroundColor = scoreColor(if (numQuestions > 0) filteredTotal / numQuestions else 0.0)
+                    borderRadius = 10.px
+                    padding = Padding(12.px, 16.px)
+                    marginBottom = 12.px
+                    display = Display.flex
+                    flexDirection = FlexDirection.column
+                    gap = 4.px
                 }
                 div {
                     css {
-                        backgroundColor = scoreColor(if (numQuestions > 0) filteredTotal / numQuestions else 0.0)
-                        borderRadius = 10.px
-                        padding = Padding(12.px, 16.px)
-                        marginBottom = 12.px
                         display = Display.flex
-                        flexDirection = FlexDirection.column
-                        gap = 4.px
+                        flexDirection = FlexDirection.row
+                        alignItems = AlignItems.baseline
+                        justifyContent = JustifyContent.spaceBetween
+                        gap = 8.px
                     }
+                    // Left side: total + question count
                     div {
                         css {
                             display = Display.flex
@@ -187,29 +262,46 @@ val MyScoresPage = FC<Props> {
                                 color = Color("#666")
                                 fontSize = 14.px
                             }
-                            val numRooms = filteredItems.map { it.roomRef.id }.distinct().size
+                            val numRooms = distinctPrimaryRooms.size
                             +"${numQuestions} question${if (numQuestions != 1) "s" else ""}"
-                            +" in $numRooms room${if (numRooms != 1) "s" else ""}"
+                            if (!isRoomScoped && roomFilter == null) {
+                                +" in $numRooms room${if (numRooms != 1) "s" else ""}"
+                            }
                         }
                     }
-                    div {
-                        css {
-                            color = Color("#888")
-                            fontSize = 12.px
+                    // Right side: rank (when a room filter is active)
+                    summaryRank?.let { rank ->
+                        span {
+                            css {
+                                fontWeight = integer(600)
+                                fontSize = 15.px
+                                color = Color("#444")
+                                whiteSpace = WhiteSpace.nowrap
+                            }
+                            +formatRank(rank)
                         }
-                        +"Range for $numQuestions question${if (numQuestions != 1) "s" else ""}: "
-                        +"${minPossible.toFixed(0)} (worst) to +${maxPossible.toFixed(0)} (best)"
                     }
                 }
+                div {
+                    css {
+                        color = Color("#888")
+                        fontSize = 12.px
+                    }
+                    +"Range for $numQuestions question${if (numQuestions != 1) "s" else ""}: "
+                    +"${minPossible.toFixed(0)} (worst) to +${maxPossible.toFixed(0)} (best)"
+                }
+            }
 
             // Filter + sort controls
-                Stack {
-                    direction = if (isPhone) FlexDirection.column else FlexDirection.row
-                    css {
-                        gap = 8.px
-                        marginBottom = 12.px
-                        alignItems = if (isPhone) AlignItems.stretch else AlignItems.center
-                    }
+            Stack {
+                direction = if (isPhone) FlexDirection.column else FlexDirection.row
+                css {
+                    gap = 8.px
+                    marginBottom = 12.px
+                    alignItems = if (isPhone) AlignItems.stretch else AlignItems.center
+                }
+                // Only show room filter when not room-scoped
+                if (!isRoomScoped) {
                     Select {
                         value = roomFilter ?: ""
                         onChange = { ev ->
@@ -233,29 +325,34 @@ val MyScoresPage = FC<Props> {
                             }
                         }
                     }
-                    Select {
-                        value = sortMode.name
-                        onChange = { ev ->
-                            sortMode = ScoreSortMode.valueOf(ev.target.value)
+                }
+                Select {
+                    value = sortMode.name
+                    onChange = { ev ->
+                        sortMode = ScoreSortMode.valueOf(ev.target.value)
+                    }
+                    css {
+                        fontSize = 14.px
+                        if (!isPhone) {
+                            flexGrow = number(1.0)
                         }
-                        css {
-                            fontSize = 14.px
-                            if (!isPhone) {
-                                flexGrow = number(1.0)
-                            }
-                        }
-                        ScoreSortMode.entries.forEach { mode ->
-                            option {
-                                value = mode.name
-                                +mode.label
-                            }
+                    }
+                    // Exclude BY_ROOM when all items share the same primary room (nothing to group)
+                    val modes = if (!hasMultiplePrimaryRooms) ScoreSortMode.entries.filter { it != ScoreSortMode.BY_ROOM }
+                                else ScoreSortMode.entries
+                    modes.forEach { mode ->
+                        option {
+                            value = mode.name
+                            +mode.label
                         }
                     }
                 }
+            }
 
             // Score table
-            val isByRoom = sortMode == ScoreSortMode.BY_ROOM
-            val showRoomCol = !isPhone && !isByRoom
+            // Hide room column when it carries no new information
+            val allSamePrimaryRoom = roomFilter != null && filteredItems.all { it.roomRef.id == roomFilter }
+            val showRoomCol = !isPhone && !isByRoom && !allSamePrimaryRoom
             val showDateCols = isDesktop
 
             // Helper for auto-sized columns (minimum width, no stretch)
@@ -268,26 +365,22 @@ val MyScoresPage = FC<Props> {
                     if (isPhone) {
                         fontSize = 13.px
                     }
-                    // Fix rounded corners for tfoot (baseTableCSS only targets tbody)
                     "tfoot tr:last-child td:first-child" {
                         borderBottomLeftRadius = 10.px
                     }
                     "tfoot tr:last-child td:last-child" {
                         borderBottomRightRadius = 10.px
                     }
-                    // When tfoot is present, remove bottom rounding from tbody
                     "tbody:has(+ tfoot) tr:last-child td:first-child" {
                         borderBottomLeftRadius = 0.px
                     }
                     "tbody:has(+ tfoot) tr:last-child td:last-child" {
                         borderBottomRightRadius = 0.px
                     }
-                    // Ensure tfoot cells have white background like tbody
                     "tfoot td" {
                         backgroundColor = NamedColor.white
                     }
                 }
-                // Column sizing: Question and Room stretch, everything else auto-sized
                 ReactHTML.colgroup {
                     ReactHTML.col {} // Question (stretches)
                     if (showRoomCol) ReactHTML.col {} // Room (stretches)
@@ -357,7 +450,7 @@ val MyScoresPage = FC<Props> {
                             val roomItems = grouped[roomId] ?: return@forEach
                             val roomName = roomItems.first().roomName
                             val roomTotal = roomItems.sumOf { it.score }
-                            val totalCols = 4 + (if (showDateCols) 2 else 0) // Question + Pred + Res + Score + dates
+                            val totalCols = 4 + (if (showDateCols) 2 else 0)
                             // Group header row
                             tr {
                                 td {
@@ -365,7 +458,6 @@ val MyScoresPage = FC<Props> {
                                     css {
                                         "&&" {
                                             backgroundColor = Color("#bbb")
-                                            //color = NamedColor.white
                                             fontWeight = integer(600)
                                             padding = Padding(6.px, 8.px)
                                         }
@@ -375,21 +467,41 @@ val MyScoresPage = FC<Props> {
                                         css {
                                             justifyContent = JustifyContent.spaceBetween
                                             alignItems = AlignItems.center
+                                            gap = 8.px
                                         }
                                         Link {
                                             to = Room.urlPrefix(roomId)
                                             className = LinkSemistyled
                                             +roomName
                                         }
-                                        span {
+                                        // Right side: score badge + rank (if available)
+                                        Stack {
+                                            direction = FlexDirection.row
                                             css {
-                                                color = NamedColor.black
-                                                backgroundColor = scoreColor(roomTotal)
-                                                borderRadius = 4.px
-                                                padding = Padding(2.px, 6.px)
-                                                fontSize = 13.px
+                                                alignItems = AlignItems.center
+                                                gap = 6.px
                                             }
-                                            +roomTotal.toFixed(1)
+                                            // Per-room rank
+                                            roomRanks[roomId]?.let { rank ->
+                                                span {
+                                                    css {
+                                                        color = Color("#555")
+                                                        fontSize = 12.px
+                                                        whiteSpace = WhiteSpace.nowrap
+                                                    }
+                                                    +formatRank(rank)
+                                                }
+                                            }
+                                            span {
+                                                css {
+                                                    color = NamedColor.black
+                                                    backgroundColor = scoreColor(roomTotal)
+                                                    borderRadius = 4.px
+                                                    padding = Padding(2.px, 6.px)
+                                                    fontSize = 13.px
+                                                }
+                                                +roomTotal.toFixed(1)
+                                            }
                                         }
                                     }
                                 }
@@ -398,7 +510,7 @@ val MyScoresPage = FC<Props> {
                             roomItems.forEach { item ->
                                 ScoreRow {
                                     this.item = item
-                                    this.showRoomCol = false // hidden in grouped mode
+                                    this.showRoomCol = false
                                     this.showDateCols = showDateCols
                                 }
                             }
@@ -415,7 +527,7 @@ val MyScoresPage = FC<Props> {
                 }
                 tfoot {
                     tr {
-                        val preScoreCols = 1 + (if (showRoomCol) 1 else 0) + 2 // Question + Room? + Pred + Res
+                        val preScoreCols = 1 + (if (showRoomCol) 1 else 0) + 2
                         td {
                             colSpan = preScoreCols
                             css {
@@ -443,8 +555,8 @@ val MyScoresPage = FC<Props> {
                     }
                 }
             }
-            } // Stack wrapper for table
-        }
+        } // Stack wrapper for table
+    }
 }
 
 private external interface ScoreRowProps : Props {

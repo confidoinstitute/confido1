@@ -68,9 +68,7 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
         }
 
         // Compute effective questions if an extension provides them.
-        val effQuestions = ServerExtension.enabled.firstNotNullOfOrNull {
-            it.effectiveQuestions(room)
-        }
+        val effQuestions = room.effectiveQuestions
 
         var censored = room.copy(
             questions = room.questions.filter {

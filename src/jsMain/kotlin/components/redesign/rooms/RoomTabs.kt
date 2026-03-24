@@ -90,7 +90,8 @@ val RoomTabs = FC<RoomTabsProps> { props ->
     val locationValue = location.pathname.split('/').getOrNull(3) ?: ""
     val layoutMode = use(LayoutModeContext)!!
 
-    val canScore = appState.hasPermission(room, RoomPermission.VIEW_SCORES)
+    val scoringEnabled = room.scoring != null
+    val canViewScoreboard = appState.hasPermission(room, RoomPermission.VIEW_SCORES)
 
     Stack {
         direction = FlexDirection.row
@@ -127,12 +128,12 @@ val RoomTabs = FC<RoomTabsProps> { props ->
 
         if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
             tab("calibration",
-                if (canScore && layoutMode == LayoutMode.PHONE) "Calib." else "Calibration"
+                if (scoringEnabled && layoutMode == LayoutMode.PHONE) "Calib." else "Calibration"
             )
 
-        if (canScore) {
+        // Score tab visible when scoring is enabled for the room (not just when scoreboard is visible)
+        if (scoringEnabled) {
             tab("score", "Score")
-
         }
 
 

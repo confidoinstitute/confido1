@@ -1,14 +1,18 @@
 package components.redesign.rooms
 
+import Client
 import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.forms.InlineHelpButton
-import web.cssom.*
+import components.redesign.questions.QuestionEstimateTabButton
+import components.redesign.scores.MyScoresContent
+import components.redesign.scores.scoreColor
 import emotion.react.css
 import hooks.useSuspendResult
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import normalizedBrier
+import payloads.responses.ScoreboardEntry
 import react.FC
 import react.Props
 import react.dom.html.ReactHTML
@@ -18,6 +22,7 @@ import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.i
 import react.dom.html.ReactHTML.li
 import react.dom.html.ReactHTML.p
+import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.table
 import react.dom.html.ReactHTML.tbody
 import react.dom.html.ReactHTML.td
@@ -28,8 +33,8 @@ import react.dom.html.ReactHTML.ul
 import react.use
 import react.useState
 import rooms.RoomPermission
-import tools.confido.utils.formatPercent
 import tools.confido.utils.toFixed
+import web.cssom.*
 import web.window.WindowTarget
 import web.window._blank
 
@@ -68,7 +73,7 @@ val ScoringHelpDialog = FC<DialogProps> { props->
             tbody {
                 listOf(0.5, 0.6, 0.7, 0.8, 0.9, 1.0).forEach {
                     tr {
-                        td { +formatPercent(it) }
+                        td { +tools.confido.utils.formatPercent(it) }
                         td { +normalizedBrier(it, true).toFixed(1) }
                         td { +normalizedBrier(it, false).toFixed(1) }
                     }
@@ -81,15 +86,26 @@ val ScoringHelpDialog = FC<DialogProps> { props->
 
 val RoomScore = FC<Props> {
     val room = use(RoomContext)!!
-    val (appState,stale) = use(AppStateContext)!!
-    val scores = useSuspendResult(room.id) {
-        Client.httpClient.get("${room.urlPrefix}/scoreboard.api").body<List<Pair<String?, Double>>>()
-    }
+    val (appState, stale) = use(AppStateContext)!!
+    val canViewScoreboard = appState.hasPermission(room, RoomPermission.VIEW_SCORES)
+
     var helpOpen by useState(false)
+    // Default to Scoreboard when user has VIEW_SCORES, otherwise My scores
+    var showMyScores by useState(!canViewScoreboard)
+
     ScoringHelpDialog {
         open = helpOpen
-        onClose = {helpOpen = false}
+        onClose = { helpOpen = false }
     }
+
+    // Only fetch scoreboard data when the user can view it
+    val scores = useSuspendResult(room.id, canViewScoreboard) {
+        if (canViewScoreboard)
+            Client.httpClient.get("${room.urlPrefix}/scoreboard.api").body<List<ScoreboardEntry>>()
+        else
+            null
+    }
+
     RoomHeader {
         Stack {
             direction = FlexDirection.row
@@ -104,60 +120,147 @@ val RoomScore = FC<Props> {
                 fontWeight = integer(500)
                 color = Color("#888")
             }
-            ReactHTML.div { css {flexGrow = number(1.0) } }
+            ReactHTML.div { css { flexGrow = number(1.0) } }
             ReactHTML.div {
                 +"This scoring considers "
-                b {+"yes-no questions"}
+                b { +"yes-no questions" }
                 +" only and uses a normalized Brier score."
                 InlineHelpButton {
                     onClick = { helpOpen = true }
                 }
             }
-            ReactHTML.div { css {flexGrow = number(1.0) } }
+            ReactHTML.div { css { flexGrow = number(1.0) } }
         }
     }
+
     LayoutWidthWrapper {
-        if (scores == null) {
-            div {
+        // Show toggle only when the user can view the scoreboard;
+        // otherwise just show "My scores" directly.
+        if (canViewScoreboard) {
+            Stack {
                 css {
-                    fontStyle = FontStyle.italic
-                    textAlign = TextAlign.center
+                    padding = Padding(0.px, 15.px)
+                    paddingBottom = 12.px
+                    background = Color("#f2f2f2")
+                    borderRadius = 5.px
                 }
-                +"Loading..."
+                direction = FlexDirection.row
+                QuestionEstimateTabButton {
+                    +"Scoreboard"
+                    active = !showMyScores
+                    onClick = { showMyScores = false }
+                }
+                QuestionEstimateTabButton {
+                    +"My scores"
+                    active = showMyScores
+                    onClick = { showMyScores = true }
+                }
             }
-        } else if (scores.isEmpty()) {
-            p { b { +"There are no scored predictions in this room yet." } }
-            // Only show the tips to moderators, who can do something about them.
-            if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
-            p {
-                +"In order for a prediction on a question to be scored:"
-                ul {
-                    li { +"The question must be a yes-no question." }
-                    li { +"The question must have a resolution and be in the Resolved state." }
-                    li { +"The question must have a score time configured in its schedule." }
-                    li { +"The prediction must be submitted before the score time." }
-                }
+        }
+
+        if (showMyScores || !canViewScoreboard) {
+            // Render the reusable MyScoresContent filtered to this room
+            MyScoresContent {
+                this.roomId = room.id
             }
         } else {
-            table {
-                className = baseTableCSS
-                thead {
-                    tr {
-                        th { +"Nickname" }
-                        th { +"Score" }
+            // Render the scoreboard (leaderboard)
+            if (scores == null) {
+                div {
+                    css {
+                        fontStyle = FontStyle.italic
+                        textAlign = TextAlign.center
                     }
+                    +"Loading..."
                 }
-                tbody {
-                    scores.forEach { (nick,score)->
+            } else if (scores.isEmpty()) {
+                p { b { +"There are no scored predictions in this room yet." } }
+                // Only show the tips to moderators, who can do something about them.
+                if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
+                    p {
+                        +"In order for a prediction on a question to be scored:"
+                        ul {
+                            li { +"The question must be a yes-no question." }
+                            li { +"The question must have a resolution and be in the Resolved state." }
+                            li { +"The question must have a score time configured in its schedule." }
+                            li { +"The prediction must be submitted before the score time." }
+                        }
+                    }
+            } else {
+                table {
+                    css(rowStyleTableCSS) {
+                        width = 100.pct
+                    }
+                    thead {
                         tr {
-                            td {
-                                if (nick.isNullOrBlank()) i { +"(anonymous)" }
-                                else {
-                                    +nick
+                            th { css { width = 1.px }; +"#" }
+                            th { +"Name" }
+                            th { css { width = 1.px; whiteSpace = WhiteSpace.nowrap }; +"Score" }
+                        }
+                    }
+                    tbody {
+                        scores.forEachIndexed { index, entry ->
+                            tr {
+                                // Highlight the current user's row
+                                if (entry.user.isMyself) {
+                                    css {
+                                        "&&" {
+                                            backgroundColor = Color("#ebfaff")
+                                        }
+                                    }
                                 }
-                            }
-                            td {
-                                +score.toFixed(1)
+                                td {
+                                    css {
+                                        "&&" {
+                                            textAlign = TextAlign.center
+                                            color = Color("#888")
+                                            fontWeight = integer(500)
+                                        }
+                                    }
+                                    +"${index + 1}"
+                                }
+                                td {
+                                    Stack {
+                                        direction = FlexDirection.row
+                                        css {
+                                            alignItems = AlignItems.center
+                                            gap = 8.px
+                                        }
+                                        // Color circle (avatar)
+                                        entry.user.color?.let { color ->
+                                            div {
+                                                css {
+                                                    width = 24.px
+                                                    height = 24.px
+                                                    borderRadius = 50.pct
+                                                    backgroundColor = Color(color)
+                                                    flexShrink = number(0.0)
+                                                }
+                                            }
+                                        }
+                                        span {
+                                            if (entry.user.isMyself) {
+                                                css { fontWeight = integer(600) }
+                                            }
+                                            val name = entry.user.displayName
+                                            if (name.isNullOrBlank()) {
+                                                i { +"(anonymous)" }
+                                            } else {
+                                                +name
+                                            }
+                                        }
+                                    }
+                                }
+                                td {
+                                    css {
+                                        "&&" {
+                                            fontWeight = integer(600)
+                                            textAlign = TextAlign.right
+                                            backgroundColor = scoreColor(entry.score)
+                                        }
+                                    }
+                                    +entry.score.toFixed(1)
+                                }
                             }
                         }
                     }
@@ -165,5 +268,4 @@ val RoomScore = FC<Props> {
             }
         }
     }
-
 }

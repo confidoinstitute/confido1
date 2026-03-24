@@ -25,6 +25,11 @@ actual val Room.effectiveMembers: List<RoomMembership>
         return if (adminMembers.isEmpty()) base else base + adminMembers
     }
 
+actual val Room.effectiveQuestions: List<EffectiveQuestion>?
+    get() = ServerExtension.enabled.firstNotNullOfOrNull {
+        it.effectiveQuestions(this)
+    }
+
 actual fun Room.memberEffectivePermissions(membership: RoomMembership): Set<RoomPermission> {
     // 1. Let extensions override (or start with role permissions)
     val hookResult = ServerExtension.enabled.firstNotNullOfOrNull {
