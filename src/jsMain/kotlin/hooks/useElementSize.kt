@@ -50,8 +50,8 @@ fun <T: HTMLElement> useElementSize(): ElementSize<T> {
 
 data class ViewportSize(val width: Int, val height: Int)
 fun useViewportSize(): ViewportSize {
-    val (width, setWidth) = useState(0)
-    val (height, setHeight) = useState(0)
+    val (width, setWidth) = useState { window.innerWidth }
+    val (height, setHeight) = useState { window.innerHeight }
 
     val handleResize = useCallback { _: Event ->
         setWidth(window.innerWidth)

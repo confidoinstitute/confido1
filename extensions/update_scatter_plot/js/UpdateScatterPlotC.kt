@@ -211,6 +211,7 @@ external interface UpdatePlotConfigDialogProps : BaseDialogProps {
 val UpdatePlotConfigDialog = dialogStateWrapper(FC<UpdatePlotConfigDialogProps> { props ->
     var time1 by useState<Instant?>(null)
     var time2 by useState<Instant?>(null)
+    var flipped by useState(false)
     val presenterCtl = use(PresenterContext)!!
     val tz = TimeZone.currentSystemDefault()
     val today = Clock.System.now().toLocalDateTime(tz).date
@@ -262,8 +263,21 @@ val UpdatePlotConfigDialog = dialogStateWrapper(FC<UpdatePlotConfigDialogProps> 
             height = 300.0
             this.preds = data ?: emptyList()
             this.referenceForecast = q.extensionData?.get(ReferenceForcastKey)
+            this.flipped = flipped
         }
         div {
+            css {
+                display = Display.flex
+                justifyContent = JustifyContent.spaceBetween
+                alignItems = AlignItems.center
+                marginTop = 8.px
+            }
+            FormSwitch {
+                label = "Flip axes"
+                comment = "Probability horizontal, time vertical"
+                checked = flipped
+                onChange = { flipped = it.target.checked }
+            }
             IconButton {
                 PresenterIcon {}
                 onClick = {
@@ -419,28 +433,75 @@ val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
         Client.httpClient.get(url).body<List<List2<Prediction?>>>()
     }
     val data = rawData?.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<Prediction>>?>()
+    var flipped by useState(false)
+    val viewport = hooks.useViewportSize()
+    // Reserve space for header (~5vh) and footer (~5vh)
+    val availableHeight = (viewport.height * 0.88).coerceAtLeast(200.0)
+    val availableWidth = viewport.width.toDouble()
+    // Cap the secondary axis (perpendicular to probability) to keep slopes readable.
+    // In vertical mode: probability is Y, so cap width. In flipped: probability is X, so cap height.
+    val chartWidth = if (flipped) availableWidth
+                     else availableWidth.coerceAtMost(availableHeight * 0.5)
+    val chartHeight = if (flipped) availableHeight.coerceAtMost(availableWidth * 0.4).coerceAtMost(500.0)
+                      else availableHeight
 
-    Stack {
+    div {
         css {
+            position = Position.relative
+            display = Display.flex
+            flexDirection = FlexDirection.column
             alignItems = AlignItems.center
             maxWidth = 100.vw
             width = 100.vw
             maxHeight = 100.vh
             height = 100.vh
+            overflow = Overflow.hidden
         }
-        q?.name?.let { h1 { +it } }
-        if (rawData!=null)
-        UpdateSlopeChart {
-            preds = rawData
+        // Compact question header
+        q?.name?.let {
+            div {
+                css {
+                    flexShrink = number(0.0)
+                    fontSize = 2.5.vh
+                    fontWeight = FontWeight.bold
+                    padding = Padding(1.vh, 2.vw)
+                    textAlign = TextAlign.center
+                    maxWidth = 90.vw
+                    this.overflow = Overflow.hidden
+                    textOverflow = TextOverflow.ellipsis
+                    whiteSpace = WhiteSpace.nowrap
+                }
+                +it
+            }
         }
+        // Chart fills remaining space
+        if (rawData != null)
+        div {
+            css {
+                flexGrow = number(1.0)
+                flexShrink = number(1.0)
+                minHeight = 0.px
+                this.overflow = Overflow.hidden
+                display = Display.flex
+                justifyContent = JustifyContent.center
+            }
+            UpdateSlopeChart {
+                preds = rawData
+                this.flipped = flipped
+                height = chartHeight
+                width = chartWidth
+            }
+        }
+        // Group prediction averages
         if (rawData != null)
         Stack {
             direction = FlexDirection.row
             css {
                 flexGrow = number(0.0)
-                fontSize = 200.pct
+                flexShrink = number(0.0)
+                fontSize = 2.5.vh
                 justifyContent = JustifyContent.spaceEvenly
-                marginTop = 20.px
+                padding = Padding(0.5.vh, 2.vw)
                 alignSelf = AlignSelf.stretch
             }
             listOf(0,1).map { which->
@@ -453,6 +514,26 @@ val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
                     +" $adverb: ${formatPercent(gp)}"
                 }
             }
+        }
+        // Discreet flip toggle in bottom-right corner
+        div {
+            css {
+                position = Position.absolute
+                bottom = 8.px
+                right = 8.px
+                backgroundColor = Color("rgba(255,255,255,0.7)")
+                borderRadius = 4.px
+                padding = Padding(4.px, 8.px)
+                fontSize = 12.px
+                cursor = Cursor.pointer
+                userSelect = None.none
+                color = Color("#64748b")
+                hover {
+                    backgroundColor = Color("rgba(255,255,255,0.9)")
+                }
+            }
+            onClick = { flipped = !flipped }
+            +(if (flipped) "\u21C5 Normal" else "\u21C4 Flip axes")
         }
     }
 }
