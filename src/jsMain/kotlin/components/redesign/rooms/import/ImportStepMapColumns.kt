@@ -133,7 +133,7 @@ val ImportStepMapColumns = FC<ImportStepMapColumnsProps> { props ->
     // Preview table (full width)
     div {
         css {
-            padding = Padding(20.px, 30.px)
+            padding = Padding(10.px, 15.px)
             overflowX = Auto.auto
         }
 
@@ -145,6 +145,7 @@ val ImportStepMapColumns = FC<ImportStepMapColumnsProps> { props ->
                     fontSize = 14.px
                     color = Color("#F35454")
                     paddingBottom = 10.px
+                    paddingLeft = 5.px
                 }
                 +"Please map at least one column to \"Question title\"."
             }
@@ -156,30 +157,21 @@ val ImportStepMapColumns = FC<ImportStepMapColumnsProps> { props ->
                     fontSize = 14.px
                     color = Color("#F35454")
                     paddingBottom = 10.px
+                    paddingLeft = 5.px
                 }
                 +"${state.questionType.label} questions require both Min and Max columns to be mapped."
             }
         }
 
         table {
-            css {
+            css(rowStyleTableCSS) {
                 width = 100.pct
-                borderCollapse = BorderCollapse.collapse
-                fontFamily = sansSerif
-                fontSize = 14.px
-
-                "th, td" {
-                    border = Border(1.px, LineStyle.solid, Color("#DDD"))
-                    padding = Padding(8.px, 10.px)
+                "td" {
                     textAlign = TextAlign.left
                     maxWidth = 250.px
                     overflow = Overflow.hidden
                     textOverflow = TextOverflow.ellipsis
                     whiteSpace = WhiteSpace.nowrap
-                }
-                "th" {
-                    backgroundColor = Color("#F8F8F8")
-                    fontWeight = integer(500)
                 }
             }
 
@@ -188,6 +180,7 @@ val ImportStepMapColumns = FC<ImportStepMapColumnsProps> { props ->
                 tr {
                     for (colIdx in 0 until numColumns) {
                         th {
+                            css { padding = 3.px }
                             Select {
                                 css {
                                     width = 100.pct
@@ -229,11 +222,6 @@ val ImportStepMapColumns = FC<ImportStepMapColumnsProps> { props ->
                     tr {
                         for (cell in headerRow) {
                             th {
-                                css {
-                                    backgroundColor = Color("#F0F0F0")
-                                    fontSize = 13.px
-                                    color = Color("#666")
-                                }
                                 +cell
                             }
                         }

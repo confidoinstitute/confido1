@@ -17,6 +17,7 @@ import tools.confido.question.*
 import tools.confido.refs.ref
 import tools.confido.spaces.*
 import tools.confido.state.*
+import tools.confido.utils.mapDeref
 import java.io.StringReader
 import java.nio.charset.Charset
 
@@ -30,6 +31,7 @@ private val COLUMN_ALIASES: Map<String, ColumnMapping> = buildMap {
         ColumnMapping.MAX to listOf("max", "maximum", "upper", "upper bound", "range max", "to"),
         ColumnMapping.UNIT to listOf("unit", "units"),
         ColumnMapping.DECIMALS to listOf("decimals", "decimal places", "precision"),
+        ColumnMapping.EXTERNAL_ID to listOf("id", "external id", "external_id", "key", "question id", "question_id"),
     )) {
         for (alias in aliases) {
             put(alias, mapping)
@@ -193,60 +195,128 @@ fun importQuestionRoutes(routing: Routing) = routing.apply {
         }
     }
 
-    // Import questions endpoint: receives structured JSON, creates Question entities
+    // Import questions endpoint: receives structured JSON, creates or updates Question entities
     postST("$roomUrl/questions/import") {
-        val count = call.withRoom {
+        val result = call.withRoom {
             assertPermission(RoomPermission.ADD_QUESTION, "You cannot add questions.")
 
             val payload: ImportQuestions = call.receive()
 
             if (payload.questions.isEmpty()) badRequest("No questions to import.")
 
-            val now = Clock.System.now()
-            val questionsToInsert = payload.questions.map { imported ->
-                if (imported.name.isBlank()) badRequest("Question title cannot be empty.")
+            // Load existing questions in the room for matching
+            val existingQuestions = room.questions.mapDeref()
+            val byExternalId: Map<String, Question> = existingQuestions
+                .filter { it.externalId != null }
+                .associateBy { it.externalId!! }
+            val byNormalizedName: Map<String, Question> = existingQuestions
+                .associateBy { normalizeHeader(it.name) }
 
-                imported.resolution?.let { res ->
-                    if (res.space != imported.answerSpace) {
-                        badRequest("Resolution does not match answer space for question: ${imported.name}")
+            val now = Clock.System.now()
+            var created = 0
+            var updated = 0
+            var unchanged = 0
+
+            serverState.withTransaction {
+                val newRefs = mutableListOf<tools.confido.refs.Ref<Question>>()
+
+                for (imported in payload.questions) {
+                    if (imported.name.isBlank()) badRequest("Question title cannot be empty.")
+
+                    imported.resolution?.let { res ->
+                        if (res.space != imported.answerSpace) {
+                            badRequest("Resolution does not match answer space for question: ${imported.name}")
+                        }
+                    }
+
+                    // Find matching existing question
+                    val match = if (imported.externalId != null) {
+                        byExternalId[imported.externalId]
+                    } else {
+                        byNormalizedName[normalizeHeader(imported.name)]
+                    }
+
+                    if (match != null) {
+                        // UPDATE existing question — only update fields that were mapped
+                        val mapped = imported.mappedFields
+                        var changed = false
+                        serverState.questionManager.modifyEntity(match.ref) { q ->
+                            var updated = q
+
+                            // Always update name (it's the required field)
+                            if (updated.name != imported.name) {
+                                updated = updated.copy(name = imported.name)
+                                changed = true
+                            }
+
+                            // Update description only if mapped
+                            if (ColumnMapping.DESCRIPTION in mapped && updated.description != imported.description) {
+                                updated = updated.copy(description = imported.description)
+                                changed = true
+                            }
+
+                            // Update answer space if it changed
+                            if (updated.answerSpace != imported.answerSpace) {
+                                updated = updated.copy(answerSpace = imported.answerSpace)
+                                changed = true
+                            }
+
+                            // Update resolution only if mapped
+                            if (ColumnMapping.RESOLUTION in mapped && updated.resolution != imported.resolution) {
+                                updated = updated.copy(resolution = imported.resolution)
+                                changed = true
+                            }
+
+                            // Set externalId if mapped and not already set
+                            if (imported.externalId != null && updated.externalId != imported.externalId) {
+                                updated = updated.copy(externalId = imported.externalId)
+                                changed = true
+                            }
+
+                            updated
+                        }
+                        if (changed) updated++ else unchanged++
+                    } else {
+                        // INSERT new question
+                        val question = Question(
+                            id = "",
+                            name = imported.name,
+                            description = imported.description,
+                            answerSpace = imported.answerSpace,
+                            resolution = imported.resolution,
+                            visible = payload.options.visible,
+                            open = payload.options.open,
+                            groupPredVisible = payload.options.groupPredVisible,
+                            groupPredRequirePrediction = payload.options.groupPredRequirePrediction,
+                            allowComments = payload.options.allowComments,
+                            commentVisibility = payload.options.commentVisibility,
+                            author = user.ref,
+                            stateHistory = listOf(QuestionStateChange(
+                                newState = if (!payload.options.visible) QuestionState.DRAFT
+                                           else if (payload.options.open) QuestionState.OPEN
+                                           else QuestionState.CLOSED,
+                                at = now,
+                                user = user.ref,
+                            )),
+                            externalId = imported.externalId,
+                        )
+                        val inserted = serverState.questionManager.insertEntity(question)
+                        newRefs.add(inserted.ref)
+                        created++
                     }
                 }
 
-                Question(
-                    id = "",
-                    name = imported.name,
-                    description = imported.description,
-                    answerSpace = imported.answerSpace,
-                    resolution = imported.resolution,
-                    visible = payload.options.visible,
-                    open = payload.options.open,
-                    groupPredVisible = payload.options.groupPredVisible,
-                    groupPredRequirePrediction = payload.options.groupPredRequirePrediction,
-                    allowComments = payload.options.allowComments,
-                    commentVisibility = payload.options.commentVisibility,
-                    author = user.ref,
-                    stateHistory = listOf(QuestionStateChange(
-                        newState = if (!payload.options.visible) QuestionState.DRAFT
-                                   else if (payload.options.open) QuestionState.OPEN
-                                   else QuestionState.CLOSED,
-                        at = now,
-                        user = user.ref,
-                    )),
-                )
-            }
-
-            serverState.withTransaction {
-                val insertedRefs = questionsToInsert.map { q ->
-                    serverState.questionManager.insertEntity(q).ref
-                }
-                serverState.roomManager.modifyEntity(room.ref) {
-                    it.copy(questions = it.questions + insertedRefs)
+                // Add newly created questions to the room
+                if (newRefs.isNotEmpty()) {
+                    serverState.roomManager.modifyEntity(room.ref) {
+                        it.copy(questions = it.questions + newRefs)
+                    }
                 }
             }
 
-            questionsToInsert.size
+            ImportResult(created = created, updated = updated, unchanged = unchanged)
         }
         TransientData.refreshAllWebsockets()
-        call.respond(HttpStatusCode.OK, "$count")
+        call.respond(HttpStatusCode.OK, result)
     }
 }

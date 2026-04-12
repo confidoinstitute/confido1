@@ -1,6 +1,7 @@
 package components.redesign.rooms.import
 
 import Client
+import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.forms.*
 import io.ktor.client.call.*
@@ -17,13 +18,18 @@ import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
 import react.router.useNavigate
 import rooms.Room
-import tools.confido.question.CommentVisibility
-import tools.confido.question.GroupPredictionVisibility
-import tools.confido.question.QuestionState
+import tools.confido.question.Question
 import tools.confido.spaces.*
 import web.cssom.*
 import emotion.react.css
 import hooks.useCoroutineLock
+
+enum class MatchType {
+    NEW,       // no match found, will be created
+    UPDATE,    // match found, fields differ
+    UNCHANGED, // match found, nothing to change
+    ERROR,     // validation error
+}
 
 /** Result of parsing a single row according to the column mappings. */
 data class ParsedQuestion(
@@ -32,9 +38,14 @@ data class ParsedQuestion(
     val description: String,
     val answerSpace: Space?,
     val resolution: Value?,
+    val externalId: String?,
     val errors: List<String>,
+    val matchType: MatchType,
+    /** The set of column mappings that were actually populated from the CSV for this row. */
+    val mappedFields: Set<ColumnMapping>,
 ) {
-    val isValid get() = errors.isEmpty() && name.isNotBlank() && answerSpace != null
+    val isValid get() = matchType != MatchType.ERROR
+    val isActionable get() = matchType == MatchType.NEW || matchType == MatchType.UPDATE
 }
 
 /** Parse a date string, supporting ISO 8601, year-month, and year-only formats. */
@@ -42,15 +53,12 @@ private fun parseDate(s: String): LocalDate? {
     val trimmed = s.trim()
     if (trimmed.isBlank()) return null
     return try {
-        // Full ISO date: 2025-03-15
         LocalDate.parse(trimmed)
     } catch (e: Exception) {
         try {
-            // Year-month: 2025-03
             if (trimmed.matches(Regex("\\d{4}-\\d{2}"))) {
                 LocalDate.parse("$trimmed-01")
             } else if (trimmed.matches(Regex("\\d{4}"))) {
-                // Year-only: 2025
                 LocalDate.parse("$trimmed-01-01")
             } else {
                 null
@@ -61,14 +69,23 @@ private fun parseDate(s: String): LocalDate? {
     }
 }
 
-/** Parse all data rows according to column mappings and question type. */
+/** Parse all data rows according to column mappings, question type, and match against existing questions. */
 private fun parseRows(
     state: ImportWizardState,
+    existingQuestions: List<Question>,
 ): List<ParsedQuestion> {
     val parseResponse = state.parseResponse ?: return emptyList()
     val allRows = parseResponse.rows
     val dataRows = if (state.hasHeader) allRows.drop(1) else allRows
     val mappings = state.columnMappings
+
+    // Build lookup maps for matching
+    val hasExternalIdMapping = mappings.contains(ColumnMapping.EXTERNAL_ID)
+    val byExternalId: Map<String, Question> = existingQuestions
+        .filter { it.externalId != null }
+        .associateBy { it.externalId!! }
+    val byNormalizedName: Map<String, Question> = existingQuestions
+        .associateBy { normalizeForMatching(it.name) }
 
     fun getCol(row: List<String>, mapping: ColumnMapping): String? {
         val idx = mappings.indexOf(mapping)
@@ -82,6 +99,18 @@ private fun parseRows(
         if (name.isBlank()) errors.add("Missing question title")
 
         val description = getCol(row, ColumnMapping.DESCRIPTION) ?: ""
+        val externalId = getCol(row, ColumnMapping.EXTERNAL_ID)
+
+        // Track which fields were actually mapped
+        val mapped = mutableSetOf<ColumnMapping>()
+        mapped.add(ColumnMapping.TITLE) // always mapped
+        if (mappings.contains(ColumnMapping.DESCRIPTION)) mapped.add(ColumnMapping.DESCRIPTION)
+        if (mappings.contains(ColumnMapping.RESOLUTION)) mapped.add(ColumnMapping.RESOLUTION)
+        if (mappings.contains(ColumnMapping.MIN)) mapped.add(ColumnMapping.MIN)
+        if (mappings.contains(ColumnMapping.MAX)) mapped.add(ColumnMapping.MAX)
+        if (mappings.contains(ColumnMapping.UNIT)) mapped.add(ColumnMapping.UNIT)
+        if (mappings.contains(ColumnMapping.DECIMALS)) mapped.add(ColumnMapping.DECIMALS)
+        if (mappings.contains(ColumnMapping.EXTERNAL_ID)) mapped.add(ColumnMapping.EXTERNAL_ID)
 
         // Build answer space
         val answerSpace: Space? = when (state.questionType) {
@@ -144,13 +173,45 @@ private fun parseRows(
             }
         } else null
 
+        // Determine match type
+        val matchType = if (errors.isNotEmpty() || name.isBlank() || answerSpace == null) {
+            MatchType.ERROR
+        } else {
+            // Find matching existing question
+            val match = if (externalId != null && hasExternalIdMapping) {
+                byExternalId[externalId]
+            } else {
+                byNormalizedName[normalizeForMatching(name)]
+            }
+
+            if (match == null) {
+                MatchType.NEW
+            } else {
+                // Check if anything would actually change
+                val nameChanged = match.name != name
+                val descChanged = ColumnMapping.DESCRIPTION in mapped && match.description != description
+                val spaceChanged = match.answerSpace != answerSpace
+                val resChanged = ColumnMapping.RESOLUTION in mapped && match.resolution != resolution
+                val extIdChanged = externalId != null && match.externalId != externalId
+
+                if (nameChanged || descChanged || spaceChanged || resChanged || extIdChanged) {
+                    MatchType.UPDATE
+                } else {
+                    MatchType.UNCHANGED
+                }
+            }
+        }
+
         ParsedQuestion(
             rowIndex = rowIdx,
             name = name,
             description = description,
             answerSpace = answerSpace,
             resolution = resolution,
+            externalId = externalId,
             errors = errors,
+            matchType = matchType,
+            mappedFields = mapped,
         )
     }
 }
@@ -164,7 +225,7 @@ private fun formatAnswerSpace(space: Space?): String = when (space) {
         val maxDate = LocalDate.fromEpochDays((space.max / 86400).toInt())
         "Date [$minDate, $maxDate]"
     } else {
-        val range = "${space.min}–${space.max}"
+        val range = "${space.min}\u2013${space.max}"
         if (space.unit.isNotEmpty()) "$range ${space.unit}" else range
     }
 }
@@ -178,17 +239,33 @@ external interface ImportStepReviewProps : Props {
 
 val ImportStepReview = FC<ImportStepReviewProps> { props ->
     val state = props.state
+    val (appState, _) = use(AppStateContext)!!
     val navigate = useNavigate()
     val submitLock = useCoroutineLock()
     var importError by useState<String?>(null)
-    var optionsExpanded by useState(false)
+    var optionsDialogOpen by useState(false)
 
-    val parsedQuestions = useMemo(state) { parseRows(state) }
-    val validQuestions = parsedQuestions.filter { it.isValid }
-    val invalidQuestions = parsedQuestions.filter { !it.isValid }
+    // Get existing questions in this room from client-side state
+    val existingQuestions = useMemo(appState, props.room) {
+        props.room.questions.mapNotNull { qRef -> appState.questions[qRef.id] }
+    }
 
-    val options = state.options
-    val gpv = GroupPredictionVisibility.fromBooleans(options.groupPredVisible, options.groupPredRequirePrediction)
+    val parsedQuestions = useMemo(state, existingQuestions) { parseRows(state, existingQuestions) }
+    val newQuestions = parsedQuestions.filter { it.matchType == MatchType.NEW }
+    val updateQuestions = parsedQuestions.filter { it.matchType == MatchType.UPDATE }
+    val unchangedQuestions = parsedQuestions.filter { it.matchType == MatchType.UNCHANGED }
+    val errorQuestions = parsedQuestions.filter { it.matchType == MatchType.ERROR }
+    val actionableQuestions = parsedQuestions.filter { it.isActionable }
+
+    // Options dialog
+    ImportOptionsDialog {
+        open = optionsDialogOpen
+        onClose = { optionsDialogOpen = false }
+        options = state.options
+        onOptionsChange = { newOpts ->
+            props.onStateChange(state.copy(options = newOpts))
+        }
+    }
 
     // Summary banner
     LayoutWidthWrapper {
@@ -201,17 +278,24 @@ val ImportStepReview = FC<ImportStepReviewProps> { props ->
                 fontSize = 15.px
                 padding = Padding(12.px, 16.px)
                 borderRadius = 6.px
-                backgroundColor = if (invalidQuestions.isEmpty()) Color("#E8F5E9") else Color("#FFF8E1")
+                backgroundColor = if (errorQuestions.isEmpty()) Color("#E8F5E9") else Color("#FFF8E1")
                 border = Border(1.px, LineStyle.solid,
-                    if (invalidQuestions.isEmpty()) Color("#A5D6A7") else Color("#FFE082"))
+                    if (errorQuestions.isEmpty()) Color("#A5D6A7") else Color("#FFE082"))
+                lineHeight = 22.px
             }
-            if (invalidQuestions.isEmpty()) {
-                +"${validQuestions.size} question${if (validQuestions.size != 1) "s" else ""} ready to import"
-            } else {
-                +"${validQuestions.size} question${if (validQuestions.size != 1) "s" else ""} ready to import, "
+            val parts = mutableListOf<String>()
+            if (newQuestions.isNotEmpty()) parts.add("${newQuestions.size} new")
+            if (updateQuestions.isNotEmpty()) parts.add("${updateQuestions.size} to update")
+            if (unchangedQuestions.isNotEmpty()) parts.add("${unchangedQuestions.size} unchanged")
+
+            if (parts.isNotEmpty()) {
+                +parts.joinToString(", ")
+            }
+            if (errorQuestions.isNotEmpty()) {
+                if (parts.isNotEmpty()) +", "
                 span {
                     css { color = Color("#F57C00"); fontWeight = integer(600) }
-                    +"${invalidQuestions.size} with errors (will be skipped)"
+                    +"${errorQuestions.size} with errors"
                 }
             }
         }
@@ -220,67 +304,63 @@ val ImportStepReview = FC<ImportStepReviewProps> { props ->
     // Review table (full width)
     div {
         css {
-            padding = Padding(10.px, 30.px)
+            padding = Padding(10.px, 15.px)
             overflowX = Auto.auto
         }
         table {
-            css {
+            css(rowStyleTableCSS) {
                 width = 100.pct
-                borderCollapse = BorderCollapse.collapse
-                fontFamily = sansSerif
-                fontSize = 14.px
-
-                "th, td" {
-                    border = Border(1.px, LineStyle.solid, Color("#DDD"))
-                    padding = Padding(8.px, 10.px)
+                "td" {
                     textAlign = TextAlign.left
+                    maxWidth = 300.px
+                    overflow = Overflow.hidden
+                    textOverflow = TextOverflow.ellipsis
+                    whiteSpace = WhiteSpace.nowrap
                 }
                 "th" {
-                    backgroundColor = Color("#F8F8F8")
-                    fontWeight = integer(500)
+                    textAlign = TextAlign.left
                 }
             }
             thead {
                 tr {
-                    th { css { width = 40.px }; +"#" }
+                    th { css { width = 1.px; whiteSpace = WhiteSpace.nowrap }; +"#" }
                     th { +"Title" }
                     th { +"Description" }
                     if (state.questionType != QuestionType.BINARY) {
-                        th { +"Answer Space" }
+                        th { css { whiteSpace = WhiteSpace.nowrap }; +"Answer Space" }
                     }
                     if (state.columnMappings.contains(ColumnMapping.RESOLUTION)) {
                         th { +"Resolution" }
                     }
-                    th { css { width = 40.px }; +"" } // status column
+                    th { css { width = 1.px; whiteSpace = WhiteSpace.nowrap }; +"Status" }
                 }
             }
             tbody {
                 parsedQuestions.forEach { pq ->
                     tr {
                         key = pq.rowIndex.toString()
-                        css {
-                            if (!pq.isValid) {
-                                backgroundColor = Color("#FFF8E1")
+                        val rowColor = when (pq.matchType) {
+                            MatchType.ERROR -> Color("#FFF8E1")
+                            MatchType.UNCHANGED -> Color("#F5F5F5")
+                            MatchType.UPDATE -> Color("#E3F2FD")
+                            MatchType.NEW -> null
+                        }
+                        if (rowColor != null) {
+                            css {
+                                "&& td" {
+                                    backgroundColor = rowColor
+                                }
+                            }
+                        }
+                        if (pq.matchType == MatchType.UNCHANGED) {
+                            css {
+                                opacity = number(0.6)
                             }
                         }
                         td { +"${pq.rowIndex + 1}" }
+                        td { +pq.name }
                         td {
-                            css {
-                                maxWidth = 300.px
-                                overflow = Overflow.hidden
-                                textOverflow = TextOverflow.ellipsis
-                                whiteSpace = WhiteSpace.nowrap
-                            }
-                            +pq.name
-                        }
-                        td {
-                            css {
-                                maxWidth = 200.px
-                                overflow = Overflow.hidden
-                                textOverflow = TextOverflow.ellipsis
-                                whiteSpace = WhiteSpace.nowrap
-                                color = Color("#666")
-                            }
+                            css { color = Color("#666") }
                             +pq.description
                         }
                         if (state.questionType != QuestionType.BINARY) {
@@ -296,16 +376,32 @@ val ImportStepReview = FC<ImportStepReviewProps> { props ->
                             }
                         }
                         td {
-                            if (pq.isValid) {
-                                span {
-                                    css { color = Color("#4CAF50") }
-                                    +"\u2713" // checkmark
+                            css { whiteSpace = WhiteSpace.nowrap }
+                            when (pq.matchType) {
+                                MatchType.NEW -> {
+                                    span {
+                                        css { color = Color("#4CAF50"); fontWeight = integer(600); fontSize = 12.px }
+                                        +"+ New"
+                                    }
                                 }
-                            } else {
-                                span {
-                                    title = pq.errors.joinToString("; ")
-                                    css { color = Color("#F57C00"); cursor = Cursor.help }
-                                    +"\u26A0" // warning
+                                MatchType.UPDATE -> {
+                                    span {
+                                        css { color = Color("#1976D2"); fontWeight = integer(600); fontSize = 12.px }
+                                        +"\u270E Update"
+                                    }
+                                }
+                                MatchType.UNCHANGED -> {
+                                    span {
+                                        css { color = Color("#999"); fontSize = 12.px }
+                                        +"\u2013 Same"
+                                    }
+                                }
+                                MatchType.ERROR -> {
+                                    span {
+                                        title = pq.errors.joinToString("; ")
+                                        css { color = Color("#F57C00"); cursor = Cursor.help; fontSize = 12.px }
+                                        +"\u26A0 Error"
+                                    }
                                 }
                             }
                         }
@@ -315,95 +411,11 @@ val ImportStepReview = FC<ImportStepReviewProps> { props ->
         }
     }
 
-    // Expandable options section
+    // Bottom action bar
     LayoutWidthWrapper {
         css {
             padding = Padding(10.px, 20.px, 30.px, 20.px)
             gap = 15.px
-        }
-
-        // Expander header
-        div {
-            css {
-                fontFamily = sansSerif
-                fontSize = 15.px
-                fontWeight = integer(500)
-                cursor = Cursor.pointer
-                padding = Padding(10.px, 0.px)
-                color = Color("#6319FF")
-                userSelect = None.none
-            }
-            onClick = { optionsExpanded = !optionsExpanded }
-            +(if (optionsExpanded) "\u25BC " else "\u25B6 ")
-            +"Question options"
-        }
-
-        if (optionsExpanded) {
-            FormSection {
-                title = "Initial state"
-                OptionGroup<QuestionState>()() {
-                    value = if (!options.visible) QuestionState.DRAFT
-                            else if (options.open) QuestionState.OPEN
-                            else QuestionState.CLOSED
-                    this.options = listOf(
-                        QuestionState.DRAFT to "Draft",
-                        QuestionState.OPEN to "Open",
-                    )
-                    onChange = { newState: QuestionState ->
-                        val newOpts = when (newState) {
-                            QuestionState.DRAFT -> options.copy(visible = false, open = false)
-                            QuestionState.OPEN -> options.copy(visible = true, open = true)
-                            else -> options
-                        }
-                        props.onStateChange(state.copy(options = newOpts))
-                    }
-                }
-            }
-
-            FormSection {
-                title = "Anchoring"
-                RadioGroup<GroupPredictionVisibility>()() {
-                    this.title = "Group answer visible to"
-                    value = gpv
-                    this.options = listOf(
-                        GroupPredictionVisibility.EVERYONE to "all room members",
-                        GroupPredictionVisibility.ANSWERED to "those who answered",
-                        GroupPredictionVisibility.MODERATOR_ONLY to "moderators only",
-                    )
-                    onChange = { newGpv: GroupPredictionVisibility ->
-                        props.onStateChange(state.copy(options = options.copy(
-                            groupPredVisible = newGpv.groupPredVisible,
-                            groupPredRequirePrediction = newGpv.groupPredRequirePrediction,
-                        )))
-                    }
-                }
-            }
-
-            FormSection {
-                title = "Comments"
-                FormSwitch {
-                    label = "Allow comments"
-                    comment = "Whether participants can comment on imported questions"
-                    checked = options.allowComments
-                    onChange = {
-                        props.onStateChange(state.copy(options = options.copy(allowComments = it.target.checked)))
-                    }
-                }
-                if (options.allowComments) {
-                    RadioGroup<CommentVisibility>()() {
-                        title = "Comments visible to"
-                        value = options.commentVisibility
-                        this.options = listOf(
-                            CommentVisibility.EVERYONE to "all room members",
-                            CommentVisibility.ANSWERED to "those who answered",
-                            CommentVisibility.MODERATOR_ONLY to "moderators only",
-                        )
-                        onChange = { cv: CommentVisibility ->
-                            props.onStateChange(state.copy(options = options.copy(commentVisibility = cv)))
-                        }
-                    }
-                }
-            }
         }
 
         // Error display
@@ -426,8 +438,8 @@ val ImportStepReview = FC<ImportStepReviewProps> { props ->
             direction = FlexDirection.row
             css {
                 justifyContent = JustifyContent.spaceBetween
+                alignItems = AlignItems.center
                 gap = 15.px
-                paddingTop = 10.px
             }
             Button {
                 css {
@@ -438,36 +450,63 @@ val ImportStepReview = FC<ImportStepReviewProps> { props ->
                 disabled = submitLock.running
                 onClick = { props.onBack() }
             }
-            Button {
-                disabled = validQuestions.isEmpty() || submitLock.running
-                onClick = {
-                    submitLock {
-                        importError = null
-                        val importPayload = ImportQuestions(
-                            questions = validQuestions.map { pq ->
-                                ImportedQuestion(
-                                    name = pq.name,
-                                    description = pq.description,
-                                    answerSpace = pq.answerSpace!!,
-                                    resolution = pq.resolution,
-                                )
-                            },
-                            options = state.options,
-                        )
-                        Client.sendData(
-                            "${props.room.urlPrefix}/questions/import",
-                            importPayload,
-                            onError = { importError = it },
-                        ) {
-                            val count: String = body()
-                            navigate(props.room.urlPrefix)
+
+            Stack {
+                direction = FlexDirection.row
+                css {
+                    gap = 10.px
+                    alignItems = AlignItems.center
+                }
+                // Options button (only relevant for new questions)
+                if (newQuestions.isNotEmpty()) {
+                    Button {
+                        css {
+                            backgroundColor = Color("#F0F0F0")
+                            color = Color("#555")
                         }
+                        +"Question options\u2026"
+                        onClick = { optionsDialogOpen = true }
                     }
                 }
-                if (invalidQuestions.isEmpty()) {
-                    +"Import ${validQuestions.size} question${if (validQuestions.size != 1) "s" else ""}"
-                } else {
-                    +"Import ${validQuestions.size} question${if (validQuestions.size != 1) "s" else ""} (${invalidQuestions.size} skipped)"
+
+                // Import button
+                Button {
+                    disabled = actionableQuestions.isEmpty() || submitLock.running
+                    onClick = {
+                        submitLock {
+                            importError = null
+                            val importPayload = ImportQuestions(
+                                questions = actionableQuestions.map { pq ->
+                                    ImportedQuestion(
+                                        name = pq.name,
+                                        description = pq.description,
+                                        answerSpace = pq.answerSpace!!,
+                                        resolution = pq.resolution,
+                                        externalId = pq.externalId,
+                                        mappedFields = pq.mappedFields,
+                                    )
+                                },
+                                options = state.options,
+                            )
+                            Client.sendData(
+                                "${props.room.urlPrefix}/questions/import",
+                                importPayload,
+                                onError = { importError = it },
+                            ) {
+                                val result: ImportResult = body()
+                                navigate(props.room.urlPrefix)
+                            }
+                        }
+                    }
+                    // Button label
+                    val parts = mutableListOf<String>()
+                    if (newQuestions.isNotEmpty()) parts.add("create ${newQuestions.size}")
+                    if (updateQuestions.isNotEmpty()) parts.add("update ${updateQuestions.size}")
+                    if (parts.isEmpty()) {
+                        +"Nothing to import"
+                    } else {
+                        +"Import: ${parts.joinToString(", ")}"
+                    }
                 }
             }
         }

@@ -11,6 +11,7 @@ val ColumnMapping.displayLabel: String get() = when (this) {
     ColumnMapping.MAX -> "Max"
     ColumnMapping.UNIT -> "Unit"
     ColumnMapping.DECIMALS -> "Decimals"
+    ColumnMapping.EXTERNAL_ID -> "External ID"
     ColumnMapping.SKIP -> "(skip)"
 }
 
@@ -19,6 +20,7 @@ val BINARY_MAPPINGS = setOf(
     ColumnMapping.TITLE,
     ColumnMapping.DESCRIPTION,
     ColumnMapping.RESOLUTION,
+    ColumnMapping.EXTERNAL_ID,
     ColumnMapping.SKIP,
 )
 
@@ -32,6 +34,7 @@ val DATE_MAPPINGS = setOf(
     ColumnMapping.RESOLUTION,
     ColumnMapping.MIN,
     ColumnMapping.MAX,
+    ColumnMapping.EXTERNAL_ID,
     ColumnMapping.SKIP,
 )
 
@@ -48,3 +51,7 @@ enum class QuestionType(val label: String) {
     NUMERIC("Number"),
     DATE("Date"),
 }
+
+/** Normalize a question name for matching: trim, collapse whitespace, lowercase. */
+fun normalizeForMatching(name: String): String =
+    name.trim().replace(Regex("\\s+"), " ").lowercase()

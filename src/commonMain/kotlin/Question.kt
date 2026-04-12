@@ -207,6 +207,8 @@ data class Question(
     val scheduleStatus: QuestionScheduleStatus = QuestionScheduleStatus(),
     @Serializable(with = QuestionEDTSerializer::class)
     val extensionData: ExtensionData = ExtensionData(QuestionEDT),
+    /** Optional external identifier for matching during CSV import. */
+    val externalId: String? = null,
 ) : ImmediateDerefEntity, HasUrlPrefix {
     init {
         if (resolution != null) {
