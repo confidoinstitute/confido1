@@ -2,6 +2,7 @@ package components.redesign.rooms
 
 import components.*
 import components.redesign.questions.*
+import components.redesign.rooms.import.ImportWizard
 import js.objects.unsafeJso as jso
 import react.*
 import react.router.*
@@ -39,6 +40,12 @@ val Room = FC<Props> {
                     openSchedule = URLSearchParams(loc.search).get("schedule") == "1"
                 }
             })
+            if (appState.hasPermission(room, RoomPermission.ADD_QUESTION)) {
+                add(jso<RouteObject> {
+                    path = "import"
+                    element = ImportWizard.create()
+                })
+            }
             if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS)) {
                 add(jso<RouteObject> {
                     path = "questions/:questionID"

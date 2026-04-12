@@ -300,6 +300,7 @@ fun main() {
                 roomCommentsRoutes(this)
                 questionRoutes(this)
                 questionCommentsRoutes(this)
+                importQuestionRoutes(this)
                 genericRoutes(this)
                 presenterRoutes(this)
                 calibrationRoutes(this)

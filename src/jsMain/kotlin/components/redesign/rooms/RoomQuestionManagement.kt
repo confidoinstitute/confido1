@@ -222,6 +222,17 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
 
             if (appState.hasPermission(room, RoomPermission.ADD_QUESTION)) {
                 div { css {flexGrow = number(1.0)} }
+                Link {
+                    to = "import"
+                    css(LinkUnstyled) {}
+                    RoomHeaderButton {
+                        css {
+                            backgroundColor = Color("#E8E0F5")
+                            color = Color("#6319FF")
+                        }
+                        +"Import from CSV"
+                    }
+                }
                 RoomHeaderButton {
                     +"Create a question"
                     onClick = { addQuestion() }

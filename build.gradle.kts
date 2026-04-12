@@ -145,6 +145,8 @@ kotlin {
                 implementation("commons-codec:commons-codec:1.15")
                 implementation("com.akuleshov7:ktoml-core:$ktomlVersion")
                 implementation("com.akuleshov7:ktoml-file:$ktomlVersion")
+                implementation("org.apache.commons:commons-csv:1.12.0")
+                implementation("com.github.albfernandez:juniversalchardet:2.5.0")
             }
         }
         val jsMain by getting {

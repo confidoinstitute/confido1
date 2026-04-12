@@ -12,6 +12,7 @@ import js.objects.unsafeJso as jso
 import emotion.react.*
 import hooks.*
 import react.*
+import react.router.dom.Link
 import rooms.*
 import tools.confido.question.*
 import tools.confido.refs.ref
@@ -62,6 +63,17 @@ val QuestionList = FC<QuestionListProps> { props ->
         }
 
         if (appState.hasPermission(room, RoomPermission.ADD_QUESTION)) {
+            Link {
+                to = "import"
+                css(LinkUnstyled) {}
+                RoomHeaderButton {
+                    css {
+                        backgroundColor = Color("#E8E0F5")
+                        color = Color("#6319FF")
+                    }
+                    +"Import from CSV"
+                }
+            }
             RoomHeaderButton {
                 +"Create a question"
                 onClick = { addQuestion() }
