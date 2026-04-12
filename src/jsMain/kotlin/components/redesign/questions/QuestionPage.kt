@@ -346,7 +346,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
 
     // Tabs
     Stack {
-        css {
+        css(ClassName("question-tabs")) {
             padding = if (layoutMode >= LayoutMode.TABLET) Padding(15.px, 0.px) else 15.px
             background = bgColor
             borderRadius = 5.px
@@ -367,7 +367,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
 
     if (!groupPredictionOpen) {
         div {
-            css {
+            css(ClassName("prediction-box")) {
                 backgroundColor = Color("#fff")
                 flexShrink = number(0.0)
             }
@@ -472,7 +472,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
         } else {
             // Group prediction graph
             div {
-                css {
+                css(ClassName("prediction-box")) {
                     backgroundColor = Color("#fff")
                     flexShrink = number(0.0)
                     position = Position.relative
@@ -558,7 +558,7 @@ val ShortenedTextExpanderClass = emotion.css.ClassName {
 private val QuestionHeader = FC<QuestionHeaderProps> { props ->
     val layoutMode = use(LayoutModeContext)!!
     Stack {
-        css {
+        css(ClassName("question-header")) {
             padding = Padding(20.px, if (layoutMode >= LayoutMode.TABLET) 0.px else 15.px, 5.px)
             gap = 4.px
             background = bgColor
@@ -615,7 +615,7 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
                 }
             }
             div {
-                css {
+                css(ClassName("question-title")) {
                     fontFamily = sansSerif
                     fontWeight = integer(800)
                     fontSize = 34.px
@@ -867,7 +867,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
 
 private val QuestionStatusLine = FC<QuestionStatusProps> { props ->
     div {
-        css {
+        css(ClassName("question-status")) {
             fontFamily = sansSerif
             fontWeight = integer(700)
             fontSize = 12.px

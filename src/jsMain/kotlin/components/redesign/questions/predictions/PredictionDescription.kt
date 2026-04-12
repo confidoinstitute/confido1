@@ -10,6 +10,7 @@ import web.cssom.Padding
 import web.cssom.integer
 import web.cssom.px
 import emotion.react.css
+import web.cssom.ClassName
 import react.ChildrenBuilder
 import react.FC
 import react.Props
@@ -51,7 +52,7 @@ val noColor = Color("#FF5555")
 val medianColor = Color("#2AE6C9")
 val meanColor = Color("#00C3E9")
 
-val descriptionClass = emotion.css.ClassName {
+val descriptionClass = emotion.css.ClassName(ClassName("prediction-desription")) {
     padding = Padding(25.px, 15.px)
     gap = 10.px
     color = Color("#222222")
@@ -279,6 +280,7 @@ val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
     }
     val hideDefault = ClientExtension.enabled.any { it.hideDefaultPredictionDesc(props.dist, props.question, false) }
     Stack {
+        className = ClassName("prediction-description")
         css(descriptionClass) {}
         if (!hideDefault)
         when (val dist = props.dist) {

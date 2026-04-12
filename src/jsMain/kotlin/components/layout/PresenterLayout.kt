@@ -7,7 +7,9 @@ import components.redesign.DefaultTheme
 import components.redesign.ThemeProvider
 import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
+import emotion.react.Global
 import emotion.react.css
+import emotion.react.styles
 import react.*
 import react.dom.html.ReactHTML.div
 import tools.confido.state.EmptyPV
@@ -56,6 +58,15 @@ val PresenterLayoutInner = FC<Props> {
         startWebSocket()
         onCleanup {
             webSocket.current?.close()
+        }
+    }
+
+    Global {
+        styles {
+            "html, body" {
+                margin = 0.px
+                padding = 0.px
+            }
         }
     }
 
