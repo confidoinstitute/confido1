@@ -223,7 +223,7 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
             if (appState.hasPermission(room, RoomPermission.ADD_QUESTION)) {
                 div { css {flexGrow = number(1.0)} }
                 Link {
-                    to = "import"
+                    to = "../import"
                     css(LinkUnstyled) {}
                     RoomHeaderButton {
                         css {

@@ -4,6 +4,7 @@ import Client
 import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.forms.*
+import components.redesign.questions.StatusChip
 import io.ktor.client.call.*
 import kotlinx.datetime.LocalDate
 import payloads.requests.*
@@ -376,31 +377,25 @@ val ImportStepReview = FC<ImportStepReviewProps> { props ->
                             }
                         }
                         td {
-                            css { whiteSpace = WhiteSpace.nowrap }
                             when (pq.matchType) {
-                                MatchType.NEW -> {
-                                    span {
-                                        css { color = Color("#4CAF50"); fontWeight = integer(600); fontSize = 12.px }
-                                        +"+ New"
-                                    }
+                                MatchType.NEW -> StatusChip {
+                                    text = "New"
+                                    color = Color("#4CAF50")
                                 }
-                                MatchType.UPDATE -> {
-                                    span {
-                                        css { color = Color("#1976D2"); fontWeight = integer(600); fontSize = 12.px }
-                                        +"\u270E Update"
-                                    }
+                                MatchType.UPDATE -> StatusChip {
+                                    text = "Update"
+                                    color = Color("#1976D2")
                                 }
-                                MatchType.UNCHANGED -> {
-                                    span {
-                                        css { color = Color("#999"); fontSize = 12.px }
-                                        +"\u2013 Same"
-                                    }
+                                MatchType.UNCHANGED -> StatusChip {
+                                    text = "Unchanged"
+                                    color = Color("#9E9E9E")
                                 }
-                                MatchType.ERROR -> {
-                                    span {
-                                        title = pq.errors.joinToString("; ")
-                                        css { color = Color("#F57C00"); cursor = Cursor.help; fontSize = 12.px }
-                                        +"\u26A0 Error"
+                                MatchType.ERROR -> span {
+                                    title = pq.errors.joinToString("; ")
+                                    css { cursor = Cursor.help }
+                                    StatusChip {
+                                        text = "Error"
+                                        color = Color("#F57C00")
                                     }
                                 }
                             }
