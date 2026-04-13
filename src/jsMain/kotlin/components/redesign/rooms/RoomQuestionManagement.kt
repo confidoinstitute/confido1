@@ -30,6 +30,7 @@ import hooks.useCoroutineLock
 import hooks.useEditDialog
 import hooks.useWebSocket
 import js.objects.unsafeJso as jso
+import payloads.requests.DeleteQuestionMulti
 import payloads.requests.EditQuestion
 import payloads.requests.EditQuestionClearAnswers
 import payloads.requests.EditQuestionMulti
@@ -166,6 +167,16 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
     var selectedRows by useState<Set<Ref<Question>>>(emptySet())
     fun selectedQuestions() = props.questions.filter { it.ref in selectedRows }
 
+    // Tag filtering
+    var selectedTags by useState(emptySet<String>())
+    val allTags: Set<String> = useMemo(props.questions) {
+        props.questions.flatMap { it.tags }.distinct().sorted().toSet()
+    }
+    val isFiltered = selectedTags.isNotEmpty()
+    val filteredQuestionIds = if (isFiltered) {
+        props.questions.filter { q -> q.tags.any { it in selectedTags } }.map { it.id }.toSet()
+    } else null
+
     val editQuestionOpen = useEditDialog(EditQuestionDialog, jso {
         this.preset = preset
     })
@@ -252,6 +263,61 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
         }
     }
 
+    // Tag filter bar
+    if (allTags.isNotEmpty()) {
+        Stack {
+            direction = FlexDirection.row
+            css {
+                flexWrap = FlexWrap.wrap
+                gap = 6.px
+                padding = Padding(8.px, 16.px)
+                alignItems = AlignItems.center
+            }
+            span {
+                css {
+                    fontFamily = sansSerif
+                    fontSize = 12.px
+                    fontWeight = integer(600)
+                    color = Color("#999999")
+                    marginRight = 2.px
+                }
+                +"Filter:"
+            }
+            for (tag in allTags) {
+                val isSelected = tag in selectedTags
+                button {
+                    css(ChipCSS) {
+                        cursor = Cursor.pointer
+                        if (isSelected) {
+                            backgroundColor = MainPalette.primary.color
+                            color = NamedColor.white
+                        } else {
+                            backgroundColor = Color("#F0F0F0")
+                            this.color = Color("#666666")
+                            border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))
+                        }
+                    }
+                    +tag
+                    onClick = {
+                        selectedTags = if (isSelected) selectedTags - setOf(tag) else selectedTags + setOf(tag)
+                    }
+                }
+            }
+            if (isFiltered) {
+                button {
+                    css(ChipCSS) {
+                        cursor = Cursor.pointer
+                        backgroundColor = NamedColor.transparent
+                        this.color = Color("#999999")
+                        textDecoration = TextDecoration.underline
+                    }
+                    +"Clear"
+                    onClick = { selectedTags = emptySet() }
+                }
+            }
+        }
+    }
+
     DndContext {
         collisionDetection = closestCenter
         modifiers = arrayOf(restrictToVerticalAxis, restrictToWindowEdges)
@@ -313,10 +379,11 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
                                 }
                                 Checkbox {
                                     sz = 20.0
-                                    checked = selectedQuestions().size == props.questions.size
+                                    val visibleQs = if (filteredQuestionIds != null) props.questions.filter { it.id in filteredQuestionIds } else props.questions
+                                    checked = visibleQs.isNotEmpty() && visibleQs.all { it.ref in selectedRows }
                                     onChange = { ev->
                                         if (ev.target.checked) {
-                                            selectedRows = props.questions.map {it.ref}.toSet()
+                                            selectedRows = selectedRows + visibleQs.map { it.ref }.toSet()
                                         } else {
                                             selectedRows = emptySet()
                                         }
@@ -349,6 +416,8 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
                         items = questionOrderReversed
                         strategy = verticalListSortingStrategy
                         questionOrderReversed.map { questionId ->
+                            // Skip questions not matching tag filter
+                            if (filteredQuestionIds != null && questionId !in filteredQuestionIds) return@map
                             props.questions.find { it.id == questionId }?.let { question ->
                                 QuestionRow {
                                     key = question.id
@@ -689,6 +758,7 @@ external interface SelectionActionMenuProps: DialogMenuProps {
 
 val SelectionActionMenu = FC<SelectionActionMenuProps> { props->
     var clearConfirmOpen by useState(false)
+    var deleteConfirmOpen by useState(false)
     val submitLock = useCoroutineLock()
     val selectedQuestions = props.selectedQuestions
     ConfirmDialog {
@@ -723,6 +793,37 @@ val SelectionActionMenu = FC<SelectionActionMenuProps> { props->
             }
         }
     }
+    ConfirmDialog {
+        open = deleteConfirmOpen
+        onClose = { deleteConfirmOpen = false }
+        title = "Delete questions?"
+        p { +"This will permanently delete the following questions and all associated predictions:" }
+        ul {
+            selectedQuestions.forEach {
+                li {
+                    css {
+                        textOverflow = ellipsis
+                        fontStyle = italic
+                    }
+                    +it.name
+                }
+            }
+        }
+        p { +"This action cannot be undone." }
+        onConfirm = {
+            submitLock {
+                Client.sendData(
+                    "/questions/multidelete",
+                    DeleteQuestionMulti(
+                        selectedQuestions.map { it.ref }.toSet(),
+                    ),
+                    onError = { showError(it); deleteConfirmOpen=false }) {
+                    deleteConfirmOpen=false
+                    props.onActionDone?.invoke()
+                }
+            }
+        }
+    }
     DialogMenu {
         +props.except("selectedQuestions")
 
@@ -733,6 +834,15 @@ val SelectionActionMenu = FC<SelectionActionMenuProps> { props->
             onClick = {
                 props.onClose?.invoke()
                 clearConfirmOpen = true
+            }
+        }
+        DialogMenuItem {
+            text = "Delete questions"
+            icon = BinIcon
+            variant = DialogMenuItemVariant.dangerous
+            onClick = {
+                props.onClose?.invoke()
+                deleteConfirmOpen = true
             }
         }
     }

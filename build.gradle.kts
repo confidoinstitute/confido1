@@ -166,6 +166,7 @@ kotlin {
                 implementation(kotlinw("emotion-styled"))
                 implementation(kotlinw("emotion-react"))
                 implementation(kotlinw("react-router"))
+                implementation(kotlinw("react-select"))
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
                 implementation("io.ktor:ktor-client-core:$ktorVersion")
                 implementation("io.ktor:ktor-client-serialization:$ktorVersion")

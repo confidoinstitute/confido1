@@ -1,6 +1,4 @@
 package extensions.prediction_showcase
-import extensions.question_groups.QuestionGroupsKey
-import tools.confido.extensions.get
 
 import components.presenter.PresenterPageProps
 import components.presenter.presenterPageMap
@@ -36,7 +34,6 @@ import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.NumericSpace
 import utils.questionUrl
 import extensions.shared.ValueWithUser
-import tools.confido.extensions.get
 import tools.confido.refs.Ref
 import tools.confido.utils.formatPercent
 
@@ -116,7 +113,7 @@ val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> 
 
     val questions = room.questions.mapNotNull { it.deref() }.filter { q ->
         view.questionGroup?.let { group ->
-            q.extensionData[QuestionGroupsKey]?.contains(group)
+            group in q.tags
         } ?: true
     }
 

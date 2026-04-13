@@ -98,6 +98,18 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     text = "New"
                 }
             }
+
+            // Tag chips
+            for (tag in props.question.tags) {
+                span {
+                    css(ChipCSS) {
+                        backgroundColor = Color("#F0F0F0")
+                        color = Color("#666666")
+                        border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))
+                    }
+                    +tag
+                }
+            }
         }
 
         // Question Frame

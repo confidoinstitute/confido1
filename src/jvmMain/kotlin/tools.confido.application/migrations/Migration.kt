@@ -34,6 +34,7 @@ object MigrationRunner {
     /** All migrations in order. Append new migrations at the end of this list. */
     private val migrations: List<Migration> = listOf(
         RoleFormatMigration,
+        QuestionGroupsToTagsMigration,
     )
 
     /**

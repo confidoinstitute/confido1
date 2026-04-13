@@ -75,3 +75,22 @@ CONFIDO_FEAT_UPDATE_HISTORY=1
 # If not set, defaults to roles.toml in the working directory.
 # If the file does not exist, only built-in defaults are used.
 #CONFIDO_ROLES_FILE=roles.toml
+
+# --------------------------
+# Millionaire extension settings
+# --------------------------
+#
+# Configured via CONFIDO_EXTRA_DATA JSON object. Keys:
+#   millionaire_mode:   "multiplicative" (default) or "ladder"
+#                       - multiplicative: original mode, score *= multiplier each round (starts at $1000)
+#                       - ladder: fixed prize steps, additive Brier scoring (starts at $0)
+#   millionaire_timer:  "none" (default), "fixed:SECONDS", or "countdown:SECONDS"
+#                       - none: no timer
+#                       - fixed:30: 30s timer auto-starts when each question opens
+#                       - countdown:15: 15s countdown triggered manually by game master
+#   millionaire_ladder: comma-separated custom prize values
+#                       Default: 100,200,300,500,1000,2000,4000,8000,16000,32000,64000,125000,250000,500000,1000000
+#                       Ladder is truncated to the number of questions in the game.
+#
+# Example for ladder mode with 15-second manual countdown:
+#CONFIDO_EXTRA_DATA='{"millionaire_mode":"ladder","millionaire_timer":"countdown:15"}'

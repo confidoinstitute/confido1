@@ -33,13 +33,17 @@ import react.dom.html.ReactHTML.ul
 import react.router.useNavigate
 import rooms.Room
 import tools.confido.distributions.BinaryDistribution
+import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.extensions.ClientExtension
 import tools.confido.question.Question
 import tools.confido.question.QuestionState
 import tools.confido.refs.Ref
 import tools.confido.refs.deref
 import tools.confido.refs.ref
+
+
 import tools.confido.spaces.BinarySpace
+import tools.confido.spaces.BinaryValue
 import tools.confido.state.QuestionPV
 import users.User
 import web.cssom.*
@@ -598,6 +602,14 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
         presenterPageMap(MillionaireLadderQuestionPP),
     )
 
+    // --- Hide default prediction description for mil questions in ladder mode ---
+
+    override fun hideDefaultPredictionDesc(dist: ProbabilityDistribution?, question: Question?, b: Boolean): Boolean {
+        if (question == null) return false
+        return MillionaireConfig.mode == MillionaireMode.LADDER &&
+                MIL_GROUP in question.tags
+    }
+
     // --- Auto-navigate to next question ---
 
     override fun questionPageExtra(q: Question, place: ClientExtension.QuestionPagePlace, cb: ChildrenBuilder) {
@@ -700,6 +712,18 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
                         backgroundColor = important(Color("rgba(255,255,255,0.08)"))
                         color = important(MilColors.textPrimary)
                         borderColor = important(Color("rgba(255,255,255,0.2)"))
+                    }
+                }
+            }
+
+            // Show countdown timer on participant's question page
+            if (MillionaireConfig.timerConfig !is TimerConfig.None && q.state == QuestionState.OPEN) {
+                div {
+                    css {
+                        padding = Padding(0.px, 15.px, 10.px)
+                    }
+                    MillionaireTimerBar {
+                        roomId = room.id
                     }
                 }
             }
@@ -902,83 +926,107 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
         val resolvedQuestions = qs.takeWhile { it.state == QuestionState.RESOLVED }
 
         if (isLadder) {
-            // Ladder mode: additive scoring
+            // Ladder mode: two-tile layout showing gain/loss for each outcome
             val scores = resolvedQuestions.mapIndexed { idx, rq ->
                 val prizeValue = ladder.getOrElse(idx) { ladder.lastOrNull() ?: 0 }
                 computeScoreLadder(appState.myPredictions[rq.ref], rq.resolution!!, prizeValue) ?: 0.0
             }
-            val totalBalance = scores.sum()
-            val balanceAfterQ = scores.runningFold(0.0) { acc, s -> acc + s }
 
             cb.apply {
                 val qIdx = qids.indexOf(q.id)
                 val prizeValue = ladder.getOrElse(qIdx) { ladder.lastOrNull() ?: 0 }
+                val resolved = q.resolved
+                val resolution = (q.resolution as? BinaryValue)?.value  // true=Yes, false=No, null=unresolved
 
+                // Compute scores for both outcomes
+                val scoreIfNo = computeScoreLadder(dist.yesProb, false, prizeValue)
+                val scoreIfYes = computeScoreLadder(dist.yesProb, true, prizeValue)
+
+                // Actual score if resolved
+                val actualScore = if (resolved && resolution != null)
+                    (if (resolution) scoreIfYes else scoreIfNo) else null
+
+                // Prize value header
                 div {
                     css {
                         fontSize = 18.px
                         fontWeight = FontWeight.bold
                         color = important(MilColors.gold)
                         textShadow = "0 0 10px rgba(255,215,0,0.3)".unsafeCast<TextShadow>()
+                        textAlign = TextAlign.center
                     }
                     +"Question ${qIdx + 1} — for ${MillionaireConfig.formatPrize(prizeValue)}"
                 }
 
-                if (q.resolved) {
-                    val idx = resolvedQuestions.map { it.id }.indexOf(q.id)
-                    if (idx >= 0 && idx < scores.size) {
-                        val dsc = scores[idx]
-                        val word = if (dsc >= 0) "gained" else "lost"
-                        val dscColor = if (dsc >= 0) MilColors.scorePositive else MilColors.scoreNegative
-                        div {
-                            +"You $word "
-                            span {
-                                css { color = dscColor; fontWeight = FontWeight.bold }
-                                +"\$${dsc.absoluteValue.roundToInt()}"
-                            }
-                            +" on this question."
-                        }
-                        div {
-                            +"Your balance after this question: "
-                            val bal = balanceAfterQ[idx + 1]
-                            val balColor = if (bal >= 0) MilColors.scorePositive else MilColors.scoreNegative
-                            span {
-                                css { color = balColor; fontWeight = FontWeight.bold }
-                                +"\$${bal.roundToInt()}"
-                            }
-                        }
+                // Two-tile row: No (left) | Yes (right)
+                div {
+                    css {
+                        display = Display.flex
+                        flexDirection = FlexDirection.row
+                        gap = 12.px
+                        marginTop = 8.px
                     }
-                } else {
-                    div {
-                        +"Your current balance: "
-                        val balColor = if (totalBalance >= 0) MilColors.scorePositive else MilColors.scoreNegative
-                        span {
-                            css { color = balColor; fontWeight = FontWeight.bold }
-                            +"\$${totalBalance.roundToInt()}"
-                        }
-                    }
-                    listOf(likelyOutcome, !likelyOutcome).forEach { ans ->
-                        val score = computeScoreLadder(dist.yesProb, ans, prizeValue)
-                        val word = if (score >= 0) "gain" else "lose"
-                        val sColor = if (score >= 0) MilColors.scorePositive else MilColors.scoreNegative
+
+                    // Render tile for each outcome: false=No (left), true=Yes (right)
+                    for (outcome in listOf(false, true)) {
+                        val score = if (outcome) scoreIfYes else scoreIfNo
+                        val isCorrect = resolved && resolution == outcome
+                        val isWrong = resolved && resolution != outcome
+                        val sign = if (score >= 0) "+" else "-"
+                        val scoreColor = if (score >= 0) MilColors.scorePositive else MilColors.scoreNegative
+
                         div {
-                            +"If the correct answer is "
-                            yesNoColored(ans)
-                            +", you will "
-                            b { +word }
-                            +" "
-                            span {
-                                css { color = sColor; fontWeight = FontWeight.bold }
-                                +"\$${score.absoluteValue.roundToInt()}"
+                            css {
+                                flex = Flex(number(1.0), number(1.0), 0.pct)
+                                backgroundColor = Color("rgba(255,255,255,0.05)")
+                                borderRadius = 10.px
+                                padding = Padding(14.px, 16.px)
+                                textAlign = TextAlign.center
+                                display = Display.flex
+                                flexDirection = FlexDirection.column
+                                alignItems = AlignItems.center
+                                gap = 4.px
+
+                                if (isCorrect) {
+                                    // Gold outline for the correct outcome
+                                    border = Border(2.px, LineStyle.solid, MilColors.gold)
+                                    boxShadow = "0 0 12px rgba(255,215,0,0.25)".unsafeCast<BoxShadow>()
+                                } else if (isWrong) {
+                                    // Dimmed for the incorrect outcome
+                                    opacity = number(0.3)
+                                    border = Border(1.px, LineStyle.solid, Color("rgba(255,255,255,0.1)"))
+                                } else {
+                                    // Unresolved — subtle border
+                                    border = Border(1.px, LineStyle.solid, Color("rgba(255,255,255,0.1)"))
+                                }
                             }
-                            val newBal = totalBalance + score
-                            val nbColor = if (newBal >= 0) MilColors.scorePositive else MilColors.scoreNegative
-                            +" (balance: "
-                            span {
-                                css { color = nbColor; fontWeight = FontWeight.bold }
-                                +"\$${newBal.roundToInt()}"
+
+                            // Label
+                            div {
+                                css {
+                                    fontSize = 13.px
+                                    color = important(MilColors.textSecondary)
+                                    fontWeight = FontWeight.normal
+                                }
+                                if (isCorrect) {
+                                    val word = if (score >= 0) "You gained" else "You lost"
+                                    +word
+                                } else {
+                                    +(if (outcome) "If Yes" else "If No")
+                                }
                             }
-                            +")"
+
+                            // Amount
+                            div {
+                                css {
+                                    fontSize = 30.px
+                                    fontWeight = FontWeight.bold
+                                    fontFamily = string("monospace")
+                                    color = important(scoreColor)
+                                    lineHeight = number(1.2)
+                                }
+                                +"$sign\$${score.absoluteValue.roundToInt()}"
+                            }
                         }
                     }
                 }

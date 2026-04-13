@@ -16,6 +16,7 @@ import react.dom.html.ReactHTML.div
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionContextPlace
 import tools.confido.question.*
+import tools.confido.refs.deref
 import tools.confido.spaces.*
 import web.html.ButtonType
 import web.html.submit
@@ -97,6 +98,14 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         props.entity?.sensitive ?: (props.preset == QuestionPreset.SENSITIVE)
     }
 
+    // TAGS
+    var tags by useState { props.entity?.tags ?: emptySet() }
+
+    // Compute tag suggestions from all questions in this room
+    val tagSuggestions: List<String> = useMemo(room.questions) {
+        room.questions.mapNotNull { it.deref() }.flatMap { it.tags }.distinct().sorted()
+    }
+
     // Validity
     val questionValid = questionTitle.isNotEmpty() && answerSpaceValid && resolutionValid && (scheduleValid || !customSchedule)
 
@@ -123,7 +132,8 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         sensitive = isSensitive,
         schedule = if (customSchedule) schedule else null,
         scheduleStatus = QuestionScheduleStatus(if (customSchedule) schedule else room.defaultSchedule),
-        // BINARY SETTINGS
+        // TAGS
+        tags = tags,
     ).withState(questionStatus).let{ q->
         var curQ = q
         ClientExtension.forEach { curQ = it.assembleQuestion(curQ, extContext[it.extensionId]!!.component1()) }
@@ -356,6 +366,20 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                     }
                 */
             }
+            FormSection {
+                title = "Tags"
+                FormField {
+                    title = "Tags"
+                    comment = "Tags help organize and filter questions within this room."
+                    TagInput {
+                        value = tags
+                        onChange = { newTags -> tags = newTags }
+                        suggestions = tagSuggestions
+                        placeholder = "Add tags..."
+                    }
+                }
+            }
+
             EditQuestionDialogExtensions { +props }
 
 

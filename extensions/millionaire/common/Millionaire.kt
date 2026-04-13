@@ -7,8 +7,8 @@ import normalizedBrier
 import rooms.Room
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.extensions.Extension
-import tools.confido.extensions.get
-import extensions.question_groups.QuestionGroupsKey
+
+
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.question.QuestionState
@@ -177,7 +177,7 @@ abstract class MillionaireExt : Extension {
     // --- Question helpers ---
 
     fun questions(room: Room) = room.questions.reversed().mapDeref().filter {
-        it.extensionData[QuestionGroupsKey].contains(MIL_GROUP)
+        MIL_GROUP in it.tags
     }
 
     fun getState(room: Room): MillionaireState {

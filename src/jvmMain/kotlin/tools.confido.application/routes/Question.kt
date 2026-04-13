@@ -169,6 +169,48 @@ fun questionRoutes(routing: Routing) = routing.apply {
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
+    // Delete multiple questions at once
+    postST("/questions/multidelete") {
+        call.withUser {
+            val req = call.receive<DeleteQuestionMulti>()
+            val questions = req.questions.mapNotNull { it.deref() }
+            val questionRooms = questions.map { it.room ?: badRequest("cannot delete roomless question") }
+            if (!questionRooms.all { it.hasPermission(user, RoomPermission.MANAGE_QUESTIONS) }) unauthorized("missing permissions")
+            serverState.withTransaction {
+                questions.forEach { q ->
+                    serverState.questionManager.deleteEntity(q.ref)
+                    serverState.rooms.values.toList().forEach { room ->
+                        if (room.questions.contains(q.ref)) {
+                            serverState.roomManager.modifyEntity(room.id) {
+                                it.copy(questions = it.questions.filter { it != q.ref }.toList())
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
+    // Bulk state change for all questions with a given tag
+    postST("$roomUrl/tags/{tag}/set_state") {
+        call.withRoom {
+            assertPermission(RoomPermission.MANAGE_QUESTIONS, "Need moderator privilege to alter state.")
+            val tag = call.parameters["tag"]?.ifEmpty { null } ?: badRequest("Missing tag.")
+            val newState = call.receive<QuestionState>()
+            serverState.withTransaction {
+                room.questions.mapNotNull { it.deref() }.filter { tag in it.tags }.forEach { q ->
+                    serverState.questionManager.modifyEntity(q.id) {
+                        val newHistory = it.stateHistory + QuestionStateChange(newState, Clock.System.now(), user.ref)
+                        it.withState(newState).copy(stateHistory = newHistory)
+                    }
+                }
+            }
+            TransientData.refreshAllWebsockets()
+            call.respond(HttpStatusCode.OK)
+        }
+    }
+
     postST("$questionUrl/state") {
         call.withQuestion {
             val newState: QuestionState = call.receive()

@@ -36,7 +36,15 @@ val QuestionList = FC<QuestionListProps> { props ->
         SortType.NEWEST -> emptyList() // TODO: backend support
         SortType.OLDEST -> emptyList() // TODO: backend support
     }
-    val visibleQuestions = if (props.showHiddenQuestions) questions else questions.filter { it.visible }
+    val allVisibleQuestions = if (props.showHiddenQuestions) questions else questions.filter { it.visible }
+
+    // Tag filtering
+    var selectedTags by useState(emptySet<String>())
+    val allTags: Set<String> = useMemo(allVisibleQuestions) {
+        allVisibleQuestions.flatMap { it.tags }.distinct().sorted().toSet()
+    }
+    val visibleQuestions = if (selectedTags.isEmpty()) allVisibleQuestions
+        else allVisibleQuestions.filter { q -> q.tags.any { it in selectedTags } }
 
     var preset by useState(QuestionPreset.NONE)
     var presetOpen by useState(false)
@@ -77,6 +85,65 @@ val QuestionList = FC<QuestionListProps> { props ->
             RoomHeaderButton {
                 +"Create a question"
                 onClick = { addQuestion() }
+            }
+        }
+    }
+
+    // Tag filter bar
+    if (allTags.isNotEmpty()) {
+        Stack {
+            direction = FlexDirection.row
+            css {
+                flexWrap = FlexWrap.wrap
+                gap = 6.px
+                padding = Padding(8.px, 16.px)
+                maxWidth = layoutMode.contentWidth
+                marginLeft = Auto.auto
+                marginRight = Auto.auto
+                width = 100.pct
+                alignItems = AlignItems.center
+            }
+            react.dom.html.ReactHTML.span {
+                css {
+                    fontFamily = sansSerif
+                    fontSize = 12.px
+                    fontWeight = integer(600)
+                    color = Color("#999999")
+                    marginRight = 2.px
+                }
+                +"Filter:"
+            }
+            for (tag in allTags) {
+                val isSelected = tag in selectedTags
+                react.dom.html.ReactHTML.button {
+                    css(ChipCSS) {
+                        cursor = Cursor.pointer
+                        if (isSelected) {
+                            backgroundColor = MainPalette.primary.color
+                            color = NamedColor.white
+                        } else {
+                            backgroundColor = Color("#F0F0F0")
+                            color = Color("#666666")
+                            border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))
+                        }
+                    }
+                    +tag
+                    onClick = {
+                        selectedTags = if (isSelected) selectedTags - setOf(tag) else selectedTags + setOf(tag)
+                    }
+                }
+            }
+            if (selectedTags.isNotEmpty()) {
+                react.dom.html.ReactHTML.button {
+                    css(ChipCSS) {
+                        cursor = Cursor.pointer
+                        backgroundColor = NamedColor.transparent
+                        color = Color("#999999")
+                        textDecoration = TextDecoration.underline
+                    }
+                    +"Clear"
+                    onClick = { selectedTags = emptySet() }
+                }
             }
         }
     }

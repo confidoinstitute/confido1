@@ -306,10 +306,12 @@ fun importQuestionRoutes(routing: Routing) = routing.apply {
                     }
                 }
 
-                // Add newly created questions to the room
+                // Add newly created questions to the room (reversed so that
+                // the original CSV order is preserved in the UI, which
+                // displays room.questions.reversed()).
                 if (newRefs.isNotEmpty()) {
                     serverState.roomManager.modifyEntity(room.ref) {
-                        it.copy(questions = it.questions + newRefs)
+                        it.copy(questions = it.questions + newRefs.reversed())
                     }
                 }
             }

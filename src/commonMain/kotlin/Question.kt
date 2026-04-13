@@ -207,6 +207,8 @@ data class Question(
     val scheduleStatus: QuestionScheduleStatus = QuestionScheduleStatus(),
     @Serializable(with = QuestionEDTSerializer::class)
     val extensionData: ExtensionData = ExtensionData(QuestionEDT),
+    /** Tags for organizing and filtering questions within a room. */
+    val tags: Set<String> = emptySet(),
     /** Optional external identifier for matching during CSV import. */
     val externalId: String? = null,
 ) : ImmediateDerefEntity, HasUrlPrefix {

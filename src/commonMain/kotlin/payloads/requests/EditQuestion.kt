@@ -65,3 +65,8 @@ data class EditQuestionMulti(
     val questions: Set<Ref<Question>>,
     val edit: EditQuestionCanMulti,
 )
+
+@Serializable
+data class DeleteQuestionMulti(
+    val questions: Set<Ref<Question>>,
+)
