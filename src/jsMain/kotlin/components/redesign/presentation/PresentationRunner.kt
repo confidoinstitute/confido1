@@ -29,7 +29,7 @@ val PresentationRunner = FC<PresentationRunnerProps> { props ->
     val room = use(RoomContext)!!
     val submitLock = useCoroutineLock()
     val runState = props.data.runState ?: return@FC
-    val items = props.data.presentation.items
+    val items = runState.expandedItems
     val pres = props.data.presentation
     val currentItem = items.getOrNull(runState.currentIndex)
     val listRef = useRef<web.html.HTMLElement>(null)
@@ -127,18 +127,8 @@ val PresentationRunner = FC<PresentationRunnerProps> { props ->
                     padding = 15.px
                     borderRadius = 8.px
                     fontFamily = sansSerif
-                    backgroundColor = when (currentItem) {
-                        is NoteItem -> if (currentItem.warning) Color("#ffcdd2") else Color("#c8e6c9")
-                        is SlideItem -> Color("#f5f5f5")
-                        is ActionItem -> Color("#fff3e0")
-                        is PresenterViewItem -> Color("#e3f2fd")
-                    }
-                    border = Border(2.px, LineStyle.solid, when (currentItem) {
-                        is NoteItem -> if (currentItem.warning) Color("#e53935") else Color("#4caf50")
-                        is SlideItem -> Color("#bdbdbd")
-                        is ActionItem -> Color("#e65100")
-                        is PresenterViewItem -> Color("#1565c0")
-                    })
+                    backgroundColor = flowItemBgColor(currentItem)
+                    border = Border(2.px, LineStyle.solid, flowItemBadgeColor(currentItem))
                 }
                 when (currentItem) {
                     is NoteItem -> {
@@ -288,21 +278,15 @@ val PresentationRunner = FC<PresentationRunnerProps> { props ->
                             fontSize = 9.px
                             fontWeight = integer(600)
                             color = NamedColor.white
-                            backgroundColor = when (item) {
-                                is SlideItem -> Color("#757575")
-                                is ActionItem -> Color(if (item.id in runState.executedActionIds) "#4caf50" else "#e65100")
-                                is NoteItem -> if (item.warning) Color("#c62828") else Color("#2e7d32")
-                                is PresenterViewItem -> Color("#1565c0")
-                            }
+                            backgroundColor = if (item is ActionItem && item.id in runState.executedActionIds)
+                                Color("#4caf50") else flowItemBadgeColor(item)
                             padding = Padding(0.px, 4.px)
                             borderRadius = 2.px
                             flexShrink = number(0.0)
                         }
-                        +when (item) {
-                            is SlideItem -> "S"
-                            is ActionItem -> if (item.id in runState.executedActionIds) "✓" else "A"
-                            is NoteItem -> if (item.warning) "⚠" else "N"
-                            is PresenterViewItem -> "V"
+                        +when {
+                            item is ActionItem && item.id in runState.executedActionIds -> "✓"
+                            else -> flowItemBadgeText(item).take(1)
                         }
                     }
 

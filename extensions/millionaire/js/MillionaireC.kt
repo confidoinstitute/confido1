@@ -1,14 +1,9 @@
 package extensions.millionaire
 
-import Client
 import components.AppStateContext
-import components.presenter.PresenterPage
 import components.presenter.PresenterPageProps
-import components.presenter.QuestionPP
 import components.presenter.presenterPageMap
-import components.redesign.basic.showError
-import components.redesign.forms.Button
-import components.redesign.presenter.PresenterContext
+
 import components.redesign.questions.QuestionContext
 import components.redesign.questions.predictions.MyPredictionDescriptionProps
 import components.redesign.questions.predictions.yesNoColored
@@ -18,18 +13,13 @@ import emotion.css.*
 import emotion.react.Global
 import emotion.react.css
 import emotion.react.styles
-import hooks.useCoroutineLock
 import hooks.useWebSocket
 import payloads.responses.WSData
 import react.*
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
-import react.dom.html.ReactHTML.h2
-import react.dom.html.ReactHTML.h3
-import react.dom.html.ReactHTML.li
 import react.dom.html.ReactHTML.span
-import react.dom.html.ReactHTML.ul
 import react.router.useNavigate
 import rooms.Room
 import tools.confido.distributions.BinaryDistribution
@@ -44,7 +34,7 @@ import tools.confido.refs.ref
 
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.BinaryValue
-import tools.confido.state.QuestionPV
+
 import users.User
 import web.cssom.*
 import web.timers.clearInterval
@@ -97,6 +87,19 @@ private val timerExpiredFlash = keyframes {
 private val fadeIn = keyframes {
     0.pct { opacity = number(0.0) }
     100.pct { opacity = number(1.0) }
+}
+
+// =============================================================================
+// Active Game Config Hook (reads from server WS endpoint)
+// =============================================================================
+
+/**
+ * Hook that reads the active [MillionaireGameAction] config from the server
+ * via WebSocket. Returns null when no millionaire game is running.
+ */
+fun useMillionaireConfig(roomId: String): MillionaireGameAction? {
+    val ws = useWebSocket<MillionaireGameAction?>("/api${Room.urlPrefix(roomId)}/ext/millionaire/config.ws")
+    return (ws as? WSData)?.data
 }
 
 // =============================================================================
@@ -253,7 +256,7 @@ val PrizeLadder = FC<PrizeLadderProps> { props ->
                             textShadow = "0 0 8px rgba(255,215,0,0.6), 0 0 3px rgba(0,0,0,0.9)".unsafeCast<TextShadow>()
                         }
                     }
-                    +MillionaireConfig.formatPrize(prize)
+                    +formatPrize(prize)
                 }
             }
         }
@@ -280,15 +283,122 @@ private fun PropertiesBuilder.wwtbamBackground() {
 }
 
 // =============================================================================
+// Millionaire Game Action Editor (for presentation editor)
+// =============================================================================
+
+private val MillionaireGameActionEditor = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
+    val action = props.action as? MillionaireGameAction ?: return@FC
+    val allTags = components.redesign.presentation.useRoomTags()
+
+    components.redesign.presentation.FieldLabel { +"Question tag" }
+    if (allTags.isNotEmpty()) {
+        components.redesign.forms.Select {
+            value = action.tag
+            onChange = { e -> props.onChange(action.copy(tag = e.target.value)) }
+            css { width = 100.pct }
+            if (action.tag.isEmpty() || action.tag !in allTags) {
+                react.dom.html.ReactHTML.option { value = action.tag; +(if (action.tag.isEmpty()) "Select a tag..." else action.tag) }
+            }
+            allTags.forEach { tag ->
+                react.dom.html.ReactHTML.option { value = tag; +tag }
+            }
+        }
+    } else {
+        div {
+            css { fontFamily = components.redesign.basic.sansSerif; fontSize = 13.px; color = Color("#999") }
+            +"No tags defined on questions in this room."
+        }
+    }
+
+    components.redesign.presentation.FieldLabel { +"Mode" }
+    components.redesign.forms.Select {
+        value = action.mode.name
+        onChange = { e ->
+            MillionaireMode.entries.find { it.name == e.target.value }?.let { props.onChange(action.copy(mode = it)) }
+        }
+        css { width = 100.pct }
+        react.dom.html.ReactHTML.option { value = MillionaireMode.LADDER.name; +"Ladder (additive Brier scoring)" }
+        react.dom.html.ReactHTML.option { value = MillionaireMode.MULTIPLICATIVE.name; +"Multiplicative" }
+    }
+
+    components.redesign.presentation.FieldLabel { +"Timer" }
+    components.redesign.forms.Select {
+        val timerKey = when (action.timer) {
+            is TimerConfig.None -> "none"
+            is TimerConfig.Fixed -> "fixed"
+            is TimerConfig.Countdown -> "countdown"
+        }
+        value = timerKey
+        onChange = { e ->
+            val newTimer = when (e.target.value) {
+                "fixed" -> TimerConfig.Fixed(30)
+                "countdown" -> TimerConfig.Countdown(60)
+                else -> TimerConfig.None
+            }
+            props.onChange(action.copy(timer = newTimer))
+        }
+        css { width = 100.pct }
+        react.dom.html.ReactHTML.option { value = "none"; +"None" }
+        react.dom.html.ReactHTML.option { value = "fixed"; +"Fixed (auto-start per question)" }
+        react.dom.html.ReactHTML.option { value = "countdown"; +"Countdown (manual trigger)" }
+    }
+
+    // Timer seconds input (if timer is configured)
+    val timerSeconds = when (val t = action.timer) {
+        is TimerConfig.Fixed -> t.seconds
+        is TimerConfig.Countdown -> t.seconds
+        else -> null
+    }
+    if (timerSeconds != null) {
+        components.redesign.presentation.FieldLabel { +"Timer duration (seconds)" }
+        react.dom.html.ReactHTML.input {
+            asDynamic().type = "number"
+            value = timerSeconds.toString()
+            min = 5.0
+            max = 600.0
+            css { width = 80.px; fontSize = 13.px; padding = Padding(2.px, 4.px) }
+            onChange = { e ->
+                val s = (e.target.asDynamic().value as? String)?.toIntOrNull()
+                if (s != null) {
+                    val newTimer = when (action.timer) {
+                        is TimerConfig.Fixed -> TimerConfig.Fixed(s)
+                        is TimerConfig.Countdown -> TimerConfig.Countdown(s)
+                        else -> null
+                    }
+                    if (newTimer != null) props.onChange(action.copy(timer = newTimer))
+                }
+            }
+        }
+    }
+
+    // Scoreboard toggle
+    div {
+        css { display = Display.flex; alignItems = AlignItems.center; gap = 8.px; marginTop = 8.px }
+        react.dom.html.ReactHTML.input {
+            asDynamic().type = "checkbox"
+            checked = action.showScoreboardAfterEach
+            onChange = { e ->
+                props.onChange(action.copy(showScoreboardAfterEach = e.target.checked))
+            }
+        }
+        span {
+            css { fontFamily = components.redesign.basic.sansSerif; fontSize = 14.px }
+            +"Show scoreboard after each question"
+        }
+    }
+}
+
+// =============================================================================
 // Ladder Question Presenter Page (WWTBAM themed)
 // =============================================================================
 
 val MillionaireLadderQuestionPP = FC<PresenterPageProps<MillionaireLadderQuestionPV>> { props ->
     val room = props.view.room.deref() ?: return@FC
-    val st = MillionaireCE.getState(room)
+    val config = useMillionaireConfig(room.id) ?: return@FC
+    val st = MillionaireCE.getState(room, config.tag)
     val question = st.curQuestion ?: return@FC
-    val qs = MillionaireCE.questions(room)
-    val ladder = MillionaireConfig.prizeLadderForCount(qs.size)
+    val qs = MillionaireCE.questions(room, config.tag)
+    val ladder = config.prizeLadderForCount(qs.size)
     val currentPrize = ladder.getOrElse(st.curIndex) { ladder.lastOrNull() ?: 0 }
 
     // Main container
@@ -342,7 +452,7 @@ val MillionaireLadderQuestionPP = FC<PresenterPageProps<MillionaireLadderQuestio
                         fontWeight = FontWeight.bold
                         textShadow = "0 0 20px rgba(255,215,0,0.5), 0 0 40px rgba(255,215,0,0.2)".unsafeCast<TextShadow>()
                     }
-                    +MillionaireConfig.formatPrize(currentPrize)
+                    +formatPrize(currentPrize)
                 }
             }
 
@@ -406,7 +516,7 @@ val MillionaireLadderQuestionPP = FC<PresenterPageProps<MillionaireLadderQuestio
                 }
 
                 // Timer bar
-                if (MillionaireConfig.timerConfig !is TimerConfig.None) {
+                if (config.timer !is TimerConfig.None) {
                     div {
                         css {
                             width = 80.pct
@@ -443,10 +553,12 @@ val MillionaireLadderQuestionPP = FC<PresenterPageProps<MillionaireLadderQuestio
 
 val MillionaireScoreboardPP = FC<PresenterPageProps<MillionaireScoreboardPV>> { props ->
     val room = props.view.room
+    val config = useMillionaireConfig(room.id)
     val scoreboard = useWebSocket<Map<Ref<User>, Double>>("/api${Room.urlPrefix(room.id)}/ext/millionaire/scoreboard.ws")
+    if (config == null) return@FC
     if (scoreboard !is WSData) return@FC
 
-    val isLadder = MillionaireConfig.mode == MillionaireMode.LADDER
+    val isLadder = config.mode == MillionaireMode.LADDER
 
     if (isLadder) {
         // WWTBAM themed scoreboard
@@ -582,32 +694,35 @@ val MillionaireScoreboardPP = FC<PresenterPageProps<MillionaireScoreboardPV>> { 
 }
 
 // =============================================================================
-// Dynamic Millionaire Presenter (delegates to appropriate sub-view)
-// =============================================================================
-
-val MillionairePP = FC<PresenterPageProps<MillionairePV>> { props ->
-    val room = props.view.room.deref() ?: return@FC
-    val ms = MillionaireCE.getState(room)
-    PresenterPage { view = ms.presenterView(room) }
-}
-
-// =============================================================================
 // Client Extension Object
 // =============================================================================
 
 object MillionaireCE : ClientExtension, MillionaireExt() {
     override fun registerPresenterPages() = mapOf(
         presenterPageMap(MillionaireScoreboardPP),
-        presenterPageMap(MillionairePP),
         presenterPageMap(MillionaireLadderQuestionPP),
+    )
+
+    // --- Flow item type registration ---
+
+    override fun registerFlowItemTypes() = listOf(
+        tools.confido.extensions.FlowItemTypeEntry(
+            key = "millionaireGame",
+            label = "Millionaire game",
+            category = tools.confido.extensions.FlowItemCategory.EXPANDABLE,
+            createDefault = { MillionaireGameAction() },
+            editor = MillionaireGameActionEditor,
+            matches = { it is MillionaireGameAction },
+        ),
     )
 
     // --- Hide default prediction description for mil questions in ladder mode ---
 
     override fun hideDefaultPredictionDesc(dist: ProbabilityDistribution?, question: Question?, b: Boolean): Boolean {
-        if (question == null) return false
-        return MillionaireConfig.mode == MillionaireMode.LADDER &&
-                MIL_GROUP in question.tags
+        val room = use(RoomContext)
+        val config = useMillionaireConfig(room?.id ?: "")
+        if (question == null || room == null || config == null) return false
+        return config.mode == MillionaireMode.LADDER && config.tag in question.tags
     }
 
     // --- Auto-navigate to next question ---
@@ -616,17 +731,25 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
         use(AppStateContext)!!
         val room = use(RoomContext)!!
         val nav = useNavigate()
-        val qs = questions(room)
-        val st = getState(room)
+        val config = useMillionaireConfig(room.id)
+
+        // Derive game state (safe even if config is null -- we just get empty lists)
+        val qs = if (config != null) questions(room, config.tag) else emptyList()
+        val st = if (config != null) getState(room, config.tag) else null
+
         // Automatically move to next question
-        useEffect(q.id, q.state, st.curQuestion?.id) {
-            if (q in qs && q.state == QuestionState.RESOLVED && q.id != st.curQuestion?.id && st.curQuestion?.id != null)
+        useEffect(q.id, q.state, st?.curQuestion?.id) {
+            if (config != null && st != null && q in qs && q.state == QuestionState.RESOLVED &&
+                q.id != st.curQuestion?.id && st.curQuestion?.id != null)
                 nav(room.urlPrefix + st.curQuestion.urlPrefix)
         }
 
+        // All hooks have been called above -- safe to early-return now
+        if (config == null) return
+
         // Inject WWTBAM theme for millionaire questions in ladder mode
         val isMilQuestion = q.id in qs.map { it.id }
-        if (!isMilQuestion || MillionaireConfig.mode != MillionaireMode.LADDER) return
+        if (!isMilQuestion || config.mode != MillionaireMode.LADDER) return
 
         cb.apply {
             Global {
@@ -717,7 +840,7 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
             }
 
             // Show countdown timer on participant's question page
-            if (MillionaireConfig.timerConfig !is TimerConfig.None && q.state == QuestionState.OPEN) {
+            if (config.timer !is TimerConfig.None && q.state == QuestionState.OPEN) {
                 div {
                     css {
                         padding = Padding(0.px, 15.px, 10.px)
@@ -730,189 +853,14 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
         }
     }
 
-    // --- Question Management UI ---
-
-    override fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {
-        use(AppStateContext)!!
-        val qs = questions(room)
-        val presenterCtl = use(PresenterContext)!!
-        val st = getState(room)
-        val lk = useCoroutineLock()
-        val isLadder = MillionaireConfig.mode == MillionaireMode.LADDER
-        val ladder = if (isLadder) MillionaireConfig.prizeLadderForCount(qs.size) else emptyList()
-        val timerCfg = MillionaireConfig.timerConfig
-
-        // Timer state for management display
-        val timerWS = useWebSocket<TimerState?>("/api${room.urlPrefix}/ext/millionaire/timer.ws")
-        var timerFraction by useState(1.0)
-        val timerState = (timerWS as? WSData)?.data
-        useEffectWithCleanup(timerState?.startedAt, timerState?.durationMs, timerState?.running) {
-            if (timerState == null || !timerState.running) {
-                timerFraction = if (timerState == null) 1.0 else 0.0
-                return@useEffectWithCleanup
-            }
-            fun update() {
-                val now = Date.now()
-                val elapsed = now - timerState.startedAt
-                timerFraction = max(0.0, 1.0 - elapsed / timerState.durationMs)
-            }
-            update()
-            val interval = setInterval(500.milliseconds) { update() }
-            onCleanup { clearInterval(interval) }
-        }
-
-        if (qs.isEmpty()) return
-
-        fun setState(newState: MillionaireState) {
-            lk {
-                Client.sendData("/api${room.urlPrefix}/ext/millionaire/state", newState, onError = { showError(it) }) {}
-            }
-        }
-
-        fun sendTimerAction(action: String) {
-            lk {
-                Client.sendData("/api${room.urlPrefix}/ext/millionaire/timer", action, onError = { showError(it) }) {}
-            }
-        }
-
-        cb.apply {
-            h2 { +"Millionaire" }
-
-            // Mode display
-            div {
-                b { +"Mode: " }
-                +if (isLadder) "Ladder (additive Brier scoring)" else "Multiplicative"
-            }
-
-            // Timer config display
-            if (timerCfg !is TimerConfig.None) {
-                div {
-                    b { +"Timer: " }
-                    +when (timerCfg) {
-                        is TimerConfig.Fixed -> "Fixed ${timerCfg.seconds}s per question (auto-start)"
-                        is TimerConfig.Countdown -> "Countdown ${timerCfg.seconds}s (manual trigger)"
-                        TimerConfig.None -> "None"
-                    }
-                }
-            }
-
-            // Validation: missing resolutions
-            qs.filter { it.resolution == null }.let { noRes ->
-                if (noRes.isNotEmpty()) {
-                    b {
-                        css { color = NamedColor.red }
-                        +"ERROR: The following questions are missing resolution:"
-                    }
-                    ul {
-                        noRes.forEach { li { +it.name } }
-                    }
-                    return
-                }
-            }
-            // Validation: non-binary
-            qs.filter { it.answerSpace !is BinarySpace }.let { nonBin ->
-                if (nonBin.isNotEmpty()) {
-                    b {
-                        css { color = NamedColor.red }
-                        +"ERROR: The following questions have non-binary answer spaces:"
-                    }
-                    ul {
-                        nonBin.forEach { li { +it.name } }
-                    }
-                    return
-                }
-            }
-
-            // Status display
-            div { b { +"Current state: " }; +st.type.toString() }
-            div {
-                b { +"Current question: " }
-                val qNum = st.curIndex + 1
-                val qName = st.curQuestion?.name ?: ""
-                val prizeStr = if (isLadder && st.curIndex >= 0) {
-                    val prize = ladder.getOrElse(st.curIndex) { ladder.lastOrNull() ?: 0 }
-                    " (for ${MillionaireConfig.formatPrize(prize)})"
-                } else ""
-                +"#$qNum$prizeStr — $qName"
-            }
-            div {
-                b { +"Next question: " }
-                val nextIdx = st.curIndex + 1
-                val nextName = qs.getOrNull(nextIdx)?.name ?: "(none)"
-                val nextPrize = if (isLadder && nextIdx < ladder.size)
-                    " (for ${MillionaireConfig.formatPrize(ladder[nextIdx])})" else ""
-                +"#${nextIdx + 1}$nextPrize — $nextName"
-            }
-
-            // Game control buttons
-            if (st.type == MillionaireStateType.BEFORE_START)
-                Button {
-                    +"Start game"
-                    onClick = { setState(MillionaireState(MillionaireStateType.ASKING, 0, null)) }
-                }
-            else if (st.type == MillionaireStateType.ASKING) {
-                Button {
-                    +"Close question"
-                    onClick = { setState(MillionaireState(MillionaireStateType.RESOLVED, st.curIndex, null)) }
-                }
-            } else if (st.type == MillionaireStateType.RESOLVED) {
-                if (st.curIndex < qs.size - 1)
-                    Button {
-                        +"Next question"
-                        onClick = { setState(MillionaireState(MillionaireStateType.ASKING, st.curIndex + 1, null)) }
-                    }
-            }
-
-            // Timer controls
-            if (timerCfg !is TimerConfig.None && st.type == MillionaireStateType.ASKING) {
-                div {
-                    css { marginTop = 8.px }
-                    if (timerState != null && timerState.running) {
-                        val remaining = max(0.0, (timerState.durationMs - (Date.now() - timerState.startedAt)) / 1000)
-                        b { +"Timer: ${remaining.roundToInt()}s remaining" }
-                        +" "
-                        Button {
-                            +"Cancel timer"
-                            onClick = { sendTimerAction("stop") }
-                        }
-                    } else if (timerCfg is TimerConfig.Countdown) {
-                        Button {
-                            +"Start countdown (${timerCfg.seconds}s)"
-                            onClick = { sendTimerAction("start") }
-                        }
-                    }
-                    if (timerState != null && !timerState.running) {
-                        b {
-                            css { color = NamedColor.red }
-                            +" Timer EXPIRED"
-                        }
-                    }
-                }
-            }
-
-            Button {
-                +"Open presenter"
-                onClick = { presenterCtl.offer(MillionairePV(room.ref)) }
-            }
-            Button {
-                +"Reset to start"
-                onClick = { setState(MillionaireState(MillionaireStateType.BEFORE_START, -1, null)) }
-            }
-
-            h3 { +"Scoreboard" }
-            MillionaireScoreboardPP {
-                view = MillionaireScoreboardPV(room.ref)
-            }
-        }
-    }
-
     // --- Player Prediction Description ---
 
     override fun myPredictionDescriptionExtra(props: MyPredictionDescriptionProps, cb: ChildrenBuilder) {
         val room = use(RoomContext)!!
         val q = use(QuestionContext)!! ?: return
         val (appState, _) = use(AppStateContext)!!
-        val qs = questions(room)
+        val config = useMillionaireConfig(room.id) ?: return
+        val qs = questions(room, config.tag)
         val qids = qs.map { it.id }
         if (q.id !in qids) return
         if (q.answerSpace !is BinarySpace) return
@@ -920,8 +868,8 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
         if (dist !is BinaryDistribution) return
         val likelyOutcome = dist.yesProb >= 0.5
 
-        val isLadder = MillionaireConfig.mode == MillionaireMode.LADDER
-        val ladder = if (isLadder) MillionaireConfig.prizeLadderForCount(qs.size) else emptyList()
+        val isLadder = config.mode == MillionaireMode.LADDER
+        val ladder = if (isLadder) config.prizeLadderForCount(qs.size) else emptyList()
 
         val resolvedQuestions = qs.takeWhile { it.state == QuestionState.RESOLVED }
 
@@ -935,7 +883,7 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
             cb.apply {
                 val qIdx = qids.indexOf(q.id)
                 val prizeValue = ladder.getOrElse(qIdx) { ladder.lastOrNull() ?: 0 }
-                val resolved = q.resolved
+                val resolved = q.state == QuestionState.RESOLVED
                 val resolution = (q.resolution as? BinaryValue)?.value  // true=Yes, false=No, null=unresolved
 
                 // Compute scores for both outcomes
@@ -955,7 +903,7 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
                         textShadow = "0 0 10px rgba(255,215,0,0.3)".unsafeCast<TextShadow>()
                         textAlign = TextAlign.center
                     }
-                    +"Question ${qIdx + 1} — for ${MillionaireConfig.formatPrize(prizeValue)}"
+                    +"Question ${qIdx + 1} — for ${formatPrize(prizeValue)}"
                 }
 
                 // Two-tile row: No (left) | Yes (right)
@@ -1040,7 +988,7 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
             val diffScores = scoreAfterQ.zipWithNext { a, b -> b - a }
 
             cb.apply {
-                if (q.resolved) {
+                if (q.state == QuestionState.RESOLVED) {
                     val idx = resolvedQuestions.map { it.id }.indexOf(q.id)
                     if (idx >= 0 && idx < diffScores.size) {
                         val dsc = diffScores[idx]

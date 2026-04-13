@@ -88,6 +88,9 @@ data class NoteItem(
 @Serializable
 data class PresentationRunState(
     val currentIndex: Int = 0,
+    /** Flat list of items to step through. Built at presentation start by expanding any
+     *  expandable actions (meta-items) in the original [Presentation.items]. */
+    val expandedItems: List<FlowItem> = emptyList(),
     /** The effective presenter view to display (derived from the current item). */
     val currentView: PresenterView? = null,
     /** IDs of action items that have been executed in this run (to avoid re-execution). */

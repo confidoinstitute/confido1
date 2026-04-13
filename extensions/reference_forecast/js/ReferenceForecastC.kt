@@ -102,7 +102,7 @@ val ReferenceForcastScoreboardPP = FC<PresenterPageProps<ReferenceForcastScorebo
     }
 }
 
-private val RefForecastScoreboardPVEditorComponent = FC<tools.confido.extensions.PresenterViewEditorProps> { _ ->
+private val RefForecastScoreboardPVEditorComponent = FC<tools.confido.extensions.FlowItemEditorProps> { _ ->
     div {
         css {
             fontFamily = sansSerif
@@ -175,13 +175,14 @@ object ReferenceForecastCE : ClientExtension, ReferenceForecastExtension() {
             presenterPageMap(ReferenceForcastScoreboardPP)
         )
 
-    override fun registerPresenterViewTypes() = listOf(
-        tools.confido.extensions.PresenterViewTypeEntry(
+    override fun registerFlowItemTypes() = listOf(
+        tools.confido.extensions.FlowItemTypeEntry(
             key = "refForecastScoreboard",
             label = "Reference forecast scoreboard",
-            createDefault = { ReferenceForcastScoreboardPV(tools.confido.refs.Ref("")) },
+            category = tools.confido.extensions.FlowItemCategory.VIEW,
+            createDefault = { tools.confido.state.SetPresenterViewAction(ReferenceForcastScoreboardPV(tools.confido.refs.Ref(""))) },
             editor = RefForecastScoreboardPVEditorComponent,
-            matches = { it is ReferenceForcastScoreboardPV },
+            matches = { it is tools.confido.state.SetPresenterViewAction && it.view is ReferenceForcastScoreboardPV },
         )
     )
 }

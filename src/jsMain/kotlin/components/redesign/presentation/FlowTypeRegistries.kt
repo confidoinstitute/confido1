@@ -12,10 +12,9 @@ import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.option
 import react.dom.html.ReactHTML.span
 import tools.confido.extensions.ClientExtension
-import tools.confido.extensions.FlowActionEditorProps
-import tools.confido.extensions.FlowActionTypeEntry
-import tools.confido.extensions.PresenterViewEditorProps
-import tools.confido.extensions.PresenterViewTypeEntry
+import tools.confido.extensions.FlowItemCategory
+import tools.confido.extensions.FlowItemEditorProps
+import tools.confido.extensions.FlowItemTypeEntry
 import tools.confido.question.QuestionState
 import tools.confido.refs.Ref
 import tools.confido.refs.ref
@@ -24,60 +23,65 @@ import tools.confido.utils.capFirst
 import web.cssom.*
 
 // ============================================================
-//  Registries (populated lazily on first access)
+//  Unified Registry (populated lazily on first access)
 // ============================================================
 
-val flowActionTypes: List<FlowActionTypeEntry> by kotlin.lazy {
+val flowItemTypes: List<FlowItemTypeEntry> by kotlin.lazy {
     buildList {
-        add(FlowActionTypeEntry(
+        // --- Side-effect actions ---
+        add(FlowItemTypeEntry(
             key = "setQuestionState",
             label = "Set question state",
+            category = FlowItemCategory.SIDE_EFFECT,
             createDefault = { SetQuestionStateAction(Ref(""), QuestionState.OPEN) },
             editor = SetQuestionStateEditor,
             matches = { it is SetQuestionStateAction },
         ))
-        add(FlowActionTypeEntry(
+        add(FlowItemTypeEntry(
             key = "setTaggedQuestionsState",
             label = "Set state for tagged questions",
+            category = FlowItemCategory.SIDE_EFFECT,
             createDefault = { SetTaggedQuestionsStateAction("", QuestionState.OPEN) },
             editor = SetTaggedQuestionsStateEditor,
             matches = { it is SetTaggedQuestionsStateAction },
         ))
-        ClientExtension.forEach { addAll(it.registerFlowActionTypes()) }
-    }
-}
 
-val presenterViewTypes: List<PresenterViewTypeEntry> by kotlin.lazy {
-    buildList {
-        add(PresenterViewTypeEntry(
+        // --- Presenter view actions ---
+        add(FlowItemTypeEntry(
             key = "empty",
             label = "Blank screen",
-            createDefault = { EmptyPV },
+            category = FlowItemCategory.VIEW,
+            createDefault = { SetPresenterViewAction(EmptyPV) },
             editor = null,
-            matches = { it is EmptyPV },
+            matches = { it is SetPresenterViewAction && it.view is EmptyPV },
         ))
-        add(PresenterViewTypeEntry(
+        add(FlowItemTypeEntry(
             key = "question",
             label = "Question text",
-            createDefault = { QuestionPV(Ref("")) },
+            category = FlowItemCategory.VIEW,
+            createDefault = { SetPresenterViewAction(QuestionPV(Ref(""))) },
             editor = QuestionPVEditor,
-            matches = { it is QuestionPV },
+            matches = { it is SetPresenterViewAction && it.view is QuestionPV },
         ))
-        add(PresenterViewTypeEntry(
+        add(FlowItemTypeEntry(
             key = "groupPred",
             label = "Group predictions",
-            createDefault = { GroupPredPV(Ref("")) },
+            category = FlowItemCategory.VIEW,
+            createDefault = { SetPresenterViewAction(GroupPredPV(Ref(""))) },
             editor = GroupPredPVEditor,
-            matches = { it is GroupPredPV },
+            matches = { it is SetPresenterViewAction && it.view is GroupPredPV },
         ))
-        add(PresenterViewTypeEntry(
+        add(FlowItemTypeEntry(
             key = "inviteLink",
             label = "Invite link / QR code",
-            createDefault = { InviteLinkPV(Ref(""), "FIRST") },
+            category = FlowItemCategory.VIEW,
+            createDefault = { SetPresenterViewAction(InviteLinkPV(Ref(""), "FIRST")) },
             editor = InviteLinkPVEditor,
-            matches = { it is InviteLinkPV },
+            matches = { it is SetPresenterViewAction && it.view is InviteLinkPV },
         ))
-        ClientExtension.forEach { addAll(it.registerPresenterViewTypes()) }
+
+        // --- Extension-registered types ---
+        ClientExtension.forEach { addAll(it.registerFlowItemTypes()) }
     }
 }
 
@@ -128,11 +132,22 @@ private val QuestionStateSelect = FC<QuestionStateSelectProps> { props ->
 }
 
 // ============================================================
-//  Core Flow Action Editors
+//  Helpers for presenter view editors (wrap/unwrap SetPresenterViewAction)
+// ============================================================
+
+/** Extract the inner [PresenterView] from a [SetPresenterViewAction], or null. */
+private fun FlowAction.innerView(): PresenterView? = (this as? SetPresenterViewAction)?.view
+
+/** Wrap a [PresenterView] change back into the [SetPresenterViewAction]. */
+private fun wrapViewChange(onChange: (FlowAction) -> Unit): (PresenterView) -> Unit =
+    { view -> onChange(SetPresenterViewAction(view)) }
+
+// ============================================================
+//  Core Side-Effect Action Editors
 // ============================================================
 
 /** Editor for [SetQuestionStateAction]. */
-val SetQuestionStateEditor = FC<FlowActionEditorProps> { props ->
+val SetQuestionStateEditor = FC<FlowItemEditorProps> { props ->
     val action = props.action as? SetQuestionStateAction ?: return@FC
     val questions = useRoomQuestions()
 
@@ -150,7 +165,7 @@ val SetQuestionStateEditor = FC<FlowActionEditorProps> { props ->
 }
 
 /** Editor for [SetTaggedQuestionsStateAction]. */
-val SetTaggedQuestionsStateEditor = FC<FlowActionEditorProps> { props ->
+val SetTaggedQuestionsStateEditor = FC<FlowItemEditorProps> { props ->
     val action = props.action as? SetTaggedQuestionsStateAction ?: return@FC
     val allTags = useRoomTags()
 
@@ -181,39 +196,41 @@ val SetTaggedQuestionsStateEditor = FC<FlowActionEditorProps> { props ->
 }
 
 // ============================================================
-//  Core Presenter View Editors
+//  Core Presenter View Editors (wrapped as FlowItemEditorProps)
 // ============================================================
 
 /** Editor for [QuestionPV]: just a question picker. */
-val QuestionPVEditor = FC<PresenterViewEditorProps> { props ->
-    val view = props.view as? QuestionPV ?: return@FC
+val QuestionPVEditor = FC<FlowItemEditorProps> { props ->
+    val view = props.action.innerView() as? QuestionPV ?: return@FC
     val questions = useRoomQuestions()
+    val onViewChange = wrapViewChange(props.onChange)
 
     FieldLabel { +"Question" }
     QuestionPicker {
         this.questions = questions
         selectedId = view.question.id
-        onChange = { props.onChange(QuestionPV(Ref(it))) }
+        onChange = { onViewChange(QuestionPV(Ref(it))) }
     }
 }
 
 /** Editor for [GroupPredPV]: question picker + showResolution toggle. */
-val GroupPredPVEditor = FC<PresenterViewEditorProps> { props ->
-    val view = props.view as? GroupPredPV ?: return@FC
+val GroupPredPVEditor = FC<FlowItemEditorProps> { props ->
+    val view = props.action.innerView() as? GroupPredPV ?: return@FC
     val questions = useRoomQuestions()
+    val onViewChange = wrapViewChange(props.onChange)
 
     FieldLabel { +"Question" }
     QuestionPicker {
         this.questions = questions
         selectedId = view.question.id
-        onChange = { props.onChange(view.copy(question = Ref(it))) }
+        onChange = { onViewChange(view.copy(question = Ref(it))) }
     }
     Stack {
         direction = FlexDirection.row
         css { alignItems = AlignItems.center; gap = 8.px; marginTop = 4.px }
         Checkbox {
             checked = view.showResolution
-            onChange = { e -> props.onChange(view.copy(showResolution = e.target.checked)) }
+            onChange = { e -> onViewChange(view.copy(showResolution = e.target.checked)) }
         }
         span {
             css { fontFamily = sansSerif; fontSize = 14.px }
@@ -223,13 +240,14 @@ val GroupPredPVEditor = FC<PresenterViewEditorProps> { props ->
 }
 
 /** Editor for [InviteLinkPV]: informational text, sets room ref from context on mount. */
-val InviteLinkPVEditor = FC<PresenterViewEditorProps> { props ->
+val InviteLinkPVEditor = FC<FlowItemEditorProps> { props ->
     val room = use(RoomContext)!!
+    val onViewChange = wrapViewChange(props.onChange)
     // Set the room ref once when mounted (createDefault uses a placeholder Ref(""))
     useEffect(room.id) {
-        val view = props.view as? InviteLinkPV
+        val view = props.action.innerView() as? InviteLinkPV
         if (view != null && view.room.id != room.id) {
-            props.onChange(InviteLinkPV(room.ref, "FIRST"))
+            onViewChange(InviteLinkPV(room.ref, "FIRST"))
         }
     }
     div {

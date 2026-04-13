@@ -9,6 +9,7 @@ import tools.confido.application.UserPresentationContext
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.state.FlowAction
+import tools.confido.state.FlowItem
 import users.User
 import users.UserPresentation
 
@@ -52,6 +53,17 @@ interface ServerExtension: Extension {
 
     /** Execute a flow action defined by this extension. Return true if handled. */
     open suspend fun executeFlowAction(action: FlowAction, room: Room): Boolean = false
+
+    /**
+     * Expand an expandable (meta) flow action into a flat list of concrete flow items.
+     * Called at presentation start for each [ActionItem]. Return null if this extension
+     * does not handle the given action. Return a list of [FlowItem]s to replace the
+     * original action item in the expanded flow.
+     */
+    open fun expandFlowItem(action: FlowAction, room: Room): List<FlowItem>? = null
+
+    /** Called when a presentation run is stopped, allowing extensions to clean up transient state. */
+    open fun onPresentationStopped(room: Room) {}
 
     companion object {
         val enabled get() = Extension.enabled.map{ it as ServerExtension }

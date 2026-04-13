@@ -127,7 +127,9 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             val pres = getPresentation(room) ?: notFound("No presentation for this room.")
 
             // Stop run if active
-            serverState.presentationRunStates.remove(room.ref)
+            if (serverState.presentationRunStates.remove(room.ref) != null) {
+                ServerExtension.forEach { it.onPresentationStopped(room) }
+            }
 
             // Remove reference from room
             serverState.roomManager.modifyEntity(room.ref) {
@@ -171,8 +173,12 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             val pres = getPresentation(room) ?: notFound("No presentation for this room.")
             if (pres.items.isEmpty()) badRequest("Presentation has no items.")
 
+            // Expand meta-items into a flat list of concrete items
+            val expandedItems = expandPresentationItems(pres.items, room)
+            if (expandedItems.isEmpty()) badRequest("Presentation has no items after expansion.")
+
             // Initialize run state at first item
-            var runState = PresentationRunState(currentIndex = 0)
+            var runState = PresentationRunState(currentIndex = 0, expandedItems = expandedItems)
 
             // Process the first item
             runState = processCurrentItem(pres, runState, room)
@@ -188,6 +194,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
         call.withRoom {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot control presentation.")
             serverState.presentationRunStates.remove(room.ref)
+            ServerExtension.forEach { it.onPresentationStopped(room) }
             TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
@@ -202,11 +209,12 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             val currentState = serverState.presentationRunStates[room.ref]
                 ?: badRequest("Presentation is not running.")
 
+            val lastIndex = currentState.expandedItems.lastIndex
             val newIndex = when (nav.direction) {
-                NavigateDirection.NEXT -> (currentState.currentIndex + 1).coerceAtMost(pres.items.lastIndex)
+                NavigateDirection.NEXT -> (currentState.currentIndex + 1).coerceAtMost(lastIndex)
                 NavigateDirection.PREV -> (currentState.currentIndex - 1).coerceAtLeast(0)
                 NavigateDirection.GOTO -> (nav.index ?: badRequest("Missing index for GOTO."))
-                    .coerceIn(0, pres.items.lastIndex)
+                    .coerceIn(0, lastIndex)
             }
 
             var newState = currentState.copy(currentIndex = newIndex)
@@ -226,7 +234,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             val currentState = serverState.presentationRunStates[room.ref]
                 ?: badRequest("Presentation is not running.")
 
-            val item = pres.items.getOrNull(currentState.currentIndex)
+            val item = currentState.expandedItems.getOrNull(currentState.currentIndex)
             if (item !is ActionItem) badRequest("Current item is not an action.")
 
             // Force re-execution by removing from executedActionIds, then reprocessing
@@ -253,6 +261,26 @@ fun presentationRoutes(routing: Routing) = routing.apply {
 }
 
 /**
+ * Expand presentation items by asking extensions to expand any expandable
+ * (meta) actions. Non-expandable items pass through unchanged.
+ */
+private fun expandPresentationItems(items: List<FlowItem>, room: rooms.Room): List<FlowItem> =
+    buildList {
+        for (item in items) {
+            if (item is ActionItem) {
+                val expanded = ServerExtension.enabled.firstNotNullOfOrNull {
+                    it.expandFlowItem(item.action, room)
+                }
+                if (expanded != null) {
+                    addAll(expanded)
+                    continue
+                }
+            }
+            add(item)
+        }
+    }
+
+/**
  * Process the current item in the presentation flow: compute the effective
  * presenter view and execute actions if needed.
  */
@@ -261,7 +289,7 @@ private suspend fun processCurrentItem(
     state: PresentationRunState,
     room: rooms.Room,
 ): PresentationRunState {
-    val item = pres.items.getOrNull(state.currentIndex) ?: return state
+    val item = state.expandedItems.getOrNull(state.currentIndex) ?: return state
     // Reset lastExecutedId - will be set if an action is executed this step
     var newState = state.copy(lastExecutedId = null)
 
@@ -275,7 +303,7 @@ private suspend fun processCurrentItem(
             newState = newState.copy(currentView = item.view)
         }
         is ActionItem -> {
-            // Only execute if not already executed in this run
+            // Only execute side effects if not already executed in this run
             if (item.id !in state.executedActionIds) {
                 executeFlowAction(item.action, room)
                 newState = newState.copy(
@@ -283,7 +311,11 @@ private suspend fun processCurrentItem(
                     lastExecutedId = item.id,
                 )
             }
-            // Actions don't change currentView - keep showing whatever was last shown
+            // Always update presenter view if the action declares one (idempotent)
+            val pv = item.action.presenterView
+            if (pv != null) {
+                newState = newState.copy(currentView = pv)
+            }
         }
         is NoteItem -> {
             // Notes don't change currentView or execute anything

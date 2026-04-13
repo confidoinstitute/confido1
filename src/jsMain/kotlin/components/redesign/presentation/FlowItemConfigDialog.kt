@@ -5,25 +5,27 @@ import components.redesign.forms.Select
 import emotion.react.css
 import react.*
 import react.dom.html.ReactHTML.option
+import tools.confido.state.FlowAction
 import web.cssom.*
 
 /**
- * Generic dialog for configuring a [tools.confido.state.FlowAction].
- * Populates the action type dropdown from [flowActionTypes] registry
- * and delegates configuration UI to the selected type's editor component.
+ * Unified dialog for configuring a [FlowAction] (covering both side-effect
+ * actions and presenter view actions). Populates the type dropdown from the
+ * [flowItemTypes] registry and delegates configuration UI to the selected
+ * type's editor component.
  */
-external interface FlowActionConfigDialogProps : Props {
-    var action: tools.confido.state.FlowAction?
+external interface FlowItemConfigDialogProps : Props {
+    var action: FlowAction?
     var open: Boolean
     var onClose: (() -> Unit)?
-    var onConfirm: ((tools.confido.state.FlowAction) -> Unit)?
+    var onConfirm: ((FlowAction) -> Unit)?
 }
 
-val FlowActionConfigDialog = FC<FlowActionConfigDialogProps> { props ->
-    val types = flowActionTypes
+val FlowItemConfigDialog = FC<FlowItemConfigDialogProps> { props ->
+    val types = flowItemTypes
 
     var selectedKey by useState(types.firstOrNull()?.key ?: "")
-    var currentAction by useState<tools.confido.state.FlowAction?>(null)
+    var currentAction by useState<FlowAction?>(null)
 
     // Reset state when dialog opens
     useEffect(props.open, props.action) {
@@ -46,7 +48,7 @@ val FlowActionConfigDialog = FC<FlowActionConfigDialogProps> { props ->
     Dialog {
         open = props.open
         onClose = { props.onClose?.invoke() }
-        title = if (props.action != null) "Edit action" else "Add action"
+        title = if (props.action != null) "Edit item" else "Add item"
         action = "OK"
         disabledAction = currentAction == null
         onAction = {
@@ -61,7 +63,7 @@ val FlowActionConfigDialog = FC<FlowActionConfigDialogProps> { props ->
                 minWidth = 320.px
             }
 
-            FieldLabel { +"Action type" }
+            FieldLabel { +"Type" }
             Select {
                 value = selectedKey
                 onChange = { e ->
@@ -75,9 +77,9 @@ val FlowActionConfigDialog = FC<FlowActionConfigDialogProps> { props ->
                 }
             }
 
-            // Render the selected type's editor
+            // Render the selected type's editor (if any)
             val action = currentAction
-            if (selectedEntry != null && action != null) {
+            if (selectedEntry?.editor != null && action != null) {
                 selectedEntry.editor {
                     this.action = action
                     this.onChange = { currentAction = it }

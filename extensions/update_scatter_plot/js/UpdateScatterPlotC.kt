@@ -590,9 +590,10 @@ val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
 //  Presentation Flow Editors
 // ============================================================
 
-/** PV editor for UpdatePlotPV with timepoint selectors. */
-private val UpdatePlotPVEditorComponent = FC<tools.confido.extensions.PresenterViewEditorProps> { props ->
-    val view = props.view as? UpdatePlotPV ?: return@FC
+/** PV editor for UpdatePlotPV with timepoint selectors (wrapped as FlowItemEditorProps). */
+private val UpdatePlotPVEditorComponent = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
+    val view = (props.action as? tools.confido.state.SetPresenterViewAction)?.view as? UpdatePlotPV ?: return@FC
+    val onViewChange: (tools.confido.state.PresenterView) -> Unit = { v -> props.onChange(tools.confido.state.SetPresenterViewAction(v)) }
     val (appState, _) = use(AppStateContext)!!
     val room = use(components.redesign.rooms.RoomContext)!!
     val questions = appState.questions.values.filter { q -> room.questions.any { it.id == q.id } }.sortedBy { it.name }
@@ -603,12 +604,12 @@ private val UpdatePlotPVEditorComponent = FC<tools.confido.extensions.PresenterV
     QuestionPicker {
         this.questions = questions
         selectedId = view.question.id
-        onChange = { props.onChange(view.copy(question = Ref(it))) }
+        onChange = { onViewChange(view.copy(question = Ref(it))) }
     }
     TimepointSelector {
         title = "Before (x axis)"
         value = view.timepoint1
-        onChange = { props.onChange(view.copy(timepoint1 = it)) }
+        onChange = { onViewChange(view.copy(timepoint1 = it)) }
         snapshots = emptyList() // no existing snapshots in flow editor context
         question = view.question
         allowFreeText = true
@@ -618,7 +619,7 @@ private val UpdatePlotPVEditorComponent = FC<tools.confido.extensions.PresenterV
     TimepointSelector {
         title = "After (y axis)"
         value = view.timepoint2
-        onChange = { props.onChange(view.copy(timepoint2 = it)) }
+        onChange = { onViewChange(view.copy(timepoint2 = it)) }
         snapshots = emptyList()
         question = view.question
         allowFreeText = true
@@ -628,7 +629,7 @@ private val UpdatePlotPVEditorComponent = FC<tools.confido.extensions.PresenterV
 }
 
 /** Flow action editor for CreateSnapshotAction. */
-private val CreateSnapshotActionEditor = FC<tools.confido.extensions.FlowActionEditorProps> { props ->
+private val CreateSnapshotActionEditor = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
     val action = props.action as? CreateSnapshotAction ?: return@FC
     val (appState, _) = use(AppStateContext)!!
     val room = use(components.redesign.rooms.RoomContext)!!
@@ -749,23 +750,22 @@ object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
     override fun registerPresenterPages() =
         mapOf(presenterPageMap(UpdatePlotPP))
 
-    override fun registerPresenterViewTypes() = listOf(
-        tools.confido.extensions.PresenterViewTypeEntry(
+    override fun registerFlowItemTypes() = listOf(
+        tools.confido.extensions.FlowItemTypeEntry(
             key = "updatePlot",
             label = "Update scatter plot",
-            createDefault = { UpdatePlotPV(Ref(""), NowTimepoint, NowTimepoint) },
+            category = tools.confido.extensions.FlowItemCategory.VIEW,
+            createDefault = { tools.confido.state.SetPresenterViewAction(UpdatePlotPV(Ref(""), NowTimepoint, NowTimepoint)) },
             editor = UpdatePlotPVEditorComponent,
-            matches = { it is UpdatePlotPV },
-        )
-    )
-
-    override fun registerFlowActionTypes() = listOf(
-        tools.confido.extensions.FlowActionTypeEntry(
+            matches = { it is tools.confido.state.SetPresenterViewAction && it.view is UpdatePlotPV },
+        ),
+        tools.confido.extensions.FlowItemTypeEntry(
             key = "createSnapshot",
             label = "Create snapshot",
+            category = tools.confido.extensions.FlowItemCategory.SIDE_EFFECT,
             createDefault = { CreateSnapshotAction("") },
             editor = CreateSnapshotActionEditor,
             matches = { it is CreateSnapshotAction },
-        )
+        ),
     )
 }

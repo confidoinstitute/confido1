@@ -108,55 +108,46 @@ interface ClientExtension : Extension {
     fun rootRoutesExtra(): List<RouteObject> = emptyList()
 
     /**
-     * Register custom flow action types for the presentation editor.
-     * Each entry is a [FlowActionTypeEntry] providing the type key, label,
-     * default factory, editor component, and a predicate to match existing actions.
+     * Register custom flow item types for the presentation editor.
+     * Each entry is a [FlowItemTypeEntry] providing the type key, label,
+     * category, default factory, editor component, and a predicate to match existing actions.
+     * This unified mechanism covers both side-effect actions and presenter view changes.
      */
-    fun registerFlowActionTypes(): List<FlowActionTypeEntry> = emptyList()
-
-    /**
-     * Register custom presenter view types for the presentation editor.
-     * Each entry is a [PresenterViewTypeEntry] providing the type key, label,
-     * default factory, editor component (optional), and a predicate to match existing views.
-     */
-    fun registerPresenterViewTypes(): List<PresenterViewTypeEntry> = emptyList()
+    fun registerFlowItemTypes(): List<FlowItemTypeEntry> = emptyList()
 }
 
-// ---- Flow Action Type Registry ----
+// ---- Flow Item Category ----
 
-/** Props for a flow action editor component. The editor reads room/questions via contexts. */
-external interface FlowActionEditorProps : Props {
+/** Semantic category for flow item types, used for UI hints (icon, color, badge). */
+enum class FlowItemCategory {
+    /** Action with side effects only (e.g. change question state). */
+    SIDE_EFFECT,
+    /** Action that only sets the presenter view (e.g. show group predictions). */
+    VIEW,
+    /** Action with both side effects and a presenter view change. */
+    BOTH,
+    /** Expandable meta-action that produces multiple items at presentation start. */
+    EXPANDABLE,
+}
+
+// ---- Flow Item Type Registry ----
+
+/** Props for a flow item editor component. The editor reads room/questions via contexts. */
+external interface FlowItemEditorProps : Props {
     var action: FlowAction
     var onChange: (FlowAction) -> Unit
 }
 
-/** Describes a flow action type for the presentation editor UI. */
-data class FlowActionTypeEntry(
+/** Describes a flow item type for the presentation editor UI. */
+data class FlowItemTypeEntry(
     val key: String,
     val label: String,
+    val category: FlowItemCategory,
     val createDefault: () -> FlowAction,
-    val editor: FC<FlowActionEditorProps>,
+    /** Editor component, or null if no configuration is needed. */
+    val editor: FC<FlowItemEditorProps>?,
     /** Predicate to identify which existing actions this entry handles. */
     val matches: (FlowAction) -> Boolean,
-)
-
-// ---- Presenter View Type Registry ----
-
-/** Props for a presenter view editor component. The editor reads room/questions via contexts. */
-external interface PresenterViewEditorProps : Props {
-    var view: PresenterView
-    var onChange: (PresenterView) -> Unit
-}
-
-/** Describes a presenter view type for the presentation editor UI. */
-data class PresenterViewTypeEntry(
-    val key: String,
-    val label: String,
-    val createDefault: () -> PresenterView,
-    /** Editor component, or null if no configuration is needed (e.g. EmptyPV). */
-    val editor: FC<PresenterViewEditorProps>?,
-    /** Predicate to identify which existing views this entry handles. */
-    val matches: (PresenterView) -> Boolean,
 )
 
 external interface ExtensionContextProviderProps: Props {

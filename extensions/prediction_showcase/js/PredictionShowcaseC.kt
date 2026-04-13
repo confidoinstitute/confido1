@@ -184,8 +184,9 @@ val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> 
     }
 }
 
-private val PredictionShowcasePVEditorComponent = FC<tools.confido.extensions.PresenterViewEditorProps> { props ->
-    val view = props.view as? PredictionShowcasePV ?: return@FC
+private val PredictionShowcasePVEditorComponent = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
+    val view = (props.action as? tools.confido.state.SetPresenterViewAction)?.view as? PredictionShowcasePV ?: return@FC
+    val onViewChange: (tools.confido.state.PresenterView) -> Unit = { v -> props.onChange(tools.confido.state.SetPresenterViewAction(v)) }
     val (appState, _) = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val questions = appState.questions.values.filter { q -> room.questions.any { it.id == q.id } }.sortedBy { it.name }
@@ -193,12 +194,13 @@ private val PredictionShowcasePVEditorComponent = FC<tools.confido.extensions.Pr
     QuestionPicker {
         this.questions = questions
         selectedId = view.question.id
-        onChange = { props.onChange(PredictionShowcasePV(Ref(it))) }
+        onChange = { onViewChange(PredictionShowcasePV(Ref(it))) }
     }
 }
 
-private val GroupPredComparePVEditorComponent = FC<tools.confido.extensions.PresenterViewEditorProps> { props ->
-    val view = props.view as? GroupPredictionComparePV ?: return@FC
+private val GroupPredComparePVEditorComponent = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
+    val view = (props.action as? tools.confido.state.SetPresenterViewAction)?.view as? GroupPredictionComparePV ?: return@FC
+    val onViewChange: (tools.confido.state.PresenterView) -> Unit = { v -> props.onChange(tools.confido.state.SetPresenterViewAction(v)) }
     val (appState, _) = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val allTags = appState.questions.values.filter { q -> room.questions.any { it.id == q.id } }
@@ -208,7 +210,7 @@ private val GroupPredComparePVEditorComponent = FC<tools.confido.extensions.Pres
         value = view.questionGroup ?: ""
         onChange = { e ->
             val tag = e.target.value
-            props.onChange(view.copy(questionGroup = tag.ifEmpty { null }))
+            onViewChange(view.copy(questionGroup = tag.ifEmpty { null }))
         }
         css { width = 100.pct }
         react.dom.html.ReactHTML.option { value = ""; +"All questions" }
@@ -267,20 +269,22 @@ object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
             presenterPageMap(GroupPredictionComparePP)
         )
 
-    override fun registerPresenterViewTypes() = listOf(
-        tools.confido.extensions.PresenterViewTypeEntry(
+    override fun registerFlowItemTypes() = listOf(
+        tools.confido.extensions.FlowItemTypeEntry(
             key = "predictionShowcase",
             label = "Individual predictions showcase",
-            createDefault = { PredictionShowcasePV(Ref("")) },
+            category = tools.confido.extensions.FlowItemCategory.VIEW,
+            createDefault = { tools.confido.state.SetPresenterViewAction(PredictionShowcasePV(Ref(""))) },
             editor = PredictionShowcasePVEditorComponent,
-            matches = { it is PredictionShowcasePV },
+            matches = { it is tools.confido.state.SetPresenterViewAction && it.view is PredictionShowcasePV },
         ),
-        tools.confido.extensions.PresenterViewTypeEntry(
+        tools.confido.extensions.FlowItemTypeEntry(
             key = "groupPredCompare",
             label = "Compare group predictions",
-            createDefault = { GroupPredictionComparePV(Ref("")) },
+            category = tools.confido.extensions.FlowItemCategory.VIEW,
+            createDefault = { tools.confido.state.SetPresenterViewAction(GroupPredictionComparePV(Ref(""))) },
             editor = GroupPredComparePVEditorComponent,
-            matches = { it is GroupPredictionComparePV },
+            matches = { it is tools.confido.state.SetPresenterViewAction && it.view is GroupPredictionComparePV },
         ),
     )
 }

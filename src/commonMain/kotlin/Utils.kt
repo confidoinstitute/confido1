@@ -109,6 +109,7 @@ fun<T> List2<T>.replace(index: Int, new: T) = if (index == 0) replace1(new)
 fun String.mapFirst(f: (Char) -> String): String = if (isEmpty()) "" else f(this[0]) + this.substring(1)
 fun String.capFirst() = mapFirst { it.uppercase() }
 fun String.uncapFirst() = mapFirst { it.lowercase() }
+fun String.ellipsize(maxLen: Int) = if (length <= maxLen) this else take(maxLen - 1) + "\u2026"
 
 val alnum = ('a'..'z').toList() + ('0'..'9').toList()
 fun randomString(length: Int) =

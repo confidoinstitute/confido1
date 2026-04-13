@@ -24,6 +24,7 @@ import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.img
 import react.dom.html.ReactHTML.input
 import react.dom.html.ReactHTML.span
+import tools.confido.extensions.FlowItemCategory
 import tools.confido.state.*
 import tools.confido.utils.generateId
 import web.cssom.*
@@ -32,6 +33,54 @@ import web.html.file
 import web.html.number
 
 import web.html.text
+
+/**
+ * Derive a display category for a flow action, used for item badges and colors.
+ * Looks up the matching [FlowItemTypeEntry] to get the semantic category.
+ */
+internal fun FlowAction.itemCategory(): FlowItemCategory {
+    val entry = flowItemTypes.find { it.matches(this) }
+    return entry?.category ?: if (presenterView != null) FlowItemCategory.VIEW else FlowItemCategory.SIDE_EFFECT
+}
+
+/** Background color for a flow item row based on its type. */
+internal fun flowItemBgColor(item: FlowItem): Color = when (item) {
+    is SlideItem -> Color("#f5f5f5")
+    is ActionItem -> when (item.action.itemCategory()) {
+        FlowItemCategory.VIEW -> Color("#e3f2fd")
+        FlowItemCategory.EXPANDABLE -> Color("#f3e5f5")
+        FlowItemCategory.BOTH -> Color("#ede7f6")
+        FlowItemCategory.SIDE_EFFECT -> Color("#fff3e0")
+    }
+    is NoteItem -> if (item.warning) Color("#ffebee") else Color("#e8f5e9")
+    is PresenterViewItem -> Color("#e3f2fd")
+}
+
+/** Badge color for a flow item row. */
+internal fun flowItemBadgeColor(item: FlowItem): Color = when (item) {
+    is SlideItem -> Color("#757575")
+    is ActionItem -> when (item.action.itemCategory()) {
+        FlowItemCategory.VIEW -> Color("#1565c0")
+        FlowItemCategory.EXPANDABLE -> Color("#7b1fa2")
+        FlowItemCategory.BOTH -> Color("#512da8")
+        FlowItemCategory.SIDE_EFFECT -> Color("#e65100")
+    }
+    is NoteItem -> if (item.warning) Color("#c62828") else Color("#2e7d32")
+    is PresenterViewItem -> Color("#1565c0")
+}
+
+/** Badge text for a flow item row. */
+internal fun flowItemBadgeText(item: FlowItem): String = when (item) {
+    is SlideItem -> "SLIDE"
+    is ActionItem -> when (item.action.itemCategory()) {
+        FlowItemCategory.VIEW -> "VIEW"
+        FlowItemCategory.EXPANDABLE -> "EXPAND"
+        FlowItemCategory.BOTH -> "ACTION+VIEW"
+        FlowItemCategory.SIDE_EFFECT -> "ACTION"
+    }
+    is NoteItem -> if (item.warning) "WARNING" else "NOTE"
+    is PresenterViewItem -> "VIEW"
+}
 
 external interface PresentationEditorProps : Props {
     var data: PresentationWSData
@@ -64,17 +113,11 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
     var dirty by useState(false)
     var uploading by useState(false)
 
-    // Action config dialog state
-    var actionDialogOpen by useState(false)
-    var editingActionItemId by useState<String?>(null) // null = inserting new, non-null = editing existing
-    var actionDialogInsertAfter by useState(-1) // insertion position for new actions
-    var actionDialogInitial by useState<FlowAction?>(null) // initial action for editing
-
-    // Presenter view config dialog state
-    var pvDialogOpen by useState(false)
-    var editingPVItemId by useState<String?>(null)
-    var pvDialogInsertAfter by useState(-1)
-    var pvDialogInitial by useState<PresenterView?>(null)
+    // Unified config dialog state
+    var dialogOpen by useState(false)
+    var editingItemId by useState<String?>(null) // null = inserting new, non-null = editing existing
+    var dialogInsertAfter by useState(-1) // insertion position for new items
+    var dialogInitial by useState<FlowAction?>(null) // initial action for editing
 
     // Sync from server when presentation changes (e.g. after slide upload)
     useEffect(pres.items, pres.slideLabels) {
@@ -128,13 +171,13 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
         dirty = true
     }
 
-    // Action configuration dialog
-    FlowActionConfigDialog {
-        open = actionDialogOpen
-        action = actionDialogInitial
-        onClose = { actionDialogOpen = false; editingActionItemId = null }
+    // Unified flow item configuration dialog
+    FlowItemConfigDialog {
+        open = dialogOpen
+        action = dialogInitial
+        onClose = { dialogOpen = false; editingItemId = null }
         onConfirm = { configuredAction ->
-            val existingId = editingActionItemId
+            val existingId = editingItemId
             if (existingId != null) {
                 // Editing existing action item
                 items = items.map { item ->
@@ -146,37 +189,11 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
                 // Inserting new action item
                 val newItem = ActionItem(id = generateId(), action = configuredAction)
                 val newItems = items.toMutableList()
-                newItems.add(actionDialogInsertAfter + 1, newItem)
+                newItems.add(dialogInsertAfter + 1, newItem)
                 items = newItems
             }
             dirty = true
-            editingActionItemId = null
-        }
-    }
-
-    // Presenter view configuration dialog
-    PresenterViewConfigDialog {
-        open = pvDialogOpen
-        view = pvDialogInitial
-        onClose = { pvDialogOpen = false; editingPVItemId = null }
-        onConfirm = { configuredView ->
-            val existingId = editingPVItemId
-            if (existingId != null) {
-                // Editing existing presenter view item
-                items = items.map { item ->
-                    if (item.id == existingId && item is PresenterViewItem)
-                        item.copy(view = configuredView)
-                    else item
-                }
-            } else {
-                // Inserting new presenter view item
-                val newItem = PresenterViewItem(id = generateId(), view = configuredView)
-                val newItems = items.toMutableList()
-                newItems.add(pvDialogInsertAfter + 1, newItem)
-                items = newItems
-            }
-            dirty = true
-            editingPVItemId = null
+            editingItemId = null
         }
     }
 
@@ -299,16 +316,10 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
             numSlides = pres.numSlides
             onInsert = { item -> insertItem(item, -1) }
             onInsertAction = {
-                actionDialogInsertAfter = -1
-                editingActionItemId = null
-                actionDialogInitial = null
-                actionDialogOpen = true
-            }
-            onInsertPresenterView = {
-                pvDialogInsertAfter = -1
-                editingPVItemId = null
-                pvDialogInitial = null
-                pvDialogOpen = true
+                dialogInsertAfter = -1
+                editingItemId = null
+                dialogInitial = null
+                dialogOpen = true
             }
         }
 
@@ -342,14 +353,9 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
                         this.onRemove = { removeItem(item.id) }
                         this.onUpdate = { updated -> updateItem(item.id) { updated } }
                         this.onEditAction = { actionItem ->
-                            editingActionItemId = actionItem.id
-                            actionDialogInitial = actionItem.action
-                            actionDialogOpen = true
-                        }
-                        this.onEditPresenterView = { pvItem ->
-                            editingPVItemId = pvItem.id
-                            pvDialogInitial = pvItem.view
-                            pvDialogOpen = true
+                            editingItemId = actionItem.id
+                            dialogInitial = actionItem.action
+                            dialogOpen = true
                         }
                         this.onUpdateSlideLabel = { slideIdx, label ->
                             val newLabels = slideLabels.toMutableList()
@@ -366,16 +372,10 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
                         numSlides = pres.numSlides
                         onInsert = { newItem -> insertItem(newItem, index) }
                         onInsertAction = {
-                            actionDialogInsertAfter = index
-                            editingActionItemId = null
-                            actionDialogInitial = null
-                            actionDialogOpen = true
-                        }
-                        onInsertPresenterView = {
-                            pvDialogInsertAfter = index
-                            editingPVItemId = null
-                            pvDialogInitial = null
-                            pvDialogOpen = true
+                            dialogInsertAfter = index
+                            editingItemId = null
+                            dialogInitial = null
+                            dialogOpen = true
                         }
                     }
                 }
@@ -384,14 +384,12 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
     }
 }
 
-// A compact row for inserting new items
+// A compact row for inserting new items via a "+" button with a dropdown menu
 external interface InsertItemBarProps : Props {
     var numSlides: Int
     var onInsert: (FlowItem) -> Unit
-    /** Called when user wants to insert an action (opens config dialog). */
+    /** Called when user wants to insert a flow action item (opens config dialog). */
     var onInsertAction: (() -> Unit)?
-    /** Called when user wants to insert a presenter view (opens config dialog). */
-    var onInsertPresenterView: (() -> Unit)?
 }
 
 val InsertItemBar = FC<InsertItemBarProps> { props ->
@@ -430,8 +428,9 @@ val InsertItemBar = FC<InsertItemBarProps> { props ->
                 justifyContent = JustifyContent.center
                 gap = 5.px
                 padding = Padding(4.px, 0.px)
+                flexWrap = FlexWrap.wrap
             }
-            fun addButton(label: String, onClick: () -> Unit) {
+            fun addButton(label: String, badgeColor: Color? = null, onClick: () -> Unit) {
                 ButtonUnstyled {
                     css {
                         fontSize = 12.px
@@ -442,6 +441,19 @@ val InsertItemBar = FC<InsertItemBarProps> { props ->
                         cursor = Cursor.pointer
                         "&:hover" { backgroundColor = Color("#e0e0e0") }
                     }
+                    // Optional color dot for category hint
+                    if (badgeColor != null) {
+                        span {
+                            css {
+                                display = Display.inlineBlock
+                                width = 8.px
+                                height = 8.px
+                                borderRadius = 50.pct
+                                backgroundColor = badgeColor
+                                marginRight = 4.px
+                            }
+                        }
+                    }
                     +label
                     this.onClick = {
                         onClick()
@@ -449,19 +461,35 @@ val InsertItemBar = FC<InsertItemBarProps> { props ->
                     }
                 }
             }
+            // Slide (only if slides uploaded)
             if (props.numSlides > 0) {
-                addButton("Slide") {
+                addButton("Slide", Color("#757575")) {
                     props.onInsert(SlideItem(id = generateId(), slideIndex = 0))
                 }
             }
-            addButton("Note") {
+            // Note
+            addButton("Note", Color("#2e7d32")) {
                 props.onInsert(NoteItem(id = generateId(), text = "", warning = false))
             }
-            addButton("Action") {
-                props.onInsertAction?.invoke()
-            }
-            addButton("Presenter View") {
-                props.onInsertPresenterView?.invoke()
+            // All registered flow item types
+            for (entry in flowItemTypes) {
+                val badgeColor = when (entry.category) {
+                    FlowItemCategory.SIDE_EFFECT -> Color("#e65100")
+                    FlowItemCategory.VIEW -> Color("#1565c0")
+                    FlowItemCategory.BOTH -> Color("#512da8")
+                    FlowItemCategory.EXPANDABLE -> Color("#7b1fa2")
+                }
+                if (entry.editor == null) {
+                    // No editor needed - insert directly
+                    addButton(entry.label, badgeColor) {
+                        props.onInsert(ActionItem(id = generateId(), action = entry.createDefault()))
+                    }
+                } else {
+                    // Has editor - open config dialog
+                    addButton(entry.label, badgeColor) {
+                        props.onInsertAction?.invoke()
+                    }
+                }
             }
         }
     }
@@ -475,7 +503,6 @@ external interface FlowItemRowProps : Props {
     var onRemove: () -> Unit
     var onUpdate: (FlowItem) -> Unit
     var onEditAction: ((ActionItem) -> Unit)?
-    var onEditPresenterView: ((PresenterViewItem) -> Unit)?
     var onUpdateSlideLabel: (Int, String) -> Unit
 }
 
@@ -492,12 +519,7 @@ val FlowItemRow = FC<FlowItemRowProps> { props ->
             gap = 8.px
             padding = Padding(6.px, 10.px)
             borderRadius = 4.px
-            backgroundColor = when (item) {
-                is SlideItem -> Color("#f5f5f5")
-                is ActionItem -> Color("#fff3e0")
-                is NoteItem -> if (item.warning) Color("#ffebee") else Color("#e8f5e9")
-                is PresenterViewItem -> Color("#e3f2fd")
-            }
+            backgroundColor = flowItemBgColor(item)
             border = Border(1.px, LineStyle.solid, Color("#e0e0e0"))
             fontFamily = sansSerif
             fontSize = 13.px
@@ -524,22 +546,12 @@ val FlowItemRow = FC<FlowItemRowProps> { props ->
                 fontSize = 10.px
                 fontWeight = integer(600)
                 color = NamedColor.white
-                backgroundColor = when (item) {
-                    is SlideItem -> Color("#757575")
-                    is ActionItem -> Color("#e65100")
-                    is NoteItem -> if (item.warning) Color("#c62828") else Color("#2e7d32")
-                    is PresenterViewItem -> Color("#1565c0")
-                }
+                backgroundColor = flowItemBadgeColor(item)
                 padding = Padding(1.px, 6.px)
                 borderRadius = 3.px
                 flexShrink = number(0.0)
             }
-            +when (item) {
-                is SlideItem -> "SLIDE"
-                is ActionItem -> "ACTION"
-                is NoteItem -> if (item.warning) "WARNING" else "NOTE"
-                is PresenterViewItem -> "VIEW"
-            }
+            +flowItemBadgeText(item)
         }
 
         // Content
@@ -592,7 +604,7 @@ val FlowItemRow = FC<FlowItemRowProps> { props ->
                             gap = 4.px
                             cursor = Cursor.pointer
                             color = Color("#333")
-                            "&:hover" { color = Color("#e65100") }
+                            "&:hover" { color = flowItemBadgeColor(item) }
                         }
                         +item.action.describe()
                         SettingsIcon {
@@ -620,21 +632,8 @@ val FlowItemRow = FC<FlowItemRowProps> { props ->
                     }
                 }
                 is PresenterViewItem -> {
-                    ButtonUnstyled {
-                        css {
-                            display = Display.inlineFlex
-                            alignItems = AlignItems.center
-                            gap = 4.px
-                            cursor = Cursor.pointer
-                            color = Color("#333")
-                            "&:hover" { color = Color("#1565c0") }
-                        }
-                        +item.view.describe()
-                        SettingsIcon {
-                            css { height = 14.px; width = 14.px }
-                        }
-                        onClick = { props.onEditPresenterView?.invoke(item) }
-                    }
+                    // Legacy: kept for backward compat deserialization
+                    span { +item.view.describe() }
                 }
             }
         }

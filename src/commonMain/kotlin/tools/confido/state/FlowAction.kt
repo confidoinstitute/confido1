@@ -9,6 +9,8 @@ import tools.confido.extensions.Extension
 import tools.confido.question.QuestionState
 import tools.confido.question.Question
 import tools.confido.refs.Ref
+import tools.confido.refs.deref
+import tools.confido.utils.ellipsize
 
 /**
  * Base class for actions that can be executed as part of a presentation flow.
@@ -20,6 +22,8 @@ import tools.confido.refs.Ref
 abstract class FlowAction {
     /** Human-readable description of what this action does. */
     abstract fun describe(): String
+    /** If non-null, the presenter view should be set to this after execution. */
+    open val presenterView: PresenterView? get() = null
 }
 
 /** Change a question's state (e.g. open, close, hide). */
@@ -29,7 +33,10 @@ data class SetQuestionStateAction(
     val question: Ref<Question>,
     val newState: QuestionState,
 ) : FlowAction() {
-    override fun describe() = "Set question state to ${newState.name.lowercase()}"
+    override fun describe(): String {
+        val qName = question.deref()?.name?.ellipsize(50) ?: "?"
+        return "${newState.name.lowercase().replaceFirstChar { it.uppercase() }} \"$qName\""
+    }
 }
 
 /** Set a specific presenter view (e.g. show group predictions, invite link). */
@@ -39,6 +46,7 @@ data class SetPresenterViewAction(
     val view: PresenterView,
 ) : FlowAction() {
     override fun describe() = "Show ${view.describe()} on presenter"
+    override val presenterView get() = view
 }
 
 /** Change state for all questions matching a given tag. */

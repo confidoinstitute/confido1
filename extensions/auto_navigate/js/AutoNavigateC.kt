@@ -12,8 +12,9 @@ import react.FC
 import react.dom.html.ReactHTML.div
 import react.router.useNavigate
 import tools.confido.extensions.ClientExtension
-import tools.confido.extensions.FlowActionEditorProps
-import tools.confido.extensions.FlowActionTypeEntry
+import tools.confido.extensions.FlowItemCategory
+import tools.confido.extensions.FlowItemEditorProps
+import tools.confido.extensions.FlowItemTypeEntry
 import tools.confido.state.AutoNavigateAction
 import tools.confido.state.clientState
 import users.UserType
@@ -21,7 +22,7 @@ import utils.webSocketUrl
 import web.cssom.*
 import kotlin.time.Duration.Companion.seconds
 
-private val AutoNavigateEditor = FC<FlowActionEditorProps> { props ->
+private val AutoNavigateEditor = FC<FlowItemEditorProps> { props ->
     val action = props.action as? AutoNavigateAction ?: return@FC
     FieldLabel { +"URL" }
     TextInput {
@@ -60,10 +61,11 @@ object AutoNavigateCE : ClientExtension, AutoNavigateExtension() {
         }
     }
 
-    override fun registerFlowActionTypes() = listOf(
-        FlowActionTypeEntry(
+    override fun registerFlowItemTypes() = listOf(
+        FlowItemTypeEntry(
             key = "autoNavigate",
             label = "Navigate users to URL",
+            category = FlowItemCategory.SIDE_EFFECT,
             createDefault = { AutoNavigateAction("") },
             editor = AutoNavigateEditor,
             matches = { it is AutoNavigateAction },
