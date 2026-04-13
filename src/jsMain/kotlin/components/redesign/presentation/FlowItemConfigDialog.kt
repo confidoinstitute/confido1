@@ -13,35 +13,22 @@ import web.cssom.*
  * actions and presenter view actions). Populates the type dropdown from the
  * [flowItemTypes] registry and delegates configuration UI to the selected
  * type's editor component.
+ *
+ * Wrapped with [dialogStateWrapper] so that all internal state is reset
+ * (via React remount) each time the dialog opens.
  */
-external interface FlowItemConfigDialogProps : Props {
+external interface FlowItemConfigDialogProps : BaseDialogProps {
     var action: FlowAction?
-    var open: Boolean
-    var onClose: (() -> Unit)?
     var onConfirm: ((FlowAction) -> Unit)?
 }
 
-val FlowItemConfigDialog = FC<FlowItemConfigDialogProps> { props ->
+val FlowItemConfigDialog = dialogStateWrapper(FC<FlowItemConfigDialogProps> { props ->
     val types = flowItemTypes
 
-    var selectedKey by useState(types.firstOrNull()?.key ?: "")
-    var currentAction by useState<FlowAction?>(null)
-
-    // Reset state when dialog opens
-    useEffect(props.open, props.action) {
-        if (props.open) {
-            val existing = props.action
-            if (existing != null) {
-                val entry = types.find { it.matches(existing) }
-                selectedKey = entry?.key ?: types.firstOrNull()?.key ?: ""
-                currentAction = existing
-            } else {
-                val first = types.firstOrNull()
-                selectedKey = first?.key ?: ""
-                currentAction = first?.createDefault()
-            }
-        }
-    }
+    // Compute initial state from props.action (runs fresh on each open thanks to dialogStateWrapper)
+    val initEntry = props.action?.let { a -> types.find { it.matches(a) } } ?: types.firstOrNull()
+    var selectedKey by useState(initEntry?.key ?: "")
+    var currentAction by useState<FlowAction?>(props.action ?: initEntry?.createDefault())
 
     val selectedEntry = types.find { it.key == selectedKey }
 
@@ -87,4 +74,4 @@ val FlowItemConfigDialog = FC<FlowItemConfigDialogProps> { props ->
             }
         }
     }
-}
+})

@@ -471,24 +471,23 @@ val InsertItemBar = FC<InsertItemBarProps> { props ->
             addButton("Note", Color("#2e7d32")) {
                 props.onInsert(NoteItem(id = generateId(), text = "", warning = false))
             }
-            // All registered flow item types
+            // Direct-insert types (no editor needed)
             for (entry in flowItemTypes) {
+                if (entry.editor != null) continue
                 val badgeColor = when (entry.category) {
                     FlowItemCategory.SIDE_EFFECT -> Color("#e65100")
                     FlowItemCategory.VIEW -> Color("#1565c0")
                     FlowItemCategory.BOTH -> Color("#512da8")
                     FlowItemCategory.EXPANDABLE -> Color("#7b1fa2")
                 }
-                if (entry.editor == null) {
-                    // No editor needed - insert directly
-                    addButton(entry.label, badgeColor) {
-                        props.onInsert(ActionItem(id = generateId(), action = entry.createDefault()))
-                    }
-                } else {
-                    // Has editor - open config dialog
-                    addButton(entry.label, badgeColor) {
-                        props.onInsertAction?.invoke()
-                    }
+                addButton(entry.label, badgeColor) {
+                    props.onInsert(ActionItem(id = generateId(), action = entry.createDefault()))
+                }
+            }
+            // Single "Action" button for types that need the config dialog
+            if (flowItemTypes.any { it.editor != null }) {
+                addButton("Action", Color("#e65100")) {
+                    props.onInsertAction?.invoke()
                 }
             }
         }
@@ -583,15 +582,44 @@ val FlowItemRow = FC<FlowItemRowProps> { props ->
                             props.onUpdateSlideLabel(item.slideIndex, e.target.value)
                         }
                     }
-                    // Tiny slide thumbnail
+                    // Slide thumbnail with hover preview
                     if (props.presentation.numSlides > 0) {
+                        val thumbRef = useRef<web.html.HTMLElement>(null)
+                        var previewPos by useState<Pair<Double, Double>?>(null)
                         img {
+                            ref = thumbRef
                             src = props.presentation.slideUrl(item.slideIndex)
                             css {
                                 height = 40.px
                                 borderRadius = 2.px
                                 marginLeft = 8.px
                                 border = Border(1.px, LineStyle.solid, Color("#ddd"))
+                                cursor = Cursor.pointer
+                            }
+                            onMouseEnter = {
+                                thumbRef.current?.getBoundingClientRect()?.let { rect ->
+                                    previewPos = Pair(rect.left, rect.top)
+                                }
+                            }
+                            onMouseLeave = { previewPos = null }
+                        }
+                        if (previewPos != null) {
+                            img {
+                                src = props.presentation.slideUrl(item.slideIndex)
+                                css {
+                                    position = Position.fixed
+                                    left = previewPos!!.first.px
+                                    top = previewPos!!.second.px
+                                    transform = translatey((-100).pct)
+                                    width = 360.px
+                                    borderRadius = 4.px
+                                    border = Border(2.px, LineStyle.solid, Color("#ccc"))
+                                    boxShadow = BoxShadow(0.px, 4.px, 16.px, rgb(0, 0, 0, 0.2))
+                                    backgroundColor = NamedColor.white
+                                    zIndex = integer(1000)
+                                    pointerEvents = None.none
+                                    padding = 4.px
+                                }
                             }
                         }
                     }
