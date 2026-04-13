@@ -147,6 +147,8 @@ kotlin {
                 implementation("com.akuleshov7:ktoml-file:$ktomlVersion")
                 implementation("org.apache.commons:commons-csv:1.12.0")
                 implementation("com.github.albfernandez:juniversalchardet:2.5.0")
+                implementation("io.ktor:ktor-client-core:$ktorVersion")
+                implementation("io.ktor:ktor-client-cio:$ktorVersion")
             }
         }
         val jsMain by getting {

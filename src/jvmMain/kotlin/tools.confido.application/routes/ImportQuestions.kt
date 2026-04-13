@@ -1,5 +1,9 @@
 package tools.confido.application.routes
 
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsBytes
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.server.request.*
@@ -128,6 +132,79 @@ private fun detectDelimiter(content: String): Char {
     return ','
 }
 
+/**
+ * Parse raw bytes (CSV/TSV) into a [CsvParseResponse] with rows, header detection,
+ * and suggested column mappings. Returns null with an error message if parsing fails.
+ */
+private fun parseCsvBytes(bytes: ByteArray): CsvParseResponse {
+    // Detect encoding and decode
+    val charset = detectEncoding(bytes)
+    var content = bytes.toString(charset)
+    // Strip BOM if present
+    if (content.isNotEmpty() && content[0] == '\uFEFF') {
+        content = content.substring(1)
+    }
+
+    require(content.isNotBlank()) { "Content is empty." }
+
+    // Detect delimiter and parse
+    val delimiter = detectDelimiter(content)
+    val format = CSVFormat.Builder.create(CSVFormat.DEFAULT)
+        .setDelimiter(delimiter)
+        .setIgnoreSurroundingSpaces(true)
+        .build()
+
+    val parser = CSVParser.parse(StringReader(content), format)
+    val allRows = parser.records.map { record ->
+        (0 until record.size()).map { record.get(it) }
+    }
+
+    require(allRows.isNotEmpty()) { "No data found." }
+
+    val detectedHeader = guessHasHeader(allRows.first())
+
+    val suggestedMappings = if (detectedHeader) {
+        val mappings = allRows.first().map { matchColumnName(it) }
+        val seen = mutableSetOf<ColumnMapping>()
+        mappings.map { mapping ->
+            if (mapping == ColumnMapping.SKIP || mapping !in seen) {
+                seen.add(mapping)
+                mapping
+            } else {
+                ColumnMapping.SKIP
+            }
+        }
+    } else {
+        null
+    }
+
+    return CsvParseResponse(
+        rows = allRows,
+        detectedHeader = detectedHeader,
+        suggestedMappings = suggestedMappings,
+    )
+}
+
+/** Regex to extract the spreadsheet ID from a Google Sheets URL. */
+private val GOOGLE_SHEETS_ID_REGEX = Regex(
+    """docs\.google\.com/spreadsheets/(?:u/\d+/)?d/([a-zA-Z0-9_-]+)"""
+)
+
+/** Extract the sheet gid from a Google Sheets URL fragment or query parameter. */
+private fun extractGid(url: String): String? {
+    // Check for #gid=... fragment
+    val fragmentMatch = Regex("""[#&?]gid=(\d+)""").find(url)
+    if (fragmentMatch != null) return fragmentMatch.groupValues[1]
+    return null
+}
+
+/** Lazy-initialized Ktor HTTP client for fetching external URLs. */
+private val fetchClient: HttpClient by lazy {
+    HttpClient(CIO) {
+        followRedirects = true
+    }
+}
+
 fun importQuestionRoutes(routing: Routing) = routing.apply {
 
     // Parse CSV endpoint: receives multipart file, returns parsed rows + header guess + suggested mappings
@@ -146,53 +223,66 @@ fun importQuestionRoutes(routing: Routing) = routing.apply {
             }
 
             val bytes = fileBytes ?: badRequest("No file uploaded.")
+            if (bytes.isEmpty()) badRequest("Uploaded file is empty.")
 
-            // Detect encoding and decode
-            val charset = detectEncoding(bytes)
-            var content = bytes.toString(charset)
-            // Strip BOM if present
-            if (content.isNotEmpty() && content[0] == '\uFEFF') {
-                content = content.substring(1)
+            try {
+                val response = parseCsvBytes(bytes)
+                call.respond(HttpStatusCode.OK, response)
+            } catch (e: IllegalArgumentException) {
+                badRequest(e.message ?: "Failed to parse file.")
             }
+        }
+    }
 
-            if (content.isBlank()) badRequest("Uploaded file is empty.")
+    // Parse Google Sheets URL endpoint: fetches the spreadsheet as TSV and parses it
+    postST("$roomUrl/questions/import/parse-url") {
+        call.withRoom {
+            assertPermission(RoomPermission.ADD_QUESTION, "You cannot add questions.")
 
-            // Detect delimiter and parse
-            val delimiter = detectDelimiter(content)
-            val format = CSVFormat.Builder.create(CSVFormat.DEFAULT)
-                .setDelimiter(delimiter)
-                .setIgnoreSurroundingSpaces(true)
-                .build()
+            val payload: ImportUrlRequest = call.receive()
+            val url = payload.url.trim()
 
-            val parser = CSVParser.parse(StringReader(content), format)
-            val allRows = parser.records.map { record ->
-                (0 until record.size()).map { record.get(it) }
-            }
+            // Validate and extract spreadsheet ID
+            val idMatch = GOOGLE_SHEETS_ID_REGEX.find(url)
+                ?: badRequest("Not a valid Google Sheets URL. Please paste a sharing link like: https://docs.google.com/spreadsheets/d/...")
 
-            if (allRows.isEmpty()) badRequest("No data found in file.")
+            val spreadsheetId = idMatch.groupValues[1]
+            val gid = extractGid(url)
 
-            val detectedHeader = guessHasHeader(allRows.first())
-
-            val suggestedMappings = if (detectedHeader) {
-                val mappings = allRows.first().map { matchColumnName(it) }
-                val seen = mutableSetOf<ColumnMapping>()
-                mappings.map { mapping ->
-                    if (mapping == ColumnMapping.SKIP || mapping !in seen) {
-                        seen.add(mapping)
-                        mapping
-                    } else {
-                        ColumnMapping.SKIP
-                    }
+            // Build export URL
+            val exportUrl = buildString {
+                append("https://docs.google.com/spreadsheets/d/")
+                append(spreadsheetId)
+                append("/export?format=tsv")
+                if (gid != null) {
+                    append("&gid=")
+                    append(gid)
                 }
-            } else {
-                null
             }
 
-            call.respond(HttpStatusCode.OK, CsvParseResponse(
-                rows = allRows,
-                detectedHeader = detectedHeader,
-                suggestedMappings = suggestedMappings,
-            ))
+            // Fetch TSV from Google Sheets
+            val httpResponse = try {
+                fetchClient.get(exportUrl)
+            } catch (e: Exception) {
+                badRequest("Failed to fetch spreadsheet: ${e.message}")
+            }
+
+            if (!httpResponse.status.isSuccess()) {
+                badRequest(
+                    "Could not fetch spreadsheet (HTTP ${httpResponse.status.value}). " +
+                    "Make sure the spreadsheet is publicly accessible via \"Anyone with the link\"."
+                )
+            }
+
+            val bytes = httpResponse.bodyAsBytes()
+            if (bytes.isEmpty()) badRequest("Fetched spreadsheet is empty.")
+
+            try {
+                val response = parseCsvBytes(bytes)
+                call.respond(HttpStatusCode.OK, response)
+            } catch (e: IllegalArgumentException) {
+                badRequest(e.message ?: "Failed to parse spreadsheet data.")
+            }
         }
     }
 

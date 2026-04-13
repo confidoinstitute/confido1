@@ -65,3 +65,8 @@ data class ImportResult(
     val updated: Int,
     val unchanged: Int,
 )
+
+@Serializable
+data class ImportUrlRequest(
+    val url: String,
+)

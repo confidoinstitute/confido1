@@ -8,6 +8,7 @@ import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.http.*
 import payloads.requests.CsvParseResponse
+import payloads.requests.ImportUrlRequest
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.input
@@ -41,10 +42,16 @@ private fun readFileAsBytes(file: dynamic): Promise<ByteArray> = Promise { resol
     reader.readAsArrayBuffer(file)
 }
 
+/** Check whether a string looks like a Google Sheets URL. */
+private fun isGoogleSheetsUrl(url: String): Boolean =
+    url.contains("docs.google.com/spreadsheets/")
+
 val ImportStepUpload = FC<ImportStepUploadProps> { props ->
     var error by useState<String?>(null)
     var uploading by useState(false)
     var fileName by useState<String?>(null)
+    var sheetsUrl by useState("")
+    var fetchingUrl by useState(false)
     val submitLock = useCoroutineLock()
 
     LayoutWidthWrapper {
@@ -54,23 +61,24 @@ val ImportStepUpload = FC<ImportStepUploadProps> { props ->
             alignItems = AlignItems.center
         }
 
+        p {
+            css {
+                fontFamily = sansSerif
+                fontSize = 14.px
+                lineHeight = 20.px
+                color = Color("#666666")
+                margin = 0.px
+            }
+            +"Import questions from a CSV/TSV file or a Google Sheets spreadsheet. "
+            +"The data should have at least a column with question titles."
+        }
+
         FormSection {
             title = "Upload CSV file"
             Stack {
                 css {
                     gap = 15.px
                     alignItems = AlignItems.stretch
-                }
-                p {
-                    css {
-                        fontFamily = sansSerif
-                        fontSize = 14.px
-                        lineHeight = 20.px
-                        color = Color("#666666")
-                        margin = 0.px
-                    }
-                    +"Select a CSV or TSV file containing questions to import. "
-                    +"The file should have at least a column with question titles."
                 }
 
                 div {
@@ -96,7 +104,7 @@ val ImportStepUpload = FC<ImportStepUploadProps> { props ->
                             fontFamily = sansSerif
                             fontSize = 15.px
                         }
-                        disabled = uploading
+                        disabled = uploading || fetchingUrl
                         onChange = onChange@{ event ->
                             val target = event.target.asDynamic()
                             val files = target.files ?: return@onChange
@@ -148,20 +156,130 @@ val ImportStepUpload = FC<ImportStepUploadProps> { props ->
                         +"Uploading and parsing${fileName?.let { " $it" } ?: ""}..."
                     }
                 }
+            }
+        }
 
-                error?.let { err ->
+        // Divider
+        div {
+            css {
+                width = 100.pct
+                display = Display.flex
+                alignItems = AlignItems.center
+                gap = 12.px
+                fontFamily = sansSerif
+                fontSize = 13.px
+                color = Color("#999999")
+            }
+            div {
+                css {
+                    flex = Flex(number(1.0), number(1.0), Auto.auto)
+                    height = 1.px
+                    backgroundColor = Color("#DDDDDD")
+                }
+            }
+            +"or"
+            div {
+                css {
+                    flex = Flex(number(1.0), number(1.0), Auto.auto)
+                    height = 1.px
+                    backgroundColor = Color("#DDDDDD")
+                }
+            }
+        }
+
+        FormSection {
+            title = "Import from Google Sheets"
+            Stack {
+                css {
+                    gap = 15.px
+                    alignItems = AlignItems.stretch
+                }
+                p {
+                    css {
+                        fontFamily = sansSerif
+                        fontSize = 14.px
+                        lineHeight = 20.px
+                        color = Color("#666666")
+                        margin = 0.px
+                    }
+                    +"Paste a Google Sheets sharing link. The spreadsheet must be publicly accessible "
+                    +"(\"Anyone with the link\" in sharing settings)."
+                }
+
+                Stack {
+                    direction = FlexDirection.row
+                    css {
+                        gap = 10.px
+                        alignItems = AlignItems.stretch
+                    }
+                    TextInput {
+                        css {
+                            flex = Flex(number(1.0), number(1.0), Auto.auto)
+                        }
+                        placeholder = "https://docs.google.com/spreadsheets/d/..."
+                        value = sheetsUrl
+                        disabled = uploading || fetchingUrl
+                        onChange = { event ->
+                            sheetsUrl = event.target.value
+                            error = null
+                        }
+                    }
+                    Button {
+                        disabled = sheetsUrl.isBlank() || !isGoogleSheetsUrl(sheetsUrl) || uploading || fetchingUrl
+                        onClick = {
+                            error = null
+                            submitLock {
+                                fetchingUrl = true
+                                try {
+                                    val resp = Client.sendDataRequest(
+                                        "${props.room.urlPrefix}/questions/import/parse-url",
+                                        ImportUrlRequest(url = sheetsUrl),
+                                    )
+
+                                    if (resp.status.isSuccess()) {
+                                        val parseResponse: CsvParseResponse = resp.body()
+                                        props.onParsed(parseResponse)
+                                    } else {
+                                        val errorMsg: String = resp.body()
+                                        error = errorMsg
+                                    }
+                                } catch (e: Exception) {
+                                    error = e.message ?: "Failed to fetch spreadsheet"
+                                } finally {
+                                    fetchingUrl = false
+                                }
+                            }
+                        }
+                        +"Fetch"
+                    }
+                }
+
+                if (fetchingUrl) {
                     div {
                         css {
                             fontFamily = sansSerif
                             fontSize = 14.px
-                            color = Color("#F35454")
-                            padding = 10.px
-                            backgroundColor = Color("#FFF0F0")
-                            borderRadius = 5.px
+                            color = Color("#6319FF")
+                            textAlign = TextAlign.center
                         }
-                        +err
+                        +"Fetching and parsing spreadsheet..."
                     }
                 }
+            }
+        }
+
+        // Shared error display
+        error?.let { err ->
+            div {
+                css {
+                    fontFamily = sansSerif
+                    fontSize = 14.px
+                    color = Color("#F35454")
+                    padding = 10.px
+                    backgroundColor = Color("#FFF0F0")
+                    borderRadius = 5.px
+                }
+                +err
             }
         }
     }
