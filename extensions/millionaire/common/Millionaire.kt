@@ -43,7 +43,7 @@ val DEFAULT_PRIZE_LADDER = listOf(
     64_000, 125_000, 250_000, 500_000, 1_000_000,
 )
 
-/** Format a dollar amount for display, e.g. 1000 -> "$1,000", 125000 -> "$125,000" */
+/** Format a prize amount for display, e.g. 1000 -> "€1,000", 125000 -> "€125,000" */
 fun formatPrize(amount: Int): String {
     val s = amount.toString()
     val result = StringBuilder()
@@ -51,7 +51,7 @@ fun formatPrize(amount: Int): String {
         if (i > 0 && (s.length - i) % 3 == 0) result.append(',')
         result.append(s[i])
     }
-    return "$$result"
+    return "€$result"
 }
 
 // --- Timer State (shared between server and client) ---

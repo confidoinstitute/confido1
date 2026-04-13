@@ -652,7 +652,7 @@ val MillionaireScoreboardPP = FC<PresenterPageProps<MillionaireScoreboardPV>> { 
                                 }
                             }
                             val sign = if (entry.value >= 0) "+" else "-"
-                            +"$sign\$${entry.value.absoluteValue.roundToInt()}"
+                            +"$sign€${entry.value.absoluteValue.roundToInt()}"
                         }
                     }
                 }
@@ -684,7 +684,7 @@ val MillionaireScoreboardPP = FC<PresenterPageProps<MillionaireScoreboardPV>> { 
                         }
                         ReactHTML.td {
                             css { paddingLeft = 32.px }
-                            +"$ ${it.value.roundToInt()}"
+                            +"€ ${it.value.roundToInt()}"
                         }
                     }
                 }
@@ -973,7 +973,7 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
                                     color = important(scoreColor)
                                     lineHeight = number(1.2)
                                 }
-                                +"$sign\$${score.absoluteValue.roundToInt()}"
+                                +"$sign€${score.absoluteValue.roundToInt()}"
                             }
                         }
                     }
@@ -993,12 +993,12 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
                     if (idx >= 0 && idx < diffScores.size) {
                         val dsc = diffScores[idx]
                         val word = if (dsc >= 0) "gained" else "lost"
-                        div { +"You $word \$ ${dsc.absoluteValue.roundToInt()} on this answer." }
-                        div { +"Your score after this answer is \$ ${scoreAfterQ[idx + 1].roundToInt()}." }
+                        div { +"You $word € ${dsc.absoluteValue.roundToInt()} on this answer." }
+                        div { +"Your score after this answer is € ${scoreAfterQ[idx + 1].roundToInt()}." }
                     }
                 } else {
                     val myScore = scoreAfterQ.last()
-                    div { +"Your current score is $ ${myScore.roundToInt()}" }
+                    div { +"Your current score is € ${myScore.roundToInt()}" }
                     listOf(likelyOutcome, !likelyOutcome).forEach { ans ->
                         val newScore = myScore * computeScore(dist.yesProb, ans)
                         val diffScore = newScore - myScore
@@ -1008,7 +1008,7 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
                             yesNoColored(ans)
                             +" will "
                             b { +word }
-                            +" \$ ${diffScore.absoluteValue.roundToInt()} (ending up with \$ ${newScore.roundToInt()})"
+                            +" € ${diffScore.absoluteValue.roundToInt()} (ending up with € ${newScore.roundToInt()})"
                         }
                     }
                 }
