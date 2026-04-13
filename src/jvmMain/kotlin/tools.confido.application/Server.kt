@@ -303,6 +303,7 @@ fun main() {
                 importQuestionRoutes(this)
                 genericRoutes(this)
                 presenterRoutes(this)
+                presentationRoutes(this)
                 calibrationRoutes(this)
                 scoreRoutes(this)
 

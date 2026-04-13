@@ -21,6 +21,8 @@ import react.dom.html.ReactHTML.main
 import react.dom.html.ReactHTML.span
 import react.router.*
 import rooms.*
+import components.redesign.presentation.PresentationTab
+import payloads.requests.CreatePresentation
 import tools.confido.extensions.ClientExtension
 import tools.confido.refs.*
 import tools.confido.state.clientState
@@ -151,6 +153,21 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                 icon = ExportIcon
                 text = "Export to CSV..."
                 onClick = { exportOpen = true; dialogOpen = false }
+            }
+        }
+
+        if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS) && room.presentation == null) {
+            DialogMenuItem {
+                text = "Create presentation"
+                icon = PresentationIcon
+                onClick = {
+                    dialogOpen = false
+                    runCoroutine {
+                        Client.sendData("${room.urlPrefix}/presentation/create",
+                            CreatePresentation(),
+                            onError = { showError(it) }) {}
+                    }
+                }
             }
         }
 
@@ -362,6 +379,13 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                         })
                     }
                     
+                    if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS) && room.presentation != null) {
+                        add(jso<RouteObject> {
+                            path = "presentation"
+                            element = PresentationTab.create()
+                        })
+                    }
+
                     // Add extension routes
                     clientState.extensions.forEach { extension ->
                         addAll(extension.roomRoutesExtra(room))

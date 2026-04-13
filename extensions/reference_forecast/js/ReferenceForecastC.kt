@@ -4,6 +4,7 @@ import components.presenter.PresenterPageProps
 import components.presenter.presenterPageMap
 import components.redesign.basic.Stack
 import components.redesign.basic.rowStyleTableCSS
+import components.redesign.basic.sansSerif
 import components.redesign.forms.*
 import components.redesign.presenter.PresenterContext
 import components.redesign.questions.dialog.EditQuestionDialogProps
@@ -14,6 +15,7 @@ import hooks.useWebSocket
 import payloads.responses.WSData
 import tools.confido.question.Prediction
 import react.*
+import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.h1
 import react.dom.html.ReactHTML.h3
 import react.dom.html.ReactHTML.table
@@ -100,6 +102,18 @@ val ReferenceForcastScoreboardPP = FC<PresenterPageProps<ReferenceForcastScorebo
     }
 }
 
+private val RefForecastScoreboardPVEditorComponent = FC<tools.confido.extensions.PresenterViewEditorProps> { _ ->
+    div {
+        css {
+            fontFamily = sansSerif
+            fontSize = 13.px
+            color = Color("#888")
+            marginTop = 4.px
+        }
+        +"Will show the reference forecast scoreboard for this room."
+    }
+}
+
 object ReferenceForecastCE : ClientExtension, ReferenceForecastExtension() {
     override fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {
         val presenterCtl = use(PresenterContext)!!
@@ -160,4 +174,14 @@ object ReferenceForecastCE : ClientExtension, ReferenceForecastExtension() {
         mapOf(
             presenterPageMap(ReferenceForcastScoreboardPP)
         )
+
+    override fun registerPresenterViewTypes() = listOf(
+        tools.confido.extensions.PresenterViewTypeEntry(
+            key = "refForecastScoreboard",
+            label = "Reference forecast scoreboard",
+            createDefault = { ReferenceForcastScoreboardPV(tools.confido.refs.Ref("")) },
+            editor = RefForecastScoreboardPVEditorComponent,
+            matches = { it is ReferenceForcastScoreboardPV },
+        )
+    )
 }

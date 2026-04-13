@@ -725,3 +725,13 @@ val ZoomIcon = createIcon(24) {
 // Source: Material Symbols (Google), License: Apache 2.0
 // "leaderboard" icon
 val ScoresIcon = createIcon(d = "M7.5 21q-.625 0-1.062-.437T6 19.5v-9q0-.625.438-1.062T7.5 9h3q.625 0 1.063.438T12 10.5v9q0 .625-.437 1.063T10.5 21Zm6 0q-.625 0-1.062-.437T12 19.5v-15q0-.625.438-1.062T13.5 3h3q.625 0 1.063.438T18 4.5v15q0 .625-.437 1.063T16.5 21Zm-12 0q-.625 0-1.062-.437T0 19.5v-5q0-.625.438-1.062T1.5 13h3q.625 0 1.063.438T6 14.5v5q0 .625-.437 1.063T4.5 21Z", boxSize = List2(18, 24))
+
+// Presentation / slideshow icon
+val PresentationIcon = createIcon(24, 24) {
+    rect { x = 2.0; y = 3.0; width = 20.0; height = 14.0; rx = 2.0
+        stroke = "currentColor"; strokeWidth = 1.5; fill = "none" }
+    path { d = "M10 7L10 13L15 10Z"; fill = "currentColor" }
+    path { d = "M8 20H16"; stroke = "currentColor"; strokeWidth = 1.5
+        strokeLinecap = StrokeLinecap.round }
+    path { d = "M12 17V20"; stroke = "currentColor"; strokeWidth = 1.5 }
+}

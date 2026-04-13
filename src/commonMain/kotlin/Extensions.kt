@@ -8,6 +8,7 @@ import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.*
 import kotlinx.serialization.modules.PolymorphicModuleBuilder
 import kotlinx.serialization.serializer
+import tools.confido.state.FlowAction
 import tools.confido.state.PresenterView
 import tools.confido.state.appConfig
 import kotlin.reflect.KType
@@ -90,6 +91,8 @@ interface Extension {
 
     fun registerContinuousProbabilityDistributions(builder: PolymorphicModuleBuilder<ContinuousProbabilityDistribution>) {
     }
+
+    fun registerFlowActions(builder: PolymorphicModuleBuilder<FlowAction>) {}
 
     fun registerEdtKeys(edt: ExtensionDataType) {}
 

@@ -70,6 +70,10 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
         // Compute effective questions if an extension provides them.
         val effQuestions = room.effectiveQuestions
 
+        // Populate presentation running flag from in-memory run state
+        val canManageQuestions = room.hasPermission(user, RoomPermission.MANAGE_QUESTIONS)
+        val presentationRunning = if (canManageQuestions) serverState.presentationRunStates.containsKey(room.ref) else null
+
         var censored = room.copy(
             questions = room.questions.filter {
                 (it.deref() ?: return@filter false).visible || room.hasPermission(user, RoomPermission.VIEW_HIDDEN_QUESTIONS)
@@ -79,6 +83,9 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
             // _effectiveMembers carries the full effective list (including implied) for the client
             _effectiveMembers = effMembers.mapNotNull { censorMembership(room, it) },
             _effectiveQuestions = effQuestions,
+            _presentationRunning = presentationRunning,
+            // Strip presentation ref for non-moderators
+            presentation = if (canManageQuestions) room.presentation else null,
             inviteLinks = if (user?.type in setOf(UserType.ADMIN, UserType.MEMBER)) room.inviteLinks.mapNotNull { censorInviteLink(room, it) } else emptyList(),
         )
         ServerExtension.forEach { censored = it.censorRoom(censored, user) }

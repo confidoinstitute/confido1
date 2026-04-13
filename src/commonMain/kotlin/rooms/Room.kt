@@ -10,6 +10,7 @@ import tools.confido.extensions.ExtensionDataType
 import tools.confido.question.Question
 import tools.confido.question.QuestionSchedule
 import tools.confido.refs.*
+import tools.confido.state.Presentation
 import tools.confido.state.appConfig
 import tools.confido.utils.generateId
 import tools.confido.utils.HasUrlPrefix
@@ -48,6 +49,8 @@ data class Room(
     @Serializable(with = RoomEDTSerializer::class)
     val extensionData: ExtensionData = ExtensionData(RoomEDT),
     val commentTemplate: String = "",
+    /** Reference to the room's presentation (if any). */
+    val presentation: Ref<Presentation>? = null,
     // Computed fields: populated by StateCensor before sending to clients, never persisted to DB.
     /** Effective member list including implied members (e.g. inherited from parent group).
      *  On the client, Room.effectiveMembers reads this field.
@@ -55,6 +58,8 @@ data class Room(
     val _effectiveMembers: List<RoomMembership>? = null,
     /** Effective question list (e.g. aggregated from child rooms) with per-question flags. */
     val _effectiveQuestions: List<EffectiveQuestion>? = null,
+    /** Whether the presentation is currently running (computed, never persisted). */
+    val _presentationRunning: Boolean? = null,
 ) : ImmediateDerefEntity, HasUrlPrefix {
     fun findLink(id: String?): InviteLink? {
         if (id == null || id == "") {

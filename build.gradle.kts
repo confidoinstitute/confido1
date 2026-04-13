@@ -149,6 +149,8 @@ kotlin {
                 implementation("com.github.albfernandez:juniversalchardet:2.5.0")
                 implementation("io.ktor:ktor-client-core:$ktorVersion")
                 implementation("io.ktor:ktor-client-cio:$ktorVersion")
+                // PDF to image conversion for presentation slides
+                implementation("org.apache.pdfbox:pdfbox:3.0.4")
             }
         }
         val jsMain by getting {

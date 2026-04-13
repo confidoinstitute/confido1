@@ -13,6 +13,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import rooms.Room
 import tools.confido.question.*
+import tools.confido.state.Presentation
 import tools.confido.state.UserSession
 import tools.confido.state.globalState
 import tools.confido.utils.generateId
@@ -136,6 +137,7 @@ inline fun <reified  T: HasId> T.withId(id: String): T =
         is UserSession -> copy(id = id) as T
         is Prediction -> copy(id = id) as T
         is CommentLike -> copy(id = id) as T
+        is Presentation -> copy(id = id) as T
         else -> throw NotImplementedError("withId for ${T::class} in Refs.kt")
     }
 

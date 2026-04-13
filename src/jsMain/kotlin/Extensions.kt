@@ -17,9 +17,11 @@ import rooms.RoomMembership
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.extensions.ExtensionData
 import tools.confido.question.Question
+import tools.confido.state.FlowAction
 import tools.confido.state.PresenterView
 import tools.confido.state.SentState
 import tools.confido.state.appConfig
+import react.PropsWithChildren
 import users.User
 import utils.panzoom1d.PZState
 import kotlin.reflect.KClass
@@ -104,7 +106,58 @@ interface ClientExtension : Extension {
     fun renderSidebarRoomEntries(rooms: Map<String, Room>, small: Boolean, cb: ChildrenBuilder): Boolean = false
 
     fun rootRoutesExtra(): List<RouteObject> = emptyList()
+
+    /**
+     * Register custom flow action types for the presentation editor.
+     * Each entry is a [FlowActionTypeEntry] providing the type key, label,
+     * default factory, editor component, and a predicate to match existing actions.
+     */
+    fun registerFlowActionTypes(): List<FlowActionTypeEntry> = emptyList()
+
+    /**
+     * Register custom presenter view types for the presentation editor.
+     * Each entry is a [PresenterViewTypeEntry] providing the type key, label,
+     * default factory, editor component (optional), and a predicate to match existing views.
+     */
+    fun registerPresenterViewTypes(): List<PresenterViewTypeEntry> = emptyList()
 }
+
+// ---- Flow Action Type Registry ----
+
+/** Props for a flow action editor component. The editor reads room/questions via contexts. */
+external interface FlowActionEditorProps : Props {
+    var action: FlowAction
+    var onChange: (FlowAction) -> Unit
+}
+
+/** Describes a flow action type for the presentation editor UI. */
+data class FlowActionTypeEntry(
+    val key: String,
+    val label: String,
+    val createDefault: () -> FlowAction,
+    val editor: FC<FlowActionEditorProps>,
+    /** Predicate to identify which existing actions this entry handles. */
+    val matches: (FlowAction) -> Boolean,
+)
+
+// ---- Presenter View Type Registry ----
+
+/** Props for a presenter view editor component. The editor reads room/questions via contexts. */
+external interface PresenterViewEditorProps : Props {
+    var view: PresenterView
+    var onChange: (PresenterView) -> Unit
+}
+
+/** Describes a presenter view type for the presentation editor UI. */
+data class PresenterViewTypeEntry(
+    val key: String,
+    val label: String,
+    val createDefault: () -> PresenterView,
+    /** Editor component, or null if no configuration is needed (e.g. EmptyPV). */
+    val editor: FC<PresenterViewEditorProps>?,
+    /** Predicate to identify which existing views this entry handles. */
+    val matches: (PresenterView) -> Boolean,
+)
 
 external interface ExtensionContextProviderProps: Props {
     var place: ExtensionContextPlace

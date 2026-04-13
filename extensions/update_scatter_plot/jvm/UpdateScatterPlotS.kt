@@ -10,16 +10,37 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import rooms.Room
 import rooms.RoomPermission
 import tools.confido.application.routes.*
 import tools.confido.application.sessions.TransientData
 import tools.confido.refs.ref
+import tools.confido.state.FlowAction
 import tools.confido.state.serverState
 import tools.confido.utils.List2
 import tools.confido.refs.*
 import tools.confido.utils.generateId
+import tools.confido.utils.unixNow
 
 object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
+
+    /**
+     * Resolve a [TimepointReference] to an [Instant] for the update plot query.
+     * Returns null to indicate "use latest predictions" (maps to DISTANT_FUTURE in the query logic).
+     */
+    private fun resolveTimepoint(tp: TimepointReference, room: Room): Instant? = when (tp) {
+        is NowTimepoint -> null
+        is TimestampTimepoint -> tp.time
+        is SnapshotTimepoint -> {
+            val snapshots = if (tp.question != null) {
+                serverState.questions[tp.question.id]?.extensionData?.get(SnapshotsKey) ?: emptyList()
+            } else {
+                room.extensionData[SnapshotsKey]
+            }
+            snapshots.find { it.title == tp.name }?.let { Instant.fromEpochSeconds(it.ts.toLong()) }
+        }
+    }
+
     override fun initRoutes(r: Routing) {
         r.apply {
             postST("/api$questionUrl/snapshots/add") {
@@ -79,17 +100,18 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
                     }
                 }
             }
-            getST("/api$questionUrl/update_plot") {
+            // Update plot: POST with TimepointReference-based request
+            postST("/api$questionUrl/update_plot") {
                 call.withQuestion {
                     assertPermission(
                         RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS,
-                        "need permession to view individual predictions"
+                        "need permission to view individual predictions"
                     )
-                    val referenceQ = call.request.queryParameters["qref"]?.let { if (it=="") null else Ref(it) } ?: question.extensionData[UpdateReferenceQuestionKey]
+                    val req = call.receive<UpdatePlotRequest>()
+                    val referenceQ = req.referenceQuestion ?: question.extensionData[UpdateReferenceQuestionKey]
                     val qs = List2(referenceQ ?: question.ref, question.ref)
-                    val times = List2("t1", "t2").map {
-                        call.request.queryParameters[it]?.let { if (it=="null") null else it}?.toLong()?.let { Instant.fromEpochSeconds(it) }
-                            ?: Instant.DISTANT_FUTURE
+                    val times = List2(req.timepoint1, req.timepoint2).map {
+                        resolveTimepoint(it, room) ?: Instant.DISTANT_FUTURE
                     }
                     val users = serverState.userPred[question.ref]?.keys ?: emptySet()
                     val preds = users.mapNotNull { u->
@@ -100,5 +122,35 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
                 }
             }
         }
+    }
+
+    override suspend fun executeFlowAction(action: FlowAction, room: Room): Boolean {
+        if (action !is CreateSnapshotAction) return false
+        if (action.name.isBlank()) return true // silently skip empty-named snapshots
+
+        val snapshot = Snapshot(
+            ts = unixNow(),
+            title = action.name,
+            owner = null,
+            public = true,
+            id = generateId(),
+        )
+
+        if (action.question != null) {
+            // Question-scoped snapshot: overwrite by name
+            serverState.questionManager.modifyEntity(action.question.id) { q ->
+                val existing = q.extensionData[SnapshotsKey]
+                val updated = (existing.filter { it.title != action.name } + snapshot).sortedBy { it.ts }
+                q.copy(extensionData = q.extensionData.with(SnapshotsKey, updated))
+            }
+        } else {
+            // Room-wide snapshot: overwrite by name
+            serverState.roomManager.modifyEntity(room.id) { r ->
+                val existing = r.extensionData[SnapshotsKey]
+                val updated = (existing.filter { it.title != action.name } + snapshot).sortedBy { it.ts }
+                r.copy(extensionData = r.extensionData.with(SnapshotsKey, updated))
+            }
+        }
+        return true
     }
 }

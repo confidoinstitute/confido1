@@ -10,6 +10,7 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.plus
 import kotlinx.serialization.modules.serializersModuleOf
 import tools.confido.distributions.distributionsSM
+import tools.confido.state.flowActionSM
 import tools.confido.state.presenterSM
 import tools.confido.utils.List2
 import tools.confido.utils.endpoints
@@ -46,7 +47,7 @@ open class CoercingNullSerializer<T : Any>(
     }
 }
 
-val confidoSM by lazy { distributionsSM + presenterSM } // here we can add other SMs
+val confidoSM by lazy { distributionsSM + presenterSM + flowActionSM }
 
 
 val confidoJSON by lazy { Json {

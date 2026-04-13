@@ -140,6 +140,11 @@ val RoomTabs = FC<RoomTabsProps> { props ->
         if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS) && layoutMode >= LayoutMode.TABLET)
             tab("manage_questions", "Question management")
 
+        if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
+            && room.presentation != null && layoutMode >= LayoutMode.TABLET)
+            tab("presentation",
+                if (room._presentationRunning == true) "Presentation \u25CF" else "Presentation")
+
         clientState.extensions.forEach {
             it.roomTabsExtra(room, appState, layoutMode).forEach { (path, title) -> tab(path, title)  }
         }

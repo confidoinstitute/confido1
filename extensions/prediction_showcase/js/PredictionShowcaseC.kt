@@ -23,6 +23,10 @@ import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
 import rooms.Room
 import tools.confido.distributions.*
+import components.AppStateContext
+import components.redesign.forms.QuestionPicker
+import components.redesign.forms.Select
+import components.redesign.rooms.RoomContext
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionDataKeyWithDefault
 import tools.confido.question.Prediction
@@ -180,6 +184,40 @@ val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> 
     }
 }
 
+private val PredictionShowcasePVEditorComponent = FC<tools.confido.extensions.PresenterViewEditorProps> { props ->
+    val view = props.view as? PredictionShowcasePV ?: return@FC
+    val (appState, _) = use(AppStateContext)!!
+    val room = use(RoomContext)!!
+    val questions = appState.questions.values.filter { q -> room.questions.any { it.id == q.id } }.sortedBy { it.name }
+    components.redesign.presentation.FieldLabel { +"Question" }
+    QuestionPicker {
+        this.questions = questions
+        selectedId = view.question.id
+        onChange = { props.onChange(PredictionShowcasePV(Ref(it))) }
+    }
+}
+
+private val GroupPredComparePVEditorComponent = FC<tools.confido.extensions.PresenterViewEditorProps> { props ->
+    val view = props.view as? GroupPredictionComparePV ?: return@FC
+    val (appState, _) = use(AppStateContext)!!
+    val room = use(RoomContext)!!
+    val allTags = appState.questions.values.filter { q -> room.questions.any { it.id == q.id } }
+        .flatMap { it.tags }.distinct().sorted()
+    components.redesign.presentation.FieldLabel { +"Filter by tag (optional)" }
+    Select {
+        value = view.questionGroup ?: ""
+        onChange = { e ->
+            val tag = e.target.value
+            props.onChange(view.copy(questionGroup = tag.ifEmpty { null }))
+        }
+        css { width = 100.pct }
+        react.dom.html.ReactHTML.option { value = ""; +"All questions" }
+        allTags.forEach { tag ->
+            react.dom.html.ReactHTML.option { value = tag; +tag }
+        }
+    }
+}
+
 object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
     override fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {
         val presenterCtl = use(PresenterContext)!!
@@ -228,4 +266,21 @@ object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
             presenterPageMap(PredictionShowcasePP),
             presenterPageMap(GroupPredictionComparePP)
         )
+
+    override fun registerPresenterViewTypes() = listOf(
+        tools.confido.extensions.PresenterViewTypeEntry(
+            key = "predictionShowcase",
+            label = "Individual predictions showcase",
+            createDefault = { PredictionShowcasePV(Ref("")) },
+            editor = PredictionShowcasePVEditorComponent,
+            matches = { it is PredictionShowcasePV },
+        ),
+        tools.confido.extensions.PresenterViewTypeEntry(
+            key = "groupPredCompare",
+            label = "Compare group predictions",
+            createDefault = { GroupPredictionComparePV(Ref("")) },
+            editor = GroupPredComparePVEditorComponent,
+            matches = { it is GroupPredictionComparePV },
+        ),
+    )
 }

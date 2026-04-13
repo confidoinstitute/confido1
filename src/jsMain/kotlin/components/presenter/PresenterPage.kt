@@ -25,10 +25,16 @@ val view2page by lazy { mapOf(
     presenterPageMap(GroupPredPP),
     presenterPageMap(InviteLinkPP),
     presenterPageMap(CalibrationReqPP),
+    presenterPageMap(SlidePP),
+    presenterPageMap(PresentationPP),
 ) + ClientExtension.enabled.map { it.registerPresenterPages() }.fold(emptyMap()) { a, b -> a+b } }
 
+/** Look up the presenter page component for a given view type. */
+fun getPresenterPageComponent(view: PresenterView): PresenterPageType =
+    view2page[view::class] ?: EmptyPP.unsafeCast<PresenterPageType>()
+
 val PresenterPage = FC<PresenterPageProps<PresenterView>> { props->
-    val comp : PresenterPageType = (view2page[props.view::class] ?: EmptyPP.unsafeCast<PresenterPageType>())
+    val comp = getPresenterPageComponent(props.view)
     comp { this.view = props.view }
 }
 

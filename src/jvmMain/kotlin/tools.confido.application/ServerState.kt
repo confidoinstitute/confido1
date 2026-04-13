@@ -113,6 +113,9 @@ object serverState : GlobalState() {
 
     val shortInviteLinks = mutableMapOf<String, ShortLink>()
 
+    /** Room-scoped presentation run states. In-memory only, lost on server restart. */
+    val presentationRunStates: MutableMap<Ref<Room>, PresentationRunState> = mutableMapOf()
+
     abstract class EntityManager<E: HasId>(val mongoCollection: CoroutineCollection<E>) {
         var isLoading = false
         val updateCallbacks: MutableList<EntityManager<E>.(E, E) -> Unit> = mutableListOf()
@@ -322,6 +325,7 @@ object serverState : GlobalState() {
                 room.copy(
                     _effectiveMembers = null,
                     _effectiveQuestions = null,
+                    _presentationRunning = null,
                     members = room.members.map {
                         it.copy(implied = false, impliedFrom = null, effectivePermissions = null)
                     }
@@ -655,6 +659,15 @@ object serverState : GlobalState() {
         }
     }
 
+    object presentationManager : InMemoryEntityManager<Presentation>(database.getCollection("presentations")) {
+        init {
+            onEntityDeleted { pres ->
+                // Clean up run state when presentation is deleted
+                presentationRunStates.remove(Ref(pres.room.id))
+            }
+        }
+    }
+
     object userSessionManager : InMemoryExpiringEntityManager<UserSession>(database.getCollection("userSessions"))
     init {
         roomManager.register()
@@ -670,6 +683,7 @@ object serverState : GlobalState() {
         userPredHistManager.register()
         groupPredHistManager.register()
         commentLikeManager.register()
+        presentationManager.register()
     }
 
 

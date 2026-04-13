@@ -12,7 +12,9 @@ import components.redesign.basic.Stack
 import components.redesign.basic.dialogStateWrapper
 import components.redesign.basic.rowStyleTableCSS
 import components.redesign.basic.showError
+import components.redesign.basic.sansSerif
 import components.redesign.forms.*
+import components.redesign.presentation.FieldLabel
 import components.redesign.presenter.PresenterContext
 import components.redesign.questions.dialog.QuestionQuickSettingsDialogProps
 import components.redesign.questions.dialog.EditQuestionDialogProps
@@ -69,6 +71,10 @@ import web.html.ButtonType
 import web.html.submit
 import web.prompts.confirm
 
+// ============================================================
+//  QuestionSelector (existing, for reference question config)
+// ============================================================
+
 external interface QuestionSelectorProps : Props {
     var value: String?
     var onChange: ((Ref<Question>?) -> Unit)?
@@ -82,17 +88,10 @@ val QuestionSelector = FC<QuestionSelectorProps>("QuestionSelector") { props ->
     fun fmtq(q: Question) = "${q.name} [${q.id}]"
     var internalVal by useState(props.value?.let { appState.questions[it] }?.let {fmtq(it)} ?: "")
 
-
     div {
-        css {
-            width = 100.pct
-        }
+        css { width = 100.pct }
         input {
-            css {
-                width = 100.pct
-                padding = 8.px
-                fontSize = 16.px
-            }
+            css { width = 100.pct; padding = 8.px; fontSize = 16.px }
             type = InputType.text
             placeholder = "Search for a question..."
             list = datalistId.toString()
@@ -103,121 +102,184 @@ val QuestionSelector = FC<QuestionSelectorProps>("QuestionSelector") { props ->
                 val newVal = event.target.value
                 internalVal = newVal
                 val m = QID_RE.find(newVal)
-                if (m!=null) {
-                    props.onChange?.invoke(Ref(m.groups[1]!!.value))
-                } else {
-                    props.onChange?.invoke(null)
-                }
+                if (m!=null) props.onChange?.invoke(Ref(m.groups[1]!!.value))
+                else props.onChange?.invoke(null)
             }
         }
         datalist {
             id = datalistId
             appState.questions.values.filter{it.answerSpace == BinarySpace }.forEach { question ->
-                option {
-                    value = fmtq(question)
-                    +fmtq(question)
-                }
-             }
+                option { value = fmtq(question); +fmtq(question) }
+            }
         }
     }
 }
 
-external interface SnapshotOrTimeSelectorProps : Props {
+// ============================================================
+//  TimepointSelector - unified timepoint picker
+// ============================================================
+
+external interface TimepointSelectorProps : Props {
     var title: String
-    var value: Instant?
-    var onChange: (Instant?) -> Unit
+    var value: TimepointReference
+    var onChange: (TimepointReference) -> Unit
+    /** Existing snapshots (from question + room) for the dropdown. */
     var snapshots: List<Pair<Snapshot, SnapshotScope>>
-    var showNowOption: Boolean?
+    /** The question these snapshots belong to (needed for question-scoped snapshot references). */
+    var question: Ref<Question>?
+    /** If true, allow typing a free-text snapshot name (for flow editor). */
+    var allowFreeText: Boolean?
     var timezone: TimeZone
     var defaultDate: LocalDate
-    var placeholder: String?
 }
 
-val SnapshotOrTimeSelector = FC<SnapshotOrTimeSelectorProps> { props ->
-    var selectedOption by useState<String>(if (props.showNowOption == true) "now" else "")
+val TimepointSelector = FC<TimepointSelectorProps> { props ->
     val hasSnapshots = props.snapshots.isNotEmpty()
-    
+    val allowFreeText = props.allowFreeText ?: false
+    val existingSnapNames = props.snapshots.map { it.first.title }.toSet()
+
+    // Derive the current dropdown key from the value
+    val selectedOption = when (val v = props.value) {
+        is NowTimepoint -> "now"
+        is TimestampTimepoint -> "custom"
+        is SnapshotTimepoint -> {
+            // If it matches an existing snapshot, select it directly;
+            // otherwise use "freetype" (if allowed) so the text input shows
+            if (v.name in existingSnapNames) "snap:${v.name}"
+            else if (allowFreeText) "freetype"
+            else "now"
+        }
+    }
+
     FormField {
         title = props.title
-        
-        if (hasSnapshots) {
-            // Snapshot selector dropdown
-            ReactHTML.select {
-                css {
-                    width = 100.pct
-                    padding = 8.px
-                    fontSize = 16.px
-                    marginBottom = 8.px
-                }
-                value = selectedOption
-                onChange = { event ->
-                    val value = event.target.value
-                    selectedOption = value
-                    when (value) {
-                        "now" -> props.onChange(null)
-                        "custom" -> { /* Keep current value */ }
-                        "" -> props.onChange(null)
-                        else -> props.onChange(Instant.fromEpochSeconds(value.toLong()))
+
+        // Main selector dropdown
+        ReactHTML.select {
+            css { width = 100.pct; padding = 8.px; fontSize = 16.px; marginBottom = 8.px }
+            value = selectedOption
+            onChange = { event ->
+                val v = event.target.value
+                when {
+                    v == "now" -> props.onChange(NowTimepoint)
+                    v == "custom" -> props.onChange(TimestampTimepoint(Clock.System.now()))
+                    v == "freetype" -> props.onChange(SnapshotTimepoint(
+                        (props.value as? SnapshotTimepoint)?.name ?: "",
+                        (props.value as? SnapshotTimepoint)?.question,
+                    ))
+                    v.startsWith("snap:") -> {
+                        val snapName = v.removePrefix("snap:")
+                        // Find the snapshot to determine its scope
+                        val snap = props.snapshots.find { it.first.title == snapName }
+                        if (snap != null) {
+                            val questionRef = if (snap.second == SnapshotScope.QUESTION)
+                                props.question else null
+                            props.onChange(SnapshotTimepoint(snapName, questionRef))
+                        } else {
+                            props.onChange(SnapshotTimepoint(snapName))
+                        }
                     }
                 }
-                
-                if (props.showNowOption == true) {
-                    ReactHTML.option {
-                        value = "now"
-                        +"Now"
-                    }
-                } else {
-                    ReactHTML.option {
-                        value = ""
-                        +"(Select a snapshot or enter custom time)"
-                    }
-                }
-                
+            }
+
+            option { value = "now"; +"Now (latest predictions)" }
+
+            if (hasSnapshots) {
                 props.snapshots.forEach { (snap, scope) ->
-                    ReactHTML.option {
-                        value = snap.ts.toString()
+                    option {
+                        value = "snap:${snap.title}"
                         val ldt = Instant.fromEpochSeconds(snap.ts.toLong()).toLocalDateTime(props.timezone)
-                        val scopeLabel = if (props.snapshots.any { it.second != scope }) 
-                                        " [${scope.name.lowercase()}]" else ""
+                        val scopeLabel = if (props.snapshots.any { it.second != scope })
+                            " [${scope.name.lowercase()}]" else ""
                         +"${snap.title} - ${ldt}$scopeLabel"
                     }
                 }
-                
-                ReactHTML.option {
-                    value = "custom"
-                    +"Custom time..."
+            }
+
+            if (allowFreeText) {
+                option { value = "freetype"; +"Snapshot by name..." }
+            }
+
+            option { value = "custom"; +"Custom time..." }
+        }
+
+        // Free-text snapshot name input (shown when "Snapshot by name..." is selected)
+        if (allowFreeText && props.value is SnapshotTimepoint && selectedOption == "freetype") {
+            val snapTp = props.value as SnapshotTimepoint
+            TextInput {
+                value = snapTp.name
+                onChange = { e -> props.onChange(SnapshotTimepoint(e.target.value, snapTp.question)) }
+                placeholder = "Snapshot name"
+                css { width = 100.pct }
+            }
+            // Scope selector for the snapshot reference
+            ReactHTML.select {
+                css { width = 100.pct; padding = 6.px; fontSize = 14.px; marginTop = 4.px }
+                value = if (snapTp.question != null) "question" else "room"
+                onChange = { e ->
+                    when (e.target.value) {
+                        "room" -> props.onChange(SnapshotTimepoint(snapTp.name, null))
+                        "question" -> props.onChange(SnapshotTimepoint(snapTp.name, props.question))
+                    }
+                }
+                option { value = "room"; +"Room-wide snapshot" }
+                if (props.question != null) {
+                    option { value = "question"; +"Question-specific snapshot" }
                 }
             }
         }
-        
-        // Manual time input - show always if no snapshots, or when "custom" is selected
-        if (!hasSnapshots || selectedOption == "custom") {
+
+        // Custom time input
+        if (props.value is TimestampTimepoint) {
+            val tsTp = props.value as TimestampTimepoint
             DateTimeInput {
-                value = props.value?.toLocalDateTime(props.timezone)
+                value = tsTp.time.toLocalDateTime(props.timezone)
                 defaultDate = props.defaultDate
-                onChange = { newVal, err ->
-                    props.onChange(newVal?.toInstant(props.timezone))
+                onChange = { newVal, _ ->
+                    newVal?.toInstant(props.timezone)?.let { props.onChange(TimestampTimepoint(it)) }
                 }
-                placeholder = props.placeholder
             }
         }
     }
 }
+
+// ============================================================
+//  Helper: fetch update plot data via POST
+// ============================================================
+
+private suspend fun fetchUpdatePlotData(
+    questionId: String,
+    tp1: TimepointReference,
+    tp2: TimepointReference,
+    referenceQuestion: Ref<Question>? = null,
+): List<List2<Prediction?>> {
+    val req = UpdatePlotRequest(
+        question = Ref(questionId),
+        timepoint1 = tp1,
+        timepoint2 = tp2,
+        referenceQuestion = referenceQuestion,
+    )
+    return Client.sendDataRequest("/api${questionUrl(questionId)}/update_plot", req).body()
+}
+
+// ============================================================
+//  UpdatePlotConfigDialog (question page)
+// ============================================================
 
 external interface UpdatePlotConfigDialogProps : BaseDialogProps {
     var question: Question
 }
 
 val UpdatePlotConfigDialog = dialogStateWrapper(FC<UpdatePlotConfigDialogProps> { props ->
-    var time1 by useState<Instant?>(null)
-    var time2 by useState<Instant?>(null)
+    var tp1 by useState<TimepointReference>(NowTimepoint)
+    var tp2 by useState<TimepointReference>(NowTimepoint)
     var flipped by useState(false)
     val presenterCtl = use(PresenterContext)!!
     val tz = TimeZone.currentSystemDefault()
     val today = Clock.System.now().toLocalDateTime(tz).date
     val q = props.question
     val room = q.room
-    
+
     // Get available snapshots
     val questionSnapshots = q.extensionData[SnapshotsKey] ?: emptyList()
     val roomSnapshots = room?.extensionData?.get(SnapshotsKey) ?: emptyList()
@@ -229,34 +291,33 @@ val UpdatePlotConfigDialog = dialogStateWrapper(FC<UpdatePlotConfigDialogProps> 
         title = "Plot updates"
         Form {
             FormSection {
-                SnapshotOrTimeSelector {
+                TimepointSelector {
                     title = "Before time (x axis)"
-                    value = time1
-                    onChange = { time1 = it }
+                    value = tp1
+                    onChange = { tp1 = it }
                     snapshots = allSnapshots
-                    showNowOption = false
+                    question = q.ref
+                    allowFreeText = false
                     timezone = tz
                     defaultDate = today
                 }
-                
-                SnapshotOrTimeSelector {
+
+                TimepointSelector {
                     title = "After time (y axis)"
-                    value = time2
-                    onChange = { time2 = it }
+                    value = tp2
+                    onChange = { tp2 = it }
                     snapshots = allSnapshots
-                    showNowOption = true
+                    question = q.ref
+                    allowFreeText = false
                     timezone = tz
                     defaultDate = today
-                    placeholder = "(now)"
                 }
             }
         }
 
-        val data = useSuspendResult(props.open, time1, time2, q.id) {
+        val data = useSuspendResult(props.open, tp1, tp2, q.id) {
             if (!props.open) return@useSuspendResult null
-            val url = "/api${questionUrl(q.id)}/update_plot?t1=${time1?.epochSeconds}" +
-                if (time2 != null) "&t2=${time2!!.epochSeconds}" else ""
-            Client.httpClient.get(url).body<List<List2<Prediction?>>>()
+            fetchUpdatePlotData(q.id, tp1, tp2)
         }?.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<Prediction>>?>()
 
         UpdateSlopeChart {
@@ -281,18 +342,16 @@ val UpdatePlotConfigDialog = dialogStateWrapper(FC<UpdatePlotConfigDialogProps> 
             IconButton {
                 PresenterIcon {}
                 onClick = {
-                    presenterCtl.offer(
-                        UpdatePlotPV(
-                            q.ref,
-                            time1,
-                            time2
-                        )
-                    )
+                    presenterCtl.offer(UpdatePlotPV(q.ref, tp1, tp2))
                 }
             }
         }
     }
 })
+
+// ============================================================
+//  Snapshot Manager Dialog (unchanged)
+// ============================================================
 
 external interface SnapshotManagerDialogProps : BaseDialogProps {
     var room: Room?
@@ -341,7 +400,7 @@ val SnapshotManagerDialog = FC<SnapshotManagerDialogProps> { props->
                                     +ldt.toString()
                                 }
                                 td { +snap.title }
-                                if (multiScope) td { +scope.name.lowercase().capFirst() } // XXX use a chip or something
+                                if (multiScope) td { +scope.name.lowercase().capFirst() }
                                 td {
                                     IconButton {
                                         BinIcon { size = 18 }
@@ -398,7 +457,6 @@ val SnapshotManagerDialog = FC<SnapshotManagerDialogProps> { props->
                         onChange  = { newSnapshotName = it.target.value }
                     }
                 }
-                // only moderators can create public snapshots
                 if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
                 FormSwitch {
                     label = "Public"
@@ -415,7 +473,9 @@ val SnapshotManagerDialog = FC<SnapshotManagerDialogProps> { props->
     }
 }
 
-
+// ============================================================
+//  UpdatePlot Presenter Page
+// ============================================================
 
 external interface UpdatePlotProps : Props {
     var preds: List<List<Prediction?>>
@@ -426,20 +486,14 @@ val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
     val view = props.view
     val q = view.question.deref()
     val referenceForecast = q?.extensionData?.get(ReferenceForcastKey)
-    val rawData = useSuspendResult(view.time1, view.time2, view.question.id) {
-        val url = "/api${questionUrl(view.question.id)}/update_plot?x" +
-                (if (view.time1 != null) "&t1=${view.time1!!.epochSeconds}" else "") +
-                if (view.time2 != null) "&t2=${view.time2!!.epochSeconds}" else ""
-        Client.httpClient.get(url).body<List<List2<Prediction?>>>()
+    val rawData = useSuspendResult(view.timepoint1, view.timepoint2, view.question.id) {
+        fetchUpdatePlotData(view.question.id, view.timepoint1, view.timepoint2)
     }
     val data = rawData?.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<Prediction>>?>()
     var flipped by useState(false)
     val viewport = hooks.useViewportSize()
-    // Reserve space for header (~5vh) and footer (~5vh)
     val availableHeight = (viewport.height * 0.88).coerceAtLeast(200.0)
     val availableWidth = viewport.width.toDouble()
-    // Cap the secondary axis (perpendicular to probability) to keep slopes readable.
-    // In vertical mode: probability is Y, so cap width. In flipped: probability is X, so cap height.
     val chartWidth = if (flipped) availableWidth
                      else availableWidth.coerceAtMost(availableHeight * 0.5)
     val chartHeight = if (flipped) availableHeight.coerceAtMost(availableWidth * 0.4).coerceAtMost(500.0)
@@ -457,7 +511,6 @@ val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
             height = 100.vh
             overflow = Overflow.hidden
         }
-        // Compact question header
         q?.name?.let {
             div {
                 css {
@@ -474,7 +527,6 @@ val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
                 +it
             }
         }
-        // Chart fills remaining space
         if (rawData != null)
         div {
             css {
@@ -492,7 +544,6 @@ val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
                 width = chartWidth
             }
         }
-        // Group prediction averages
         if (rawData != null)
         Stack {
             direction = FlexDirection.row
@@ -515,7 +566,6 @@ val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
                 }
             }
         }
-        // Discreet flip toggle in bottom-right corner
         div {
             css {
                 position = Position.absolute
@@ -528,15 +578,97 @@ val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
                 cursor = Cursor.pointer
                 userSelect = None.none
                 color = Color("#64748b")
-                hover {
-                    backgroundColor = Color("rgba(255,255,255,0.9)")
-                }
+                hover { backgroundColor = Color("rgba(255,255,255,0.9)") }
             }
             onClick = { flipped = !flipped }
             +(if (flipped) "\u21C5 Normal" else "\u21C4 Flip axes")
         }
     }
 }
+
+// ============================================================
+//  Presentation Flow Editors
+// ============================================================
+
+/** PV editor for UpdatePlotPV with timepoint selectors. */
+private val UpdatePlotPVEditorComponent = FC<tools.confido.extensions.PresenterViewEditorProps> { props ->
+    val view = props.view as? UpdatePlotPV ?: return@FC
+    val (appState, _) = use(AppStateContext)!!
+    val room = use(components.redesign.rooms.RoomContext)!!
+    val questions = appState.questions.values.filter { q -> room.questions.any { it.id == q.id } }.sortedBy { it.name }
+    val tz = TimeZone.currentSystemDefault()
+    val today = Clock.System.now().toLocalDateTime(tz).date
+
+    FieldLabel { +"Question" }
+    QuestionPicker {
+        this.questions = questions
+        selectedId = view.question.id
+        onChange = { props.onChange(view.copy(question = Ref(it))) }
+    }
+    TimepointSelector {
+        title = "Before (x axis)"
+        value = view.timepoint1
+        onChange = { props.onChange(view.copy(timepoint1 = it)) }
+        snapshots = emptyList() // no existing snapshots in flow editor context
+        question = view.question
+        allowFreeText = true
+        timezone = tz
+        defaultDate = today
+    }
+    TimepointSelector {
+        title = "After (y axis)"
+        value = view.timepoint2
+        onChange = { props.onChange(view.copy(timepoint2 = it)) }
+        snapshots = emptyList()
+        question = view.question
+        allowFreeText = true
+        timezone = tz
+        defaultDate = today
+    }
+}
+
+/** Flow action editor for CreateSnapshotAction. */
+private val CreateSnapshotActionEditor = FC<tools.confido.extensions.FlowActionEditorProps> { props ->
+    val action = props.action as? CreateSnapshotAction ?: return@FC
+    val (appState, _) = use(AppStateContext)!!
+    val room = use(components.redesign.rooms.RoomContext)!!
+    val questions = appState.questions.values.filter { q -> room.questions.any { it.id == q.id } }.sortedBy { it.name }
+
+    FieldLabel { +"Snapshot name" }
+    TextInput {
+        value = action.name
+        onChange = { e -> props.onChange(action.copy(name = e.target.value)) }
+        placeholder = "e.g. Before discussion"
+        css { width = 100.pct }
+    }
+
+    FieldLabel { +"Scope" }
+    Select {
+        value = if (action.question != null) "question" else "room"
+        onChange = { e ->
+            when (e.target.value) {
+                "room" -> props.onChange(action.copy(question = null))
+                "question" -> props.onChange(action.copy(question = Ref(questions.firstOrNull()?.id ?: "")))
+            }
+        }
+        css { width = 100.pct }
+        option { value = "room"; +"Room-wide" }
+        option { value = "question"; +"Specific question" }
+    }
+
+    if (action.question != null) {
+        FieldLabel { +"Question" }
+        QuestionPicker {
+            this.questions = questions
+            selectedId = action.question.id
+            onChange = { props.onChange(action.copy(question = Ref(it))) }
+        }
+    }
+}
+
+// ============================================================
+//  Extension Registration
+// ============================================================
 
 object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
     override fun editQuestionDialogExtra(props: EditQuestionDialogProps, cb: ChildrenBuilder) {
@@ -594,11 +726,7 @@ object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
         when (place) {
             ClientExtension.QuestionPagePlace.QUESTION_PAGE_END -> {
                 var state  by useContextState(ExtensionContextPlace.QUESTION_PAGE, "state", default = UpdatePlotState.NONE)
-                var time1  by useContextState<Instant?>(ExtensionContextPlace.QUESTION_PAGE, "time1", default = null)
-                var time2  by useContextState<Instant?>(ExtensionContextPlace.QUESTION_PAGE, "time2", default = null)
                 val presenterCtl = use(PresenterContext)!!
-                val tz = TimeZone.currentSystemDefault()
-                val today = Clock.System.now().toLocalDateTime(tz).date
                 val nav = useNavigate()
                 val room = use(RoomContext)!!
                 cb.apply {
@@ -620,4 +748,24 @@ object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
 
     override fun registerPresenterPages() =
         mapOf(presenterPageMap(UpdatePlotPP))
+
+    override fun registerPresenterViewTypes() = listOf(
+        tools.confido.extensions.PresenterViewTypeEntry(
+            key = "updatePlot",
+            label = "Update scatter plot",
+            createDefault = { UpdatePlotPV(Ref(""), NowTimepoint, NowTimepoint) },
+            editor = UpdatePlotPVEditorComponent,
+            matches = { it is UpdatePlotPV },
+        )
+    )
+
+    override fun registerFlowActionTypes() = listOf(
+        tools.confido.extensions.FlowActionTypeEntry(
+            key = "createSnapshot",
+            label = "Create snapshot",
+            createDefault = { CreateSnapshotAction("") },
+            editor = CreateSnapshotActionEditor,
+            matches = { it is CreateSnapshotAction },
+        )
+    )
 }

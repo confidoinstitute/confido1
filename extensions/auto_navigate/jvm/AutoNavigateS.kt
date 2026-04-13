@@ -10,8 +10,11 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import rooms.Room
 import tools.confido.application.routes.postST
 import tools.confido.application.routes.webSocketST
+import tools.confido.state.AutoNavigateAction
+import tools.confido.state.FlowAction
 
 object AutoNavigateSE: ServerExtension, AutoNavigateExtension() {
     val navFlow = MutableSharedFlow<String>(replay = 0, extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -27,5 +30,11 @@ object AutoNavigateSE: ServerExtension, AutoNavigateExtension() {
                 call.respond(HttpStatusCode.OK)
             }
         }
+    }
+
+    override suspend fun executeFlowAction(action: FlowAction, room: Room): Boolean {
+        if (action !is AutoNavigateAction) return false
+        navFlow.emit(action.url)
+        return true
     }
 }

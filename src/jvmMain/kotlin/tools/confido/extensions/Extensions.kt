@@ -8,6 +8,7 @@ import rooms.RoomPermission
 import tools.confido.application.UserPresentationContext
 import tools.confido.question.Prediction
 import tools.confido.question.Question
+import tools.confido.state.FlowAction
 import users.User
 import users.UserPresentation
 
@@ -48,6 +49,9 @@ interface ServerExtension: Extension {
      *  Each entry carries flags controlling display and scoring behavior.
      *  Return null to use room.questions as-is (default). */
     fun effectiveQuestions(room: Room): List<EffectiveQuestion>? = null
+
+    /** Execute a flow action defined by this extension. Return true if handled. */
+    open suspend fun executeFlowAction(action: FlowAction, room: Room): Boolean = false
 
     companion object {
         val enabled get() = Extension.enabled.map{ it as ServerExtension }

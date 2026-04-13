@@ -61,6 +61,35 @@ data class InviteLinkPV(
     override fun describe() = "invite link and QR code"
 }
 
+/** Displays a slide image from a presentation. */
+@Serializable
+@SerialName("slide")
+data class SlidePV(
+    val presentationId: String,
+    val slideIndex: Int,
+    /** File access token for the slide image URL. */
+    val fileToken: String,
+) : PresenterView() {
+    override fun describe() = "presentation slide"
+    fun slideUrl(): String {
+        val num = (slideIndex + 1).toString().padStart(4, '0')
+        return "/presentations/$presentationId/$fileToken/slides/$num.png"
+    }
+}
+
+/**
+ * A proxy presenter view that delegates to the room's current presentation
+ * run state. The presenter window subscribes to the room's presentation
+ * WebSocket and renders whatever the current effective view is.
+ */
+@Serializable
+@SerialName("presentation")
+data class PresentationPV(
+    val room: Ref<Room>,
+) : PresenterView() {
+    override fun describe() = "live presentation"
+}
+
 
 const val PRESENTER_LIFETIME = 30 * 60
 
@@ -82,6 +111,8 @@ val presenterSM by lazy { SerializersModule {
         subclass(GroupPredPV::class)
         subclass(InviteLinkPV::class)
         subclass(CalibrationReqPV::class)
+        subclass(SlidePV::class)
+        subclass(PresentationPV::class)
         Extension.forEach { it.registerPresenterViews(this) }
     }
 } }
