@@ -375,6 +375,22 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         val token = call.parameters["token"] ?: ""
         return@getST call.respondRedirect("/join/${token}")
     }
+    // /pres/<token> is an alias for /join/<token>?follow=1 (nicer URL for presentation invite links)
+    getST("/pres/{token}") {
+        val token = call.parameters["token"] ?: return@getST serveFrontend()
+        // Resolve shortlinks directly to avoid a double redirect
+        if (token.matches(ShortLink.REGEX)) {
+            val shortLink = serverState.shortInviteLinks[token]
+            if (shortLink != null && shortLink.isValid()) {
+                val room = shortLink.room.deref()
+                val link = room?.let { r -> r.inviteLinks.firstOrNull { it.id == shortLink.linkId } }
+                if (link != null) {
+                    return@getST call.respondRedirect("/join/${link.token}?follow=1", permanent = true)
+                }
+            }
+        }
+        call.respondRedirect("/join/${token}?follow=1")
+    }
     getST("/join/{token}") {
         val token = call.parameters["token"] ?: return@getST serveFrontend() // frontend will display error
         if (token.matches(ShortLink.REGEX)) {
@@ -385,7 +401,9 @@ fun inviteRoutes(routing: Routing) = routing.apply {
 
             // Send 301 as a hack if user tries to re-visit the original shortcode URL
             // from history after is has already expired.
-            return@getST call.respondRedirect("/join/${link.token}", permanent=true)
+            // Preserve query params (e.g. ?follow=1) through the redirect.
+            val queryString = call.request.queryString().let { if (it.isNotEmpty()) "?$it" else "" }
+            return@getST call.respondRedirect("/join/${link.token}$queryString", permanent=true)
         }
         serveFrontend()
     }
@@ -533,6 +551,11 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                     }
                 }
             }
+
+            // Start following presentation if requested and a presentation is running
+            if (accept.followPresentation && serverState.presentationRunStates.containsKey(room.ref)) {
+                call.modifyUserSession { it.copy(followingPresentation = room.ref) }
+            }
         }
 
         TransientData.refreshAllWebsockets()
@@ -607,6 +630,11 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                 }
                 call.initSession(newUser, accept.validity)
                 call.loginUserSession(newUser, accept.validity)
+
+                // Start following presentation if requested and a presentation is running
+                if (accept.followPresentation && serverState.presentationRunStates.containsKey(room.ref)) {
+                    call.modifyUserSession { it.copy(followingPresentation = room.ref) }
+                }
             }
             userAlreadyExists
         }

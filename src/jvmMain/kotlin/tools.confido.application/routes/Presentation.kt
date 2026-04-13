@@ -11,6 +11,8 @@ import org.apache.pdfbox.rendering.PDFRenderer
 import payloads.requests.*
 import rooms.RoomPermission
 import tools.confido.application.sessions.TransientData
+import tools.confido.application.sessions.modifyUserSession
+import tools.confido.application.sessions.userSession
 import tools.confido.extensions.ServerExtension
 import tools.confido.question.Question
 import tools.confido.refs.Ref
@@ -195,6 +197,14 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot control presentation.")
             serverState.presentationRunStates.remove(room.ref)
             ServerExtension.forEach { it.onPresentationStopped(room) }
+            // Clear followingPresentation for all sessions following this room
+            serverState.userSessionManager.entityMap.values
+                .filter { it.followingPresentation?.id == room.id }
+                .forEach { session ->
+                    serverState.userSessionManager.modifyEntity(session.id) {
+                        it.copy(followingPresentation = null)
+                    }
+                }
             TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
@@ -249,13 +259,43 @@ fun presentationRoutes(routing: Routing) = routing.apply {
         }
     }
 
-    // WebSocket endpoint for live presentation data
+    // WebSocket endpoint for live presentation data (moderators only)
     getWS("/state$roomUrl/presentation") {
         call.withRoom {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot view presentation.")
             val pres = getPresentation(room) ?: notFound("No presentation for this room.")
             val runState = serverState.presentationRunStates[room.ref]
             PresentationWSData(presentation = pres, runState = runState)
+        }
+    }
+
+    // Follow a room's presentation (set session flag)
+    postST("$roomUrl/presentation/follow") {
+        call.withRoom {
+            // Any room member can follow
+            call.modifyUserSession { it.copy(followingPresentation = room.ref) }
+        }
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
+
+    // Stop following a room's presentation (clear session flag)
+    postST("$roomUrl/presentation/unfollow") {
+        call.withRoom {
+            call.modifyUserSession { it.copy(followingPresentation = null) }
+        }
+        TransientData.refreshAllWebsockets()
+        call.respond(HttpStatusCode.OK)
+    }
+
+    // WebSocket endpoint for presentation followers: sends currentNavigateUrl
+    getWS<String?>("/state$roomUrl/presentation/follow") {
+        val session = call.userSession
+        call.withRoom {
+            // Only send navigate URL if session is following this room's presentation
+            if (session?.followingPresentation?.id != room.id) return@withRoom null
+            val runState = serverState.presentationRunStates[room.ref]
+            runState?.currentNavigateUrl
         }
     }
 }
@@ -316,6 +356,11 @@ private suspend fun processCurrentItem(
             if (pv != null) {
                 newState = newState.copy(currentView = pv)
             }
+            // Always update navigate URL if the action declares one (idempotent)
+            val navUrl = item.action.getNavigateUrl(room)
+            if (navUrl != null) {
+                newState = newState.copy(currentNavigateUrl = navUrl)
+            }
         }
         is NoteItem -> {
             // Notes don't change currentView or execute anything
@@ -336,11 +381,20 @@ private suspend fun executeFlowAction(action: FlowAction, room: rooms.Room) {
             }
         }
         is SetTaggedQuestionsStateAction -> {
-            // Find all questions in this room that have the matching tag
+            // Find all questions in this room
             val roomQuestions = room.questions.mapNotNull { serverState.questions[it.id] }
+            // Set matching questions to the target state
             roomQuestions.filter { action.tag in it.tags }.forEach { q ->
                 serverState.questionManager.modifyEntity(q.id) {
                     it.withState(action.newState)
+                }
+            }
+            // Hide all non-matching questions if requested
+            if (action.hideOtherQuestions) {
+                roomQuestions.filter { action.tag !in it.tags }.forEach { q ->
+                    serverState.questionManager.modifyEntity(q.id) {
+                        it.withState(tools.confido.question.QuestionState.DRAFT)
+                    }
                 }
             }
         }
@@ -348,6 +402,10 @@ private suspend fun executeFlowAction(action: FlowAction, room: rooms.Room) {
             // When used in a PresenterViewItem, the view is set by processCurrentItem.
             // When used inside a CompositeAction, this is a no-op at the action level;
             // the view override would need to be handled at a higher level.
+        }
+        is NavigateToQuestionAction, is NavigateViewersAction -> {
+            // Navigation is handled by processCurrentItem via getNavigateUrl().
+            // No server-side side effects needed.
         }
         is CompositeAction -> {
             action.actions.forEach { executeFlowAction(it, room) }

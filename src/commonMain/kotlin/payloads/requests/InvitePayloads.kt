@@ -15,6 +15,8 @@ import users.UserType
 @Serializable
 data class AcceptInvite(
     val inviteToken: String,
+    /** If true, the session will start following the room's presentation. */
+    val followPresentation: Boolean = false,
 )
 
 /**
@@ -26,6 +28,8 @@ data class AcceptInviteAndCreateUser(
     val userNick: String?,
     val email: String?,
     val validity: UserSessionValidity,
+    /** If true, the session will start following the room's presentation. */
+    val followPresentation: Boolean = false,
 )
 
 /**

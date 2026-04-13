@@ -56,6 +56,8 @@ data class CalibrationReqPV(val req: CalibrationRequest) : PresenterView() {
 data class InviteLinkPV(
     val room: Ref<Room>,
     val id: String,
+    /** If true, users joining via this invite link will automatically follow the presentation. */
+    val followPresentation: Boolean = false,
 ) : PresenterView() {
     override suspend fun isValid() = this.id == "FIRST" || room.deref()?.inviteLinks?.any { it.id == this.id } ?: false
     override fun describe() = "invite link and QR code"

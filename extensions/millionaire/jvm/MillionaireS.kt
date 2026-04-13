@@ -172,6 +172,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
                         tag = config.tag,
                         questionName = qName,
                         presenterView = askingPV,
+                        questionRef = q.ref,
                     ),
                 ))
 
@@ -197,6 +198,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
                         tag = config.tag,
                         questionName = qName,
                         presenterView = resolvedPV,
+                        questionRef = q.ref,
                     ),
                 ))
             }

@@ -27,6 +27,7 @@ import tools.confido.utils.*
 import users.UserType
 import utils.*
 import web.location.*
+import web.url.URLSearchParams
 
 val RoomInviteLoggedIn = FC<Props> {
     Stack {
@@ -92,6 +93,8 @@ external interface RoomInviteFormProps : Props {
     var emailPolicy: InviteFieldPolicy
     var targetUserType: UserType
     var preventDuplicateNicknames: Boolean
+    /** If true, the user should start following the room's presentation after accepting. */
+    var followPresentation: Boolean
 }
 
 
@@ -138,7 +141,7 @@ private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
             width = 100.pct
         }
         onClick = {
-            val accept = AcceptInvite(props.inviteToken)
+            val accept = AcceptInvite(props.inviteToken, followPresentation = props.followPresentation)
             runCoroutine {
                 Client.sendData("${roomUrl(props.roomId)}/invite/accept", accept, onError = { showError(it) }) {
                     navigate(roomUrl(props.roomId))
@@ -189,6 +192,7 @@ internal val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
         console.error("Missing invite token")
         return@FC
     }
+    val followPresentation = URLSearchParams(location.search).get("follow") == "1"
 
     var inviteStatus by useState<InviteStatus?>(null)
 
@@ -223,6 +227,7 @@ internal val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
                 this.emailPolicy = status.emailPolicy
                 this.targetUserType = status.targetUserType
                 this.preventDuplicateNicknames = status.preventDuplicateNicknames
+                this.followPresentation = followPresentation
             }
         } else {
             InvalidInviteAlert {

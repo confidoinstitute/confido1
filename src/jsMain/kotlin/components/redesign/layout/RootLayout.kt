@@ -16,7 +16,9 @@ import components.redesign.rooms.*
 import web.cssom.*
 import emotion.react.css
 import hooks.useBreakpoints
+import hooks.useWebSocket
 import js.objects.unsafeJso as jso
+import payloads.responses.WSData
 import react.*
 import react.router.*
 import tools.confido.extensions.ClientExtension
@@ -44,6 +46,31 @@ val EmailLoginAlreadyLoggedIn = FC<Props> {
         navigate("/")
     }
 }
+/**
+ * Navigates the user to the presentation's current target URL.
+ * Rendered only when the session is following a presentation.
+ */
+private external interface PresentationFollowNavigatorProps : Props {
+    var roomId: String
+}
+
+private val PresentationFollowNavigator = FC<PresentationFollowNavigatorProps> { props ->
+    val navigate = useNavigate()
+    val ws = useWebSocket<String?>("/state${rooms.Room.urlPrefix(props.roomId)}/presentation/follow")
+    val navUrl = (ws as? WSData)?.data
+    val lastNavUrl = useRef<String>()
+
+    useEffect(navUrl) {
+        if (navUrl != null && navUrl != lastNavUrl.current) {
+            lastNavUrl.current = navUrl
+            // Only navigate if we're not already at the target URL
+            if (navUrl != window.location.pathname) {
+                navigate(navUrl)
+            }
+        }
+    }
+}
+
 val RootLayout = FC<Props> {
     ThemeProvider {
         theme = { _ -> DefaultTheme }
@@ -69,6 +96,15 @@ private val RootLayoutInner = FC<Props> {
     ClientExtension.enabled.forEach {
         it.rootLayoutStartHook()
     }
+
+    // Presentation follow navigation: conditionally render the navigator component
+    val followingRoom = appState.session.followingPresentation
+    if (followingRoom != null) {
+        PresentationFollowNavigator {
+            roomId = followingRoom.id
+        }
+    }
+
     useEffect(layoutMode.ordinal) {
         document.body.className = when (layoutMode) {
             LayoutMode.PHONE -> ClassName("phone tabminus")

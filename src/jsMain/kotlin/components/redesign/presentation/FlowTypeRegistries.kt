@@ -5,6 +5,7 @@ import components.redesign.basic.*
 import components.redesign.forms.Checkbox
 import components.redesign.forms.QuestionPicker
 import components.redesign.forms.Select
+import components.redesign.forms.TextInput
 import components.redesign.rooms.RoomContext
 import emotion.react.css
 import react.*
@@ -44,6 +45,22 @@ val flowItemTypes: List<FlowItemTypeEntry> by kotlin.lazy {
             createDefault = { SetTaggedQuestionsStateAction("", QuestionState.OPEN) },
             editor = SetTaggedQuestionsStateEditor,
             matches = { it is SetTaggedQuestionsStateAction },
+        ))
+        add(FlowItemTypeEntry(
+            key = "navigateToQuestion",
+            label = "Navigate viewers to question",
+            category = FlowItemCategory.SIDE_EFFECT,
+            createDefault = { NavigateToQuestionAction(Ref("")) },
+            editor = NavigateToQuestionEditor,
+            matches = { it is NavigateToQuestionAction },
+        ))
+        add(FlowItemTypeEntry(
+            key = "navigateViewers",
+            label = "Navigate viewers to URL",
+            category = FlowItemCategory.SIDE_EFFECT,
+            createDefault = { NavigateViewersAction("") },
+            editor = NavigateViewersEditor,
+            matches = { it is NavigateViewersAction },
         ))
 
         // --- Presenter view actions ---
@@ -162,6 +179,28 @@ val SetQuestionStateEditor = FC<FlowItemEditorProps> { props ->
         value = action.newState
         onChange = { props.onChange(action.copy(newState = it)) }
     }
+    // Context-sensitive navigation checkbox:
+    // - Draft (hiding): offer "navigate back to room"
+    // - Other states: offer "navigate to this question"
+    val isDraft = action.newState == QuestionState.DRAFT
+    val navTarget = if (isDraft) ViewerNavigateTarget.TO_ROOM else ViewerNavigateTarget.TO_QUESTION
+    val isChecked = action.navigateViewers == navTarget
+    Stack {
+        direction = FlexDirection.row
+        css { alignItems = AlignItems.center; gap = 8.px; marginTop = 4.px }
+        Checkbox {
+            checked = isChecked
+            onChange = { e ->
+                props.onChange(action.copy(
+                    navigateViewers = if (e.target.checked) navTarget else ViewerNavigateTarget.NONE
+                ))
+            }
+        }
+        span {
+            css { fontFamily = sansSerif; fontSize = 14.px }
+            if (isDraft) +"Navigate viewers back to room" else +"Navigate viewers to this question"
+        }
+    }
 }
 
 /** Editor for [SetTaggedQuestionsStateAction]. */
@@ -192,6 +231,34 @@ val SetTaggedQuestionsStateEditor = FC<FlowItemEditorProps> { props ->
     QuestionStateSelect {
         value = action.newState
         onChange = { props.onChange(action.copy(newState = it)) }
+    }
+    Stack {
+        direction = FlexDirection.row
+        css { alignItems = AlignItems.center; gap = 8.px; marginTop = 4.px }
+        Checkbox {
+            checked = action.hideOtherQuestions
+            onChange = { e -> props.onChange(action.copy(hideOtherQuestions = e.target.checked)) }
+        }
+        span {
+            css { fontFamily = sansSerif; fontSize = 14.px }
+            +"Hide all other questions"
+        }
+    }
+    val isDraft = action.newState == QuestionState.DRAFT
+    FieldLabel { +"Navigate viewers" }
+    Select {
+        value = action.navigateViewers.name
+        onChange = { e ->
+            ViewerNavigateTarget.entries.find { it.name == e.target.value }?.let {
+                props.onChange(action.copy(navigateViewers = it))
+            }
+        }
+        css { width = 100.pct }
+        option { value = ViewerNavigateTarget.NONE.name; +"No navigation" }
+        option { value = ViewerNavigateTarget.TO_ROOM.name; +"Navigate to room" }
+        if (!isDraft) {
+            option { value = ViewerNavigateTarget.TO_FIRST_QUESTION.name; +"Navigate to first tagged question" }
+        }
     }
 }
 
@@ -242,16 +309,61 @@ val GroupPredPVEditor = FC<FlowItemEditorProps> { props ->
 /** Editor for [InviteLinkPV]: informational text, sets room ref from context on mount. */
 val InviteLinkPVEditor = FC<FlowItemEditorProps> { props ->
     val room = use(RoomContext)!!
+    val view = props.action.innerView() as? InviteLinkPV ?: return@FC
     val onViewChange = wrapViewChange(props.onChange)
     // Set the room ref once when mounted (createDefault uses a placeholder Ref(""))
     useEffect(room.id) {
-        val view = props.action.innerView() as? InviteLinkPV
-        if (view != null && view.room.id != room.id) {
-            onViewChange(InviteLinkPV(room.ref, "FIRST"))
+        if (view.room.id != room.id) {
+            onViewChange(InviteLinkPV(room.ref, "FIRST", followPresentation = view.followPresentation))
         }
     }
     div {
         css { fontFamily = sansSerif; fontSize = 13.px; color = Color("#888"); marginTop = 4.px }
         +"Will show the room's invite link as a QR code on the presenter screen."
+    }
+    Stack {
+        direction = FlexDirection.row
+        css { alignItems = AlignItems.center; gap = 8.px; marginTop = 4.px }
+        Checkbox {
+            checked = view.followPresentation
+            onChange = { e -> onViewChange(view.copy(followPresentation = e.target.checked)) }
+        }
+        span {
+            css { fontFamily = sansSerif; fontSize = 14.px }
+            +"Users joining via this link will follow the presentation"
+        }
+    }
+}
+
+// ============================================================
+//  Navigation Action Editors
+// ============================================================
+
+/** Editor for [NavigateToQuestionAction]: question picker. */
+val NavigateToQuestionEditor = FC<FlowItemEditorProps> { props ->
+    val action = props.action as? NavigateToQuestionAction ?: return@FC
+    val questions = useRoomQuestions()
+
+    FieldLabel { +"Question" }
+    QuestionPicker {
+        this.questions = questions
+        selectedId = action.question.id
+        onChange = { props.onChange(action.copy(question = Ref(it))) }
+    }
+}
+
+/** Editor for [NavigateViewersAction]: URL text input. */
+val NavigateViewersEditor = FC<FlowItemEditorProps> { props ->
+    val action = props.action as? NavigateViewersAction ?: return@FC
+
+    FieldLabel { +"URL" }
+    TextInput {
+        value = action.url
+        placeholder = "/rooms/abc123"
+        onChange = { e -> props.onChange(action.copy(url = e.target.value)) }
+    }
+    div {
+        css { fontFamily = sansSerif; fontSize = 12.px; color = Color("#999"); marginTop = 2.px }
+        +"All presentation followers will be navigated to this URL."
     }
 }

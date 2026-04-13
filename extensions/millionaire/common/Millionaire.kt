@@ -21,6 +21,7 @@ import tools.confido.utils.ellipsize
 import tools.confido.utils.mapDeref
 import tools.confido.utils.toInt
 import kotlin.math.pow
+import tools.confido.refs.deref
 
 // --- Mode & Configuration ---
 
@@ -111,6 +112,8 @@ data class MillionaireSetStateAction(
     /** Short question text for display in the runner (populated during expansion). */
     val questionName: String = "",
     override val presenterView: PresenterView? = null,
+    /** Question ref for navigation (populated during expansion). */
+    val questionRef: Ref<Question>? = null,
 ) : FlowAction() {
     override fun describe(): String {
         val qLabel = if (questionName.isNotEmpty()) ": ${questionName.ellipsize(50)}" else ""
@@ -119,6 +122,12 @@ data class MillionaireSetStateAction(
             MillionaireStateType.RESOLVED -> "Close Q${curIndex + 1}$qLabel"
             MillionaireStateType.BEFORE_START -> "Reset game"
         }
+    }
+    override fun getNavigateUrl(room: Room): String? {
+        // Navigate viewers to the question when opening it
+        if (stateType != MillionaireStateType.ASKING) return null
+        val qId = questionRef?.id ?: return null
+        return room.urlPrefix + Question.urlPrefix(qId)
     }
 }
 

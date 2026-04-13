@@ -76,6 +76,7 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                             name.trim().ifEmpty { null },
                             userMail,
                             UserSessionValidity.PERMANENT,
+                            followPresentation = props.followPresentation,
                         ),
                         onError = { error ->
                             when {

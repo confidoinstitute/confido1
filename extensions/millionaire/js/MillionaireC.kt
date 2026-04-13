@@ -20,7 +20,7 @@ import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
-import react.router.useNavigate
+
 import rooms.Room
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ProbabilityDistribution
@@ -725,27 +725,17 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
         return config.mode == MillionaireMode.LADDER && config.tag in question.tags
     }
 
-    // --- Auto-navigate to next question ---
+    // --- Question page theming and extra content ---
 
     override fun questionPageExtra(q: Question, place: ClientExtension.QuestionPagePlace, cb: ChildrenBuilder) {
         use(AppStateContext)!!
         val room = use(RoomContext)!!
-        val nav = useNavigate()
         val config = useMillionaireConfig(room.id)
-
-        // Derive game state (safe even if config is null -- we just get empty lists)
-        val qs = if (config != null) questions(room, config.tag) else emptyList()
-        val st = if (config != null) getState(room, config.tag) else null
-
-        // Automatically move to next question
-        useEffect(q.id, q.state, st?.curQuestion?.id) {
-            if (config != null && st != null && q in qs && q.state == QuestionState.RESOLVED &&
-                q.id != st.curQuestion?.id && st.curQuestion?.id != null)
-                nav(room.urlPrefix + st.curQuestion.urlPrefix)
-        }
 
         // All hooks have been called above -- safe to early-return now
         if (config == null) return
+
+        val qs = questions(room, config.tag)
 
         // Inject WWTBAM theme for millionaire questions in ladder mode
         val isMilQuestion = q.id in qs.map { it.id }

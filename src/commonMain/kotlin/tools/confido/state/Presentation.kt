@@ -93,6 +93,9 @@ data class PresentationRunState(
     val expandedItems: List<FlowItem> = emptyList(),
     /** The effective presenter view to display (derived from the current item). */
     val currentView: PresenterView? = null,
+    /** URL that presentation followers should currently be navigated to. Updated when the
+     *  engine lands on an action whose [FlowAction.getNavigateUrl] returns non-null. */
+    val currentNavigateUrl: String? = null,
     /** IDs of action items that have been executed in this run (to avoid re-execution). */
     val executedActionIds: Set<String> = emptySet(),
     /** ID of the action that was executed on the most recent navigation step (null if none). */

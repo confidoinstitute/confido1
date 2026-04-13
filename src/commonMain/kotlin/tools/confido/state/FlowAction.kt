@@ -11,6 +11,20 @@ import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.refs.deref
 import tools.confido.utils.ellipsize
+import rooms.Room
+
+/** Where to navigate presentation followers as a side effect of an action. */
+@Serializable
+enum class ViewerNavigateTarget {
+    /** No navigation. */
+    NONE,
+    /** Navigate to the associated question. */
+    TO_QUESTION,
+    /** Navigate to the first matching question (for tag-based actions). */
+    TO_FIRST_QUESTION,
+    /** Navigate back to the room page. */
+    TO_ROOM,
+}
 
 /**
  * Base class for actions that can be executed as part of a presentation flow.
@@ -24,6 +38,9 @@ abstract class FlowAction {
     abstract fun describe(): String
     /** If non-null, the presenter view should be set to this after execution. */
     open val presenterView: PresenterView? get() = null
+    /** If non-null, presentation followers should be navigated to this URL.
+     *  Called with room context when the action is processed during a presentation run. */
+    open fun getNavigateUrl(room: Room): String? = null
 }
 
 /** Change a question's state (e.g. open, close, hide). */
@@ -32,10 +49,17 @@ abstract class FlowAction {
 data class SetQuestionStateAction(
     val question: Ref<Question>,
     val newState: QuestionState,
+    /** Where to navigate presentation followers. */
+    val navigateViewers: ViewerNavigateTarget = ViewerNavigateTarget.NONE,
 ) : FlowAction() {
     override fun describe(): String {
         val qName = question.deref()?.name?.ellipsize(50) ?: "?"
         return "${newState.name.lowercase().replaceFirstChar { it.uppercase() }} \"$qName\""
+    }
+    override fun getNavigateUrl(room: Room): String? = when (navigateViewers) {
+        ViewerNavigateTarget.TO_QUESTION -> room.urlPrefix + Question.urlPrefix(question.id)
+        ViewerNavigateTarget.TO_ROOM -> room.urlPrefix
+        else -> null
     }
 }
 
@@ -55,17 +79,46 @@ data class SetPresenterViewAction(
 data class SetTaggedQuestionsStateAction(
     val tag: String,
     val newState: QuestionState,
+    /** Where to navigate presentation followers. */
+    val navigateViewers: ViewerNavigateTarget = ViewerNavigateTarget.NONE,
+    /** If true, all questions in the room that do NOT match the tag will be set to DRAFT (hidden). */
+    val hideOtherQuestions: Boolean = false,
 ) : FlowAction() {
-    override fun describe() = "Set all \"$tag\" questions to ${newState.name.lowercase()}"
+    override fun describe(): String {
+        val base = "Set all \"$tag\" questions to ${newState.name.lowercase()}"
+        return if (hideOtherQuestions) "$base (hide others)" else base
+    }
+    override fun getNavigateUrl(room: Room): String? = when (navigateViewers) {
+        ViewerNavigateTarget.TO_FIRST_QUESTION -> {
+            val q = room.questions.mapNotNull { it.deref() }.firstOrNull { tag in it.tags }
+            if (q != null) room.urlPrefix + Question.urlPrefix(q.id) else null
+        }
+        ViewerNavigateTarget.TO_ROOM -> room.urlPrefix
+        else -> null
+    }
 }
 
-/** Navigate all guest users to a URL via the auto_navigate extension. */
+/** Navigate presentation followers to a specific question. */
+@Serializable
+@SerialName("navigateToQuestion")
+data class NavigateToQuestionAction(
+    val question: Ref<Question>,
+) : FlowAction() {
+    override fun describe(): String {
+        val qName = question.deref()?.name?.ellipsize(50) ?: "?"
+        return "Navigate viewers to \"$qName\""
+    }
+    override fun getNavigateUrl(room: Room) = room.urlPrefix + Question.urlPrefix(question.id)
+}
+
+/** Navigate presentation followers to an arbitrary URL. */
 @Serializable
 @SerialName("autoNavigate")
-data class AutoNavigateAction(
+data class NavigateViewersAction(
     val url: String,
 ) : FlowAction() {
-    override fun describe() = "Navigate users to $url"
+    override fun describe() = "Navigate viewers to $url"
+    override fun getNavigateUrl(room: Room) = url
 }
 
 /** Execute multiple actions in sequence. */
@@ -81,7 +134,8 @@ val flowActionSM by lazy { SerializersModule {
     polymorphic(FlowAction::class) {
         subclass(SetQuestionStateAction::class)
         subclass(SetTaggedQuestionsStateAction::class)
-        subclass(AutoNavigateAction::class)
+        subclass(NavigateToQuestionAction::class)
+        subclass(NavigateViewersAction::class)
         subclass(SetPresenterViewAction::class)
         subclass(CompositeAction::class)
         Extension.forEach { it.registerFlowActions(this) }

@@ -1,5 +1,6 @@
 package components.redesign.rooms
 
+import Client
 import components.AppStateContext
 import components.redesign.*
 import components.redesign.basic.*
@@ -38,6 +39,81 @@ import web.events.removeEventListener
 import web.scroll.smooth
 import web.timers.*
 import web.window.window
+
+/** Banner shown in a room when a presentation is running, allowing the user to follow/unfollow. */
+private val PresentationFollowBanner = FC<Props> {
+    val (appState, stale) = use(AppStateContext)!!
+    val room = use(RoomContext)!!
+    val isFollowing = appState.session.followingPresentation?.id == room.id
+    val presentationRunning = room._presentationRunning == true
+    val isGuest = appState.session.user?.type == users.UserType.GUEST
+    // Don't show anything if no presentation is running
+    if (!presentationRunning && !isFollowing) return@FC
+    // Don't show to moderators who manage the presentation
+    if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)) return@FC
+    // Hide the "stop following" banner for guests (they follow via invite link and shouldn't be confused)
+    if (isFollowing && isGuest) return@FC
+
+    div {
+        css {
+            display = Display.flex
+            flexDirection = FlexDirection.row
+            alignItems = AlignItems.center
+            justifyContent = JustifyContent.center
+            gap = 12.px
+            padding = Padding(10.px, 16.px)
+            fontFamily = sansSerif
+            fontSize = 14.px
+            lineHeight = 17.px
+            if (isFollowing) {
+                backgroundColor = Color("#E8F5E9")
+                color = Color("#2E7D32")
+                borderBottom = Border(1.px, LineStyle.solid, Color("#C8E6C9"))
+            } else {
+                backgroundColor = Color("#FFF3E0")
+                color = Color("#E65100")
+                borderBottom = Border(1.px, LineStyle.solid, Color("#FFE0B2"))
+            }
+        }
+
+        span {
+            css { flexGrow = number(1.0); textAlign = TextAlign.center }
+            if (isFollowing) {
+                +"Following presentation"
+            } else {
+                +"A presentation is running in this room"
+            }
+        }
+
+        Button {
+            css {
+                margin = 0.px
+                padding = Padding(5.px, 12.px)
+                fontSize = 13.px
+                lineHeight = 16.px
+                fontWeight = integer(600)
+                minWidth = Auto.auto
+            }
+            disabled = stale
+            onClick = {
+                runCoroutine {
+                    if (isFollowing) {
+                        Client.send("${room.urlPrefix}/presentation/unfollow", method = HttpMethod.Post,
+                            onError = { showError(it) }) {}
+                    } else {
+                        Client.send("${room.urlPrefix}/presentation/follow", method = HttpMethod.Post,
+                            onError = { showError(it) }) {}
+                    }
+                }
+            }
+            if (isFollowing) {
+                +"Stop following"
+            } else {
+                +"Follow presentation"
+            }
+        }
+    }
+}
 
 /** Simple component that redirects to a relative path. Used for first-available-tab redirect. */
 private external interface RedirectToProps : Props {
@@ -318,6 +394,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
         }
         onChange = ::scrollDownTabs
     }
+    PresentationFollowBanner {}
         main {
             css {
                 flexGrow = number(1.0)

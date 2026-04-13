@@ -70,9 +70,9 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
         // Compute effective questions if an extension provides them.
         val effQuestions = room.effectiveQuestions
 
-        // Populate presentation running flag from in-memory run state
+        // Populate presentation running flag from in-memory run state (visible to all members)
         val canManageQuestions = room.hasPermission(user, RoomPermission.MANAGE_QUESTIONS)
-        val presentationRunning = if (canManageQuestions) serverState.presentationRunStates.containsKey(room.ref) else null
+        val presentationRunning = if (serverState.presentationRunStates.containsKey(room.ref)) true else null
 
         var censored = room.copy(
             questions = room.questions.filter {

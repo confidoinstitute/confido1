@@ -3,6 +3,7 @@ package tools.confido.state
 import kotlinx.datetime.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import rooms.Room
 import tools.confido.refs.*
 import tools.confido.serialization.CoercingNullSerializer
 import users.User
@@ -32,6 +33,8 @@ data class UserSession(
     val language: String = "en",
     @Serializable(with=PresenterInfoSerializer::class)
     val presenterInfo: PresenterInfo? = null,
+    /** Room whose presentation this session is currently following (null = not following). */
+    val followingPresentation: Ref<Room>? = null,
     val validity: UserSessionValidity = UserSessionValidity.PERMANENT,
     override val expiryTime: Instant = Clock.System.now() + validity.validTime,
 ) : ImmediateDerefEntity, ExpiringEntity {

@@ -19,7 +19,9 @@ import web.location.location
 val InviteLinkPP = FC<PresenterPageProps<InviteLinkPV>> { props->
     val room = props.view.room.deref() ?: return@FC
     val link = room.inviteLinks.firstOrNull { it.id == props.view.id  || props.view.id == "FIRST" } ?: return@FC
-    val url = link.link(location.origin, room)
+    val baseUrl = link.link(location.origin, room)
+    // Use /pres/ prefix for follow-enabled links (cleaner URL for QR codes and display)
+    val url = if (props.view.followPresentation) baseUrl.replace("/join/", "/pres/") else baseUrl
     val ws = useWebSocket<String>("/state${room.urlPrefix}/invites/${link.id}/shortlink")
     val viewportSize = useViewportSize()
 
@@ -59,7 +61,7 @@ val InviteLinkPP = FC<PresenterPageProps<InviteLinkPV>> { props->
                     fontSize = 5.5.vh
                 }
                 +location.origin
-                +"/join/"
+                if (props.view.followPresentation) +"/pres/" else +"/join/"
                 +ws.data
             }
     }
