@@ -15,6 +15,7 @@ enum class ColumnMapping {
     UNIT,
     DECIMALS,
     EXTERNAL_ID,
+    TAGS,
     SKIP,
 }
 
@@ -34,6 +35,7 @@ data class ImportedQuestion(
     val answerSpace: Space,
     val resolution: Value? = null,
     val externalId: String? = null,
+    val tags: Set<String> = emptySet(),
     /** Tracks which fields were explicitly mapped from the CSV (for partial updates). */
     val mappedFields: Set<ColumnMapping> = emptySet(),
 )
@@ -47,6 +49,8 @@ data class ImportQuestionOptions(
     val groupPredRequirePrediction: Boolean = false,
     val allowComments: Boolean = true,
     val commentVisibility: CommentVisibility = CommentVisibility.EVERYONE,
+    /** Tags to add to all imported questions. */
+    val tags: Set<String> = emptySet(),
 )
 
 @Serializable

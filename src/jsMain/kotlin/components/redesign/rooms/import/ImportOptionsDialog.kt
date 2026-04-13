@@ -2,11 +2,13 @@ package components.redesign.rooms.import
 
 import components.redesign.basic.*
 import components.redesign.forms.*
+import components.redesign.rooms.RoomContext
 import payloads.requests.ImportQuestionOptions
 import react.*
 import tools.confido.question.CommentVisibility
 import tools.confido.question.GroupPredictionVisibility
 import tools.confido.question.QuestionState
+import tools.confido.refs.deref
 import web.cssom.*
 import emotion.react.css
 
@@ -18,6 +20,10 @@ external interface ImportOptionsDialogProps : BaseDialogProps {
 val ImportOptionsDialog = FC<ImportOptionsDialogProps> { props ->
     val options = props.options
     val gpv = GroupPredictionVisibility.fromBooleans(options.groupPredVisible, options.groupPredRequirePrediction)
+    val room = use(RoomContext)
+    val tagSuggestions: List<String> = useMemo(room?.questions) {
+        room?.questions?.mapNotNull { it.deref() }?.flatMap { it.tags }?.distinct()?.sorted() ?: emptyList()
+    }
 
     Dialog {
         open = props.open
@@ -88,6 +94,20 @@ val ImportOptionsDialog = FC<ImportOptionsDialogProps> { props ->
                     onChange = { cv: CommentVisibility ->
                         props.onOptionsChange(options.copy(commentVisibility = cv))
                     }
+                }
+            }
+        }
+
+        FormSection {
+            title = "Tags"
+            FormField {
+                title = "Tags"
+                comment = "These tags will be added to all imported questions."
+                TagInput {
+                    value = options.tags
+                    onChange = { newTags -> props.onOptionsChange(options.copy(tags = newTags)) }
+                    suggestions = tagSuggestions
+                    placeholder = "Add tags..."
                 }
             }
         }

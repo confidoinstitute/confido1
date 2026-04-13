@@ -32,6 +32,7 @@ private val COLUMN_ALIASES: Map<String, ColumnMapping> = buildMap {
         ColumnMapping.UNIT to listOf("unit", "units"),
         ColumnMapping.DECIMALS to listOf("decimals", "decimal places", "precision"),
         ColumnMapping.EXTERNAL_ID to listOf("id", "external id", "external_id", "key", "question id", "question_id"),
+        ColumnMapping.TAGS to listOf("tags", "tag", "labels", "label", "categories", "category"),
     )) {
         for (alias in aliases) {
             put(alias, mapping)
@@ -267,6 +268,22 @@ fun importQuestionRoutes(routing: Routing) = routing.apply {
                                 changed = true
                             }
 
+                            // Update tags if TAGS column was mapped (replace with imported + global)
+                            // or if global tags are set (union into existing)
+                            if (ColumnMapping.TAGS in mapped) {
+                                val newTags = imported.tags + payload.options.tags
+                                if (updated.tags != newTags) {
+                                    updated = updated.copy(tags = newTags)
+                                    changed = true
+                                }
+                            } else if (payload.options.tags.isNotEmpty()) {
+                                val newTags = updated.tags + payload.options.tags
+                                if (updated.tags != newTags) {
+                                    updated = updated.copy(tags = newTags)
+                                    changed = true
+                                }
+                            }
+
                             // Set externalId if mapped and not already set
                             if (imported.externalId != null && updated.externalId != imported.externalId) {
                                 updated = updated.copy(externalId = imported.externalId)
@@ -290,6 +307,7 @@ fun importQuestionRoutes(routing: Routing) = routing.apply {
                             groupPredRequirePrediction = payload.options.groupPredRequirePrediction,
                             allowComments = payload.options.allowComments,
                             commentVisibility = payload.options.commentVisibility,
+                            tags = imported.tags + payload.options.tags,
                             author = user.ref,
                             stateHistory = listOf(QuestionStateChange(
                                 newState = if (!payload.options.visible) QuestionState.DRAFT

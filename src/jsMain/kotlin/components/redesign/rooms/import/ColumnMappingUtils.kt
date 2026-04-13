@@ -12,6 +12,7 @@ val ColumnMapping.displayLabel: String get() = when (this) {
     ColumnMapping.UNIT -> "Unit"
     ColumnMapping.DECIMALS -> "Decimals"
     ColumnMapping.EXTERNAL_ID -> "External ID"
+    ColumnMapping.TAGS -> "Tags"
     ColumnMapping.SKIP -> "(skip)"
 }
 
@@ -21,6 +22,7 @@ val BINARY_MAPPINGS = setOf(
     ColumnMapping.DESCRIPTION,
     ColumnMapping.RESOLUTION,
     ColumnMapping.EXTERNAL_ID,
+    ColumnMapping.TAGS,
     ColumnMapping.SKIP,
 )
 
@@ -35,6 +37,7 @@ val DATE_MAPPINGS = setOf(
     ColumnMapping.MIN,
     ColumnMapping.MAX,
     ColumnMapping.EXTERNAL_ID,
+    ColumnMapping.TAGS,
     ColumnMapping.SKIP,
 )
 

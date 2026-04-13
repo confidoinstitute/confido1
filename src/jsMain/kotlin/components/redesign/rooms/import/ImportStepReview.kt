@@ -40,6 +40,8 @@ data class ParsedQuestion(
     val answerSpace: Space?,
     val resolution: Value?,
     val externalId: String?,
+    /** Tags parsed from the CSV Tags column for this row (before merging with global tags). */
+    val tags: Set<String> = emptySet(),
     val errors: List<String>,
     val matchType: MatchType,
     /** The set of column mappings that were actually populated from the CSV for this row. */
@@ -102,6 +104,12 @@ private fun parseRows(
         val description = getCol(row, ColumnMapping.DESCRIPTION) ?: ""
         val externalId = getCol(row, ColumnMapping.EXTERNAL_ID)
 
+        // Parse tags from CSV column: split on comma or semicolon, trim whitespace
+        val tagsRaw = getCol(row, ColumnMapping.TAGS)
+        val tags: Set<String> = if (tagsRaw != null) {
+            tagsRaw.split(Regex("[,;]")).map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+        } else emptySet()
+
         // Track which fields were actually mapped
         val mapped = mutableSetOf<ColumnMapping>()
         mapped.add(ColumnMapping.TITLE) // always mapped
@@ -112,6 +120,7 @@ private fun parseRows(
         if (mappings.contains(ColumnMapping.UNIT)) mapped.add(ColumnMapping.UNIT)
         if (mappings.contains(ColumnMapping.DECIMALS)) mapped.add(ColumnMapping.DECIMALS)
         if (mappings.contains(ColumnMapping.EXTERNAL_ID)) mapped.add(ColumnMapping.EXTERNAL_ID)
+        if (mappings.contains(ColumnMapping.TAGS)) mapped.add(ColumnMapping.TAGS)
 
         // Build answer space
         val answerSpace: Space? = when (state.questionType) {
@@ -194,8 +203,14 @@ private fun parseRows(
                 val spaceChanged = match.answerSpace != answerSpace
                 val resChanged = ColumnMapping.RESOLUTION in mapped && match.resolution != resolution
                 val extIdChanged = externalId != null && match.externalId != externalId
+                val mergedTags = tags + state.options.tags
+                val tagsChanged = if (ColumnMapping.TAGS in mapped) {
+                    match.tags != mergedTags
+                } else if (state.options.tags.isNotEmpty()) {
+                    !match.tags.containsAll(state.options.tags)
+                } else false
 
-                if (nameChanged || descChanged || spaceChanged || resChanged || extIdChanged) {
+                if (nameChanged || descChanged || spaceChanged || resChanged || extIdChanged || tagsChanged) {
                     MatchType.UPDATE
                 } else {
                     MatchType.UNCHANGED
@@ -210,6 +225,7 @@ private fun parseRows(
             answerSpace = answerSpace,
             resolution = resolution,
             externalId = externalId,
+            tags = tags,
             errors = errors,
             matchType = matchType,
             mappedFields = mapped,
@@ -257,6 +273,7 @@ val ImportStepReview = FC<ImportStepReviewProps> { props ->
     val unchangedQuestions = parsedQuestions.filter { it.matchType == MatchType.UNCHANGED }
     val errorQuestions = parsedQuestions.filter { it.matchType == MatchType.ERROR }
     val actionableQuestions = parsedQuestions.filter { it.isActionable }
+    val showTagsColumn = state.columnMappings.contains(ColumnMapping.TAGS) || state.options.tags.isNotEmpty()
 
     // Options dialog
     ImportOptionsDialog {
@@ -333,6 +350,9 @@ val ImportStepReview = FC<ImportStepReviewProps> { props ->
                     if (state.columnMappings.contains(ColumnMapping.RESOLUTION)) {
                         th { +"Resolution" }
                     }
+                    if (showTagsColumn) {
+                        th { +"Tags" }
+                    }
                     th { css { width = 1.px; whiteSpace = WhiteSpace.nowrap }; +"Status" }
                 }
             }
@@ -374,6 +394,35 @@ val ImportStepReview = FC<ImportStepReviewProps> { props ->
                             td {
                                 css { fontSize = 13.px }
                                 +(pq.resolution?.format() ?: "-")
+                            }
+                        }
+                        if (showTagsColumn) {
+                            td {
+                                css {
+                                    fontSize = 13.px
+                                    whiteSpace = WhiteSpace.normal
+                                    maxWidth = 200.px
+                                }
+                                val allTags = pq.tags + state.options.tags
+                                for (tag in allTags.sorted()) {
+                                    span {
+                                        css {
+                                            display = Display.inlineBlock
+                                            fontFamily = sansSerif
+                                            fontWeight = integer(600)
+                                            fontSize = 11.px
+                                            lineHeight = 13.px
+                                            padding = Padding(2.px, 6.px)
+                                            borderRadius = 20.px
+                                            backgroundColor = Color("#F0F0F0")
+                                            color = Color("#666666")
+                                            border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))
+                                            marginRight = 3.px
+                                            marginBottom = 2.px
+                                        }
+                                        +tag
+                                    }
+                                }
                             }
                         }
                         td {
@@ -478,6 +527,7 @@ val ImportStepReview = FC<ImportStepReviewProps> { props ->
                                         answerSpace = pq.answerSpace!!,
                                         resolution = pq.resolution,
                                         externalId = pq.externalId,
+                                        tags = pq.tags,
                                         mappedFields = pq.mappedFields,
                                     )
                                 },
