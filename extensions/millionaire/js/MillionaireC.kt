@@ -833,7 +833,11 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
             if (config.timer !is TimerConfig.None && q.state == QuestionState.OPEN) {
                 div {
                     css {
-                        padding = Padding(0.px, 15.px, 10.px)
+                        position = Position.sticky
+                        bottom = 0.px
+                        zIndex = integer(10)
+                        padding = Padding(8.px, 15.px, 10.px)
+                        background = "linear-gradient(to bottom, rgba(5,5,32,0), rgba(5,5,32,0.95) 30%)".unsafeCast<Background>()
                     }
                     MillionaireTimerBar {
                         roomId = room.id
