@@ -132,7 +132,7 @@ data class NumericSpace(
             return LocalDate.utcFromUnix(value.toLong()).toString()
         }
         var r = if (condensed)
-                condensedNum(value)
+                condensedNum(value, size)
             else
                 value.toFixed(decimals)
         if (unit != "" && showUnit) r += " $unit"

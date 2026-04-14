@@ -232,12 +232,13 @@ fun toNiceStr(n: Number, maxDecimals: Int) =
         //is Int -> n.toString() // XXX seems broken
         else-> n.toDouble().toFixed(maxDecimals).trimEnd('0').trimEnd('.', ',')
     }
-fun condensedNum(n: Number) =  n.toDouble().let { d->
-    if (d >= 1_000_000_000.0) {
+fun condensedNum(n: Number) = condensedNum(n, Double.MAX_VALUE)
+fun condensedNum(n: Number, range: Double) =  n.toDouble().let { d->
+    if (d >= 1_000_000_000.0 && range >= 10_000_000_000.0) {
         toNiceStr(d / 1_000_000_000.0, 1) + "B"
-    } else if (d >= 1_000_000.0) {
+    } else if (d >= 1_000_000.0 && range >= 10_000_000.0) {
         toNiceStr(d / 1_000_000.0, 1) + "M"
-    } else if (d >= 1000.0) {
+    } else if (d >= 1000.0 && range >= 10_000.0) {
         toNiceStr(d / 1000.0, 1) + "K"
     } else {
         toNiceStr(n, 1)
