@@ -7,7 +7,10 @@ import io.ktor.utils.io.toByteArray
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.apache.pdfbox.Loader
+import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.rendering.PDFRenderer
+import org.apache.pdfbox.text.PDFTextStripper
+import org.apache.pdfbox.text.TextPosition
 import payloads.requests.*
 import rooms.RoomPermission
 import tools.confido.application.sessions.TransientData
@@ -19,6 +22,7 @@ import tools.confido.refs.Ref
 import tools.confido.refs.ref
 import tools.confido.state.*
 import java.io.File
+import java.io.StringWriter
 import javax.imageio.ImageIO
 
 val presentationDir = File(System.getenv("CONFIDO_PRESENTATION_PATH") ?: "presentations").canonicalFile
@@ -74,8 +78,9 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             // Save original PDF
             File(presentationDir, "${pres.id}/orig.pdf").writeBytes(bytes)
 
-            // Convert PDF pages to PNG images
+            // Convert PDF pages to PNG images and extract slide titles
             var numSlides = 0
+            var slideLabels = emptyList<String>()
             try {
                 val doc = Loader.loadPDF(bytes)
                 doc.use { pdf ->
@@ -86,15 +91,20 @@ fun presentationRoutes(routing: Routing) = routing.apply {
                         val filename = (i + 1).toString().padStart(4, '0') + ".png"
                         ImageIO.write(image, "PNG", File(slideDir, filename))
                     }
+
+                    // Heuristically extract slide titles from PDF text
+                    slideLabels = (0 until numSlides).map { i ->
+                        val title = extractSlideTitle(pdf, i)
+                        if (title != null) "Slide ${i + 1}: $title" else "Slide ${i + 1}"
+                    }
                 }
             } catch (e: Exception) {
                 badRequest("Failed to process PDF: ${e.message}")
             }
 
             // Update presentation entity
-            val defaultLabels = (1..numSlides).map { "Slide $it" }
             serverState.presentationManager.modifyEntity(pres.id) { p ->
-                p.copy(numSlides = numSlides, slideLabels = defaultLabels)
+                p.copy(numSlides = numSlides, slideLabels = slideLabels)
             }
 
             TransientData.refreshAllWebsockets()
@@ -414,5 +424,154 @@ private suspend fun executeFlowAction(action: FlowAction, room: rooms.Room) {
             // Dispatch to extensions
             ServerExtension.enabled.any { it.executeFlowAction(action, room) }
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Heuristic slide title extraction from PDF text
+// ---------------------------------------------------------------------------
+
+/**
+ * A text run collected from a single [PDFTextStripper.writeString] call,
+ * representing a contiguous piece of text on the page.
+ */
+private data class TextRun(
+    val text: String,
+    val fontSize: Float,
+    /** Y position in top-down coordinates (0 = top of page). */
+    val yPosition: Float,
+    val pageHeight: Float,
+)
+
+/**
+ * Custom [PDFTextStripper] that collects text runs with their font size
+ * and position rather than producing plain text output.
+ */
+private class SlideTextExtractor : PDFTextStripper() {
+    val runs = mutableListOf<TextRun>()
+
+    override fun writeString(text: String, textPositions: List<TextPosition>) {
+        if (textPositions.isEmpty()) return
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return
+
+        // Use the dominant (most common) font size across the run's characters
+        val fontSize = textPositions
+            .groupingBy { it.fontSizeInPt }
+            .eachCount()
+            .maxByOrNull { it.value }
+            ?.key ?: return
+
+        // Use the first character's adjusted Y position (top-down coordinate)
+        val yPos = textPositions.first().yDirAdj
+        val pageHeight = textPositions.first().pageHeight
+
+        runs.add(TextRun(trimmed, fontSize, yPos, pageHeight))
+    }
+}
+
+/**
+ * A line of text assembled from one or more [TextRun]s that share
+ * approximately the same Y position.
+ */
+private data class TextLine(
+    val text: String,
+    val fontSize: Float,
+    val yPosition: Float,
+    val pageHeight: Float,
+)
+
+/**
+ * Group [TextRun]s into lines based on Y-position proximity and merge
+ * their text. Runs within ~2pt vertically are considered the same line.
+ */
+private fun groupRunsIntoLines(runs: List<TextRun>): List<TextLine> {
+    if (runs.isEmpty()) return emptyList()
+
+    val sorted = runs.sortedWith(compareBy({ it.yPosition }, { it.text }))
+    val lines = mutableListOf<TextLine>()
+    var currentRuns = mutableListOf(sorted.first())
+
+    for (run in sorted.drop(1)) {
+        if (kotlin.math.abs(run.yPosition - currentRuns.first().yPosition) <= 2f) {
+            currentRuns.add(run)
+        } else {
+            lines.add(mergeLine(currentRuns))
+            currentRuns = mutableListOf(run)
+        }
+    }
+    lines.add(mergeLine(currentRuns))
+    return lines
+}
+
+/** Merge a group of runs on the same line into a single [TextLine]. */
+private fun mergeLine(runs: List<TextRun>): TextLine {
+    val text = runs.joinToString(" ") { it.text }
+    // Use the maximum font size on the line (title text may be mixed with smaller elements)
+    val fontSize = runs.maxOf { it.fontSize }
+    val yPosition = runs.first().yPosition
+    val pageHeight = runs.first().pageHeight
+    return TextLine(text, fontSize, yPosition, pageHeight)
+}
+
+private val PAGE_NUMBER_PATTERN = Regex("^\\d{1,4}$")
+
+/**
+ * Score a [TextLine] as a potential slide title.
+ *
+ * Higher scores are better. The heuristic combines:
+ * - Font size (60% weight): larger text is more likely a title
+ * - Y position (40% weight): text nearer the top of the page is preferred
+ */
+private fun scoreLine(line: TextLine, maxFontSize: Float): Double {
+    val fontSizeScore = if (maxFontSize > 0f) (line.fontSize / maxFontSize).toDouble() else 0.0
+    val yPositionScore = if (line.pageHeight > 0f) {
+        1.0 - (line.yPosition / line.pageHeight).toDouble().coerceIn(0.0, 1.0)
+    } else 0.0
+    return 0.6 * fontSizeScore + 0.4 * yPositionScore
+}
+
+private const val MAX_TITLE_LENGTH = 80
+
+/**
+ * Extract a heuristic slide title from a single page of a PDF document.
+ *
+ * @param pdf   The loaded PDF document.
+ * @param pageIndex  Zero-based page index.
+ * @return The extracted title, or `null` if no suitable text was found.
+ */
+private fun extractSlideTitle(pdf: PDDocument, pageIndex: Int): String? {
+    val extractor = SlideTextExtractor().apply {
+        startPage = pageIndex + 1  // PDFTextStripper uses 1-based page numbers
+        endPage = pageIndex + 1
+    }
+    try {
+        extractor.getText(pdf)
+    } catch (_: Exception) {
+        return null
+    }
+
+    val runs = extractor.runs
+    if (runs.isEmpty()) return null
+
+    val lines = groupRunsIntoLines(runs)
+    if (lines.isEmpty()) return null
+
+    val maxFontSize = lines.maxOf { it.fontSize }
+
+    val best = lines
+        // Filter out very short text and bare page numbers
+        .filter { it.text.length >= 2 && !PAGE_NUMBER_PATTERN.matches(it.text.trim()) }
+        .maxByOrNull { scoreLine(it, maxFontSize) }
+        ?: return null
+
+    // Clean up: collapse whitespace, trim
+    val title = best.text.replace(Regex("\\s+"), " ").trim()
+    if (title.length < 2) return null
+
+    return if (title.length > MAX_TITLE_LENGTH) {
+        title.take(MAX_TITLE_LENGTH - 1).trimEnd() + "…"
+    } else {
+        title
     }
 }
