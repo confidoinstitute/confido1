@@ -387,7 +387,9 @@ private suspend fun executeFlowAction(action: FlowAction, room: rooms.Room) {
     when (action) {
         is SetQuestionStateAction -> {
             serverState.questionManager.modifyEntity(action.question.id) {
-                it.withState(action.newState)
+                var q = it.withState(action.newState)
+                action.setGroupPredVisibility?.let { vis -> q = vis.apply(q) }
+                q
             }
         }
         is SetTaggedQuestionsStateAction -> {
@@ -396,7 +398,9 @@ private suspend fun executeFlowAction(action: FlowAction, room: rooms.Room) {
             // Set matching questions to the target state
             roomQuestions.filter { action.tag in it.tags }.forEach { q ->
                 serverState.questionManager.modifyEntity(q.id) {
-                    it.withState(action.newState)
+                    var modified = it.withState(action.newState)
+                    action.setGroupPredVisibility?.let { vis -> modified = vis.apply(modified) }
+                    modified
                 }
             }
             // Hide all non-matching questions if requested

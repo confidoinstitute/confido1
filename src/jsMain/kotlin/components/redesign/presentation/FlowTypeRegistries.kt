@@ -16,6 +16,7 @@ import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.FlowItemCategory
 import tools.confido.extensions.FlowItemEditorProps
 import tools.confido.extensions.FlowItemTypeEntry
+import tools.confido.question.GroupPredictionVisibility
 import tools.confido.question.QuestionState
 import tools.confido.refs.Ref
 import tools.confido.refs.ref
@@ -148,6 +149,27 @@ private val QuestionStateSelect = FC<QuestionStateSelectProps> { props ->
     }
 }
 
+private external interface GroupPredVisibilitySelectProps : Props {
+    /** null means "No change". */
+    var value: GroupPredictionVisibility?
+    var onChange: (GroupPredictionVisibility?) -> Unit
+}
+
+private val GroupPredVisibilitySelect = FC<GroupPredVisibilitySelectProps> { props ->
+    Select {
+        value = props.value?.name ?: ""
+        onChange = { e ->
+            val v = e.target.value
+            props.onChange(if (v.isEmpty()) null else GroupPredictionVisibility.entries.find { it.name == v })
+        }
+        css { width = 100.pct }
+        option { value = ""; +"No change" }
+        option { value = GroupPredictionVisibility.EVERYONE.name; +"Everyone" }
+        option { value = GroupPredictionVisibility.ANSWERED.name; +"Answered only" }
+        option { value = GroupPredictionVisibility.MODERATOR_ONLY.name; +"Moderator only (hidden)" }
+    }
+}
+
 // ============================================================
 //  Helpers for presenter view editors (wrap/unwrap SetPresenterViewAction)
 // ============================================================
@@ -201,6 +223,11 @@ val SetQuestionStateEditor = FC<FlowItemEditorProps> { props ->
             if (isDraft) +"Navigate viewers back to room" else +"Navigate viewers to this question"
         }
     }
+    FieldLabel { +"Group prediction visibility" }
+    GroupPredVisibilitySelect {
+        value = action.setGroupPredVisibility
+        onChange = { props.onChange(action.copy(setGroupPredVisibility = it)) }
+    }
 }
 
 /** Editor for [SetTaggedQuestionsStateAction]. */
@@ -243,6 +270,11 @@ val SetTaggedQuestionsStateEditor = FC<FlowItemEditorProps> { props ->
             css { fontFamily = sansSerif; fontSize = 14.px }
             +"Hide all other questions"
         }
+    }
+    FieldLabel { +"Group prediction visibility" }
+    GroupPredVisibilitySelect {
+        value = action.setGroupPredVisibility
+        onChange = { props.onChange(action.copy(setGroupPredVisibility = it)) }
     }
     val isDraft = action.newState == QuestionState.DRAFT
     FieldLabel { +"Navigate viewers" }

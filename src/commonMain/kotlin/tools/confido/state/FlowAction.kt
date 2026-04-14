@@ -6,6 +6,7 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
 import tools.confido.extensions.Extension
+import tools.confido.question.GroupPredictionVisibility
 import tools.confido.question.QuestionState
 import tools.confido.question.Question
 import tools.confido.refs.Ref
@@ -51,10 +52,13 @@ data class SetQuestionStateAction(
     val newState: QuestionState,
     /** Where to navigate presentation followers. */
     val navigateViewers: ViewerNavigateTarget = ViewerNavigateTarget.NONE,
+    /** If non-null, also change the question's group prediction visibility. */
+    val setGroupPredVisibility: GroupPredictionVisibility? = null,
 ) : FlowAction() {
     override fun describe(): String {
         val qName = question.deref()?.name?.ellipsize(50) ?: "?"
-        return "${newState.name.lowercase().replaceFirstChar { it.uppercase() }} \"$qName\""
+        val base = "${newState.name.lowercase().replaceFirstChar { it.uppercase() }} \"$qName\""
+        return base + describeGroupPredVisibility(setGroupPredVisibility)
     }
     override fun getNavigateUrl(room: Room): String? = when (navigateViewers) {
         ViewerNavigateTarget.TO_QUESTION -> room.urlPrefix + Question.urlPrefix(question.id)
@@ -83,10 +87,13 @@ data class SetTaggedQuestionsStateAction(
     val navigateViewers: ViewerNavigateTarget = ViewerNavigateTarget.NONE,
     /** If true, all questions in the room that do NOT match the tag will be set to DRAFT (hidden). */
     val hideOtherQuestions: Boolean = false,
+    /** If non-null, also change matching questions' group prediction visibility. */
+    val setGroupPredVisibility: GroupPredictionVisibility? = null,
 ) : FlowAction() {
     override fun describe(): String {
         val base = "Set all \"$tag\" questions to ${newState.name.lowercase()}"
-        return if (hideOtherQuestions) "$base (hide others)" else base
+        val withHide = if (hideOtherQuestions) "$base (hide others)" else base
+        return withHide + describeGroupPredVisibility(setGroupPredVisibility)
     }
     override fun getNavigateUrl(room: Room): String? = when (navigateViewers) {
         ViewerNavigateTarget.TO_FIRST_QUESTION -> {
@@ -128,6 +135,14 @@ data class CompositeAction(
     val actions: List<FlowAction>,
 ) : FlowAction() {
     override fun describe() = "${actions.size} actions"
+}
+
+/** Describe the group prediction visibility suffix for action descriptions. */
+internal fun describeGroupPredVisibility(vis: GroupPredictionVisibility?): String = when (vis) {
+    null -> ""
+    GroupPredictionVisibility.EVERYONE -> " (show group pred to everyone)"
+    GroupPredictionVisibility.ANSWERED -> " (show group pred to answered)"
+    GroupPredictionVisibility.MODERATOR_ONLY -> " (hide group pred)"
 }
 
 val flowActionSM by lazy { SerializersModule {
