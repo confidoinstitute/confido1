@@ -106,7 +106,7 @@ object CalibrationTrainingCE : ClientExtension, CalibrationTrainingExtension() {
     override fun rootRoutesExtra(): List<RouteObject> {
         return listOf(
             jso {
-                path = "training"
+                path = "training/*"
                 element = TrainingPage.create()
             }
         )
