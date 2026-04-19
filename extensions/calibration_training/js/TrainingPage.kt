@@ -25,8 +25,8 @@ import react.dom.html.ReactHTML.li
 import react.dom.html.ReactHTML.ol
 import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
-import react.router.useLocation
 import react.router.useNavigate
+import tools.confido.calibration.CalibrationEntry
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.BinaryValue
@@ -52,7 +52,6 @@ enum class TrainingViewState {
  */
 val TrainingPage = FC<Props> {
     val (appState, stale) = use(AppStateContext)!!
-    val location = useLocation()
     val navigate = useNavigate()
     
     var viewState by useState(TrainingViewState.LOADING)
@@ -61,7 +60,6 @@ val TrainingPage = FC<Props> {
     var userPrediction by useState<Double?>(null)
     var feedback by useState<AnswerFeedbackResponse?>(null)
     var errorMessage by useState<String?>(null)
-    val statsDialogOpen = location.pathname.endsWith("/stats")
     var resetDialogOpen by useState(false)
     var hasStartedTraining by useState(false)
     
@@ -142,12 +140,6 @@ val TrainingPage = FC<Props> {
                 +"Stats"
             }
         }
-    }
-    
-    // Dialogs
-    TrainingStatsDialog {
-        open = statsDialogOpen
-        onClose = { navigate("/training") }
     }
     
     ConfirmResetDialog {
@@ -420,7 +412,7 @@ val TrainingFeedbackView = FC<TrainingFeedbackViewProps> { props ->
 
         // Bucket accuracy gauge
         // Show only when we have enough data
-        if (fb.bucketFeedback.totalInBucket >= 5) {
+        if (fb.bucketFeedback.totalInBucket >= CalibrationEntry.MIN_PER_BIN) {
             BucketAccuracyGauge {
                 bucketName = fb.bucketFeedback.bucketName
                 correct = fb.bucketFeedback.correctInBucket

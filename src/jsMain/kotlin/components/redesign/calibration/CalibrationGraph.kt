@@ -109,7 +109,7 @@ val CalibrationGraphContent = elementSizeWrapper(FC<CalibrationGraphProps> { pro
     fun pt(c: List2<Double>) = c.joinToString(" ")
     fun pt(x: Number, y: Number) = "$x $y"
     fun ptp(px: Double, py: Double) = pt(proj(px,py))
-    val entries = props.calib.entries.filter { it.value.total > 0 }
+    val entries = props.calib.entries.filter { it.value.enoughData }
     var graphHovered by useState(false)
     svg {
         css(override=props) {

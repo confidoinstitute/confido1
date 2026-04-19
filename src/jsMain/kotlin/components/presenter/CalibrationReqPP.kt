@@ -20,7 +20,7 @@ val CalibrationReqPP = FC<PresenterPageProps<CalibrationReqPV>> { props->
         if (resp.status.isSuccess()) resp.body<CalibrationVector>()
         else null
     }
-    val entries = data?.entries?.filter { it.value.total > 0 } ?: emptyList()
+    val entries = data?.entries?.filter { it.value.enoughData } ?: emptyList()
     data?.let {
         Stack {
             css {

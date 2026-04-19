@@ -245,3 +245,4 @@ jsBrowserProductionRun.dependsOn(jsProductionExecutableCompileSync)
 tasks.matching { it.name.startsWith("compileKotlin") }.configureEach {
     dependsOn(generateExtensionRegistries)
 }
+

@@ -127,13 +127,10 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
         }
         tbody {
             entries.forEach { (bin,entry)->
-                val calibrationOff = entry.successRate!! - bin.mid
-                val band = calibrationBands.first { calibrationOff in it.range }
-
                 val btd = FC<TdHTMLAttributes<HTMLTableCellElement>> { btdProps->
                     td {
                         +btdProps.except("children")
-                        if (props.onDetail != null) {
+                        if (props.onDetail != null && entry.enoughData) {
                             ButtonUnstyled {
                                 css { width = 100.pct; cursor = Cursor.pointer }
                                 onClick = {
@@ -147,74 +144,102 @@ val CalibrationTable = FC<CalibrationTableProps> { props->
                         }
                     }
                 }
-                tr {
-                    css {
-                        "td" {
-                            backgroundColor = if (bin == props.highlightBin) Color("#eee") else NamedColor.white
-                        }
-                    }
-                    onMouseEnter = { props.onBinHover?.invoke(bin) }
-                    onMouseLeave = { props.onBinHover?.invoke(null) }
-                    btd {
-                        +"${fmtp(bin.range.start)} - ${formatPercent(bin.range.endInclusive)}"
-                    }
-                    btd {
+
+                if (entry.enoughData) {
+                    val calibrationOff = entry.successRate!! - bin.mid
+                    val band = calibrationBands.first { calibrationOff in it.range }
+                    tr {
                         css {
-                            "&&" {
-                                backgroundColor = Color(band.color)
+                            "td" {
+                                backgroundColor = if (bin == props.highlightBin) Color("#eee") else NamedColor.white
                             }
                         }
-                        +band.sign
-                    }
-                    btd {
-                        entry.successRate?.let{ +fmtp(it) }
-                    }
-                    btd {
-                        span {
-                            if (props.onDetail != null)
-                                css { +linkCSS }
-                            +"${entry.total}"
-                            //+" ${entry.total} "
+                        onMouseEnter = { props.onBinHover?.invoke(bin) }
+                        onMouseLeave = { props.onBinHover?.invoke(null) }
+                        btd {
+                            +"${fmtp(bin.range.start)} - ${formatPercent(bin.range.endInclusive)}"
                         }
-                    }
-                    btd {
-                        css {
-                            "&&" {
-                                backgroundColor = Color(band.color)
-                                fontWeight = integer(600)
+                        btd {
+                            css {
+                                "&&" {
+                                    backgroundColor = Color(band.color)
+                                }
+                            }
+                            +band.sign
+                        }
+                        btd {
+                            entry.successRate?.let{ +fmtp(it) }
+                        }
+                        btd {
+                            span {
+                                if (props.onDetail != null)
+                                    css { +linkCSS }
+                                +"${entry.total}"
                             }
                         }
-                        if (0.0 in band.range) { // well-calibrated band
-                            Stack {
-                                direction = FlexDirection.row
-                                css {
-                                    justifyContent = JustifyContent.center
+                        btd {
+                            css {
+                                "&&" {
+                                    backgroundColor = Color(band.color)
+                                    fontWeight = integer(600)
                                 }
-                                div {
-                                    +band.name
-                                }
-                                div {
+                            }
+                            if (0.0 in band.range) { // well-calibrated band
+                                Stack {
+                                    direction = FlexDirection.row
                                     css {
-                                        width = 0.px
-                                        flexBasis = 0.px
-                                        flexGrow = number(0.0)
-                                        position = Position.relative
+                                        justifyContent = JustifyContent.center
+                                    }
+                                    div {
+                                        +band.name
                                     }
                                     div {
                                         css {
-                                            color = yesGreen
-                                            fontSize = 150.pct
-                                            lineHeight = number(1.0)
-                                            position = Position.absolute
-                                            left = 0.px
-                                            top = (-10).pct
+                                            width = 0.px
+                                            flexBasis = 0.px
+                                            flexGrow = number(0.0)
+                                            position = Position.relative
                                         }
-                                        +"✓"
+                                        div {
+                                            css {
+                                                color = yesGreen
+                                                fontSize = 150.pct
+                                                lineHeight = number(1.0)
+                                                position = Position.absolute
+                                                left = 0.px
+                                                top = (-10).pct
+                                            }
+                                            +"✓"
+                                        }
                                     }
                                 }
+                            } else {
+                                +band.name
                             }
-                        } else {
-                            +band.name
+                        }
+                    }
+                } else {
+                    // Not enough data in this bin — show a muted row
+                    tr {
+                        css {
+                            "td" {
+                                backgroundColor = NamedColor.white
+                                color = Color("#999")
+                            }
+                        }
+                        td {
+                            +"${fmtp(bin.range.start)} - ${formatPercent(bin.range.endInclusive)}"
+                        }
+                        td {}
+                        td { +"\u2014" } // em dash
+                        td { +"${entry.total}" }
+                        td {
+                            css {
+                                "&&" {
+                                    fontStyle = FontStyle.italic
+                                }
+                            }
+                            +"Not enough data"
                         }
                     }
                 }
@@ -303,7 +328,7 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
         else null
     }
     val req = props.req
-    val entries = data?.entries?.filter { it.value.total > 0 } ?: emptyList()
+    val entries = data?.entries?.filter { it.value.enoughData } ?: emptyList()
     val (appState,stale) = use(AppStateContext)!!
     val detailFetch = useCoroutineLock()
     var detailBin by useState<CalibrationBin>()

@@ -321,7 +321,7 @@ val Dashboard = FC<Props> {
             if (resp.status.isSuccess()) resp.body<CalibrationVector>()
             else null
         }
-        val showCalibGraph = (myCalib != null && myCalib.entries.filter { it.value.total > 0 }.size > 0)
+        val showCalibGraph = (myCalib != null && myCalib.entries.any { it.value.enoughData })
 
         if (showCalibGraph) {
             title("Your calibration", layoutMode.contentSidePad)

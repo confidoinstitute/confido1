@@ -9,9 +9,14 @@ import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.CoroutineCollection
 import tools.confido.application.routes.*
 import tools.confido.calibration.CalibrationBin
+import tools.confido.calibration.CalibrationVector
+import tools.confido.calibration.calibrationScore
+import tools.confido.calibration.sum
 import tools.confido.extensions.ServerExtension
 import tools.confido.refs.Ref
+import tools.confido.refs.deref
 import tools.confido.refs.ref
+import tools.confido.state.FlowAction
 import tools.confido.state.serverState
 import tools.confido.utils.generateId
 import tools.confido.utils.unixNow
@@ -214,6 +219,17 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
     private suspend fun getUserResponses(user: Ref<User>): List<TrainingResponse> {
         return responseCollection.find(TrainingResponse::user eq user).toList()
     }
+
+    /**
+     * Build a [CalibrationVector] from a list of training responses.
+     * Each response contributes one data point: the user's yesProb vs. the question's ground truth.
+     */
+    private fun buildCalibrationVector(responses: List<TrainingResponse>): CalibrationVector {
+        return responses.mapNotNull { response ->
+            val question = trainingQuestions.find { it.id == response.questionId } ?: return@mapNotNull null
+            CalibrationVector(response.yesProb, question.answer)
+        }.sum()
+    }
     
     /**
      * Calculate bucket stats from responses.
@@ -377,6 +393,33 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
                     call.respond(trainingQuestions)
                 }
             }
+
+            // Calibration training leaderboard (WebSocket, live-updating)
+            getWS("/api/ext/calibration_training/leaderboard.ws") {
+                call.withUser {
+                    val allResponses = responseCollection.find().toList()
+                    val responsesByUser = allResponses.groupBy { it.user }
+
+                    responsesByUser.mapNotNull { (userRef, responses) ->
+                        val calibVector = buildCalibrationVector(responses)
+                        val score = calibVector.calibrationScore(minPredictions = 10)
+                            ?: return@mapNotNull null
+                        val resolvedUser = userRef.deref()
+                        CalibrationLeaderboardEntry(
+                            nickname = resolvedUser?.nick ?: "(Anonymous)",
+                            score = score,
+                            numAnswered = responses.size,
+                            calibration = calibVector,
+                        )
+                    }.sortedByDescending { it.score }
+                }
+            }
         }
+    }
+
+    override suspend fun executeFlowAction(action: FlowAction, room: rooms.Room): Boolean {
+        // The presenter view change is handled automatically via action.presenterView;
+        // no additional server-side effects needed.
+        return action is ShowCalibrationLeaderboardAction
     }
 }

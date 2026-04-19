@@ -2,8 +2,14 @@ package extensions.calibration_training
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.modules.PolymorphicModuleBuilder
+import kotlinx.serialization.modules.subclass
+import rooms.Room
+import tools.confido.calibration.CalibrationVector
 import tools.confido.extensions.Extension
 import tools.confido.refs.Ref
+import tools.confido.state.FlowAction
+import tools.confido.state.PresenterView
 import users.User
 
 /**
@@ -103,8 +109,48 @@ data class AnswerFeedbackResponse(
 )
 
 /**
+ * Leaderboard entry for calibration training.
+ */
+@Serializable
+data class CalibrationLeaderboardEntry(
+    val nickname: String,
+    val score: Double,          // 0–100 calibration score
+    val numAnswered: Int,
+    val calibration: CalibrationVector,  // per-user calibration vector for drill-down graph
+)
+
+/**
+ * Presenter view: calibration training leaderboard on the projector.
+ */
+@Serializable
+@SerialName("calibration_training_leaderboard")
+class CalibrationLeaderboardPV : PresenterView() {
+    override fun describe() = "Calibration training leaderboard"
+}
+
+/**
+ * Flow action: show calibration training leaderboard on presenter
+ * and navigate followers to their personal stats page.
+ */
+@Serializable
+@SerialName("showCalibrationLeaderboard")
+class ShowCalibrationLeaderboardAction : FlowAction() {
+    override fun describe() = "Show calibration training leaderboard"
+    override val presenterView get() = CalibrationLeaderboardPV()
+    override fun getNavigateUrl(room: Room) = "/training/stats"
+}
+
+/**
  * Base extension class shared between client and server.
  */
 open class CalibrationTrainingExtension : Extension {
     override val extensionId = "calibration_training"
+
+    override fun registerPresenterViews(builder: PolymorphicModuleBuilder<PresenterView>) {
+        builder.subclass(CalibrationLeaderboardPV::class)
+    }
+
+    override fun registerFlowActions(builder: PolymorphicModuleBuilder<FlowAction>) {
+        builder.subclass(ShowCalibrationLeaderboardAction::class)
+    }
 }
