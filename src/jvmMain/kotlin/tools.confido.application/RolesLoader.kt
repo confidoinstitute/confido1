@@ -163,10 +163,15 @@ fun builtinDefaultRoles(): List<RoomRole> {
         RoomPermission.VIEW_GROUP_CALIBRATION,
         RoomPermission.VIEW_SCORES,
     )
-    val forecasterPerms = viewerPerms + setOf(
+    val forecasterPerms = setOf(
+        RoomPermission.VIEW_QUESTIONS,
+        RoomPermission.VIEW_QUESTION_COMMENTS,
+        RoomPermission.VIEW_ROOM_COMMENTS,
         RoomPermission.SUBMIT_PREDICTION,
         RoomPermission.POST_ROOM_COMMENT,
         RoomPermission.POST_QUESTION_COMMENT,
+        RoomPermission.VIEW_GROUP_CALIBRATION,
+        RoomPermission.VIEW_SCORES,
     )
     val moderatorPerms = forecasterPerms + setOf(
         RoomPermission.ADD_QUESTION,
