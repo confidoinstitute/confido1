@@ -407,6 +407,7 @@ fun importQuestionRoutes(routing: Routing) = routing.apply {
                                 user = user.ref,
                             )),
                             externalId = imported.externalId,
+                            schedule = null, // inherit default schedule
                         )
                         val inserted = serverState.questionManager.insertEntity(question)
                         newRefs.add(inserted.ref)
