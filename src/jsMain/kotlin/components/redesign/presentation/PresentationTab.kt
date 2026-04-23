@@ -94,6 +94,21 @@ val PresentationTab = FC<Props> {
                                 }
                             }
                         }
+                        Button {
+                            css {
+                                margin = 0.px
+                                padding = Padding(6.px, 16.px)
+                                fontSize = 13.px
+                                backgroundColor = Color("#1976d2")
+                            }
+                            +"Open presenter"
+                            onClick = {
+                                submitLock {
+                                    setPresenterView(PresentationPV(room.ref))
+                                    openPresenterWindow()
+                                }
+                            }
+                        }
                     } else {
                         if (data.presentation.items.isNotEmpty()) {
                             Button {
@@ -103,33 +118,18 @@ val PresentationTab = FC<Props> {
                                     fontSize = 13.px
                                     backgroundColor = Color("#4caf50")
                                 }
-                        +"Run"
-                        onClick = {
-                            submitLock {
-                                Client.sendData("${room.urlPrefix}/presentation/start", "",
-                                    onError = { showError(it) }) {
-                                    // Set PresentationPV on user session and open presenter window
-                                    setPresenterView(PresentationPV(room.ref))
-                                    openPresenterWindow()
+                                +"Run"
+                                onClick = {
+                                    submitLock {
+                                        Client.sendData("${room.urlPrefix}/presentation/start", "",
+                                            onError = { showError(it) }) {
+                                            // Set PresentationPV on user session and open presenter window
+                                            setPresenterView(PresentationPV(room.ref))
+                                            openPresenterWindow()
+                                        }
+                                    }
                                 }
                             }
-                        }
-                            }
-                        }
-                        Button {
-                            css {
-                                margin = 0.px
-                                padding = Padding(6.px, 16.px)
-                                fontSize = 13.px
-                                backgroundColor = Color("#1976d2")
-                            }
-                    +"Open presenter"
-                        onClick = {
-                            submitLock {
-                                setPresenterView(PresentationPV(room.ref))
-                                openPresenterWindow()
-                            }
-                        }
                         }
                     }
                 }

@@ -3,22 +3,20 @@ package components.redesign.presentation
 import Client
 import components.redesign.basic.*
 import components.redesign.forms.Button
+import components.redesign.presenter.setPresenterView
 import components.redesign.rooms.RoomContext
 import emotion.react.css
 import hooks.useCoroutineLock
+import hooks.usePresentationKeyboardNav
 import payloads.requests.NavigateDirection
 import payloads.requests.NavigatePresentation
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.img
 import react.dom.html.ReactHTML.span
+import tools.confido.refs.ref
 import tools.confido.state.*
 import web.cssom.*
-import web.dom.document
-import web.events.Event
-import web.events.EventType
-import web.events.addEventHandler
-import web.events.removeEventListener
 import web.html.HTMLElement
 
 external interface PresentationRunnerProps : Props {
@@ -38,33 +36,16 @@ val PresentationRunner = FC<PresentationRunnerProps> { props ->
         submitLock {
             Client.sendData("${room.urlPrefix}/presentation/navigate",
                 NavigatePresentation(dir, index),
-                onError = { showError(it) }) {}
+                onError = { showError(it) }) {
+                // Ensure the session's presenter view points at this presentation,
+                // so that even if the user manually changed it, navigating brings it back.
+                setPresenterView(PresentationPV(room.ref))
+            }
         }
     }
 
-    // Keyboard navigation
-    useEffectOnceWithCleanup {
-        val handler = { e: Event ->
-            val ke = e.asDynamic()
-            val key = ke.key as? String ?: ""
-            // Don't capture if user is typing in an input
-            val tagName = (ke.target?.tagName as? String)?.uppercase() ?: ""
-            if (tagName != "INPUT" && tagName != "TEXTAREA") {
-                when (key) {
-                    "ArrowRight", "ArrowDown", " ", "PageDown" -> {
-                        navigate(NavigateDirection.NEXT)
-                        e.preventDefault()
-                    }
-                    "ArrowLeft", "ArrowUp", "PageUp" -> {
-                        navigate(NavigateDirection.PREV)
-                        e.preventDefault()
-                    }
-                }
-            }
-        }
-        document.addEventHandler(EventType("keydown"), handler)
-        onCleanup { document.removeEventListener(EventType<Event>("keydown"), handler) }
-    }
+    // Keyboard navigation with debounce (shared hook, also used in the presenter window)
+    usePresentationKeyboardNav(room.id)
 
     // Scroll current item into view
     useEffect(runState.currentIndex) {
