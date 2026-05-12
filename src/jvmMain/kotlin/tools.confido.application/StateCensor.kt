@@ -154,6 +154,7 @@ enum class UserPresentationContext {
 fun getUserPresentation(user: User?, observer: User, context: UserPresentationContext, room: Room?): UserPresentation {
     ServerExtension.forEach { ext-> ext.getUserPresentation(user, observer, context, room)?.let { return it } }
     if (user == null) return UserPresentation(false, "(Deleted user)")
-    return UserPresentation(user.id == observer.id, user.nick ?: "(Anonymous)",
+    val amIModerator = room?.hasPermission(observer, RoomPermission.MANAGE_MEMBERS) ?: false
+    return UserPresentation(user.id == observer.id, user.nick ?: (if (amIModerator) user.email else null) ?: "(Anonymous)",
     color = stringToColor(user.id))
 }
