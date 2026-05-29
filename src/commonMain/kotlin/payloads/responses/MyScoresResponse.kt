@@ -41,6 +41,7 @@ data class MyScoresResponse(
 data class ScoreboardEntry(
     val user: UserPresentation,
     val score: Double,
+    val questionsAnswered: Int,
 )
 
 /** Response for the user's rank within a specific room's scoreboard. */

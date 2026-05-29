@@ -27,6 +27,7 @@ import tools.confido.utils.mapDeref
 
 import tools.confido.question.Question
 import users.User
+import java.lang.System.getenv
 
 /** Compute the room scoreboard: list of [ScoreboardEntry] sorted descending by score. */
 private suspend fun computeScoreboard(room: Room, observer: User): List<ScoreboardEntry> {
@@ -38,12 +39,14 @@ private suspend fun computeScoreboard(room: Room, observer: User): List<Scoreboa
         q.answerSpace is BinarySpace && q.state == QuestionState.RESOLVED && q.resolution != null &&
                 q.effectiveSchedule.score != null
     }
+    val minQ = getenv("CONFIDO_SCORE_MIN_QUESTIONS")?.toIntOrNull() ?: 1
     val entries = serverState.users.mapNotNull { (_, u) ->
         val uScores = questions.mapNotNull { q -> getScore(q, getScoredPrediction(q, u.ref)) }
-        if (uScores.isEmpty()) null
+        if (uScores.isEmpty() || uScores.size < minQ) null
         else ScoreboardEntry(
             user = getUserPresentation(u, observer, UserPresentationContext.SCOREBOARD, room),
             score = uScores.sum(),
+            questionsAnswered = uScores.size,
         )
     }
     return entries.sortedBy { -it.score }

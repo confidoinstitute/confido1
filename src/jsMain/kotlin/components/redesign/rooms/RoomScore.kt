@@ -196,6 +196,7 @@ val RoomScore = FC<Props> {
                             th { css { width = 1.px }; +"#" }
                             th { +"Name" }
                             th { css { width = 1.px; whiteSpace = WhiteSpace.nowrap }; +"Score" }
+                            th { css { width = 1.px; whiteSpace = WhiteSpace.nowrap }; +"Questions" }
                         }
                     }
                     tbody {
@@ -260,6 +261,15 @@ val RoomScore = FC<Props> {
                                         }
                                     }
                                     +entry.score.toFixed(1)
+                                }
+                                td {
+                                    css {
+                                        "&&" {
+                                            fontWeight = integer(600)
+                                            textAlign = TextAlign.right
+                                        }
+                                    }
+                                    +(entry.questionsAnswered.toString())
                                 }
                             }
                         }
