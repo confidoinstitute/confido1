@@ -159,7 +159,7 @@ val Comment = FC<CommentProps> { props ->
                 text = "Reply"
             }
             */
-            if (props.comment.likeCount == 0 && voteState == VoteState.NO_VOTE) {
+            if (props.comment.likeCount == 0 && voteState == VoteState.NO_VOTE && !props.comment.isMine) {
                 FooterAction {
                     icon = UpvoteIcon
                     text = "Upvote"

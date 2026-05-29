@@ -144,6 +144,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
 
             assertPermission(RoomPermission.VIEW_QUESTION_COMMENTS, "You cannot like this comment.")
             val comment = serverState.questionComments[question.ref]?.get(id) ?: notFound("No such comment.")
+            if (comment.user == user.ref) forbidden("You cannot upvote your own comment")
 
             serverState.commentLikeManager.setLike(comment.ref, user.ref, state)
         }
@@ -229,6 +230,7 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
 
             assertPermission(RoomPermission.VIEW_ROOM_COMMENTS, "You cannot like this comment.")
             val comment = serverState.roomComments[room.ref]?.get(id) ?: notFound("No such comment.")
+            if (comment.user == user.ref) forbidden("You cannot upvote your own comment")
 
             serverState.commentLikeManager.setLike(comment.ref, user.ref, state)
         }
