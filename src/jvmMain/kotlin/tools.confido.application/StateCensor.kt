@@ -149,6 +149,7 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
 enum class UserPresentationContext {
     COMMENT_AUTHOR,
     SCOREBOARD,
+    INDIVIDUAL_PREDICTION,
 }
 
 fun getUserPresentation(user: User?, observer: User, context: UserPresentationContext, room: Room?): UserPresentation {

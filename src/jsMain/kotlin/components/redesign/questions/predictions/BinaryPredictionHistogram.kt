@@ -16,6 +16,7 @@ import js.objects.unsafeJso as jso
 import react.*
 import react.dom.html.ReactHTML.canvas
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.span
 import tools.confido.question.Question
 import tools.confido.spaces.NumericSpace
 import tools.confido.spaces.NumericValue
@@ -363,7 +364,7 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
             }
             // A floating number that shows the number of predictions in the hovered bin
             hoveredBin?.let { id ->
-                val rect = rectangles[id]
+                val rect = rectangles.getOrNull(id) ?: return@let
                 val y = rect.y + rect.height - 6
                 div {
                     style = jso {
@@ -380,6 +381,68 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
                         position = Position.absolute
                     }
                     +"${rect.count}"
+                }
+            }
+        }
+
+        // A floating tooltip that lists names of users whose latest prediction falls into the hovered bin.
+        // Only populated when the HISTOGRAM_SHOW_NAMES feature flag is enabled and the viewer has the
+        // VIEW_INDIVIDUAL_PREDICTIONS permission (server-side gate). When disabled, bin.users is null.
+        // Uses the portal-based Tooltip so it escapes the Stack's overflow:hidden clipping.
+        run {
+            val id = hoveredBin
+            val rect = id?.let { rectangles.getOrNull(it) }
+            val bin = id?.let { histogram?.bins?.getOrNull(it) }
+            val users = bin?.users
+            val canvasRect = canvas.current?.getBoundingClientRect()
+            val showTip = rect != null && canvasRect != null && users != null && users.isNotEmpty()
+
+            // Compute viewport-coordinate anchor at the top-center of the hovered bar.
+            val (anchorX, anchorY) = if (showTip) {
+                val barTopY = rect!!.y + rect.height  // canvas-coord y of the bar's top edge
+                val barMidX = zoomState.contentToViewport(rect.rangeMidpoint)
+                (canvasRect!!.left + barMidX) to (canvasRect.top + barTopY)
+            } else {
+                0.0 to 0.0
+            }
+
+            Tooltip {
+                this.open = showTip
+                this.anchorX = anchorX
+                this.anchorY = anchorY
+                this.placement = TooltipPlacement.AUTO
+                if (showTip) {
+                    users!!.forEach { up ->
+                        div {
+                            css {
+                                if (up.isMyself) {
+                                    fontWeight = integer(600)
+                                }
+                            }
+                            // Coloured bullet point in front of the name; keeps the name itself
+                            // in the default text colour so it remains legible.
+                            span {
+                                style = jso {
+                                    up.color?.let { color = Color(it) }
+                                }
+                                css {
+                                    marginRight = 6.px
+                                }
+                                +"\u2022"
+                            }
+                            +(up.displayName ?: "(Anonymous)")
+                        }
+                    }
+                    if (bin!!.moreUsers > 0) {
+                        div {
+                            css {
+                                color = rgb(0, 0, 0, 0.5)
+                                fontStyle = FontStyle.italic
+                                marginTop = 2.px
+                            }
+                            +"+${bin.moreUsers} more"
+                        }
+                    }
                 }
             }
         }

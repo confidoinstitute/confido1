@@ -16,6 +16,8 @@ import payloads.requests.*
 import payloads.responses.*
 import rooms.Room
 import rooms.RoomPermission
+import tools.confido.application.UserPresentationContext
+import tools.confido.application.getUserPresentation
 import tools.confido.application.sessions.*
 import tools.confido.distributions.*
 import tools.confido.question.*
@@ -319,7 +321,22 @@ fun questionRoutes(routing: Routing) = routing.apply {
 
             val predictions = serverState.userPred[question.ref]?.values ?: notFound("No user predictions found.")
 
-            val histogram = binner.createHistogram(predictions.map { it.dist as BinaryDistribution })
+            val showNames = FeatureFlag.HISTOGRAM_SHOW_NAMES.enabled
+                && room.hasPermission(user, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
+
+            val histogram = if (showNames) {
+                val pairs = predictions.mapNotNull { pred ->
+                    val dist = pred.dist as? BinaryDistribution ?: return@mapNotNull null
+                    val predUser = pred.user?.deref()
+                    val presentation = getUserPresentation(
+                        predUser, user, UserPresentationContext.INDIVIDUAL_PREDICTION, room
+                    )
+                    dist to presentation
+                }
+                binner.createHistogramWithUsers(pairs)
+            } else {
+                binner.createHistogram(predictions.map { it.dist as BinaryDistribution })
+            }
             histogram
         }
     }
