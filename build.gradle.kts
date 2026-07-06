@@ -8,9 +8,18 @@ val kmongoVersion = "4.7.2"
 val kotlinWrappersVersion = "2025.10.8"
 val ktomlVersion = "0.7.1"
 
+buildscript {
+    repositories { mavenCentral() }
+    dependencies {
+        // Bytecode scanner used by generateSerializationReflectConfig
+        classpath("io.github.classgraph:classgraph:4.8.181")
+    }
+}
+
 plugins {
     kotlin("multiplatform") version "2.2.20"
     kotlin("plugin.serialization") version "2.2.20"
+    id("org.graalvm.buildtools.native") version "1.1.3"
 }
 
 group = "tools.confido"
@@ -211,6 +220,95 @@ dependencies {
     // enforcedPlatform directly within jsMain dependencies in multiplatform projects, so we do it here instead.
     // See also: https://github.com/JetBrains/kotlin-wrappers/issues/1519
     "jsMainImplementation"(enforcedPlatform(kotlinw("wrappers-bom:$kotlinWrappersVersion")))
+}
+
+// Prints the jvm target's runtime classpath; used to run the server under plain
+// `java`, e.g. with the native-image tracing agent attached.
+val printJvmRuntimeClasspath by tasks.registering {
+    dependsOn(tasks.named("jvmJar"))
+    doLast {
+        println(files(tasks.named("jvmJar")).asPath + ":" + configurations["jvmRuntimeClasspath"].asPath)
+    }
+}
+
+// Systematically derives native-image reflection config for kotlinx.serialization:
+// scans the whole jvm runtime classpath for @Serializable classes (the annotation
+// has BINARY retention, so this needs a bytecode scanner, not runtime reflection)
+// and registers each class plus its Companion / $serializer nested classes.
+// These are exactly the members kotlinx.serialization's serializer(KType) lookup
+// (used by Ktor content negotiation and KMongo codecs) accesses reflectively.
+// This makes the config independent of which endpoints the tracing agent happened
+// to exercise; the agent-generated config in native-config/ then only needs to
+// cover non-serialization reflection (Ktor internals, JNI, resources, ...).
+val generateSerializationReflectConfig by tasks.registering {
+    dependsOn(tasks.named("jvmJar"))
+    val outDir = layout.buildDirectory.dir("generated/native-serialization-config")
+    inputs.files(tasks.named("jvmJar"))
+    outputs.dir(outDir)
+    doLast {
+        val cpFiles = files(tasks.named("jvmJar")).files + configurations["jvmRuntimeClasspath"].resolve()
+        val entries = mutableListOf<Map<String, Any>>()
+        fun entry(name: String) = mapOf(
+            "name" to name,
+            "allDeclaredConstructors" to true,
+            "allDeclaredMethods" to true,
+            "allDeclaredFields" to true,
+        )
+        io.github.classgraph.ClassGraph()
+            .overrideClasspath(cpFiles)
+            .enableClassInfo()
+            .enableAnnotationInfo()
+            .scan().use { scan ->
+                for (ci in scan.getClassesWithAnnotation("kotlinx.serialization.Serializable")) {
+                    entries += entry(ci.name)
+                    for (suffix in listOf("\$Companion", "\$\$serializer")) {
+                        if (scan.getClassInfo(ci.name + suffix) != null) entries += entry(ci.name + suffix)
+                    }
+                }
+            }
+        val out = outDir.get().file("reflect-config.json").asFile
+        out.parentFile.mkdirs()
+        out.writeText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(entries)))
+        println("Registered ${entries.size} reflection entries for kotlinx.serialization")
+    }
+}
+
+graalvmNative {
+    toolchainDetection.set(false)
+    binaries {
+        maybeCreate("main").apply {
+            imageName.set("confido-server")
+            mainClass.set("tools.confido.application.ServerKt")
+            fallback.set(false)
+            verbose.set(true)
+            // The KMP plugin does not expose a java-style main source set, so wire
+            // the jvm target's jar + runtime classpath explicitly.
+            classpath(tasks.named("jvmJar"), configurations.named("jvmRuntimeClasspath"))
+            configurationFileDirectories.from(file("native-config"))
+            configurationFileDirectories.from(generateSerializationReflectConfig)
+            buildArgs.add("-H:+ReportExceptionStackTraces")
+            buildArgs.add("--enable-url-protocols=http,https")
+            // Charset detection (question import) and PDFBox may request arbitrary
+            // charsets at runtime; only a few are bundled by default.
+            buildArgs.add("-H:+AddAllCharsets")
+            // Must point at a GraalVM JDK (needs the native-image tool).
+            javaLauncher.set(extensions.getByType<JavaToolchainService>().launcherFor {
+                languageVersion.set(JavaLanguageVersion.of(25))
+            })
+        }
+    }
+    metadataRepository {
+        enabled.set(true)
+    }
+}
+
+// The GraalVM buildtools plugin only auto-registers native tasks for java-plugin
+// projects, and Kotlin 2.x multiplatform forbids applying the java plugin.
+// Register the image build task manually against the binary configured above.
+tasks.register("nativeCompile", org.graalvm.buildtools.gradle.tasks.BuildNativeImageTask::class) {
+    options.set(graalvmNative.binaries.named("main"))
+    dependsOn(tasks.named("jvmJar"), generateSerializationReflectConfig)
+    service.set(org.graalvm.buildtools.gradle.NativeImageService.registerOn(project))
 }
 
 
