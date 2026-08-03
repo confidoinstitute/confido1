@@ -9,6 +9,7 @@ import tools.confido.question.Question
 import tools.confido.question.RoomComment
 import tools.confido.refs.*
 import tools.confido.state.*
+import tools.confido.store.commentData
 import tools.confido.utils.*
 import users.User
 import users.UserPresentation
@@ -23,9 +24,9 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
     val referencedUsers: MutableSet<Ref<User>> = mutableSetOf()
 
     init {
-        // Iterates precomputed per-thread author sets (maintained incrementally by the
-        // comment managers), not individual comments; cost is O(threads × distinct authors).
-        serverState.questionCommentManager.commentAuthors.forEach { qref, authors ->
+        // Iterates precomputed per-thread author sets (folds over the comment archives'
+        // change streams), not individual comments; cost is O(threads × distinct authors).
+        commentData.questionCommentAuthors.forEach { qref, authors ->
             val q = qref.deref() ?: return@forEach
             val room = state.questionRoom[q.ref]?.deref() ?: return@forEach
             if (!room.hasPermission(user, RoomPermission.VIEW_QUESTION_COMMENTS)) return@forEach
@@ -41,7 +42,7 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
             referencedUsers.addAll(authors)
         }
 
-        serverState.roomCommentManager.commentAuthors.forEach { roomRef, authors ->
+        commentData.roomCommentAuthors.forEach { roomRef, authors ->
             val room = roomRef.deref() ?: return@forEach
             if (!room.hasPermission(user, RoomPermission.VIEW_ROOM_COMMENTS)) return@forEach
             referencedUsers.addAll(authors)
@@ -126,9 +127,6 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
 
     fun getMyPredictions() =
         if (user!=null) state.userPred.mapValuesNotNull { it.value[user.ref] } else emptyMap()
-
-    fun getCommentsILike() =
-        user?.ref?.let { serverState.commentLikeManager.byUser[it] } ?: setOf()
 
     fun getMyPasswordIsSet() = user?.let { it.password != null } ?: false
 

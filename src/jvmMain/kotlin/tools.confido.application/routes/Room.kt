@@ -192,10 +192,8 @@ fun roomRoutes(routing: Routing) = routing.apply {
                 room.questions.forEach { question ->
                     serverState.questionManager.deleteEntity(question)
                 }
-                serverState.roomComments[room.ref]?.values?.forEach { comment ->
-                    serverState.roomCommentManager.deleteEntity(comment)
-                }
-
+                // Room comments (and each question's comments and predictions) are deleted
+                // by the cascade hooks on the managers.
                 serverState.roomManager.deleteEntity(room)
             }
         }

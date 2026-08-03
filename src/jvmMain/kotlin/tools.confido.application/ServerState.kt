@@ -30,8 +30,8 @@ import tools.confido.question.*
 import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.spaces.*
-import tools.confido.store.RefCountIndex
 import tools.confido.store.Stores
+import tools.confido.store.commentData
 import tools.confido.store.latestPredictions
 import tools.confido.store.predictionData
 import tools.confido.utils.*
@@ -120,7 +120,7 @@ object serverState : GlobalState() {
     override val predictorCount: Map<Ref<Question>, Int> get() = predictionData.predictorCount.asMap
     override val predictionCount: Map<Ref<Question>, Int> get() = predictionData.predictionCount.asMap
     val userPred: Map<Ref<Question>, Map<Ref<User>, Prediction>> get() = latestPredictions.asMap
-    override val commentCount: MutableMap<Ref<Question>, Int> = mutableMapOf()
+    override val commentCount: Map<Ref<Question>, Int> get() = commentData.commentCount.asMap
     //val presenterByUser: MutableMap<Ref<User>, PresenterInfo> = mutableMapOf() // this does not persist after restart
     //val presenterByToken: MutableMap<String, PresenterInfo> = mutableMapOf() // this does not persist after restart
 
@@ -423,139 +423,6 @@ object serverState : GlobalState() {
     }
     override val users by userManager::entityMap
 
-    object questionCommentManager: InMemoryEntityManager<QuestionComment>(database.getCollection("questionComments")) {
-        val questionComments : MutableMap<Ref<Question>, MutableMap<String, QuestionComment>> = mutableMapOf()
-        fun updateCommentCount(question: Ref<Question>) {
-            val size = questionComments[question]?.size ?: 0
-            if (size > 0)
-                commentCount[question] = size
-            else
-                commentCount.remove(question)
-        }
-        /** Authors of the comments on each question; lets StateCensor collect referenced
-         *  users without walking individual comments. */
-        val commentAuthors = RefCountIndex<Ref<Question>, Ref<User>>()
-        init {
-            onEntityAddedOrUpdated { comment ->
-                val old = questionComments.getOrPut(comment.question){ mutableMapOf() }.put(comment.id, comment)
-                if (old == null) commentAuthors.add(comment.question, comment.user)
-                else if (!(old.user eqid comment.user)) {
-                    commentAuthors.remove(comment.question, old.user)
-                    commentAuthors.add(comment.question, comment.user)
-                }
-                updateCommentCount(comment.question)
-            }
-            onEntityDeleted {comment ->
-                (questionComments[comment.question] ?: return@onEntityDeleted).remove(comment.id)
-                    ?.let { commentAuthors.remove(comment.question, it.user) }
-                updateCommentCount(comment.question)
-            }
-        }
-    }
-    val questionComments: MutableMap<Ref<Question>, MutableMap<String, QuestionComment>> by questionCommentManager::questionComments
-    object roomCommentManager: InMemoryEntityManager<RoomComment>(database.getCollection("roomComments")) {
-        val roomComments : MutableMap<Ref<Room>, MutableMap<String, RoomComment>> = mutableMapOf()
-        /** See [questionCommentManager.commentAuthors]. */
-        val commentAuthors = RefCountIndex<Ref<Room>, Ref<User>>()
-        init {
-            onEntityAddedOrUpdated { comment ->
-                val old = roomComments.getOrPut(comment.room){ mutableMapOf() }.put(comment.id, comment)
-                if (old == null) commentAuthors.add(comment.room, comment.user)
-                else if (!(old.user eqid comment.user)) {
-                    commentAuthors.remove(comment.room, old.user)
-                    commentAuthors.add(comment.room, comment.user)
-                }
-            }
-            onEntityDeleted {comment ->
-                (roomComments[comment.room] ?: return@onEntityDeleted).remove(comment.id)
-                    ?.let { commentAuthors.remove(comment.room, it.user) }
-            }
-        }
-    }
-    val roomComments by roomCommentManager::roomComments
-
-    //object commentLikeManager : EntityManager<CommentLike>(database.getCollection("commentLikes")) {
-    //    val numLikes = mutableMapOf<Ref<Comment>, Int>()
-    //    override suspend fun initialize() {
-    //        mongoCollection.ensureUniqueIndex(CommentLike::comment, CommentLike::user)
-    //    }
-    //    override suspend fun doLoad() {
-    //        @Serializable
-    //        data class Result(val comment: Ref<Comment>, val cnt: Int)
-    //        mongoCollection.aggregate<Result>(
-    //            group(CommentLike::comment, Result::comment first CommentLike::comment, Result::cnt.sum(1))
-    //        ).toFlow().collect { numLikes[it.comment] = it.cnt }
-    //        //println("STATS!!! $totalPredictions")
-    //    }
-
-    //    suspend fun addLike(comment: Ref<Comment>, user: Ref<User>) {
-    //        try {
-    //            mongoCollection.insertOne(CommentLike(generateId(), comment, user))
-    //            numLikes.compute(comment, {_, cnt -> (cnt?:0) + 1})
-    //        } catch (e: MongoWriteException) {
-    //            if (e.error.category != ErrorCategory.DUPLICATE_KEY) throw e;
-    //        }
-    //    }
-    //}
-    object commentLikeManager : InMemoryEntityManager<CommentLike>(database.getCollection("commentLikes")) {
-        val numLikes = mutableMapOf<Ref<Comment>, Int>()
-        val byComment = mutableMapOf<Ref<Comment>, MutableSet<Ref<User>>>()
-        val byUser = mutableMapOf<Ref<User>, MutableSet<Ref<Comment>>>()
-
-        suspend fun addLike(comment: Ref<Comment>, user: Ref<User>) {
-            withMutationLock {
-                if (user in (byComment[comment] ?: setOf())) return@withMutationLock // already liked
-                insertEntity(CommentLike(id = "", comment, user))
-            }
-        }
-        suspend fun removeLike(comment: Ref<Comment>, user: Ref<User>) {
-            if (user !in (byComment[comment]?:setOf())) return; // not liked
-            withMutationLock {
-                mongoCollection.deleteMany(and(CommentLike::comment eq comment, CommentLike::user eq user))
-                (byComment[comment]?:mutableSetOf()).remove(user)
-                (byUser[user]?:mutableSetOf()).remove(comment)
-                numLikes[comment] = byComment[comment]?.size ?: 0
-            }
-        }
-        suspend fun setLike(comment: Ref<Comment>, user: Ref<User>, state: Boolean) {
-            if (state) addLike(comment, user)
-            else removeLike(comment, user)
-        }
-        suspend fun deleteAllUserLikes(user: Ref<User>) {
-            withMutationLock {
-                mongoCollection.deleteMany(CommentLike::user eq user)
-                byUser[user]?.forEach { comment ->
-                    byComment[comment]?.remove(user)
-                    numLikes[comment] = byComment[comment]?.size ?: 0
-                }
-                byUser.remove(user)
-            }
-        }
-
-        suspend fun deleteAllCommentLikes(comment: Ref<Comment>) {
-            withMutationLock {
-                mongoCollection.deleteMany(CommentLike::comment eq comment)
-                byComment[comment]?.forEach { user ->
-                    byUser[user]?.remove(comment)
-                }
-                byComment.remove(comment)
-                numLikes.remove(comment)
-            }
-        }
-        init {
-            onEntityAdded {
-                byComment.getOrPut(it.comment, {mutableSetOf()}).add(it.user)
-                byUser.getOrPut(it.user, {mutableSetOf()}).add(it.comment)
-                numLikes[it.comment] = byComment[it.comment]?.size ?: 0
-            }
-            onEntityDeleted { like->
-                byComment[like.comment]?.remove(like.user)
-                byUser[like.user]?.remove(like.comment)
-                numLikes[like.comment] = byComment[like.comment]?.size ?: 0
-            }
-        }
-    }
-
     object loginLinkManager : InMemoryEntityManager<LoginLink>(database.getCollection("loginLinks")) {
         val byToken: MutableMap<String, LoginLink> = mutableMapOf()
         init {
@@ -594,13 +461,10 @@ object serverState : GlobalState() {
         roomManager.register()
         questionManager.register()
         userManager.register()
-        questionCommentManager.register()
-        roomCommentManager.register()
         loginLinkManager.register()
         verificationLinkManager.register()
         passwordResetLinkManager.register()
         userSessionManager.register()
-        commentLikeManager.register()
         presentationManager.register()
     }
 

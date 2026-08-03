@@ -15,6 +15,9 @@ import tools.confido.application.*
 import tools.confido.application.sessions.*
 import tools.confido.refs.*
 import tools.confido.state.*
+import tools.confido.store.questionCommentArchive
+import tools.confido.store.roomCommentArchive
+import tools.confido.store.transact
 import tools.confido.utils.*
 import users.*
 import kotlin.time.Duration.Companion.days
@@ -693,30 +696,21 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
             val hasPredictions = serverState.userPred.any { (_, userPreds) ->
                 userPreds.any { it.key eqid userToDelete }
             }
-            val hasComments = serverState.roomComments.any { (_, comments) ->
-                comments.any { it.value.user eqid userToDelete }
-            } || serverState.questionComments.any { (_, comments) ->
-                comments.any { it.value.user eqid userToDelete }
-            }
+            // The archives' one non-partition-scoped query: comments by author.
+            val userQuestionComments = questionCommentArchive.byAuthor(userToDelete.ref)
+            val userRoomComments = roomCommentArchive.byAuthor(userToDelete.ref)
+            val hasComments = userQuestionComments.isNotEmpty() || userRoomComments.isNotEmpty()
             val willGhost = hasPredictions || (hasComments && !options.deleteComments)
 
-            serverState.withTransaction {
+            transact {
                 // Handle comments based on options
                 if (hasComments && options.deleteComments) {
-                    // Delete all user's comments
-                    serverState.questionComments.values.forEach { questionComments ->
-                        questionComments.values.filter { it.user eqid userToDelete }.forEach { comment ->
-                            serverState.questionCommentManager.deleteEntity(comment.ref)
-                        }
-                    }
-                    serverState.roomComments.values.forEach { roomComments ->
-                        roomComments.values.filter { it.user eqid userToDelete }.forEach { comment ->
-                            serverState.roomCommentManager.deleteEntity(comment.ref)
-                        }
-                    }
+                    userQuestionComments.forEach { questionCommentArchive.delete(it) }
+                    userRoomComments.forEach { roomCommentArchive.delete(it) }
                 }
-                // Delete all likes by this user
-                serverState.commentLikeManager.deleteAllUserLikes(userToDelete.ref)
+                // Remove the user's likes from everyone else's comments
+                questionCommentArchive.stripUserLikes(userToDelete.ref)
+                roomCommentArchive.stripUserLikes(userToDelete.ref)
 
 
                 // Remove from all rooms

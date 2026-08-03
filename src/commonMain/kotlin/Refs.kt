@@ -136,7 +136,6 @@ inline fun <reified  T: HasId> T.withId(id: String): T =
         is PasswordResetLink -> copy(id = id) as T
         is UserSession -> copy(id = id) as T
         is Prediction -> copy(id = id) as T
-        is CommentLike -> copy(id = id) as T
         is Presentation -> copy(id = id) as T
         else -> throw NotImplementedError("withId for ${T::class} in Refs.kt")
     }

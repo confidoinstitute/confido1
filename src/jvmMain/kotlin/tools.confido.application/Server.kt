@@ -159,6 +159,7 @@ fun main() {
     registerSerializer(rooms.RoomRoleRefSerializer)
 
     tools.confido.store.registerPredictionStores()
+    tools.confido.store.registerCommentStores()
 
     runBlocking {
         serverState.initialize()

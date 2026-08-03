@@ -38,7 +38,7 @@ class UniqueIndex<E : HasId, K>(source: ChangeSource<E>, val keyOf: (E) -> K?) {
  */
 class RefCountIndex<K, V> {
     val index: MutableMap<K, MutableMap<V, Int>> = mutableMapOf()
-    fun add(k: K, v: V) { index.getOrPut(k){ mutableMapOf() }.merge(v, 1, Int::plus) }
+    fun add(k: K, v: V, count: Int = 1) { index.getOrPut(k){ mutableMapOf() }.merge(v, count, Int::plus) }
     fun remove(k: K, v: V) {
         val m = index[k] ?: return
         val n = (m[v] ?: return) - 1

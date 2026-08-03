@@ -83,6 +83,7 @@ object MigrationRunner {
     private val migrations: List<Migration> = listOf(
         RoleFormatMigration,
         QuestionGroupsToTagsMigration,
+        FoldCommentLikesMigration,
     )
 
     /**

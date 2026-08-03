@@ -19,6 +19,7 @@ import tools.confido.spaces.NumericSpace
 import tools.confido.spaces.NumericValue
 import tools.confido.state.serverState
 import tools.confido.store.groupPredictionLog
+import tools.confido.store.questionCommentArchive
 import tools.confido.store.userPredictionLog
 import tools.confido.utils.fromUnix
 import tools.confido.utils.toFixed
@@ -211,7 +212,7 @@ class CommentExport  (
             "date" to dt.date.toString(),
             "time" to dt.time.toString(),
             "comment" to c.content,
-            "num_likes" to (serverState.commentLikeManager.numLikes[c.ref] ?: 0).toString(),
+            "num_likes" to c.likes.size.toString(),
         )
         c.prediction?.let {pred->
             ret += exportDist(pred.dist)
@@ -219,7 +220,7 @@ class CommentExport  (
         return ret
     }
     suspend fun exportQuestion(q: Question) = flow {
-        (serverState.questionComments[q.ref]?: emptyMap()).values.asFlow().collect {
+        questionCommentArchive.all(q.ref).forEach {
             emit(exportComment(q, it))
         }
     }
