@@ -109,6 +109,23 @@ data class ShortLink(
     }
 }
 
+/**
+ * Reference-counted secondary index: for each key, the set of values currently
+ * referenced by at least one entity, maintained incrementally from manager callbacks.
+ */
+class RefCountIndex<K, V> {
+    val index: MutableMap<K, MutableMap<V, Int>> = mutableMapOf()
+    fun add(k: K, v: V) { index.getOrPut(k){ mutableMapOf() }.merge(v, 1, Int::plus) }
+    fun remove(k: K, v: V) {
+        val m = index[k] ?: return
+        val n = (m[v] ?: return) - 1
+        if (n <= 0) m.remove(v) else m[v] = n
+        if (m.isEmpty()) index.remove(k)
+    }
+    operator fun get(k: K): Set<V> = index[k]?.keys ?: emptySet()
+    inline fun forEach(body: (K, Set<V>) -> Unit) = index.forEach { (k, m) -> body(k, m.keys) }
+}
+
 object serverState : GlobalState() {
     val groupPred : MutableMap<Ref<Question>, Prediction?> = mutableMapOf()
     override val predictorCount: MutableMap<Ref<Question>, Int> = mutableMapOf()
@@ -539,13 +556,22 @@ object serverState : GlobalState() {
             else
                 commentCount.remove(question)
         }
+        /** Authors of the comments on each question; lets StateCensor collect referenced
+         *  users without walking individual comments. */
+        val commentAuthors = RefCountIndex<Ref<Question>, Ref<User>>()
         init {
             onEntityAddedOrUpdated { comment ->
-                questionComments.getOrPut(comment.question){ mutableMapOf() }[comment.id] = comment
+                val old = questionComments.getOrPut(comment.question){ mutableMapOf() }.put(comment.id, comment)
+                if (old == null) commentAuthors.add(comment.question, comment.user)
+                else if (!(old.user eqid comment.user)) {
+                    commentAuthors.remove(comment.question, old.user)
+                    commentAuthors.add(comment.question, comment.user)
+                }
                 updateCommentCount(comment.question)
             }
             onEntityDeleted {comment ->
                 (questionComments[comment.question] ?: return@onEntityDeleted).remove(comment.id)
+                    ?.let { commentAuthors.remove(comment.question, it.user) }
                 updateCommentCount(comment.question)
             }
         }
@@ -553,12 +579,20 @@ object serverState : GlobalState() {
     val questionComments: MutableMap<Ref<Question>, MutableMap<String, QuestionComment>> by questionCommentManager::questionComments
     object roomCommentManager: InMemoryEntityManager<RoomComment>(database.getCollection("roomComments")) {
         val roomComments : MutableMap<Ref<Room>, MutableMap<String, RoomComment>> = mutableMapOf()
+        /** See [questionCommentManager.commentAuthors]. */
+        val commentAuthors = RefCountIndex<Ref<Room>, Ref<User>>()
         init {
             onEntityAddedOrUpdated { comment ->
-                roomComments.getOrPut(comment.room){ mutableMapOf() }[comment.id] = comment
+                val old = roomComments.getOrPut(comment.room){ mutableMapOf() }.put(comment.id, comment)
+                if (old == null) commentAuthors.add(comment.room, comment.user)
+                else if (!(old.user eqid comment.user)) {
+                    commentAuthors.remove(comment.room, old.user)
+                    commentAuthors.add(comment.room, comment.user)
+                }
             }
             onEntityDeleted {comment ->
                 (roomComments[comment.room] ?: return@onEntityDeleted).remove(comment.id)
+                    ?.let { commentAuthors.remove(comment.room, it.user) }
             }
         }
     }
@@ -704,6 +738,21 @@ object serverState : GlobalState() {
         managers.values.forEach { it.initialize() }
         additionalManagers.forEach { it.initialize() }
     }
+
+    /**
+     * For each managed collection, a check that strictly decodes every document with
+     * the real entity serializers, throwing on the first failure. Keyed by live
+     * collection name; the passed argument is the collection to actually read (the
+     * migration working copy). Used as the MigrationRunner verify pass
+     * (PERSISTENCE_SYNC_REDESIGN.md §6).
+     */
+    fun collectionVerifiers(): Map<String, suspend (String) -> Unit> =
+        (managers.values + additionalManagers).associate { m ->
+            val docClass = m.mongoCollection.collection.documentClass
+            m.mongoCollection.namespace.collectionName to { name: String ->
+                database.database.getCollection(name, docClass).coroutine.find().toFlow().collect {}
+            }
+        }
     // initial load from database
     suspend fun load() {
         managers.values.forEach { it.load() }

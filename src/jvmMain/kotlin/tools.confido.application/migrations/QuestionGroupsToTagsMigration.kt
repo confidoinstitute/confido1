@@ -2,7 +2,6 @@ package tools.confido.application.migrations
 
 import com.mongodb.client.model.Filters
 import org.bson.Document
-import org.litote.kmongo.coroutine.CoroutineDatabase
 
 /**
  * Migrates question group data from the `question_groups` extension
@@ -16,9 +15,10 @@ import org.litote.kmongo.coroutine.CoroutineDatabase
 object QuestionGroupsToTagsMigration : Migration {
     override val id = "002_question_groups_to_tags"
     override val description = "Migrate question_groups extension data to core tags field"
+    override val collections = listOf("questions")
 
-    override suspend fun run(db: CoroutineDatabase) {
-        val questions = db.getCollection<Document>("questions")
+    override suspend fun run(ctx: MigrationContext) {
+        val questions = ctx.collection("questions")
 
         questions.find().toList().forEach { doc ->
             var modified = false

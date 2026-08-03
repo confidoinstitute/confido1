@@ -436,22 +436,36 @@ which alone prevents an unusable instance (migrations already run at boot before
 crash-midway is the only mechanical threat; per-document updates are atomic; data volume is
 thousands of documents, so "too expensive at scale" techniques are free):
 
-1. **Idempotent, resumable transforms** as standing discipline: shape-conditional per
-   document ("if `props` subdocument absent, build it and `$unset` the flat fields; else
-   skip"); ledger marked only at the end; rerun-on-boot resumes.
-2. **Transactional envelope** in `MigrationRunner`: the replica set exists to provide
-   multi-document transactions — wrap migration + ledger write in one; all-or-nothing at this
-   document count. (Under a future SQLite backend this is the native default.)
+1. **Copy–transform–verify–promote envelope** in `MigrationRunner` *(implemented in P0)*:
+   migrations declare the collections they modify and receive *working copies*
+   (`<name>_mig_<id>`) via a `MigrationContext` — they cannot touch live collections at all
+   (undeclared access throws). The transform and the verify pass both run against the
+   copies; only then does a two-phase-ledgered promotion (`promoting` → `done`) `$out` each
+   verified copy over its live collection (atomic per collection, preserves live indexes).
+   Properties: **live data is never modified until the transform is verified**; working
+   copies are disposable (a leftover from a crash or failure is dropped and redone — on
+   failure it is deliberately kept for inspecting the bad transform); a crash mid-promotion
+   is completed on the next boot from the already-verified copies, so **migrations need not
+   be idempotent**.
+   *(History: an earlier P0 iteration used snapshot-then-restore-in-place, but a restore
+   consumed automatically by the runner makes leftover snapshots authoritative — a lost or
+   damaged ledger next to a stale snapshot would silently roll live data back in time. The
+   copy-aside design inverts that: leftover artifacts are disposable, and a lost ledger
+   degrades to a re-transform of current data, gated by the verify pass. The originally
+   planned Mongo-transaction envelope was likewise rejected: session-threading through raw
+   `Document` ops is invasive and silently void when forgotten. Under a future SQLite
+   backend, a real transaction is the native default anyway.)*
+2. **Verify pass** *(implemented in P0)*: every working copy is strictly re-decoded with the
+   real entity serializers (`serverState.collectionVerifiers()`) *before* promotion; failure
+   aborts startup with live data untouched. This targets the actually-likelier failure: a
+   transform that completes successfully but is subtly wrong. Additionally, the
+   pre-promotion state is kept as `<name>_pre_<id>` for **manual** rollback/forensics —
+   written by the runner but never read by it.
 3. **Tolerant reader** for the component splits specifically: serializers accept both flat
    legacy and nested component shapes during the transition; "migration" = boot, load
    everything (which the server does anyway), rewrite from memory; every intermediate state
    boots and serves. Drop the tolerant path a release later.
-4. **Automatic snapshot + verify pass** in `MigrationRunner`: `$out`-copy affected collections
-   to `<name>_pre_<migrationId>` before touching anything (milliseconds at this scale;
-   rollback = rename), and strictly decode every migrated document with the real new
-   serializers *before* marking done. This targets the actually-likelier failure: a transform
-   that completes successfully but is subtly wrong.
-5. **Per-component sequencing**: each migration touches one field cluster of one entity type;
+4. **Per-component sequencing**: each migration touches one field cluster of one entity type;
    membership extraction goes first and doubles as the rehearsal.
 
 ---
@@ -465,7 +479,7 @@ working untouched mid-transition.
 - **Phase 0 — quick wins & groundwork** (independent of everything):
   - Add `getWS`-style last-payload dedup to `/state`.
   - Stop recomputing `referencedUsers` from all comments per censor (precompute incrementally).
-  - `MigrationRunner` hardening: transaction envelope, pre-snapshot, verify pass (§6).
+  - `MigrationRunner` hardening: snapshot-restore envelope + verify pass (§6).
 - **Phase 1 — websocket multiplexing** (§4.1): mechanical, net-negative LOC, kills the iOS
   question, prerequisite for topics. Topics initially = the existing 17 endpoints + one
   `state` topic carrying today's `SentState`.

@@ -23,7 +23,9 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
     val referencedUsers: MutableSet<Ref<User>> = mutableSetOf()
 
     init {
-        state.questionComments.forEach { (qref, comments)->
+        // Iterates precomputed per-thread author sets (maintained incrementally by the
+        // comment managers), not individual comments; cost is O(threads × distinct authors).
+        serverState.questionCommentManager.commentAuthors.forEach { qref, authors ->
             val q = qref.deref() ?: return@forEach
             val room = state.questionRoom[q.ref]?.deref() ?: return@forEach
             if (!room.hasPermission(user, RoomPermission.VIEW_QUESTION_COMMENTS)) return@forEach
@@ -36,13 +38,13 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
                 CommentVisibility.MODERATOR_ONLY -> false
             }
             if (!(canViewAll || canView)) return@forEach
-            referencedUsers.addAll(comments.map { it.value.user })
+            referencedUsers.addAll(authors)
         }
 
-        state.roomComments.forEach { (roomRef, comments)->
+        serverState.roomCommentManager.commentAuthors.forEach { roomRef, authors ->
             val room = roomRef.deref() ?: return@forEach
             if (!room.hasPermission(user, RoomPermission.VIEW_ROOM_COMMENTS)) return@forEach
-            referencedUsers.addAll(comments.map { it.value.user })
+            referencedUsers.addAll(authors)
         }
     }
 

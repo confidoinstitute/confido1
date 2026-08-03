@@ -155,7 +155,7 @@ fun main() {
 
     runBlocking {
         serverState.initialize()
-        tools.confido.application.migrations.MigrationRunner.runPending(serverState.database)
+        tools.confido.application.migrations.MigrationRunner.runPending(serverState.database, serverState.collectionVerifiers())
         serverState.load()
         if (appConfig.demoMode) initDemo()
         else initData()
@@ -382,6 +382,7 @@ fun main() {
                         }
                     }
 
+                    var lastSent: String? = null
                     call.transientUserData?.runRefreshable(closeNotifier) {
                         val sessionData = call.userSession
                         val transientData = call.transientUserData
@@ -391,7 +392,9 @@ fun main() {
                         }
 
                         val state = StateCensor(sessionData, transientData).censor()
-                        send(Frame.Text(confidoJSON.encodeToString(state)))
+                        val encoded = confidoJSON.encodeToString(state)
+                        if (encoded != lastSent) send(Frame.Text(encoded))
+                        lastSent = encoded
                     }
                     refreshJob.cancel()
                 }

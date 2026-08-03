@@ -2,7 +2,6 @@ package tools.confido.application.migrations
 
 import com.mongodb.client.model.Filters
 import org.bson.Document
-import org.litote.kmongo.coroutine.CoroutineDatabase
 
 /**
  * Converts RoomRole fields from the old sealed-class polymorphic format
@@ -25,6 +24,7 @@ import org.litote.kmongo.coroutine.CoroutineDatabase
 object RoleFormatMigration : Migration {
     override val id = "001_role_format"
     override val description = "Convert RoomRole from sealed-class object to string ID"
+    override val collections = listOf("rooms")
 
     private val typeToId = mapOf(
         "rooms.Viewer" to "viewer",
@@ -34,8 +34,8 @@ object RoleFormatMigration : Migration {
         "rooms.Owner" to "owner",
     )
 
-    override suspend fun run(db: CoroutineDatabase) {
-        val rooms = db.getCollection<Document>("rooms")
+    override suspend fun run(ctx: MigrationContext) {
+        val rooms = ctx.collection("rooms")
 
         rooms.find().toList().forEach { doc ->
             var modified = false
