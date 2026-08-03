@@ -11,6 +11,7 @@ import components.redesign.layout.LayoutMode
 import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.*
 import components.redesign.rooms.*
+import components.redesign.search.searchUrl
 import web.cssom.*
 import emotion.react.*
 import hooks.useSuspendResult
@@ -254,6 +255,7 @@ val PhoneHeader = FC<DashboardHeaderProps> { props ->
 val Dashboard = FC<Props> {
     val (appState, stale) = use(AppStateContext)!!
     val layoutMode = use(LayoutModeContext)!!
+    val navigate = useNavigate()
 
     var dialogOpen by useState(false)
     UserMenu {
@@ -292,6 +294,43 @@ val Dashboard = FC<Props> {
             width = layoutMode.contentWidth
             overflow = Overflow.visible
             alignSelf = AlignSelf.center
+        }
+
+        // Entry point to workspace-wide search. The first keystroke hands off to the search
+        // page, which picks the query up from the URL and takes over the focus.
+        div {
+            css {
+                display = Display.flex
+                flexDirection = FlexDirection.row
+                alignItems = AlignItems.center
+                gap = 8.px
+                margin = Margin(12.px, layoutMode.contentSidePad, 0.px)
+                padding = Padding(0.px, 12.px)
+                backgroundColor = NamedColor.white
+                border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))
+                borderRadius = 10.px
+                flexShrink = number(0.0)
+            }
+            div {
+                css {
+                    display = Display.flex
+                    color = Color("#999999")
+                    flexShrink = number(0.0)
+                }
+                ZoomIcon { size = 20 }
+            }
+            TextInput {
+                css {
+                    backgroundColor = NamedColor.transparent
+                    padding = Padding(12.px, 0.px)
+                    focus { outline = None.none }
+                }
+                placeholder = "Search questions across all rooms…"
+                onChange = { ev ->
+                    val typed = ev.target.value
+                    if (typed.isNotEmpty()) navigate(searchUrl(typed))
+                }
+            }
         }
 
         title("Recently opened questions", layoutMode.contentSidePad)

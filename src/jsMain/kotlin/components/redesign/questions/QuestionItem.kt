@@ -13,6 +13,7 @@ import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.button
 import react.router.dom.*
+import rooms.Room
 import tools.confido.distributions.*
 import tools.confido.question.*
 import tools.confido.refs.*
@@ -22,6 +23,13 @@ external interface QuestionItemProps : Props {
     var question: Question
     var groupPred: Prediction?
     var href: String?
+    /**
+     * When set, the question is labelled with the room it lives in. Used by cross-room listings
+     * (such as search results), where the room is not implied by the surrounding page.
+     */
+    var room: Room?
+    /** Optional extra content shown under the question name, e.g. a matching description excerpt. */
+    var subtitle: ReactNode?
 }
 
 external interface StatusChipProps : PropsWithClassName {
@@ -87,6 +95,16 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 gap = 5.px
             }
 
+            props.room?.let { room ->
+                span {
+                    css(ChipCSS) {
+                        backgroundColor = room.color.palette.color
+                        color = room.color.palette.text.color
+                    }
+                    +room.name
+                }
+            }
+
             StatusChip {
                 color = palette.color
                 text = questionState.name.lowercase().capFirst()
@@ -129,6 +147,19 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     color = Color("#000000")
                 }
                 +props.question.name
+            }
+        }
+
+        props.subtitle?.let { subtitle ->
+            div {
+                css {
+                    fontFamily = sansSerif
+                    fontSize = 14.px
+                    lineHeight = 18.px
+                    color = Color("#666666")
+                    padding = Padding(0.px, 0.px, 8.px)
+                }
+                +subtitle
             }
         }
 

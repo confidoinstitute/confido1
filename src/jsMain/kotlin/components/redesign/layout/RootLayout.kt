@@ -14,6 +14,7 @@ import components.redesign.presenter.PresenterControllerProvider
 import components.redesign.profile.UserProfile
 import components.redesign.profile.VerifyToken
 import components.redesign.rooms.*
+import components.redesign.search.SearchPage
 import web.cssom.*
 import emotion.react.css
 import hooks.useBreakpoints
@@ -166,6 +167,10 @@ private val RootLayoutInner = FC<Props> {
                             element = CreateRoom.create()
                         })
                     }
+                    add(jso<RouteObject> {
+                        path = "search"
+                        element = SearchPage.create()
+                    })
                     add(jso<RouteObject> {
                         path = "profile"
                         element = UserProfile.create()

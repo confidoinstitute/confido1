@@ -130,6 +130,30 @@ val SidebarActions = FC<SidebarActionsProps> {props->
     // Extension hook for items before workspace actions
     ClientExtension.forEach { it.sidebarExtra(SidebarPlace.WORKSPACE_TOP, props.small, this) }
 
+    RoomLink {
+        key = "::search"
+        to = "/search"
+        small = props.small
+        highlighted = location.pathname == "/search"
+        div {
+            css {
+                width = iconSize
+                height = iconSize
+                display = Display.flex
+                alignItems = AlignItems.center
+                justifyContent = JustifyContent.center
+                flexShrink = number(0.0)
+                color = Color("#bbb")
+            }
+            ZoomIcon {
+                size = iconSizeInner - 10
+            }
+        }
+        ReactHTML.span {
+            +"Search"
+        }
+    }
+
     if (!props.hideCalib)
     RoomLink {
         key = "::calibration"
