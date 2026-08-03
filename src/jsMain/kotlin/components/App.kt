@@ -22,9 +22,12 @@ data class ClientAppState(val state: SentState, val stale: Boolean = false)
 data class Login(val isLoggedIn: Boolean, private val changeState: (Boolean) -> Unit) {
     /** Change state to logged in. The session cookie must be set already. **/
     fun login() = changeState(true)
-    /** Change state to logged out and remove the session cookie. **/
+    /** Change state to logged out. **/
     fun logout() {
-        document.cookie = "session=; Path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
+        // The session cookie itself is HttpOnly; the server clears it on POST /logout.
+        // Here we can only clear the login hint cookie, which matters when the server
+        // has already dropped the session (websocket closed as unauthorized).
+        document.cookie = "logged_in=; Path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT"
         changeState(false)
     }
 }
@@ -71,7 +74,9 @@ fun mobileFlag(): Boolean {
     return version == "mobile"
 }
 
-fun cookieSet() = document.cookie.contains("\\bsession=".toRegex())
+// The session cookie is HttpOnly and thus invisible here; the server maintains a
+// separate non-HttpOnly hint cookie that mirrors whether a user is logged in.
+fun cookieSet() = document.cookie.contains("\\blogged_in=".toRegex())
 
 val App = FC<Props> {
     // TODO: initial state from cookie

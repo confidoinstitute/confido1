@@ -142,7 +142,14 @@ class SessionTracker {
 
     fun send(call: ApplicationCall) {
         val session = call.userSession ?: return
-        sendCookie(call, session.id, session.validity == UserSessionValidity.PERMANENT)
+        val persistent = session.validity == UserSessionValidity.PERMANENT
+        sendCookie(call, session.id, persistent)
+        // The session cookie is HttpOnly, so the frontend learns the login state
+        // from a separate hint cookie (see LOGIN_HINT_COOKIE_NAME).
+        if (session.userRef != null)
+            sendLoginHintCookie(call, persistent)
+        else if (hasLoginHintCookie(call))
+            clearLoginHintCookie(call)
     }
 }
 

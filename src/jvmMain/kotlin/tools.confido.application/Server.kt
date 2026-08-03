@@ -203,6 +203,7 @@ fun main() {
                 this.json(confidoJSON)
             }
             install(Sessions)
+            installCsrfProtection()
             install(Mailing) {
                 // This is the URL of the hosted frontend used in mailed links (no trailing /)
                 urlOrigin = (System.getenv("CONFIDO_BASE_URL") ?: "http://localhost:8081").trimEnd('/')
