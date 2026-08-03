@@ -7,7 +7,6 @@ import tools.confido.refs.Entity
 import tools.confido.refs.Ref
 import tools.confido.refs.ServerImmediateDerefEntity
 import tools.confido.utils.HasUrlPrefix
-import tools.confido.utils.generateId
 
 /**
  * A presentation flow associated with a room. Contains an ordered list of
@@ -24,8 +23,15 @@ data class Presentation(
     val numSlides: Int = 0,
     /** User-editable labels for each slide, indexed by slide number. Defaults to "Slide 1", etc. */
     val slideLabels: List<String> = emptyList(),
-    /** Random token required in slide image URLs as basic access protection. */
-    val fileToken: String = generateId(),
+    /**
+     * Random token required in slide image URLs as basic access protection.
+     *
+     * Unlike [id], this is a secret and must come from a cryptographically secure
+     * generator, so it is always supplied by the server rather than defaulted here.
+     * The empty default exists only so that stored documents keep deserializing;
+     * an empty token never authorizes access.
+     */
+    val fileToken: String = "",
 ) : ServerImmediateDerefEntity, HasUrlPrefix {
     override val urlPrefix get() = "/presentations/$id"
 

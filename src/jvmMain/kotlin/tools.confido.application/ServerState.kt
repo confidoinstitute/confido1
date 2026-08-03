@@ -94,7 +94,18 @@ data class ShortLink(
         const val LENGTH = 6
         const val VALIDITY = 30 * 60
         val REGEX = Regex("^[0-9]{$LENGTH}$")
-        fun generate() = generateNonce(LENGTH).joinToString("") { (it % 10).toString() }
+        fun generate(): String {
+            val digits = StringBuilder(LENGTH)
+            while (digits.length < LENGTH) {
+                generateNonce(LENGTH).forEach { b ->
+                    // Bytes are signed; mask before the modulo. Values >= 250 are
+                    // discarded so that the remaining range stays a multiple of 10.
+                    val v = b.toInt() and 0xFF
+                    if (v < 250 && digits.length < LENGTH) digits.append(v % 10)
+                }
+            }
+            return digits.toString()
+        }
     }
 }
 

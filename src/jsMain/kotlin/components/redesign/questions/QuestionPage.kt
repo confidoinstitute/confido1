@@ -140,13 +140,6 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
         }
     }
 
-    useEffectWithCleanup(props.question.id) { // TODO does not reflect change in question value
-        window.asDynamic().curQuestion = confidoJSON.encodeToDynamic(props.question)
-        onCleanup {
-            window.asDynamic().curQuestion = undefined
-        }
-    }
-
     val editDialog = useEditDialog(EditQuestionDialog, jso {
         preset = QuestionPreset.NONE
     })

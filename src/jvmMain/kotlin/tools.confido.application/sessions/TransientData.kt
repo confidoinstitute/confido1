@@ -3,22 +3,25 @@ package tools.confido.application.sessions
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
-val globalWebsocketRefresh = MutableStateFlow(false)
+// A monotonic counter rather than a toggled flag: StateFlow is conflated and
+// equality-based, so a value that flips away and back while a collector is busy
+// would be dropped, leaving that client stale until the next unrelated mutation.
+val globalWebsocketRefresh = MutableStateFlow(0L)
 /**
  * Short-lived session data. Will be lost upon server restart.
  */
 class TransientData {
-    private val _websocketRefreshChannel: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    private val websocketRefreshFlow: StateFlow<Boolean> = _websocketRefreshChannel.asStateFlow()
+    private val _websocketRefreshChannel: MutableStateFlow<Long> = MutableStateFlow(0L)
+    private val websocketRefreshFlow: StateFlow<Long> = _websocketRefreshChannel.asStateFlow()
     var activePresenterWindows: Int = 0
 
     fun refreshSessionWebsockets() {
-        _websocketRefreshChannel.update { !it }
+        _websocketRefreshChannel.update { it + 1 }
     }
 
     companion object {
         fun refreshAllWebsockets() {
-            globalWebsocketRefresh.update { !it }
+            globalWebsocketRefresh.update { it + 1 }
         }
     }
 

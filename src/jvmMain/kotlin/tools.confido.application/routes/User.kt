@@ -140,12 +140,14 @@ fun loginRoutes(routing: Routing) = routing.apply {
     }
     // Log out
     postST("/logout") {
-        call.respond(HttpStatusCode.OK)
+        // Must run before responding: committing the response also flushes the
+        // session cookie, so a later destroyUserSession() cannot clear it.
         val session = call.userSession
-        session?.user ?: return@postST
-
-        call.destroyUserSession()
-        call.transientUserData?.refreshSessionWebsockets()
+        if (session?.user != null) {
+            call.destroyUserSession()
+            call.transientUserData?.refreshSessionWebsockets()
+        }
+        call.respond(HttpStatusCode.OK)
     }
 }
 

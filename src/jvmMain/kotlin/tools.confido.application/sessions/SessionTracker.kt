@@ -101,7 +101,10 @@ var ApplicationCall.transientUserData: TransientData?
     get() {
         val id = sessionId ?: return null
         val storage = application.attributes[SessionStorageTransient]
-        return storage.getOrPut(id) { TransientData() }
+        // computeIfAbsent, not getOrPut: the latter is a non-atomic get-then-put, so
+        // two concurrent calls can each build a TransientData and one socket ends up
+        // registered on the instance that loses, never receiving refreshes.
+        return storage.computeIfAbsent(id) { TransientData() }
     }
     set(value) {
         val id = getSessionIdOrCreateNew()

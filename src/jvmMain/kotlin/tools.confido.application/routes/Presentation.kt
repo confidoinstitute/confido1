@@ -13,6 +13,8 @@ import org.apache.pdfbox.text.PDFTextStripper
 import org.apache.pdfbox.text.TextPosition
 import payloads.requests.*
 import rooms.RoomPermission
+import java.security.MessageDigest
+import tools.confido.application.generateToken
 import tools.confido.application.sessions.TransientData
 import tools.confido.application.sessions.modifyUserSession
 import tools.confido.application.sessions.userSession
@@ -42,7 +44,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
 
             val payload = call.receive<CreatePresentation>()
             val pres = serverState.presentationManager.insertEntity(
-                Presentation(room = room.ref, name = payload.name)
+                Presentation(room = room.ref, name = payload.name, fileToken = generateToken())
             )
             serverState.roomManager.modifyEntity(room.ref) {
                 it.copy(presentation = pres.ref)
@@ -168,7 +170,10 @@ fun presentationRoutes(routing: Routing) = routing.apply {
 
         // Validate token
         val pres = serverState.presentationManager.get(presId) ?: notFound("Presentation not found.")
-        if (pres.fileToken != token) unauthorized("Invalid file token.")
+        // Constant-time compare, and never let a blank stored token authorize anything.
+        if (pres.fileToken.isEmpty() ||
+            !MessageDigest.isEqual(pres.fileToken.toByteArray(), token.toByteArray())
+        ) unauthorized("Invalid file token.")
 
         // Sanitize filename to prevent path traversal
         if (!filename.matches(Regex("^\\d{4}\\.png$"))) badRequest("Invalid filename.")

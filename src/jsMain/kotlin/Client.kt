@@ -13,6 +13,7 @@ import react.create
 import react.dom.client.createRoot
 import tools.confido.extensions.ClientExtension
 import tools.confido.serialization.confidoJSON
+import tools.confido.state.appConfig
 import web.dom.document
 
 object Client {
@@ -36,7 +37,8 @@ object Client {
         if (payload !is String)
             contentType(ContentType.Application.Json.withParameter("charset", "utf-8"))
         val encodedPayload = if (payload is String) payload else confidoJSON.encodeToString(payload)
-        println("encoded payload: $encodedPayload")
+        // Request bodies include credentials; never log them outside development.
+        if (appConfig.devMode) println("encoded payload: $encodedPayload")
         setBody(encodedPayload)
         req()
     }
@@ -67,7 +69,7 @@ object Client {
         crossinline onError: suspend HttpResponse.(String) -> Unit,
         crossinline block: suspend HttpResponse.() -> Unit,
     ) {
-        console.log("Send data", url, payload!!::class.simpleName, payload)
+        if (appConfig.devMode) console.log("Send data", url, payload!!::class.simpleName, payload)
         val resp = sendDataRequest(url, payload, method, req)
         if (resp.status.isSuccess())
             block(resp)

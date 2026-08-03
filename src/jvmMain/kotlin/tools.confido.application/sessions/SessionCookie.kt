@@ -29,7 +29,9 @@ fun clearCookie(call: ApplicationCall) {
         COOKIE_NAME,
         value = "",
         maxAge = 0,
-        expires = GMTDate.START
+        expires = GMTDate.START,
+        // Must match the path the cookie was set with, or the browser keeps the old one.
+        path = "/"
     )
     call.response.cookies.append(cookie)
 }

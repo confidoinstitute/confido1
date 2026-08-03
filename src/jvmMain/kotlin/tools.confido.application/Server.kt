@@ -22,6 +22,7 @@ import kotlinx.datetime.Clock.System.now
 import kotlinx.html.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.slf4j.LoggerFactory
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.codec.digest.MessageDigestAlgorithms.SHA_224
 import org.litote.kmongo.serialization.registerModule
@@ -96,6 +97,9 @@ fun HTML.index() {
 // See https://git.confido.institute/confido/confido1/commit/d251e84a9f4e987d379087d8b5e7ac1e0c77e967
 @OptIn(DelicateCoroutinesApi::class)
 val singleThreadContext = newSingleThreadContext("confido_server")
+
+/** Logger for work that runs outside of any request, where `call.application.log` is unavailable. */
+val backgroundLog = LoggerFactory.getLogger("confido.background")!!
 // val singleThreadContext = IO.limitedParallelism(1) // alternative solution
 
 
@@ -162,17 +166,30 @@ fun main() {
             val expiringManagers = allManagers.filterIsInstance<serverState.ExpiringEntityManager<*>>()
 
             while (true) {
-                expiringManagers.forEach {
-                    it.cleanupExpired()
+                // These loops are children of the same scope, so an uncaught throw here
+                // would cancel the sibling loop as well and both would stay dead until
+                // the next restart, with the HTTP server still happily serving.
+                try {
+                    expiringManagers.forEach {
+                        it.cleanupExpired()
+                    }
+                } catch (e: Throwable) {
+                    backgroundLog.error("Expired-entity cleanup failed", e)
                 }
                 delay(1.hours)
             }
         }
 
-        launch {
+        // Must share the single thread with request handlers: this mutates the same
+        // in-memory entity maps they read and write.
+        launch(context = singleThreadContext) {
             while (true) {
                 delay(if (appConfig.devMode) 5.seconds else 15.minutes)
-                checkAllQuestionSchedules()
+                try {
+                    checkAllQuestionSchedules()
+                } catch (e: Throwable) {
+                    backgroundLog.error("Question schedule check failed", e)
+                }
             }
         }
 
@@ -217,6 +234,10 @@ fun main() {
                         ?: emptyList()
                     val rooms = questions.mapNotNull { serverState.questionRoom[it.ref]?.deref() }.toSet()
                     if (questions.isEmpty()) badRequest("No question to be exported.")
+                    // A question whose room cannot be resolved would silently drop out of
+                    // `rooms`, and the all{} checks below are vacuously true on an empty set.
+                    if (questions.any { serverState.questionRoom[it.ref]?.deref() == null })
+                        notFound("No such question.")
 
                     val canIndividual = rooms.all { it.hasPermission(user, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS) }
                     val canGroup = rooms.all { it.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS) }
@@ -345,13 +366,15 @@ fun main() {
 
                     val closeNotifier = MutableStateFlow(false)
 
-                    launch {
+                    // Explicit context: `launch` here binds to the websocket session's
+                    // scope, which does not inherit the handler's single-threaded one.
+                    launch(singleThreadContext) {
                         incoming.receiveCatching().onFailure {
                             closeNotifier.emit(true)
                         }
                     }
 
-                    val refreshJob = launch {
+                    val refreshJob = launch(singleThreadContext) {
                         while (true) {
                             call.userSession?.let { call.renewUserSession() }
                             delay(1.hours)

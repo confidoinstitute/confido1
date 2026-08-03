@@ -1,6 +1,7 @@
 package tools.confido.application.routes
 
 import getScore
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -25,6 +26,7 @@ import tools.confido.spaces.BinaryValue
 import tools.confido.state.serverState
 import tools.confido.utils.mapDeref
 
+import tools.confido.question.Prediction
 import tools.confido.question.Question
 import users.User
 import java.lang.System.getenv
@@ -174,12 +176,14 @@ fun scoreRoutes(routing: Routing) = routing.apply {
         call.withUser {
             call.withQuestion {
                 val pred = getScoredPrediction(question, user.ref)
-                val resp = if (question.state != QuestionState.RESOLVED || question.resolution == null
+                val resp: Pair<Prediction?, Double?> =
+                    if (question.state != QuestionState.RESOLVED || question.resolution == null
                                 || question.answerSpace !is BinarySpace || pred == null) {
                     null to null
                 } else {
                     pred to getScore(question, pred)
                 }
+                call.respond(HttpStatusCode.OK, resp)
             }
         }
     }

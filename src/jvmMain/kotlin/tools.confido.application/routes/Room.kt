@@ -287,6 +287,7 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
 
     webSocketST("/state$roomUrl/invites/{id}/shortlink") {
         call.withRoom {
+            assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members.")
             val linkId = call.parameters["id"] ?: return@withRoom
             val link = room.inviteLinks.firstOrNull { it.id == linkId } ?: return@withRoom
 

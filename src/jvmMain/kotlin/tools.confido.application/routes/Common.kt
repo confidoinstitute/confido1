@@ -54,7 +54,14 @@ fun Route.webSocketST(
     path: String,
     protocol: String? = null,
     handler: suspend DefaultWebSocketServerSession.() -> Unit
-) = webSocket(path, protocol) {  handler(this) }
+) = webSocket(path, protocol) {
+    // Websocket handlers read and write the same in-memory entity maps as the HTTP
+    // handlers, so they must share their dispatcher. Note this only covers the body
+    // and anything it starts via coroutineScope/async; a `launch` inside the handler
+    // resolves against the websocket session's own scope and needs the context passed
+    // explicitly (see getWS below and the /state handler in Server.kt).
+    withContext(singleThreadContext) { handler(this@webSocket) }
+}
 
 
 data class WSBody(val call: ApplicationCall)
@@ -63,7 +70,7 @@ inline fun <reified T> Route.getWS(path: String, crossinline body: suspend WSBod
     webSocketST(path) {
         val closeNotifier = MutableStateFlow(false)
 
-        launch {
+        launch(singleThreadContext) {
             incoming.receiveCatching().onFailure {
                 closeNotifier.emit(true)
             }

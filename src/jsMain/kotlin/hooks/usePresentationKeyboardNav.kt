@@ -44,9 +44,11 @@ fun usePresentationKeyboardNav(roomId: String) {
         val handler = { e: Event ->
             val ke = e.asDynamic()
             val key = ke.key as? String ?: ""
-            // Don't capture if user is typing in an input
+            // Don't capture if user is typing in an input. isContentEditable covers the
+            // markdown editor, where swallowing Space would break ordinary typing.
             val tagName = (ke.target?.tagName as? String)?.uppercase() ?: ""
-            if (tagName != "INPUT" && tagName != "TEXTAREA") {
+            val editable = ke.target?.isContentEditable == true
+            if (tagName != "INPUT" && tagName != "TEXTAREA" && !editable) {
                 val now = Date.now()
                 val elapsed = now - (lastNavTime.current ?: 0.0)
                 val dir = when (key) {

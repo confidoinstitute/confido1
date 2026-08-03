@@ -3,6 +3,7 @@ package hooks
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import react.useMemo
+import react.useRef
 import react.useState
 import utils.runCoroutine
 import kotlin.coroutines.EmptyCoroutineContext
@@ -15,17 +16,24 @@ data class CoroutineLock(val running: Boolean, private val call: (Coroutine) -> 
 
 inline fun useCoroutineLock(): CoroutineLock {
     var running by useState(false)
+    // The guard must read a ref, not the state variable: useMemo here has an empty
+    // dependency array, so the lambda captures the first render's `running` forever
+    // and a state-based check would always see false.
+    val runningRef = useRef(false)
 
     val call = useMemo {{ block: Coroutine ->
-        if (!running)
-        runCoroutine {
-            running = true
-            try {
-                block()
-            } catch (e: Throwable) {
-                console.error(e)
-            } finally {
-                running = false
+        if (runningRef.current != true) {
+            runningRef.current = true
+            runCoroutine {
+                running = true
+                try {
+                    block()
+                } catch (e: Throwable) {
+                    console.error(e)
+                } finally {
+                    runningRef.current = false
+                    running = false
+                }
             }
         }
         Unit
