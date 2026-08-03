@@ -30,6 +30,8 @@ import tools.confido.question.*
 import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.spaces.*
+import tools.confido.store.RefCountIndex
+import tools.confido.store.Stores
 import tools.confido.utils.*
 import users.EmailVerificationLink
 import users.LoginLink
@@ -107,23 +109,6 @@ data class ShortLink(
             return digits.toString()
         }
     }
-}
-
-/**
- * Reference-counted secondary index: for each key, the set of values currently
- * referenced by at least one entity, maintained incrementally from manager callbacks.
- */
-class RefCountIndex<K, V> {
-    val index: MutableMap<K, MutableMap<V, Int>> = mutableMapOf()
-    fun add(k: K, v: V) { index.getOrPut(k){ mutableMapOf() }.merge(v, 1, Int::plus) }
-    fun remove(k: K, v: V) {
-        val m = index[k] ?: return
-        val n = (m[v] ?: return) - 1
-        if (n <= 0) m.remove(v) else m[v] = n
-        if (m.isEmpty()) index.remove(k)
-    }
-    operator fun get(k: K): Set<V> = index[k]?.keys ?: emptySet()
-    inline fun forEach(body: (K, Set<V>) -> Unit) = index.forEach { (k, m) -> body(k, m.keys) }
 }
 
 object serverState : GlobalState() {
@@ -737,6 +722,7 @@ object serverState : GlobalState() {
     suspend fun initialize() {
         managers.values.forEach { it.initialize() }
         additionalManagers.forEach { it.initialize() }
+        Stores.all.forEach { it.initialize() }
     }
 
     /**
@@ -747,9 +733,10 @@ object serverState : GlobalState() {
      * (PERSISTENCE_SYNC_REDESIGN.md §6).
      */
     fun collectionVerifiers(): Map<String, suspend (String) -> Unit> =
-        (managers.values + additionalManagers).associate { m ->
-            val docClass = m.mongoCollection.collection.documentClass
-            m.mongoCollection.namespace.collectionName to { name: String ->
+        ((managers.values + additionalManagers).map { it.mongoCollection } +
+                Stores.all.flatMap { it.mongoCollections }).associate { coll ->
+            val docClass = coll.collection.documentClass
+            coll.namespace.collectionName to { name: String ->
                 database.database.getCollection(name, docClass).coroutine.find().toFlow().collect {}
             }
         }
@@ -757,6 +744,7 @@ object serverState : GlobalState() {
     suspend fun load() {
         managers.values.forEach { it.load() }
         additionalManagers.forEach { it.load() }
+        Stores.all.forEach { it.load() }
         recalcGroupPred()
     }
 

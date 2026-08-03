@@ -160,6 +160,8 @@ kotlin {
                 implementation("io.ktor:ktor-client-cio:$ktorVersion")
                 // PDF to image conversion for presentation slides
                 implementation("org.apache.pdfbox:pdfbox:3.0.4")
+                // Persistent (immutable) maps for store-layer state snapshots
+                implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.8")
             }
         }
         val jsMain by getting {
