@@ -55,7 +55,14 @@ val PresenterDialog = FC<PresenterDialogProps> {props->
     // before it is actually shown.
     var draft by useState(props.view)
     useEffect(props.view) { draft = props.view }
-    val controlsComp = getPresenterControlsComponent(props.view)
+    // Derive the controls component from `draft`, the same value passed to it below —
+    // never from props.view. The dialog is mounted permanently with EmptyPV and the
+    // draft-syncing effect only runs after the commit, so on the first render after a
+    // view is offered, draft still holds the previous (Empty) view; selecting the
+    // component by props.view then renders e.g. GroupPredPC with an EmptyPV, which
+    // crashes on the missing fields. With both derived from draft they cannot diverge
+    // (the controls simply appear one commit later).
+    val controlsComp = getPresenterControlsComponent(draft)
     Dialog {
         title = "Presentation mode"
         action = if (props.windowActive) "Show" else "Open"
