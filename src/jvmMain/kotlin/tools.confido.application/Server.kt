@@ -160,6 +160,7 @@ fun main() {
 
     tools.confido.store.registerPredictionStores()
     tools.confido.store.registerCommentStores()
+    tools.confido.store.registerLinkStores()
 
     runBlocking {
         serverState.initialize()

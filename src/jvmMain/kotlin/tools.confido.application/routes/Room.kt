@@ -20,6 +20,7 @@ import tools.confido.question.GroupPredictionVisibility
 import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.state.*
+import tools.confido.store.loginLinkStore
 import tools.confido.store.transact
 import tools.confido.utils.randomString
 import users.LoginLink
@@ -168,12 +169,12 @@ fun roomRoutes(routing: Routing) = routing.apply {
                             serviceUnavailable("Could not send an invitation e-mail.")
                         }
 
-                        serverState.withTransaction {
+                        transact {
                             serverState.userManager.insertEntity(newUser)
                             serverState.roomManager.modifyEntity(room.ref) {
                                 it.copy(members = it.members + listOf(RoomMembership(newUser.ref, member.role, null)))
                             }
-                            serverState.loginLinkManager.insertEntity(link)
+                            loginLinkStore.insert(link)
                         }
                     }
                 }

@@ -1,10 +1,15 @@
 package tools.confido.store
 
+import com.mongodb.reactivestreams.client.ClientSession
 import kotlinx.collections.immutable.PersistentMap
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.litote.kmongo.coroutine.CoroutineCollection
 import tools.confido.refs.Entity
 import tools.confido.refs.HasId
+import tools.confido.refs.Ref
+import tools.confido.utils.generateId
 
 /**
  * A change to a stored entity, emitted strictly after the backing database commit.
@@ -73,5 +78,90 @@ interface ManagedStore {
 /** Registry of new-style stores, iterated by serverState boot alongside the legacy managers. */
 object Stores {
     val all = mutableListOf<ManagedStore>()
+    /** Resident stores by entity class, consulted by serverState.derefNonBlocking. */
+    val resident = mutableMapOf<kotlin.reflect.KClass<*>, Store<*>>()
     fun register(store: ManagedStore) { all.add(store) }
+}
+
+class DuplicateIdException : Exception()
+
+/**
+ * Generic Mongo-backed resident [Store]: full collection load at boot (replayed through
+ * the same change listeners that maintain indexes live), write-through staged mutations.
+ */
+open class MongoStore<E : Entity>(
+    internal val coll: CoroutineCollection<E>,
+    private val withId: (E, String) -> E,
+) : ChangeSource<E>(), Store<E>, ManagedStore {
+    private val _state = MutableStateFlow<PersistentMap<String, E>>(persistentMapOf())
+    override val state: StateFlow<PersistentMap<String, E>> get() = _state
+    override fun get(id: String): E? = _state.value[id]
+    override val mongoCollections get() = listOf(coll)
+
+    override suspend fun load() {
+        coll.find().toFlow().collect { e ->
+            _state.value = _state.value.put(e.id, e)
+            emitChange(Change.Added(e)) // boot replays through the same folds as live changes
+        }
+    }
+
+    // The read (duplicate check / current value) and the staging must both happen under
+    // the writer lock, so each mutation wraps itself in transact — which joins an ambient
+    // transaction when there is one, so callers can freely compose these in transact {}.
+
+    /** Insert a new entity; assigns an id if empty. Throws [DuplicateIdException]. */
+    suspend fun insert(entity: E): E {
+        val stored = if (entity.id.isEmpty()) withId(entity, generateId()) else entity
+        transact {
+            if (get(stored.id) != null) throw DuplicateIdException()
+            inTransaction { it.stage(object : StagedWrite {
+                override suspend fun flush(sess: ClientSession?) {
+                    if (sess == null) coll.insertOne(stored) else coll.insertOne(sess, stored)
+                }
+                override fun apply() {
+                    _state.value = _state.value.put(stored.id, stored)
+                    emitChange(Change.Added(stored))
+                }
+            }) }
+        }
+        return stored
+    }
+
+    suspend fun delete(ref: Ref<E>, ignoreNonexistent: Boolean = false): E? {
+        var old: E? = null
+        transact {
+            old = get(ref.id) ?: if (ignoreNonexistent) return@transact else throw NoSuchElementException()
+            val removed = old!!
+            inTransaction { it.stage(object : StagedWrite {
+                override suspend fun flush(sess: ClientSession?) {
+                    if (sess == null) coll.deleteOneById(removed.id) else coll.deleteOneById(sess, removed.id)
+                }
+                override fun apply() {
+                    _state.value = _state.value.remove(removed.id)
+                    emitChange(Change.Removed(removed))
+                }
+            }) }
+        }
+        return old
+    }
+
+    /** Atomic read-modify-write of one entity, in the ambient transaction. */
+    suspend fun modify(ref: Ref<E>, f: (E) -> E): E {
+        lateinit var new: E
+        transact {
+            val old = get(ref.id) ?: throw NoSuchElementException()
+            new = f(old)
+            check(new.id == old.id)
+            inTransaction { it.stage(object : StagedWrite {
+                override suspend fun flush(sess: ClientSession?) {
+                    if (sess == null) coll.replaceOneById(new.id, new) else coll.replaceOneById(sess, new.id, new)
+                }
+                override fun apply() {
+                    _state.value = _state.value.put(new.id, new)
+                    emitChange(Change.Updated(old, new))
+                }
+            }) }
+        }
+        return new
+    }
 }

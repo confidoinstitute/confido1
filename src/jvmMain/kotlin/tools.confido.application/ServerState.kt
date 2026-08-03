@@ -423,14 +423,6 @@ object serverState : GlobalState() {
     }
     override val users by userManager::entityMap
 
-    object loginLinkManager : InMemoryEntityManager<LoginLink>(database.getCollection("loginLinks")) {
-        val byToken: MutableMap<String, LoginLink> = mutableMapOf()
-        init {
-            onEntityAddedOrUpdated { byToken[it.token] = it }
-            onEntityDeleted { byToken.remove(it.token) }
-        }
-    }
-
     object verificationLinkManager : InMemoryEntityManager<EmailVerificationLink>(database.getCollection("mailVerificationLinks")) {
         val byToken: MutableMap<String, EmailVerificationLink> = mutableMapOf()
         init {
@@ -461,7 +453,6 @@ object serverState : GlobalState() {
         roomManager.register()
         questionManager.register()
         userManager.register()
-        loginLinkManager.register()
         verificationLinkManager.register()
         passwordResetLinkManager.register()
         userSessionManager.register()
@@ -560,6 +551,7 @@ object serverState : GlobalState() {
 
     @DelicateRefAPI
     override fun derefNonBlocking(entityType: KClass<*>, id: String): Entity? {
+        Stores.resident[entityType]?.let { return it.get(id) }
         managers[entityType]?.let { manager ->
             when (manager) {
                 is InMemoryEntityManager ->

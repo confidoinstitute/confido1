@@ -15,6 +15,7 @@ import tools.confido.application.*
 import tools.confido.application.sessions.*
 import tools.confido.refs.*
 import tools.confido.state.*
+import tools.confido.store.loginLinkStore
 import tools.confido.store.questionCommentArchive
 import tools.confido.store.roomCommentArchive
 import tools.confido.store.transact
@@ -86,7 +87,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
                 // Possible side channel!!!
                 serviceUnavailable("There was a failure in sending the e-mail.")
             }
-            serverState.loginLinkManager.insertEntity(link)
+            loginLinkStore.insert(link)
         } else {
             // Do not disclose the email does not exist.
         }
@@ -95,7 +96,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
     // Login by e-mail: Step two (using token)
     postST("/login_email") {
         val login: EmailLogin = call.receive()
-        val loginLink = serverState.loginLinkManager.byToken[login.token] ?: unauthorized("No such token exists.")
+        val loginLink = loginLinkStore.byToken[login.token] ?: unauthorized("No such token exists.")
         try {
             if (loginLink.isExpired()) { unauthorized("The token has expired.") }
             val user = loginLink.user.deref() ?: unauthorized("The user does not exist.")
@@ -115,7 +116,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
             call.respond(HttpStatusCode.OK, loginLink.url)
         } finally {
             // Login links are single-use
-            serverState.loginLinkManager.deleteEntity(loginLink.ref, ignoreNonexistent = true)
+            loginLinkStore.delete(loginLink.ref, ignoreNonexistent = true)
         }
     }
     // Login by id (dev mode and demo only; skips login checks and accessible for everyone)
@@ -735,10 +736,10 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
                     .forEach { session ->
                         serverState.userSessionManager.deleteEntity(session.ref)
                     }
-                serverState.loginLinkManager.entityMap.values
+                loginLinkStore.asMap.values
                     .filter { it.user eqid userToDelete }
                     .forEach {
-                        serverState.loginLinkManager.deleteEntity(it.ref)
+                        loginLinkStore.delete(it.ref)
                     }
                 serverState.verificationLinkManager.entityMap.values
                     .filter { it.user eqid userToDelete }
