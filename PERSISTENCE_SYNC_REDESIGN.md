@@ -508,10 +508,52 @@ working untouched mid-transition.
   build-mode correlation that suggested a compiler/devserver issue was actually
   presenter-window state: with a window already open, `offer()` skips the dialog
   entirely.)*
-- **Phase 2 — store core**: `Store`/`Archive`/`View` + `transact` + MongoBackend. Prove it on
-  the two ugliest customers first — the prediction log + latest-per-key materialized view
-  (§3.4) and comments-as-Archive with `range + tail` (§3.1); the twelve boring managers then
-  convert mechanically, one at a time, behind the `serverState` facade.
+- **Phase 2 — store core** *(implemented: core + predictions + comments + one resident
+  pilot; the remaining ~9 resident managers still convert mechanically as follow-up)*:
+  `Store`/`Archive`/`View` + `transact`. Proven on the two ugliest customers — the
+  prediction log + latest-per-key materialized view (§3.4) and comments-as-Archive (§3.1) —
+  plus `loginLinkStore` as the resident-`Store`/`UniqueIndex` pilot. Implementation
+  decisions that amend earlier sketches:
+  - **No separate `Backend` interface yet** (deliberate descope): store implementations in
+    `tools.confido.store` use KMongo directly, but all Mongo touchpoints are confined to
+    that package, so the §3.3 backend split can be introduced when SQLite actually lands.
+    Data formats are byte-identical to the old managers' (verified against live data —
+    including the `___type` discriminator KMongo emits for sealed classes like Comment).
+  - **Change delivery is synchronous listener dispatch**, not a Flow: the server is
+    single-threaded and route handlers read derived views immediately after a mutation; an
+    asynchronously collected fold would be one step stale there. The async
+    `changes`/`tail()` Flow surface gets added in Phase 3 for change-driven topics.
+  - **`transact` bridges over legacy `withTransaction`**: store writes stage themselves
+    (via an ambient-coroutine-context `TxnScope`), flush inside the shared Mongo session,
+    and apply to RAM strictly after commit — so a failed commit leaves store RAM untouched,
+    while unconverted legacy manager ops keep their existing semantics inside the same
+    transaction. Nested `transact` joins the ambient one; a `transact` under a legacy
+    `withTransaction` fails loudly (those call sites were converted).
+  - **The coalescing append is one staged op** that does its targeted lookups at flush
+    time inside the transaction (the "newest remaining log entry" needed by the derivative
+    group coalesce is not derivable from resident views — it may be the user's own older
+    entry). Reads there are deliberately sessionless, as before: under a single writer
+    they see pre-transaction committed state, which is what the policy is defined against.
+  - **Likes folded onto comment documents** (`likes: List<Ref<User>>`), CommentLike entity
+    and collection retired via migration `003_fold_comment_likes` — the first real
+    exercise of the §6 envelope, incl. a verified failure path (bad document → verify
+    aborts boot, live data untouched, working copies kept). Rationale: resident likes
+    under non-resident comments re-created the residency problem one level down, and the
+    `byUser` index's only live consumer was user-deletion cleanup (now an `updateMany`
+    `$pull`); `getCommentsILike` was dead code. A dedicated N:M concept is deferred until
+    a second use case exists.
+  - **Cascades as `beforeEntityDelete` hooks** on the still-legacy question/room managers
+    (question → predictions + comments, room → room comments): fixes the historical
+    orphaning. The declarative `references()` graph of §3.2 becomes worthwhile once the
+    owning entities convert.
+  - Comments' `all(partition)` + folds (`commentCount`, `commentAuthors` via one boot
+    aggregate each) replaced residency; `range + tail` narrowing per §3.1 stands, with
+    `tail` deferred to Phase 3. The user-deletion scan needed one extra archive primitive:
+    `byAuthor(user)` (indexed cross-partition query).
+  - Incidental finds: `passwordResetLinkManager` was never registered (reset links did not
+    survive restarts — fixed first, standalone); `userPredManager` was registered twice;
+    `GET $questionUrl/updates` + `DistributionUpdate` appear to have no client callers
+    (ported anyway — candidate for removal); `Comment.key()` and `commentList` were dead.
 - **Phase 3 — topics & censor pipeline** (§4.2–4.3): change-stream-driven invalidation
   (delete the 56 manual refresh calls), `SentState` decomposed into the topic table,
   permission-class memoization, UserPresentation rollout + frontend weaning off the users map.
