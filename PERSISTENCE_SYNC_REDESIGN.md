@@ -1,0 +1,500 @@
+# Persistence & State-Sync Redesign Proposal
+
+Status: **living document** — distills the design conversation of 2026-08-03. Direction is
+agreed; details are expected to evolve as implementation surfaces them. Sections record
+intent and rationale, not commitments — update this doc when the code teaches us otherwise.
+
+This proposal covers a ground-up redesign of two intertwined subsystems:
+
+1. the persistence layer (today: `ServerState.kt`'s `EntityManager` hierarchy over KMongo), and
+2. client–server state synchronization (today: the global `SentState` snapshot plus ad-hoc
+   secondary websockets).
+
+They are treated together because the central idea is that **the persistence layer's change
+stream should drive client synchronization** — mutation → change event → topic invalidation,
+with no manual notification calls anywhere.
+
+---
+
+## 1. Problems with the current design
+
+Findings from a survey of the current code (file references as of this writing):
+
+**Persistence** (`src/jvmMain/.../ServerState.kt`, ~850 lines):
+
+- One `EntityManager` hierarchy pretends to span two genuinely different access patterns
+  (fully-resident vs. queried-on-demand). The seams leak: `suspend get()` that is sometimes a
+  map lookup and sometimes a DB round trip, the `Instant.DISTANT_FUTURE` sentinel choosing
+  between cache and Mongo (`ServerState.kt:498`), the `is InMemoryEntityManager` type test in
+  `derefNonBlocking` (`ServerState.kt:786`), and the `FIXME` on the base class itself
+  (`ServerState.kt:299`).
+- Secondary indexes are hand-wired callback maps; several `deleteMany` paths bypass the
+  callback system and hand-patch caches owned by *other* managers (`ServerState.kt:434,520,601`).
+- Cascade deletes are hand-rolled in route handlers and incomplete (deleting a question orphans
+  its predictions and comments; `routes/Question.kt:181`).
+- `withTransaction` (`ServerState.kt:770`) has no abort path, and the in-memory maps are
+  mutated *inside* the transaction — a failed transaction would leave RAM and DB divergent.
+  The replica-set requirement (the largest operational burden for small self-hosted
+  deployments) buys crash-atomicity at best, imperfectly.
+- `userPredManager` is a whole second manager shape (bare `EntityManager`, synthetic composite
+  id, filter-based upsert) because "latest prediction per (question, user)" never was an entity
+  collection — see §3.4.
+
+**Sync** (`Server.kt:332`, `StateCensor.kt`, `routes/Common.kt`):
+
+- Any of ~56 `refreshAllWebsockets()` call sites wakes **every** socket of **every** client.
+  Each `/state` socket then rebuilds the full `SentState` from scratch — including walking
+  every comment on the instance just to compute `referencedUsers` (`StateCensor.kt:25-47`) —
+  and sends it unconditionally (no dedup on `/state`). Cost per mutation:
+  O(whole state × connected clients), all on the single shared thread.
+- Manual refresh calls are a convention that is easy to forget and impossible to scope.
+- Secondary subscriptions (`getWS` / `useWebSocket`, 17 endpoints, 23 client call sites) are
+  socket-per-subscription: a question page holds 4–5 concurrent sockets, a presenter grid
+  ~24. This multiplies reconnect logic (three divergent implementations) and is the likely
+  culprit for iOS Safari connection-limit misbehavior (unverified; no workaround exists in
+  the repo).
+- The same data class serves as Mongo document, in-memory object, and wire message, producing
+  wire-only fields on entities (`Room._effectiveMembers` etc.) and a `beforeEntitySave`
+  scrubber to strip them back out (`ServerState.kt:334`).
+
+**What we keep** (explicit non-goals of the redesign):
+
+- kotlinx.serialization end to end, including polymorphic, evolvable schemas.
+- Immutable entities, `Ref<T>` + `eqid` semantics, non-suspending `deref()` in shared code.
+- Kotlin Multiplatform with shared `commonMain` models. (A frontend-stack pivot was
+  considered and rejected: every pain point is server-side, and the shared-model
+  serialization is the architecture's best asset.)
+- Single-writer concurrency. At the target scale (tens of users per workspace) this is a
+  feature: it makes snapshot semantics and transactions trivially correct.
+
+---
+
+## 2. Design principles
+
+1. **Honest types over transparent caching.** Resident and non-resident data get *different
+   store shapes with different signatures*. "Can I deref this synchronously?" becomes a
+   compile-time fact, not a runtime property. (The Kodein-DB-style transparent cache was
+   considered and rejected: transparency is precisely what hides whether a call is a map read
+   or a query.)
+2. **Full residency is a contract, not a cache.** For resident stores, memory is the source of
+   truth and the backend is a durability log read once at boot. This is what keeps
+   `deref()` non-suspending and the backend interface tiny.
+3. **Every intermediate state is valid.** Applies to transactions (emit after commit) and to
+   migrations (tolerant readers) alike.
+4. **Derived state is Flow algebra, not callbacks.** Indexes, counts, aggregates, topics, and
+   censored payloads are all views over change streams. Snapshots for reads, deltas for
+   maintenance (never "recompute view from snapshot on every emission").
+5. **The wire is not the database.** Topic payloads are ephemeral and version-locked (the
+   `/state` socket already force-reloads clients on bundle-hash mismatch, close code 4001), so
+   the wire format is free to change; the persisted format is sacred and changes only via
+   migration.
+6. **Identity is granted, not leaked.** Clients receive `UserPresentation` values embedded in
+   payloads, never joinable `Ref<User>` ids, except in admin/moderator contexts. See §5.3.
+
+---
+
+## 3. The store layer
+
+### 3.1 Taxonomy
+
+Three shapes cover all fourteen current managers:
+
+| Shape | Contract | Backing | Examples |
+|---|---|---|---|
+| `Store<E>` (resident) | non-suspending `get`, `StateFlow` snapshots, `Ref.deref()` valid | full collection load at boot, write-through | rooms, questions, users, presentations, links, sessions |
+| `Log<E>` / `Archive<E>` (non-resident) | suspend-only; `range()` queries + `tail()` subscription; **no** non-suspending deref, by construction | append-mostly with keyed edits; backend range queries | prediction history, group-pred history, **comments**, calibration training responses |
+| `View<T>` (derived) | read-only; incremental fold over change streams | in-memory, or backend-materialized (§3.4) | counts, `questionRoom`, effective permissions, group aggregates, **latest-prediction-per-key** |
+
+**Residency test** — an entity type is resident iff:
+(a) it is a `Ref` target used in synchronous shared code,
+(b) it is bounded by workspace size, not by activity × time, and
+(c) it is needed for synchronous permission/censoring decisions.
+
+**Partition-fetch, not pagination, is the Archive's core primitive.** A hot question holds on
+the order of a hundred comments; loading a whole partition on demand is cheap, and the comment
+topic is simply `all(question) + tail`. Time-ordered range queries exist only on
+`TimeSeriesLog` — the prediction histories genuinely need them (chart windows, calibration,
+CSV export); comments do not, and the interface should not imply they might.
+
+Comments fail (b) and — after the censor redesign in §4.3 removes the `referencedUsers` walk —
+no longer pass (c); they move to `Archive`. The costs are absorbed: `commentCount` becomes a
+maintained fold (rebuilt by one aggregate at boot, like `totalPredictions` today), comment
+authors ship inside the comment topic payload as presentations, and likes travel with their
+comment's topic. `Ref<Comment>` loses synchronous deref; nothing on a synchronous path needs a
+comment body, and the type system now enforces that.
+
+### 3.2 Core interfaces (sketch)
+
+```kotlin
+sealed interface Change<E : HasId> {
+    data class Added(val entity: E) : Change<E>
+    data class Updated(val old: E, val new: E) : Change<E>
+    data class Removed(val entity: E) : Change<E>
+}
+
+interface Store<E : Entity> {
+    val state: StateFlow<PersistentMap<String, E>>  // consistent snapshots (kotlinx.collections.immutable)
+    val changes: Flow<Change<E>>                    // emitted strictly after backend commit
+    fun get(id: String): E?                         // non-suspending; deref() routes here
+}
+
+interface Archive<E : HasId> {
+    suspend fun all(partition: PartitionKey): List<E>  // the core primitive: fetch one partition
+    fun tail(partition: PartitionKey): Flow<Change<E>> // snapshot-then-subscribe = the topic protocol
+    // write path declares append policy, e.g. coalescing (§3.4)
+}
+
+interface TimeSeriesLog<E : HasId> : Archive<E> {
+    suspend fun range(partition: PartitionKey, from: Instant?, to: Instant?): List<E>
+    suspend fun at(partition: PartitionKey, ts: Instant): E?
+}
+
+interface Backend {                                  // the ~5 primitives actually used today
+    suspend fun loadAll(collection: String): Flow<ByteArray>
+    suspend fun commit(batch: WriteBatch)            // atomic: Mongo txn / SQLite txn
+    suspend fun append(collection: String, doc: ByteArray)
+    suspend fun rangeQuery(collection: String, q: RangeQuery): Flow<ByteArray>
+}
+
+suspend fun <R> transact(block: TxnScope.() -> R): R
+// Order of operations: stage writes → backend.commit() → swap persistent maps → emit changes.
+// A failed commit leaves RAM untouched (fixes the current divergence hazard).
+```
+
+**Atomic read-modify-write contract.** `transact` serializes against all other writers (there
+is exactly one), so reads *inside* a transact block are guaranteed to see the latest committed
+state, and it cannot change before the block commits — RMW atomicity
+(`transact { val q = questions.get(id)!!; put(q.copy(...)) }`) falls out for free. Two rules
+follow:
+
+- Any read that feeds a write happens **inside** `transact`. Reads outside (via `state`
+  snapshots or `get`) are consistent but may be stale by the time you act on them.
+- No slow I/O inside `transact` — it holds the writer. The backend commit at the end is the
+  only awaited I/O.
+
+`transact` solves *server-side* atomicity only. Human-latency conflicts (two moderators
+editing the same form for minutes) remain an API-level concern: entity-version
+compare-and-swap, like today's `replaceEntity(compare = ...)` /
+`ConcurrentModificationException`, implemented trivially as a compare inside a transact.
+
+Notes:
+
+- The heterogeneous registry (`Map<KClass<*>, Store<*>>`) needs one unchecked cast behind one
+  lookup function — same as today's `managers` map; sound by construction.
+- Secondary indexes become a small generic `Index<E, K>(keyOf: (E) -> K?)` maintained from
+  `changes` — replaces every hand-wired callback map (`byEmail`, `byToken`, `byComment`, …).
+- Referential structure is declared explicitly per store
+  (`references(Question::class) { it.questions }`), giving a visible cascade graph and
+  generic cascade deletes. (Auto-discovery via `SerialDescriptor` walking was considered;
+  `Ref<T>`'s target type is erased in the descriptor, so explicit declaration is cleaner.)
+- Boot = replaying `loadAll` through the same folds as live changes; no `isLoading` guard.
+- Single-writer is stated once, in `transact`; the `mutationMutex` + single-thread-dispatcher
+  duplication disappears.
+
+### 3.3 Backends
+
+Actual Mongo usage today is narrow: `findOneById`/`replaceOneById`/`insertOne`/`deleteOneById`,
+full collection scans at boot, multi-document transactions, one `$group` count aggregate,
+sorted `(question, user, ts)` range queries, `deleteMany` by predicate, and one
+partial+collated unique index (user email). Everything fits the `Backend` interface above.
+
+- **MongoBackend**: compatibility with existing deployments. Unique-email enforcement stays a
+  backend concern (the existing index) plus a store-level `UniqueIndex` check.
+- **SqliteBackend** (optional, later): one `(id TEXT PRIMARY KEY, data BLOB)` table per
+  collection (kotlinx-serialized CBOR/JSON — polymorphic serialization unaffected), real
+  columns + indexes for log tables. WAL mode + single writer gives genuinely atomic
+  multi-entity commits. Removes the replica-set operational burden for small deployments and
+  opens the Kotlin/Native door (SQLDelight native driver); Native is a side effect, not a goal.
+
+### 3.4 Predictions: log + materialized view
+
+`userPredHist` is the ground truth — an append-only log of prediction events, with the
+existing coalescing rule ("collapse appends within `predictionCoalesceInterval` per key")
+becoming a declared append policy of the log rather than 40 lines in `addPrediction`.
+
+**"Latest prediction per (question, user)" is not a store — it is a materialized view of the
+log**: conceptually `predictionLog.foldLatestPerKey()`, persisted (today's `userPred`
+collection, reinterpreted) only so boot does not replay the full history. A materialized view
+has an owner (the log), a definition (the fold), and a deterministic rebuild procedure — which
+makes the "deleteMany then hand-patch other managers' maps" bug class unrepresentable.
+
+Downstream views compose: group aggregate = fold over latest-per-key changes;
+`predictorCount` = key count per question; histograms = per-question projection, censored per
+room policy. "Has predicted" becomes a per-viewer boolean on the question topic payload
+(§4.3), not a censor input.
+
+The same head/past split resolves the old sentinel kludge: the *head* of the prediction data
+is resident (bounded by users × questions), its *past* is archived — expressed in types, not
+in a magic timestamp.
+
+---
+
+## 4. Sync: one socket, topics, censor pipeline
+
+### 4.1 Multiplexed websocket
+
+One websocket per client. Frames:
+
+```
+client → server:  { "sub":   "<topic>" }
+                  { "unsub": "<topic>" }
+server → client:  { "topic": "<topic>", "data": <payload> }   // full payload per topic, deduped
+                  { "topic": "<topic>", "error": ... }
+```
+
+- Server side: today's `getWS` bodies become topic handlers; the existing per-socket
+  last-payload dedup (`routes/Common.kt:92`) carries over per topic.
+- Client side: `useWebSocket(url)` becomes `useSubscription<T>(topic)` with the same signature
+  shape — all 23 call sites convert mechanically. One reconnect implementation with backoff
+  replaces the current three divergent ones.
+- Version locking (bundle-hash close 4001) and session close (3000) move to the connection
+  level, unchanged in behavior.
+- iOS Safari's suspected connection-limit issue is mooted: one connection total.
+
+### 4.2 Topics from change streams
+
+A topic invalidation is a Flow derivation, e.g.
+`store.changes.mapNotNull { topicOf(it) }.conflate()` — any change to a room-owned entity maps
+to `RoomTopic(roomRef)`. This **replaces all ~56 manual `refreshAllWebsockets()` calls with
+nothing**: correctness by construction, scoping for free, coalescing under bursts via
+conflation. Timer-driven refreshes (schedule sweep, millionaire timer) become explicit topic
+invalidations.
+
+`SentState` splits into medium-grained topics (deliberately not per-entity — churn without
+payoff at this scale):
+
+| Topic | Contents (payload types, not entities — §5) | Personal? |
+|---|---|---|
+| `self` | session, own user, `myPasswordIsSet`, presenter state | per-user |
+| `rooms` | room directory: id, name, icon, role — enough for the room list | per-permission-class |
+| `room/<id>` | configuration, member presentations, question refs/order | per-permission-class |
+| `room/<id>/questions` | censored question payloads for the room | per-permission-class |
+| `question/<id>/mine` | own prediction, `hasPredicted` | per-user |
+| `question/<id>/group` | group prediction / histogram (existing secondary channels, retopiced) | per-permission-class |
+| `question/<id>/comments`, `room/<id>/comments` | `range + tail` over the comment archive | per-permission-class |
+| `admin/users` | full user directory | admin/moderator only |
+| extension topics | existing `.ws` endpoints, retopiced | varies |
+
+### 4.3 Censor pipeline
+
+```
+store.changes ──▶ topic invalidation (conflated)
+      ▼
+uncensored topic view            computed ONCE per topic, shared by all subscribers
+      ▼
+censor: combine(view, viewerPermClass)    memoized per (topic, permission class)
+      ▼
+per-connection: personal topics merged in; distinctUntilChanged; send
+```
+
+Key observation: censoring is almost never a function of the *user*, but of the user's
+**permission class** (role in room + a few booleans). Thirty forecasters with identical
+permissions share one censored payload, computed once. Only genuinely personal slices
+(`self`, `question/<id>/mine`) are per-user, and they are tiny.
+
+Cost model change: from O(whole state × connected clients) per mutation to
+O(changed topics × distinct permission classes).
+
+The `StateCensor` `referencedUsers` walk disappears: comment authors are embedded in comment
+payloads at censor time (§5.3), so the global snapshot no longer needs to pre-declare users.
+
+Session-scoped oddities (`presenterInfo`, presenter-window tracking) live in the
+per-connection stage, where the session is naturally in scope.
+
+**Discipline rule** (worth enforcing in review): views are maintained by incremental folds
+over `changes`; `combine`+recompute-from-snapshot is reserved for cheap/rare derivations.
+Otherwise the full-recompute cost model sneaks back in with prettier syntax.
+
+---
+
+## 5. Entity modeling and wire payloads
+
+### 5.1 Semantic components for wide entities
+
+Room and Question (the wide, churning entities) are decomposed into **semantic components** —
+not by wire policy (which churns) but by domain boundaries that three concerns align on:
+
+- *change rate* (configuration changes rarely; membership on every join),
+- *visibility class* (configuration is member-visible; invite links moderator-only),
+- *topic granularity* (components are the natural invalidation units).
+
+Sketch (field-by-field assignment is an open modeling question, §8):
+
+```kotlin
+@Serializable data class QuestionProperties(  // name, description, answerSpace, schedule, tags, display prefs
+    @SerialName("_id") val id: String, val name: String, /* … */)
+@Serializable data class QuestionResolution(  // open/resolved/annulled, resolution value
+    /* conveniently: also the subtractive-censoring cluster */)
+
+@Serializable data class Question(
+    val props: QuestionProperties,
+    val resolution: QuestionResolution,
+    val extensionData: ExtensionData,          // the in-house precedent for this pattern
+) : QuestionShared by props                    // delegation: reads compile unchanged
+
+fun Question.mapProps(f: (QuestionProperties) -> QuestionProperties) = copy(props = f(props))
+```
+
+Room decomposes into configuration, membership, invite links, and the question relation.
+Membership may later graduate to its own store (shrinking the room topic's invalidation
+footprint); components-as-subdocuments within one persisted document is the right first stop —
+finer storage granularity would sacrifice trivial single-document atomicity for nothing at
+this scale. Topics can be finer than storage.
+
+Persisting the nested component structure is *not* persisting an implementation detail —
+components are the domain model, and their boundaries are stable (a UserPresentation-style
+change is a censor-layer change, touching no entity structure). Residual fields that fit no
+component stay in the entity root; a residual holding only core identity churns slowly by
+construction.
+
+Rejected alternatives for the variants problem, for the record: inheritance base classes
+(constructor pass-through re-creates the duplication for wide classes), a full DTO per entity
+(unpayable churn tax on wide entities), a format-agnostic flattening serializer
+("recording encoder", ~250 lines — feasible but clever-fragile; unnecessary once nesting is
+semantic), and a JsonElement structural bridge (superseded: with composition, variant interop
+is passing a reference).
+
+### 5.2 Wire payloads
+
+Payload types are thin shells over components plus per-viewer extras:
+
+```kotlin
+@Serializable data class QuestionPayload(
+    val props: QuestionProperties,            // shared component, by reference
+    val resolution: QuestionResolution?,      // null unless visible to this perm class
+    val hasPredicted: Boolean,                // per-viewer
+) : QuestionShared by props
+```
+
+- Adding a field to a component: one line, flows to every consumer automatically.
+- Structural differences (fields that must never reach the wire) live outside shared
+  components — fail-closed by construction, no inventory tests needed.
+- Nesting on the wire is free (ephemeral, version-locked); nesting in the DB is wanted
+  (semantic). No custom serializers anywhere.
+- `Room`'s wire-only computed fields (`_effectiveMembers` etc.) and the `beforeEntitySave`
+  scrubber are deleted; computed data lives only in payloads.
+
+### 5.3 UserPresentation as a security boundary
+
+Clients receive **embedded `UserPresentation` values, never joinable `Ref<User>` ids** —
+except in admin/moderator contexts (`admin/users` topic). Rationale: stable ids don't just
+reveal identity, they make it *joinable* across contexts (comments × histogram bins ×
+member lists). Presentations invert the default: linkage is granted per context by the censor
+stage.
+
+Consequences and requirements:
+
+- The `users` map leaves the ordinary member's client state entirely; frontend code stops
+  expecting a user collection outside admin surfaces.
+- Where the UI needs stable-but-unlinkable identity ("same author within this thread"),
+  the censor stage generates deterministic per-context pseudonymous keys
+  (`hash(userId, contextId)`-style).
+- Per-viewer facts ("you liked this", "this is your prediction") arrive as booleans on
+  payloads; the client-side `eqid`-against-session habit dies with the users map.
+- `CommentPresentation` is the existing precedent; this generalizes it.
+- This type is the one place where a dedicated presentation type is mandatory however much
+  copying it costs — here the divergence is the point.
+
+### 5.4 Extension data = dynamically registered components
+
+Once semantic components exist, `extensionData` stops being a special mechanism: it is the
+same pattern with registration at runtime instead of declaration in source. Unifying them:
+
+- **Wire policy per key, one declaration point.** Each `ExtensionDataKey` declares its persist
+  serializer plus an optional wire policy, in three tiers that collapse into one mechanism:
+  *absent* → server-only (the default: **fail-closed**, a deliberate change from today's
+  send-everything-then-censor-hooks — requires a one-time audit of which keys client code
+  reads); *canned visibility* → identity projection gated by permission class; *typed
+  projection* → `project(value, permClass) -> W?` with `W`'s own serializer, for the rare key
+  whose wire shape differs from its stored shape. Type-wise: `ExtensionDataKey<V, W = V>` with
+  identity default, so simple extensions never see the second parameter. (Considered and
+  folded in: a boolean transfer attribute is the canned tier; fully separate wire/persist
+  data bags are the projection tier with needless duplication.) Per-permission-class
+  memoization keeps working since policies are functions of the permission class.
+- **Per-user and computed data use topics, not projection.** Extensions needing per-user data
+  (e.g. millionaire `my_score`) or computed aggregates (scoreboards) use extension-owned
+  topics, as they already do via their `.ws` channels; the projection escape hatch is only for
+  stored data whose wire form differs.
+- **Topics**: an extension component invalidates its owning entity's topic like any other
+  component; extension-owned topics (`room/<id>/ext/<extId>/...`) replace the existing ad-hoc
+  extension websockets in the Phase 1 multiplexing.
+- **Persistence**: the stored format — a flat name-keyed map
+  (`{"room_group.is_group": true}`) — is already right and stays unchanged; no migration.
+  Two small hardenings: (1) **unknown-key tolerance** — the current serializer throws on
+  unregistered keys when encoding (`Extensions.kt:62`) and its decode loop does not handle
+  `UNKNOWN_NAME`, so data written by a later-disabled extension fails to round-trip; preserve
+  unregistered keys as raw values (`JsonElement`/`BsonValue`) and re-emit them instead.
+  (2) **enforced key prefixes** — registration knows the extension id, so the
+  `<extId>.`-prefix collision convention can become a guarantee.
+
+---
+
+## 6. Migration safety
+
+The component splits rewrite most rooms/questions documents. Layered defenses, any one of
+which alone prevents an unusable instance (migrations already run at boot before serving, so
+crash-midway is the only mechanical threat; per-document updates are atomic; data volume is
+thousands of documents, so "too expensive at scale" techniques are free):
+
+1. **Idempotent, resumable transforms** as standing discipline: shape-conditional per
+   document ("if `props` subdocument absent, build it and `$unset` the flat fields; else
+   skip"); ledger marked only at the end; rerun-on-boot resumes.
+2. **Transactional envelope** in `MigrationRunner`: the replica set exists to provide
+   multi-document transactions — wrap migration + ledger write in one; all-or-nothing at this
+   document count. (Under a future SQLite backend this is the native default.)
+3. **Tolerant reader** for the component splits specifically: serializers accept both flat
+   legacy and nested component shapes during the transition; "migration" = boot, load
+   everything (which the server does anyway), rewrite from memory; every intermediate state
+   boots and serves. Drop the tolerant path a release later.
+4. **Automatic snapshot + verify pass** in `MigrationRunner`: `$out`-copy affected collections
+   to `<name>_pre_<migrationId>` before touching anything (milliseconds at this scale;
+   rollback = rename), and strictly decode every migrated document with the real new
+   serializers *before* marking done. This targets the actually-likelier failure: a transform
+   that completes successfully but is subtly wrong.
+5. **Per-component sequencing**: each migration touches one field cluster of one entity type;
+   membership extraction goes first and doubles as the rehearsal.
+
+---
+
+## 7. Roadmap
+
+Phases are separable; each leaves the system working. Old and new machinery bridge via
+`changes.collect { notifyEntityUpdated(it) }`-style adapters so `StateCensor` and friends keep
+working untouched mid-transition.
+
+- **Phase 0 — quick wins & groundwork** (independent of everything):
+  - Add `getWS`-style last-payload dedup to `/state`.
+  - Stop recomputing `referencedUsers` from all comments per censor (precompute incrementally).
+  - `MigrationRunner` hardening: transaction envelope, pre-snapshot, verify pass (§6).
+- **Phase 1 — websocket multiplexing** (§4.1): mechanical, net-negative LOC, kills the iOS
+  question, prerequisite for topics. Topics initially = the existing 17 endpoints + one
+  `state` topic carrying today's `SentState`.
+- **Phase 2 — store core**: `Store`/`Archive`/`View` + `transact` + MongoBackend. Prove it on
+  the two ugliest customers first — the prediction log + latest-per-key materialized view
+  (§3.4) and comments-as-Archive with `range + tail` (§3.1); the twelve boring managers then
+  convert mechanically, one at a time, behind the `serverState` facade.
+- **Phase 3 — topics & censor pipeline** (§4.2–4.3): change-stream-driven invalidation
+  (delete the 56 manual refresh calls), `SentState` decomposed into the topic table,
+  permission-class memoization, UserPresentation rollout + frontend weaning off the users map.
+- **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
+  Question's resolution cluster; one tolerant-reader migration each.
+- **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or
+  Native/GraalVM interest justifies it. The interface is proven by then; Mongo remains for
+  existing deployments.
+
+---
+
+## 8. Open questions
+
+- Field-by-field component assignment for Question and Room (domain judgment; propose
+  drafting the actual component declarations and arguing about the ~10 ambiguous fields).
+- Membership: component-of-Room first vs. own store immediately.
+- Pseudonymous-key scheme for UserPresentation (per-context stability requirements, salt
+  rotation on demand?).
+- Session store: stays resident-with-expiry (hourly sweep) — is a TTL/expiry concern worth
+  building into the store shape, or leave it a background task?
+- Topic payload versioning during Phase 3 rollout (old `state` topic and new topics coexist —
+  for how long?).
+- Rollout of the fail-closed default for extension data keys (§5.4): audit which keys client
+  code currently reads before flipping the default; decide whether the canned visibility tier
+  needs role granularity finer than permission classes.
