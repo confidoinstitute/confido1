@@ -25,6 +25,10 @@ import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.spaces.BinarySpace
 import tools.confido.state.*
+import tools.confido.store.addPrediction
+import tools.confido.store.clearPredictions
+import tools.confido.store.groupPredictionLog
+import tools.confido.store.transact
 import tools.confido.utils.unixNow
 import users.User
 import kotlin.math.min
@@ -139,11 +143,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 }
             }
             is EditQuestionClearAnswers -> {
-                serverState.withTransaction {
-                    serverState.userPredManager.clear(question.ref)
-                    serverState.userPredHistManager.clear(question.ref)
-                    serverState.groupPredHistManager.clear(question.ref)
-                }
+                clearPredictions(question.ref)
             }
         }
     }
@@ -178,7 +178,9 @@ fun questionRoutes(routing: Routing) = routing.apply {
             val questions = req.questions.mapNotNull { it.deref() }
             val questionRooms = questions.map { it.room ?: badRequest("cannot delete roomless question") }
             if (!questionRooms.all { it.hasPermission(user, RoomPermission.MANAGE_QUESTIONS) }) unauthorized("missing permissions")
-            serverState.withTransaction {
+            // transact (not legacy withTransaction) so the prediction/comment cascade
+            // hooks can stage into the ambient transaction
+            transact {
                 questions.forEach { q ->
                     serverState.questionManager.deleteEntity(q.ref)
                     serverState.rooms.values.toList().forEach { room ->
@@ -230,9 +232,9 @@ fun questionRoutes(routing: Routing) = routing.apply {
         call.withQuestion {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "You cannot delete this question.")
 
-            serverState.withTransaction {
+            transact {
                 serverState.questionManager.deleteEntity(ref)
-                rooms.values.toList().forEach { room ->
+                serverState.rooms.values.toList().forEach { room ->
                     if (room.questions.contains(ref)) {
                         serverState.roomManager.modifyEntity(room.id){
                             it.copy(questions = it.questions.filter { it != ref }.toList()) }
@@ -255,7 +257,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
             if (question.answerSpace != dist.space) badRequest("The answer space is not compatible.")
 
             val pred = Prediction(ts=unixNow(), dist = dist, question = question.ref, user = user.ref)
-            serverState.addPrediction(pred)
+            addPrediction(pred)
         }
 
         TransientData.refreshAllWebsockets()
@@ -267,7 +269,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
         val updates = call.withQuestion {
             assertGroupPredictionAccess("You cannot view this group prediction.")
 
-            val updates = serverState.groupPredHistManager.query(ref).map {
+            val updates = groupPredictionLog.query(ref).map {
                 when (val dist = it.dist) {
                     is BinaryDistribution -> DistributionUpdate(
                         it.ts,

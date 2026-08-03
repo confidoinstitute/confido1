@@ -18,6 +18,8 @@ import tools.confido.spaces.BinaryValue
 import tools.confido.spaces.NumericSpace
 import tools.confido.spaces.NumericValue
 import tools.confido.state.serverState
+import tools.confido.store.groupPredictionLog
+import tools.confido.store.userPredictionLog
 import tools.confido.utils.fromUnix
 import tools.confido.utils.toFixed
 import tools.confido.utils.toInt
@@ -154,9 +156,9 @@ class PredictionExport  (
 
     private suspend fun getQuestionAllPredictions(question: Question, user: User?) =
         if (user == null) {
-            serverState.groupPredHistManager.query(question.ref)
+            groupPredictionLog.query(question.ref)
         } else {
-            serverState.userPredHistManager.query(question.ref, user.ref)
+            userPredictionLog.query(question.ref, user.ref)
         }
 
     private suspend fun exportQuestion(question: Question, user: User?): Flow<CsvRecord> = flow {

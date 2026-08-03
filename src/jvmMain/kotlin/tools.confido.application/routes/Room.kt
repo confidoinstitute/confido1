@@ -20,6 +20,7 @@ import tools.confido.question.GroupPredictionVisibility
 import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.state.*
+import tools.confido.store.transact
 import tools.confido.utils.randomString
 import users.LoginLink
 import users.User
@@ -185,11 +186,13 @@ fun roomRoutes(routing: Routing) = routing.apply {
     deleteST(roomUrl) {
         call.withRoom {
             assertPermission(RoomPermission.ROOM_OWNER, "You cannot delete this room.")
-            serverState.withTransaction {
+            // transact (not legacy withTransaction) so the per-question cascade hooks
+            // can stage into the ambient transaction
+            transact {
                 room.questions.forEach { question ->
                     serverState.questionManager.deleteEntity(question)
                 }
-                roomComments[room.ref]?.values?.forEach { comment ->
+                serverState.roomComments[room.ref]?.values?.forEach { comment ->
                     serverState.roomCommentManager.deleteEntity(comment)
                 }
 

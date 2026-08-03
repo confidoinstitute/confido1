@@ -19,6 +19,7 @@ import tools.confido.application.sessions.TransientData
 import tools.confido.refs.ref
 import tools.confido.state.FlowAction
 import tools.confido.state.serverState
+import tools.confido.store.userPredictionLog
 import tools.confido.utils.List2
 import tools.confido.refs.*
 import tools.confido.utils.generateId
@@ -28,7 +29,7 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
 
     /**
      * Resolve a [TimepointReference] to an [Instant] for the update plot query.
-     * Returns null to indicate "use latest predictions" (maps to DISTANT_FUTURE in the query logic).
+     * Returns null to indicate "use latest predictions".
      */
     private fun resolveTimepoint(tp: TimepointReference, room: Room): Instant? = when (tp) {
         is NowTimepoint -> null
@@ -113,11 +114,11 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
                     val referenceQ = req.referenceQuestion ?: question.extensionData[UpdateReferenceQuestionKey]
                     val qs = List2(referenceQ ?: question.ref, question.ref)
                     val times = List2(req.timepoint1, req.timepoint2).map {
-                        resolveTimepoint(it, room) ?: Instant.DISTANT_FUTURE
+                        resolveTimepoint(it, room) // null = "use latest predictions"
                     }
                     val users = serverState.userPred[question.ref]?.keys ?: emptySet()
                     val rows = users.mapNotNull { u->
-                        val r = times.zip(qs) { t,q-> serverState.userPredHistManager.at(q, u, t) }
+                        val r = times.zip(qs) { t,q-> userPredictionLog.at(q, u, t) }
                         if (r == List2(null,null)) null
                         else UpdatePlotRow(r, getUserPresentation(
                             u.deref(), user, UserPresentationContext.INDIVIDUAL_PREDICTION, room))

@@ -6,13 +6,14 @@ import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.refs.ref
-import tools.confido.state.serverState
+import tools.confido.store.groupPredictionLog
+import tools.confido.store.userPredictionLog
 import users.User
 
 suspend fun getScoredPrediction(q: Question, u: Ref<User>? = null): Prediction? {
     val scoreTS = q.effectiveSchedule.score ?: return null
-    val pred = if (u == null) serverState.groupPredHistManager.at(q.ref, scoreTS)
-                else serverState.userPredHistManager.at(q.ref, u, scoreTS)
+    val pred = if (u == null) groupPredictionLog.at(q.ref, scoreTS)
+                else userPredictionLog.at(q.ref, u, scoreTS)
     return pred
 }
 

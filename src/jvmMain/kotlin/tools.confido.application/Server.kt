@@ -158,6 +158,8 @@ fun main() {
     registerSerializer(RefAsStringSerializer)
     registerSerializer(rooms.RoomRoleRefSerializer)
 
+    tools.confido.store.registerPredictionStores()
+
     runBlocking {
         serverState.initialize()
         tools.confido.application.migrations.MigrationRunner.runPending(serverState.database, serverState.collectionVerifiers())

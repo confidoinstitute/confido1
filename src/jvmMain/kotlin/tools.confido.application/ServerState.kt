@@ -32,6 +32,8 @@ import tools.confido.serialization.confidoJSON
 import tools.confido.spaces.*
 import tools.confido.store.RefCountIndex
 import tools.confido.store.Stores
+import tools.confido.store.latestPredictions
+import tools.confido.store.predictionData
 import tools.confido.utils.*
 import users.EmailVerificationLink
 import users.LoginLink
@@ -112,8 +114,12 @@ data class ShortLink(
 }
 
 object serverState : GlobalState() {
-    val groupPred : MutableMap<Ref<Question>, Prediction?> = mutableMapOf()
-    override val predictorCount: MutableMap<Ref<Question>, Int> = mutableMapOf()
+    // Prediction data lives in the new store layer (tools.confido.store.Predictions);
+    // these facade properties keep the read surface unchanged for censors and routes.
+    val groupPred: Map<Ref<Question>, Prediction> get() = predictionData.groupPred
+    override val predictorCount: Map<Ref<Question>, Int> get() = predictionData.predictorCount.asMap
+    override val predictionCount: Map<Ref<Question>, Int> get() = predictionData.predictionCount.asMap
+    val userPred: Map<Ref<Question>, Map<Ref<User>, Prediction>> get() = latestPredictions.asMap
     override val commentCount: MutableMap<Ref<Question>, Int> = mutableMapOf()
     //val presenterByUser: MutableMap<Ref<User>, PresenterInfo> = mutableMapOf() // this does not persist after restart
     //val presenterByToken: MutableMap<String, PresenterInfo> = mutableMapOf() // this does not persist after restart
@@ -417,121 +423,6 @@ object serverState : GlobalState() {
     }
     override val users by userManager::entityMap
 
-    object userPredManager : EntityManager<Prediction>(database.getCollection("userPred")) {
-        val userPred : MutableMap<Ref<Question>, MutableMap<Ref<User>, Prediction>> = mutableMapOf()
-        override suspend fun initialize() {
-            mongoCollection.ensureUniqueIndex(Prediction::question, Prediction::user)
-            mongoCollection.ensureIndex(Prediction::question)
-            mongoCollection.ensureIndex(Prediction::user)
-        }
-
-        override suspend fun doLoad() {
-            mongoCollection.find().toFlow().collect { notifyEntityAdded(it) }
-            recalcGroupPred()
-        }
-
-        fun get(question: Ref<Question>, user: Ref<User>) =
-            userPred[question]?.get(user)
-
-        suspend fun clear(q: Ref<Question>) {
-            mongoCollection.deleteMany(Prediction::question eq q)
-            userPred.remove(q)
-        }
-
-        suspend fun save(savedPred: Prediction)  = withMutationLock {
-            require(savedPred.user != null)
-            val pred = savedPred.copy(id = "${savedPred.question.id}:${savedPred.user.id}")
-            val orig = get(pred.question, pred.user!!)
-            val filter = and(Prediction::question eq pred.question, Prediction::user eq pred.user)
-
-            when (val sess = coroutineContext.getSession()) {
-                null -> mongoCollection.replaceOne(filter, pred, ReplaceOptions().upsert(true))
-                else -> mongoCollection.replaceOne(sess, filter, pred, ReplaceOptions().upsert(true))
-            }
-
-            if (orig == null) notifyEntityAdded(pred)
-            else notifyEntityUpdated(orig, pred)
-        }
-        init {
-            onEntityAddedOrUpdated {  pred ->
-                userPred.getOrPut(pred.question){ mutableMapOf() }[pred.user ?: return@onEntityAddedOrUpdated] = pred
-                if (!isLoading) recalcGroupPred(questions[pred.question.id])
-            }
-            onEntityDeleted { pred->
-                val qp = userPred[pred.question] ?: return@onEntityDeleted
-                val userRef = pred.user ?: return@onEntityDeleted
-                if (qp[userRef] eqid pred) qp.remove(userRef)
-                if (!isLoading) recalcGroupPred(questions[pred.question.id])
-            }
-        }
-    }
-    val userPred by userPredManager::userPred
-
-    object userPredHistManager : IdBasedEntityManager<Prediction>(database.getCollection("userPredHist")) {
-        val totalPredictions: MutableMap<Ref<Question>, Int> = mutableMapOf()
-        override suspend fun initialize() {
-            mongoCollection.ensureIndex(Prediction::question, Prediction::user, Prediction::ts)
-            mongoCollection.ensureIndex(Prediction::question, Prediction::ts)
-        }
-
-        override suspend fun doLoad() {
-            @Serializable
-            data class Result(val question: Ref<Question>, val cnt: Int)
-            mongoCollection.aggregate<Result>(
-                group(Prediction::question, Result::question first Prediction::question, Result::cnt.sum(1))
-            ).toFlow().collect { totalPredictions[it.question] = it.cnt }
-            //println("STATS!!! $totalPredictions")
-        }
-        fun query(question: Ref<Question>, user: Ref<User>) =
-            mongoCollection.find(and(Prediction::question eq question, Prediction::user eq user))
-                .sort(ascending(Prediction::ts)).toFlow()
-
-        suspend fun clear(q: Ref<Question>) {
-            mongoCollection.deleteMany(Prediction::question eq q)
-            totalPredictions[q] = 0
-        }
-
-        suspend fun at(question: Ref<Question>, user: Ref<User>, ts: Int) =
-            mongoCollection.find(and(Prediction::question eq question,
-                                                            Prediction::user eq user,
-                                                            Prediction::ts lte ts))
-                .sort(descending(Prediction::ts)).first()
-
-        suspend fun at(question: Ref<Question>, user: Ref<User>, ts: Instant) =
-            if (ts == Instant.DISTANT_FUTURE) userPred[question]?.get(user)
-            else at(question, user, ts.epochSeconds.toInt())
-        init {
-            onEntityAdded {
-                totalPredictions.compute(it.question) { _, cnt -> (cnt ?: 0) + 1 }
-            }
-            onEntityDeleted {
-                totalPredictions.compute(it.question) { _, cnt -> (cnt ?: 0) - 1 }
-            }
-        }
-    }
-
-    override val predictionCount: Map<Ref<Question>, Int> by userPredHistManager::totalPredictions
-    object groupPredHistManager : IdBasedEntityManager<Prediction>(database.getCollection("groupPredHist")) {
-        override suspend fun initialize() {
-            mongoCollection.ensureIndex(Prediction::question, Prediction::ts)
-        }
-        fun query(question: Ref<Question>) =
-            mongoCollection.find(and(Prediction::question eq question))
-                .sort(ascending(Prediction::ts)).toFlow()
-
-        suspend fun clear(q: Ref<Question>) {
-            mongoCollection.deleteMany(Prediction::question eq q)
-            groupPred.remove(q)
-            predictorCount.remove(q)
-        }
-        suspend fun at(question: Ref<Question>, ts: Int) =
-            mongoCollection.find(and(Prediction::question eq question, Prediction::ts lte ts))
-                .sort(descending(Prediction::ts)).first()
-        suspend fun at(question: Ref<Question>, ts: Instant) =
-            if (ts == Instant.DISTANT_FUTURE) groupPred[question]
-            else at(question, ts.epochSeconds.toInt())
-    }
-
     object questionCommentManager: InMemoryEntityManager<QuestionComment>(database.getCollection("questionComments")) {
         val questionComments : MutableMap<Ref<Question>, MutableMap<String, QuestionComment>> = mutableMapOf()
         fun updateCommentCount(question: Ref<Question>) {
@@ -703,15 +594,12 @@ object serverState : GlobalState() {
         roomManager.register()
         questionManager.register()
         userManager.register()
-        userPredManager.register()
         questionCommentManager.register()
         roomCommentManager.register()
         loginLinkManager.register()
         verificationLinkManager.register()
         passwordResetLinkManager.register()
         userSessionManager.register()
-        userPredHistManager.register()
-        groupPredHistManager.register()
         commentLikeManager.register()
         presentationManager.register()
     }
@@ -745,7 +633,6 @@ object serverState : GlobalState() {
         managers.values.forEach { it.load() }
         additionalManagers.forEach { it.load() }
         Stores.all.forEach { it.load() }
-        recalcGroupPred()
     }
 
     fun calculateGroupDist(space: Space, dists: Collection<ProbabilityDistribution>): ProbabilityDistribution =
@@ -773,19 +660,6 @@ object serverState : GlobalState() {
                             dist = calculateGroupDist(question.answerSpace, preds.map{it.dist}))
             }
         }
-
-    fun recalcGroupPred(question: Question?): Prediction? {
-        question ?: return null
-        val gp = calculateGroupPred(question, userPred[question.ref]?.values ?: emptyList())
-        groupPred[question.ref] = gp
-        predictorCount[question.ref] = userPred[question.ref]?.size ?: 0
-        return gp
-    }
-    fun recalcGroupPred() {
-        questions.values.forEach {
-            recalcGroupPred(it)
-        }
-    }
 
     fun CoroutineContext.getSession() =
         this[TransactionContextElement]?.sess
@@ -830,48 +704,6 @@ object serverState : GlobalState() {
             }
         }
         return super.derefNonBlocking(entityType, id)
-    }
-
-    suspend fun addPrediction(pred: Prediction) {
-        val q = pred.question.deref()
-        require(q != null)
-        val sched  = q.effectiveSchedule
-        withTransaction {
-            userPredManager.save(pred)
-            val myLastPred = userPredHistManager.mongoCollection.find(and(Prediction::question eq pred.question,
-                Prediction::user eq pred.user,
-                ))
-                .sort(descending(Prediction::ts)).first()
-
-            // If predictions are less than 1min apart, replace previous one instead of adding another history
-            // entry. This prevents clogging up history with lots of records and also makes the "number of uptates"
-            // metric more meaningful. Exception: if previous prediction was before score time and new one after
-            // we need to keep the previous one in order to preserve scoring.
-            var lastPredOther: Prediction? = null
-            if (myLastPred != null && pred.ts - myLastPred.ts < appConfig.predictionCoalesceInterval &&
-                    !(sched.score != null && myLastPred.ts <= sched.score.epochSeconds && pred.ts > sched.score.epochSeconds)) {
-                userPredHistManager.deleteEntity(myLastPred)
-                lastPredOther = userPredHistManager.mongoCollection.find(and(Prediction::question eq pred.question))
-                    .sort(descending(Prediction::ts)).first()
-            }
-
-            userPredHistManager.insertEntity(pred.copy(id=""))
-            val gp = recalcGroupPred(q)
-            gp?.let {
-                check(gp.user==null)
-                if (lastPredOther != null) {
-                    // If last group prediction update was due to my deleted prediction, delete it also.
-                    val lastGroupPred =
-                        groupPredHistManager.mongoCollection.find(and(Prediction::question eq pred.question))
-                            .sort(descending(Prediction::ts)).first()
-                    if (lastGroupPred != null && lastGroupPred.ts >= lastPredOther.ts) {
-                        groupPredHistManager.deleteEntity(lastGroupPred)
-                    }
-                }
-                groupPredHistManager.insertEntity(gp.copy(id = ""))
-            }
-            serverState.extensions.forEach { it.onPrediction(q, pred) }
-        }
     }
 
     override val extensions: List<ServerExtension> get() = ServerExtension.enabled
