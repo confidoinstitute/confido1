@@ -18,7 +18,7 @@ object PredictionShowcaseSE : ServerExtension, PredictionShowcaseExtension() {
     val referenceText = System.getenv("CONFIDO_REFERENCE_FORECAST_LABEL") ?: "Reference"
 
     override fun initRoutes(r: Routing) {
-        r.getWS("/api$questionUrl/ext/prediction_showcase/predictions.ws") {
+        r.topicWS("/api$questionUrl/ext/prediction_showcase/predictions.ws") {
             call.withQuestion {
                 assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, "You cannot view individual predictions.")
                 val predictions = mutableListOf<ValueWithUser>()

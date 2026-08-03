@@ -239,14 +239,14 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
 
     override fun initRoutes(r: Routing) {
         // Active game config (WebSocket) — consumed by clients for theme/scoring
-        r.getWS("/api$roomUrl/ext/millionaire/config.ws") {
+        r.topicWS("/api$roomUrl/ext/millionaire/config.ws") {
             call.withRoom {
                 activeConfigs[room.id]
             }
         }
 
         // User's own score (WebSocket)
-        r.getWS("/api$roomUrl/ext/millionaire/my_score.ws") {
+        r.topicWS("/api$roomUrl/ext/millionaire/my_score.ws") {
             call.withRoom {
                 call.withUser {
                     val config = activeConfigs[room.id] ?: return@withUser null
@@ -259,7 +259,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
         }
 
         // Scoreboard for all players (WebSocket, requires permission)
-        r.getWS("/api$roomUrl/ext/millionaire/scoreboard.ws") {
+        r.topicWS("/api$roomUrl/ext/millionaire/scoreboard.ws") {
             call.withRoom {
                 assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
                 val config = activeConfigs[room.id] ?: return@withRoom emptyMap<Ref<User>, Double>()
@@ -270,7 +270,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
         }
 
         // Timer state (WebSocket)
-        r.getWS("/api$roomUrl/ext/millionaire/timer.ws") {
+        r.topicWS("/api$roomUrl/ext/millionaire/timer.ws") {
             call.withRoom {
                 timerStates[room.id]
             }

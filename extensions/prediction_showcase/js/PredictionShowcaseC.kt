@@ -9,7 +9,7 @@ import components.redesign.forms.IconButton
 import components.redesign.presenter.PresenterContext
 import web.cssom.*
 import emotion.react.css
-import hooks.useWebSocket
+import hooks.useSubscription
 import payloads.responses.WSData
 import react.*
 import react.dom.html.ReactHTML.div
@@ -45,7 +45,7 @@ val PredictionShowcasePP = FC<PresenterPageProps<PredictionShowcasePV>> { props 
     val view = props.view
     val question = view.question.deref() ?: return@FC
 
-    val predictions = useWebSocket<List<ValueWithUser>>("/api${questionUrl(question.id)}/ext/prediction_showcase/predictions.ws")
+    val predictions = useSubscription<List<ValueWithUser>>("/api${questionUrl(question.id)}/ext/prediction_showcase/predictions.ws")
     if (predictions !is WSData) return@FC
 
     Stack {
@@ -121,7 +121,7 @@ val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> 
         } ?: true
     }
 
-    val groupPreds = useWebSocket<Map<Ref<Question>, Prediction?>>("/state${room.urlPrefix}/group_pred")
+    val groupPreds = useSubscription<Map<Ref<Question>, Prediction?>>("/state${room.urlPrefix}/group_pred")
     if (groupPreds !is WSData) return@FC
     val data = groupPreds.data
 

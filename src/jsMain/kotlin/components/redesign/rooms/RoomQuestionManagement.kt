@@ -28,7 +28,7 @@ import emotion.css.ClassName
 import emotion.react.css
 import hooks.useCoroutineLock
 import hooks.useEditDialog
-import hooks.useWebSocket
+import hooks.useSubscription
 import js.objects.unsafeJso as jso
 import payloads.requests.DeleteQuestionMulti
 import payloads.requests.EditQuestion
@@ -142,7 +142,7 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
     val (appState, stale) = use(AppStateContext)!!
     val room = props.room
 
-    val groupPredsWS = useWebSocket<Map<String, Prediction?>>("/state${room.urlPrefix}/group_pred")
+    val groupPredsWS = useSubscription<Map<String, Prediction?>>("/state${room.urlPrefix}/group_pred")
     val groupPreds = groupPredsWS.data ?: emptyMap()
 
     val mouseSensor = useSensor<MouseSensorOptions>(MouseSensor)

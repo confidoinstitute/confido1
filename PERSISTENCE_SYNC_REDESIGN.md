@@ -480,9 +480,34 @@ working untouched mid-transition.
   - Add `getWS`-style last-payload dedup to `/state`.
   - Stop recomputing `referencedUsers` from all comments per censor (precompute incrementally).
   - `MigrationRunner` hardening: snapshot-restore envelope + verify pass (§6).
-- **Phase 1 — websocket multiplexing** (§4.1): mechanical, net-negative LOC, kills the iOS
-  question, prerequisite for topics. Topics initially = the existing 17 endpoints + one
-  `state` topic carrying today's `SentState`.
+- **Phase 1 — websocket multiplexing** (§4.1) *(implemented)*: mechanical, net-negative LOC,
+  kills the iOS question, prerequisite for topics. Topics initially = the existing 17
+  endpoints + one `/state` topic carrying today's `SentState`. Implementation notes:
+  handlers kept their bodies verbatim via a synthetic `TopicCall` (an `ApplicationCall`
+  whose parameters come from the topic string); the two ad-hoc sockets became *stream
+  topics* (`streamWS` — a per-subscription coroutine with `emit`), which covers both
+  self-timed pushes (invite shortlink rotation) and presence semantics (presenter track,
+  side effects on subscribe/cancel). Testing surfaced one design fact worth recording:
+  `SentState.session` contains the session expiry, which every authenticated HTTP request
+  renews — so the acting user's own `/state` re-pushes on each of their requests despite
+  dedup. Argues for splitting session/self into its own small topic early in Phase 3.
+  **Serialization lesson (hard-won):** kotlinx's two decoder families differ — streaming
+  decoders read element values sequentially and ignore the index argument of
+  `decodeSerializableElement`, while tree decoders (`decodeFromJsonElement`) resolve
+  members by the descriptor name at that index. Switching the transport to
+  JsonElement-embedded payloads exposed a latent hardcoded-index bug in the hand-written
+  `ExtensionDataSerializer` (fixed properly — the index now passes through). The client
+  decodes topic payloads via `decodeFromString(element.toString())` as a conservative
+  choice: the streaming path is what every payload historically exercised, and
+  hand-written serializers are demonstrably less tested under tree decoding.
+  *(Debugging post-mortem: a presenter-view crash was initially misattributed to a
+  JS-specific tree-decoder fault; the real cause was a pre-existing React state-timing
+  bug in `PresenterDialog` — the controls component was selected from `props.view` while
+  receiving the one-commit-stale `draft` state, so e.g. `GroupPredPC` rendered with
+  `EmptyPV` on the first offer after mount. Fixed by deriving both from `draft`. The
+  build-mode correlation that suggested a compiler/devserver issue was actually
+  presenter-window state: with a window already open, `offer()` skips the dialog
+  entirely.)*
 - **Phase 2 — store core**: `Store`/`Archive`/`View` + `transact` + MongoBackend. Prove it on
   the two ugliest customers first — the prediction log + latest-per-key materialized view
   (§3.4) and comments-as-Archive with `range + tail` (§3.1); the twelve boring managers then

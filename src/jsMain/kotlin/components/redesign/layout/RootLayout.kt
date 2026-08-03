@@ -18,7 +18,7 @@ import components.redesign.search.SearchPage
 import web.cssom.*
 import emotion.react.css
 import hooks.useBreakpoints
-import hooks.useWebSocket
+import hooks.useSubscription
 import js.objects.unsafeJso as jso
 import payloads.responses.WSData
 import react.*
@@ -58,7 +58,7 @@ private external interface PresentationFollowNavigatorProps : Props {
 
 private val PresentationFollowNavigator = FC<PresentationFollowNavigatorProps> { props ->
     val navigate = useNavigate()
-    val ws = useWebSocket<String?>("/state${rooms.Room.urlPrefix(props.roomId)}/presentation/follow")
+    val ws = useSubscription<String?>("/state${rooms.Room.urlPrefix(props.roomId)}/presentation/follow")
     val navUrl = (ws as? WSData)?.data
     val lastNavUrl = useRef<String>()
 

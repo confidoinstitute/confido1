@@ -45,7 +45,7 @@ fun<T: CommentExtraData> makeCommentPresentation(comment: Comment, extraData: T?
 
 fun questionCommentsRoutes(routing: Routing) = routing.apply {
     // View comments
-    getWS("/state$questionUrl/comments") {
+    topicWS("/state$questionUrl/comments") {
         call.withQuestion {
             assertPermission(RoomPermission.VIEW_QUESTION_COMMENTS, "You cannot view the discussion for this question.")
 
@@ -154,7 +154,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
 }
 
 fun roomCommentsRoutes(routing: Routing) = routing.apply {
-    getWS("/state$roomUrl/comments") {
+    topicWS("/state$roomUrl/comments") {
         call.withRoom {
             assertPermission( RoomPermission.VIEW_ROOM_COMMENTS, "You cannot view the discussion.")
 

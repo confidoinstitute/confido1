@@ -29,7 +29,7 @@ object ReferenceForecastSE : ServerExtension, ReferenceForecastExtension() {
     }
 
     override fun initRoutes(r: Routing) {
-        r.getWS("/api$roomUrl/ext/reference_forecast/scoreboard.ws") {
+        r.topicWS("/api$roomUrl/ext/reference_forecast/scoreboard.ws") {
             call.withRoom {
                 assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, "You cannot view individual predictions.")
 

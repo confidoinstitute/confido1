@@ -243,7 +243,7 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
-    getWS("/api$roomUrl/group_pred_text.ws") {
+    topicWS("/api$roomUrl/group_pred_text.ws") {
         val wantedIds = call.request.queryParameters["qids"]?.split(',')?.toSet()
         call.withRoom {
             val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
@@ -263,7 +263,7 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
             groupPreds
         }
     }
-    getWS("/state$roomUrl/group_pred") {
+    topicWS("/state$roomUrl/group_pred") {
         val wantedIds = call.request.queryParameters["qids"]?.split(',')?.toSet()
         call.withRoom {
             val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
@@ -285,33 +285,23 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
     }
 
 
-    webSocketST("/state$roomUrl/invites/{id}/shortlink") {
+    // Stream topic: rotates a short invite code for the subscription's lifetime.
+    streamWS<String>("/state$roomUrl/invites/{id}/shortlink") { emit ->
         call.withRoom {
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members.")
             val linkId = call.parameters["id"] ?: return@withRoom
-            val link = room.inviteLinks.firstOrNull { it.id == linkId } ?: return@withRoom
+            room.inviteLinks.firstOrNull { it.id == linkId } ?: return@withRoom
 
             var curCode: String? = null
             try {
-                coroutineScope {
-                    async {
-                        incoming.receiveCatching().onFailure {
-                            this@coroutineScope.cancel()
-                        }
-                    }
-                    async {
-                        while (true) {
-                            val shortLink = ShortLink(room.ref, linkId)
-                            curCode?.let { serverState.shortInviteLinks.remove(it) }
-                            serverState.shortInviteLinks[shortLink.shortcode] = shortLink
-                            curCode = shortLink.shortcode
-                            send(Frame.Text(confidoJSON.encodeToString(WSData(shortLink.shortcode) as WSResponse<String>)))
-                            delay(((ShortLink.VALIDITY - 5) * 1000).toLong())
-                        }
-                    }
+                while (true) {
+                    val shortLink = ShortLink(room.ref, linkId)
+                    curCode?.let { serverState.shortInviteLinks.remove(it) }
+                    serverState.shortInviteLinks[shortLink.shortcode] = shortLink
+                    curCode = shortLink.shortcode
+                    emit(shortLink.shortcode)
+                    delay(((ShortLink.VALIDITY - 5) * 1000).toLong())
                 }
-            } catch (_: CancellationException) {
-                //ignore
             } finally {
                 if (curCode != null) {
                     serverState.shortInviteLinks.remove(curCode)

@@ -291,7 +291,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
     }
 
     // WebSocket endpoint for live presentation data (moderators only)
-    getWS("/state$roomUrl/presentation") {
+    topicWS("/state$roomUrl/presentation") {
         call.withRoom {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot view presentation.")
             val pres = getPresentation(room) ?: notFound("No presentation for this room.")
@@ -320,7 +320,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
     }
 
     // WebSocket endpoint for presentation followers: sends currentNavigateUrl
-    getWS<String?>("/state$roomUrl/presentation/follow") {
+    topicWS<String?>("/state$roomUrl/presentation/follow") {
         val session = call.userSession
         call.withRoom {
             // Only send navigate URL if session is following this room's presentation

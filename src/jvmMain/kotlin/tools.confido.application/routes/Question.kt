@@ -295,7 +295,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
     }
 
     // View group predictions
-    getWS("/state$questionUrl/group_pred") {
+    topicWS("/state$questionUrl/group_pred") {
         call.withQuestion {
             assertPermission(RoomPermission.VIEW_QUESTIONS, "You cannot view this group prediction.")
             assertGroupPredictionAccess("You cannot view this group prediction.")
@@ -307,7 +307,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
     }
 
     // View a histogram
-    getWS("/state$questionUrl/histogram") {
+    topicWS("/state$questionUrl/histogram") {
         call.withQuestion {
             assertPermission(RoomPermission.VIEW_QUESTIONS, "You cannot view this group prediction.")
             assertGroupPredictionAccess("You cannot view this group prediction.")

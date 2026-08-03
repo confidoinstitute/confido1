@@ -395,7 +395,7 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
             }
 
             // Calibration training leaderboard (WebSocket, live-updating)
-            getWS("/api/ext/calibration_training/leaderboard.ws") {
+            topicWS("/api/ext/calibration_training/leaderboard.ws") {
                 call.withUser {
                     val allResponses = responseCollection.find().toList()
                     val responsesByUser = allResponses.groupBy { it.user }

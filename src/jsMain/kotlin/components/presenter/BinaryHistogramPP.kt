@@ -6,7 +6,7 @@ import components.redesign.basic.Stack
 import components.redesign.basic.sansSerif
 import web.cssom.*
 import emotion.react.css
-import hooks.useWebSocket
+import hooks.useSubscription
 import js.objects.unsafeJso as jso
 import payloads.responses.WSData
 import react.FC
@@ -24,7 +24,7 @@ private fun binLabel(bin: HistogramBin) =
 
 val BinaryHistogramPP = FC<PresenterPageProps<BinaryHistogramPV>> { props ->
     val question = props.view.question.deref() ?: return@FC
-    val response = useWebSocket<BinaryHistogram>("/state${question.urlPrefix}/histogram")
+    val response = useSubscription<BinaryHistogram>("/state${question.urlPrefix}/histogram")
 
     Stack {
         css {

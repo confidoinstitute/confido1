@@ -11,7 +11,7 @@ import components.redesign.rooms.RoomContext
 import components.redesign.rooms.RoomHeader
 import emotion.react.css
 import hooks.useCoroutineLock
-import hooks.useWebSocket
+import hooks.useSubscription
 import payloads.responses.WSData
 import payloads.responses.WSError
 import payloads.responses.WSLoading
@@ -27,7 +27,7 @@ val PresentationTab = FC<Props> {
     val room = use(RoomContext)!!
     val submitLock = useCoroutineLock()
 
-    val ws = useWebSocket<PresentationWSData>("/state${room.urlPrefix}/presentation")
+    val ws = useSubscription<PresentationWSData>("/state${room.urlPrefix}/presentation")
 
     when (ws) {
         is WSLoading -> {

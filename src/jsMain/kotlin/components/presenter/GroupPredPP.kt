@@ -7,7 +7,7 @@ import components.redesign.basic.serif
 import components.redesign.questions.predictions.BinaryPrediction
 import web.cssom.*
 import emotion.react.css
-import hooks.useWebSocket
+import hooks.useSubscription
 import payloads.responses.WSData
 import react.FC
 import react.dom.html.ReactHTML.div
@@ -19,7 +19,7 @@ import tools.confido.state.GroupPredPV
 
 val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
     val question = props.view.question.deref() ?: return@FC
-    val response = useWebSocket<Prediction?>("/state${question.urlPrefix}/group_pred")
+    val response = useSubscription<Prediction?>("/state${question.urlPrefix}/group_pred")
 
     Stack {
         css {

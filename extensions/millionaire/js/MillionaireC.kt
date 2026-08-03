@@ -13,7 +13,7 @@ import emotion.css.*
 import emotion.react.Global
 import emotion.react.css
 import emotion.react.styles
-import hooks.useWebSocket
+import hooks.useSubscription
 import payloads.responses.WSData
 import react.*
 import react.dom.html.ReactHTML
@@ -98,7 +98,7 @@ private val fadeIn = keyframes {
  * via WebSocket. Returns null when no millionaire game is running.
  */
 fun useMillionaireConfig(roomId: String): MillionaireGameAction? {
-    val ws = useWebSocket<MillionaireGameAction?>("/api${Room.urlPrefix(roomId)}/ext/millionaire/config.ws")
+    val ws = useSubscription<MillionaireGameAction?>("/api${Room.urlPrefix(roomId)}/ext/millionaire/config.ws")
     return (ws as? WSData)?.data
 }
 
@@ -111,7 +111,7 @@ external interface MillionaireTimerBarProps : Props {
 }
 
 val MillionaireTimerBar = FC<MillionaireTimerBarProps> { props ->
-    val timerWS = useWebSocket<TimerState?>("/api${Room.urlPrefix(props.roomId)}/ext/millionaire/timer.ws")
+    val timerWS = useSubscription<TimerState?>("/api${Room.urlPrefix(props.roomId)}/ext/millionaire/timer.ws")
     var fraction by useState(1.0)
 
     val timerState = (timerWS as? WSData)?.data
@@ -554,7 +554,7 @@ val MillionaireLadderQuestionPP = FC<PresenterPageProps<MillionaireLadderQuestio
 val MillionaireScoreboardPP = FC<PresenterPageProps<MillionaireScoreboardPV>> { props ->
     val room = props.view.room
     val config = useMillionaireConfig(room.id)
-    val scoreboard = useWebSocket<Map<Ref<User>, Double>>("/api${Room.urlPrefix(room.id)}/ext/millionaire/scoreboard.ws")
+    val scoreboard = useSubscription<Map<Ref<User>, Double>>("/api${Room.urlPrefix(room.id)}/ext/millionaire/scoreboard.ws")
     if (config == null) return@FC
     if (scoreboard !is WSData) return@FC
 

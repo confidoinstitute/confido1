@@ -7,7 +7,7 @@ import ext.qrcodereact.QRCodeSVG
 import emotion.react.css
 import hooks.useElementSize
 import hooks.useViewportSize
-import hooks.useWebSocket
+import hooks.useSubscription
 import payloads.responses.WSData
 import react.FC
 import react.dom.html.ReactHTML.div
@@ -22,7 +22,7 @@ val InviteLinkPP = FC<PresenterPageProps<InviteLinkPV>> { props->
     val baseUrl = link.link(location.origin, room)
     // Use /pres/ prefix for follow-enabled links (cleaner URL for QR codes and display)
     val url = if (props.view.followPresentation) baseUrl.replace("/join/", "/pres/") else baseUrl
-    val ws = useWebSocket<String>("/state${room.urlPrefix}/invites/${link.id}/shortlink")
+    val ws = useSubscription<String>("/state${room.urlPrefix}/invites/${link.id}/shortlink")
     val viewportSize = useViewportSize()
 
     Stack {

@@ -1,7 +1,7 @@
 package components.presenter
 
 import hooks.usePresentationKeyboardNav
-import hooks.useWebSocket
+import hooks.useSubscription
 import payloads.responses.WSData
 import react.FC
 import tools.confido.state.PresentationPV
@@ -19,7 +19,7 @@ import tools.confido.state.PresenterView
  */
 val PresentationPP = FC<PresenterPageProps<PresentationPV>> { props ->
     val roomId = props.view.room.id
-    val ws = useWebSocket<PresentationWSData>("/state/rooms/$roomId/presentation")
+    val ws = useSubscription<PresentationWSData>("/state/rooms/$roomId/presentation")
 
     // Allow keyboard/presenter-remote navigation directly from the presenter window
     usePresentationKeyboardNav(roomId)

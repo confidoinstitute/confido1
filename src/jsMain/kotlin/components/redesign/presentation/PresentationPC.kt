@@ -7,7 +7,7 @@ import components.redesign.basic.*
 import components.redesign.forms.Button
 import emotion.react.css
 import hooks.useCoroutineLock
-import hooks.useWebSocket
+import hooks.useSubscription
 import payloads.requests.NavigateDirection
 import payloads.requests.NavigatePresentation
 import payloads.responses.WSData
@@ -32,7 +32,7 @@ private val NavButton = Button.withStyle {
  */
 val PresentationPC = FC<PresenterControlsProps<PresentationPV>> { props ->
     val roomUrl = Room.urlPrefix(props.view.room.id)
-    val ws = useWebSocket<PresentationWSData>("/state$roomUrl/presentation")
+    val ws = useSubscription<PresentationWSData>("/state$roomUrl/presentation")
     val submitLock = useCoroutineLock()
     val data = (ws as? WSData)?.data
     val runState = data?.runState

@@ -20,7 +20,7 @@ val RoomComments = FC<Props> {
     val (appState, _) = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val layoutMode = use(LayoutModeContext)!!
-    val roomComments = useWebSocket<List<CommentPresentation<CommentExtraData>>>("/state${room.urlPrefix}/comments")
+    val roomComments = useSubscription<List<CommentPresentation<CommentExtraData>>>("/state${room.urlPrefix}/comments")
 
     var addCommentOpen by useState(false)
     var sortType by useState(SortType.NEWEST)

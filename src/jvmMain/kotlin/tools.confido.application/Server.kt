@@ -20,8 +20,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System.now
 import kotlinx.html.*
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
+import payloads.responses.*
 import org.slf4j.LoggerFactory
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.codec.digest.MessageDigestAlgorithms.SHA_224
@@ -329,6 +334,16 @@ fun main() {
                 calibrationRoutes(this)
                 scoreRoutes(this)
 
+                // The full app state snapshot is an ordinary topic on the multiplexed socket.
+                topicWS("/state") {
+                    val sessionData = call.userSession
+                    val transientData = call.transientUserData
+                    if (sessionData?.user == null || transientData == null) unauthorized("Not logged in.")
+                    StateCensor(sessionData, transientData).censor()
+                }
+
+                // The single multiplexed state websocket: carries all topics registered
+                // via topicWS/streamWS (PERSISTENCE_SYNC_REDESIGN.md §4.1).
                 webSocketST("/state") {
                     val clientVer = call.request.queryParameters["bundleVer"] ?: ""
                     val appConfigVer = call.request.queryParameters["appConfigVer"] ?: ""
@@ -357,46 +372,109 @@ fun main() {
                     // Require a session to already be initialized; it is not possible
                     // to edit session cookies within websockets.
                     // In addition, require the user to be logged in.
-                    val user = call.userSession?.user
-
-                    if (user == null) {
+                    if (call.userSession?.user == null) {
                         // Code 3000 is registered with IANA as "Unauthorized".
                         close(CloseReason(3000, "Missing session or user"))
                         return@webSocketST
                     }
+                    val transientData = call.transientUserData ?: run {
+                        close(CloseReason(3000, "Missing session or user"))
+                        return@webSocketST
+                    }
 
-                    val closeNotifier = MutableStateFlow(false)
+                    timeoutMillis = 30_000
+                    pingIntervalMillis = 15_000
 
-                    // Explicit context: `launch` here binds to the websocket session's
-                    // scope, which does not inherit the handler's single-threaded one.
-                    launch(singleThreadContext) {
-                        incoming.receiveCatching().onFailure {
-                            closeNotifier.emit(true)
+                    class ActiveSub(val handler: TopicHandler, val params: Parameters) {
+                        var last: JsonElement? = null
+                        var job: Job? = null
+                    }
+                    val subs = mutableMapOf<String, ActiveSub>()
+
+                    suspend fun sendFrame(topic: String, data: JsonElement) =
+                        send(Frame.Text(confidoJSON.encodeToString(TopicFrame(topic, data))))
+
+                    fun errorElement(errType: WSErrorType, message: String) =
+                        confidoJSON.encodeToJsonElement(WSError<Unit>(errType, message) as WSResponse<Unit>)
+
+                    suspend fun evalPull(topic: String, sub: ActiveSub) {
+                        val handler = sub.handler as PullTopic
+                        val element = try {
+                            handler.eval(WSBody(TopicCall(call, sub.params)))
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            // A broken topic must not take down the whole connection.
+                            call.application.log.error("Error evaluating topic $topic", e)
+                            errorElement(WSErrorType.INTERNAL_ERROR, "Internal error")
+                        }
+                        if (element != sub.last) sendFrame(topic, element)
+                        sub.last = element
+                    }
+
+                    fun parseTopic(topic: String): Pair<TopicHandler, Parameters>? {
+                        val qIdx = topic.indexOf('?')
+                        val path = if (qIdx >= 0) topic.substring(0, qIdx) else topic
+                        val query = if (qIdx >= 0) parseQueryString(topic.substring(qIdx + 1)) else Parameters.Empty
+                        val (handler, pathParams) = TopicRegistry.match(path) ?: return null
+                        return handler to Parameters.build { appendAll(pathParams); appendAll(query) }
+                    }
+
+                    // Explicit context everywhere below: `launch` here binds to the websocket
+                    // session's scope, which does not inherit the handler's single-threaded one.
+                    suspend fun subscribe(topic: String) {
+                        if (topic in subs) return
+                        val (handler, params) = parseTopic(topic) ?: run {
+                            sendFrame(topic, errorElement(WSErrorType.NOT_FOUND, "No such topic"))
+                            return
+                        }
+                        val sub = ActiveSub(handler, params)
+                        subs[topic] = sub
+                        when (handler) {
+                            is PullTopic -> evalPull(topic, sub)
+                            is StreamTopic -> sub.job = launch(singleThreadContext) {
+                                handler.run(WSBody(TopicCall(call, params))) { element -> sendFrame(topic, element) }
+                            }
                         }
                     }
 
-                    val refreshJob = launch(singleThreadContext) {
+                    val closeNotifier = MutableStateFlow(false)
+                    val refreshLoop = launch(singleThreadContext) {
+                        transientData.runRefreshable(closeNotifier) {
+                            if (call.userSession?.user == null) {
+                                close(CloseReason(3000, "Session expired"))
+                                closeNotifier.emit(true)
+                                return@runRefreshable
+                            }
+                            subs.entries.toList().forEach { (topic, sub) ->
+                                if (sub.handler is PullTopic) evalPull(topic, sub)
+                            }
+                        }
+                    }
+                    val renewJob = launch(singleThreadContext) {
                         while (true) {
                             call.userSession?.let { call.renewUserSession() }
                             delay(1.hours)
                         }
                     }
 
-                    var lastSent: String? = null
-                    call.transientUserData?.runRefreshable(closeNotifier) {
-                        val sessionData = call.userSession
-                        val transientData = call.transientUserData
-                        if (sessionData?.user == null || transientData == null) {
-                            closeNotifier.emit(true)
-                            return@runRefreshable
+                    try {
+                        for (frame in incoming) {
+                            if (frame !is Frame.Text) continue
+                            val cmd = try {
+                                confidoJSON.decodeFromString<TopicCommand>(frame.readText())
+                            } catch (e: Exception) {
+                                continue
+                            }
+                            cmd.sub?.let { subscribe(it) }
+                            cmd.unsub?.let { topic -> subs.remove(topic)?.job?.cancel() }
                         }
-
-                        val state = StateCensor(sessionData, transientData).censor()
-                        val encoded = confidoJSON.encodeToString(state)
-                        if (encoded != lastSent) send(Frame.Text(encoded))
-                        lastSent = encoded
+                    } finally {
+                        refreshLoop.cancel()
+                        renewJob.cancel()
+                        // Cancel stream jobs so their try/finally cleanups run.
+                        subs.values.forEach { it.job?.cancel() }
                     }
-                    refreshJob.cancel()
                 }
                 application.log.info("static dir: $staticDir")
                 static("/static") {

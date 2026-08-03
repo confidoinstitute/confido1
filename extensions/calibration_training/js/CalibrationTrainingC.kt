@@ -7,7 +7,7 @@ import components.redesign.basic.*
 import components.redesign.calibration.CalibrationGraph
 import components.redesign.rooms.RoomLink
 import emotion.react.css
-import hooks.useWebSocket
+import hooks.useSubscription
 import js.objects.unsafeJso as jso
 import payloads.responses.WSData
 import react.*
@@ -90,7 +90,7 @@ private fun scoreBarColor(score: Double): Color {
  * Supports click-through to individual calibration graphs.
  */
 val CalibrationLeaderboardPP = FC<PresenterPageProps<CalibrationLeaderboardPV>> { props ->
-    val scores = useWebSocket<List<CalibrationLeaderboardEntry>>("/api/ext/calibration_training/leaderboard.ws")
+    val scores = useSubscription<List<CalibrationLeaderboardEntry>>("/api/ext/calibration_training/leaderboard.ws")
     var selectedEntry by useState<CalibrationLeaderboardEntry?>(null)
 
     if (scores !is WSData) return@FC
