@@ -321,8 +321,9 @@ fun questionRoutes(routing: Routing) = routing.apply {
 
             val predictions = serverState.userPred[question.ref]?.values ?: notFound("No user predictions found.")
 
-            val showNames = FeatureFlag.HISTOGRAM_SHOW_NAMES.enabled
-                && room.hasPermission(user, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
+            // Per-bin user lists are included whenever the viewer may see individual
+            // predictions; clients decide whether to actually display them.
+            val showNames = room.hasPermission(user, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
 
             val histogram = if (showNames) {
                 val pairs = predictions.mapNotNull { pred ->

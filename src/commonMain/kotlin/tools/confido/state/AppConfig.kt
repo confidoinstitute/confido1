@@ -6,7 +6,6 @@ import rooms.RoomRole
 enum class FeatureFlag {
     UPDATE_HISTORY,
     ENCOURAGE_COMMENTS,
-    HISTOGRAM_SHOW_NAMES,
 }
 
 val FeatureFlag.enabled : Boolean

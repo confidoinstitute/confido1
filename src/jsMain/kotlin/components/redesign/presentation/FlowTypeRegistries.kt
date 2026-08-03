@@ -90,6 +90,14 @@ val flowItemTypes: List<FlowItemTypeEntry> by kotlin.lazy {
             matches = { it is SetPresenterViewAction && it.view is GroupPredPV },
         ))
         add(FlowItemTypeEntry(
+            key = "binaryHistogram",
+            label = "Prediction histogram",
+            category = FlowItemCategory.VIEW,
+            createDefault = { SetPresenterViewAction(BinaryHistogramPV(Ref(""))) },
+            editor = BinaryHistogramPVEditor,
+            matches = { it is SetPresenterViewAction && it.view is BinaryHistogramPV },
+        ))
+        add(FlowItemTypeEntry(
             key = "inviteLink",
             label = "Invite link / QR code",
             category = FlowItemCategory.VIEW,
@@ -334,6 +342,32 @@ val GroupPredPVEditor = FC<FlowItemEditorProps> { props ->
         span {
             css { fontFamily = sansSerif; fontSize = 14.px }
             +"Show resolution"
+        }
+    }
+}
+
+/** Editor for [BinaryHistogramPV]: question picker (binary questions only) + showNames toggle. */
+val BinaryHistogramPVEditor = FC<FlowItemEditorProps> { props ->
+    val view = props.action.innerView() as? BinaryHistogramPV ?: return@FC
+    val questions = useRoomQuestions().filter { it.answerSpace is tools.confido.spaces.BinarySpace }
+    val onViewChange = wrapViewChange(props.onChange)
+
+    FieldLabel { +"Question" }
+    QuestionPicker {
+        this.questions = questions
+        selectedId = view.question.id
+        onChange = { onViewChange(view.copy(question = Ref(it))) }
+    }
+    Stack {
+        direction = FlexDirection.row
+        css { alignItems = AlignItems.center; gap = 8.px; marginTop = 4.px }
+        Checkbox {
+            checked = view.showNames
+            onChange = { e -> onViewChange(view.copy(showNames = e.target.checked)) }
+        }
+        span {
+            css { fontFamily = sansSerif; fontSize = 14.px }
+            +"Show nicknames"
         }
     }
 }

@@ -9,6 +9,7 @@ import components.redesign.basic.GlobalErrorMessage
 import components.redesign.calibration.CalibrationPage
 import components.redesign.scores.MyScoresPage
 import components.redesign.feedback.FeedbackProvider
+import components.redesign.presenter.PresenterControlPanel
 import components.redesign.presenter.PresenterControllerProvider
 import components.redesign.profile.UserProfile
 import components.redesign.profile.VerifyToken
@@ -217,6 +218,7 @@ private val RootLayoutInner = FC<Props> {
         FeedbackProvider {
         PresenterControllerProvider {
             +useRoutes(routes)
+            PresenterControlPanel {}
         } } } }
     }
 }

@@ -1,7 +1,9 @@
 package extensions.update_scatter_plot
 
 import components.AppStateContext
+import components.presenter.PresenterControlsProps
 import components.presenter.PresenterPageProps
+import components.presenter.presenterControlsMap
 import components.presenter.presenterPageMap
 import components.redesign.BinIcon
 import components.redesign.PresenterIcon
@@ -252,7 +254,7 @@ private suspend fun fetchUpdatePlotData(
     tp1: TimepointReference,
     tp2: TimepointReference,
     referenceQuestion: Ref<Question>? = null,
-): List<List2<Prediction?>> {
+): List<UpdatePlotRow> {
     val req = UpdatePlotRequest(
         question = Ref(questionId),
         timepoint1 = tp1,
@@ -274,6 +276,7 @@ val UpdatePlotConfigDialog = dialogStateWrapper(FC<UpdatePlotConfigDialogProps> 
     var tp1 by useState<TimepointReference>(NowTimepoint)
     var tp2 by useState<TimepointReference>(NowTimepoint)
     var flipped by useState(false)
+    var showNames by useState(false)
     val presenterCtl = use(PresenterContext)!!
     val tz = TimeZone.currentSystemDefault()
     val today = Clock.System.now().toLocalDateTime(tz).date
@@ -315,14 +318,16 @@ val UpdatePlotConfigDialog = dialogStateWrapper(FC<UpdatePlotConfigDialogProps> 
             }
         }
 
-        val data = useSuspendResult(props.open, tp1, tp2, q.id) {
+        val rows = useSuspendResult(props.open, tp1, tp2, q.id) {
             if (!props.open) return@useSuspendResult null
             fetchUpdatePlotData(q.id, tp1, tp2)
-        }?.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<Prediction>>?>()
+        }?.filter { it.preds[0] != null && it.preds[1] != null }
 
         UpdateSlopeChart {
             height = 300.0
-            this.preds = data ?: emptyList()
+            this.preds = rows?.map { it.preds } ?: emptyList()
+            this.names = rows?.map { it.user?.displayName }
+            this.showNameLabels = showNames
             this.referenceForecast = q.extensionData?.get(ReferenceForcastKey)
             this.flipped = flipped
         }
@@ -339,10 +344,19 @@ val UpdatePlotConfigDialog = dialogStateWrapper(FC<UpdatePlotConfigDialogProps> 
                 checked = flipped
                 onChange = { flipped = it.target.checked }
             }
+            FormSwitch {
+                label = "Show names"
+                comment = "Label lines with predictors' names"
+                checked = showNames
+                onChange = { showNames = it.target.checked }
+            }
             IconButton {
                 PresenterIcon {}
                 onClick = {
-                    presenterCtl.offer(UpdatePlotPV(q.ref, tp1, tp2))
+                    // Carry the dialog's configuration over into the presenter view and close,
+                    // so the presenter dialog (if shown) does not stack on top of this one.
+                    presenterCtl.offer(UpdatePlotPV(q.ref, tp1, tp2, flipped, showNames))
+                    props.onClose?.invoke()
                 }
             }
         }
@@ -481,6 +495,10 @@ external interface UpdatePlotProps : Props {
     var preds: List<List<Prediction?>>
     var referenceForecast: Double?
     var timepointLabels: List<String?>?
+    /** Predictor display names aligned with [preds] rows (used in hover tooltips). */
+    var names: List<String?>?
+    /** Statically label each line's last point with the predictor's name. */
+    var showNameLabels: Boolean?
 }
 val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
     val view = props.view
@@ -489,8 +507,7 @@ val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
     val rawData = useSuspendResult(view.timepoint1, view.timepoint2, view.question.id) {
         fetchUpdatePlotData(view.question.id, view.timepoint1, view.timepoint2)
     }
-    val data = rawData?.filter { it[0] != null && it[1] != null }.unsafeCast<List<List2<Prediction>>?>()
-    var flipped by useState(false)
+    val flipped = view.flipped
     val viewport = hooks.useViewportSize()
     val availableHeight = (viewport.height * 0.88).coerceAtLeast(200.0)
     val availableWidth = viewport.width.toDouble()
@@ -538,7 +555,9 @@ val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
                 justifyContent = JustifyContent.center
             }
             UpdateSlopeChart {
-                preds = rawData
+                preds = rawData.map { it.preds }
+                names = rawData.map { it.user?.displayName }
+                showNameLabels = view.showNames
                 this.flipped = flipped
                 height = chartHeight
                 width = chartWidth
@@ -556,7 +575,7 @@ val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
                 alignSelf = AlignSelf.stretch
             }
             listOf(0,1).map { which->
-                val gp = rawData.mapNotNull { (it[which]?.dist as? BinaryDistribution)?.yesProb }.average()
+                val gp = rawData.mapNotNull { (it.preds[which]?.dist as? BinaryDistribution)?.yesProb }.average()
                 if (gp.isNaN()) return@map
                 div {
                     val adverb = listOf("before", "after")[which]
@@ -566,23 +585,59 @@ val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
                 }
             }
         }
-        div {
-            css {
-                position = Position.absolute
-                bottom = 8.px
-                right = 8.px
-                backgroundColor = Color("rgba(255,255,255,0.7)")
-                borderRadius = 4.px
-                padding = Padding(4.px, 8.px)
-                fontSize = 12.px
-                cursor = Cursor.pointer
-                userSelect = None.none
-                color = Color("#64748b")
-                hover { backgroundColor = Color("rgba(255,255,255,0.9)") }
-            }
-            onClick = { flipped = !flipped }
-            +(if (flipped) "\u21C5 Normal" else "\u21C4 Flip axes")
-        }
+        // (Flipping and name labels are controlled through the presenter control panel
+        // in the main window rather than by controls on the presented page itself.)
+    }
+}
+
+// ============================================================
+//  UpdatePlot Presenter Controls (control panel / presenter dialog)
+// ============================================================
+
+val UpdatePlotPC = FC<PresenterControlsProps<UpdatePlotPV>> { props ->
+    val view = props.view
+    val q = view.question.deref() ?: return@FC
+    val room = q.room
+    val tz = TimeZone.currentSystemDefault()
+    val today = Clock.System.now().toLocalDateTime(tz).date
+    val questionSnapshots = q.extensionData[SnapshotsKey] ?: emptyList()
+    val roomSnapshots = room?.extensionData?.get(SnapshotsKey) ?: emptyList()
+    val allSnapshots = (questionSnapshots.map { it to SnapshotScope.QUESTION } +
+                        roomSnapshots.map { it to SnapshotScope.ROOM }).sortedBy { it.first.ts }
+
+    TimepointSelector {
+        title = "Before time (x axis)"
+        value = view.timepoint1
+        onChange = { props.onChange(view.copy(timepoint1 = it)) }
+        snapshots = allSnapshots
+        question = q.ref
+        allowFreeText = false
+        timezone = tz
+        defaultDate = today
+    }
+    TimepointSelector {
+        title = "After time (y axis)"
+        value = view.timepoint2
+        onChange = { props.onChange(view.copy(timepoint2 = it)) }
+        snapshots = allSnapshots
+        question = q.ref
+        allowFreeText = false
+        timezone = tz
+        defaultDate = today
+    }
+    FormSwitch {
+        label = "Flip axes"
+        comment = "Probability horizontal, time vertical"
+        disabled = props.disabled
+        checked = view.flipped
+        onChange = { e -> props.onChange(view.copy(flipped = e.target.checked)) }
+    }
+    FormSwitch {
+        label = "Show names"
+        comment = "Label lines with predictors' names"
+        disabled = props.disabled
+        checked = view.showNames
+        onChange = { e -> props.onChange(view.copy(showNames = e.target.checked)) }
     }
 }
 
@@ -625,6 +680,30 @@ private val UpdatePlotPVEditorComponent = FC<tools.confido.extensions.FlowItemEd
         allowFreeText = true
         timezone = tz
         defaultDate = today
+    }
+    Stack {
+        direction = FlexDirection.row
+        css { alignItems = AlignItems.center; gap = 8.px; marginTop = 4.px }
+        Checkbox {
+            checked = view.flipped
+            onChange = { e -> onViewChange(view.copy(flipped = e.target.checked)) }
+        }
+        ReactHTML.span {
+            css { fontFamily = sansSerif; fontSize = 14.px }
+            +"Flip axes"
+        }
+    }
+    Stack {
+        direction = FlexDirection.row
+        css { alignItems = AlignItems.center; gap = 8.px; marginTop = 4.px }
+        Checkbox {
+            checked = view.showNames
+            onChange = { e -> onViewChange(view.copy(showNames = e.target.checked)) }
+        }
+        ReactHTML.span {
+            css { fontFamily = sansSerif; fontSize = 14.px }
+            +"Show names"
+        }
     }
 }
 
@@ -749,6 +828,9 @@ object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
 
     override fun registerPresenterPages() =
         mapOf(presenterPageMap(UpdatePlotPP))
+
+    override fun registerPresenterControls() =
+        mapOf(presenterControlsMap(UpdatePlotPC))
 
     override fun registerFlowItemTypes() = listOf(
         tools.confido.extensions.FlowItemTypeEntry(

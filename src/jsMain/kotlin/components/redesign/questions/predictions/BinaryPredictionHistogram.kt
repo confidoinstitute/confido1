@@ -386,8 +386,8 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
         }
 
         // A floating tooltip that lists names of users whose latest prediction falls into the hovered bin.
-        // Only populated when the HISTOGRAM_SHOW_NAMES feature flag is enabled and the viewer has the
-        // VIEW_INDIVIDUAL_PREDICTIONS permission (server-side gate). When disabled, bin.users is null.
+        // Only populated when the viewer has the VIEW_INDIVIDUAL_PREDICTIONS permission
+        // (server-side gate). Otherwise, bin.users is null.
         // Uses the portal-based Tooltip so it escapes the Stack's overflow:hidden clipping.
         run {
             val id = hoveredBin

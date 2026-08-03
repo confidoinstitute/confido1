@@ -9,11 +9,14 @@ import tools.confido.extensions.Extension
 import tools.confido.extensions.ExtensionDataKeyWithDefault
 import tools.confido.extensions.ExtensionDataType
 import tools.confido.extensions.add
+import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.state.FlowAction
 import tools.confido.state.PresenterView
+import tools.confido.utils.List2
 import users.User
+import users.UserPresentation
 
 // ============================================================
 //  Timepoint References
@@ -62,6 +65,10 @@ data class UpdatePlotPV(
     val question: Ref<Question>,
     val timepoint1: TimepointReference = NowTimepoint,
     val timepoint2: TimepointReference = NowTimepoint,
+    /** Probability horizontal, time vertical. */
+    val flipped: Boolean = false,
+    /** Label each line with the predictor's name. */
+    val showNames: Boolean = false,
 ): PresenterView() {
     override fun describe() = "Update plot"
 }
@@ -94,6 +101,14 @@ data class UpdatePlotRequest(
     val timepoint1: TimepointReference = NowTimepoint,
     val timepoint2: TimepointReference = NowTimepoint,
     val referenceQuestion: Ref<Question>? = null,
+)
+
+/** One row of the update plot API response: a predictor's values at each timepoint. */
+@Serializable
+data class UpdatePlotRow(
+    val preds: List2<Prediction?>,
+    /** How to present this predictor to the requesting user. */
+    val user: UserPresentation? = null,
 )
 
 // ============================================================

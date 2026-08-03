@@ -11,6 +11,7 @@ import tools.confido.extensions.Extension
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.refs.deref
+import tools.confido.spaces.BinarySpace
 import tools.confido.utils.unixNow
 
 @Serializable
@@ -43,6 +44,18 @@ data class GroupPredPV(
 ) : PresenterView() {
     override suspend fun isValid() = question.deref() != null
     override fun describe() = "group predictions for this question"
+}
+
+@Serializable
+@SerialName("binaryHistogram")
+data class BinaryHistogramPV(
+    val question: Ref<Question>,
+    /** Show nicknames of predictors in the histogram bars (available only when the
+     *  presenting user may view individual predictions). */
+    val showNames: Boolean = false,
+) : PresenterView() {
+    override suspend fun isValid() = question.deref()?.answerSpace is BinarySpace
+    override fun describe() = "prediction histogram"
 }
 
 @Serializable
@@ -92,6 +105,19 @@ data class PresentationPV(
     override fun describe() = "live presentation"
 }
 
+/** Displays multiple questions side by side in an adaptive grid. */
+@Serializable
+@SerialName("multiQuestion")
+data class MultiQuestionPV(
+    val questions: List<Ref<Question>>,
+    val showGroupPred: Boolean = true,
+    val showHistogram: Boolean = false,
+    val showResolution: Boolean = false,
+) : PresenterView() {
+    override suspend fun isValid() = questions.all { it.deref() != null }
+    override fun describe() = "${questions.size}-question overview"
+}
+
 
 const val PRESENTER_LIFETIME = 30 * 60
 
@@ -111,10 +137,12 @@ val presenterSM by lazy { SerializersModule {
         subclass(EmptyPV::class)
         subclass(QuestionPV::class)
         subclass(GroupPredPV::class)
+        subclass(BinaryHistogramPV::class)
         subclass(InviteLinkPV::class)
         subclass(CalibrationReqPV::class)
         subclass(SlidePV::class)
         subclass(PresentationPV::class)
+        subclass(MultiQuestionPV::class)
         Extension.forEach { it.registerPresenterViews(this) }
     }
 } }

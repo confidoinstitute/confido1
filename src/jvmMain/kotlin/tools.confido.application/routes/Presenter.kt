@@ -29,6 +29,14 @@ fun presenterRoutes(routing: Routing) = routing.apply {
         }
     }
 
+    postST("/presenter/stop") {
+        call.withUser {
+            call.modifyUserSession { it.copy(presenterInfo = null) }
+            transientData.refreshSessionWebsockets()
+            call.respond(HttpStatusCode.OK)
+        }
+    }
+
     postST("/presenter/set") {
         call.withUser {
             val view = call.receive<PresenterView>()

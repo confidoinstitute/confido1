@@ -1,5 +1,6 @@
 package tools.confido.extensions
 
+import components.presenter.PresenterControlsType
 import components.presenter.PresenterPageType
 import components.redesign.layout.LayoutMode
 import components.redesign.questions.dialog.EditQuestionDialogProps
@@ -86,11 +87,13 @@ interface ClientExtension : Extension {
         return arrayOf<dynamic>(sVal, ::setter).unsafeCast<react.StateInstance<T>>()
     }
     fun registerPresenterPages(): Map<KClass<out PresenterView>, PresenterPageType> = emptyMap()
+    fun registerPresenterControls(): Map<KClass<out PresenterView>, PresenterControlsType> = emptyMap()
     fun editRoomSettingsExtra(room: Room?, onExtensionDataChange: ((ExtensionData) -> ExtensionData) -> Unit, cb: ChildrenBuilder) {}
     fun roomMemberExtra(room: Room, membership: RoomMembership, user: User, cb: ChildrenBuilder) {}
     fun commentFieldExtra(room: Room, appState: SentState, cb: ChildrenBuilder) {}
     fun roomInfoExtra(room: Room, appState: SentState, cb: ChildrenBuilder) {}
     fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {}
+    fun selectionActionMenuExtra(selectedQuestions: Set<Question>, cb: ChildrenBuilder) {}
     fun roomTabsExtra(room: Room, appState: SentState, layoutMode: LayoutMode): List<Pair<String, String>>  = emptyList()
     fun roomRoutesExtra(room: Room): Array<RouteObject> = emptyArray()
     fun rootLayoutStartHook() {}

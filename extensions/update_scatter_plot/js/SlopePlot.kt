@@ -431,6 +431,34 @@ val UpdateSlopeChart = elementSizeWrapper(FC<UpdateSlopeProps> { props ->
                 }
             }
 
+            // --- Static name labels at each line's last point (presenter "show names" mode) ---
+            if (props.showNameLabels == true) {
+                props.preds.forEachIndexed { pIndex, row ->
+                    val name = props.names?.getOrNull(pIndex) ?: return@forEachIndexed
+                    val cIndex = row.indexOfLast { (it?.dist as? BinaryDistribution)?.yesProb != null }
+                    if (cIndex < 0) return@forEachIndexed
+                    val value = (row[cIndex]?.dist as? BinaryDistribution)?.yesProb ?: return@forEachIndexed
+                    val (jx, jy) = getJitter(pIndex, cIndex)
+                    val lx = toX(value, cIndex) + jx
+                    val ly = toY(value, cIndex) + jy
+                    val isActive = hoverInfo == null || pIndex in activeParticipants
+                    text {
+                        if (flipped) {
+                            x = lx; y = ly + 18.0
+                            textAnchor = TextAnchor.middle
+                        } else {
+                            x = lx + 10.0; y = ly; dy = 4.0
+                            textAnchor = TextAnchor.start
+                        }
+                        fill = "#334155"
+                        fontSize = 12.0
+                        fillOpacity = if (isActive) "0.9" else "0.15"
+                        css { pointerEvents = None.none }
+                        +name
+                    }
+                }
+            }
+
             // --- Hover highlight ring on active dots ---
             if (hoverInfo != null) {
                 for (hit in hoverInfo.hits) {
@@ -505,6 +533,12 @@ val UpdateSlopeChart = elementSizeWrapper(FC<UpdateSlopeProps> { props ->
                                 borderRadius = 50.pct
                                 backgroundColor = Color(updateColor(hit.p2 - hit.p1))
                                 flexShrink = number(0.0)
+                            }
+                        }
+                        props.names?.getOrNull(hit.participantIndex)?.let { name ->
+                            span {
+                                css { fontWeight = integer(600) }
+                                +name
                             }
                         }
                         span {

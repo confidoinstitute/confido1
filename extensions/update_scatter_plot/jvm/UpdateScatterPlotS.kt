@@ -12,6 +12,8 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import rooms.Room
 import rooms.RoomPermission
+import tools.confido.application.getUserPresentation
+import tools.confido.application.UserPresentationContext
 import tools.confido.application.routes.*
 import tools.confido.application.sessions.TransientData
 import tools.confido.refs.ref
@@ -114,11 +116,13 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
                         resolveTimepoint(it, room) ?: Instant.DISTANT_FUTURE
                     }
                     val users = serverState.userPred[question.ref]?.keys ?: emptySet()
-                    val preds = users.mapNotNull { u->
+                    val rows = users.mapNotNull { u->
                         val r = times.zip(qs) { t,q-> serverState.userPredHistManager.at(q, u, t) }
-                        if (r == List2(null,null)) null else r
+                        if (r == List2(null,null)) null
+                        else UpdatePlotRow(r, getUserPresentation(
+                            u.deref(), user, UserPresentationContext.INDIVIDUAL_PREDICTION, room))
                     }
-                    call.respond(preds)
+                    call.respond(rows)
                 }
             }
         }

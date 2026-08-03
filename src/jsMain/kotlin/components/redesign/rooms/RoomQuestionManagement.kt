@@ -58,6 +58,7 @@ import rooms.Room
 import rooms.RoomPermission
 import tools.confido.extensions.ClientExtension
 import tools.confido.question.Prediction
+import tools.confido.state.MultiQuestionPV
 import tools.confido.question.Question
 import tools.confido.question.QuestionState
 import tools.confido.refs.Ref
@@ -761,6 +762,7 @@ val SelectionActionMenu = FC<SelectionActionMenuProps> { props->
     var deleteConfirmOpen by useState(false)
     val submitLock = useCoroutineLock()
     val selectedQuestions = props.selectedQuestions
+    val presenterCtl = use(components.redesign.presenter.PresenterContext)
     ConfirmDialog {
         open = clearConfirmOpen
         onClose = { clearConfirmOpen = false }
@@ -827,6 +829,18 @@ val SelectionActionMenu = FC<SelectionActionMenuProps> { props->
     DialogMenu {
         +props.except("selectedQuestions")
 
+        if (presenterCtl != null) {
+            DialogMenuItem {
+                text = "Present selected"
+                icon = PresentationIcon
+                onClick = {
+                    props.onClose?.invoke()
+                    val view = MultiQuestionPV(questions = selectedQuestions.map { it.ref })
+                    presenterCtl.offer(view, forceDialog = true)
+                }
+            }
+        }
+        ClientExtension.forEach { it.selectionActionMenuExtra(selectedQuestions, this) }
         DialogMenuItem {
             text = "Clear answers"
             icon = BinIcon

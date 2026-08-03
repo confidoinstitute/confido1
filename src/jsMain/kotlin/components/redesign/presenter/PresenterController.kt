@@ -2,18 +2,21 @@ package components.redesign.presenter
 
 import web.window.window
 import components.AppStateContext
+import components.presenter.getPresenterControlsComponent
 import components.redesign.basic.Dialog
 import components.redesign.basic.DialogMainButton
 import components.redesign.basic.Message
 import components.redesign.basic.MessageType
 import components.redesign.basic.showMessage
 import components.redesign.forms.Button
+import components.redesign.forms.FormSection
 import web.cssom.Margin
 import web.cssom.integer
 import web.cssom.px
 import emotion.react.css
 import react.*
 import react.dom.html.ReactHTML.p
+import tools.confido.state.EmptyPV
 import tools.confido.state.PresenterView
 import tools.confido.utils.capFirst
 import utils.runCoroutine
@@ -22,6 +25,11 @@ import web.window._blank
 
 suspend fun setPresenterView(view: PresenterView) {
     Client.sendData("/presenter/set", view, onError ={}) {}
+}
+
+/** Clear the session's presenter view entirely, marking the session as "not presenting". */
+suspend fun stopPresenting() {
+    Client.send("/presenter/stop", onError = {}) {}
 }
 
 enum class  PresenterButtonState {
@@ -36,45 +44,79 @@ fun openPresenterWindow() {
 external interface PresenterDialogProps : Props {
     var view: PresenterView
     var open: Boolean
+    /** Whether a presenter window is already open (changes wording and confirm action). */
+    var windowActive: Boolean
     var onClose: (()->Unit)?
-    var onConfirm: (()->Unit)?
+    var onConfirm: ((PresenterView)->Unit)?
 }
 
 val PresenterDialog = FC<PresenterDialogProps> {props->
+    // Local draft of the view, editable through the view's controls (if any)
+    // before it is actually shown.
+    var draft by useState(props.view)
+    useEffect(props.view) { draft = props.view }
+    val controlsComp = getPresenterControlsComponent(props.view)
     Dialog {
         title = "Presentation mode"
-        action = "Open"
+        action = if (props.windowActive) "Show" else "Open"
         this.open = props.open
         onAction = {
-            props.onConfirm?.invoke()
+            props.onConfirm?.invoke(draft)
         }
         onClose = { props.onClose?.invoke() }
-        p {
-            +"This will open a new browser window showing the ${props.view.describe()}."
+        if (props.windowActive) {
+            p {
+                +"This will show the ${props.view.describe()} in the open presentation window."
+            }
+        } else {
+            p {
+                +"This will open a new browser window showing the ${props.view.describe()}."
+            }
+            p {
+                + "This is most useful for presenting "
+                +" things on a projector. You can simply drag the window to the projector screen and then make it"
+                +" full screen by pressing F11."
+                // + " Alternatively, you can copy a link to the presenter view and then e.g. open it on another"
+                // + +" device."
+            }
         }
-        p {
-            + "This is most useful for presenting "
-            +" things on a projector. You can simply drag the window to the projector screen and then make it"
-            +" full screen by pressing F11."
-            // + " Alternatively, you can copy a link to the presenter view and then e.g. open it on another"
-            // + +" device."
+        controlsComp?.let { comp ->
+            FormSection {
+                comp {
+                    this.view = draft
+                    this.disabled = false
+                    this.onChange = { draft = it }
+                }
+            }
         }
         DialogMainButton {
-            onClick =  { props.onConfirm?.invoke() }
-            +"Open presentation window"
+            onClick =  { props.onConfirm?.invoke(draft) }
+            +(if (props.windowActive) "Show in presentation window" else "Open presentation window")
         }
     }
 }
 
-class PresenterController(var onOffer: ((PresenterView)->Unit)?=null) {
+class PresenterController(var onOffer: ((PresenterView, Boolean)->Unit)?=null) {
 
-    fun offer(view:PresenterView ) {
-        onOffer?.invoke(view)
+    /**
+     * Offer a view for presentation. Normally, if a presenter window is already open,
+     * the view is shown immediately; otherwise a confirmation dialog is shown first.
+     * With [forceDialog], the dialog (including the view's configuration controls, if any)
+     * is always shown - useful for views that need configuring before display.
+     */
+    fun offer(view: PresenterView, forceDialog: Boolean = false) {
+        onOffer?.invoke(view, forceDialog)
     }
     fun set(view: PresenterView) {
 
         runCoroutine {
             setPresenterView(view)
+        }
+    }
+    /** Stop presenting (clears the presenter view; the presenter window, if open, goes blank). */
+    fun stop() {
+        runCoroutine {
+            stopPresenting()
         }
     }
 }
@@ -87,9 +129,9 @@ val PresenterControllerProvider = FC<PropsWithChildren> { props->
     val (appState, stale) = use(AppStateContext)!!
 
     val ctl = useMemo { PresenterController()}
-    fun offer(view: PresenterView) {
+    fun offer(view: PresenterView, forceDialog: Boolean) {
         val desc = view.describe()
-        if (appState.presenterWindowActive) {
+        if (appState.presenterWindowActive && !forceDialog) {
             showMessage(Message("${desc.capFirst()} displayed in existing presentation window.", MessageType.SUCCESS))
             ctl.set(view)
             offeredView = null
@@ -101,20 +143,22 @@ val PresenterControllerProvider = FC<PropsWithChildren> { props->
     PresenterContext.Provider {
         value = ctl
         +props.children
-        offeredView?.let { view->
-            PresenterDialog {
-                key="presenterDialog"
-                this.view = view
-                this.open = true
-                onConfirm = {
-                    ctl.set(view)
-                    offeredView = null
-                    if (!appState.presenterWindowActive)
-                        openPresenterWindow()
-                }
-                onClose = {
-                    offeredView = null
-                }
+        // NOTE: The dialog must be rendered unconditionally (with `open` toggling visibility).
+        // Conditionally adding/removing the element used to remount the whole sibling route
+        // tree (resetting e.g. question page tab state) whenever a presenter view was offered.
+        PresenterDialog {
+            key = "presenterDialog"
+            this.view = offeredView ?: EmptyPV
+            this.open = offeredView != null
+            this.windowActive = appState.presenterWindowActive
+            onConfirm = { finalView ->
+                ctl.set(finalView)
+                offeredView = null
+                if (!appState.presenterWindowActive)
+                    openPresenterWindow()
+            }
+            onClose = {
+                offeredView = null
             }
         }
     }

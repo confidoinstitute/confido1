@@ -41,6 +41,8 @@ import tools.confido.question.*
 import tools.confido.refs.*
 import tools.confido.serialization.*
 import tools.confido.spaces.*
+import components.redesign.presenter.PresenterContext
+import tools.confido.state.BinaryHistogramPV
 import tools.confido.state.appConfig
 import tools.confido.utils.*
 import utils.*
@@ -518,6 +520,8 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
 
 private val BinaryHistogramSection = FC<BinaryHistogramSectionProps> { props ->
     val histogram = useWebSocket<BinaryHistogram>("/state${props.question.urlPrefix}/histogram")
+    val layoutMode = use(LayoutModeContext)!!
+    val presenterCtl = use(PresenterContext)!!
     div {
         css {
             backgroundColor = Color("#fff")
@@ -530,6 +534,13 @@ private val BinaryHistogramSection = FC<BinaryHistogramSectionProps> { props ->
             this.binaryHistogram = histogram.data
         }
         GraphButtonContainer {
+            if (layoutMode >= LayoutMode.TABLET) {
+                GraphButton {
+                    this.palette = MainPalette.secondary
+                    PresenterIcon {}
+                    onClick = { presenterCtl.offer(BinaryHistogramPV(props.question.ref, false)) }
+                }
+            }
             GraphButton {
                 this.palette = MainPalette.primary
                 CirclesIcon {}

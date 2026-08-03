@@ -169,6 +169,7 @@ external interface RoomLayoutProps : Props {
 }
 
 val RoomLayout = FC<RoomLayoutProps> { props->
+    react.useEffectOnceWithCleanup { console.log("MOUNT RoomLayout"); onCleanup { console.log("UNMOUNT RoomLayout") } } // XXX TEMP DEBUG
     val (appState, _) = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val navigate = useNavigate()

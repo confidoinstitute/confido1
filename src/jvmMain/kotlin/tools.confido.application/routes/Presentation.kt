@@ -246,6 +246,22 @@ fun presentationRoutes(routing: Routing) = routing.apply {
         }
     }
 
+    // Override the effective presenter view of a running presentation (e.g. tweak
+    // options of the currently shown view without leaving the presentation).
+    // The override lasts until the next navigation step recomputes the view.
+    postST("$roomUrl/presentation/setview") {
+        call.withRoom {
+            assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot control presentation.")
+            val view = call.receive<PresenterView>()
+            if (!view.isValid()) badRequest("View is not valid")
+            val currentState = serverState.presentationRunStates[room.ref]
+                ?: badRequest("Presentation is not running.")
+            serverState.presentationRunStates[room.ref] = currentState.copy(currentView = view)
+            TransientData.refreshAllWebsockets()
+            call.respond(HttpStatusCode.OK)
+        }
+    }
+
     // Re-execute the current action (even if already executed)
     postST("$roomUrl/presentation/reexecute") {
         call.withRoom {

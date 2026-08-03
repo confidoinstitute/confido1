@@ -81,6 +81,14 @@ data class NoteItem(
     val warning: Boolean = false,
 ) : FlowItem()
 
+/** Short human-readable description of a flow item, for lists and hints. */
+fun FlowItem.shortDescribe(pres: Presentation): String = when (this) {
+    is SlideItem -> pres.slideLabels.getOrElse(slideIndex) { "Slide ${slideIndex + 1}" }
+    is ActionItem -> action.describe()
+    is NoteItem -> (if (warning) "⚠ " else "") + text.ifEmpty { "(empty note)" }
+    is PresenterViewItem -> view.describe()
+}
+
 /**
  * Server-side run state for a presentation. Maintained in memory (not persisted),
  * scoped to the room. Sent to moderator clients via the presentation WebSocket.
