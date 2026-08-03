@@ -74,7 +74,11 @@ abstract class  ExtensionDataSerializer(val type: ExtensionDataType): KSerialize
 
                 if (index == CompositeDecoder.DECODE_DONE) break
                 else if (index >= keys.size)  error("Unexpected index: $index")
-                else m[keys[index]] = decodeSerializableElement(descriptor, 0, type.valueSerializers[keys[index]]!!)
+                // The element index must be passed through: streaming decoders read values
+                // sequentially and ignore it, but tree decoders (decodeFromJsonElement, used
+                // by the multiplexed websocket client) resolve the JSON member by the name at
+                // this index — a hardcoded 0 makes them read the wrong field's value.
+                else m[keys[index]] = decodeSerializableElement(descriptor, index, type.valueSerializers[keys[index]]!!)
             }
         }
         return ExtensionData(type, m)
