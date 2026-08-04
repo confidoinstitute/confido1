@@ -121,8 +121,8 @@ open class MongoStore<E : Entity>(
     }
 
     // The read (duplicate check / current value) and the staging must both happen under
-    // the writer lock, so each mutation wraps itself in transact — which joins an ambient
-    // transaction when there is one, so callers can freely compose these in transact {}.
+    // the writer lock — withTxnScope guarantees both (it opens a transaction when there
+    // is no ambient one), so callers can freely compose these inside transact {}.
 
     private fun stagePut(scope: TxnScope, old: E?, new: E) {
         scope.stage(object : StagedWrite {
@@ -143,10 +143,10 @@ open class MongoStore<E : Entity>(
     /** Insert a new entity; assigns an id if empty. Throws [DuplicateIdException]. */
     suspend fun insert(entity: E): E {
         var stored = if (entity.id.isEmpty()) withId(entity, generateId()) else entity
-        transact {
+        withTxnScope { scope ->
             if (get(stored.id) != null) throw DuplicateIdException()
             stored = applyBeforeSave(null, stored)
-            inTransaction { stagePut(it, null, stored) }
+            stagePut(scope, null, stored)
         }
         return stored
     }
@@ -154,21 +154,22 @@ open class MongoStore<E : Entity>(
     /** Insert or replace by id (the old replaceEntity(upsert = true)). */
     suspend fun put(entity: E): E {
         var stored = if (entity.id.isEmpty()) withId(entity, generateId()) else entity
-        transact {
+        withTxnScope { scope ->
             val old = get(stored.id)
             stored = applyBeforeSave(old, stored)
-            inTransaction { stagePut(it, old, stored) }
+            stagePut(scope, old, stored)
         }
         return stored
     }
 
     suspend fun delete(ref: Ref<E>, ignoreNonexistent: Boolean = false): E? {
         var old: E? = null
-        transact {
-            old = get(ref.id) ?: if (ignoreNonexistent) return@transact else throw NoSuchElementException()
-            val removed = old!!
+        withTxnScope { scope ->
+            val removed = get(ref.id)
+                ?: if (ignoreNonexistent) return@withTxnScope else throw NoSuchElementException()
+            old = removed
             beforeDeleteHooks.forEach { it(removed) }
-            inTransaction { it.stage(object : StagedWrite {
+            scope.stage(object : StagedWrite {
                 override suspend fun flush(sess: ClientSession?) {
                     if (sess == null) coll.deleteOneById(removed.id) else coll.deleteOneById(sess, removed.id)
                 }
@@ -176,7 +177,7 @@ open class MongoStore<E : Entity>(
                     _state.value = _state.value.remove(removed.id)
                     emitChange(Change.Removed(removed))
                 }
-            }) }
+            })
         }
         return old
     }
@@ -187,11 +188,11 @@ open class MongoStore<E : Entity>(
     /** Atomic read-modify-write of one entity, in the ambient transaction. */
     suspend fun modify(ref: Ref<E>, f: (E) -> E): E {
         lateinit var new: E
-        transact {
+        withTxnScope { scope ->
             val old = get(ref.id) ?: throw NoSuchElementException()
             new = applyBeforeSave(old, f(old))
             check(new.id == old.id)
-            inTransaction { stagePut(it, old, new) }
+            stagePut(scope, old, new)
         }
         return new
     }

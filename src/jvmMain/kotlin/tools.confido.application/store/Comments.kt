@@ -44,7 +44,7 @@ open class MongoCommentArchive<E : tools.confido.question.Comment, P : Ref<*>>(
     /** Insert a new comment; assigns an id if empty. Returns the stored entity. */
     suspend fun insert(entity: E): E {
         val stored = if (entity.id.isEmpty()) withId(entity, generateId()) else entity
-        inTransaction { it.stage(Op(stored) { sess ->
+        withTxnScope { it.stage(Op(stored) { sess ->
             if (sess == null) coll.insertOne(stored) else coll.insertOne(sess, stored)
         }.emitting { Change.Added(stored) }) }
         return stored
@@ -53,21 +53,21 @@ open class MongoCommentArchive<E : tools.confido.question.Comment, P : Ref<*>>(
     /** Replace an existing comment (same id). */
     suspend fun update(old: E, new: E) {
         check(old.id == new.id)
-        inTransaction { it.stage(Op(new) { sess ->
+        withTxnScope { it.stage(Op(new) { sess ->
             if (sess == null) coll.replaceOneById(new.id, new)
             else coll.replaceOneById(sess, new.id, new)
         }.emitting { Change.Updated(old, new) }) }
     }
 
     suspend fun delete(entity: E) {
-        inTransaction { it.stage(Op(entity) { sess ->
+        withTxnScope { it.stage(Op(entity) { sess ->
             if (sess == null) coll.deleteOneById(entity.id) else coll.deleteOneById(sess, entity.id)
         }.emitting { Change.Removed(entity) }) }
     }
 
     /** Cascade helper: delete a whole partition, emitting Removed per comment. */
     suspend fun deletePartition(partition: P) {
-        inTransaction { scope ->
+        withTxnScope { scope ->
             scope.stage(object : StagedWrite {
                 var removed: List<E> = emptyList()
                 override suspend fun flush(sess: ClientSession?) {
@@ -82,7 +82,7 @@ open class MongoCommentArchive<E : tools.confido.question.Comment, P : Ref<*>>(
 
     /** Remove [user] from every comment's likes (user deletion). Rare; whole-collection op. */
     suspend fun stripUserLikes(user: Ref<User>) {
-        inTransaction { scope ->
+        withTxnScope { scope ->
             scope.stage(object : StagedWrite {
                 override suspend fun flush(sess: ClientSession?) {
                     val filter = tools.confido.question.Comment::likes contains user

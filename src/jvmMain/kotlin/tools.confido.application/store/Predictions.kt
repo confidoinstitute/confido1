@@ -199,21 +199,19 @@ suspend fun addPrediction(pred: Prediction) {
     require(q != null) { "Prediction for a nonexistent question" }
     requireNotNull(pred.user) { "User prediction must have a user" }
     val sched = q.effectiveSchedule
-    transact {
-        inTransaction { scope ->
-            scope.stage(HeadPutOp(pred))
-            val newPreds = latestPredictions.forQuestion(pred.question).toMutableMap()
-                .apply { put(pred.user!!, pred) }
-            val gp = serverState.calculateGroupPred(q, newPreds.values)
-            gp?.let { check(it.user == null) }
-            scope.stage(AppendOp(pred, sched.score, gp))
-        }
+    withTxnScope { scope ->
+        scope.stage(HeadPutOp(pred))
+        val newPreds = latestPredictions.forQuestion(pred.question).toMutableMap()
+            .apply { put(pred.user!!, pred) }
+        val gp = serverState.calculateGroupPred(q, newPreds.values)
+        gp?.let { check(it.user == null) }
+        scope.stage(AppendOp(pred, sched.score, gp))
         serverState.extensions.forEach { it.onPrediction(q, pred) }
     }
 }
 
 /** Delete all prediction data of a question (head + both logs) in the ambient transaction. */
-suspend fun clearPredictions(question: Ref<Question>) = inTransaction { scope ->
+suspend fun clearPredictions(question: Ref<Question>) = withTxnScope { scope ->
     scope.stage(ClearPredictionsOp(question))
 }
 

@@ -64,11 +64,13 @@ suspend fun <R> transact(block: suspend () -> R): R {
 }
 
 /**
- * Run [body] with the ambient [TxnScope] if one exists, else in a fresh single-op
- * transaction. This is what lets store write methods work both standalone
- * (`archive.put(comment)`) and inside an explicit `transact { }` block.
+ * Run [body] with the ambient [TxnScope], opening a fresh transaction when there is none —
+ * so the body always executes under the writer lock *and* has the scope to stage into.
+ * This is the store-internal primitive behind every write method: it makes store ops work
+ * both standalone (`archive.put(comment)`) and inside an explicit `transact { }` block.
+ * Callers that don't need the scope use [transact], which deliberately doesn't expose it.
  */
-suspend fun inTransaction(body: suspend (TxnScope) -> Unit) {
+suspend fun withTxnScope(body: suspend (TxnScope) -> Unit) {
     val ambient = coroutineContext[TxnContextElement]?.scope
     if (ambient != null) body(ambient)
     else transact { body(coroutineContext[TxnContextElement]!!.scope) }
