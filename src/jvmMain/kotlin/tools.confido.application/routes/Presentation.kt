@@ -47,7 +47,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             val pres = presentationStore.insert(
                 Presentation(room = room.ref, name = payload.name, fileToken = generateToken())
             )
-            serverState.roomManager.modifyEntity(room.ref) {
+            tools.confido.store.roomStore.modify(room.ref) {
                 it.copy(presentation = pres.ref)
             }
             TransientData.refreshAllWebsockets()
@@ -147,7 +147,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             }
 
             // Remove reference from room
-            serverState.roomManager.modifyEntity(room.ref) {
+            tools.confido.store.roomStore.modify(room.ref) {
                 it.copy(presentation = null)
             }
 
@@ -408,7 +408,7 @@ private suspend fun processCurrentItem(
 private suspend fun executeFlowAction(action: FlowAction, room: rooms.Room) {
     when (action) {
         is SetQuestionStateAction -> {
-            serverState.questionManager.modifyEntity(action.question.id) {
+            tools.confido.store.questionStore.modify(action.question.id) {
                 var q = it.withState(action.newState)
                 action.setGroupPredVisibility?.let { vis -> q = vis.apply(q) }
                 q
@@ -419,7 +419,7 @@ private suspend fun executeFlowAction(action: FlowAction, room: rooms.Room) {
             val roomQuestions = room.questions.mapNotNull { serverState.questions[it.id] }
             // Set matching questions to the target state
             roomQuestions.filter { action.tag in it.tags }.forEach { q ->
-                serverState.questionManager.modifyEntity(q.id) {
+                tools.confido.store.questionStore.modify(q.id) {
                     var modified = it.withState(action.newState)
                     action.setGroupPredVisibility?.let { vis -> modified = vis.apply(modified) }
                     modified
@@ -428,7 +428,7 @@ private suspend fun executeFlowAction(action: FlowAction, room: rooms.Room) {
             // Hide all non-matching questions if requested
             if (action.hideOtherQuestions) {
                 roomQuestions.filter { action.tag !in it.tags }.forEach { q ->
-                    serverState.questionManager.modifyEntity(q.id) {
+                    tools.confido.store.questionStore.modify(q.id) {
                         it.withState(tools.confido.question.QuestionState.DRAFT)
                     }
                 }

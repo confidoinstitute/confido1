@@ -79,8 +79,8 @@ fun questionRoutes(routing: Routing) = routing.apply {
             q = q.copy(author = user.ref)
 
             serverState.withTransaction {
-                val question = serverState.questionManager.insertEntity(q)
-                serverState.roomManager.modifyEntity(room.ref) {
+                val question = tools.confido.store.questionStore.insert(q)
+                tools.confido.store.roomStore.modify(room.ref) {
                     it.copy(questions = it.questions + listOf(question.ref))
                 }
             }
@@ -93,7 +93,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
         val ref = question.ref
         when (edit) {
             is EditQuestionFlag -> {
-                serverState.questionManager.modifyEntity(ref) {
+                tools.confido.store.questionStore.modify(ref) {
                     when (edit.fieldType) {
                         EditQuestionFieldType.VISIBLE ->
                             it.copy(visible = edit.value)
@@ -108,7 +108,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
             }
             is EditQuestionComplete -> {
                 serverState.withTransaction {
-                    serverState.questionManager.modifyEntity(ref) { orig->
+                    tools.confido.store.questionStore.modify(ref) { orig->
                         if (question.numPredictions > 0 && question.answerSpace != edit.question.answerSpace) {
                             badRequest("Cannot change answer space of a question with predictions.")
                         }
@@ -125,7 +125,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
             }
             is EditQuestionState -> {
                 serverState.withTransaction {
-                    serverState.questionManager.modifyEntity(ref) { orig->
+                    tools.confido.store.questionStore.modify(ref) { orig->
                         // If withState wasn't used, this will fill in the history automatically.
                         val newHistory = if (orig.state != edit.newState && orig.stateHistory.lastOrNull()?.newState != edit.newState) {
                             orig.stateHistory + QuestionStateChange(edit.newState, Clock.System.now(), user.ref)
@@ -138,7 +138,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
             }
             is EditQuestionResolution -> {
                 if (question.answerSpace != edit.resolution.space) badRequest("resolution space does not match answer space")
-                serverState.questionManager.modifyEntity(ref) {
+                tools.confido.store.questionStore.modify(ref) {
                     orig -> orig.copy(resolution=edit.resolution)
                 }
             }
@@ -182,10 +182,10 @@ fun questionRoutes(routing: Routing) = routing.apply {
             // hooks can stage into the ambient transaction
             transact {
                 questions.forEach { q ->
-                    serverState.questionManager.deleteEntity(q.ref)
+                    tools.confido.store.questionStore.delete(q.ref)
                     serverState.rooms.values.toList().forEach { room ->
                         if (room.questions.contains(q.ref)) {
-                            serverState.roomManager.modifyEntity(room.id) {
+                            tools.confido.store.roomStore.modify(room.id) {
                                 it.copy(questions = it.questions.filter { it != q.ref }.toList())
                             }
                         }
@@ -204,7 +204,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
             val newState = call.receive<QuestionState>()
             serverState.withTransaction {
                 room.questions.mapNotNull { it.deref() }.filter { tag in it.tags }.forEach { q ->
-                    serverState.questionManager.modifyEntity(q.id) {
+                    tools.confido.store.questionStore.modify(q.id) {
                         val newHistory = it.stateHistory + QuestionStateChange(newState, Clock.System.now(), user.ref)
                         it.withState(newState).copy(stateHistory = newHistory)
                     }
@@ -219,7 +219,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
         call.withQuestion {
             val newState: QuestionState = call.receive()
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "You cannot edit this question.")
-            serverState.questionManager.modifyEntity(ref) {
+            tools.confido.store.questionStore.modify(ref) {
                 val newHistory = question.stateHistory + QuestionStateChange(newState, Clock.System.now(), user.ref)
                 it.withState(newState).copy(stateHistory = newHistory)
             }
@@ -233,10 +233,10 @@ fun questionRoutes(routing: Routing) = routing.apply {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "You cannot delete this question.")
 
             transact {
-                serverState.questionManager.deleteEntity(ref)
+                tools.confido.store.questionStore.delete(ref)
                 serverState.rooms.values.toList().forEach { room ->
                     if (room.questions.contains(ref)) {
-                        serverState.roomManager.modifyEntity(room.id){
+                        tools.confido.store.roomStore.modify(room.id){
                             it.copy(questions = it.questions.filter { it != ref }.toList()) }
                     }
                 }

@@ -191,6 +191,6 @@ fun registerCommentStores() {
     Stores.register(commentData)
     // Cascades: deleting a question deletes its comments (previously orphaned);
     // deleting a room deletes its room comments (previously a manual loop in the route).
-    serverState.questionManager.beforeEntityDelete { q -> questionCommentArchive.deletePartition(q.ref) }
-    serverState.roomManager.beforeEntityDelete { r -> roomCommentArchive.deletePartition(r.ref) }
+    tools.confido.store.questionStore.beforeEntityDelete { q -> questionCommentArchive.deletePartition(q.ref) }
+    tools.confido.store.roomStore.beforeEntityDelete { r -> roomCommentArchive.deletePartition(r.ref) }
 }

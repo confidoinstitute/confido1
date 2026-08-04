@@ -478,7 +478,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                 state = InviteLinkState.ENABLED
             )
 
-            serverState.roomManager.modifyEntity(room.id) {
+            tools.confido.store.roomStore.modify(room.id) {
                 it.copy(inviteLinks = it.inviteLinks + listOf(inviteLink))
             }
             inviteLink
@@ -497,7 +497,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             if (!canChangeRole(room.userRole(user), invite.role)) unauthorized("This role cannot be changed")
             if (!invite.role.availableToGuests) badRequest("This role cannot be used for invite links.")
 
-            serverState.roomManager.modifyEntity(room.ref) { r ->
+            tools.confido.store.roomStore.modify(room.ref) { r ->
                 val inviteLinks = r.inviteLinks.map {
                     if (invite.id == it.id)
                         it.copy(
@@ -526,7 +526,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
 
             val delete: DeleteInvite = call.receive()
 
-            serverState.roomManager.modifyEntity(room.ref) { r ->
+            tools.confido.store.roomStore.modify(room.ref) { r ->
                 val inviteLinks = r.inviteLinks.filterNot { it.id == delete.id }
                 val members = r.members.mapNotNull {
                     if (it.invitedVia == delete.id) {
@@ -554,7 +554,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                 // XXX: Should we lift the permissions if invitation link has higher permission than the current status?
                 // Beware: this is copy-pasted in invite/accept_newuser
                 if (room.members.none { it.user eqid user }) {
-                    serverState.roomManager.modifyEntity(room.ref) {
+                    tools.confido.store.roomStore.modify(room.ref) {
                         it.copy(members = it.members + listOf(RoomMembership(user.ref, invite.role, invite.id)))
                     }
                 }
@@ -581,7 +581,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             tools.confido.store.userStore.byEmail[accept.email?.lowercase()]?.let { user ->
                 if (room.members.none { it.user eqid user }) {
                     // Beware: this is copy-pasted in invite/accept
-                    serverState.roomManager.modifyEntity(room.ref) {
+                    tools.confido.store.roomStore.modify(room.ref) {
                         it.copy(members = it.members + listOf(RoomMembership(user.ref, invite.role, invite.id)))
                     }
                 }
@@ -632,7 +632,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
 
                 serverState.withTransaction {
                     tools.confido.store.userStore.insert(newUser)
-                    serverState.roomManager.modifyEntity(room.ref) {
+                    tools.confido.store.roomStore.modify(room.ref) {
                         it.copy(members = it.members + listOf(RoomMembership(newUser.ref, invite.role, invite.id)))
                     }
                 }
@@ -719,7 +719,7 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
                 // Remove from all rooms
                 serverState.rooms.values.forEach { room ->
                     if (room.members.any { it.user eqid userToDelete }) {
-                        serverState.roomManager.modifyEntity(room.ref) { r ->
+                        tools.confido.store.roomStore.modify(room.ref) { r ->
                             r.copy(members = r.members.filterNot { it.user eqid userToDelete })
                         }
                     }
@@ -728,7 +728,7 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
                 if (!willGhost)
                 serverState.questions.forEach { (_,q)->
                     if (q.author eqid userToDelete) {
-                        serverState.questionManager.modifyEntity(q.ref) { it.copy(author = null) }
+                        tools.confido.store.questionStore.modify(q.ref) { it.copy(author = null) }
                     }
                 }
 

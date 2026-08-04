@@ -331,7 +331,7 @@ fun importQuestionRoutes(routing: Routing) = routing.apply {
                         // UPDATE existing question — only update fields that were mapped
                         val mapped = imported.mappedFields
                         var changed = false
-                        serverState.questionManager.modifyEntity(match.ref) { q ->
+                        tools.confido.store.questionStore.modify(match.ref) { q ->
                             var updated = q
 
                             // Always update name (it's the required field)
@@ -409,7 +409,7 @@ fun importQuestionRoutes(routing: Routing) = routing.apply {
                             externalId = imported.externalId,
                             schedule = null, // inherit default schedule
                         )
-                        val inserted = serverState.questionManager.insertEntity(question)
+                        val inserted = tools.confido.store.questionStore.insert(question)
                         newRefs.add(inserted.ref)
                         created++
                     }
@@ -419,7 +419,7 @@ fun importQuestionRoutes(routing: Routing) = routing.apply {
                 // the original CSV order is preserved in the UI, which
                 // displays room.questions.reversed()).
                 if (newRefs.isNotEmpty()) {
-                    serverState.roomManager.modifyEntity(room.ref) {
+                    tools.confido.store.roomStore.modify(room.ref) {
                         it.copy(questions = it.questions + newRefs.reversed())
                     }
                 }

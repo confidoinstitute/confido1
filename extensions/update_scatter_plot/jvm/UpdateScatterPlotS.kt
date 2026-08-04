@@ -53,7 +53,7 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
                         val snap = call.receive<Snapshot>().copy(owner = user.ref, id= newId)
                         assertPermission(RoomPermission.VIEW_QUESTIONS, "no room access")
                         if (snap.public) assertPermission(RoomPermission.MANAGE_QUESTIONS, "not enough permissions to create public snapshot")
-                        serverState.questionManager.modifyEntity(question.id) { it.copy(extensionData = it.extensionData.with(
+                        tools.confido.store.questionStore.modify(question.id) { it.copy(extensionData = it.extensionData.with(
                             SnapshotsKey, (it.extensionData[SnapshotsKey] + listOf(snap)).sortedBy { it.ts })) }
                         call.respond(newId)
                         TransientData.refreshAllWebsockets()
@@ -69,7 +69,7 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
                         if (!(snap.owner == user.ref || snap.public && room.hasPermission(user, RoomPermission.MANAGE_QUESTIONS))) {
                             forbidden("You can only delete your own snapshots and moderators can delete public snapshots")
                         }
-                        serverState.questionManager.modifyEntity(question.id, { it.copy(extensionData = it.extensionData.modify(SnapshotsKey) { it.filter { otherSnap -> otherSnap != snap } }) })
+                        tools.confido.store.questionStore.modify(question.id, { it.copy(extensionData = it.extensionData.modify(SnapshotsKey) { it.filter { otherSnap -> otherSnap != snap } }) })
                         TransientData.refreshAllWebsockets()
                         call.respond(HttpStatusCode.OK)
                     }
@@ -81,7 +81,7 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
                         val snap = call.receive<Snapshot>().copy(owner = user.ref)
                         assertPermission(RoomPermission.VIEW_QUESTIONS, "no room access")
                         if (snap.public) assertPermission(RoomPermission.MANAGE_QUESTIONS, "not enough permissions to create public snapshot")
-                        serverState.roomManager.modifyEntity(room.id) { it.copy(extensionData = it.extensionData.with(
+                        tools.confido.store.roomStore.modify(room.id) { it.copy(extensionData = it.extensionData.with(
                             SnapshotsKey, (it.extensionData[SnapshotsKey] + listOf(snap)).sortedBy { it.ts })) }
                         TransientData.refreshAllWebsockets()
                         call.respond(HttpStatusCode.OK)
@@ -97,7 +97,7 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
                         if (!(snap.owner == user.ref || snap.public && room.hasPermission(user, RoomPermission.MANAGE_QUESTIONS))) {
                             forbidden("You can only delete your own snapshots and moderators can delete public snapshots")
                         }
-                        serverState.roomManager.modifyEntity(room.id, { it.copy(extensionData = it.extensionData.modify(SnapshotsKey) { it.filter { otherSnap -> otherSnap != snap } }) })
+                        tools.confido.store.roomStore.modify(room.id, { it.copy(extensionData = it.extensionData.modify(SnapshotsKey) { it.filter { otherSnap -> otherSnap != snap } }) })
                         TransientData.refreshAllWebsockets()
                         call.respond(HttpStatusCode.OK)
                     }
@@ -143,14 +143,14 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
 
         if (action.question != null) {
             // Question-scoped snapshot: overwrite by name
-            serverState.questionManager.modifyEntity(action.question.id) { q ->
+            tools.confido.store.questionStore.modify(action.question.id) { q ->
                 val existing = q.extensionData[SnapshotsKey]
                 val updated = (existing.filter { it.title != action.name } + snapshot).sortedBy { it.ts }
                 q.copy(extensionData = q.extensionData.with(SnapshotsKey, updated))
             }
         } else {
             // Room-wide snapshot: overwrite by name
-            serverState.roomManager.modifyEntity(room.id) { r ->
+            tools.confido.store.roomStore.modify(room.id) { r ->
                 val existing = r.extensionData[SnapshotsKey]
                 val updated = (existing.filter { it.title != action.name } + snapshot).sortedBy { it.ts }
                 r.copy(extensionData = r.extensionData.with(SnapshotsKey, updated))

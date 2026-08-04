@@ -130,8 +130,8 @@ suspend fun initDemo() {
     )
 
     rooms.forEach {
-        if (!serverState.roomManager.entityMap.containsKey(it.id))
-            serverState.roomManager.insertEntity(it, forceId = true)
+        if (tools.confido.store.roomStore.get(it.id) == null)
+            tools.confido.store.roomStore.insert(it)
     }
 }
 
@@ -158,12 +158,16 @@ fun main() {
     registerSerializer(RefAsStringSerializer)
     registerSerializer(rooms.RoomRoleRefSerializer)
 
-    tools.confido.store.registerPredictionStores()
-    tools.confido.store.registerCommentStores()
+    // Registration order = boot load order: base entity stores first, then the stores
+    // whose boot folds dereference them (prediction group aggregates need questions).
+    tools.confido.store.registerRoomStores()
+    tools.confido.store.registerQuestionStores()
+    tools.confido.store.registerUserStores()
+    tools.confido.store.registerSessionStores()
     tools.confido.store.registerLinkStores()
     tools.confido.store.registerPresentationStores()
-    tools.confido.store.registerSessionStores()
-    tools.confido.store.registerUserStores()
+    tools.confido.store.registerPredictionStores()
+    tools.confido.store.registerCommentStores()
 
     runBlocking {
         serverState.initialize()
@@ -319,7 +323,7 @@ fun main() {
                                 now()
                             )
                         )
-                        serverState.roomManager.insertEntity(
+                        tools.confido.store.roomStore.insert(
                             Room("testroom", "Testing room", Clock.System.now(), "This is a testing room.")
                         )
                     }

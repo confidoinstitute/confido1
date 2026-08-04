@@ -299,5 +299,5 @@ fun registerPredictionStores() {
     Stores.register(predictionData)
     // Cascade: deleting a question deletes its predictions (this was previously simply
     // missing — deleted questions orphaned their prediction data forever).
-    serverState.questionManager.beforeEntityDelete { q -> clearPredictions(q.ref) }
+    tools.confido.store.questionStore.beforeEntityDelete { q -> clearPredictions(q.ref) }
 }

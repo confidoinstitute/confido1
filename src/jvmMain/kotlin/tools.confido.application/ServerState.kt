@@ -34,6 +34,8 @@ import tools.confido.store.Stores
 import tools.confido.store.commentData
 import tools.confido.store.latestPredictions
 import tools.confido.store.predictionData
+import tools.confido.store.questionStore
+import tools.confido.store.roomStore
 import tools.confido.store.userStore
 import tools.confido.utils.*
 import users.EmailVerificationLink
@@ -337,45 +339,11 @@ object serverState : GlobalState() {
     inline fun <reified  E: HasId> EntityManager<E>.register() {
         additionalManagers.add(this)
     }
-    val questionRoom: MutableMap<Ref<Question>, Ref<Room>> = mutableMapOf()
-    object roomManager : InMemoryEntityManager<Room>(database.getCollection<Room>("rooms")) {
-        init {
-            // Strip computed fields before persisting to DB (safety net against accidental persistence)
-            beforeEntitySave { _, room ->
-                room.copy(
-                    _effectiveMembers = null,
-                    _effectiveQuestions = null,
-                    _presentationRunning = null,
-                    members = room.members.map {
-                        it.copy(implied = false, impliedFrom = null, effectivePermissions = null)
-                    }
-                )
-            }
-            onEntityAdded { room->
-                room.questions.forEach { questionRoom[it] = room.ref }
-            }
-            onEntityUpdated { old, new->
-                val addedQuestions = new.questions.toSet() - old.questions.toSet()
-                val removedQuestions = old.questions.toSet() - new.questions.toSet()
-                addedQuestions.forEach { questionRoom[it] = new.ref }
-                removedQuestions.forEach { if (questionRoom[it] == new.ref) questionRoom.remove(it) }
-            }
-            onEntityDeleted { room ->
-                room.questions.forEach { if (questionRoom[it] == room.ref) questionRoom.remove(it) }
-            }
-        }
-    }
-    override val rooms by roomManager::entityMap
-    object questionManager : InMemoryEntityManager<Question>(database.getCollection("questions")) {
-    }
-    override val questions by questionManager::entityMap
-
+    val questionRoom: Map<Ref<Question>, Ref<Room>> get() = roomStore.questionRoom
+    override val rooms: Map<String, Room> get() = roomStore.asMap
+    override val questions: Map<String, Question> get() = questionStore.asMap
     override val users: Map<String, User> get() = userStore.asMap
 
-    init {
-        roomManager.register()
-        questionManager.register()
-    }
 
 
 

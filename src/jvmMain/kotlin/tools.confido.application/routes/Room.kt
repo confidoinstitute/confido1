@@ -59,7 +59,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
             val information: BaseRoomInformation = call.receive()
 
             val myMembership = RoomMembership(user.ref, appConfig.roleById("owner") ?: error("Role 'owner' not found"), null)
-            serverState.roomManager.insertEntity(
+            tools.confido.store.roomStore.insert(
                 Room(
                     id = "", name = information.name, description = information.description,
                     createdAt = Clock.System.now(), questions = emptyList(),
@@ -84,7 +84,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
             assertPermission(RoomPermission.ROOM_OWNER, "You cannot edit room details.")
             val roomName = information.name.ifEmpty {room.name}
 
-            serverState.roomManager.modifyEntity(room.ref) {
+            tools.confido.store.roomStore.modify(room.ref) {
                 it.copy(
                     name = roomName,
                     description = information.description,
@@ -113,7 +113,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
             ) unauthorized("This role cannot be changed.")
 
             suspend fun addExistingMember(user: User, role: RoomRole) =
-                serverState.roomManager.modifyEntity(room.ref) {
+                tools.confido.store.roomStore.modify(room.ref) {
                     var existing = false
                     val members = it.members.map { membership ->
                         if (membership.user eqid user) {
@@ -171,7 +171,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
 
                         transact {
                             tools.confido.store.userStore.insert(newUser)
-                            serverState.roomManager.modifyEntity(room.ref) {
+                            tools.confido.store.roomStore.modify(room.ref) {
                                 it.copy(members = it.members + listOf(RoomMembership(newUser.ref, member.role, null)))
                             }
                             loginLinkStore.insert(link)
@@ -191,11 +191,11 @@ fun roomRoutes(routing: Routing) = routing.apply {
             // can stage into the ambient transaction
             transact {
                 room.questions.forEach { question ->
-                    serverState.questionManager.deleteEntity(question)
+                    tools.confido.store.questionStore.delete(question)
                 }
                 // Room comments (and each question's comments and predictions) are deleted
-                // by the cascade hooks on the managers.
-                serverState.roomManager.deleteEntity(room)
+                // by the cascade hooks on the stores.
+                tools.confido.store.roomStore.delete(room.ref)
             }
         }
 
@@ -211,7 +211,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
 
             if (!canChangeRole(room.userRole(user), membership.role)) unauthorized("You cannot give this role.")
 
-            serverState.roomManager.modifyEntity(room.ref) {
+            tools.confido.store.roomStore.modify(room.ref) {
                 it.copy(members = it.members.filterNot { m -> m.user eqid id })
             }
         }
@@ -227,7 +227,7 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot manage questions.")
             val move: ReorderQuestions = call.receive()
 
-            serverState.roomManager.modifyEntity(room.ref) {
+            tools.confido.store.roomStore.modify(room.ref) {
                 // Questions may have gotten removed before this request happened
                 val roomQuestionSet = room.questions.toSet()
                 val newOrder = move.newOrder.filter { q -> q in roomQuestionSet }
@@ -238,7 +238,7 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
 
                 // Append questions that are not mentioned at the end of the new order (they are likely new)
                 val newQuestions = newOrder + questionsNotInOrder
-                return@modifyEntity it.copy(questions = newQuestions)
+                return@modify it.copy(questions = newQuestions)
             }
         }
 

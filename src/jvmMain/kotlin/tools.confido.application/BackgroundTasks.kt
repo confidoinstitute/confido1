@@ -7,6 +7,7 @@ import tools.confido.question.Question
 import tools.confido.question.QuestionState
 import tools.confido.application.sessions.TransientData
 import tools.confido.refs.deref
+import tools.confido.refs.ref
 import tools.confido.state.serverState
 import tools.confido.utils.forEachDeref
 
@@ -60,7 +61,7 @@ private suspend fun checkQuestionSchedule(room: Room, q: Question, now: Instant)
     val changed = newQ != q
     if (changed) {
         println("UPDATING QUESTION")
-        serverState.questionManager.replaceEntity(newQ)
+        tools.confido.store.questionStore.modify(newQ.ref) { newQ }
     }
     if (sendReminder) {
         val author = q.author?.deref()

@@ -106,7 +106,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
     private suspend fun setState(room: Room, config: MillionaireGameAction, state: MillionaireState) {
         serverState.withTransaction {
             questions(room, config.tag).forEachIndexed { idx, q ->
-                serverState.questionManager.modifyEntity(q.id) {
+                tools.confido.store.questionStore.modify(q.id) {
                     val newState =
                         if (idx < state.curIndex) QuestionState.RESOLVED
                         else if (idx == state.curIndex) {

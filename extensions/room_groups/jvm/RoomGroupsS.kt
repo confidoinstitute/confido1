@@ -66,7 +66,7 @@ object RoomGroupsSE : ServerExtension, RoomGroupsExtension() {
 
     override suspend fun serverInit() {
         // Validate ParentRoomKey changes before saving
-        serverState.roomManager.beforeEntitySave { old, new ->
+        tools.confido.store.roomStore.beforeEntitySave { old, new ->
             val oldParent = old?.extensionData?.get(ParentRoomKey)
             val newParent = new.extensionData.get(ParentRoomKey)
             if (oldParent != newParent && newParent != null) {
@@ -81,10 +81,10 @@ object RoomGroupsSE : ServerExtension, RoomGroupsExtension() {
         }
 
         // When a group room is deleted, unparent all its children
-        serverState.roomManager.beforeEntityDelete { room ->
+        tools.confido.store.roomStore.beforeEntityDelete { room ->
             if (room.isGroup) {
                 for (child in childrenOf(room.id)) {
-                    serverState.roomManager.modifyEntity(child.id) {
+                    tools.confido.store.roomStore.modify(child.id) {
                         it.copy(extensionData = it.extensionData.with(ParentRoomKey, null))
                     }
                 }
