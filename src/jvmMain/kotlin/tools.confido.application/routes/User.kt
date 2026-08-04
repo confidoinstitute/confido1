@@ -253,7 +253,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
         val verificationLink = verificationLinkStore.byToken[validation.token] ?: unauthorized("No such token exists.")
         if (verificationLink.isExpired()) unauthorized("The token has already expired.")
 
-        serverState.withTransaction {
+        tools.confido.store.transact {
             tools.confido.store.userStore.modify(verificationLink.user) {
                 it.copy(email = verificationLink.email.lowercase(), emailVerified = true)
             }
@@ -310,7 +310,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
         val verificationLink = passwordResetLinkStore.byToken[validation.token] ?: unauthorized("No such token exists.")
         if (verificationLink.isExpired()) unauthorized("The token has already expired.")
 
-        serverState.withTransaction {
+        tools.confido.store.transact {
             tools.confido.store.userStore.modify(verificationLink.user) {
                 it.copy(password = null)
             }
@@ -630,7 +630,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                     createdAt = Clock.System.now()
                 )
 
-                serverState.withTransaction {
+                tools.confido.store.transact {
                     tools.confido.store.userStore.insert(newUser)
                     tools.confido.store.roomStore.modify(room.ref) {
                         it.copy(members = it.members + listOf(RoomMembership(newUser.ref, invite.role, invite.id)))

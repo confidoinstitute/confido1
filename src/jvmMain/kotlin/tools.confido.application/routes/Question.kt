@@ -78,7 +78,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
             }
             q = q.copy(author = user.ref)
 
-            serverState.withTransaction {
+            tools.confido.store.transact {
                 val question = tools.confido.store.questionStore.insert(q)
                 tools.confido.store.roomStore.modify(room.ref) {
                     it.copy(questions = it.questions + listOf(question.ref))
@@ -107,7 +107,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 }
             }
             is EditQuestionComplete -> {
-                serverState.withTransaction {
+                tools.confido.store.transact {
                     tools.confido.store.questionStore.modify(ref) { orig->
                         if (question.numPredictions > 0 && question.answerSpace != edit.question.answerSpace) {
                             badRequest("Cannot change answer space of a question with predictions.")
@@ -124,7 +124,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 }
             }
             is EditQuestionState -> {
-                serverState.withTransaction {
+                tools.confido.store.transact {
                     tools.confido.store.questionStore.modify(ref) { orig->
                         // If withState wasn't used, this will fill in the history automatically.
                         val newHistory = if (orig.state != edit.newState && orig.stateHistory.lastOrNull()?.newState != edit.newState) {
@@ -202,7 +202,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Need moderator privilege to alter state.")
             val tag = call.parameters["tag"]?.ifEmpty { null } ?: badRequest("Missing tag.")
             val newState = call.receive<QuestionState>()
-            serverState.withTransaction {
+            tools.confido.store.transact {
                 room.questions.mapNotNull { it.deref() }.filter { tag in it.tags }.forEach { q ->
                     tools.confido.store.questionStore.modify(q.id) {
                         val newHistory = it.stateHistory + QuestionStateChange(newState, Clock.System.now(), user.ref)

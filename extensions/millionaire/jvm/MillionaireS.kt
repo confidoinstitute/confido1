@@ -104,7 +104,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
     // --- State transitions ---
 
     private suspend fun setState(room: Room, config: MillionaireGameAction, state: MillionaireState) {
-        serverState.withTransaction {
+        tools.confido.store.transact {
             questions(room, config.tag).forEachIndexed { idx, q ->
                 tools.confido.store.questionStore.modify(q.id) {
                     val newState =

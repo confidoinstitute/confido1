@@ -47,7 +47,6 @@ import tools.confido.refs.ref
 import tools.confido.serialization.confidoJSON
 import tools.confido.serialization.confidoSM
 import tools.confido.state.appConfig
-import tools.confido.state.insertEntity
 import tools.confido.state.serverState
 import users.DebugAdmin
 import users.DebugMember

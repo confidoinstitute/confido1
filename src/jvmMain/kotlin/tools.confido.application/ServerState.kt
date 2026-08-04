@@ -51,7 +51,6 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 
-class DuplicateIdException : Exception() {}
 object MutationLockedContextElement : AbstractCoroutineContextElement(Key) {
     object Key : CoroutineContext.Key<MutationLockedContextElement>
 
@@ -138,207 +137,6 @@ object serverState : GlobalState() {
     /** Room-scoped presentation run states. In-memory only, lost on server restart. */
     val presentationRunStates: MutableMap<Ref<Room>, PresentationRunState> = mutableMapOf()
 
-    abstract class EntityManager<E: HasId>(val mongoCollection: CoroutineCollection<E>) {
-        var isLoading = false
-        val updateCallbacks: MutableList<EntityManager<E>.(E, E) -> Unit> = mutableListOf()
-        val addCallbacks: MutableList<EntityManager<E>.(E) -> Unit> = mutableListOf()
-        val deleteCallbacks: MutableList<EntityManager<E>.(E) -> Unit> = mutableListOf()
-        val beforeSaveCallbacks: MutableList<EntityManager<E>.(E?, E) -> E> = mutableListOf()
-        val beforeDeleteCallbacks: MutableList<suspend EntityManager<E>.(E) -> Unit> = mutableListOf()
-
-        /** Register a callback that transforms an entity before it is persisted.
-         * The callback receives (oldEntity?, newEntity) where oldEntity is null for inserts.
-         */
-        fun beforeEntitySave(cb: EntityManager<E>.(E?, E) -> E) {
-            beforeSaveCallbacks.add(cb)
-        }
-
-        /** Register a callback that is called before an entity is deleted.
-         *  Can be used for cascade operations, cleanup, or to prevent deletion (by throwing). */
-        fun beforeEntityDelete(cb: suspend EntityManager<E>.(E) -> Unit) {
-            beforeDeleteCallbacks.add(cb)
-        }
-
-        fun applyBeforeSave(old: E?, new: E): E =
-            beforeSaveCallbacks.fold(new) { acc, cb -> cb(old, acc) }
-
-        suspend fun notifyBeforeDelete(entity: E) {
-            beforeDeleteCallbacks.forEach { it(entity) }
-        }
-        fun onEntityUpdated(cb: EntityManager<E>.(E, E) -> Unit) {
-            updateCallbacks.add(cb)
-        }
-
-        fun onEntityAdded(cb: EntityManager<E>.(E) -> Unit) {
-            addCallbacks.add(cb)
-        }
-
-        fun onEntityAddedOrUpdated(cb: EntityManager<E>.(E) -> Unit) {
-            onEntityAdded(cb)
-            onEntityUpdated({ _, new -> cb(new) })
-        }
-
-        fun onEntityDeleted(cb: EntityManager<E>.(E) -> Unit) {
-            deleteCallbacks.add(cb)
-        }
-
-        fun notifyEntityAdded(entity: E) {
-            addCallbacks.forEach { it(entity) }
-        }
-
-        fun notifyEntityUpdated(old: E, new: E) {
-            updateCallbacks.forEach { it(old, new) }
-        }
-
-        fun notifyEntityDeleted(entity: E) {
-            deleteCallbacks.forEach { it(entity) }
-        }
-
-        open suspend fun initialize() {}
-        open suspend fun doLoad() {}
-        suspend fun load() {
-            isLoading = true
-            try {
-                doLoad()
-            } finally {
-                isLoading = false
-            }
-        }
-
-    }
-    interface ExpiringEntityManager<E: HasExpiration> {
-        suspend fun cleanupExpired()
-    }
-
-    open class IdBasedEntityManager<E: HasId>(mongoCollection: CoroutineCollection<E>) : EntityManager<E>(mongoCollection) {
-        open suspend fun get(id: String): E? {
-            return mongoCollection.findOneById(id)
-        }
-
-        suspend fun modifyEntity(id: String, modify: (E)->E): E =
-            withMutationLock {
-                val orig = this.get(id) ?: throw NoSuchElementException()
-                check(orig.id == id)
-                val new = applyBeforeSave(orig, modify(orig))
-                when (val sess = coroutineContext.getSession()) {
-                    null -> mongoCollection.replaceOneById(new.id, new, ReplaceOptions())
-                    else -> mongoCollection.replaceOneById(sess, new.id, new, ReplaceOptions())
-                }
-                notifyEntityUpdated(orig, new)
-                return@withMutationLock new
-            }
-        suspend fun replaceEntity(new: E, compare: E? = null,
-                             upsert: Boolean = false,
-                             merge: (orig: E, new: E)->E = { _, newM -> newM }, ) : E =
-            withMutationLock {
-                if (upsert && compare != null) throw IllegalArgumentException()
-                val orig: E? = get(new.id)
-                if (orig == null) {
-                    if (upsert) {
-                        return@withMutationLock insertWithId(new)
-                    } else {
-                        throw NoSuchElementException()
-                    }
-                }
-                compare?.let {
-                    if (compare.id != new.id) throw IllegalArgumentException()
-                    if (orig != compare) throw ConcurrentModificationException()
-                }
-                val merged = applyBeforeSave(orig, merge(orig, new))
-                check(merged.id == new.id)
-                when (val sess = coroutineContext.getSession()) {
-                    null -> mongoCollection.replaceOneById(merged.id, merged, ReplaceOptions())
-                    else -> mongoCollection.replaceOneById(sess, merged.id, merged, ReplaceOptions())
-                }
-                notifyEntityUpdated(orig, merged)
-                return@withMutationLock merged
-            }
-
-
-        suspend fun deleteEntity(id: String, ignoreNonexistent: Boolean = false) : E? =
-            withMutationLock {
-                val orig: E = get(id) ?: if (ignoreNonexistent) return@withMutationLock null else throw NoSuchElementException()
-                notifyBeforeDelete(orig)
-                when (val sess = coroutineContext.getSession()) {
-                    null -> mongoCollection.deleteOneById(id)
-                    else -> mongoCollection.deleteOneById(sess, id)
-                }
-                notifyEntityDeleted(orig)
-                return@withMutationLock orig
-            }
-        suspend fun deleteEntity(entity: E, ignoreNonexistent: Boolean = false,
-                                    check: (E,E)->Boolean = { found, expected -> found == expected }) : E? =
-            withMutationLock {
-                val orig: E = get(entity.id) ?: if (ignoreNonexistent) return@withMutationLock null else throw NoSuchElementException()
-                if (orig != entity) throw ConcurrentModificationException()
-                notifyBeforeDelete(orig)
-                when (val sess = coroutineContext.getSession()) {
-                    null -> mongoCollection.deleteOneById(entity.id)
-                    else -> mongoCollection.deleteOneById(sess, entity.id)
-                }
-                notifyEntityDeleted(orig)
-                return@withMutationLock orig
-            }
-        suspend fun insertWithId(entity: E) =
-            withMutationLock {
-                require(!entity.id.isEmpty())
-                val old: E? = get(entity.id)
-                if (old != null) throw DuplicateIdException()
-                val transformed = applyBeforeSave(null, entity)
-                when (val sess = coroutineContext.getSession()) {
-                    null -> mongoCollection.insertOne(transformed)
-                    else -> mongoCollection.insertOne(sess, transformed)
-                }
-                notifyEntityAdded(transformed)
-                return@withMutationLock transformed
-            }
-
-    }
-
-    open class InMemoryEntityManager<E: Entity>(mongoCollection: CoroutineCollection<E>)
-            : IdBasedEntityManager<E>(mongoCollection) {
-        val entityMap: MutableMap<String, E> = mutableMapOf()
-        override suspend fun doLoad() {
-            mongoCollection.find().toFlow().collect { notifyEntityAdded(it) }
-        }
-
-        override suspend fun get(id: String): E? = entityMap[id]
-        init {
-            onEntityAddedOrUpdated { entityMap[it.id] = it }
-            onEntityDeleted { entityMap.remove(it.id) }
-        }
-        // FIXME move general parts to EntityManager to handle case when all entities are not cached in memory
-    }
-
-    open class InMemoryExpiringEntityManager<E: ExpiringEntity>(mongoCollection: CoroutineCollection<E>, val tolerance: Duration = 0.seconds)
-        : InMemoryEntityManager<E>(mongoCollection), ExpiringEntityManager<E> {
-        override suspend fun cleanupExpired() {
-            val now = Clock.System.now()
-            val toDelete = mutableListOf<String>()
-            this.entityMap.values.forEach {
-                if (now > it.expiryTime + tolerance)
-                    toDelete.add(it.id)
-            }
-
-            toDelete.forEach { this.deleteEntity(it) }
-        }
-    }
-
-    val managers : MutableMap<KClass<*>, EntityManager<*>> = mutableMapOf()
-    val additionalManagers : MutableList<EntityManager<*>> = mutableListOf()
-    @Suppress("UNCHECKED_CAST")
-    inline fun <reified  E: Entity> getManager() =
-        managers[E::class] as EntityManager<E>
-
-    inline fun getManager(entity: Entity) =
-        managers[entity::class]
-    inline fun <reified  E: Entity> EntityManager<E>.register() {
-        managers[E::class] = this
-    }
-    @JvmName("register2")
-    inline fun <reified  E: HasId> EntityManager<E>.register() {
-        additionalManagers.add(this)
-    }
     val questionRoom: Map<Ref<Question>, Ref<Room>> get() = roomStore.questionRoom
     override val rooms: Map<String, Room> get() = roomStore.asMap
     override val questions: Map<String, Question> get() = questionStore.asMap
@@ -349,8 +147,6 @@ object serverState : GlobalState() {
 
 
     suspend fun initialize() {
-        managers.values.forEach { it.initialize() }
-        additionalManagers.forEach { it.initialize() }
         Stores.all.forEach { it.initialize() }
     }
 
@@ -362,8 +158,7 @@ object serverState : GlobalState() {
      * (PERSISTENCE_SYNC_REDESIGN.md §6).
      */
     fun collectionVerifiers(): Map<String, suspend (String) -> Unit> =
-        ((managers.values + additionalManagers).map { it.mongoCollection } +
-                Stores.all.flatMap { it.mongoCollections }).associate { coll ->
+        Stores.all.flatMap { it.mongoCollections }.associate { coll ->
             val docClass = coll.collection.documentClass
             coll.namespace.collectionName to { name: String ->
                 database.database.getCollection(name, docClass).coroutine.find().toFlow().collect {}
@@ -371,8 +166,6 @@ object serverState : GlobalState() {
         }
     // initial load from database
     suspend fun load() {
-        managers.values.forEach { it.load() }
-        additionalManagers.forEach { it.load() }
         Stores.all.forEach { it.load() }
     }
 
@@ -438,24 +231,9 @@ object serverState : GlobalState() {
     @DelicateRefAPI
     override fun derefNonBlocking(entityType: KClass<*>, id: String): Entity? {
         Stores.resident[entityType]?.let { return it.get(id) }
-        managers[entityType]?.let { manager ->
-            when (manager) {
-                is InMemoryEntityManager ->
-                    return manager.entityMap[id] as Entity?
-                else -> {}
-            }
-        }
         return super.derefNonBlocking(entityType, id)
     }
 
     override val extensions: List<ServerExtension> get() = ServerExtension.enabled
 }
-suspend inline fun <reified  E: HasId> serverState.IdBasedEntityManager<E>.insertEntity(entity: E, forceId: Boolean = false) =
-    insertWithId(entity.assignIdIfNeeded())
-suspend fun <E: Entity> serverState.IdBasedEntityManager<E>.deleteEntity(ref: Ref<E>, ignoreNonexistent: Boolean = false) =
-    deleteEntity(ref.id, ignoreNonexistent)
-suspend fun <E: Entity> serverState.IdBasedEntityManager<E>.modifyEntity(ref: Ref<E>, modify: (E) -> E) =
-    modifyEntity(ref.id, modify)
-
-
 actual val globalState: GlobalState = serverState

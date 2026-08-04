@@ -308,7 +308,7 @@ fun importQuestionRoutes(routing: Routing) = routing.apply {
             var updated = 0
             var unchanged = 0
 
-            serverState.withTransaction {
+            tools.confido.store.transact {
                 val newRefs = mutableListOf<tools.confido.refs.Ref<Question>>()
 
                 for (imported in payload.questions) {
