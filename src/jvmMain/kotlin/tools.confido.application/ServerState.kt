@@ -423,40 +423,10 @@ object serverState : GlobalState() {
     }
     override val users by userManager::entityMap
 
-    object verificationLinkManager : InMemoryEntityManager<EmailVerificationLink>(database.getCollection("mailVerificationLinks")) {
-        val byToken: MutableMap<String, EmailVerificationLink> = mutableMapOf()
-        init {
-            onEntityAddedOrUpdated { byToken[it.token] = it }
-            onEntityDeleted { byToken.remove(it.token) }
-        }
-    }
-
-    object passwordResetLinkManager : InMemoryEntityManager<PasswordResetLink>(database.getCollection("passwordResetLinks")) {
-        val byToken: MutableMap<String, PasswordResetLink> = mutableMapOf()
-        init {
-            onEntityAddedOrUpdated { byToken[it.token] = it }
-            onEntityDeleted { byToken.remove(it.token) }
-        }
-    }
-
-    object presentationManager : InMemoryEntityManager<Presentation>(database.getCollection("presentations")) {
-        init {
-            onEntityDeleted { pres ->
-                // Clean up run state when presentation is deleted
-                presentationRunStates.remove(Ref(pres.room.id))
-            }
-        }
-    }
-
-    object userSessionManager : InMemoryExpiringEntityManager<UserSession>(database.getCollection("userSessions"))
     init {
         roomManager.register()
         questionManager.register()
         userManager.register()
-        verificationLinkManager.register()
-        passwordResetLinkManager.register()
-        userSessionManager.register()
-        presentationManager.register()
     }
 
 

@@ -23,6 +23,7 @@ import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.refs.ref
 import tools.confido.state.*
+import tools.confido.store.presentationStore
 import java.io.File
 import java.io.StringWriter
 import javax.imageio.ImageIO
@@ -32,7 +33,7 @@ val presentationDir = File(System.getenv("CONFIDO_PRESENTATION_PATH") ?: "presen
 /** Resolve a room's presentation from the in-memory manager. */
 private suspend fun getPresentation(room: rooms.Room): Presentation? {
     val ref = room.presentation ?: return null
-    return serverState.presentationManager.get(ref.id)
+    return presentationStore.get(ref.id)
 }
 
 fun presentationRoutes(routing: Routing) = routing.apply {
@@ -43,7 +44,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             if (room.presentation != null) badRequest("Room already has a presentation.")
 
             val payload = call.receive<CreatePresentation>()
-            val pres = serverState.presentationManager.insertEntity(
+            val pres = presentationStore.insert(
                 Presentation(room = room.ref, name = payload.name, fileToken = generateToken())
             )
             serverState.roomManager.modifyEntity(room.ref) {
@@ -105,7 +106,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             }
 
             // Update presentation entity
-            serverState.presentationManager.modifyEntity(pres.id) { p ->
+            presentationStore.modify(pres.id) { p ->
                 p.copy(numSlides = numSlides, slideLabels = slideLabels)
             }
 
@@ -121,7 +122,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             val pres = getPresentation(room) ?: notFound("No presentation for this room.")
             val edit = call.receive<EditPresentation>()
 
-            serverState.presentationManager.modifyEntity(pres.id) { p ->
+            presentationStore.modify(pres.id) { p ->
                 var updated = p
                 edit.name?.let { updated = updated.copy(name = it) }
                 edit.items?.let { updated = updated.copy(items = it) }
@@ -151,7 +152,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             }
 
             // Delete entity
-            serverState.presentationManager.deleteEntity(pres.id)
+            presentationStore.delete(pres.id)
 
             // Delete files from disk
             val presDir = File(presentationDir, pres.id)
@@ -169,7 +170,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
         val filename = call.parameters["filename"] ?: badRequest("Missing filename.")
 
         // Validate token
-        val pres = serverState.presentationManager.get(presId) ?: notFound("Presentation not found.")
+        val pres = presentationStore.get(presId) ?: notFound("Presentation not found.")
         // Constant-time compare, and never let a blank stored token authorize anything.
         if (pres.fileToken.isEmpty() ||
             !MessageDigest.isEqual(pres.fileToken.toByteArray(), token.toByteArray())
@@ -213,10 +214,10 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             serverState.presentationRunStates.remove(room.ref)
             ServerExtension.forEach { it.onPresentationStopped(room) }
             // Clear followingPresentation for all sessions following this room
-            serverState.userSessionManager.entityMap.values
+            tools.confido.store.userSessionStore.asMap.values
                 .filter { it.followingPresentation?.id == room.id }
                 .forEach { session ->
-                    serverState.userSessionManager.modifyEntity(session.id) {
+                    tools.confido.store.userSessionStore.modify(session.id) {
                         it.copy(followingPresentation = null)
                     }
                 }

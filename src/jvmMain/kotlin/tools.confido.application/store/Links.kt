@@ -1,13 +1,14 @@
 package tools.confido.store
 
 import tools.confido.state.serverState
+import users.EmailVerificationLink
 import users.LoginLink
+import users.PasswordResetLink
 
 /**
- * Login (magic) links — the Store<E> pilot conversion: a small resident store with one
- * unique secondary index, establishing the pattern the remaining resident managers will
- * follow. (Like the manager it replaces, it does not expiry-sweep; expired links are
- * rejected at use time and deleted after use.)
+ * Token link stores: small resident stores with one unique secondary index each.
+ * (Like the managers they replace, they do not expiry-sweep; expired links are rejected
+ * at use time and deleted after use or on user deletion.)
  */
 object loginLinkStore : MongoStore<LoginLink>(
     serverState.database.getCollection("loginLinks"),
@@ -16,8 +17,24 @@ object loginLinkStore : MongoStore<LoginLink>(
     val byToken = UniqueIndex(this) { it.token }
 }
 
+object verificationLinkStore : MongoStore<EmailVerificationLink>(
+    serverState.database.getCollection("mailVerificationLinks"),
+    { e, id -> e.copy(id = id) },
+) {
+    val byToken = UniqueIndex(this) { it.token }
+}
+
+object passwordResetLinkStore : MongoStore<PasswordResetLink>(
+    serverState.database.getCollection("passwordResetLinks"),
+    { e, id -> e.copy(id = id) },
+) {
+    val byToken = UniqueIndex(this) { it.token }
+}
+
 /** Register link stores. Called once from server startup. */
 fun registerLinkStores() {
-    Stores.register(loginLinkStore)
+    listOf(loginLinkStore, verificationLinkStore, passwordResetLinkStore).forEach { Stores.register(it) }
     Stores.resident[LoginLink::class] = loginLinkStore
+    Stores.resident[EmailVerificationLink::class] = verificationLinkStore
+    Stores.resident[PasswordResetLink::class] = passwordResetLinkStore
 }

@@ -16,9 +16,11 @@ import tools.confido.application.sessions.*
 import tools.confido.refs.*
 import tools.confido.state.*
 import tools.confido.store.loginLinkStore
+import tools.confido.store.passwordResetLinkStore
 import tools.confido.store.questionCommentArchive
 import tools.confido.store.roomCommentArchive
 import tools.confido.store.transact
+import tools.confido.store.verificationLinkStore
 import tools.confido.utils.*
 import users.*
 import kotlin.time.Duration.Companion.days
@@ -174,7 +176,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
             serviceUnavailable("Verification e-mail failed to send")
         }
 
-        serverState.verificationLinkManager.insertEntity(link)
+        verificationLinkStore.insert(link)
     }
 
     suspend fun UserContext.changePassword(currentPassword: String?, newPassword: String) {
@@ -214,7 +216,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
             //serviceUnavailable("Password change e-mail failed to send")
             call.application.log.info("The link to undo password change for ${user.ref} is ${link.link("")}")
         }
-        serverState.passwordResetLinkManager.insertEntity(link)
+        passwordResetLinkStore.insert(link)
 
         // TODO: Anti password undo spam DDoS
 
@@ -248,7 +250,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
         call.assertSession()
 
         val validation: TokenVerification = call.receive()
-        val verificationLink = serverState.verificationLinkManager.byToken[validation.token] ?: unauthorized("No such token exists.")
+        val verificationLink = verificationLinkStore.byToken[validation.token] ?: unauthorized("No such token exists.")
         if (verificationLink.isExpired()) unauthorized("The token has already expired.")
 
         serverState.withTransaction {
@@ -257,7 +259,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
             }
 
             // Verification links are single-use
-            serverState.verificationLinkManager.deleteEntity(verificationLink.ref)
+            verificationLinkStore.delete(verificationLink.ref)
         }
 
         TransientData.refreshAllWebsockets()
@@ -294,7 +296,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
                 call.application.log.info("The link to undo password reset for ${user.ref} is ${link.link("")}")
             }
 
-            serverState.passwordResetLinkManager.insertEntity(link)
+            passwordResetLinkStore.insert(link)
         }
 
         call.transientUserData?.refreshSessionWebsockets()
@@ -305,7 +307,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
         call.assertSession()
 
         val validation: TokenVerification = call.receive()
-        val verificationLink = serverState.passwordResetLinkManager.byToken[validation.token] ?: unauthorized("No such token exists.")
+        val verificationLink = passwordResetLinkStore.byToken[validation.token] ?: unauthorized("No such token exists.")
         if (verificationLink.isExpired()) unauthorized("The token has already expired.")
 
         serverState.withTransaction {
@@ -314,7 +316,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
             }
 
             // Verification links are single-use
-            serverState.passwordResetLinkManager.deleteEntity(verificationLink.ref)
+            passwordResetLinkStore.delete(verificationLink.ref)
         }
 
         // TODO invalidate all user's sessions
@@ -731,25 +733,25 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
                 }
 
                 // Delete all sessions for this user
-                serverState.userSessionManager.entityMap.values
+                tools.confido.store.userSessionStore.asMap.values
                     .filter { it.userRef eqid userToDelete }
                     .forEach { session ->
-                        serverState.userSessionManager.deleteEntity(session.ref)
+                        tools.confido.store.userSessionStore.delete(session.ref)
                     }
                 loginLinkStore.asMap.values
                     .filter { it.user eqid userToDelete }
                     .forEach {
                         loginLinkStore.delete(it.ref)
                     }
-                serverState.verificationLinkManager.entityMap.values
+                verificationLinkStore.asMap.values
                     .filter { it.user eqid userToDelete }
                     .forEach {
-                        serverState.verificationLinkManager.deleteEntity(it.ref)
+                        verificationLinkStore.delete(it.ref)
                     }
-                serverState.passwordResetLinkManager.entityMap.values
+                passwordResetLinkStore.asMap.values
                     .filter { it.user eqid userToDelete }
                     .forEach {
-                        serverState.passwordResetLinkManager.deleteEntity(it.ref)
+                        passwordResetLinkStore.delete(it.ref)
                     }
 
                 if (willGhost) {

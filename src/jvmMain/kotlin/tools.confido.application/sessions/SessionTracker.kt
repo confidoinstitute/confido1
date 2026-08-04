@@ -60,15 +60,15 @@ fun ApplicationCall.getSessionIdOrCreateNew(): String {
  * In case the session has expired, ignore it.
  */
 val ApplicationCall.userSession: UserSession?
-    get() = sessionId?.let { serverState.userSessionManager.entityMap[sessionId]?.let {if (it.isExpired()) null else it} }
+    get() = sessionId?.let { id -> tools.confido.store.userSessionStore.get(id)?.let {if (it.isExpired()) null else it} }
 
 suspend fun ApplicationCall.setUserSession(value: UserSession?) {
     val id = getSessionIdOrCreateNew()
     if (value == null) {
-        serverState.userSessionManager.deleteEntity(id, ignoreNonexistent = true)
+        tools.confido.store.userSessionStore.delete(id, ignoreNonexistent = true)
         clearCookie(this)
     } else {
-        serverState.userSessionManager.replaceEntity(value.copy(id = id), upsert = true)
+        tools.confido.store.userSessionStore.put(value.copy(id = id))
     }
 }
 
@@ -125,7 +125,7 @@ class SessionTracker {
     suspend fun load(call: ApplicationCall) {
         val cookie = readCookie(call) ?: return
 
-        if (serverState.userSessionManager.get(cookie) != null)
+        if (tools.confido.store.userSessionStore.get(cookie) != null)
             call.attributes.put(sessionIdKey, cookie)
     }
 

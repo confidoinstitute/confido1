@@ -161,6 +161,8 @@ fun main() {
     tools.confido.store.registerPredictionStores()
     tools.confido.store.registerCommentStores()
     tools.confido.store.registerLinkStores()
+    tools.confido.store.registerPresentationStores()
+    tools.confido.store.registerSessionStores()
 
     runBlocking {
         serverState.initialize()
@@ -171,15 +173,14 @@ fun main() {
         serverState.extensions.forEach { it.serverInit() }
 
         launch(context= singleThreadContext) {
-            val allManagers = serverState.managers.values + serverState.additionalManagers
-            val expiringManagers = allManagers.filterIsInstance<serverState.ExpiringEntityManager<*>>()
+            val expiringStores = tools.confido.store.Stores.all.filterIsInstance<tools.confido.store.ExpiringStore>()
 
             while (true) {
                 // These loops are children of the same scope, so an uncaught throw here
                 // would cancel the sibling loop as well and both would stay dead until
                 // the next restart, with the HTTP server still happily serving.
                 try {
-                    expiringManagers.forEach {
+                    expiringStores.forEach {
                         it.cleanupExpired()
                     }
                 } catch (e: Throwable) {
