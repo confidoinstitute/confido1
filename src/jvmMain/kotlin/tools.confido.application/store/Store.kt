@@ -5,11 +5,15 @@ import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.datetime.Clock
 import org.litote.kmongo.coroutine.CoroutineCollection
 import tools.confido.refs.Entity
+import tools.confido.refs.HasExpiration
 import tools.confido.refs.HasId
 import tools.confido.refs.Ref
 import tools.confido.utils.generateId
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * A change to a stored entity, emitted strictly after the backing database commit.
@@ -98,6 +102,17 @@ open class MongoStore<E : Entity>(
     override fun get(id: String): E? = _state.value[id]
     override val mongoCollections get() = listOf(coll)
 
+    // Extension points, carried over from the EntityManager hooks (same names, so
+    // converting a hook registration only changes the receiver). beforeEntitySave
+    // transforms/validates inside the transaction before the write is staged (a throw
+    // aborts the whole transaction with RAM untouched); beforeEntityDelete runs inside
+    // the deleting transaction and typically stages cascade writes into it.
+    private val beforeSaveHooks = mutableListOf<(E?, E) -> E>()
+    private val beforeDeleteHooks = mutableListOf<suspend (E) -> Unit>()
+    fun beforeEntitySave(cb: (old: E?, new: E) -> E) { beforeSaveHooks.add(cb) }
+    fun beforeEntityDelete(cb: suspend (E) -> Unit) { beforeDeleteHooks.add(cb) }
+    protected fun applyBeforeSave(old: E?, new: E): E = beforeSaveHooks.fold(new) { acc, cb -> cb(old, acc) }
+
     override suspend fun load() {
         coll.find().toFlow().collect { e ->
             _state.value = _state.value.put(e.id, e)
@@ -109,20 +124,40 @@ open class MongoStore<E : Entity>(
     // the writer lock, so each mutation wraps itself in transact — which joins an ambient
     // transaction when there is one, so callers can freely compose these in transact {}.
 
+    private fun stagePut(scope: TxnScope, old: E?, new: E) {
+        scope.stage(object : StagedWrite {
+            override suspend fun flush(sess: ClientSession?) {
+                if (old == null) {
+                    if (sess == null) coll.insertOne(new) else coll.insertOne(sess, new)
+                } else {
+                    if (sess == null) coll.replaceOneById(new.id, new) else coll.replaceOneById(sess, new.id, new)
+                }
+            }
+            override fun apply() {
+                _state.value = _state.value.put(new.id, new)
+                emitChange(if (old == null) Change.Added(new) else Change.Updated(old, new))
+            }
+        })
+    }
+
     /** Insert a new entity; assigns an id if empty. Throws [DuplicateIdException]. */
     suspend fun insert(entity: E): E {
-        val stored = if (entity.id.isEmpty()) withId(entity, generateId()) else entity
+        var stored = if (entity.id.isEmpty()) withId(entity, generateId()) else entity
         transact {
             if (get(stored.id) != null) throw DuplicateIdException()
-            inTransaction { it.stage(object : StagedWrite {
-                override suspend fun flush(sess: ClientSession?) {
-                    if (sess == null) coll.insertOne(stored) else coll.insertOne(sess, stored)
-                }
-                override fun apply() {
-                    _state.value = _state.value.put(stored.id, stored)
-                    emitChange(Change.Added(stored))
-                }
-            }) }
+            stored = applyBeforeSave(null, stored)
+            inTransaction { stagePut(it, null, stored) }
+        }
+        return stored
+    }
+
+    /** Insert or replace by id (the old replaceEntity(upsert = true)). */
+    suspend fun put(entity: E): E {
+        var stored = if (entity.id.isEmpty()) withId(entity, generateId()) else entity
+        transact {
+            val old = get(stored.id)
+            stored = applyBeforeSave(old, stored)
+            inTransaction { stagePut(it, old, stored) }
         }
         return stored
     }
@@ -132,6 +167,7 @@ open class MongoStore<E : Entity>(
         transact {
             old = get(ref.id) ?: if (ignoreNonexistent) return@transact else throw NoSuchElementException()
             val removed = old!!
+            beforeDeleteHooks.forEach { it(removed) }
             inTransaction { it.stage(object : StagedWrite {
                 override suspend fun flush(sess: ClientSession?) {
                     if (sess == null) coll.deleteOneById(removed.id) else coll.deleteOneById(sess, removed.id)
@@ -145,23 +181,37 @@ open class MongoStore<E : Entity>(
         return old
     }
 
+    suspend fun delete(id: String, ignoreNonexistent: Boolean = false): E? =
+        delete(Ref(id), ignoreNonexistent)
+
     /** Atomic read-modify-write of one entity, in the ambient transaction. */
     suspend fun modify(ref: Ref<E>, f: (E) -> E): E {
         lateinit var new: E
         transact {
             val old = get(ref.id) ?: throw NoSuchElementException()
-            new = f(old)
+            new = applyBeforeSave(old, f(old))
             check(new.id == old.id)
-            inTransaction { it.stage(object : StagedWrite {
-                override suspend fun flush(sess: ClientSession?) {
-                    if (sess == null) coll.replaceOneById(new.id, new) else coll.replaceOneById(sess, new.id, new)
-                }
-                override fun apply() {
-                    _state.value = _state.value.put(new.id, new)
-                    emitChange(Change.Updated(old, new))
-                }
-            }) }
+            inTransaction { stagePut(it, old, new) }
         }
         return new
+    }
+
+    suspend fun modify(id: String, f: (E) -> E): E = modify(Ref(id), f)
+}
+
+/** Stores whose entities expire; swept periodically by the background task in Server.kt. */
+interface ExpiringStore {
+    suspend fun cleanupExpired()
+}
+
+open class ExpiringMongoStore<E>(
+    coll: CoroutineCollection<E>,
+    withId: (E, String) -> E,
+    private val tolerance: Duration = 0.seconds,
+) : MongoStore<E>(coll, withId), ExpiringStore where E : Entity, E : HasExpiration {
+    override suspend fun cleanupExpired() {
+        val now = Clock.System.now()
+        asMap.values.filter { now > it.expiryTime + tolerance }
+            .forEach { delete(Ref<E>(it.id)) }
     }
 }

@@ -546,6 +546,15 @@ working untouched mid-transition.
     (question → predictions + comments, room → room comments): fixes the historical
     orphaning. The declarative `references()` graph of §3.2 becomes worthwhile once the
     owning entities convert.
+  - **EntityManager hook roles map onto the store layer** (they are kept, not dropped —
+    `pseudonyms` and `room_groups` register them from `serverInit()`): after-commit
+    notifications = `ChangeSource.onChange` (strictly better: legacy callbacks fired with
+    RAM already mutated *inside* the transaction); before-delete cascade/veto =
+    `MongoStore.beforeEntityDelete`, run inside the deleting `transact` so cascade writes
+    join the same transaction; before-save transform/validation =
+    `MongoStore.beforeEntitySave`, folded before staging, where a throwing validator now
+    aborts the whole transaction with RAM untouched. The one consumer meant to die is the
+    core `Room` wire-field scrubber, which §5.2 deletes along with the wire-only fields.
   - Comments' `all(partition)` + folds (`commentCount`, `commentAuthors` via one boot
     aggregate each) replaced residency; `range + tail` narrowing per §3.1 stands, with
     `tail` deferred to Phase 3. The user-deletion scan needed one extra archive primitive:
