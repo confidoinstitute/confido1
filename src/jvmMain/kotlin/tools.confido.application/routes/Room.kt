@@ -133,7 +133,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                     addExistingMember(existingUser, member.role)
                 }
                 is AddedNewMember -> {
-                    serverState.userManager.byEmail[member.email.lowercase()]?.let {
+                    tools.confido.store.userStore.byEmail[member.email.lowercase()]?.let {
                         // In this case just add a new member directly
                         if (!member.role.availableToGuests && !it.type.isProper())  badRequest("This role cannot be used for a guest")
                         addExistingMember(it, member.role)
@@ -170,7 +170,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                         }
 
                         transact {
-                            serverState.userManager.insertEntity(newUser)
+                            tools.confido.store.userStore.insert(newUser)
                             serverState.roomManager.modifyEntity(room.ref) {
                                 it.copy(members = it.members + listOf(RoomMembership(newUser.ref, member.role, null)))
                             }

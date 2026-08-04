@@ -62,7 +62,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
                     && it.active
         } ?: unauthorized("Wrong e-mail or password")
 
-        serverState.userManager.modifyEntity(user.ref) {
+        tools.confido.store.userStore.modify(user.ref) {
             it.copy(lastLoginAt = Clock.System.now())
         }
 
@@ -76,7 +76,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
     postST("/login_email/create") {
         // TODO: Rate limiting.
         val mail: SendMailLink = call.receive()
-        val user = serverState.userManager.byEmail[mail.email.lowercase()]
+        val user = tools.confido.store.userStore.byEmail[mail.email.lowercase()]
 
         if (user != null && user.active) {
             val expiration = 15.minutes
@@ -104,7 +104,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
             val user = loginLink.user.deref() ?: unauthorized("The user does not exist.")
             if (!user.active) { unauthorized("The user is deactivated.") }
 
-            serverState.userManager.modifyEntity(loginLink.user) {
+            tools.confido.store.userStore.modify(loginLink.user) {
                 if (loginLink.sentToEmail != null && loginLink.sentToEmail.lowercase() == user.email?.lowercase())
                     // transparently verify email (if it has not changed since)
                     it.copy(lastLoginAt = Clock.System.now(), emailVerified = true)
@@ -134,7 +134,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
             val user = login.username.deref() ?: unauthorized("The user does not exist.")
             if (!user.active) { unauthorized("The user is deactivated.") }
 
-            serverState.userManager.modifyEntity(user.ref) {
+            tools.confido.store.userStore.modify(user.ref) {
                 it.copy(lastLoginAt = Clock.System.now())
             }
 
@@ -197,7 +197,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
         }
 
         val hash = Password.hash(newPassword).addRandomSalt().withArgon2().result
-        serverState.userManager.modifyEntity(user.ref) {
+        tools.confido.store.userStore.modify(user.ref) {
             it.copy(password = hash)
         }
 
@@ -226,7 +226,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
     suspend fun UserContext.changeNick(nick: String) {
         val newNick = nick.ifEmpty { null }
 
-        serverState.userManager.modifyEntity(user.ref) {
+        tools.confido.store.userStore.modify(user.ref) {
             it.copy(nick = newNick)
         }
     }
@@ -254,7 +254,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
         if (verificationLink.isExpired()) unauthorized("The token has already expired.")
 
         serverState.withTransaction {
-            serverState.userManager.modifyEntity(verificationLink.user) {
+            tools.confido.store.userStore.modify(verificationLink.user) {
                 it.copy(email = verificationLink.email.lowercase(), emailVerified = true)
             }
 
@@ -311,7 +311,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
         if (verificationLink.isExpired()) unauthorized("The token has already expired.")
 
         serverState.withTransaction {
-            serverState.userManager.modifyEntity(verificationLink.user) {
+            tools.confido.store.userStore.modify(verificationLink.user) {
                 it.copy(password = null)
             }
 
@@ -329,7 +329,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
             val setNick: SetNick = call.receive()
             val newNick = setNick.name.ifEmpty { null }
 
-            serverState.userManager.modifyEntity(user.ref) {
+            tools.confido.store.userStore.modify(user.ref) {
                 it.copy(nick = newNick)
             }
         }
@@ -578,7 +578,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
 
             // TODO: Accept happens when not logged in without authentication being required.
             var userAlreadyExists = false
-            serverState.userManager.byEmail[accept.email?.lowercase()]?.let { user ->
+            tools.confido.store.userStore.byEmail[accept.email?.lowercase()]?.let { user ->
                 if (room.members.none { it.user eqid user }) {
                     // Beware: this is copy-pasted in invite/accept
                     serverState.roomManager.modifyEntity(room.ref) {
@@ -631,7 +631,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                 )
 
                 serverState.withTransaction {
-                    serverState.userManager.insertEntity(newUser)
+                    tools.confido.store.userStore.insert(newUser)
                     serverState.roomManager.modifyEntity(room.ref) {
                         it.copy(members = it.members + listOf(RoomMembership(newUser.ref, invite.role, invite.id)))
                     }
@@ -664,14 +664,14 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
             var duplicateEmail = false
             serverState.withMutationLock {
                 editedUser.email?.lowercase()?.let {
-                    val emailUser = serverState.userManager.byEmail[it]
+                    val emailUser = tools.confido.store.userStore.byEmail[it]
                     if (emailUser != null && !(emailUser eqid editedUser)) {
                         duplicateEmail = true
                         return@withMutationLock
                     }
                 }
 
-                serverState.userManager.modifyEntity(editedUser.id) {
+                tools.confido.store.userStore.modify(editedUser.id) {
                     it.copy(
                         nick = editedUser.nick?.ifEmpty { null },
                         email = editedUser.email?.lowercase()?.ifEmpty { null },
@@ -690,7 +690,7 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
     deleteST("/users/{id}") {
         call.withAdmin {
             val userIdToDelete = call.parameters["id"] ?: badRequest("Missing user ID")
-            val userToDelete = serverState.userManager.get(userIdToDelete) ?: notFound("User not found")
+            val userToDelete = tools.confido.store.userStore.get(userIdToDelete) ?: notFound("User not found")
             val options: DeleteUserOptions = call.receive()
 
             if (userToDelete eqid user) unauthorized("Cannot delete your own account")
@@ -756,7 +756,7 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
 
                 if (willGhost) {
                     // Convert to GHOST user if they have predictions
-                    serverState.userManager.modifyEntity(userToDelete.ref) { u ->
+                    tools.confido.store.userStore.modify(userToDelete.ref) { u ->
                         u.copy(
                             type = UserType.GHOST,
                             email = null,
@@ -767,7 +767,7 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
                     }
                 } else {
                     // If no predictions, we can safely delete
-                    serverState.userManager.deleteEntity(userToDelete.ref)
+                    tools.confido.store.userStore.delete(userToDelete.ref)
                 }
             }
 
@@ -788,13 +788,13 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
             var duplicateEmail = false
             serverState.withMutationLock {
                 addedUser.email?.lowercase()?.let {
-                    val emailUser = serverState.userManager.byEmail[it]
+                    val emailUser = tools.confido.store.userStore.byEmail[it]
                     if (emailUser != null && !(emailUser eqid addedUser)) {
                         duplicateEmail = true
                         return@withMutationLock
                     }
                 }
-                serverState.userManager.insertEntity(addedUser)
+                tools.confido.store.userStore.insert(addedUser)
             }
             if (duplicateEmail) badRequest("E-mail address already used by another account")
             TransientData.refreshAllWebsockets()

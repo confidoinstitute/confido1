@@ -118,8 +118,8 @@ suspend fun initDemo() {
         admin,user1, user2
     )
     users.forEach {
-        if (!serverState.userManager.byEmail.containsKey(it.email))
-            serverState.userManager.insertEntity(it, forceId = true)
+        if (it.email?.lowercase()?.let { email -> tools.confido.store.userStore.byEmail[email] } == null)
+            tools.confido.store.userStore.insert(it)
     }
     val rooms = listOf(
         Room(id = "demoroom1", name = "Testing room", members = listOf(
@@ -143,7 +143,7 @@ suspend fun initData() {
         if (admins != null && admins.trim() != "") {
             admins.split(',').forEach {
                 val user = User(email = it.trim(), emailVerified = true, createdAt = now(), type = UserType.ADMIN)
-                serverState.userManager.insertEntity(user)
+                tools.confido.store.userStore.insert(user)
             }
         }
     }
@@ -163,6 +163,7 @@ fun main() {
     tools.confido.store.registerLinkStores()
     tools.confido.store.registerPresentationStores()
     tools.confido.store.registerSessionStores()
+    tools.confido.store.registerUserStores()
 
     runBlocking {
         serverState.initialize()
@@ -293,7 +294,7 @@ fun main() {
                 if (devMode) {
                     getST("/init/") {
                         val userPasswordHash = Password.hash(DebugAdmin.password).addRandomSalt().withArgon2().result
-                        serverState.userManager.insertEntity(
+                        tools.confido.store.userStore.insert(
                             User(
                                 "debugadmin",
                                 UserType.ADMIN,
@@ -306,7 +307,7 @@ fun main() {
                             )
                         )
                         val memberPasswordHash = Password.hash(DebugMember.password).addRandomSalt().withArgon2().result
-                        serverState.userManager.insertEntity(
+                        tools.confido.store.userStore.insert(
                             User(
                                 "debugmember",
                                 UserType.MEMBER,

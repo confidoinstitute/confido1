@@ -28,7 +28,7 @@ class UniqueIndex<E : HasId, K>(source: ChangeSource<E>, val keyOf: (E) -> K?) {
         }
     }
 
-    operator fun get(key: K): E? = map[key]
+    operator fun get(key: K?): E? = key?.let { map[it] }
 }
 
 /**
