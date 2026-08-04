@@ -508,8 +508,11 @@ working untouched mid-transition.
   build-mode correlation that suggested a compiler/devserver issue was actually
   presenter-window state: with a window already open, `offer()` skips the dialog
   entirely.)*
-- **Phase 2 — store core** *(implemented: core + predictions + comments + one resident
-  pilot; the remaining ~9 resident managers still convert mechanically as follow-up)*:
+- **Phase 2 — store core** *(implemented in full: core + predictions + comments, then the
+  mechanical conversion of all remaining resident managers — the legacy `EntityManager`
+  hierarchy is deleted; ServerState.kt shrank from ~850 to ~240 lines and holds only the
+  facade properties, group-aggregation helpers, the mutex/transaction primitives, and
+  transient state)*:
   `Store`/`Archive`/`View` + `transact`. Proven on the two ugliest customers — the
   prediction log + latest-per-key materialized view (§3.4) and comments-as-Archive (§3.1) —
   plus `loginLinkStore` as the resident-`Store`/`UniqueIndex` pilot. Implementation
@@ -563,6 +566,17 @@ working untouched mid-transition.
     survive restarts — fixed first, standalone); `userPredManager` was registered twice;
     `GET $questionUrl/updates` + `DistributionUpdate` appear to have no client callers
     (ported anyway — candidate for removal); `Comment.key()` and `commentList` were dead.
+  - **Conversion round details** (the "twelve boring managers", done as follow-up commits):
+    all resident stores are `MongoStore<E>` objects in `tools.confido.store` (rooms with
+    the `questionRoom` fold + wire-field scrubber, questions, users with `byEmail`
+    UniqueIndex + the email-index repair, sessions as `ExpiringMongoStore`, the three token
+    link stores, presentations). Store registration order in `main()` is explicit boot
+    order (base entities before the stores whose boot folds dereference them). The old
+    `replaceEntity` surface turned out to have no compare-CAS users — only plain replace
+    (→ `modify`) and one upsert (→ `put`, session tracking). All legacy `withTransaction`
+    call sites became `transact` (store ops inside a legacy transaction throw by design).
+    Every mutation now runs in a Mongo transaction even when single-op — measured as
+    negligible at target scale; a single-op fast path is a possible later optimization.
 - **Phase 3 — topics & censor pipeline** (§4.2–4.3): change-stream-driven invalidation
   (delete the 56 manual refresh calls), `SentState` decomposed into the topic table,
   permission-class memoization, UserPresentation rollout + frontend weaning off the users map.
