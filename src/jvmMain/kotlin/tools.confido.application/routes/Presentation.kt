@@ -12,6 +12,7 @@ import org.apache.pdfbox.rendering.PDFRenderer
 import org.apache.pdfbox.text.PDFTextStripper
 import org.apache.pdfbox.text.TextPosition
 import payloads.requests.*
+import rooms.Room
 import rooms.RoomPermission
 import java.security.MessageDigest
 import tools.confido.application.generateToken
@@ -23,7 +24,7 @@ import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.refs.ref
 import tools.confido.state.*
-import tools.confido.store.presentationStore
+import tools.confido.store.*
 import java.io.File
 import java.io.StringWriter
 import javax.imageio.ImageIO
@@ -142,7 +143,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             val pres = getPresentation(room) ?: notFound("No presentation for this room.")
 
             // Stop run if active
-            if (serverState.presentationRunStates.remove(room.ref) != null) {
+            if (serverState.setPresentationRunState(room.ref, null) != null) {
                 ServerExtension.forEach { it.onPresentationStopped(room) }
             }
 
@@ -201,7 +202,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             // Process the first item
             runState = processCurrentItem(pres, runState, room)
 
-            serverState.presentationRunStates[room.ref] = runState
+            serverState.setPresentationRunState(room.ref, runState)
             TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
@@ -211,7 +212,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
     postST("$roomUrl/presentation/stop") {
         call.withRoom {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot control presentation.")
-            serverState.presentationRunStates.remove(room.ref)
+            serverState.setPresentationRunState(room.ref, null)
             ServerExtension.forEach { it.onPresentationStopped(room) }
             // Clear followingPresentation for all sessions following this room
             tools.confido.store.userSessionStore.asMap.values
@@ -246,7 +247,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             var newState = currentState.copy(currentIndex = newIndex)
             newState = processCurrentItem(pres, newState, room)
 
-            serverState.presentationRunStates[room.ref] = newState
+            serverState.setPresentationRunState(room.ref, newState)
             TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
@@ -262,7 +263,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             if (!view.isValid()) badRequest("View is not valid")
             val currentState = serverState.presentationRunStates[room.ref]
                 ?: badRequest("Presentation is not running.")
-            serverState.presentationRunStates[room.ref] = currentState.copy(currentView = view)
+            serverState.setPresentationRunState(room.ref, currentState.copy(currentView = view))
             TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
@@ -285,19 +286,34 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             )
             newState = processCurrentItem(pres, newState, room)
 
-            serverState.presentationRunStates[room.ref] = newState
+            serverState.setPresentationRunState(room.ref, newState)
             TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
     }
 
     // WebSocket endpoint for live presentation data (moderators only)
-    topicWS("/state$roomUrl/presentation") {
-        call.withRoom {
-            assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot view presentation.")
-            val pres = getPresentation(room) ?: notFound("No presentation for this room.")
-            val runState = serverState.presentationRunStates[room.ref]
-            PresentationWSData(presentation = pres, runState = runState)
+    viewWS("/state$roomUrl/presentation") {
+        val rRef = Ref<Room>(call.parameters["rID"] ?: "")
+        val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
+        val roomView = roomStore.state.asView().at(rRef.id)
+        val presView = roomView.flatMap { room ->
+            room?.presentation?.let { presentationStore.state.asView().at(it.id) } ?: viewOf(null)
+        }
+        combineViews(
+            roomView,
+            presView,
+            userStore.state.asView().at(viewerRef.id),
+            serverState.presentationRunStatesState.asView().at(rRef),
+        ) { room, pres, viewer, runState ->
+            if (viewer == null) unauthorized("Not logged in.")
+            if (room == null) notFound("No such room.")
+            if (!room.hasPermission(viewer, RoomPermission.MANAGE_QUESTIONS))
+                forbidden("Cannot view presentation.")
+            PresentationWSData(
+                presentation = pres ?: notFound("No presentation for this room."),
+                runState = runState,
+            )
         }
     }
 
@@ -320,14 +336,21 @@ fun presentationRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK)
     }
 
-    // WebSocket endpoint for presentation followers: sends currentNavigateUrl
-    topicWS<String?>("/state$roomUrl/presentation/follow") {
-        val session = call.userSession
-        call.withRoom {
+    // WebSocket endpoint for presentation followers: sends currentNavigateUrl.
+    // The per-viewer input here is the *session* (followingPresentation), which is
+    // store-backed — so even this "personal" topic is an ordinary View composition.
+    viewWS<String?>("/state$roomUrl/presentation/follow") {
+        val rRef = Ref<Room>(call.parameters["rID"] ?: "")
+        val sessionId = call.userSession?.id ?: unauthorized("Not logged in.")
+        combineViews(
+            roomStore.state.asView().at(rRef.id),
+            userSessionStore.state.asView().at(sessionId),
+            serverState.presentationRunStatesState.asView().at(rRef),
+        ) { room, session, runState ->
+            if (room == null) notFound("No such room.")
             // Only send navigate URL if session is following this room's presentation
-            if (session?.followingPresentation?.id != room.id) return@withRoom null
-            val runState = serverState.presentationRunStates[room.ref]
-            runState?.currentNavigateUrl
+            if (session?.followingPresentation?.id != room.id) null
+            else runState?.currentNavigateUrl
         }
     }
 }

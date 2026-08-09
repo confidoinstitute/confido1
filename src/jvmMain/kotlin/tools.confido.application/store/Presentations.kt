@@ -12,7 +12,7 @@ object presentationStore : MongoStore<Presentation>(
         // Clean up the (transient, in-memory) run state when a presentation is deleted.
         onChange { change ->
             if (change is Change.Removed)
-                serverState.presentationRunStates.remove(Ref(change.entity.room.id))
+                serverState.setPresentationRunState(Ref(change.entity.room.id), null)
         }
     }
 }

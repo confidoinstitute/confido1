@@ -12,6 +12,10 @@ import com.mongodb.client.model.IndexOptions
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.reactivestreams.client.ClientSession
 import io.ktor.util.*
+import kotlinx.collections.immutable.PersistentMap
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -135,7 +139,22 @@ object serverState : GlobalState() {
     val shortInviteLinks = mutableMapOf<String, ShortLink>()
 
     /** Room-scoped presentation run states. In-memory only, lost on server restart. */
-    val presentationRunStates: MutableMap<Ref<Room>, PresentationRunState> = mutableMapOf()
+    private val _presentationRunStates =
+        MutableStateFlow<PersistentMap<Ref<Room>, PresentationRunState>>(persistentMapOf())
+    /** Snapshot flow of the run states; topic derivations subscribe here. */
+    val presentationRunStatesState: StateFlow<PersistentMap<Ref<Room>, PresentationRunState>>
+        get() = _presentationRunStates
+    private var presentationRunStatesMap by _presentationRunStates::value
+    val presentationRunStates: Map<Ref<Room>, PresentationRunState> get() = presentationRunStatesMap
+
+    /** Set or clear (null) a room's presentation run state. Returns the previous state. */
+    fun setPresentationRunState(room: Ref<Room>, state: PresentationRunState?): PresentationRunState? {
+        val prev = presentationRunStatesMap[room]
+        presentationRunStatesMap =
+            if (state == null) presentationRunStatesMap.remove(room)
+            else presentationRunStatesMap.put(room, state)
+        return prev
+    }
 
     val questionRoom: Map<Ref<Question>, Ref<Room>> get() = roomStore.questionRoom
     override val rooms: Map<String, Room> get() = roomStore.asMap
