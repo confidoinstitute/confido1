@@ -44,16 +44,22 @@ data class QuestionContext(val inUser: User?, val question: Question) {
     fun assertGroupPredictionAccess(message: String) {
         val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
         val lastPrediction = serverState.userPred[ref]?.get(user.ref)
-        val canView = when (ref.deref()?.groupPredictionVisibility) {
-            GroupPredictionVisibility.EVERYONE -> true
-            GroupPredictionVisibility.ANSWERED -> lastPrediction != null
-            GroupPredictionVisibility.MODERATOR_ONLY -> false
-            null -> false
-        }
-
-        if (!(canViewAll || canView)) unauthorized(message)
+        if (!(canViewAll || canViewGroupPred(ref.deref(), lastPrediction))) unauthorized(message)
     }
 }
+
+/**
+ * The per-question part of the group-prediction visibility gate, as a pure function of
+ * values (View transforms pass in the question and the viewer's own prediction they
+ * combined over). Callers OR this with the room-level VIEW_ALL_GROUP_PREDICTIONS check.
+ */
+fun canViewGroupPred(question: Question?, myPred: Prediction?): Boolean =
+    when (question?.groupPredictionVisibility) {
+        GroupPredictionVisibility.EVERYONE -> true
+        GroupPredictionVisibility.ANSWERED -> myPred != null
+        GroupPredictionVisibility.MODERATOR_ONLY -> false
+        null -> false
+    }
 
 suspend fun <T> ApplicationCall.withQuestion(body: suspend QuestionContext.() -> T): T {
     val user = userSession?.user
@@ -309,25 +315,37 @@ fun questionRoutes(routing: Routing) = routing.apply {
             latestPredictions.state.asView().map { it[qRef]?.get(viewerRef) },
             predictionData.groupPredState.asView().at(qRef),
         ) { question, room, viewer, myPred, groupPred ->
+            if (viewer == null) unauthorized("Not logged in.")
             if (question == null || room == null) notFound("No such question.")
             if (!room.hasPermission(viewer, RoomPermission.VIEW_QUESTIONS))
                 forbidden("You cannot view this group prediction.")
             val canViewAll = room.hasPermission(viewer, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
-            val canView = when (question.groupPredictionVisibility) {
-                GroupPredictionVisibility.EVERYONE -> true
-                GroupPredictionVisibility.ANSWERED -> myPred != null
-                GroupPredictionVisibility.MODERATOR_ONLY -> false
-            }
-            if (!(canViewAll || canView)) unauthorized("You cannot view this group prediction.")
+            if (!(canViewAll || canViewGroupPred(question, myPred)))
+                unauthorized("You cannot view this group prediction.")
             groupPred ?: notFound("There is no group prediction.")
         }
     }
 
-    // View a histogram
-    topicWS("/state$questionUrl/histogram") {
-        call.withQuestion {
-            assertPermission(RoomPermission.VIEW_QUESTIONS, "You cannot view this group prediction.")
-            assertGroupPredictionAccess("You cannot view this group prediction.")
+    // View a histogram: same View composition as group_pred, plus the whole users map
+    // (per-bin UserPresentation embedding when the viewer may see individual predictions).
+    viewWS("/state$questionUrl/histogram") {
+        val qRef = Ref<Question>(call.parameters["qID"] ?: "")
+        val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
+        val roomView = roomStore.questionRoomState.asView().at(qRef)
+            .flatMap { rRef -> rRef?.let { roomStore.state.asView().at(it.id) } ?: viewOf(null) }
+        combineViews(
+            questionStore.state.asView().at(qRef.id),
+            roomView,
+            userStore.state.asView(),
+            latestPredictions.state.asView().at(qRef),
+        ) { question, room, users, preds ->
+            val viewer = users[viewerRef.id] ?: unauthorized("Not logged in.")
+            if (question == null || room == null) notFound("No such question.")
+            if (!room.hasPermission(viewer, RoomPermission.VIEW_QUESTIONS))
+                forbidden("You cannot view this group prediction.")
+            val canViewAll = room.hasPermission(viewer, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+            if (!(canViewAll || canViewGroupPred(question, preds?.get(viewerRef))))
+                unauthorized("You cannot view this group prediction.")
 
             if (question.answerSpace != BinarySpace) {
                 badRequest("Histograms are only supported for binary questions.")
@@ -336,18 +354,18 @@ fun questionRoutes(routing: Routing) = routing.apply {
             // TODO: configurable (from query params?)
             val binner = BinaryHistogramBinner()
 
-            val predictions = serverState.userPred[question.ref]?.values ?: notFound("No user predictions found.")
+            val predictions = preds?.values ?: notFound("No user predictions found.")
 
             // Per-bin user lists are included whenever the viewer may see individual
             // predictions; clients decide whether to actually display them.
-            val showNames = room.hasPermission(user, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
+            val showNames = room.hasPermission(viewer, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
 
-            val histogram = if (showNames) {
+            if (showNames) {
                 val pairs = predictions.mapNotNull { pred ->
                     val dist = pred.dist as? BinaryDistribution ?: return@mapNotNull null
-                    val predUser = pred.user?.deref()
+                    val predUser = pred.user?.let { users[it.id] }
                     val presentation = getUserPresentation(
-                        predUser, user, UserPresentationContext.INDIVIDUAL_PREDICTION, room
+                        predUser, viewer, UserPresentationContext.INDIVIDUAL_PREDICTION, room
                     )
                     dist to presentation
                 }
@@ -355,7 +373,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
             } else {
                 binner.createHistogram(predictions.map { it.dist as BinaryDistribution })
             }
-            histogram
         }
     }
+
 }

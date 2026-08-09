@@ -22,8 +22,7 @@ import tools.confido.question.GroupPredictionVisibility
 import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.state.*
-import tools.confido.store.loginLinkStore
-import tools.confido.store.transact
+import tools.confido.store.*
 import tools.confido.utils.randomString
 import users.LoginLink
 import users.User
@@ -255,36 +254,37 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
             val groupPreds = room.questions.associateWith { ref ->
                 val lastPrediction = serverState.userPred[ref]?.get(user.ref)
                 val wanted = (wantedIds?.contains(ref.id) ?: true)
-                val canView = when (ref.deref()?.groupPredictionVisibility) {
-                    GroupPredictionVisibility.EVERYONE -> true
-                    GroupPredictionVisibility.ANSWERED -> lastPrediction != null
-                    GroupPredictionVisibility.MODERATOR_ONLY -> false
-                    null -> false
-                }
+                val canView = canViewGroupPred(ref.deref(), lastPrediction)
 
                 if ((canViewAll || canView) && wanted) serverState.groupPred[ref]?.dist?.description else null
             }
             groupPreds
         }
     }
-    topicWS("/state$roomUrl/group_pred") {
+    // Group predictions of a room's questions (optionally filtered by ?qids=): a
+    // multi-question payload, so the composition uses whole-map views rather than
+    // keyed cells — output dedup keeps unrelated changes off the wire.
+    viewWS("/state$roomUrl/group_pred") {
         val wantedIds = call.request.queryParameters["qids"]?.split(',')?.toSet()
-        call.withRoom {
-            val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+        val rId = call.parameters["rID"] ?: ""
+        val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
+        combineViews(
+            roomStore.state.asView().at(rId),
+            questionStore.state.asView(),
+            userStore.state.asView().at(viewerRef.id),
+            latestPredictions.state.asView(),
+            predictionData.groupPredState.asView(),
+        ) { room, questions, viewer, userPreds, groupPreds ->
+            if (viewer == null) unauthorized("Not logged in.")
+            if (room == null) notFound("No such room.")
+            val canViewAll = room.hasPermission(viewer, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
 
-            val groupPreds = room.questions.associateWith { ref ->
-                val lastPrediction = serverState.userPred[ref]?.get(user.ref)
+            room.questions.associateWith { ref ->
                 val wanted = (wantedIds?.contains(ref.id) ?: true)
-                val canView = when (ref.deref()?.groupPredictionVisibility) {
-                    GroupPredictionVisibility.EVERYONE -> true
-                    GroupPredictionVisibility.ANSWERED -> lastPrediction != null
-                    GroupPredictionVisibility.MODERATOR_ONLY -> false
-                    null -> false
-                }
+                val canView = canViewGroupPred(questions[ref.id], userPreds[ref]?.get(viewerRef))
 
-                if ((canViewAll || canView) && wanted) serverState.groupPred[ref] else null
+                if ((canViewAll || canView) && wanted) groupPreds[ref] else null
             }
-            groupPreds
         }
     }
 
