@@ -7,7 +7,12 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.CoroutineCollection
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import tools.confido.application.routes.*
+import tools.confido.store.asView
+import tools.confido.store.combineViews
+import tools.confido.store.userStore
 import tools.confido.calibration.CalibrationBin
 import tools.confido.calibration.CalibrationVector
 import tools.confido.calibration.calibrationScore
@@ -33,6 +38,9 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
     
     // MongoDB collection for user responses
     private lateinit var responseCollection: CoroutineCollection<TrainingResponse>
+    // Monotonic change counter for the responses collection (wake signal for the
+    // leaderboard topic; bumped after every insert).
+    private val responsesVersion = MutableStateFlow(0L)
     
     override suspend fun serverInit() {
         // Initialize MongoDB collection
@@ -344,6 +352,7 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
                         timestamp = unixNow().toLong(),
                     )
                     responseCollection.insertOne(response)
+                    responsesVersion.update { it + 1 }
                     
                     // Get all user responses including the new one
                     val allResponses = getUserResponses(user.ref)
@@ -395,7 +404,9 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
             }
 
             // Calibration training leaderboard (WebSocket, live-updating)
-            topicWS("/api/ext/calibration_training/leaderboard.ws") {
+            viewWS("/api/ext/calibration_training/leaderboard.ws", gate = {
+                combineViews(userStore.state.asView(), responsesVersion.asView())
+            }) {
                 call.withUser {
                     val allResponses = responseCollection.find().toList()
                     val responsesByUser = allResponses.groupBy { it.user }

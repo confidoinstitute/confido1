@@ -246,21 +246,6 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
         TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
-    topicWS("/api$roomUrl/group_pred_text.ws") {
-        val wantedIds = call.request.queryParameters["qids"]?.split(',')?.toSet()
-        call.withRoom {
-            val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
-
-            val groupPreds = room.questions.associateWith { ref ->
-                val lastPrediction = serverState.userPred[ref]?.get(user.ref)
-                val wanted = (wantedIds?.contains(ref.id) ?: true)
-                val canView = canViewGroupPred(ref.deref(), lastPrediction)
-
-                if ((canViewAll || canView) && wanted) serverState.groupPred[ref]?.dist?.description else null
-            }
-            groupPreds
-        }
-    }
     // Group predictions of a room's questions (optionally filtered by ?qids=): a
     // multi-question payload, so the composition uses whole-map views rather than
     // keyed cells — output dedup keeps unrelated changes off the wire.

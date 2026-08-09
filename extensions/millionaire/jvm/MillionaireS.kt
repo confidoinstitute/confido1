@@ -9,7 +9,12 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import rooms.Room
 import rooms.RoomPermission
+import kotlinx.collections.immutable.PersistentMap
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import tools.confido.application.routes.*
+import tools.confido.store.*
 import tools.confido.application.sessions.TransientData
 import tools.confido.application.singleThreadContext
 import tools.confido.question.QuestionState
@@ -24,11 +29,17 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
 
     // --- Active game config per room (set during presentation expansion, cleared on stop) ---
 
-    val activeConfigs = mutableMapOf<String, MillionaireGameAction>()
+    private val _activeConfigs = MutableStateFlow<PersistentMap<String, MillionaireGameAction>>(persistentMapOf())
+    val activeConfigsState: StateFlow<PersistentMap<String, MillionaireGameAction>> get() = _activeConfigs
+    private var activeConfigsMap by _activeConfigs::value
+    val activeConfigs: Map<String, MillionaireGameAction> get() = activeConfigsMap
 
     // --- Timer state (in-memory, lost on restart) ---
 
-    private val timerStates = mutableMapOf<String, TimerState>()   // roomId -> TimerState
+    private val _timerStates = MutableStateFlow<PersistentMap<String, TimerState>>(persistentMapOf())
+    val timerStatesState: StateFlow<PersistentMap<String, TimerState>> get() = _timerStates
+    private var timerStatesMap by _timerStates::value
+    private val timerStates: Map<String, TimerState> get() = timerStatesMap   // roomId -> TimerState
     private val timerTasks = mutableMapOf<String, java.util.TimerTask>()
     private val scheduler = java.util.Timer("millionaire-timer", true)
 
@@ -39,13 +50,13 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
             durationMs = durationSeconds * 1000,
             running = true,
         )
-        timerStates[room.id] = state
+        timerStatesMap = timerStatesMap.put(room.id, state)
 
         val task = object : java.util.TimerTask() {
             override fun run() {
                 @Suppress("OPT_IN_USAGE")
                 GlobalScope.launch(singleThreadContext) {
-                    timerStates.remove(room.id)
+                    timerStatesMap = timerStatesMap.remove(room.id)
                     timerTasks.remove(room.id)
                     // Re-read room state; auto-close current question if still asking
                     val freshRoom = serverState.rooms[room.id] ?: return@launch
@@ -64,7 +75,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
 
     private fun cancelTimer(room: Room) {
         timerTasks.remove(room.id)?.cancel()
-        timerStates.remove(room.id)
+        timerStatesMap = timerStatesMap.remove(room.id)
     }
 
     // --- Scoring ---
@@ -146,7 +157,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
         val config = action as? MillionaireGameAction ?: return null
 
         // Store active config for this room (used by WS endpoints and timer)
-        activeConfigs[room.id] = config
+        activeConfigsMap = activeConfigsMap.put(room.id, config)
 
         val qs = questions(room, config.tag)
         if (qs.isEmpty()) return emptyList()
@@ -231,7 +242,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
     // --- Cleanup on presentation stop ---
 
     override fun onPresentationStopped(room: Room) {
-        activeConfigs.remove(room.id)
+        activeConfigsMap = activeConfigsMap.remove(room.id)
         cancelTimer(room)
     }
 
@@ -239,27 +250,28 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
 
     override fun initRoutes(r: Routing) {
         // Active game config (WebSocket) — consumed by clients for theme/scoring
-        r.topicWS("/api$roomUrl/ext/millionaire/config.ws") {
+        r.viewWS("/api$roomUrl/ext/millionaire/config.ws", gate = {
+            val rId = call.parameters["rID"] ?: ""
+            combineViews(roomStore.state.asView().at(rId), activeConfigsState.asView().at(rId))
+        }) {
             call.withRoom {
                 activeConfigs[room.id]
             }
         }
 
-        // User's own score (WebSocket)
-        r.topicWS("/api$roomUrl/ext/millionaire/my_score.ws") {
-            call.withRoom {
-                call.withUser {
-                    val config = activeConfigs[room.id] ?: return@withUser null
-                    userScore(room, user.ref, config) ?: when (config.mode) {
-                        MillionaireMode.MULTIPLICATIVE -> INITIAL_SCORE
-                        MillionaireMode.LADDER -> 0.0
-                    }
-                }
-            }
-        }
+        // (my_score.ws deleted: it had no client consumers.)
 
         // Scoreboard for all players (WebSocket, requires permission)
-        r.topicWS("/api$roomUrl/ext/millionaire/scoreboard.ws") {
+        r.viewWS("/api$roomUrl/ext/millionaire/scoreboard.ws", gate = {
+            val rId = call.parameters["rID"] ?: ""
+            combineViews(
+                roomStore.state.asView().at(rId),
+                questionStore.state.asView(),
+                userStore.state.asView(),
+                latestPredictions.state.asView(),
+                activeConfigsState.asView().at(rId),
+            )
+        }) {
             call.withRoom {
                 assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
                 val config = activeConfigs[room.id] ?: return@withRoom emptyMap<Ref<User>, Double>()
@@ -270,7 +282,10 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
         }
 
         // Timer state (WebSocket)
-        r.topicWS("/api$roomUrl/ext/millionaire/timer.ws") {
+        r.viewWS("/api$roomUrl/ext/millionaire/timer.ws", gate = {
+            val rId = call.parameters["rID"] ?: ""
+            combineViews(roomStore.state.asView().at(rId), timerStatesState.asView().at(rId))
+        }) {
             call.withRoom {
                 timerStates[room.id]
             }

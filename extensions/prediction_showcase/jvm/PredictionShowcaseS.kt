@@ -7,6 +7,7 @@ import extensions.shared.ValueWithUser
 import io.ktor.server.routing.*
 import rooms.RoomPermission
 import tools.confido.application.routes.*
+import tools.confido.store.*
 import tools.confido.distributions.*
 import tools.confido.refs.*
 import tools.confido.spaces.*
@@ -18,7 +19,17 @@ object PredictionShowcaseSE : ServerExtension, PredictionShowcaseExtension() {
     val referenceText = System.getenv("CONFIDO_REFERENCE_FORECAST_LABEL") ?: "Reference"
 
     override fun initRoutes(r: Routing) {
-        r.topicWS("/api$questionUrl/ext/prediction_showcase/predictions.ws") {
+        r.viewWS("/api$questionUrl/ext/prediction_showcase/predictions.ws", gate = {
+            val qId = call.parameters["qID"] ?: ""
+            val qRef = tools.confido.refs.Ref<tools.confido.question.Question>(qId)
+            combineViews(
+                questionStore.state.asView().at(qId),
+                roomStore.state.asView(),
+                userStore.state.asView(),
+                latestPredictions.state.asView().at(qRef),
+                predictionData.groupPredState.asView().at(qRef),
+            )
+        }) {
             call.withQuestion {
                 assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, "You cannot view individual predictions.")
                 val predictions = mutableListOf<ValueWithUser>()

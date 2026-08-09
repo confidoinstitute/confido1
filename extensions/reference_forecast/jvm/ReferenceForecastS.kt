@@ -8,6 +8,7 @@ import extensions.shared.ValueWithUser
 import io.ktor.server.routing.*
 import rooms.RoomPermission
 import tools.confido.application.routes.*
+import tools.confido.store.*
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.extensions.get
 import tools.confido.refs.*
@@ -29,7 +30,16 @@ object ReferenceForecastSE : ServerExtension, ReferenceForecastExtension() {
     }
 
     override fun initRoutes(r: Routing) {
-        r.topicWS("/api$roomUrl/ext/reference_forecast/scoreboard.ws") {
+        r.viewWS("/api$roomUrl/ext/reference_forecast/scoreboard.ws", gate = {
+            val rId = call.parameters["rID"] ?: ""
+            combineViews(
+                roomStore.state.asView().at(rId),
+                questionStore.state.asView(),
+                userStore.state.asView(),
+                latestPredictions.state.asView(),
+                predictionData.groupPredState.asView(),
+            )
+        }) {
             call.withRoom {
                 assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, "You cannot view individual predictions.")
 
