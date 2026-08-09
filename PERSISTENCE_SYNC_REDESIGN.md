@@ -257,7 +257,8 @@ A topic invalidation is a Flow derivation, e.g.
 `store.changes.mapNotNull { topicOf(it) }.conflate()` — any change to a room-owned entity maps
 to `RoomTopic(roomRef)`. This **replaces all ~56 manual `refreshAllWebsockets()` calls with
 nothing**: correctness by construction, scoping for free, coalescing under bursts via
-conflation. Timer-driven refreshes (schedule sweep, millionaire timer) become explicit topic
+conflation. *(As-built amendment: payloads recompute from resident snapshots and the change
+side only carries wake signals — see the Phase 3 `View` notes in §7.)* Timer-driven refreshes (schedule sweep, millionaire timer) become explicit topic
 invalidations.
 
 `SentState` splits into medium-grained topics (deliberately not per-entity — churn without
@@ -580,6 +581,53 @@ working untouched mid-transition.
 - **Phase 3 — topics & censor pipeline** (§4.2–4.3): change-stream-driven invalidation
   (delete the 56 manual refresh calls), `SentState` decomposed into the topic table,
   permission-class memoization, UserPresentation rollout + frontend weaning off the users map.
+  *(In progress — the core topic machinery landed first, deliberately exploratory and
+  piece-by-piece. Decisions so far:)*
+  - **`FlowTopic` replaces `StreamTopic`** (`routes/Common.kt`): one topic shape backed by
+    `(WSBody) -> Flow<JsonElement>`; both former stream topics converted (shortlink rotator
+    = timer flow; presenter track = presence via collection lifetime, cleanup in `finally`).
+    Whether a topic's flow is *shared* is the lambda's choice — returning a hot shared flow
+    and building a cold per-subscriber one have the same type — so later memoization is a
+    combinator, not a new topic kind. The connection loop applies per-subscription
+    `distinctUntilChanged().conflate()`; `conflate()` runs the upstream in its own producer
+    coroutine, so computation is emitter-driven even while a client's send blocks. `shareIn`
+    is deliberately *not* used at this level: per-subscriber upstream lifecycle is
+    load-bearing for presence semantics (unsubscribe must cancel into the flow's `finally`).
+  - **Payloads recompute from resident snapshots; change signals only say *when*** (amends
+    this section's original sketch, which derived payloads from `store.changes`). This
+    dissolves the initial-value problem — first evaluation and re-evaluation are the same
+    code path against current state — and avoids expressing each computation twice
+    (snapshot init + incremental fold). Archives (comments) stay the exception with their
+    inherent `all(partition) + tail` shape.
+  - **`View<T>`** (`store/View.kt`) — §3.1's View shape formalized: a cheap non-suspending
+    always-current `value` plus a `changes` wake flow. The consistency argument: all store
+    mutation happens in non-suspending apply/fold code on the single server thread, so any
+    set of `value` reads without an intervening suspension observes a transactionally
+    consistent snapshot. `combineViews` therefore re-reads all inputs at computation time
+    instead of caching per-source values — composed views are immune to the classic
+    `Flow.combine` glitch (fresh A with a stale cached B after a multi-store transaction).
+    Transforms being non-suspending is the hypothesis of that argument and is enforced by
+    the signatures. Combinators: `map` (lazy — runs on read, not on change), `at` (keyed
+    cell; the "family of keyed flows" as derivation — whole-map wake + O(1) re-read,
+    deduped at the flow boundary), `flatMap` (reactive ref-following), `asFlow` (conflated
+    recompute + `distinctUntilChanged`). Derived views keep incremental folds as their
+    implementation and surface as `StateFlow`s (`latestPredictions.state`,
+    `predictionData.groupPredState`, `roomStore.questionRoomState` so far) — folds preserve
+    read-your-writes for route handlers, snapshots serve subscribers.
+  - **`viewWS`** registers a topic as a View composition, so what the payload reads and
+    what recomputes it are the same declaration. `ResponseError` is caught per computation:
+    a gate failure is a `WSError` frame and the subscription stays live, recovering when
+    state changes — the ANSWERED-visibility unlock (subscribe while gated → predict → data
+    flows) depends on exactly this. Pilot: the question `group_pred` topic, with
+    `assertGroupPredictionAccess` inlined as gates over the combined values; verified live
+    including the gate transition and question-delete propagation. *(Rejected on the way:
+    a `derivedWS(path, vararg sources) { body }` trigger-list form — behaviorally
+    identical, but the source list was a manual restatement of what the body reads, i.e.
+    the manual-refresh bug class in miniature.)*
+  - Deferred: the shared/memoized keyed-flow registry (`shareIn` per (topic, permission
+    class), refcounted teardown) until the censor-memoization stage; transient server
+    state (`presentationRunStates`, short links) joining the View interface; conversion
+    of the remaining `PullTopic`s.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or
