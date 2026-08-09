@@ -24,6 +24,7 @@ import payloads.responses.WSResponse
 import tools.confido.application.index
 import tools.confido.application.singleThreadContext
 import tools.confido.serialization.confidoJSON
+import tools.confido.store.View
 
 typealias RouteBodyCall = suspend RoutingContext.() -> Unit
 
@@ -131,6 +132,36 @@ inline fun <reified T> Route.topicWS(path: String, crossinline body: suspend WSB
             WSError(e.wsCode, e.message)
         }
         confidoJSON.encodeToJsonElement(message)
+    })
+}
+
+/**
+ * Register a [View]-backed topic: [body] composes a view of the payload from store
+ * views ([combineViews]/[at]/[flatMap]), so what the payload reads and what re-computes
+ * it are the same declaration. Frames recompute on the view's change signal (conflated).
+ * Error semantics are per-computation, as in [topicWS]: a [ResponseError] thrown by the
+ * view's transforms becomes a WSError frame and the subscription stays live — the next
+ * change recomputes. A [ResponseError] from [body] itself (e.g. unparseable parameters)
+ * yields a single error frame.
+ */
+inline fun <reified T> Route.viewWS(path: String, crossinline body: suspend WSBody.() -> View<T>) {
+    TopicRegistry.handlers.add(FlowTopic(TopicRegistry.split(path)) { ctx ->
+        flow {
+            val view = ctx.body()
+            val frame: () -> JsonElement = {
+                val message: WSResponse<T> = try {
+                    WSData(view.value)
+                } catch (e: ResponseError) {
+                    WSError(e.wsCode, e.message)
+                }
+                confidoJSON.encodeToJsonElement(message)
+            }
+            emit(frame())
+            emitAll(view.changes.conflate().map { frame() })
+        }.catch { e ->
+            if (e is ResponseError) emit(confidoJSON.encodeToJsonElement<WSResponse<T>>(WSError(e.wsCode, e.message)))
+            else throw e
+        }
     })
 }
 

@@ -5,6 +5,8 @@ import com.mongodb.reactivestreams.client.ClientSession
 import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.plus
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import org.litote.kmongo.*
@@ -41,8 +43,11 @@ import users.User
 object latestPredictions : ChangeSource<Prediction>() {
     internal val coll: CoroutineCollection<Prediction> = serverState.database.getCollection("userPred")
 
-    private var byQuestion: PersistentMap<Ref<Question>, PersistentMap<Ref<User>, Prediction>> =
-        persistentMapOf()
+    private val _state =
+        MutableStateFlow<PersistentMap<Ref<Question>, PersistentMap<Ref<User>, Prediction>>>(persistentMapOf())
+    /** Snapshot flow of the whole head view; topic derivations subscribe here. */
+    val state: StateFlow<PersistentMap<Ref<Question>, PersistentMap<Ref<User>, Prediction>>> get() = _state
+    private var byQuestion by _state::value
 
     val asMap: Map<Ref<Question>, Map<Ref<User>, Prediction>> get() = byQuestion
     fun get(question: Ref<Question>, user: Ref<User>): Prediction? = byQuestion[question]?.get(user)
@@ -143,7 +148,10 @@ object predictionData : ManagedStore {
         get() = listOf(latestPredictions.coll, userPredictionLog.coll, groupPredictionLog.coll)
 
     /** Group aggregate per question; absent key = no group prediction. */
-    internal val groupPredMap = mutableMapOf<Ref<Question>, Prediction>()
+    private val _groupPred = MutableStateFlow<PersistentMap<Ref<Question>, Prediction>>(persistentMapOf())
+    /** Snapshot flow of the group aggregates; topic derivations subscribe here. */
+    val groupPredState: StateFlow<PersistentMap<Ref<Question>, Prediction>> get() = _groupPred
+    private var groupPredMap by _groupPred::value
     val groupPred: Map<Ref<Question>, Prediction> get() = groupPredMap
     val predictorCount = CountView<Ref<Question>>()
     val predictionCount = CountView<Ref<Question>>()
@@ -157,13 +165,13 @@ object predictionData : ManagedStore {
 
     internal fun recomputeGroup(qref: Ref<Question>) {
         val question = qref.deref() ?: run {
-            groupPredMap.remove(qref)
+            groupPredMap = groupPredMap.remove(qref)
             predictorCount.set(qref, 0)
             return
         }
         val preds = latestPredictions.forQuestion(qref).values
         val gp = serverState.calculateGroupPred(question, preds)
-        if (gp == null) groupPredMap.remove(qref) else groupPredMap[qref] = gp
+        groupPredMap = if (gp == null) groupPredMap.remove(qref) else groupPredMap.put(qref, gp)
         predictorCount.set(qref, preds.size)
     }
 

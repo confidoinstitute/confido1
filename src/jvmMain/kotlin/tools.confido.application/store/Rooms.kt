@@ -1,5 +1,9 @@
 package tools.confido.store
 
+import kotlinx.collections.immutable.PersistentMap
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import rooms.Room
 import tools.confido.question.Question
 import tools.confido.refs.Ref
@@ -11,7 +15,11 @@ object roomStore : MongoStore<Room>(
     { e, id -> e.copy(id = id) },
 ) {
     /** Which room owns each question — maintained as a fold over room changes. */
-    val questionRoom: MutableMap<Ref<Question>, Ref<Room>> = mutableMapOf()
+    private val _questionRoom = MutableStateFlow<PersistentMap<Ref<Question>, Ref<Room>>>(persistentMapOf())
+    /** Snapshot flow of the question→room index; topic derivations subscribe here. */
+    val questionRoomState: StateFlow<PersistentMap<Ref<Question>, Ref<Room>>> get() = _questionRoom
+    private var questionRoomMap by _questionRoom::value
+    val questionRoom: Map<Ref<Question>, Ref<Room>> get() = questionRoomMap
 
     init {
         // Strip computed fields before persisting to DB (safety net against accidental
@@ -29,15 +37,19 @@ object roomStore : MongoStore<Room>(
         onChange { change ->
             when (change) {
                 is Change.Added ->
-                    change.entity.questions.forEach { questionRoom[it] = change.entity.ref }
+                    questionRoomMap = questionRoomMap.putAll(change.entity.questions.associateWith { change.entity.ref })
                 is Change.Updated -> {
                     val added = change.new.questions.toSet() - change.old.questions.toSet()
                     val removed = change.old.questions.toSet() - change.new.questions.toSet()
-                    added.forEach { questionRoom[it] = change.new.ref }
-                    removed.forEach { if (questionRoom[it] == change.new.ref) questionRoom.remove(it) }
+                    var m = questionRoomMap.putAll(added.associateWith { change.new.ref })
+                    removed.forEach { if (m[it] == change.new.ref) m = m.remove(it) }
+                    questionRoomMap = m
                 }
-                is Change.Removed ->
-                    change.entity.questions.forEach { if (questionRoom[it] == change.entity.ref) questionRoom.remove(it) }
+                is Change.Removed -> {
+                    var m = questionRoomMap
+                    change.entity.questions.forEach { if (m[it] == change.entity.ref) m = m.remove(it) }
+                    questionRoomMap = m
+                }
             }
         }
     }

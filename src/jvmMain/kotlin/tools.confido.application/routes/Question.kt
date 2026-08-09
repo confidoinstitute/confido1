@@ -25,10 +25,7 @@ import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.spaces.BinarySpace
 import tools.confido.state.*
-import tools.confido.store.addPrediction
-import tools.confido.store.clearPredictions
-import tools.confido.store.groupPredictionLog
-import tools.confido.store.transact
+import tools.confido.store.*
 import tools.confido.utils.unixNow
 import users.User
 import kotlin.math.min
@@ -296,15 +293,33 @@ fun questionRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK, Cbor.encodeToByteArray(updates))
     }
 
-    // View group predictions
-    topicWS("/state$questionUrl/group_pred") {
-        call.withQuestion {
-            assertPermission(RoomPermission.VIEW_QUESTIONS, "You cannot view this group prediction.")
-            assertGroupPredictionAccess("You cannot view this group prediction.")
-
-            serverState.groupPred[question.ref]?.let {
-                it
-            } ?: notFound("There is no group prediction.")
+    // View group predictions: a View composition over exactly the state the payload
+    // reads — the question (visibility settings), its room (permissions), the viewer
+    // (type changes), the viewer's own prediction (ANSWERED gate), and the group
+    // aggregate itself. Recomputation is driven by those same reads.
+    viewWS("/state$questionUrl/group_pred") {
+        val qRef = Ref<Question>(call.parameters["qID"] ?: "")
+        val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
+        val roomView = roomStore.questionRoomState.asView().at(qRef)
+            .flatMap { rRef -> rRef?.let { roomStore.state.asView().at(it.id) } ?: viewOf(null) }
+        combineViews(
+            questionStore.state.asView().at(qRef.id),
+            roomView,
+            userStore.state.asView().at(viewerRef.id),
+            latestPredictions.state.asView().map { it[qRef]?.get(viewerRef) },
+            predictionData.groupPredState.asView().at(qRef),
+        ) { question, room, viewer, myPred, groupPred ->
+            if (question == null || room == null) notFound("No such question.")
+            if (!room.hasPermission(viewer, RoomPermission.VIEW_QUESTIONS))
+                forbidden("You cannot view this group prediction.")
+            val canViewAll = room.hasPermission(viewer, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+            val canView = when (question.groupPredictionVisibility) {
+                GroupPredictionVisibility.EVERYONE -> true
+                GroupPredictionVisibility.ANSWERED -> myPred != null
+                GroupPredictionVisibility.MODERATOR_ONLY -> false
+            }
+            if (!(canViewAll || canView)) unauthorized("You cannot view this group prediction.")
+            groupPred ?: notFound("There is no group prediction.")
         }
     }
 
