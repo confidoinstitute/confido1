@@ -166,6 +166,41 @@ inline fun <reified T> Route.viewWS(path: String, crossinline body: suspend WSBo
 }
 
 /**
+ * [View]-gated topic with a suspending fetch stage, for Archive-backed payloads: [gate]
+ * composes the consistent, non-suspending part (permission checks, per-viewer gate
+ * inputs — include the archive partition's `versionView` so content changes wake the
+ * topic) and [fetch] receives the gate's value and may suspend (the partition query).
+ * The fetch runs outside the consistency window; it reads committed post-transaction
+ * state, and any interleaved change re-wakes the topic, so at-least-once recomputation
+ * plus output dedup keeps the delivered payload correct. Errors from either stage are
+ * per-computation, as in the [View]-only overload.
+ */
+inline fun <G, reified T> Route.viewWS(
+    path: String,
+    crossinline gate: suspend WSBody.() -> View<G>,
+    crossinline fetch: suspend WSBody.(G) -> T,
+) {
+    TopicRegistry.handlers.add(FlowTopic(TopicRegistry.split(path)) { ctx ->
+        flow {
+            val view = ctx.gate()
+            val frame: suspend () -> JsonElement = {
+                val message: WSResponse<T> = try {
+                    WSData(ctx.fetch(view.value))
+                } catch (e: ResponseError) {
+                    WSError(e.wsCode, e.message)
+                }
+                confidoJSON.encodeToJsonElement(message)
+            }
+            emit(frame())
+            emitAll(view.changes.conflate().map { frame() })
+        }.catch { e ->
+            if (e is ResponseError) emit(confidoJSON.encodeToJsonElement<WSResponse<T>>(WSError(e.wsCode, e.message)))
+            else throw e
+        }
+    })
+}
+
+/**
  * Register a flow topic: [body] runs lazily on each subscription and returns the flow of
  * payloads to deliver. A [ResponseError] thrown while building or collecting the flow
  * becomes a single WSError frame. Use try/finally (or onStart/onCompletion) inside the

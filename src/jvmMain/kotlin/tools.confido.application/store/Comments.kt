@@ -1,6 +1,9 @@
 package tools.confido.store
 
 import com.mongodb.reactivestreams.client.ClientSession
+import kotlinx.collections.immutable.PersistentMap
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.Serializable
 import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.CoroutineCollection
@@ -31,6 +34,24 @@ open class MongoCommentArchive<E : tools.confido.question.Comment, P : Ref<*>>(
     private val userProp: KProperty1<E, Ref<User>>,
     private val withId: (E, String) -> E,
 ) : ChangeSource<E>(), Archive<E, P> {
+
+    // Per-partition change counter — the wake signal for View-gated topics over this
+    // archive (the payload itself is non-resident and must be fetched, so unlike
+    // resident views the "value" here is only a version, not the data). Note
+    // [stripUserLikes] deliberately emits no change and therefore bumps no version;
+    // topics whose gate combines the users map still refresh on user deletion.
+    private val _versions = MutableStateFlow<PersistentMap<P, Long>>(persistentMapOf())
+    private var versionMap by _versions::value
+    private var versionCounter = 0L
+
+    /** Wake-signal view for one partition; the value is a monotonic change counter. */
+    fun versionView(partition: P): View<Long> = _versions.asView().map { it[partition] ?: 0L }
+
+    init {
+        onChange { change ->
+            versionMap = versionMap.put(partitionProp.get(change.entity), ++versionCounter)
+        }
+    }
 
     override suspend fun all(partition: P): List<E> =
         coll.find(partitionProp eq partition).toList()

@@ -13,12 +13,11 @@ import rooms.RoomPermission
 import tools.confido.application.UserPresentationContext
 import tools.confido.application.getUserPresentation
 import tools.confido.application.sessions.TransientData
+import tools.confido.application.sessions.userSession
 import tools.confido.question.*
 import tools.confido.refs.*
 import tools.confido.state.serverState
-import tools.confido.store.questionCommentArchive
-import tools.confido.store.roomCommentArchive
-import tools.confido.store.transact
+import tools.confido.store.*
 import tools.confido.utils.unixNow
 import users.User
 
@@ -37,25 +36,46 @@ fun<T: CommentExtraData> makeCommentPresentation(comment: Comment, extraData: T?
         extraData
     )
 
-fun questionCommentsRoutes(routing: Routing) = routing.apply {
-    // View comments
-    topicWS("/state$questionUrl/comments") {
-        call.withQuestion {
-            assertPermission(RoomPermission.VIEW_QUESTION_COMMENTS, "You cannot view the discussion for this question.")
+/** Gate result for the comment topics: who is looking, where, and whether they may see
+ *  other people's comments (own comments are always visible). */
+private data class CommentGate(val viewer: User, val room: Room, val canSeeOthers: Boolean = true)
 
-            val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
-            val lastPrediction = serverState.userPred[ref]?.get(user.ref)
+fun questionCommentsRoutes(routing: Routing) = routing.apply {
+    // View comments: the gate (permissions + ANSWERED visibility) is a View composition;
+    // the partition fetch is the suspending stage, re-woken by the archive's version
+    // signal. The users map is a gate input: author presentations embed users, and it
+    // also refreshes the topic after user deletion (which strips likes without a
+    // version bump).
+    viewWS("/state$questionUrl/comments", gate = {
+        val qRef = Ref<Question>(call.parameters["qID"] ?: "")
+        val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
+        val roomView = roomStore.questionRoomState.asView().at(qRef)
+            .flatMap { rRef -> rRef?.let { roomStore.state.asView().at(it.id) } ?: viewOf(null) }
+        combineViews(
+            questionStore.state.asView().at(qRef.id),
+            roomView,
+            userStore.state.asView(),
+            latestPredictions.state.asView().map { it[qRef]?.get(viewerRef) },
+            questionCommentArchive.versionView(qRef),
+        ) { question, room, users, myPred, _ ->
+            val viewer = users[viewerRef.id] ?: unauthorized("Not logged in.")
+            if (question == null || room == null) notFound("No such question.")
+            if (!room.hasPermission(viewer, RoomPermission.VIEW_QUESTION_COMMENTS))
+                forbidden("You cannot view the discussion for this question.")
+            val canViewAll = room.hasPermission(viewer, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
             val canView = when (question.commentVisibility) {
                 CommentVisibility.EVERYONE -> true
-                CommentVisibility.ANSWERED -> lastPrediction != null
+                CommentVisibility.ANSWERED -> myPred != null
                 CommentVisibility.MODERATOR_ONLY -> false
             }
-
-            questionCommentArchive.all(ref).filter { comment ->
-                comment.user == user.ref || (canViewAll || canView)
-            }.map { comment ->
-                makeCommentPresentation(comment, QuestionCommentExtraData(comment.prediction?.dist), user, room)
-            }
+            CommentGate(viewer, room, canViewAll || canView)
+        }
+    }) { (viewer, room, canSeeOthers) ->
+        val qRef = Ref<Question>(call.parameters["qID"] ?: "")
+        questionCommentArchive.all(qRef).filter { comment ->
+            comment.user == viewer.ref || canSeeOthers
+        }.map { comment ->
+            makeCommentPresentation(comment, QuestionCommentExtraData(comment.prediction?.dist), viewer, room)
         }
     }
 
@@ -135,13 +155,23 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
 }
 
 fun roomCommentsRoutes(routing: Routing) = routing.apply {
-    topicWS("/state$roomUrl/comments") {
-        call.withRoom {
-            assertPermission( RoomPermission.VIEW_ROOM_COMMENTS, "You cannot view the discussion.")
-
-            roomCommentArchive.all(room.ref).map { comment->
-                makeCommentPresentation(comment, null, user, room)
-            }
+    viewWS("/state$roomUrl/comments", gate = {
+        val rRef = Ref<Room>(call.parameters["rID"] ?: "")
+        val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
+        combineViews(
+            roomStore.state.asView().at(rRef.id),
+            userStore.state.asView(),
+            roomCommentArchive.versionView(rRef),
+        ) { room, users, _ ->
+            val viewer = users[viewerRef.id] ?: unauthorized("Not logged in.")
+            if (room == null) notFound("No such room.")
+            if (!room.hasPermission(viewer, RoomPermission.VIEW_ROOM_COMMENTS))
+                forbidden("You cannot view the discussion.")
+            CommentGate(viewer, room)
+        }
+    }) { (viewer, room) ->
+        roomCommentArchive.all(room.ref).map { comment ->
+            makeCommentPresentation(comment, null, viewer, room)
         }
     }
 
