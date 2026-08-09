@@ -624,10 +624,30 @@ working untouched mid-transition.
     a `derivedWS(path, vararg sources) { body }` trigger-list form — behaviorally
     identical, but the source list was a manual restatement of what the body reads, i.e.
     the manual-refresh bug class in miniature.)*
+  - **All topics converted; the manual-refresh machinery is deleted.** The remaining
+    resident-backed topics (histogram, room group_pred, presentation topics) became View
+    compositions; comments became the gate+fetch shape (View gate + suspending
+    `all(partition)` fetch, woken by a per-partition version counter on the archive —
+    `all + tail` with refetch standing in for `tail`); `/state` itself is a transitional
+    monolithic View over everything it reads (with `SentState.session.expiryTime` pinned
+    at censor time so session renewals dedup away — the acting user no longer re-receives
+    the snapshot per request); the five extension topics converted with bodies verbatim
+    via gate+fetch (millionaire's transient game/timer state and a version counter on
+    calibration responses gained StateFlow surfaces); the two client-dead topics
+    (`group_pred_text.ws`, millionaire `my_score.ws`) were deleted. With nothing left
+    listening, `refreshAllWebsockets`/`refreshSessionWebsockets` and all **63** call
+    sites, `globalWebsocketRefresh`, `runRefreshable`, and `PullTopic`/`topicWS` are
+    gone; `FlowTopic` is the sole topic shape and `TransientData` reduced to the
+    presenter-window count. The per-tick session-expiry check became a per-connection
+    watcher on the session cell (close 3000 on logout/expiry). Cost model note: the
+    per-question `mine`/`hasPredicted` split of the §4.2 table is superseded for now by
+    per-viewer inputs inside topic gates (own-prediction cells); revisit granularity with
+    the permission-class memoization stage.
   - Deferred: the shared/memoized keyed-flow registry (`shareIn` per (topic, permission
-    class), refcounted teardown) until the censor-memoization stage; transient server
-    state (`presentationRunStates`, short links) joining the View interface; conversion
-    of the remaining `PullTopic`s.
+    class), refcounted teardown) until the censor-memoization stage; `SentState`
+    decomposition into the semantic topic table + client merged view (next);
+    UserPresentation rollout / users-map weaning; a `.memo()` dedup combinator if a hot
+    spot appears.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or

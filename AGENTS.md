@@ -103,7 +103,6 @@ Use `getST`, `postST`, `deleteST`, `webSocketST` for single-threaded dispatch:
 fun roomRoutes(routing: Routing) = routing.apply {
     postST("/rooms/add") {
         call.withUser { /* create room */ }
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK, room.id)
     }
 }
@@ -144,9 +143,12 @@ Environment variables (see `config.example`):
 ## Common Patterns
 
 ### State Management
-- Server maintains full state in memory, syncs to MongoDB via managers
-- Client receives censored state snapshots via WebSocket subscriptions
-- Use `TransientData.refreshAllWebsockets()` after mutations
+- Server maintains full state in memory, syncs to MongoDB via stores (`tools.confido.store`)
+- Client receives censored state snapshots via topics on one multiplexed WebSocket
+- Store mutations need no notification calls: topics are `View` compositions
+  (`viewWS`/`flowWS`) that recompute when the state they read changes. Only *transient*
+  (non-store) server state needs a `StateFlow` surface to drive topics (see
+  `presentationRunStates` for the pattern)
 
 ### Authorization Flow
 ```kotlin

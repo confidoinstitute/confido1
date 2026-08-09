@@ -15,24 +15,27 @@ There are in general two types of data that the client may request: one-shot
 and continuous data. The one-shot data (such as CSV export or login result) are
 sent as body of HTTP requests and can be done at any time.
 
-On the other hand, continuous data are subscription-based: the client starts a
-Websocket connection at the appropriate address. This socket is then used as an
-unidirectional channel. The server holds all of the currently open sockets and,
-when there is a change to this data, refreshes all of them. The clients then
-receive a new complete snapshot of the data.
+On the other hand, continuous data are subscription-based: the client holds one
+multiplexed Websocket connection (`/state`) and subscribes to topics over it by
+name (`{"sub": "<topic>"}` frames). Each topic is served by a flow on the server
+(registered via `viewWS`/`flowWS` in `routes/Common.kt`): a `View` composition
+over the store layer's state flows that recomputes exactly when the state it
+reads changes, with per-subscription payload dedup and conflation. There are no
+manual "refresh the sockets" calls anywhere — a store mutation propagates to all
+affected topics by construction (PERSISTENCE_SYNC_REDESIGN.md §4).
 
 In order for a client to subscribe to server data, they need to have an active
-session. While this session is persistent, the active channels are part of the
-in-memory transient data. Should the server restart, all of the channels are
-broken and clients must subscribe anew.
+session (the socket closes with code 3000 when the session ends, and with 4001
+when the client bundle version no longer matches the server). Subscriptions are
+per-connection; after a reconnect the client re-subscribes to all its topics.
 
 ### Client to Server
 
-All of the client actions are handled using HTTP requests. In most cases, the
-server responds by a refresh of the relevant subscription channels and sends
-empty response to the client. If a more detailed feedback is needed, it is sent
-as the response body. In case the request fails, the error message is sent as
-an error HTTP response body.
+All of the client actions are handled using HTTP requests, usually answered by
+an empty response — updated data reaches the client through its topic
+subscriptions reacting to the resulting store changes. If a more detailed
+feedback is needed, it is sent as the response body. In case the request fails,
+the error message is sent as an error HTTP response body.
 
 ## Global state and configuration
 
