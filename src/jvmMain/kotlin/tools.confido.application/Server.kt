@@ -17,6 +17,8 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System.now
 import kotlinx.html.*
@@ -352,7 +354,7 @@ fun main() {
                 }
 
                 // The single multiplexed state websocket: carries all topics registered
-                // via topicWS/streamWS (PERSISTENCE_SYNC_REDESIGN.md §4.1).
+                // via topicWS/flowWS (PERSISTENCE_SYNC_REDESIGN.md §4.1).
                 webSocketST("/state") {
                     val clientVer = call.request.queryParameters["bundleVer"] ?: ""
                     val appConfigVer = call.request.queryParameters["appConfigVer"] ?: ""
@@ -441,8 +443,19 @@ fun main() {
                         subs[topic] = sub
                         when (handler) {
                             is PullTopic -> evalPull(topic, sub)
-                            is StreamTopic -> sub.job = launch(singleThreadContext) {
-                                handler.run(WSBody(TopicCall(call, params))) { element -> sendFrame(topic, element) }
+                            is FlowTopic -> sub.job = launch(singleThreadContext) {
+                                try {
+                                    handler.flow(WSBody(TopicCall(call, params)))
+                                        .distinctUntilChanged()
+                                        .conflate()
+                                        .collect { element -> sendFrame(topic, element) }
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    // A broken topic must not take down the whole connection.
+                                    call.application.log.error("Error collecting topic $topic", e)
+                                    sendFrame(topic, errorElement(WSErrorType.INTERNAL_ERROR, "Internal error"))
+                                }
                             }
                         }
                     }

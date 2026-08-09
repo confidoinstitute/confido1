@@ -8,6 +8,8 @@ import io.ktor.server.routing.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.onFailure
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import org.simplejavamail.MailException
@@ -287,26 +289,28 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
     }
 
 
-    // Stream topic: rotates a short invite code for the subscription's lifetime.
-    streamWS<String>("/state$roomUrl/invites/{id}/shortlink") { emit ->
+    // Flow topic: rotates a short invite code for the subscription's lifetime.
+    flowWS<String>("/state$roomUrl/invites/{id}/shortlink") {
         call.withRoom {
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members.")
-            val linkId = call.parameters["id"] ?: return@withRoom
-            room.inviteLinks.firstOrNull { it.id == linkId } ?: return@withRoom
+            val linkId = call.parameters["id"] ?: return@withRoom emptyFlow()
+            room.inviteLinks.firstOrNull { it.id == linkId } ?: return@withRoom emptyFlow()
 
-            var curCode: String? = null
-            try {
-                while (true) {
-                    val shortLink = ShortLink(room.ref, linkId)
-                    curCode?.let { serverState.shortInviteLinks.remove(it) }
-                    serverState.shortInviteLinks[shortLink.shortcode] = shortLink
-                    curCode = shortLink.shortcode
-                    emit(shortLink.shortcode)
-                    delay(((ShortLink.VALIDITY - 5) * 1000).toLong())
-                }
-            } finally {
-                if (curCode != null) {
-                    serverState.shortInviteLinks.remove(curCode)
+            flow {
+                var curCode: String? = null
+                try {
+                    while (true) {
+                        val shortLink = ShortLink(room.ref, linkId)
+                        curCode?.let { serverState.shortInviteLinks.remove(it) }
+                        serverState.shortInviteLinks[shortLink.shortcode] = shortLink
+                        curCode = shortLink.shortcode
+                        emit(shortLink.shortcode)
+                        delay(((ShortLink.VALIDITY - 5) * 1000).toLong())
+                    }
+                } finally {
+                    if (curCode != null) {
+                        serverState.shortInviteLinks.remove(curCode)
+                    }
                 }
             }
         }

@@ -9,7 +9,11 @@ import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.util.pipeline.*
 import io.ktor.websocket.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.*
 import kotlinx.html.HTML
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
@@ -81,8 +85,15 @@ class TopicCall(delegate: ApplicationCall, override val parameters: Parameters) 
 sealed class TopicHandler(val pattern: List<String>)
 /** Re-evaluated on every refresh signal; payload deduplicated per subscription. */
 class PullTopic(pattern: List<String>, val eval: suspend (WSBody) -> JsonElement) : TopicHandler(pattern)
-/** Runs as a per-subscription coroutine pushing frames via emit; cancelled on unsubscribe/disconnect. */
-class StreamTopic(pattern: List<String>, val run: suspend (WSBody, suspend (JsonElement) -> Unit) -> Unit) : TopicHandler(pattern)
+/**
+ * A topic backed by a [Flow]. [flow] builds (or returns) the payload flow for one
+ * subscription; it must be cheap and effect-free — all work belongs in the returned flow,
+ * which is collected by a per-subscription coroutine (cancelled on unsubscribe/disconnect)
+ * with per-subscription dedup and conflation applied by the connection loop. Whether the
+ * flow is shared is the lambda's choice: it can return a hot shared flow, or build a cold
+ * one from the call parameters.
+ */
+class FlowTopic(pattern: List<String>, val flow: (WSBody) -> Flow<JsonElement>) : TopicHandler(pattern)
 
 object TopicRegistry {
     val handlers = mutableListOf<TopicHandler>()
@@ -124,15 +135,18 @@ inline fun <reified T> Route.topicWS(path: String, crossinline body: suspend WSB
 }
 
 /**
- * Register a stream topic: [body] runs for the lifetime of each subscription and
- * pushes payloads via `emit`; use try/finally for per-subscription cleanup.
+ * Register a flow topic: [body] runs lazily on each subscription and returns the flow of
+ * payloads to deliver. A [ResponseError] thrown while building or collecting the flow
+ * becomes a single WSError frame. Use try/finally (or onStart/onCompletion) inside the
+ * flow for per-subscription effects and cleanup.
  */
-inline fun <reified T> Route.streamWS(path: String, crossinline body: suspend WSBody.(emit: suspend (T) -> Unit) -> Unit) {
-    TopicRegistry.handlers.add(StreamTopic(TopicRegistry.split(path)) { ctx, rawEmit ->
-        try {
-            ctx.body { value -> rawEmit(confidoJSON.encodeToJsonElement<WSResponse<T>>(WSData(value))) }
-        } catch (e: ResponseError) {
-            rawEmit(confidoJSON.encodeToJsonElement<WSResponse<T>>(WSError(e.wsCode, e.message)))
-        }
+inline fun <reified T> Route.flowWS(path: String, crossinline body: suspend WSBody.() -> Flow<T>) {
+    TopicRegistry.handlers.add(FlowTopic(TopicRegistry.split(path)) { ctx ->
+        flow { emitAll(ctx.body()) }  // flow {} defers the body itself to collection time
+            .map { confidoJSON.encodeToJsonElement<WSResponse<T>>(WSData(it)) }
+            .catch { e ->
+                if (e is ResponseError) emit(confidoJSON.encodeToJsonElement<WSResponse<T>>(WSError(e.wsCode, e.message)))
+                else throw e
+            }
     })
 }
