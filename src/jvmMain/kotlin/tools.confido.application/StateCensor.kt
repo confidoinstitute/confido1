@@ -1,5 +1,6 @@
 package tools.confido.application
 
+import kotlinx.datetime.Instant
 import rooms.*
 import tools.confido.application.sessions.TransientData
 import tools.confido.extensions.ServerExtension
@@ -140,7 +141,10 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
             users = censorUsers(),
             myPasswordIsSet = getMyPasswordIsSet(),
             myPredictions = getMyPredictions(),
-            session = sess,
+            // expiryTime is renewed on every authenticated request and read by no client
+            // code; pinning it keeps the payload stable so dedup can do its job (otherwise
+            // the acting user re-receives the full snapshot on each of their requests).
+            session = sess.copy(expiryTime = Instant.DISTANT_FUTURE),
             presenterWindowActive = transientData.activePresenterWindows > 0,
         )
     }

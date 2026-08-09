@@ -4,6 +4,7 @@ import com.mongodb.reactivestreams.client.ClientSession
 import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.Serializable
 import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.CoroutineCollection
@@ -43,6 +44,9 @@ open class MongoCommentArchive<E : tools.confido.question.Comment, P : Ref<*>>(
     private val _versions = MutableStateFlow<PersistentMap<P, Long>>(persistentMapOf())
     private var versionMap by _versions::value
     private var versionCounter = 0L
+
+    /** Whole-archive version map; wake signal for topics spanning all partitions. */
+    val versionsState: StateFlow<PersistentMap<P, Long>> get() = _versions
 
     /** Wake-signal view for one partition; the value is a monotonic change counter. */
     fun versionView(partition: P): View<Long> = _versions.asView().map { it[partition] ?: 0L }

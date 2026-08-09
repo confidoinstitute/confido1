@@ -13,7 +13,10 @@ val globalWebsocketRefresh = MutableStateFlow(0L)
 class TransientData {
     private val _websocketRefreshChannel: MutableStateFlow<Long> = MutableStateFlow(0L)
     private val websocketRefreshFlow: StateFlow<Long> = _websocketRefreshChannel.asStateFlow()
-    var activePresenterWindows: Int = 0
+    private val _activePresenterWindows = MutableStateFlow(0)
+    /** Snapshot flow of the presenter-window count; topic derivations subscribe here. */
+    val activePresenterWindowsState: StateFlow<Int> get() = _activePresenterWindows
+    var activePresenterWindows by _activePresenterWindows::value
 
     fun refreshSessionWebsockets() {
         _websocketRefreshChannel.update { it + 1 }

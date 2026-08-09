@@ -59,6 +59,16 @@ fun <T, R> View<T>.flatMap(f: (T) -> View<R>): View<R> = object : View<R> {
         .drop(1)  // drop the subscription-time inner onStart; asFlow emits initially anyway
 }
 
+/**
+ * Untyped n-ary combine, for wake-signal-only composition (e.g. a transform that reads
+ * broad global state, like the transitional /state censor): the value is the list of
+ * input values, typically ignored by a following [map].
+ */
+fun combineViews(vararg views: View<*>): View<List<*>> = object : View<List<*>> {
+    override val value get() = views.map { it.value }
+    override val changes get() = merge(*views.map { it.changes }.toTypedArray())
+}
+
 /** Glitch-free combine: [f] re-reads all values at computation time. Must not suspend. */
 fun <A, B, R> combineViews(a: View<A>, b: View<B>, f: (A, B) -> R): View<R> =
     object : View<R> {

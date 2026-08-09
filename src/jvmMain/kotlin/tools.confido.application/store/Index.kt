@@ -1,5 +1,9 @@
 package tools.confido.store
 
+import kotlinx.collections.immutable.PersistentMap
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import tools.confido.refs.HasId
 import tools.confido.refs.eqid
 
@@ -55,12 +59,15 @@ class RefCountIndex<K, V> {
  * incremented/decremented on changes). Zero-count keys are removed.
  */
 class CountView<K> {
-    private val counts = mutableMapOf<K, Int>()
+    private val _state = MutableStateFlow<PersistentMap<K, Int>>(persistentMapOf())
+    /** Snapshot flow of the counts; topic derivations subscribe here. */
+    val state: StateFlow<PersistentMap<K, Int>> get() = _state
+    private var counts by _state::value
     val asMap: Map<K, Int> get() = counts
-    fun set(key: K, count: Int) { if (count > 0) counts[key] = count else counts.remove(key) }
+    fun set(key: K, count: Int) { counts = if (count > 0) counts.put(key, count) else counts.remove(key) }
     fun increment(key: K, by: Int = 1) {
         val n = (counts[key] ?: 0) + by
-        if (n > 0) counts[key] = n else counts.remove(key)
+        counts = if (n > 0) counts.put(key, n) else counts.remove(key)
     }
     operator fun get(key: K): Int = counts[key] ?: 0
 }

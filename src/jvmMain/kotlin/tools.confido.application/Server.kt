@@ -39,9 +39,11 @@ import org.simplejavamail.mailer.MailerBuilder
 import rooms.*
 import tools.confido.application.routes.*
 import tools.confido.application.sessions.Sessions
+import tools.confido.application.sessions.globalWebsocketRefresh
 import tools.confido.application.sessions.renewUserSession
 import tools.confido.application.sessions.transientUserData
 import tools.confido.application.sessions.userSession
+import tools.confido.store.*
 import tools.confido.extensions.ServerExtension
 import tools.confido.refs.RefAsStringSerializer
 import tools.confido.refs.deref
@@ -345,12 +347,34 @@ fun main() {
                 calibrationRoutes(this)
                 scoreRoutes(this)
 
-                // The full app state snapshot is an ordinary topic on the multiplexed socket.
-                topicWS("/state") {
-                    val sessionData = call.userSession
+                // The full app state snapshot as a View topic over (almost) everything —
+                // transitional: SentState decomposes into semantic topics later in Phase 3,
+                // shrinking this composition field by field. The censor body still reads
+                // global state (it IS the legacy everything-snapshot), so the combine acts
+                // purely as the wake-signal set; count/author views change strictly with
+                // their underlying store/archive sources listed here.
+                viewWS("/state") {
                     val transientData = call.transientUserData
-                    if (sessionData?.user == null || transientData == null) unauthorized("Not logged in.")
-                    StateCensor(sessionData, transientData).censor()
+                    if (call.userSession?.user == null || transientData == null) unauthorized("Not logged in.")
+                    combineViews(
+                        roomStore.state.asView(),
+                        questionStore.state.asView(),
+                        userStore.state.asView(),
+                        userSessionStore.state.asView().at(call.userSession!!.id),
+                        latestPredictions.state.asView(),
+                        questionCommentArchive.versionsState.asView(),
+                        roomCommentArchive.versionsState.asView(),
+                        serverState.presentationRunStatesState.asView(),
+                        transientData.activePresenterWindowsState.asView(),
+                        // Compat until the extension topics convert: extension censor hooks
+                        // may depend on state with no flow surface yet, and the manual
+                        // refresh calls still cover those. Removed with the final sweep.
+                        globalWebsocketRefresh.asView(),
+                    ).map {
+                        val sessionData = call.userSession ?: unauthorized("Not logged in.")
+                        if (sessionData.user == null) unauthorized("Not logged in.")
+                        StateCensor(sessionData, transientData).censor()
+                    }
                 }
 
                 // The single multiplexed state websocket: carries all topics registered
