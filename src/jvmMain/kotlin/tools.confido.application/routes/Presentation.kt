@@ -51,7 +51,6 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             tools.confido.store.roomStore.modify(room.ref) {
                 it.copy(presentation = pres.ref)
             }
-            TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK, pres.id)
         }
     }
@@ -111,7 +110,6 @@ fun presentationRoutes(routing: Routing) = routing.apply {
                 p.copy(numSlides = numSlides, slideLabels = slideLabels)
             }
 
-            TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK, numSlides.toString())
         }
     }
@@ -131,7 +129,6 @@ fun presentationRoutes(routing: Routing) = routing.apply {
                 updated
             }
 
-            TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
     }
@@ -159,7 +156,6 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             val presDir = File(presentationDir, pres.id)
             if (presDir.exists()) presDir.deleteRecursively()
 
-            TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
     }
@@ -203,7 +199,6 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             runState = processCurrentItem(pres, runState, room)
 
             serverState.setPresentationRunState(room.ref, runState)
-            TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
     }
@@ -222,7 +217,6 @@ fun presentationRoutes(routing: Routing) = routing.apply {
                         it.copy(followingPresentation = null)
                     }
                 }
-            TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
     }
@@ -248,7 +242,6 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             newState = processCurrentItem(pres, newState, room)
 
             serverState.setPresentationRunState(room.ref, newState)
-            TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
     }
@@ -264,7 +257,6 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             val currentState = serverState.presentationRunStates[room.ref]
                 ?: badRequest("Presentation is not running.")
             serverState.setPresentationRunState(room.ref, currentState.copy(currentView = view))
-            TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
     }
@@ -287,7 +279,6 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             newState = processCurrentItem(pres, newState, room)
 
             serverState.setPresentationRunState(room.ref, newState)
-            TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
     }
@@ -323,7 +314,6 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             // Any room member can follow
             call.modifyUserSession { it.copy(followingPresentation = room.ref) }
         }
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
 
@@ -332,7 +322,6 @@ fun presentationRoutes(routing: Routing) = routing.apply {
         call.withRoom {
             call.modifyUserSession { it.copy(followingPresentation = null) }
         }
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
 

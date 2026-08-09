@@ -64,7 +64,6 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
                     val currentState = getState(freshRoom, config.tag)
                     if (currentState.type == MillionaireStateType.ASKING) {
                         setState(freshRoom, config, MillionaireState(MillionaireStateType.RESOLVED, currentState.curIndex, null))
-                        TransientData.refreshAllWebsockets()
                     }
                 }
             }
@@ -310,7 +309,6 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
                     "stop" -> cancelTimer(room)
                     else -> badRequest("Unknown timer action: $action")
                 }
-                TransientData.refreshAllWebsockets()
                 call.respond(HttpStatusCode.OK)
             }
         }

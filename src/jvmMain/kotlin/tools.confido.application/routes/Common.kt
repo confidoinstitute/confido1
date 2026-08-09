@@ -83,26 +83,23 @@ class TopicCall(delegate: ApplicationCall, override val parameters: Parameters) 
     }
 }
 
-sealed class TopicHandler(val pattern: List<String>)
-/** Re-evaluated on every refresh signal; payload deduplicated per subscription. */
-class PullTopic(pattern: List<String>, val eval: suspend (WSBody) -> JsonElement) : TopicHandler(pattern)
 /**
- * A topic backed by a [Flow]. [flow] builds (or returns) the payload flow for one
- * subscription; it must be cheap and effect-free — all work belongs in the returned flow,
- * which is collected by a per-subscription coroutine (cancelled on unsubscribe/disconnect)
- * with per-subscription dedup and conflation applied by the connection loop. Whether the
- * flow is shared is the lambda's choice: it can return a hot shared flow, or build a cold
- * one from the call parameters.
+ * A topic backed by a [Flow] — the sole topic shape. [flow] builds (or returns) the
+ * payload flow for one subscription; it must be cheap and effect-free — all work belongs
+ * in the returned flow, which is collected by a per-subscription coroutine (cancelled on
+ * unsubscribe/disconnect) with per-subscription dedup and conflation applied by the
+ * connection loop. Whether the flow is shared is the lambda's choice: it can return a
+ * hot shared flow, or build a cold one from the call parameters.
  */
-class FlowTopic(pattern: List<String>, val flow: (WSBody) -> Flow<JsonElement>) : TopicHandler(pattern)
+class FlowTopic(val pattern: List<String>, val flow: (WSBody) -> Flow<JsonElement>)
 
 object TopicRegistry {
-    val handlers = mutableListOf<TopicHandler>()
+    val handlers = mutableListOf<FlowTopic>()
 
     fun split(path: String) = path.split('/')
 
     /** Match a topic path (query string already stripped) against registered patterns. */
-    fun match(topicPath: String): Pair<TopicHandler, Parameters>? {
+    fun match(topicPath: String): Pair<FlowTopic, Parameters>? {
         val segments = split(topicPath)
         outer@ for (h in handlers) {
             if (h.pattern.size != segments.size) continue
@@ -120,26 +117,10 @@ object TopicRegistry {
 }
 
 /**
- * Register a pull topic: [body] is evaluated on subscription and on every refresh
- * signal, in the same form the old `getWS` endpoints used. The [Route] receiver is
- * unused (registration is global) and kept only so call sites read naturally.
- */
-inline fun <reified T> Route.topicWS(path: String, crossinline body: suspend WSBody.() -> T) {
-    TopicRegistry.handlers.add(PullTopic(TopicRegistry.split(path)) { ctx ->
-        val message: WSResponse<T> = try {
-            WSData(body(ctx))
-        } catch (e: ResponseError) {
-            WSError(e.wsCode, e.message)
-        }
-        confidoJSON.encodeToJsonElement(message)
-    })
-}
-
-/**
  * Register a [View]-backed topic: [body] composes a view of the payload from store
  * views ([combineViews]/[at]/[flatMap]), so what the payload reads and what re-computes
  * it are the same declaration. Frames recompute on the view's change signal (conflated).
- * Error semantics are per-computation, as in [topicWS]: a [ResponseError] thrown by the
+ * Error semantics are per-computation: a [ResponseError] thrown by the
  * view's transforms becomes a WSError frame and the subscription stays live — the next
  * change recomputes. A [ResponseError] from [body] itself (e.g. unparseable parameters)
  * yields a single error frame.

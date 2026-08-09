@@ -74,7 +74,6 @@ fun roomRoutes(routing: Routing) = routing.apply {
             )
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK, room.id)
     }
     // Edit a room's details
@@ -99,7 +98,6 @@ fun roomRoutes(routing: Routing) = routing.apply {
             }
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Add a new member, either an existing user directly or a new user by e-mail
@@ -182,7 +180,6 @@ fun roomRoutes(routing: Routing) = routing.apply {
             }
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     deleteST(roomUrl) {
@@ -200,7 +197,6 @@ fun roomRoutes(routing: Routing) = routing.apply {
             }
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Remove a room's member
@@ -217,7 +213,6 @@ fun roomRoutes(routing: Routing) = routing.apply {
             }
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
 }
@@ -243,7 +238,6 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
             }
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Group predictions of a room's questions (optionally filtered by ?qids=): a

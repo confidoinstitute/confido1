@@ -88,7 +88,6 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 }
             }
         }
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
 
@@ -158,7 +157,6 @@ fun questionRoutes(routing: Routing) = routing.apply {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "You cannot edit this question.")
             doEditQuestion(question, edit, user)
         }
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     postST("/questions/multiedit") {
@@ -171,7 +169,6 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 doEditQuestion(q, req.edit, user)
             }
         }
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Delete multiple questions at once
@@ -196,7 +193,6 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 }
             }
         }
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Bulk state change for all questions with a given tag
@@ -213,7 +209,6 @@ fun questionRoutes(routing: Routing) = routing.apply {
                     }
                 }
             }
-            TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
     }
@@ -227,7 +222,6 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 it.withState(newState).copy(stateHistory = newHistory)
             }
         }
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Delete question
@@ -245,7 +239,6 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 }
             }
         }
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
 
@@ -263,7 +256,6 @@ fun questionRoutes(routing: Routing) = routing.apply {
             addPrediction(pred)
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
 

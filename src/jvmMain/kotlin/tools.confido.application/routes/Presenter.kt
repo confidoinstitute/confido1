@@ -19,14 +19,12 @@ fun presenterRoutes(routing: Routing) = routing.apply {
         call.withUser {
             flow {
                 transientData.activePresenterWindows += 1
-                transientData.refreshSessionWebsockets()
                 call.application.log.info("new presenter")
                 try {
                     awaitCancellation()
                 } finally {
                     call.application.log.info("presenter closed")
                     transientData.activePresenterWindows -= 1
-                    transientData.refreshSessionWebsockets()
                 }
             }
         }
@@ -35,7 +33,6 @@ fun presenterRoutes(routing: Routing) = routing.apply {
     postST("/presenter/stop") {
         call.withUser {
             call.modifyUserSession { it.copy(presenterInfo = null) }
-            transientData.refreshSessionWebsockets()
             call.respond(HttpStatusCode.OK)
         }
     }
@@ -49,7 +46,6 @@ fun presenterRoutes(routing: Routing) = routing.apply {
                 val newInfo = oldInfo.copy(view = view, lastUpdate = unixNow())
                 it.copy(presenterInfo = newInfo)
             }
-            transientData.refreshSessionWebsockets()
             call.respond(HttpStatusCode.OK)
         }
     }

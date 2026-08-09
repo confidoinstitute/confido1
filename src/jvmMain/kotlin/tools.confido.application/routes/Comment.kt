@@ -99,7 +99,6 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
             questionCommentArchive.insert(comment)
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
 
@@ -117,7 +116,6 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
             }
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
 
@@ -132,7 +130,6 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
             }
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     postST("$questionUrl$commentUrl/like") {
@@ -149,7 +146,6 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
                     questionCommentArchive.update(comment, comment.copy(likes = newLikes))
             }
         }
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
 }
@@ -187,7 +183,6 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
             roomCommentArchive.insert(comment)
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     postST("$roomUrl/comments/{cID}/edit") {
@@ -204,7 +199,6 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
             }
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     deleteST("$roomUrl/comments/{cID}") {
@@ -217,7 +211,6 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
                 roomCommentArchive.delete(comment)
             }
         }
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     postST("$roomUrl/comments/{cID}/like") {
@@ -234,7 +227,6 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
                     roomCommentArchive.update(comment, comment.copy(likes = newLikes))
             }
         }
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
 }

@@ -56,7 +56,6 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
                         tools.confido.store.questionStore.modify(question.id) { it.copy(extensionData = it.extensionData.with(
                             SnapshotsKey, (it.extensionData[SnapshotsKey] + listOf(snap)).sortedBy { it.ts })) }
                         call.respond(newId)
-                        TransientData.refreshAllWebsockets()
                     }
                 }
             }
@@ -70,7 +69,6 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
                             forbidden("You can only delete your own snapshots and moderators can delete public snapshots")
                         }
                         tools.confido.store.questionStore.modify(question.id, { it.copy(extensionData = it.extensionData.modify(SnapshotsKey) { it.filter { otherSnap -> otherSnap != snap } }) })
-                        TransientData.refreshAllWebsockets()
                         call.respond(HttpStatusCode.OK)
                     }
                 }
@@ -83,7 +81,6 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
                         if (snap.public) assertPermission(RoomPermission.MANAGE_QUESTIONS, "not enough permissions to create public snapshot")
                         tools.confido.store.roomStore.modify(room.id) { it.copy(extensionData = it.extensionData.with(
                             SnapshotsKey, (it.extensionData[SnapshotsKey] + listOf(snap)).sortedBy { it.ts })) }
-                        TransientData.refreshAllWebsockets()
                         call.respond(HttpStatusCode.OK)
                     }
                 }
@@ -98,7 +95,6 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
                             forbidden("You can only delete your own snapshots and moderators can delete public snapshots")
                         }
                         tools.confido.store.roomStore.modify(room.id, { it.copy(extensionData = it.extensionData.modify(SnapshotsKey) { it.filter { otherSnap -> otherSnap != snap } }) })
-                        TransientData.refreshAllWebsockets()
                         call.respond(HttpStatusCode.OK)
                     }
                 }

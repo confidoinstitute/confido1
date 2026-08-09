@@ -27,7 +27,6 @@ suspend fun checkAllQuestionSchedules() {
     }
     // Without this, scheduled state changes stay invisible to connected clients
     // until some unrelated mutation happens to trigger a refresh.
-    if (changed) TransientData.refreshAllWebsockets()
 }
 
 /** Applies any schedule transitions of [q] that are due at [now]. Returns whether it was modified. */

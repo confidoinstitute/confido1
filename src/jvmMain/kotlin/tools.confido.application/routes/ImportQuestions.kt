@@ -427,7 +427,6 @@ fun importQuestionRoutes(routing: Routing) = routing.apply {
 
             ImportResult(created = created, updated = updated, unchanged = unchanged)
         }
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK, result)
     }
 }

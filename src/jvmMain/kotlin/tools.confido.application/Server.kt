@@ -19,6 +19,7 @@ import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System.now
 import kotlinx.html.*
@@ -39,7 +40,6 @@ import org.simplejavamail.mailer.MailerBuilder
 import rooms.*
 import tools.confido.application.routes.*
 import tools.confido.application.sessions.Sessions
-import tools.confido.application.sessions.globalWebsocketRefresh
 import tools.confido.application.sessions.renewUserSession
 import tools.confido.application.sessions.transientUserData
 import tools.confido.application.sessions.userSession
@@ -366,10 +366,6 @@ fun main() {
                         roomCommentArchive.versionsState.asView(),
                         serverState.presentationRunStatesState.asView(),
                         transientData.activePresenterWindowsState.asView(),
-                        // Compat until the extension topics convert: extension censor hooks
-                        // may depend on state with no flow surface yet, and the manual
-                        // refresh calls still cover those. Removed with the final sweep.
-                        globalWebsocketRefresh.asView(),
                     ).map {
                         val sessionData = call.userSession ?: unauthorized("Not logged in.")
                         if (sessionData.user == null) unauthorized("Not logged in.")
@@ -378,7 +374,7 @@ fun main() {
                 }
 
                 // The single multiplexed state websocket: carries all topics registered
-                // via topicWS/flowWS (PERSISTENCE_SYNC_REDESIGN.md §4.1).
+                // via viewWS/flowWS (PERSISTENCE_SYNC_REDESIGN.md §4.1).
                 webSocketST("/state") {
                     val clientVer = call.request.queryParameters["bundleVer"] ?: ""
                     val appConfigVer = call.request.queryParameters["appConfigVer"] ?: ""
@@ -420,8 +416,7 @@ fun main() {
                     timeoutMillis = 30_000
                     pingIntervalMillis = 15_000
 
-                    class ActiveSub(val handler: TopicHandler, val params: Parameters) {
-                        var last: JsonElement? = null
+                    class ActiveSub(val handler: FlowTopic, val params: Parameters) {
                         var job: Job? = null
                     }
                     val subs = mutableMapOf<String, ActiveSub>()
@@ -432,22 +427,7 @@ fun main() {
                     fun errorElement(errType: WSErrorType, message: String) =
                         confidoJSON.encodeToJsonElement(WSError<Unit>(errType, message) as WSResponse<Unit>)
 
-                    suspend fun evalPull(topic: String, sub: ActiveSub) {
-                        val handler = sub.handler as PullTopic
-                        val element = try {
-                            handler.eval(WSBody(TopicCall(call, sub.params)))
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            // A broken topic must not take down the whole connection.
-                            call.application.log.error("Error evaluating topic $topic", e)
-                            errorElement(WSErrorType.INTERNAL_ERROR, "Internal error")
-                        }
-                        if (element != sub.last) sendFrame(topic, element)
-                        sub.last = element
-                    }
-
-                    fun parseTopic(topic: String): Pair<TopicHandler, Parameters>? {
+                    fun parseTopic(topic: String): Pair<FlowTopic, Parameters>? {
                         val qIdx = topic.indexOf('?')
                         val path = if (qIdx >= 0) topic.substring(0, qIdx) else topic
                         val query = if (qIdx >= 0) parseQueryString(topic.substring(qIdx + 1)) else Parameters.Empty
@@ -465,36 +445,31 @@ fun main() {
                         }
                         val sub = ActiveSub(handler, params)
                         subs[topic] = sub
-                        when (handler) {
-                            is PullTopic -> evalPull(topic, sub)
-                            is FlowTopic -> sub.job = launch(singleThreadContext) {
-                                try {
-                                    handler.flow(WSBody(TopicCall(call, params)))
-                                        .distinctUntilChanged()
-                                        .conflate()
-                                        .collect { element -> sendFrame(topic, element) }
-                                } catch (e: CancellationException) {
-                                    throw e
-                                } catch (e: Exception) {
-                                    // A broken topic must not take down the whole connection.
-                                    call.application.log.error("Error collecting topic $topic", e)
-                                    sendFrame(topic, errorElement(WSErrorType.INTERNAL_ERROR, "Internal error"))
-                                }
+                        sub.job = launch(singleThreadContext) {
+                            try {
+                                handler.flow(WSBody(TopicCall(call, params)))
+                                    .distinctUntilChanged()
+                                    .conflate()
+                                    .collect { element -> sendFrame(topic, element) }
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                // A broken topic must not take down the whole connection.
+                                call.application.log.error("Error collecting topic $topic", e)
+                                sendFrame(topic, errorElement(WSErrorType.INTERNAL_ERROR, "Internal error"))
                             }
                         }
                     }
 
-                    val closeNotifier = MutableStateFlow(false)
-                    val refreshLoop = launch(singleThreadContext) {
-                        transientData.runRefreshable(closeNotifier) {
-                            if (call.userSession?.user == null) {
+                    // Close the socket when the session dies (logout elsewhere, deletion,
+                    // expiry): the retired global-refresh sweep used to perform this check
+                    // on every tick; now it watches the session cell directly.
+                    val sessionId = call.userSession?.id
+                    val sessionWatch = launch(singleThreadContext) {
+                        if (sessionId == null) return@launch
+                        userSessionStore.state.map { it[sessionId] }.distinctUntilChanged().collect { s ->
+                            if (s == null || s.isExpired() || s.userRef == null)
                                 close(CloseReason(3000, "Session expired"))
-                                closeNotifier.emit(true)
-                                return@runRefreshable
-                            }
-                            subs.entries.toList().forEach { (topic, sub) ->
-                                if (sub.handler is PullTopic) evalPull(topic, sub)
-                            }
                         }
                     }
                     val renewJob = launch(singleThreadContext) {
@@ -516,7 +491,7 @@ fun main() {
                             cmd.unsub?.let { topic -> subs.remove(topic)?.job?.cancel() }
                         }
                     } finally {
-                        refreshLoop.cancel()
+                        sessionWatch.cancel()
                         renewJob.cancel()
                         // Cancel stream jobs so their try/finally cleanups run.
                         subs.values.forEach { it.job?.cancel() }

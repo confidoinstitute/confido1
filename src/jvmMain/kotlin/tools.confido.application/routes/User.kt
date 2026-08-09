@@ -69,7 +69,6 @@ fun loginRoutes(routing: Routing) = routing.apply {
         call.initSession(user, validity = login.validity)
         call.loginUserSession(user, login.validity)
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Login by e-mail: Step one (sending link)
@@ -114,7 +113,6 @@ fun loginRoutes(routing: Routing) = routing.apply {
 
             call.initSession(user, loginLink.validity)
             call.loginUserSession(user, loginLink.validity)
-            TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK, loginLink.url)
         } finally {
             // Login links are single-use
@@ -140,7 +138,6 @@ fun loginRoutes(routing: Routing) = routing.apply {
 
             call.initSession(user, login.validity)
             call.loginUserSession(user, login.validity)
-            TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
     }
@@ -151,7 +148,6 @@ fun loginRoutes(routing: Routing) = routing.apply {
         val session = call.userSession
         if (session?.user != null) {
             call.destroyUserSession()
-            call.transientUserData?.refreshSessionWebsockets()
         }
         call.respond(HttpStatusCode.OK)
     }
@@ -262,7 +258,6 @@ fun profileRoutes(routing: Routing) = routing.apply {
             verificationLinkStore.delete(verificationLink.ref)
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Change password
@@ -274,7 +269,6 @@ fun profileRoutes(routing: Routing) = routing.apply {
             changePassword(passwordChange.currentPassword, passwordChange.newPassword)
         }
 
-        call.transientUserData?.refreshSessionWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Remove password
@@ -299,7 +293,6 @@ fun profileRoutes(routing: Routing) = routing.apply {
             passwordResetLinkStore.insert(link)
         }
 
-        call.transientUserData?.refreshSessionWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Undo password change
@@ -320,7 +313,6 @@ fun profileRoutes(routing: Routing) = routing.apply {
         }
 
         // TODO invalidate all user's sessions
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Change nick
@@ -334,7 +326,6 @@ fun profileRoutes(routing: Routing) = routing.apply {
             }
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
 
@@ -373,7 +364,6 @@ fun profileRoutes(routing: Routing) = routing.apply {
 
             EditProfileResult(nickChange, emailChange, emailError, passwordChange, passwordError)
         }
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK, response)
     }
 }
@@ -484,7 +474,6 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             inviteLink
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK, inviteLink)
     }
     // Edit an invitation link
@@ -516,7 +505,6 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             }
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Delete an invitation link
@@ -537,7 +525,6 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             }
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     // Accept an invitation link as an existing user (requires login)
@@ -566,7 +553,6 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             }
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     postST("$roomUrl/invite/accept_newuser") {
@@ -647,7 +633,6 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             userAlreadyExists
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK, userAlreadyExists)
     }
 }
@@ -684,7 +669,6 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
             if (duplicateEmail) badRequest("E-mail address already used by another account")
         }
 
-        TransientData.refreshAllWebsockets()
         call.respond(HttpStatusCode.OK)
     }
     deleteST("/users/{id}") {
@@ -771,7 +755,6 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
                 }
             }
 
-            TransientData.refreshAllWebsockets()
             call.respond(HttpStatusCode.OK)
         }
     }
@@ -797,7 +780,6 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
                 tools.confido.store.userStore.insert(addedUser)
             }
             if (duplicateEmail) badRequest("E-mail address already used by another account")
-            TransientData.refreshAllWebsockets()
 
             if (sendInvitationEmail && addedUser.email != null) {
                 try {
