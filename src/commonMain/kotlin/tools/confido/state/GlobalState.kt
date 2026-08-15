@@ -57,15 +57,16 @@ abstract class GlobalState : BaseState {
 // Client or server will provide concrete implementation
 expect val globalState: GlobalState
 
-// The shared (permission-class-shaped) state snapshot sent over the "/state" topic.
-// Transitional Phase 3 monolith: decomposes field by field into the §4.2 semantic
-// topics; the per-user fields moved to [SelfState] ("self") and rooms to the
-// "/state/rooms" directory + "/state/rooms/{id}" detail topics. No longer implements
-// BaseState — the client's ClientState facade assembles that from the topic slices.
+// The "/state/questions" topic payload (§4.2): all questions the viewer can see, with
+// the per-question count maps riding along — they are per-question facts that only
+// ever existed as separate maps because the retired SentState monolith was flat.
+// (The former "/state" monolith is fully decomposed: rooms → "/state/rooms" (+ the
+// per-room detail topic), per-user fields → "/state/self", users → "/state/users",
+// questions+counts → here. The client's ClientState facade assembles BaseState from
+// these slices.)
 @Serializable
-data class SentState(
+data class QuestionsState(
     val questions: Map<String, Question> = emptyMap(),
-    val users: Map<String, User> = emptyMap(),
     val predictionCount: Map<Ref<Question>, Int> = emptyMap(),
     val predictorCount: Map<Ref<Question>, Int> = emptyMap(),
     val commentCount: Map<Ref<Question>, Int> = emptyMap(),
@@ -73,8 +74,8 @@ data class SentState(
 
 // The per-user state slice sent over the "/state/self" topic
 // (PERSISTENCE_SYNC_REDESIGN.md §4.2). Small and per-user by nature; keeping it out
-// of [SentState] makes the snapshot purely permission-class-shaped and stops session
-// churn (renewals, presenter windows, own predictions) from invalidating it.
+// of the shared topics makes those purely permission-class-shaped and stops session
+// churn (renewals, presenter windows, own predictions) from invalidating them.
 @Serializable
 data class SelfState(
     val session: UserSession = UserSession(),

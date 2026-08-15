@@ -150,15 +150,13 @@ class StateCensor(val sess: UserSession) {
     fun censorUsers() =
         state.users.mapValuesNotNull { censorUser(it.value) }
 
-    fun censor(): SentState {
-        return SentState(
-            questions = censorQuestions(),
-            commentCount = censorQuestionInfo(state.commentCount),
-            predictorCount = censorQuestionInfo(state.predictorCount),
-            predictionCount = censorQuestionInfo(state.predictionCount),
-            users = censorUsers(),
-        )
-    }
+    /** The "/state/questions" topic payload: censored questions + per-question counts. */
+    fun censorQuestionsState() = QuestionsState(
+        questions = censorQuestions(),
+        commentCount = censorQuestionInfo(state.commentCount),
+        predictorCount = censorQuestionInfo(state.predictorCount),
+        predictionCount = censorQuestionInfo(state.predictionCount),
+    )
 }
 
 /** The per-user "/state/self" topic payload (PERSISTENCE_SYNC_REDESIGN.md §4.2). */

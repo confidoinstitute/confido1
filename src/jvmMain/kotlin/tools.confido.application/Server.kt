@@ -348,29 +348,46 @@ fun main() {
                 calibrationRoutes(this)
                 scoreRoutes(this)
 
-                // The shared app-state snapshot as a View topic over (almost) everything —
-                // transitional: SentState decomposes into semantic topics later in Phase 3,
-                // shrinking this composition field by field. The censor body still reads
-                // global state (it IS the legacy everything-snapshot), so the combine acts
-                // purely as the wake-signal set; count/author views change strictly with
-                // their underlying store/archive sources listed here. The per-user fields
-                // live in "/state/self" below, so this payload is purely a function of the
-                // viewer's permission class (latestPredictions stays: the censor's
-                // ANSWERED comment-visibility gate reads the viewer's own prediction).
-                viewWS("/state") {
+                // §4.2 "questions" (transitionally global rather than per-room): all
+                // questions the viewer can see, with the per-question count maps riding
+                // along. The counts' fold surfaces are wake inputs of their own — a
+                // prediction or comment bumps a count without touching the question
+                // entity. latestPredictions is included for extension censor hooks that
+                // read the viewer's predictions.
+                viewWS("/state/questions") {
                     if (call.userSession?.user == null) unauthorized("Not logged in.")
                     combineViews(
-                        roomStore.state.asView(),
                         questionStore.state.asView(),
+                        roomStore.state.asView(),
                         userStore.state.asView(),
                         latestPredictions.state.asView(),
-                        questionCommentArchive.versionsState.asView(),
-                        roomCommentArchive.versionsState.asView(),
-                        serverState.presentationRunStatesState.asView(),
+                        predictionData.predictionCount.state.asView(),
+                        predictionData.predictorCount.state.asView(),
+                        commentData.commentCount.state.asView(),
                     ).map {
                         val sessionData = call.userSession ?: unauthorized("Not logged in.")
                         if (sessionData.user == null) unauthorized("Not logged in.")
-                        StateCensor(sessionData).censor()
+                        StateCensor(sessionData).censorQuestionsState()
+                    }
+                }
+
+                // §4.2 users: the censored user directory (own + admin/member visibility +
+                // comment authors via referencedUsers, whose gates read the comment
+                // archives and the viewer's own predictions). Shrinks to admin/moderator
+                // scope once the UserPresentation rollout embeds authors in payloads.
+                viewWS("/state/users") {
+                    if (call.userSession?.user == null) unauthorized("Not logged in.")
+                    combineViews(
+                        userStore.state.asView(),
+                        roomStore.state.asView(),
+                        questionStore.state.asView(),
+                        latestPredictions.state.asView(),
+                        questionCommentArchive.versionsState.asView(),
+                        roomCommentArchive.versionsState.asView(),
+                    ).map {
+                        val sessionData = call.userSession ?: unauthorized("Not logged in.")
+                        if (sessionData.user == null) unauthorized("Not logged in.")
+                        StateCensor(sessionData).censorUsers()
                     }
                 }
 

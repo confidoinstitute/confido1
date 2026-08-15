@@ -9,9 +9,10 @@ import react.*
 import rooms.Room
 import tools.confido.serialization.confidoJSON
 import tools.confido.state.ClientState
+import tools.confido.state.QuestionsState
 import tools.confido.state.SelfState
-import tools.confido.state.SentState
 import tools.confido.state.clientState
+import users.User
 import websocket.MultiplexWS
 
 external interface NoAppStateProps : Props {
@@ -24,9 +25,10 @@ external interface AppStateWebsocketProviderProps : PropsWithChildren {
 
 /**
  * Owns the root subscriptions of the multiplexed websocket and provides
- * [AppStateContext] as a [ClientState] facade assembled from the "/state" monolith
- * and the peeled "/state/self" slice. Both subscriptions issue in the same tick, so
- * their initial payloads arrive in one consistent frame; the global [clientState]
+ * [AppStateContext] as a [ClientState] facade assembled from the topic slices
+ * (questions+counts, rooms directory, users, self — the former SentState monolith
+ * is fully decomposed). All root subscriptions issue in the same tick, so their
+ * initial payloads arrive in one consistent frame; the global [clientState]
  * (which backs shared-code `deref()`) is reassigned inside the frame's listener
  * pass, i.e. always before React re-renders anything.
  */
@@ -40,45 +42,53 @@ val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
     }
 
     useEffectOnceWithCleanup {
-        var curSent: SentState? = null
+        var curQuestions: QuestionsState? = null
         var curSelf: SelfState? = null
         var curRooms: Map<String, Room>? = null
+        var curUsers: Map<String, User>? = null
         fun apply() {
-            val sent = curSent ?: return
-            val self = curSelf ?: return
-            val roomDir = curRooms ?: return
-            val cs = ClientState(sent, self, roomDir)
+            val cs = ClientState(
+                curQuestions ?: return,
+                curSelf ?: return,
+                curRooms ?: return,
+                curUsers ?: return,
+            )
             clientState = cs
             appState = cs
 
             try {
+                // For easy inspection in devtools.
                 @OptIn(ExperimentalSerializationApi::class)
-                window.asDynamic().curState =
-                    confidoJSON.encodeToDynamic(sent) // for easy inspection in devtools
+                window.asDynamic().curQuestions = confidoJSON.encodeToDynamic(cs.questionsState)
                 @OptIn(ExperimentalSerializationApi::class)
-                window.asDynamic().curSelf =
-                    confidoJSON.encodeToDynamic(self)
+                window.asDynamic().curSelf = confidoJSON.encodeToDynamic(cs.self)
                 @OptIn(ExperimentalSerializationApi::class)
-                window.asDynamic().curRooms =
-                    confidoJSON.encodeToDynamic(roomDir)
+                window.asDynamic().curRooms = confidoJSON.encodeToDynamic(cs.roomDir)
+                @OptIn(ExperimentalSerializationApi::class)
+                window.asDynamic().curUsers = confidoJSON.encodeToDynamic(cs.users)
             } catch (e: Exception) {
             }
         }
-        val unsubState = MultiplexWS.subscribe("/state", decodeTopicPayload<SentState>("/state")) { response, isStale ->
-            (response as? WSData)?.data?.let { curSent = it; apply() }
-            stale = isStale
+        val unsubQuestions = MultiplexWS.subscribe("/state/questions", decodeTopicPayload<QuestionsState>("/state/questions")) { response, _ ->
+            (response as? WSData)?.data?.let { curQuestions = it; apply() }
         }
         val unsubSelf = MultiplexWS.subscribe("/state/self", decodeTopicPayload<SelfState>("/state/self")) { response, _ ->
             (response as? WSData)?.data?.let { curSelf = it; apply() }
         }
-        val unsubRooms = MultiplexWS.subscribe("/state/rooms", decodeTopicPayload<Map<String, Room>>("/state/rooms")) { response, _ ->
+        val unsubRooms = MultiplexWS.subscribe("/state/rooms", decodeTopicPayload<Map<String, Room>>("/state/rooms")) { response, isStale ->
             (response as? WSData)?.data?.let { curRooms = it; apply() }
+            // Staleness is connection-level; tracking it on one root topic suffices.
+            stale = isStale
+        }
+        val unsubUsers = MultiplexWS.subscribe("/state/users", decodeTopicPayload<Map<String, User>>("/state/users")) { response, _ ->
+            (response as? WSData)?.data?.let { curUsers = it; apply() }
         }
         MultiplexWS.start()
         onCleanup {
-            unsubState()
+            unsubQuestions()
             unsubSelf()
             unsubRooms()
+            unsubUsers()
         }
     }
 
