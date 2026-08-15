@@ -160,7 +160,7 @@ object serverState : GlobalState() {
     val questionRoom: Map<Ref<Question>, Ref<Room>> get() = roomStore.questionRoom
     override val rooms: Map<String, Room> get() = roomStore.asMap
     override val questions: Map<String, Question> get() = questionStore.asMap
-    override val users: Map<String, User> get() = userStore.asMap
+    val users: Map<String, User> get() = userStore.asMap
 
 
 

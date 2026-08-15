@@ -25,9 +25,9 @@ import kotlin.reflect.KProperty1
  * with partition fetch (`all(question)` / `all(room)`) as the core read primitive. Likes
  * are a `likes` array on the comment document itself, so they travel with the comment.
  *
- * Two folds are maintained from the change stream and boot-initialized by aggregates:
- * `commentCount` per question (the SentState field) and `commentAuthors` per partition
- * (feeding StateCensor's referencedUsers until the Phase 3 censor redesign removes it).
+ * One fold is maintained from the change stream and boot-initialized by an aggregate:
+ * `commentCount` per question. (The former `commentAuthors` folds died with the
+ * censor's referencedUsers — comment authors ship as embedded presentations, §5.3.)
  */
 open class MongoCommentArchive<E : tools.confido.question.Comment, P : Ref<*>>(
     internal val coll: CoroutineCollection<E>,
@@ -146,34 +146,13 @@ object commentData : ManagedStore {
     override val mongoCollections get() = listOf(questionCommentArchive.coll, roomCommentArchive.coll)
 
     val commentCount = CountView<Ref<Question>>()
-    val questionCommentAuthors = RefCountIndex<Ref<Question>, Ref<User>>()
-    val roomCommentAuthors = RefCountIndex<Ref<Room>, Ref<User>>()
 
     init {
         questionCommentArchive.onChange { change ->
             when (change) {
-                is Change.Added -> {
-                    commentCount.increment(change.entity.question)
-                    questionCommentAuthors.add(change.entity.question, change.entity.user)
-                }
-                is Change.Removed -> {
-                    commentCount.increment(change.entity.question, -1)
-                    questionCommentAuthors.remove(change.entity.question, change.entity.user)
-                }
-                is Change.Updated -> if (!(change.old.user eqid change.new.user)) {
-                    questionCommentAuthors.remove(change.old.question, change.old.user)
-                    questionCommentAuthors.add(change.new.question, change.new.user)
-                }
-            }
-        }
-        roomCommentArchive.onChange { change ->
-            when (change) {
-                is Change.Added -> roomCommentAuthors.add(change.entity.room, change.entity.user)
-                is Change.Removed -> roomCommentAuthors.remove(change.entity.room, change.entity.user)
-                is Change.Updated -> if (!(change.old.user eqid change.new.user)) {
-                    roomCommentAuthors.remove(change.old.room, change.old.user)
-                    roomCommentAuthors.add(change.new.room, change.new.user)
-                }
+                is Change.Added -> commentCount.increment(change.entity.question)
+                is Change.Removed -> commentCount.increment(change.entity.question, -1)
+                is Change.Updated -> {}
             }
         }
     }
@@ -186,27 +165,14 @@ object commentData : ManagedStore {
     }
 
     override suspend fun load() {
-        // Boot = one (partition, author) count aggregate per fold instead of loading
-        // every comment into memory. Raw BSON: refs are stored as plain string ids.
-        suspend fun authorCounts(coll: CoroutineCollection<*>, partitionField: String,
-                                 collect: (String, String, Int) -> Unit) {
-            coll.aggregate<org.bson.Document>(listOf(
-                org.bson.Document("\$group", org.bson.Document("_id",
-                    org.bson.Document("p", "\$$partitionField").append("u", "\$user"))
-                    .append("cnt", org.bson.Document("\$sum", 1)))
-            )).toFlow().collect { doc ->
-                val key = doc.get("_id", org.bson.Document::class.java)
-                val p = key.getString("p") ?: return@collect
-                val u = key.getString("u") ?: return@collect
-                collect(p, u, doc.getInteger("cnt"))
-            }
-        }
-        authorCounts(questionCommentArchive.coll, "question") { q, u, cnt ->
-            commentCount.increment(Ref(q), cnt)
-            questionCommentAuthors.add(Ref(q), Ref(u), cnt)
-        }
-        authorCounts(roomCommentArchive.coll, "room") { r, u, cnt ->
-            roomCommentAuthors.add(Ref(r), Ref(u), cnt)
+        // Boot = one per-question count aggregate instead of loading every comment
+        // into memory. Raw BSON: refs are stored as plain string ids.
+        questionCommentArchive.coll.aggregate<org.bson.Document>(listOf(
+            org.bson.Document("\$group", org.bson.Document("_id", "\$question")
+                .append("cnt", org.bson.Document("\$sum", 1)))
+        )).toFlow().collect { doc ->
+            val q = doc.getString("_id") ?: return@collect
+            commentCount.increment(Ref(q), doc.getInteger("cnt"))
         }
     }
 }

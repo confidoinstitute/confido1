@@ -121,8 +121,13 @@ val AddMemberDialog = dialogStateWrapper(FC<BaseDialogProps> { props ->
         .filter { !it.implied && it.invitedVia == null }
         .mapNotNull { it.user.userId?.id }.toSet()
 
-    val users = useMemo(appState.users) {
-        appState.users.values.sortedWith(
+    // The addable-user directory comes from the users topic (subscribed here, not
+    // globally — this dialog is a MANAGE_MEMBERS surface).
+    val usersWS = useSubscription(Topics.users())
+    val allUsers = (usersWS as? WSData)?.data ?: emptyMap()
+
+    val users = useMemo(allUsers) {
+        allUsers.values.sortedWith(
             compareBy({ it.type }, { (it.nick ?: it.email ?: "") })
         ).mapNotNull {
             if (!it.isAnonymous() && it.id !in members) it else null
@@ -137,7 +142,7 @@ val AddMemberDialog = dialogStateWrapper(FC<BaseDialogProps> { props ->
             inNick || inEmail
         }
     }
-    val newEmail = search.contains("@") && !appState.users.values.any {
+    val newEmail = search.contains("@") && !allUsers.values.any {
         it.email == search
     }
 

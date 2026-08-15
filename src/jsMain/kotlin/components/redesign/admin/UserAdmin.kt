@@ -16,6 +16,9 @@ import emotion.react.css
 import hooks.EditEntityDialogProps
 import hooks.useCoroutineLock
 import hooks.useEditDialog
+import hooks.useSubscription
+import payloads.responses.WSData
+import tools.confido.state.Topics
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.datetime.Clock
@@ -287,6 +290,9 @@ val UserAdmin = FC<Props> {
     val (appState, stale) = use(AppStateContext)!!
     if (!appState.isAdmin()) return@FC
 
+    // The user directory is a surface-local subscription (no global users map).
+    val usersWS = useSubscription(Topics.users())
+    val users = (usersWS as? WSData)?.data ?: emptyMap()
 
     val activate = useCoroutineLock()
     var typeHelpOpen by useDialog(UserTypeHelpDialog)
@@ -333,7 +339,7 @@ val UserAdmin = FC<Props> {
                     }
                 }
                 tbody {
-                    appState.users.values.filter { it.type != UserType.GHOST }.sortedWith(
+                    users.values.filter { it.type != UserType.GHOST }.sortedWith(
                         compareBy(
                             {
                                 when (it.type) {

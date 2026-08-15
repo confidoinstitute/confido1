@@ -6,13 +6,9 @@ import payloads.responses.MembershipPayload
 import rooms.*
 import tools.confido.application.sessions.TransientData
 import tools.confido.extensions.ServerExtension
-import tools.confido.question.Comment
-import tools.confido.question.CommentVisibility
 import tools.confido.question.Question
-import tools.confido.question.RoomComment
 import tools.confido.refs.*
 import tools.confido.state.*
-import tools.confido.store.commentData
 import tools.confido.utils.*
 import users.User
 import users.UserPresentation
@@ -24,38 +20,6 @@ import users.UserType
 class StateCensor(val sess: UserSession) {
     val user = sess.user
     val state = serverState
-
-    // Lazy: only the users-map censoring needs this; topic bodies that censor rooms
-    // alone (the directory/detail topics) never pay for the walk.
-    val referencedUsers: Set<Ref<User>> by lazy { computeReferencedUsers() }
-
-    private fun computeReferencedUsers(): Set<Ref<User>> {
-        val referencedUsers = mutableSetOf<Ref<User>>()
-        // Iterates precomputed per-thread author sets (folds over the comment archives'
-        // change streams), not individual comments; cost is O(threads × distinct authors).
-        commentData.questionCommentAuthors.forEach { qref, authors ->
-            val q = qref.deref() ?: return@forEach
-            val room = state.questionRoom[q.ref]?.deref() ?: return@forEach
-            if (!room.hasPermission(user, RoomPermission.VIEW_QUESTION_COMMENTS)) return@forEach
-
-            val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
-            val lastPrediction = state.userPred[q.ref]?.get(user?.ref)
-            val canView = when (q.commentVisibility) {
-                CommentVisibility.EVERYONE -> true
-                CommentVisibility.ANSWERED -> lastPrediction != null
-                CommentVisibility.MODERATOR_ONLY -> false
-            }
-            if (!(canViewAll || canView)) return@forEach
-            referencedUsers.addAll(authors)
-        }
-
-        commentData.roomCommentAuthors.forEach { roomRef, authors ->
-            val room = roomRef.deref() ?: return@forEach
-            if (!room.hasPermission(user, RoomPermission.VIEW_ROOM_COMMENTS)) return@forEach
-            referencedUsers.addAll(authors)
-        }
-        return referencedUsers
-    }
 
     fun censorInviteLink(room: Room, inviteLink: InviteLink) =
         if (room.hasPermission(user, RoomPermission.VIEW_ALL_INVITE_TOKENS) || inviteLink.createdBy == user?.ref)
@@ -113,9 +77,10 @@ class StateCensor(val sess: UserSession) {
         return ret
     }
 
+    // The users directory is only served to proper users (the topic gate); guests'
+    // identity needs are covered by presentations embedded in payloads (§5.3).
     fun censorUser(u: User): User? {
         if (user?.type in setOf(UserType.ADMIN, UserType.MEMBER) || user eqid u) return u.copy(password = null)
-        else if (u.ref in referencedUsers) return u.copy(password = null, email = null)
         else return null
     }
 
@@ -193,6 +158,9 @@ fun selfState(sess: UserSession, transientData: TransientData): SelfState {
         // code; pinning it keeps the payload stable so dedup can do its job (otherwise
         // the acting user re-receives the payload on each of their requests).
         session = sess.copy(expiryTime = Instant.DISTANT_FUTURE),
+        // Own user rides along: the client resolves Ref<User> (UserSession.user and
+        // own-ref eqid checks) against this — the users map left ordinary clients.
+        user = user?.copy(password = null),
         myPredictions = if (user != null)
             serverState.userPred.mapValuesNotNull { it.value[user.ref] } else emptyMap(),
         myPasswordIsSet = user?.password != null,

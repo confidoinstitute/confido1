@@ -36,24 +36,6 @@ class UniqueIndex<E : HasId, K>(source: ChangeSource<E>, val keyOf: (E) -> K?) {
 }
 
 /**
- * Reference-counted secondary index: for each key, the set of values currently referenced
- * by at least one entity. (Moved from ServerState.kt; the manual add/remove API remains for
- * the legacy managers until their conversion — new stores maintain instances via onChange.)
- */
-class RefCountIndex<K, V> {
-    val index: MutableMap<K, MutableMap<V, Int>> = mutableMapOf()
-    fun add(k: K, v: V, count: Int = 1) { index.getOrPut(k){ mutableMapOf() }.merge(v, count, Int::plus) }
-    fun remove(k: K, v: V) {
-        val m = index[k] ?: return
-        val n = (m[v] ?: return) - 1
-        if (n <= 0) m.remove(v) else m[v] = n
-        if (m.isEmpty()) index.remove(k)
-    }
-    operator fun get(k: K): Set<V> = index[k]?.keys ?: emptySet()
-    inline fun forEach(body: (K, Set<V>) -> Unit) = index.forEach { (k, m) -> body(k, m.keys) }
-}
-
-/**
  * Per-key counter maintained as an incremental fold over a change stream (the
  * `totalPredictions` pattern: boot-initialized from one aggregate via [set], then
  * incremented/decremented on changes). Zero-count keys are removed.

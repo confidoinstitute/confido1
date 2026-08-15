@@ -13,7 +13,6 @@ import kotlin.reflect.KClass
 interface BaseState {
     val rooms:  Map<String, Room>
     val questions:  Map<String, Question>
-    val users:  Map<String, User>
     val predictorCount : Map<Ref<Question>, Int>
     val predictionCount : Map<Ref<Question>, Int>
     val commentCount : Map<Ref<Question>, Int>
@@ -30,7 +29,6 @@ abstract class GlobalState : BaseState {
     open fun  derefNonBlocking(entityType: KClass<*>, id: String): Entity? =
         when (entityType) {
             Question::class -> questions[id]
-            User::class -> users[id]
             Room::class -> rooms[id]
             else -> null
         }
@@ -79,6 +77,11 @@ data class QuestionsState(
 @Serializable
 data class SelfState(
     val session: UserSession = UserSession(),
+    /** The viewer's own User (password scrubbed). The client resolves `Ref<User>`
+     *  against this — `UserSession.user` is a shared-code deref, and no user other
+     *  than oneself is ever client-derefable (the users map left ordinary clients;
+     *  other identities arrive as UserPresentations embedded in payloads, §5.3). */
+    val user: User? = null,
     val myPredictions: Map<Ref<Question>, Prediction> = emptyMap(),
     val myPasswordIsSet: Boolean = false,
     val presenterWindowActive: Boolean = false,

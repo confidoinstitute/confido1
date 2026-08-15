@@ -13,7 +13,6 @@ import tools.confido.state.QuestionsState
 import tools.confido.state.SelfState
 import tools.confido.state.Topics
 import tools.confido.state.clientState
-import users.User
 import websocket.MultiplexWS
 
 external interface NoAppStateProps : Props {
@@ -27,8 +26,9 @@ external interface AppStateWebsocketProviderProps : PropsWithChildren {
 /**
  * Owns the root subscriptions of the multiplexed websocket and provides
  * [AppStateContext] as a [ClientState] facade assembled from the topic slices
- * (questions+counts, rooms directory, users, self — the former SentState monolith
- * is fully decomposed). All root subscriptions issue in the same tick, so their
+ * (questions+counts, rooms directory, self — the former SentState monolith is
+ * fully decomposed; the users directory is a surface-local subscription, not a
+ * root slice). All root subscriptions issue in the same tick, so their
  * initial payloads arrive in one consistent frame; the global [clientState]
  * (which backs shared-code `deref()`) is reassigned inside the frame's listener
  * pass, i.e. always before React re-renders anything.
@@ -46,13 +46,11 @@ val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
         var curQuestions: QuestionsState? = null
         var curSelf: SelfState? = null
         var curRooms: Map<String, Room>? = null
-        var curUsers: Map<String, User>? = null
         fun apply() {
             val cs = ClientState(
                 curQuestions ?: return,
                 curSelf ?: return,
                 curRooms ?: return,
-                curUsers ?: return,
             )
             clientState = cs
             appState = cs
@@ -65,8 +63,6 @@ val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
                 window.asDynamic().curSelf = confidoJSON.encodeToDynamic(cs.self)
                 @OptIn(ExperimentalSerializationApi::class)
                 window.asDynamic().curRooms = confidoJSON.encodeToDynamic(cs.roomDir)
-                @OptIn(ExperimentalSerializationApi::class)
-                window.asDynamic().curUsers = confidoJSON.encodeToDynamic(cs.users)
             } catch (e: Exception) {
             }
         }
@@ -81,15 +77,11 @@ val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
             // Staleness is connection-level; tracking it on one root topic suffices.
             stale = isStale
         }
-        val unsubUsers = MultiplexWS.subscribe(Topics.users().name, decodeTopicPayload(Topics.users())) { response, _ ->
-            (response as? WSData)?.data?.let { curUsers = it; apply() }
-        }
         MultiplexWS.start()
         onCleanup {
             unsubQuestions()
             unsubSelf()
             unsubRooms()
-            unsubUsers()
         }
     }
 

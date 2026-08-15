@@ -372,22 +372,18 @@ fun main() {
                     }
                 }
 
-                // §4.2 users: the censored user directory (own + admin/member visibility +
-                // comment authors via referencedUsers, whose gates read the comment
-                // archives and the viewer's own predictions). Shrinks to admin/moderator
-                // scope once the UserPresentation rollout embeds authors in payloads.
+                // §4.2 users: the user directory, proper (admin/member) users only —
+                // guests' identity needs are covered by presentations embedded in
+                // payloads (§5.3), so the referencedUsers machinery is gone and the
+                // wake set is just the user store. Subscribed on demand by the admin
+                // directory and the add-member dialog, not root-subscribed.
                 viewWS(Topics.users) {
                     if (call.userSession?.user == null) unauthorized("Not logged in.")
-                    combineViews(
-                        userStore.state.asView(),
-                        roomStore.state.asView(),
-                        questionStore.state.asView(),
-                        latestPredictions.state.asView(),
-                        questionCommentArchive.versionsState.asView(),
-                        roomCommentArchive.versionsState.asView(),
-                    ).map {
+                    userStore.state.asView().map {
                         val sessionData = call.userSession ?: unauthorized("Not logged in.")
-                        if (sessionData.user == null) unauthorized("Not logged in.")
+                        val viewer = sessionData.user ?: unauthorized("Not logged in.")
+                        if (viewer.type !in setOf(UserType.ADMIN, UserType.MEMBER))
+                            unauthorized("Cannot list users.")
                         StateCensor(sessionData).censorUsers()
                     }
                 }
