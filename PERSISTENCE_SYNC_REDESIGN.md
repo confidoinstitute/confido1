@@ -996,6 +996,20 @@ working untouched mid-transition.
     The commonMain `describe()` remains as a deref-free generic fallback (the two
     name-bearing FlowAction describes went generic); remaining eviction blockers:
     only the server-only-called `isValid`/`getNavigateUrl`.
+  - **Question topics added** (`room/<id>/questions` + `question/<id>`): the §4.2
+    per-room slice ships own + effective questions (each censored against its own
+    room) with counts riding along; the by-id topic ships entity data only, so
+    count churn frames the collection slice but never the entity topic (verified,
+    along with cross-room isolation and the membership gate). `useQuestion` flipped
+    to v1 (real `question/<id>` subscription; `useSubscription` accepts a null
+    topic to keep hook order stable), and the room page's question lists read the
+    room slice. The global `questions` slice remains root-subscribed as the
+    transitional bridge (initial-load fallback in `useQuestion` and RoomLayout,
+    plus all remaining cross-room/deref consumers); it narrows and dies at the
+    eviction. Remaining before the eviction: cross-room surfaces (dashboard,
+    search, calibration, presenter pages) to direct subscriptions, the
+    `isValid`/`getNavigateUrl` server dispatch, then the eviction commit;
+    permission-class sharing rides after.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or
