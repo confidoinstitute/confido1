@@ -76,12 +76,16 @@ data class QuestionsState(
 // churn (renewals, presenter windows, own predictions) from invalidating them.
 @Serializable
 data class SelfState(
-    val session: UserSession = UserSession(),
     /** The viewer's own User (password scrubbed). The client resolves `Ref<User>`
-     *  against this — `UserSession.user` is a shared-code deref, and no user other
-     *  than oneself is ever client-derefable (the users map left ordinary clients;
-     *  other identities arrive as UserPresentations embedded in payloads, §5.3). */
+     *  against this — no user other than oneself is ever client-derefable (the users
+     *  map left ordinary clients; other identities arrive as UserPresentations
+     *  embedded in payloads, §5.3). */
     val user: User? = null,
+    // The two session fields the client actually reads — the raw UserSession is
+    // deliberately NOT shipped (it is a credential-bearing server entity; shipping
+    // it also required pinning expiryTime so session renewals deduped away).
+    val presenterInfo: PresenterInfo? = null,
+    val followingPresentation: Ref<Room>? = null,
     val myPredictions: Map<Ref<Question>, Prediction> = emptyMap(),
     val myPasswordIsSet: Boolean = false,
     val presenterWindowActive: Boolean = false,

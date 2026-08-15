@@ -1,6 +1,5 @@
 package tools.confido.application
 
-import kotlinx.datetime.Instant
 import java.security.MessageDigest
 import payloads.responses.MembershipPayload
 import rooms.*
@@ -155,13 +154,14 @@ class StateCensor(val sess: UserSession) {
 fun selfState(sess: UserSession, transientData: TransientData): SelfState {
     val user = sess.user
     return SelfState(
-        // expiryTime is renewed on every authenticated request and read by no client
-        // code; pinning it keeps the payload stable so dedup can do its job (otherwise
-        // the acting user re-receives the payload on each of their requests).
-        session = sess.copy(expiryTime = Instant.DISTANT_FUTURE),
-        // Own user rides along: the client resolves Ref<User> (UserSession.user and
-        // own-ref eqid checks) against this — the users map left ordinary clients.
+        // Own user rides along: the client resolves Ref<User> (own-ref eqid checks)
+        // against this — the users map left ordinary clients. Only the session
+        // fields the client reads are projected out; the raw UserSession (session
+        // id, expiry) never leaves the server, which also retires the old
+        // expiryTime-pinning dedup hack (renewals no longer touch the payload).
         user = user?.copy(password = null),
+        presenterInfo = sess.presenterInfo,
+        followingPresentation = sess.followingPresentation,
         myPredictions = if (user != null)
             serverState.userPred.mapValuesNotNull { it.value[user.ref] } else emptyMap(),
         myPasswordIsSet = user?.password != null,

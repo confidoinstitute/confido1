@@ -39,7 +39,8 @@ class ClientState(
      *  subscription (admin directory, add-member dialog), not global state. */
     val user: User? get() = self.user
 
-    val session by self::session
+    val presenterInfo by self::presenterInfo
+    val followingPresentation by self::followingPresentation
     val myPredictions by self::myPredictions
     val myPasswordIsSet by self::myPasswordIsSet
     val presenterWindowActive by self::presenterWindowActive

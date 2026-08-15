@@ -37,7 +37,9 @@ data class UserSession(
     val followingPresentation: Ref<Room>? = null,
     val validity: UserSessionValidity = UserSessionValidity.PERMANENT,
     override val expiryTime: Instant = Clock.System.now() + validity.validTime,
-) : ImmediateDerefEntity, ExpiringEntity {
+    // Server-only entity: sessions never reach the client at all — SelfState projects
+    // out the two fields client code reads (presenterInfo, followingPresentation).
+) : ServerImmediateDerefEntity, ExpiringEntity {
     // NOTE deliberately NO `user` shortcut here: resolving userRef requires a deref,
     // which only the server can do (User is ServerImmediateDerefEntity). The server
     // has `UserSession.user` as a jvmMain extension; the client reads the viewer's

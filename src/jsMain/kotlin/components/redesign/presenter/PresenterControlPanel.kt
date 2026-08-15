@@ -59,7 +59,7 @@ val PresenterControlPanel = FC<Props> {
     val ctl = use(PresenterContext)!!
     var expanded by useState(false)
 
-    val info = appState.session.presenterInfo
+    val info = appState.presenterInfo
     val view = info?.view
     // Show the panel while a presenter window is open, or while a recently set
     // presenter view lingers (offering to reopen the window or stop presenting).

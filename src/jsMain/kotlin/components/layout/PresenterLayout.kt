@@ -58,6 +58,6 @@ val PresenterLayoutInner = FC<Props> {
             display = Display.flex
             flexDirection = FlexDirection.column
         }
-        PresenterPage { view = appState.session.presenterInfo?.view ?: EmptyPV }
+        PresenterPage { view = appState.presenterInfo?.view ?: EmptyPV }
     }
 }

@@ -44,7 +44,7 @@ import web.window.window
 private val PresentationFollowBanner = FC<Props> {
     val (appState, stale) = use(AppStateContext)!!
     val room = use(RoomContext)!!
-    val isFollowing = appState.session.followingPresentation?.id == room.id
+    val isFollowing = appState.followingPresentation?.id == room.id
     val presentationRunning = room._presentationRunning == true
     val isGuest = appState.user?.type == users.UserType.GUEST
     // Don't show anything if no presentation is running
@@ -403,7 +403,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                 flexDirection = FlexDirection.column
             }
             
-            val routes = useMemo(room.id, appState.session) {
+            val routes = useMemo(room.id, appState.self) {
                 buildList {
                     if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS)) {
                         add(jso<RouteObject> {

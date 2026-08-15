@@ -102,7 +102,7 @@ private val RootLayoutInner = FC<Props> {
     }
 
     // Presentation follow navigation: conditionally render the navigator component
-    val followingRoom = appState.session.followingPresentation
+    val followingRoom = appState.followingPresentation
     if (followingRoom != null) {
         PresentationFollowNavigator {
             roomId = followingRoom.id
