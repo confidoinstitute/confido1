@@ -5,6 +5,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 import payloads.responses.TopicCommand
 import payloads.responses.TopicFrame
+import payloads.responses.TopicUpdate
 import tools.confido.serialization.confidoJSON
 import utils.webSocketUrl
 import web.events.EventHandler
@@ -44,6 +45,36 @@ object MultiplexWS {
 
     private val subs = mutableMapOf<String, Entry>()
 
+    // Sub/unsub commands issued in the same tick are coalesced into one TopicCommand
+    // (a resubscribe cancels a pending unsubscribe outright, keeping the cached
+    // payload). Batched subscriptions let the server answer with the initial payloads
+    // of the whole set in one consistent frame.
+    private val pendingSub = mutableSetOf<String>()
+    private val pendingUnsub = mutableSetOf<String>()
+    private var flushScheduled = false
+
+    private fun scheduleFlush() {
+        if (flushScheduled) return
+        flushScheduled = true
+        setTimeout({
+            flushScheduled = false
+            flush()
+        }, 0)
+    }
+
+    private fun flush() {
+        // Entries linger until their unsubscribe is actually sent, so a quick
+        // unsubscribe/resubscribe (e.g. a route transition remounting components
+        // sharing a topic) never drops the cache or churns the server subscription.
+        pendingUnsub.forEach { topic ->
+            subs[topic]?.takeIf { it.count <= 0 }?.let { subs.remove(topic) }
+        }
+        if (connected && (pendingSub.isNotEmpty() || pendingUnsub.isNotEmpty()))
+            sendCommand(TopicCommand(sub = pendingSub.toList(), unsub = pendingUnsub.toList()))
+        pendingSub.clear()
+        pendingUnsub.clear()
+    }
+
     /** Idempotent; the connection is kept alive (with reconnects) once started. */
     fun start() {
         if (started) return
@@ -59,7 +90,14 @@ object MultiplexWS {
         socket.onopen = EventHandler {
             attempts = 0
             connected = true
-            subs.keys.forEach { topic -> sendCommand(TopicCommand(sub = topic)) }
+            // Resolve pending unsubscribes locally (nothing to tell the new connection
+            // about them) and resubscribe everything live in one command.
+            pendingUnsub.forEach { topic ->
+                subs[topic]?.takeIf { it.count <= 0 }?.let { subs.remove(topic) }
+            }
+            pendingSub.clear()
+            pendingUnsub.clear()
+            if (subs.isNotEmpty()) sendCommand(TopicCommand(sub = subs.keys.toList()))
         }
         socket.onmessage = EventHandler { event: MessageEvent<*> ->
             val frame = try {
@@ -68,9 +106,17 @@ object MultiplexWS {
                 console.error("Malformed websocket frame", e.toString())
                 return@EventHandler
             }
-            subs[frame.topic]?.let { entry ->
-                entry.last = frame.data
-                entry.listeners.toList().forEach { it(frame.data, false) }
+            // Apply the frame atomically: all topic caches are updated before any
+            // listener runs, so listeners (and anything they render synchronously)
+            // never observe a multi-topic update half-applied.
+            val applied = frame.updates.mapNotNull { update: TopicUpdate ->
+                subs[update.topic]?.let { entry ->
+                    entry.last = update.data
+                    entry to update.data
+                }
+            }
+            applied.forEach { (entry, data) ->
+                entry.listeners.toList().forEach { it(data, false) }
             }
         }
         socket.onclose = EventHandler { event: CloseEvent ->
@@ -115,14 +161,24 @@ object MultiplexWS {
         val entry = subs.getOrPut(topic) { Entry() }
         entry.count += 1
         entry.listeners.add(listener)
-        if (entry.count == 1 && connected) sendCommand(TopicCommand(sub = topic))
+        if (entry.count == 1 && !pendingUnsub.remove(topic)) {
+            // (If the topic was pending-unsub, the server subscription is still live
+            // and the cached payload still valid — cancelling the unsub is all it takes.)
+            pendingSub.add(topic)
+            scheduleFlush()
+        }
         listener(entry.last, !connected)
         return {
             entry.count -= 1
             entry.listeners.remove(listener)
             if (entry.count <= 0) {
-                subs.remove(topic)
-                sendCommand(TopicCommand(unsub = topic))
+                if (pendingSub.remove(topic)) {
+                    // The subscribe command was never sent; nothing to undo server-side.
+                    subs.remove(topic)
+                } else {
+                    pendingUnsub.add(topic)
+                    scheduleFlush()
+                }
             }
         }
     }

@@ -83,23 +83,39 @@ class TopicCall(delegate: ApplicationCall, override val parameters: Parameters) 
     }
 }
 
+/** Base of the two topic shapes; [pattern] is the split topic path. */
+sealed class Topic(val pattern: List<String>)
+
 /**
- * A topic backed by a [Flow] — the sole topic shape. [flow] builds (or returns) the
- * payload flow for one subscription; it must be cheap and effect-free — all work belongs
- * in the returned flow, which is collected by a per-subscription coroutine (cancelled on
- * unsubscribe/disconnect) with per-subscription dedup and conflation applied by the
- * connection loop. Whether the flow is shared is the lambda's choice: it can return a
- * hot shared flow, or build a cold one from the call parameters.
+ * A topic backed by a [Flow] — for payloads that suspend (archive fetches) or time
+ * themselves (rotators, presence). [flow] builds (or returns) the payload flow for one
+ * subscription; it must be cheap and effect-free — all work belongs in the returned
+ * flow, which is collected by a per-subscription coroutine (cancelled on
+ * unsubscribe/disconnect); emissions are staged into the connection's outbox and
+ * deduped there against the last payload the client received. Whether the flow is
+ * shared is the lambda's choice: it can return a hot shared flow, or build a cold one
+ * from the call parameters. FlowTopic payloads sit *outside* the frame-consistency
+ * guarantee of [ViewTopic]s (they are computed at emission time, not at flush time).
  */
-class FlowTopic(val pattern: List<String>, val flow: (WSBody) -> Flow<JsonElement>)
+class FlowTopic(pattern: List<String>, val flow: (WSBody) -> Flow<JsonElement>) : Topic(pattern)
+
+/**
+ * A topic backed by a [View]: [build] composes the encoded-payload view for one
+ * subscription. The connection loop reads [View.value] at frame-flush time, so all
+ * ViewTopic payloads of one frame are computed back-to-back without suspension — a
+ * transactionally consistent snapshot by the [View] contract, whatever order the wake
+ * signals arrived in. [View.changes] only schedules a flush; the per-topic wire diff
+ * in the connection loop keeps unchanged recomputations off the wire.
+ */
+class ViewTopic(pattern: List<String>, val build: suspend (WSBody) -> View<JsonElement>) : Topic(pattern)
 
 object TopicRegistry {
-    val handlers = mutableListOf<FlowTopic>()
+    val handlers = mutableListOf<Topic>()
 
     fun split(path: String) = path.split('/')
 
     /** Match a topic path (query string already stripped) against registered patterns. */
-    fun match(topicPath: String): Pair<FlowTopic, Parameters>? {
+    fun match(topicPath: String): Pair<Topic, Parameters>? {
         val segments = split(topicPath)
         outer@ for (h in handlers) {
             if (h.pattern.size != segments.size) continue
@@ -126,22 +142,21 @@ object TopicRegistry {
  * yields a single error frame.
  */
 inline fun <reified T> Route.viewWS(path: String, crossinline body: suspend WSBody.() -> View<T>) {
-    TopicRegistry.handlers.add(FlowTopic(TopicRegistry.split(path)) { ctx ->
-        flow {
-            val view = ctx.body()
-            val frame: () -> JsonElement = {
-                val message: WSResponse<T> = try {
-                    WSData(view.value)
-                } catch (e: ResponseError) {
-                    WSError(e.wsCode, e.message)
-                }
-                confidoJSON.encodeToJsonElement(message)
-            }
-            emit(frame())
-            emitAll(view.changes.conflate().map { frame() })
-        }.catch { e ->
-            if (e is ResponseError) emit(confidoJSON.encodeToJsonElement<WSResponse<T>>(WSError(e.wsCode, e.message)))
-            else throw e
+    TopicRegistry.handlers.add(ViewTopic(TopicRegistry.split(path)) { ctx ->
+        val view = ctx.body()
+        object : View<JsonElement> {
+            // Per-computation error semantics: a ResponseError from the view's
+            // transforms encodes as a WSError payload; the subscription stays live
+            // and recovers on the next state change.
+            override val value: JsonElement
+                get() = confidoJSON.encodeToJsonElement<WSResponse<T>>(
+                    try {
+                        WSData(view.value)
+                    } catch (e: ResponseError) {
+                        WSError(e.wsCode, e.message)
+                    }
+                )
+            override val changes get() = view.changes
         }
     })
 }

@@ -236,11 +236,16 @@ in a magic timestamp.
 One websocket per client. Frames:
 
 ```
-client → server:  { "sub":   "<topic>" }
-                  { "unsub": "<topic>" }
-server → client:  { "topic": "<topic>", "data": <payload> }   // full payload per topic, deduped
-                  { "topic": "<topic>", "error": ... }
+client → server:  { "sub": [<topics>], "unsub": [<topics>] }   // batched per client tick
+server → client:  { "updates": [ { "topic": "<topic>", "data": <payload> }, … ] }
+                  // errors are payloads too ({"type":"err",…} envelope on the topic)
 ```
+
+Frames are **multi-update and atomic**: the client applies all of a frame's topic
+payloads to its caches before notifying any listener, so updates the server groups into
+one frame can never be observed half-applied. Subscriptions issued in the same client
+tick travel as one command, and the server answers with the initial payloads of the
+whole set in one consistent frame (see the Phase 3 outbox notes in §7).
 
 - Server side: today's `getWS` bodies become topic handlers; the existing per-socket
   last-payload dedup (`routes/Common.kt:92`) carries over per topic.
@@ -643,11 +648,52 @@ working untouched mid-transition.
     per-question `mine`/`hasPredicted` split of the §4.2 table is superseded for now by
     per-viewer inputs inside topic gates (own-prediction cells); revisit granularity with
     the permission-class memoization stage.
+  - **Wire groundwork for the decomposition: multi-update frames + per-connection
+    outbox with flush-time recomputation (strict cross-topic atomicity).** Frames carry
+    lists of topic updates and the client applies them atomically (all topic caches
+    written before any listener runs). Server side, the invalidation/recomputation
+    split is extended to the sender: wake signals carry no data — they only schedule a
+    flush — and at flush the sender recomputes *every* subscribed View-backed topic in
+    one non-suspending pass, so all payloads of a frame observe the same transactional
+    snapshot by the View consistency contract, no matter how raggedly the async wake
+    signals arrived. This makes frames strictly consistent *and complete* (recompute-all
+    means a frame can't miss a co-changed topic), with guaranteed convergence under
+    load: no idle-waiting — each flush is one bounded pass against then-current state,
+    frames pace themselves to send throughput, and bursts coalesce in the conflated
+    flush signal (no timed debounce needed or wanted). A per-topic diff against the
+    last payload actually sent keeps wire traffic proportional to real changes even
+    though computation is recompute-all — that O(subscribed topics)-per-poke cost is
+    the deliberate v0 tradeoff, narrowed later by permission-class memoization (share
+    the computation across same-class connections) and, only if profiling demands,
+    synchronous dirty-sets for O(changed). Topic shapes split accordingly
+    (`routes/Common.kt`): `ViewTopic` exposes the composed `View` so the connection
+    loop can read `value` at flush time; `FlowTopic` remains for suspending fetches
+    (comment archives) and self-timed streams — their payloads are staged at emission
+    time and ride in the same frames but sit outside the consistency pass. The outbox
+    also subsumes the per-subscription `conflate()`/`distinctUntilChanged` (staging
+    never suspends, so a slow client skips intermediate payloads instead of
+    back-pressuring producers). Client side: sub/unsub commands coalesce per tick —
+    a batch of View-topic subscriptions gets its initial payloads in one consistent
+    frame, guaranteed by the same flush pass (killing page-load skew between a page's
+    topics), and a resubscribe cancels a pending unsubscribe outright, so cache
+    entries survive route-transition remounts instead of being dropped and refetched.
+  - **Decomposition direction (agreed, discussion of 2026-08-15):** no synthetic
+    client-side merged `SentState`. `MultiplexWS`'s refcounted topic registry grows a
+    typed decoded-payload cache; `ClientState` becomes a facade over that cache (peeled
+    fields read topic caches, the rest reads the shrinking monolith), and components
+    drive subscriptions via `useSub(topic)` with dedup making redundant subscriptions
+    free. Peel full-stack, field by field: `self` first (root-mounted; deletes the
+    `expiryTime` pinning hack), then `rooms`/`room/<id>` as the component-scoped pilot.
+    Client-deref audit result: ~35 call sites in three buckets — room-scoped question
+    joins (dissolve into the `room/<id>/questions` topic payload, which ships the join),
+    user derefs (die with UserPresentation), and a small tail (presenter views,
+    calibration, dashboard) converted per-surface, with the `ClientImmediateDerefEntity`
+    marker interface as the compile-time ratchet: peel a bucket, remove the entity from
+    the marker, fix what turns red. Endpoint: no global entity maps on the client.
   - Deferred: the shared/memoized keyed-flow registry (`shareIn` per (topic, permission
-    class), refcounted teardown) until the censor-memoization stage; `SentState`
-    decomposition into the semantic topic table + client merged view (next);
-    UserPresentation rollout / users-map weaning; a `.memo()` dedup combinator if a hot
-    spot appears.
+    class), refcounted teardown) until the censor-memoization stage — strict at-commit
+    frame atomicity lands with it; UserPresentation rollout / users-map weaning; a
+    `.memo()` dedup combinator if a hot spot appears.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or

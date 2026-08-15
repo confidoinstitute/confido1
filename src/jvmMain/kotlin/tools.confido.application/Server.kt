@@ -15,6 +15,7 @@ import io.ktor.server.websocket.*
 import io.ktor.utils.io.writeFully
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.conflate
@@ -416,18 +417,70 @@ fun main() {
                     timeoutMillis = 30_000
                     pingIntervalMillis = 15_000
 
-                    class ActiveSub(val handler: FlowTopic, val params: Parameters) {
-                        var job: Job? = null
+                    class ActiveSub {
+                        var job: Job? = null                 // changes-watcher (ViewTopic) / collector (FlowTopic)
+                        var view: View<JsonElement>? = null  // present for ViewTopic subscriptions
+                        var broken = false                   // internal error: dead until resubscribed
                     }
                     val subs = mutableMapOf<String, ActiveSub>()
 
-                    suspend fun sendFrame(topic: String, data: JsonElement) =
-                        send(Frame.Text(confidoJSON.encodeToString(TopicFrame(topic, data))))
+                    // Per-connection outbox with flush-time recomputation. Wake signals carry
+                    // no data — they only schedule a flush. At flush, the sender recomputes
+                    // EVERY subscribed ViewTopic in one non-suspending pass: by the View
+                    // consistency contract all payloads of a frame observe the same
+                    // transactional snapshot, no matter how raggedly the wake signals arrived
+                    // (strict cross-topic atomicity; recompute-all is the v0 cost model, to be
+                    // narrowed by the permission-class memoization stage). The per-topic diff
+                    // against the last payload actually sent keeps wire traffic proportional
+                    // to real changes. FlowTopic payloads (suspending fetches, timed streams)
+                    // are computed at emission time and staged; they sit outside the
+                    // consistency pass. A slow client never blocks producers or queues
+                    // unboundedly — a flush just covers more accumulated change.
+                    val staged = LinkedHashMap<String, JsonElement>()
+                    val lastSent = mutableMapOf<String, JsonElement>()
+                    val flushSignal = Channel<Unit>(Channel.CONFLATED)
+                    fun poke() { flushSignal.trySend(Unit) }
+                    fun stage(topic: String, data: JsonElement) {
+                        staged[topic] = data
+                        poke()
+                    }
 
                     fun errorElement(errType: WSErrorType, message: String) =
                         confidoJSON.encodeToJsonElement(WSError<Unit>(errType, message) as WSResponse<Unit>)
 
-                    fun parseTopic(topic: String): Pair<FlowTopic, Parameters>? {
+                    val senderJob = launch(singleThreadContext) {
+                        for (signal in flushSignal) {
+                            val updates = mutableListOf<TopicUpdate>()
+                            fun offer(topic: String, data: JsonElement) {
+                                if (lastSent[topic] != data) {
+                                    updates.add(TopicUpdate(topic, data))
+                                    lastSent[topic] = data
+                                }
+                            }
+                            staged.forEach { (topic, data) -> offer(topic, data) }
+                            staged.clear()
+                            subs.forEach { (topic, sub) ->
+                                val view = sub.view
+                                if (view == null || sub.broken) return@forEach
+                                val data = try {
+                                    view.value
+                                } catch (e: Exception) {
+                                    // ResponseErrors are already encoded as WSError payloads
+                                    // by viewWS; anything reaching here is a bug in the topic —
+                                    // disable it for this subscription rather than log-spamming
+                                    // on every flush.
+                                    call.application.log.error("Error computing topic $topic", e)
+                                    sub.broken = true
+                                    errorElement(WSErrorType.INTERNAL_ERROR, "Internal error")
+                                }
+                                offer(topic, data)
+                            }
+                            if (updates.isNotEmpty())
+                                send(Frame.Text(confidoJSON.encodeToString(TopicFrame(updates))))
+                        }
+                    }
+
+                    fun parseTopic(topic: String): Pair<Topic, Parameters>? {
                         val qIdx = topic.indexOf('?')
                         val path = if (qIdx >= 0) topic.substring(0, qIdx) else topic
                         val query = if (qIdx >= 0) parseQueryString(topic.substring(qIdx + 1)) else Parameters.Empty
@@ -440,23 +493,42 @@ fun main() {
                     suspend fun subscribe(topic: String) {
                         if (topic in subs) return
                         val (handler, params) = parseTopic(topic) ?: run {
-                            sendFrame(topic, errorElement(WSErrorType.NOT_FOUND, "No such topic"))
+                            stage(topic, errorElement(WSErrorType.NOT_FOUND, "No such topic"))
                             return
                         }
-                        val sub = ActiveSub(handler, params)
+                        val sub = ActiveSub()
                         subs[topic] = sub
-                        sub.job = launch(singleThreadContext) {
-                            try {
-                                handler.flow(WSBody(TopicCall(call, params)))
-                                    .distinctUntilChanged()
-                                    .conflate()
-                                    .collect { element -> sendFrame(topic, element) }
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
-                                // A broken topic must not take down the whole connection.
-                                call.application.log.error("Error collecting topic $topic", e)
-                                sendFrame(topic, errorElement(WSErrorType.INTERNAL_ERROR, "Internal error"))
+                        when (handler) {
+                            is ViewTopic -> {
+                                try {
+                                    val view = handler.build(WSBody(TopicCall(call, params)))
+                                    sub.view = view
+                                    sub.job = launch(singleThreadContext) {
+                                        view.changes.collect { poke() }
+                                    }
+                                    poke()  // initial payload computed at the next flush
+                                } catch (e: ResponseError) {
+                                    // Build-time error (e.g. unparseable parameters): single
+                                    // error payload, subscription stays dead until resub.
+                                    stage(topic, errorElement(e.wsCode, e.message))
+                                } catch (e: Exception) {
+                                    call.application.log.error("Error building topic $topic", e)
+                                    stage(topic, errorElement(WSErrorType.INTERNAL_ERROR, "Internal error"))
+                                }
+                            }
+                            is FlowTopic -> sub.job = launch(singleThreadContext) {
+                                try {
+                                    // stage() never suspends, so a blocked send cannot
+                                    // back-pressure the collector; the outbox coalesces.
+                                    handler.flow(WSBody(TopicCall(call, params)))
+                                        .collect { element -> stage(topic, element) }
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    // A broken topic must not take down the whole connection.
+                                    call.application.log.error("Error collecting topic $topic", e)
+                                    stage(topic, errorElement(WSErrorType.INTERNAL_ERROR, "Internal error"))
+                                }
                             }
                         }
                     }
@@ -487,12 +559,21 @@ fun main() {
                             } catch (e: Exception) {
                                 continue
                             }
-                            cmd.sub?.let { subscribe(it) }
-                            cmd.unsub?.let { topic -> subs.remove(topic)?.job?.cancel() }
+                            // Subscriptions batched in one command start together, so their
+                            // collectors' first (non-suspending) computations all run before
+                            // the sender coroutine flushes — the initial payloads of a
+                            // page's topic set arrive as one consistent frame.
+                            cmd.sub.forEach { subscribe(it) }
+                            cmd.unsub.forEach { topic ->
+                                subs.remove(topic)?.job?.cancel()
+                                staged.remove(topic)  // don't deliver to a topic just unsubscribed
+                                lastSent.remove(topic)
+                            }
                         }
                     } finally {
                         sessionWatch.cancel()
                         renewJob.cancel()
+                        senderJob.cancel()
                         // Cancel stream jobs so their try/finally cleanups run.
                         subs.values.forEach { it.job?.cancel() }
                     }
