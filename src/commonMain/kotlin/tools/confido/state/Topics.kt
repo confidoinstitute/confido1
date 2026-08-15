@@ -60,6 +60,16 @@ object Topics {
     val presentationFollow = TopicSpec1(roomPath / "presentation/follow", serializer<String?>())
     val inviteShortlink = TopicSpec2(roomPath / "invites" / idParam / "shortlink", serializer<String>())
 
+    /** Room-scoped questions + per-question counts (§4.2): the room page's slice.
+     *  Includes extension-provided effective questions (e.g. group-room aggregation). */
+    val roomQuestions = TopicSpec1(roomPath / "questions", serializer<QuestionsState>())
+
+    /** Single censored question — the by-id access behind `useQuestion` (client
+     *  endgame): presenter surfaces and describers hold bare refs with no room
+     *  context, so they subscribe here. Overlap with collection topics is deliberate
+     *  (dedup + atomic frames make it consistent duplication). */
+    val question = TopicSpec1(questionPath, serializer<Question>())
+
     val questionComments = TopicSpec1(questionPath / "comments", serializer<List<CommentPresentation<QuestionCommentExtraData>>>())
     val groupPred = TopicSpec1(questionPath / "group_pred", serializer<Prediction?>())
     val histogram = TopicSpec1(questionPath / "histogram", serializer<BinaryHistogram>())

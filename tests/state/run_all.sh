@@ -81,6 +81,7 @@ run() {
 run users_test.py
 run members_test.py
 run rooms_test.py
+run questions_test.py
 run ws_test.py
 run gate_test.py
 

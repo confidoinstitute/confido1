@@ -18,6 +18,8 @@ import web.html.*
 import emotion.css.ClassName
 import emotion.react.*
 import hooks.*
+import payloads.responses.WSData
+import tools.confido.refs.ref
 import io.ktor.http.*
 import js.objects.unsafeJso as jso
 import react.*
@@ -31,8 +33,8 @@ import components.redesign.presentation.PresentationTab
 import payloads.requests.CreatePresentation
 import tools.confido.extensions.ClientExtension
 import tools.confido.refs.*
+import tools.confido.state.Topics
 import tools.confido.state.clientState
-import tools.confido.utils.mapDeref
 import utils.roomUrl
 import utils.runCoroutine
 import web.animations.requestAnimationFrame
@@ -411,7 +413,12 @@ val RoomLayout = FC<RoomLayoutProps> { props->
             // Captured before the memo: use()-based accessors inside a useMemo body
             // would not invalidate it on context change.
             val myUser = useMyUser()
-            val routes = useMemo(room.id, myUser) {
+            // The room's question slice: censored questions (own + effective) with
+            // counts. The global-slice fallback bridges the initial load and dies
+            // with the global slice at the eviction.
+            val roomQuestionsWS = useSubscription(Topics.roomQuestions(room.ref))
+            val questionMap = (roomQuestionsWS as? WSData)?.data?.questions ?: appState.questions
+            val routes = useMemo(room.id, myUser, questionMap) {
                 buildList {
                     if (room.hasPermission(myUser, RoomPermission.VIEW_QUESTIONS)) {
                         add(jso<RouteObject> {
@@ -421,8 +428,8 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                                 // otherwise use the room's own questions.
                                 val effQuestions = room.effectiveQuestions
                                     ?.filter { it.visibleInList }
-                                    ?.mapNotNull { it.question.deref() }
-                                questions = effQuestions ?: room.questions.mapDeref()
+                                    ?.mapNotNull { questionMap[it.question.id] }
+                                questions = effQuestions ?: room.questions.mapNotNull { questionMap[it.id] }
                                 showHiddenQuestions = room.hasPermission(myUser, RoomPermission.VIEW_HIDDEN_QUESTIONS)
                             }
                         })
@@ -459,7 +466,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                         add(jso<RouteObject> {
                             path = "manage_questions"
                             element = QuestionManagement.create {
-                                questions = room.questions.mapDeref()
+                                questions = room.questions.mapNotNull { questionMap[it.id] }
                                 this.room = room
                             }
                         })

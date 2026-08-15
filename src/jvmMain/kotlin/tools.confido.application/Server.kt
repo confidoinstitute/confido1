@@ -450,6 +450,48 @@ fun main() {
                     }
                 }
 
+                // §4.2 "room/<id>/questions": the room page's question slice — own +
+                // effective questions with their counts. Same wake set as the global
+                // questions topic (counts change without entity changes) plus rooms
+                // (question membership/order and effective-question hooks).
+                viewWS(Topics.roomQuestions) { rRef ->
+                    if (call.userSession?.user == null) unauthorized("Not logged in.")
+                    combineViews(
+                        questionStore.state.asView(),
+                        roomStore.state.asView(),
+                        userStore.state.asView(),
+                        latestPredictions.state.asView(),
+                        predictionData.predictionCount.state.asView(),
+                        predictionData.predictorCount.state.asView(),
+                        commentData.commentCount.state.asView(),
+                    ).map {
+                        val sessionData = call.userSession ?: unauthorized("Not logged in.")
+                        if (sessionData.user == null) unauthorized("Not logged in.")
+                        val room = rRef.deref() ?: notFound("No such room.")
+                        StateCensor(sessionData).censorRoomQuestionsState(room)
+                            ?: unauthorized("You cannot view this room.")
+                    }
+                }
+
+                // "question/<id>": one censored question — the by-id access behind the
+                // client's useQuestion (presenter surfaces and describers hold bare
+                // refs with no room context). Entity data only; counts ride on the
+                // collection topics, so count churn never frames this one.
+                viewWS(Topics.question) { qRef ->
+                    if (call.userSession?.user == null) unauthorized("Not logged in.")
+                    combineViews(
+                        questionStore.state.asView(),
+                        roomStore.state.asView(),
+                        userStore.state.asView(),
+                    ).map {
+                        val sessionData = call.userSession ?: unauthorized("Not logged in.")
+                        if (sessionData.user == null) unauthorized("Not logged in.")
+                        val question = qRef.deref() ?: notFound("No such question.")
+                        StateCensor(sessionData).censorQuestion(question)
+                            ?: unauthorized("You cannot view this question.")
+                    }
+                }
+
                 // The per-user slice (§4.2 "self"): session (incl. presenterInfo, which
                 // updates through the session cell), own predictions, password flag,
                 // presenter-window state. Split from "/state" so per-user churn (session

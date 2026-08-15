@@ -37,10 +37,17 @@ fun <P> decodeTopicPayload(topic: BoundTopic<P>): (JsonElement) -> WSResponse<P>
  * the server sends. Subscriptions to the same topic share one server subscription
  * and one decoded payload cache.
  */
-fun <P> useSubscription(topic: BoundTopic<P>, clearOnStale: Boolean = false): WSResponse<P> {
+fun <P> useSubscription(topic: BoundTopic<P>?, clearOnStale: Boolean = false): WSResponse<P> {
     var value by useState<WSResponse<P>>(WSLoading())
 
-    useEffectWithCleanup(topic.name, clearOnStale) {
+    // A null topic subscribes to nothing (stays WSLoading) while keeping the hook
+    // order stable — for callers whose subscription is conditional on a maybe-absent
+    // ref (e.g. useQuestion(null)).
+    useEffectWithCleanup(topic?.name, clearOnStale) {
+        if (topic == null) {
+            value = WSLoading()
+            return@useEffectWithCleanup
+        }
         val unsubscribe = MultiplexWS.subscribe(topic.name, decodeTopicPayload(topic)) { decoded, stale ->
             value = when {
                 decoded == null -> WSLoading()
