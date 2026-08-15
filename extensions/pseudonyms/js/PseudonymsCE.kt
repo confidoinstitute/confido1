@@ -15,7 +15,7 @@ import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionData
 import tools.confido.extensions.get
 import tools.confido.extensions.with
-import tools.confido.state.SentState
+import tools.confido.state.ClientState
 import users.User
 
 object PseudonymsCE : ClientExtension, PseudonymsExtension() {
@@ -45,7 +45,7 @@ object PseudonymsCE : ClientExtension, PseudonymsExtension() {
         }
     }
 
-    override fun commentFieldExtra(room: Room, appState: SentState, cb: ChildrenBuilder) {
+    override fun commentFieldExtra(room: Room, appState: ClientState, cb: ChildrenBuilder) {
         val pseudonymList = room.extensionData[PseudonymsListKey]
         if (pseudonymList.isEmpty()) return
         val assignments = room.extensionData[PseudonymAssignmentsKey]
@@ -66,7 +66,7 @@ object PseudonymsCE : ClientExtension, PseudonymsExtension() {
         }
     }
 
-    override fun roomInfoExtra(room: Room, appState: SentState, cb: ChildrenBuilder) {
+    override fun roomInfoExtra(room: Room, appState: ClientState, cb: ChildrenBuilder) {
         val pseudonymList = room.extensionData[PseudonymsListKey]
         if (pseudonymList.isEmpty()) return
         val assignments = room.extensionData[PseudonymAssignmentsKey]

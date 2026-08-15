@@ -37,7 +37,7 @@ import rooms.*
 import tools.confido.extensions.ClientExtension
 import tools.confido.refs.deref
 import tools.confido.refs.eqid
-import tools.confido.state.SentState
+import tools.confido.state.ClientState
 import tools.confido.state.appConfig
 import tools.confido.utils.pluralize
 import tools.confido.utils.stringToColor
@@ -48,7 +48,7 @@ import web.navigator.navigator
 import web.window.WindowTarget
 import web.window._blank
 
-fun canChangeRole(appState: SentState, room: Room, role: RoomRole) =
+fun canChangeRole(appState: ClientState, room: Room, role: RoomRole) =
     canChangeRole(room.userRole(appState.session.user), role)
 
 val RoomMembers = FC<Props> {

@@ -348,29 +348,48 @@ fun main() {
                 calibrationRoutes(this)
                 scoreRoutes(this)
 
-                // The full app state snapshot as a View topic over (almost) everything —
+                // The shared app-state snapshot as a View topic over (almost) everything —
                 // transitional: SentState decomposes into semantic topics later in Phase 3,
                 // shrinking this composition field by field. The censor body still reads
                 // global state (it IS the legacy everything-snapshot), so the combine acts
                 // purely as the wake-signal set; count/author views change strictly with
-                // their underlying store/archive sources listed here.
+                // their underlying store/archive sources listed here. The per-user fields
+                // live in "/state/self" below, so this payload is purely a function of the
+                // viewer's permission class (latestPredictions stays: the censor's
+                // ANSWERED comment-visibility gate reads the viewer's own prediction).
                 viewWS("/state") {
-                    val transientData = call.transientUserData
-                    if (call.userSession?.user == null || transientData == null) unauthorized("Not logged in.")
+                    if (call.userSession?.user == null) unauthorized("Not logged in.")
                     combineViews(
                         roomStore.state.asView(),
                         questionStore.state.asView(),
                         userStore.state.asView(),
-                        userSessionStore.state.asView().at(call.userSession!!.id),
                         latestPredictions.state.asView(),
                         questionCommentArchive.versionsState.asView(),
                         roomCommentArchive.versionsState.asView(),
                         serverState.presentationRunStatesState.asView(),
+                    ).map {
+                        val sessionData = call.userSession ?: unauthorized("Not logged in.")
+                        if (sessionData.user == null) unauthorized("Not logged in.")
+                        StateCensor(sessionData).censor()
+                    }
+                }
+
+                // The per-user slice (§4.2 "self"): session (incl. presenterInfo, which
+                // updates through the session cell), own predictions, password flag,
+                // presenter-window state. Split from "/state" so per-user churn (session
+                // renewals, presenting, predicting) never invalidates the big snapshot.
+                viewWS("/state/self") {
+                    val transientData = call.transientUserData
+                    if (call.userSession?.user == null || transientData == null) unauthorized("Not logged in.")
+                    combineViews(
+                        userSessionStore.state.asView().at(call.userSession!!.id),
+                        userStore.state.asView(),
+                        latestPredictions.state.asView(),
                         transientData.activePresenterWindowsState.asView(),
                     ).map {
                         val sessionData = call.userSession ?: unauthorized("Not logged in.")
                         if (sessionData.user == null) unauthorized("Not logged in.")
-                        StateCensor(sessionData, transientData).censor()
+                        selfState(sessionData, transientData)
                     }
                 }
 

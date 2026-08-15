@@ -40,7 +40,13 @@ object MultiplexWS {
     private class Entry {
         var count = 0
         var last: JsonElement? = null
-        val listeners = mutableSetOf<(JsonElement?, Boolean) -> Unit>()
+        // The typed decoded-payload cache: each frame is decoded ONCE per topic (not
+        // once per listener) and the decoded value is cached, so late subscribers get
+        // it synchronously and shared subscriptions cost nothing extra. The topic
+        // determines the payload type, so the first subscriber's decoder serves all.
+        var decoder: ((JsonElement) -> Any)? = null
+        var decoded: Any? = null
+        val listeners = mutableSetOf<(Any?, Boolean) -> Unit>()
     }
 
     private val subs = mutableMapOf<String, Entry>()
@@ -106,17 +112,18 @@ object MultiplexWS {
                 console.error("Malformed websocket frame", e.toString())
                 return@EventHandler
             }
-            // Apply the frame atomically: all topic caches are updated before any
-            // listener runs, so listeners (and anything they render synchronously)
-            // never observe a multi-topic update half-applied.
+            // Apply the frame atomically: all topic caches are updated (including the
+            // decoded values) before any listener runs, so listeners (and anything they
+            // render synchronously) never observe a multi-topic update half-applied.
             val applied = frame.updates.mapNotNull { update: TopicUpdate ->
                 subs[update.topic]?.let { entry ->
                     entry.last = update.data
-                    entry to update.data
+                    entry.decoded = update.data?.let { entry.decoder?.invoke(it) }
+                    entry
                 }
             }
-            applied.forEach { (entry, data) ->
-                entry.listeners.toList().forEach { it(data, false) }
+            applied.forEach { entry ->
+                entry.listeners.toList().forEach { it(entry.decoded, false) }
             }
         }
         socket.onclose = EventHandler { event: CloseEvent ->
@@ -131,7 +138,7 @@ object MultiplexWS {
                 3000 -> onUnauthorized?.invoke()
             }
             // Everything we have is now stale; keep last values so UIs can show stale data.
-            subs.values.forEach { entry -> entry.listeners.toList().forEach { it(entry.last, true) } }
+            subs.values.forEach { entry -> entry.listeners.toList().forEach { it(entry.decoded, true) } }
             scheduleReconnect()
         }
     }
@@ -151,15 +158,23 @@ object MultiplexWS {
     }
 
     /**
-     * Subscribe [listener] to [topic]. The listener receives the topic's last known
-     * payload (an encoded `WSResponse<T>`, null before the first one arrives) and a
-     * staleness flag; it is called immediately with the current state, on every
-     * payload, and on disconnect. Returns an unsubscribe function. Subscriptions to
-     * the same topic share one server-side subscription.
+     * Subscribe [listener] to [topic], receiving payloads decoded by [decode] (null
+     * before the first payload arrives) plus a staleness flag; it is called
+     * immediately with the current cached state, on every payload, and on disconnect.
+     * Returns an unsubscribe function. Subscriptions to the same topic share one
+     * server-side subscription and one decoded cache; all subscribers of a topic must
+     * therefore use the same payload type (the first subscriber's [decode] serves
+     * all). [decode] must not throw — map failures to an error value.
      */
-    fun subscribe(topic: String, listener: (JsonElement?, Boolean) -> Unit): () -> Unit {
+    fun <T : Any> subscribe(topic: String, decode: (JsonElement) -> T, listener: (T?, Boolean) -> Unit): () -> Unit {
         val entry = subs.getOrPut(topic) { Entry() }
+        if (entry.decoder == null) {
+            entry.decoder = decode
+            entry.last?.let { entry.decoded = decode(it) }
+        }
         entry.count += 1
+        @Suppress("UNCHECKED_CAST")
+        val listener = listener as (Any?, Boolean) -> Unit
         entry.listeners.add(listener)
         if (entry.count == 1 && !pendingUnsub.remove(topic)) {
             // (If the topic was pending-unsub, the server subscription is still live
@@ -167,7 +182,7 @@ object MultiplexWS {
             pendingSub.add(topic)
             scheduleFlush()
         }
-        listener(entry.last, !connected)
+        listener(entry.decoded, !connected)
         return {
             entry.count -= 1
             entry.listeners.remove(listener)

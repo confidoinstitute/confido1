@@ -19,7 +19,7 @@ import users.UserType
 /**
  * @author Ministry of Truth
  */
-class StateCensor(val sess: UserSession, val transientData: TransientData) {
+class StateCensor(val sess: UserSession) {
     val user = sess.user
     val state = serverState
     val referencedUsers: MutableSet<Ref<User>> = mutableSetOf()
@@ -126,11 +126,6 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
     fun censorUsers() =
         state.users.mapValuesNotNull { censorUser(it.value) }
 
-    fun getMyPredictions() =
-        if (user!=null) state.userPred.mapValuesNotNull { it.value[user.ref] } else emptyMap()
-
-    fun getMyPasswordIsSet() = user?.let { it.password != null } ?: false
-
     fun censor(): SentState {
         return SentState(
             rooms = censorRooms(),
@@ -139,15 +134,23 @@ class StateCensor(val sess: UserSession, val transientData: TransientData) {
             predictorCount = censorQuestionInfo(state.predictorCount),
             predictionCount = censorQuestionInfo(state.predictionCount),
             users = censorUsers(),
-            myPasswordIsSet = getMyPasswordIsSet(),
-            myPredictions = getMyPredictions(),
-            // expiryTime is renewed on every authenticated request and read by no client
-            // code; pinning it keeps the payload stable so dedup can do its job (otherwise
-            // the acting user re-receives the full snapshot on each of their requests).
-            session = sess.copy(expiryTime = Instant.DISTANT_FUTURE),
-            presenterWindowActive = transientData.activePresenterWindows > 0,
         )
     }
+}
+
+/** The per-user "/state/self" topic payload (PERSISTENCE_SYNC_REDESIGN.md §4.2). */
+fun selfState(sess: UserSession, transientData: TransientData): SelfState {
+    val user = sess.user
+    return SelfState(
+        // expiryTime is renewed on every authenticated request and read by no client
+        // code; pinning it keeps the payload stable so dedup can do its job (otherwise
+        // the acting user re-receives the payload on each of their requests).
+        session = sess.copy(expiryTime = Instant.DISTANT_FUTURE),
+        myPredictions = if (user != null)
+            serverState.userPred.mapValuesNotNull { it.value[user.ref] } else emptyMap(),
+        myPasswordIsSet = user?.password != null,
+        presenterWindowActive = transientData.activePresenterWindows > 0,
+    )
 }
 
 enum class UserPresentationContext {

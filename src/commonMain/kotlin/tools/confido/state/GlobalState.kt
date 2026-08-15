@@ -57,33 +57,27 @@ abstract class GlobalState : BaseState {
 // Client or server will provide concrete implementation
 expect val globalState: GlobalState
 
-// State representation sent using websocket
+// The shared (permission-class-shaped) state snapshot sent over the "/state" topic.
+// Transitional Phase 3 monolith: decomposes field by field into the §4.2 semantic
+// topics; the per-user fields already moved to [SelfState] (the "self" topic).
 @Serializable
 data class SentState(
     override val rooms: Map<String, Room> = emptyMap(),
     override val questions: Map<String, Question> = emptyMap(),
     override val users: Map<String, User> = emptyMap(),
-    val myPredictions: Map<Ref<Question>, Prediction> = emptyMap(),
-    val session: UserSession = UserSession(),
     override val predictionCount: Map<Ref<Question>, Int> = emptyMap(),
     override val predictorCount: Map<Ref<Question>, Int> = emptyMap(),
     override val commentCount: Map<Ref<Question>, Int> = emptyMap(),
+) : BaseState
+
+// The per-user state slice sent over the "/state/self" topic
+// (PERSISTENCE_SYNC_REDESIGN.md §4.2). Small and per-user by nature; keeping it out
+// of [SentState] makes the snapshot purely permission-class-shaped and stops session
+// churn (renewals, presenter windows, own predictions) from invalidating it.
+@Serializable
+data class SelfState(
+    val session: UserSession = UserSession(),
+    val myPredictions: Map<Ref<Question>, Prediction> = emptyMap(),
     val myPasswordIsSet: Boolean = false,
     val presenterWindowActive: Boolean = false,
-) : BaseState {
-    fun isAdmin(): Boolean {
-        return session.user?.type == UserType.ADMIN
-    }
-    fun hasPermission(room: Room, permission: RoomPermission): Boolean {
-        return room.hasPermission(session.user, permission)
-    }
-    fun hasAnyPermission(room: Room, vararg permissions: RoomPermission): Boolean {
-        return permissions.any { room.hasPermission(session.user, it) }
-    }
-    fun hasAllPermissions(room: Room, vararg permissions: RoomPermission): Boolean {
-        return permissions.all { room.hasPermission(session.user, it) }
-    }
-
-    val isAnonymous get() = session.user?.isAnonymous() ?: true
-    val isFullUser get() = session.user?.type?.isProper() ?: false
-}
+)

@@ -21,7 +21,7 @@ import react.router.RouteObject
 import rooms.*
 import tools.confido.extensions.*
 import tools.confido.refs.Ref
-import tools.confido.state.SentState
+import tools.confido.state.ClientState
 import tools.confido.state.globalState
 import kotlinx.coroutines.delay
 import utils.runCoroutine
@@ -77,7 +77,7 @@ object RoomGroupsCE : ClientExtension, RoomGroupsExtension() {
     // --- Room tabs: "Rooms" tab for group rooms ---
 
     override fun roomTabsExtra(
-        room: Room, appState: SentState, layoutMode: LayoutMode
+        room: Room, appState: ClientState, layoutMode: LayoutMode
     ): List<Pair<String, String>> {
         if (!room.isGroup) return emptyList()
         return listOf("rooms" to "Rooms")

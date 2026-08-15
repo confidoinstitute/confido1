@@ -9,7 +9,7 @@ import react.*
 import react.router.RouteObject
 import react.router.RouterProvider
 import react.router.dom.createBrowserRouter
-import tools.confido.state.SentState
+import tools.confido.state.ClientState
 import tools.confido.state.appConfig
 import web.location.location
 import web.url.URL
@@ -18,7 +18,7 @@ val AppStateContext = createContext<ClientAppState>()
 val LoginContext = createContext<Login>()
 
 
-data class ClientAppState(val state: SentState, val stale: Boolean = false)
+data class ClientAppState(val state: ClientState, val stale: Boolean = false)
 data class Login(val isLoggedIn: Boolean, private val changeState: (Boolean) -> Unit) {
     /** Change state to logged in. The session cookie must be set already. **/
     fun login() = changeState(true)

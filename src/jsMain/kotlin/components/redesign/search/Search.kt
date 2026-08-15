@@ -3,12 +3,12 @@ package components.redesign.search
 import rooms.Room
 import tools.confido.question.Question
 import tools.confido.refs.deref
-import tools.confido.state.SentState
+import tools.confido.state.ClientState
 
 /**
  * Which parts of the workspace a query is matched against.
  *
- * Every scope here is served from the client-side [SentState], which already holds each room and
+ * Every scope here is served from the client-side [ClientState], which already holds each room and
  * question the user is allowed to see, so searching needs no server round trip and can run on
  * every keystroke.
  *
@@ -173,7 +173,7 @@ fun makeSnippet(text: String, terms: List<String>): Snippet? {
  * section: a query hitting a room name deliberately does *not* pull in all of that room's
  * questions, which would swamp the question results.
  */
-fun searchWorkspace(state: SentState, query: String, scope: Set<SearchScope>): SearchResults {
+fun searchWorkspace(state: ClientState, query: String, scope: Set<SearchScope>): SearchResults {
     val terms = searchTerms(query)
     if (terms.isEmpty()) return SearchResults(terms, emptyList(), emptyList())
 
