@@ -36,10 +36,17 @@ external interface AppStateWebsocketProviderProps : PropsWithChildren {
 val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
     val loginState = use(LoginContext)!!
     var appState by useState<ClientState?>(null)
-    var stale by useState(false)
+    // The debounced connection flag, mirrored from MultiplexWS (which owns the
+    // debounce so that non-React code shares the same notion of "disconnected").
+    var disconnected by useState(MultiplexWS.disconnected)
 
     useEffect(loginState) {
         MultiplexWS.onUnauthorized = { loginState.logout() }
+    }
+
+    useEffectOnceWithCleanup {
+        val unsub = MultiplexWS.onConnectionChange { disconnected = it }
+        onCleanup { unsub() }
     }
 
     useEffectOnceWithCleanup {
@@ -72,10 +79,8 @@ val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
         val unsubSelf = MultiplexWS.subscribe(Topics.self().name, decodeTopicPayload(Topics.self())) { response, _ ->
             (response as? WSData)?.data?.let { curSelf = it; apply() }
         }
-        val unsubRooms = MultiplexWS.subscribe(Topics.rooms().name, decodeTopicPayload(Topics.rooms())) { response, isStale ->
+        val unsubRooms = MultiplexWS.subscribe(Topics.rooms().name, decodeTopicPayload(Topics.rooms())) { response, _ ->
             (response as? WSData)?.data?.let { curRooms = it; apply() }
-            // Staleness is connection-level; tracking it on one root topic suffices.
-            stale = isStale
         }
         MultiplexWS.start()
         onCleanup {
@@ -85,14 +90,17 @@ val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
         }
     }
 
-    if (appState != null) {
-        AppStateContext.Provider {
-            value = ClientAppState(appState ?: error("No app state!"), stale)
-            +props.children
-        }
-    } else {
-        props.loadingComponent?.invoke {
-            this.stale = stale
+    ConnectionContext.Provider {
+        value = disconnected
+        if (appState != null) {
+            AppStateContext.Provider {
+                value = appState ?: error("No app state!")
+                +props.children
+            }
+        } else {
+            props.loadingComponent?.invoke {
+                this.stale = disconnected
+            }
         }
     }
 }

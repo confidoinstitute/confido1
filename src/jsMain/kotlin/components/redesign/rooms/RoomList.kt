@@ -109,7 +109,7 @@ val RoomListEntries = FC<RoomListEntriesProps> { props ->
 }
 
 val RoomList = FC<RoomListProps> {props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val layoutMode = use(LayoutModeContext)!!
 
     val iconSize = if(props.small) 36.px else 48.px

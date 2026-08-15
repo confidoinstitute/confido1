@@ -3,6 +3,7 @@ package components.layout
 import components.AppStateContext
 import components.AppStateWebsocketProvider
 import components.presenter.PresenterPage
+import components.redesign.basic.ConnectionBanner
 import components.redesign.DefaultTheme
 import components.redesign.ThemeProvider
 import components.redesign.layout.LayoutMode
@@ -28,13 +29,14 @@ val PresenterLayout = FC<Props> {
             theme = { _ -> DefaultTheme }
             LayoutModeContext.Provider {
                 value = LayoutMode.DESKTOP
+                ConnectionBanner {}
                 PresenterLayoutInner {}
             }
         }
     }
 }
 val PresenterLayoutInner = FC<Props> {
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
 
     // Presence subscription: tells the server a presenter window is open.
     useSubscription(Topics.presenterTrack())

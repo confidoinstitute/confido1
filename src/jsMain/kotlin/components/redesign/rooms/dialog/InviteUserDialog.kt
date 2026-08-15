@@ -106,7 +106,7 @@ internal val AddMemberItem = FC<AddMemberItemProps> {props ->
 }
 
 val AddMemberDialog = dialogStateWrapper(FC<BaseDialogProps> { props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
 
     // Default to the first guest-available role, or the first role
@@ -152,7 +152,7 @@ val AddMemberDialog = dialogStateWrapper(FC<BaseDialogProps> { props ->
         onClose = props.onClose
         fullSize = true
         title = "Add members"
-        disabledAction = (stale)
+        disabledAction = false
 
         FormSection {
             FormField {

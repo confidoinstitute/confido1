@@ -81,7 +81,7 @@ object ConditionalBaselineCE: ClientExtension, ConditionalBaselineExtension() {
     }
 
     override fun myPredictionDescriptionExtra(props: MyPredictionDescriptionProps, cb: ChildrenBuilder) {
-        val (appState,_) = use(AppStateContext)!!
+        val appState = use(AppStateContext)!!
         val q = props.question ?: return
         val myPred = (appState.myPredictions[q.ref]?.dist as? BinaryDistribution)?.yesProb
         val baselineRef = q.extensionData.get(BaselineQuestionKey) ?: return
@@ -138,7 +138,7 @@ object ConditionalBaselineCE: ClientExtension, ConditionalBaselineExtension() {
     }
 
     override fun binarySliderExtra(props: BinaryPredInputProps, zoom: PZState?, cb: ChildrenBuilder) {
-        val (appState,_) = use(AppStateContext)!!
+        val appState = use(AppStateContext)!!
         val q = props.question ?: return
         zoom ?: return
         val baselineRef = q.extensionData.get(BaselineQuestionKey) ?: return

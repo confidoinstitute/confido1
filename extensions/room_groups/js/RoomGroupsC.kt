@@ -197,7 +197,7 @@ private external interface GroupChildRoomListProps : Props {
 }
 
 private val GroupChildRoomList = FC<GroupChildRoomListProps> { props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
 
     val children = appState.rooms.values.filter { it.parentRoomId == props.group.id }
 

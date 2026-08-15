@@ -1,6 +1,7 @@
 package components.redesign.rooms
 
 import components.AppStateContext
+import components.useDisconnected
 import components.redesign.basic.LinkUnstyled
 import components.redesign.basic.Stack
 import components.redesign.forms.*
@@ -31,7 +32,7 @@ external interface RoomSettingsProps : Props {
 }
 
 val RoomSettings = FC<RoomSettingsProps> { props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
 
     var name by useState(props.room?.name ?: "")
     var description by useState(props.room?.description ?: "")
@@ -229,7 +230,7 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                         +"Save"
                     else
                         +"Create room"
-                    disabled = (stale || !valid)
+                    disabled = useDisconnected() || !valid
                 }
             }
         }

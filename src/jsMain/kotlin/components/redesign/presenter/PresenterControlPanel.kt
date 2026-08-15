@@ -1,6 +1,7 @@
 package components.redesign.presenter
 
 import components.AppStateContext
+import components.useDisconnected
 import components.presenter.getPresenterControlsComponent
 import components.redesign.CloseIcon
 import components.redesign.PresenterIcon
@@ -55,7 +56,7 @@ private val CollapseButton = ButtonBase.withStyle<ButtonBaseProps> {
  * itself.
  */
 val PresenterControlPanel = FC<Props> {
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val ctl = use(PresenterContext)!!
     var expanded by useState(false)
 
@@ -135,7 +136,7 @@ val PresenterControlPanel = FC<Props> {
                 controlsComp?.let { comp ->
                     comp {
                         this.view = view
-                        this.disabled = stale
+                        this.disabled = useDisconnected()
                         this.onChange = { newView -> ctl.set(newView) }
                     }
                 }
@@ -145,14 +146,14 @@ val PresenterControlPanel = FC<Props> {
                     if (!appState.presenterWindowActive) {
                         PanelButton {
                             palette = MainPalette.primary
-                            disabled = stale
+                            disabled = useDisconnected()
                             onClick = { openPresenterWindow() }
                             +"Reopen window"
                         }
                     }
                     PanelButton {
                         palette = MainPalette.secondary
-                        disabled = stale
+                        disabled = useDisconnected()
                         onClick = { ctl.stop() }
                         +"Stop presenting"
                     }

@@ -140,7 +140,7 @@ val DemoPill = FC<DemoPillProps> { props ->
 }
 
 val DesktopHeader = FC<DashboardHeaderProps> { props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val layoutMode = use(LayoutModeContext)!!
     header {
         css {
@@ -213,7 +213,7 @@ val DesktopHeader = FC<DashboardHeaderProps> { props ->
 }
 
 val PhoneHeader = FC<DashboardHeaderProps> { props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val layoutMode = use(LayoutModeContext)!!
     header {
         css {
@@ -253,7 +253,7 @@ val PhoneHeader = FC<DashboardHeaderProps> { props ->
 }
 
 val Dashboard = FC<Props> {
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val layoutMode = use(LayoutModeContext)!!
     val navigate = useNavigate()
 
@@ -494,7 +494,7 @@ external interface UserMenuProps : Props {
 val UserMenu = FC<UserMenuProps> { props ->
     val loginState = use(LoginContext)!!
     val navigate = useNavigate()
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
 
     DialogMenu {
         open = props.open

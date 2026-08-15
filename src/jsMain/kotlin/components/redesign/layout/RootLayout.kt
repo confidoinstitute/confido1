@@ -80,6 +80,7 @@ val RootLayout = FC<Props> {
         theme = { _ -> DefaultTheme }
         AppStateWebsocketProvider {
             loadingComponent = LoadingLayout
+            ConnectionBanner {}
             RootLayoutInner {}
         }
     }
@@ -94,7 +95,7 @@ enum class LayoutMode(val contentWidth: Length, val contentSidePad: Length) {
 val LayoutModeContext = createContext<LayoutMode>()
 
 private val RootLayoutInner = FC<Props> {
-    val (appState, _) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val layoutMode = useBreakpoints(LayoutMode.PHONE to 740, LayoutMode.TABLET to 1020, default =LayoutMode.DESKTOP)
     var showDemoWelcome by useState(appConfig.demoMode && window.asDynamic().demoDismissed != true)
     ClientExtension.enabled.forEach {

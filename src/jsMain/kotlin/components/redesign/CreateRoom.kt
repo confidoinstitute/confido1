@@ -22,7 +22,6 @@ import react.useState
 import utils.roomUrl
 
 val CreateRoom = FC<Props> {
-    val stale = use(AppStateContext)!!.stale
 
     val navigate = useNavigate()
     val create = useCoroutineLock()
@@ -43,7 +42,7 @@ val CreateRoom = FC<Props> {
         title = "Create a new room"
         navigateBack = "/"
         action = "Create"
-        disabledAction = stale || baseInfo == null
+        disabledAction = baseInfo == null
         onAction = ::createRoom
     }
 

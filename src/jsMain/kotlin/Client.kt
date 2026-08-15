@@ -1,4 +1,6 @@
 import components.App
+import components.redesign.basic.showError
+import websocket.MultiplexWS
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -43,6 +45,18 @@ object Client {
         req()
     }
 
+    /**
+     * Backstop for the disconnect-gating policy: while the state websocket has been
+     * down long enough to surface (MultiplexWS.disconnected), mutations are refused
+     * with a clear message instead of firing at (and acting on) divergent state.
+     * UI affordances gray out via useDisconnected; this catches anything they miss.
+     */
+    fun refuseWhenDisconnected(): Boolean {
+        if (!MultiplexWS.disconnected) return false
+        showError("No connection to the server — try again when reconnected.")
+        return true
+    }
+
     suspend inline fun send(
         url: String,
         method: HttpMethod = HttpMethod.Post,
@@ -50,6 +64,7 @@ object Client {
         crossinline onError: suspend HttpResponse.(String) -> Unit,
         crossinline block: suspend HttpResponse.() -> Unit,
     ) {
+        if (refuseWhenDisconnected()) return
         val resp = httpClient.request(url) {
             this.method = method
             this.fetchOptions { credentials = "include" }
@@ -69,6 +84,7 @@ object Client {
         crossinline onError: suspend HttpResponse.(String) -> Unit,
         crossinline block: suspend HttpResponse.() -> Unit,
     ) {
+        if (refuseWhenDisconnected()) return
         if (appConfig.devMode) console.log("Send data", url, payload!!::class.simpleName, payload)
         val resp = sendDataRequest(url, payload, method, req)
         if (resp.status.isSuccess())

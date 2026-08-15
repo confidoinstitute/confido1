@@ -24,7 +24,7 @@ import web.cssom.*
 import tools.confido.state.Topics
 
 val PresentationTab = FC<Props> {
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val submitLock = useCoroutineLock()
 

@@ -2,6 +2,7 @@ package components.redesign.rooms
 
 import web.window.window
 import components.AppStateContext
+import components.useDisconnected
 import components.redesign.InviteLinkIcon
 import components.redesign.NavMenuIcon
 import components.redesign.basic.Stack
@@ -55,7 +56,7 @@ fun canChangeRole(appState: ClientState, room: Room, role: RoomRole) =
     canChangeRole(room.userRole(appState.user), role)
 
 val RoomMembers = FC<Props> {
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val layoutMode = use(LayoutModeContext)!!
 
@@ -175,7 +176,7 @@ external interface RoomMemberProps : Props {
 }
 
 val RoomMember = FC<RoomMemberProps> {props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val member = props.membership
     // Granted only to MANAGE_MEMBERS viewers — management actions need it.
@@ -271,7 +272,7 @@ external interface InvitationMembersProps : Props {
 }
 
 val InvitationMembers = FC<InvitationMembersProps> { props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
 
     val active = props.invitation.canJoin && props.invitation.canAccess
@@ -386,13 +387,13 @@ external interface MemberRoleSelectProps : Props {
 }
 
 val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val canChange = canChangeRole(appState, room, props.value)
 
     Select {
         value = props.value.id
-        disabled = props.disabled || stale || !canChange
+        disabled = props.disabled || useDisconnected() || !canChange
         onChange = { event ->
             val changedRole = appConfig.roleById(event.target.value)
                 ?: error("Unknown role: ${event.target.value}")

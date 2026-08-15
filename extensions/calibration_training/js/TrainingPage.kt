@@ -51,7 +51,7 @@ enum class TrainingViewState {
  * Main training page component.
  */
 val TrainingPage = FC<Props> {
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val navigate = useNavigate()
     
     var viewState by useState(TrainingViewState.LOADING)

@@ -19,7 +19,7 @@ external interface QuestionProps : Props {
 }
 
 val Question = FC<QuestionProps> { props->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val roomCtx = use(RoomContext)!!
 
     val questionID = useParams()["questionID"] ?: return@FC

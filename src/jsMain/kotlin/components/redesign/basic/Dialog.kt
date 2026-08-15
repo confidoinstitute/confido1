@@ -1,6 +1,7 @@
 package components.redesign.basic
 
 import components.AppStateContext
+import components.useDisconnected
 import components.redesign.AboutIcon
 import components.redesign.IconProps
 import components.redesign.SidebarContext
@@ -275,6 +276,9 @@ external interface DialogHeaderProps : Props {
 }
 
 val DialogHeader = FC<DialogHeaderProps> { props ->
+    // A dialog's action button is by definition a commit affordance, so it gates on
+    // the connection automatically — call sites need no per-dialog stale plumbing.
+    val disconnected = useDisconnected()
     div {
         css {
             paddingLeft = 4.px
@@ -324,7 +328,7 @@ val DialogHeader = FC<DialogHeaderProps> { props ->
             }
             palette = TextPalette.action
             +props.action
-            disabled = props.disabledAction
+            disabled = props.disabledAction || disconnected
             onClick = { props.onAction?.invoke() }
         }
     }
@@ -542,7 +546,7 @@ external interface DialogMenuCommonActionsProps : Props {
 }
 
 val DialogMenuCommonActions = FC<DialogMenuCommonActionsProps> { props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     FeedbackMenuItem {
         pageName = props.pageName
         onClick = {

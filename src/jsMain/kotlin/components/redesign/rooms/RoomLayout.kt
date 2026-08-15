@@ -2,6 +2,7 @@ package components.redesign.rooms
 
 import Client
 import components.AppStateContext
+import components.useDisconnected
 import components.redesign.*
 import components.redesign.basic.*
 import components.redesign.forms.Button
@@ -42,7 +43,7 @@ import web.window.window
 
 /** Banner shown in a room when a presentation is running, allowing the user to follow/unfollow. */
 private val PresentationFollowBanner = FC<Props> {
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val isFollowing = appState.followingPresentation?.id == room.id
     val presentationRunning = room._presentationRunning == true
@@ -94,7 +95,7 @@ private val PresentationFollowBanner = FC<Props> {
                 fontWeight = integer(600)
                 minWidth = Auto.auto
             }
-            disabled = stale
+            disabled = useDisconnected()
             onClick = {
                 runCoroutine {
                     if (isFollowing) {
@@ -170,7 +171,7 @@ external interface RoomLayoutProps : Props {
 
 val RoomLayout = FC<RoomLayoutProps> { props->
     react.useEffectOnceWithCleanup { console.log("MOUNT RoomLayout"); onCleanup { console.log("UNMOUNT RoomLayout") } } // XXX TEMP DEBUG
-    val (appState, _) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val navigate = useNavigate()
     val location = useLocation()

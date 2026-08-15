@@ -133,7 +133,7 @@ val PresenterContext = react.createContext<PresenterController>()
 
 val PresenterControllerProvider = FC<PropsWithChildren> { props->
     var offeredView by useState<PresenterView>()
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
 
     val ctl = useMemo { PresenterController()}
     fun offer(view: PresenterView, forceDialog: Boolean) {

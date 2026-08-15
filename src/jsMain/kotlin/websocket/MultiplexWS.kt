@@ -14,6 +14,7 @@ import web.messaging.MessageEvent
 import web.sockets.CloseEvent
 import web.sockets.WebSocket
 import web.timers.Timeout
+import web.timers.clearTimeout
 import web.timers.setTimeout
 import web.window.window
 
@@ -36,6 +37,51 @@ object MultiplexWS {
 
     /** Invoked when the server closes with code 3000 (unauthorized). */
     var onUnauthorized: (() -> Unit)? = null
+
+    /**
+     * Debounced "the connection has been down long enough to surface in the UI"
+     * (PERSISTENCE_SYNC_REDESIGN.md client endgame): mutation affordances disable on
+     * it, the reconnect banner shows on it, and Client's send helpers refuse on it.
+     * The debounce keeps brief blips (instant reconnects) from ever flashing the UI;
+     * reconnection clears it immediately. Lives here rather than in React state so
+     * non-React code (Client) shares the exact same notion of "disconnected".
+     */
+    var disconnected = false
+        private set
+    private var hasConnected = false
+    private var disconnectTimer: Timeout? = null
+    private val connectionListeners = mutableSetOf<(Boolean) -> Unit>()
+    private const val DISCONNECT_DEBOUNCE_MS = 1500
+
+    /** Listen for [disconnected] changes; called immediately with the current value. */
+    fun onConnectionChange(listener: (Boolean) -> Unit): () -> Unit {
+        connectionListeners.add(listener)
+        listener(disconnected)
+        return { connectionListeners.remove(listener) }
+    }
+
+    private fun setDisconnected(value: Boolean) {
+        if (disconnected == value) return
+        disconnected = value
+        connectionListeners.toList().forEach { it(value) }
+    }
+
+    private fun connectionUp() {
+        disconnectTimer?.let { clearTimeout(it) }
+        disconnectTimer = null
+        hasConnected = true
+        setDisconnected(false)
+    }
+
+    private fun connectionDown() {
+        // Before the first successful connect the app is still on its loading screen;
+        // the debounced flag is about losing a connection we had.
+        if (!hasConnected || disconnectTimer != null || disconnected) return
+        disconnectTimer = setTimeout({
+            disconnectTimer = null
+            if (!connected) setDisconnected(true)
+        }, DISCONNECT_DEBOUNCE_MS)
+    }
 
     private class Entry {
         var count = 0
@@ -96,6 +142,7 @@ object MultiplexWS {
         socket.onopen = EventHandler {
             attempts = 0
             connected = true
+            connectionUp()
             // Resolve pending unsubscribes locally (nothing to tell the new connection
             // about them) and resubscribe everything live in one command.
             pendingUnsub.forEach { topic ->
@@ -129,6 +176,7 @@ object MultiplexWS {
         socket.onclose = EventHandler { event: CloseEvent ->
             ws = null
             connected = false
+            connectionDown()
             when (event.code.toInt()) {
                 4001 -> {
                     // Incompatible frontend version; a reload gets the fresh bundle.

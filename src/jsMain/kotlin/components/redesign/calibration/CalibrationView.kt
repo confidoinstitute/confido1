@@ -329,7 +329,7 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
     }
     val req = props.req
     val entries = data?.entries?.filter { it.value.enoughData } ?: emptyList()
-    val (appState,stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val detailFetch = useCoroutineLock()
     var detailBin by useState<CalibrationBin>()
     val calibrationHelpOpen = useRef<(CalibrationHelpSection)->Unit>()

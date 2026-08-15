@@ -36,7 +36,7 @@ external  interface  CsvExportDialogProps : Props {
     var question: Question?
 }
 val CsvExportDialog = FC<CsvExportDialogProps> {props->
-    val (appState,stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     var exportWhat by useState("predictions")
     val room = use(RoomContext)!!
     var individual by useState(false)

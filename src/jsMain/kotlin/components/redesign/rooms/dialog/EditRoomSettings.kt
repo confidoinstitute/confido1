@@ -20,7 +20,6 @@ external interface EditRoomSettingsDialogProps: DialogCoreProps {
 
 val EditRoomSettingsDialog = FC<EditRoomSettingsDialogProps> { props ->
     val room = use(RoomContext)!!
-    val stale = use(AppStateContext)!!.stale
 
     var baseInfo by useState<BaseRoomInformation?>(null)
 
@@ -33,7 +32,7 @@ val EditRoomSettingsDialog = FC<EditRoomSettingsDialogProps> { props ->
         onClose = props.onClose
         title = "Edit this room"
         action = "Save"
-        disabledAction = (stale || baseInfo == null)
+        disabledAction = baseInfo == null
         onAction = ::editRoom
 
         RoomSettings {

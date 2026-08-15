@@ -19,7 +19,7 @@ import tools.confido.state.Topics
 import tools.confido.refs.ref
 
 val RoomComments = FC<Props> {
-    val (appState, _) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val layoutMode = use(LayoutModeContext)!!
     val roomComments = useSubscription(Topics.roomComments(room.ref))

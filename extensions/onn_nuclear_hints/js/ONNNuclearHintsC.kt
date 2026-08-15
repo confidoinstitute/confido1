@@ -15,7 +15,7 @@ import tools.confido.utils.toFixed
 
 object OnnNuclearHintsCE : ClientExtension, ONNNuclearHintsExtension() {
     override fun myPredictionDescriptionExtra(props: MyPredictionDescriptionProps, cb: ChildrenBuilder) {
-        val (appState,_) = use(AppStateContext)!!
+        val appState = use(AppStateContext)!!
         val q = props.question ?: return
         val r = q.room ?: return
         if (r.ref != nuclearRoom) return

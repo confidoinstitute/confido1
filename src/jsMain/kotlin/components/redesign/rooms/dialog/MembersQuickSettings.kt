@@ -1,6 +1,7 @@
 package components.redesign.rooms.dialog
 
 import components.AppStateContext
+import components.useDisconnected
 import components.redesign.*
 import components.redesign.basic.DialogMenu
 import components.redesign.basic.DialogMenuHeader
@@ -41,7 +42,7 @@ external interface InvitationQuickSettingsDialogProps : Props {
 }
 
 val MemberQuickSettingsDialog = FC<MemberQuickSettingsDialogProps> {props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
 
     DialogMenu {
         open = props.open
@@ -66,13 +67,13 @@ val MemberQuickSettingsDialog = FC<MemberQuickSettingsDialogProps> {props ->
                 props.onClose?.invoke()
                 props.onDelete?.invoke()
             }
-            disabled = stale
+            disabled = useDisconnected()
         }
     }
 }
 
 val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val presenterCtl = use(PresenterContext)!!
 
@@ -87,7 +88,7 @@ val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {prop
         DialogMenuItem {
             text = "Copy link"
             icon = CopyIcon
-            disabled = stale
+            disabled = useDisconnected()
             onClick = {
                 props.onClose?.invoke()
                 props.onCopy?.invoke()
@@ -96,7 +97,7 @@ val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {prop
         DialogMenuItem {
             text = "Show link & QR code in presentation mode"
             icon = PresenterIcon
-            disabled = stale
+            disabled = useDisconnected()
             onClick = {
                 props.onClose?.invoke()
                 presenterCtl.offer(InviteLinkPV(room.ref, props.link.id))
@@ -105,7 +106,7 @@ val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {prop
         DialogMenuItem {
             text = "Edit this invitation link"
             icon = EditIcon
-            disabled = stale
+            disabled = useDisconnected()
             onClick = {
                 props.onClose?.invoke()
                 props.onEdit?.invoke()
@@ -114,7 +115,7 @@ val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {prop
         DialogMenuItem {
             text = "Delete this invitation link"
             icon = BinIcon
-            disabled = stale
+            disabled = useDisconnected()
             variant = DialogMenuItemVariant.dangerous
             onClick = {
                 if (props.hasUsers)
@@ -145,7 +146,7 @@ val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {prop
             DialogMenuItem {
                 text = "Keep invited users as members"
                 // TODO icon
-                disabled = stale
+                disabled = useDisconnected()
                 variant = DialogMenuItemVariant.dangerous
                 onClick = {
                     props.onClose?.invoke()
@@ -155,7 +156,7 @@ val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {prop
             DialogMenuItem {
                 text = "Remove invited users from the room"
                 // TODO icon
-                disabled = stale
+                disabled = useDisconnected()
                 variant = DialogMenuItemVariant.dangerous
                 onClick = {
                     props.onClose?.invoke()

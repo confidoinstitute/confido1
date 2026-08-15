@@ -107,7 +107,7 @@ private external interface CommentDialogProps : Props {
 }
 
 private val CommentDialog = FC<CommentDialogProps> { props ->
-    val (appState, _) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)
     val initialContent = props.initialContent ?: ""
 

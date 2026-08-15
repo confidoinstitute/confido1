@@ -102,7 +102,7 @@ private fun readFileAsBytes(file: dynamic): kotlin.js.Promise<ByteArray> = kotli
 }
 
 val PresentationEditor = FC<PresentationEditorProps> { props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val submitLock = useCoroutineLock()
     val pres = props.data.presentation

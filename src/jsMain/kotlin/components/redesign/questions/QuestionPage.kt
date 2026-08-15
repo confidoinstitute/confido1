@@ -113,7 +113,7 @@ val QuestionPageExtra = FC<QuestionPageExtraProps> { props->
 }
 
 val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val myPrediction = appState.myPredictions[props.question.ref]
     val groupPrediction = useSubscription(Topics.groupPred(props.question.ref))
@@ -301,7 +301,7 @@ val PredictionOverlay = FC<PredictionOverlayProps> { props ->
 }
 
 private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val layoutMode = use(LayoutModeContext)!!
     val room = use(RoomContext)!!
     val hasPredictPermission = appState.hasPermission(room, RoomPermission.SUBMIT_PREDICTION)
@@ -408,7 +408,9 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                         key = "predictionInput"
                         space = props.question.answerSpace
                         this.dist = props.myPrediction?.dist
-                        this.disabled = !question.open || !hasPredictPermission
+                        // Immediate-commit control: predictions send on interaction,
+                        // so the whole input gates on the connection.
+                        this.disabled = !question.open || !hasPredictPermission || useDisconnected()
                         this.question = question
                         if (question.resolutionVisible)
                             this.resolution = question.resolution
@@ -723,7 +725,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
 
     var addCommentOpen by useState(false)
     var sortType by useState(SortType.NEWEST)
-    val (appState, _) = use(AppStateContext )!!
+    val appState = use(AppStateContext)!!
 
     var spoilerExpanded by useState(false)
 

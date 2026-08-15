@@ -256,7 +256,7 @@ external interface ImportStepReviewProps : Props {
 
 val ImportStepReview = FC<ImportStepReviewProps> { props ->
     val state = props.state
-    val (appState, _) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val navigate = useNavigate()
     val submitLock = useCoroutineLock()
     var importError by useState<String?>(null)

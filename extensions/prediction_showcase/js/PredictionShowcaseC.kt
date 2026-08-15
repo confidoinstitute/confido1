@@ -188,7 +188,7 @@ val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> 
 private val PredictionShowcasePVEditorComponent = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
     val view = (props.action as? tools.confido.state.SetPresenterViewAction)?.view as? PredictionShowcasePV ?: return@FC
     val onViewChange: (tools.confido.state.PresenterView) -> Unit = { v -> props.onChange(tools.confido.state.SetPresenterViewAction(v)) }
-    val (appState, _) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val questions = appState.questions.values.filter { q -> room.questions.any { it.id == q.id } }.sortedBy { it.name }
     components.redesign.presentation.FieldLabel { +"Question" }
@@ -202,7 +202,7 @@ private val PredictionShowcasePVEditorComponent = FC<tools.confido.extensions.Fl
 private val GroupPredComparePVEditorComponent = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
     val view = (props.action as? tools.confido.state.SetPresenterViewAction)?.view as? GroupPredictionComparePV ?: return@FC
     val onViewChange: (tools.confido.state.PresenterView) -> Unit = { v -> props.onChange(tools.confido.state.SetPresenterViewAction(v)) }
-    val (appState, _) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val allTags = appState.questions.values.filter { q -> room.questions.any { it.id == q.id } }
         .flatMap { it.tags }.distinct().sorted()

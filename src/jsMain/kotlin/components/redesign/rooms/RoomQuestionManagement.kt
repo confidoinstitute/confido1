@@ -2,6 +2,7 @@ package components.redesign.rooms
 
 import Client
 import components.AppStateContext
+import components.useDisconnected
 import components.redesign.*
 import components.redesign.basic.*
 import components.redesign.forms.Button
@@ -140,7 +141,7 @@ private val QMHelpDialog = FC<DialogProps> { props->
 }
 
 val QuestionManagement = FC<QuestionManagementProps> { props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = props.room
 
     val groupPredsWS = useSubscription(Topics.roomGroupPred(room.ref))
@@ -535,7 +536,6 @@ val StatusSelector = FC<StatusSelectorProps> { props->
 }
 
 val QuestionRow = FC<QuestionRowProps> { props ->
-    val (_, stale) = use(AppStateContext)!!
     val question = props.question
 
     val sortable = useSortable(jso {
@@ -578,7 +578,7 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                     paddingRight = 0.px
                 }
             }
-            if (!stale) {
+            if (!useDisconnected()) {
                 DragHandle {
                     // TODO apply sortable.setActivatorNodeRef (requires forwardref in DragHandle)
                     listeners = sortable.listeners

@@ -84,7 +84,7 @@ val RoomTab = FC<RoomTabProps> { props->
 val RoomTabs = FC<RoomTabsProps> { props ->
     val palette = props.palette ?: RoomPalette.red
 
-    val (appState, _) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val location = useLocation()
     val locationValue = location.pathname.split('/').getOrNull(3) ?: ""

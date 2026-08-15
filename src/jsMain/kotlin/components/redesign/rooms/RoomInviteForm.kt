@@ -1,5 +1,6 @@
 package components.redesign.rooms
 
+import components.useDisconnected
 import Client
 import components.*
 import components.redesign.Header
@@ -99,7 +100,7 @@ external interface RoomInviteFormProps : Props {
 
 
 private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val navigate = useNavigate()
 
     val user = appState.user
@@ -148,7 +149,7 @@ private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
                 }
             }
         }
-        disabled = stale || missingRequiredEmail
+        disabled = useDisconnected() || missingRequiredEmail
         +"Start forecasting"
     }
 }
@@ -160,7 +161,7 @@ external interface RoomInviteAlertProps : Props {
 val POTENTIAL_SHORTLINK_RE = Regex("^[0-9]+$")
 
 private val MissingEmailConditionalAlert = FC<RoomInviteAlertProps> { props ->
-    val (appState, _) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
 
     val user = appState.user
     val missingRequiredEmail = user != null && user.email == null && props.emailPolicy == InviteFieldPolicy.REQUIRED

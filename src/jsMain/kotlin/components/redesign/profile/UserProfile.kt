@@ -1,6 +1,7 @@
 package components.redesign.profile
 
 import components.AppStateContext
+import components.useDisconnected
 import components.redesign.*
 import components.redesign.basic.Alert
 import components.redesign.basic.PageHeader
@@ -29,7 +30,7 @@ import web.html.password
 import web.html.submit
 
 val UserProfile = FC<Props> {
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val user = appState.user
 
     var nick by useState(user?.nick ?: "")
@@ -90,7 +91,7 @@ val UserProfile = FC<Props> {
         navigateBack = "/"
         title = "Edit profile"
         action = "Save"
-        disabledAction = (stale || edit.running)
+        disabledAction = edit.running
         onAction = { editProfile() }
     }
 
@@ -195,7 +196,7 @@ val UserProfile = FC<Props> {
                             fontWeight = integer(500)
                         }
                         +"Edit profile"
-                        disabled = (stale || edit.running)
+                        disabled = useDisconnected() || edit.running
                     }
                 }
             }

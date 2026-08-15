@@ -104,7 +104,7 @@ private val ScopeChip = FC<ScopeChipProps> { props ->
  * update as you type without hitting the server; see [searchWorkspace].
  */
 val SearchPage = FC<Props> {
-    val (appState, _) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val layoutMode = use(LayoutModeContext)!!
     val navigate = useNavigate()
     val (searchParams, _) = useSearchParams()

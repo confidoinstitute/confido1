@@ -85,7 +85,7 @@ external interface QuestionSelectorProps : Props {
 
 val QID_RE = Regex("\\[([a-zA-Z0-9_-]+)\\]\$")
 val QuestionSelector = FC<QuestionSelectorProps>("QuestionSelector") { props ->
-    val (appState, _) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val datalistId = useId()
     fun fmtq(q: Question) = "${q.name} [${q.id}]"
     var internalVal by useState(props.value?.let { appState.questions[it] }?.let {fmtq(it)} ?: "")
@@ -387,7 +387,7 @@ val SnapshotManagerDialog = FC<SnapshotManagerDialogProps> { props->
     var newPublic by useState(false)
     val tz = TimeZone.currentSystemDefault()
     val today = Clock.System.now().toLocalDateTime(tz).date
-    val (appState,stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val submitLock = useCoroutineLock()
     if (room == null) return@FC
     Dialog {
@@ -649,7 +649,7 @@ val UpdatePlotPC = FC<PresenterControlsProps<UpdatePlotPV>> { props ->
 private val UpdatePlotPVEditorComponent = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
     val view = (props.action as? tools.confido.state.SetPresenterViewAction)?.view as? UpdatePlotPV ?: return@FC
     val onViewChange: (tools.confido.state.PresenterView) -> Unit = { v -> props.onChange(tools.confido.state.SetPresenterViewAction(v)) }
-    val (appState, _) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(components.redesign.rooms.RoomContext)!!
     val questions = appState.questions.values.filter { q -> room.questions.any { it.id == q.id } }.sortedBy { it.name }
     val tz = TimeZone.currentSystemDefault()
@@ -710,7 +710,7 @@ private val UpdatePlotPVEditorComponent = FC<tools.confido.extensions.FlowItemEd
 /** Flow action editor for CreateSnapshotAction. */
 private val CreateSnapshotActionEditor = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
     val action = props.action as? CreateSnapshotAction ?: return@FC
-    val (appState, _) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(components.redesign.rooms.RoomContext)!!
     val questions = appState.questions.values.filter { q -> room.questions.any { it.id == q.id } }.sortedBy { it.name }
 
@@ -784,7 +784,7 @@ object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
     override fun questionQuickSettingsExtra(props: QuestionQuickSettingsDialogProps, cb: ChildrenBuilder, onClose: ()->Unit) {
         var updatePlotState  by useContextState(ExtensionContextPlace.QUESTION_PAGE, "state", default = UpdatePlotState.NONE)
         val room = use(RoomContext)!!
-        val (appState,_) = use(AppStateContext)!!
+        val appState = use(AppStateContext)!!
         if (appState.hasPermission(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS))
         cb.apply {
             DialogMenuItem {

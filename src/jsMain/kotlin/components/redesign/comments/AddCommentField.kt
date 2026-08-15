@@ -35,7 +35,7 @@ val AddCommentField = FC<AddCommentFieldProps> { props ->
         return@FC
     }
 
-    val (appState, _) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)
 
     var attachPrediction by useState(false)

@@ -117,7 +117,7 @@ val flowItemTypes: List<FlowItemTypeEntry> by kotlin.lazy {
 
 /** Resolve the room's questions from context. Must be called within an FC. */
 fun useRoomQuestions(): List<tools.confido.question.Question> {
-    val (appState, _) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     return appState.questions.values.filter { q ->
         room.questions.any { it.id == q.id }

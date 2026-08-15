@@ -1,6 +1,7 @@
 package components.redesign.rooms.dialog
 
 import components.AppStateContext
+import components.useDisconnected
 import components.redesign.basic.Dialog
 import components.redesign.basic.Stack
 import components.redesign.basic.showError
@@ -24,7 +25,6 @@ external interface EditInviteDialogProps : EditEntityDialogProps<InviteLink>
 val EditInviteDialog = FC<EditInviteDialogProps> { props ->
     val i = props.entity
     val room = use(RoomContext)!!
-    val stale = use(AppStateContext)!!.stale
 
     // Default to the first guest-available role, or the first role
     val defaultRole = appConfig.roles.firstOrNull { it.availableToGuests } ?: appConfig.roles.first()
@@ -76,7 +76,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
         onClose = props.onClose
         title = if (props.entity != null) "Edit this invitation link" else "Create an invitation link"
         action = if (props.entity != null) "Save" else "Create"
-        disabledAction = (stale)
+        disabledAction = false
         onAction = { submitInviteLink() }
 
         Form {
@@ -237,7 +237,7 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                         +"Save"
                     else
                         +"Create invite link"
-                    disabled = (stale)
+                    disabled = useDisconnected()
                 }
             }
         }

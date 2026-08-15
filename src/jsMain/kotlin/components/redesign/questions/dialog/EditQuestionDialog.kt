@@ -1,5 +1,6 @@
 package components.redesign.questions.dialog
 
+import components.useDisconnected
 import Client
 import components.*
 import components.redesign.basic.*
@@ -45,7 +46,7 @@ val EditQuestionDialogExtensions = FC<EditQuestionDialogProps> { props->
 }
 
 val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val extContext = ClientExtension.getContextValues(ExtensionContextPlace.EDIT_QUESTION_DIALOG)
 
@@ -158,7 +159,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         onClose = props.onClose
         title = if (props.entity != null) "Edit this question" else "Create a question"
         action = if (props.entity != null) "Save" else "Create"
-        disabledAction = (stale || !questionValid)
+        disabledAction = !questionValid
         onAction = { submitQuestion() }
 
         Form {
@@ -394,7 +395,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                         +"Save"
                     else
                         +"Create question"
-                    disabled = (stale || !questionValid)
+                    disabled = useDisconnected() || !questionValid
                 }
             }
         }

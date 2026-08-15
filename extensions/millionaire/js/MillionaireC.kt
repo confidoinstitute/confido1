@@ -852,7 +852,7 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
     override fun myPredictionDescriptionExtra(props: MyPredictionDescriptionProps, cb: ChildrenBuilder) {
         val room = use(RoomContext) ?: return
         val q = use(QuestionContext) ?: return
-        val (appState, _) = use(AppStateContext)!!
+        val appState = use(AppStateContext)!!
         val config = useMillionaireConfig(room.id) ?: return
         val qs = questions(room, config.tag)
         val qids = qs.map { it.id }

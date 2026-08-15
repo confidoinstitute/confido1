@@ -3,6 +3,7 @@ package components.redesign.admin
 
 import Client
 import components.AppStateContext
+import components.useDisconnected
 import components.redesign.BinIcon
 import components.redesign.EditIcon
 import components.redesign.ConfirmDialog
@@ -96,7 +97,7 @@ val DeleteUserDialog = FC<EditEntityDialogProps<User>> { props ->
 }
 
 val EditUserDialog = FC<EditUserDialogProps> { props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
 
     val newUser = props.entity == null
     val htmlId = useId()
@@ -150,7 +151,7 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
         onAction = {
             submitUser()
         }
-        disabledAction = stale || errorEmptyEmail || submit.running
+        disabledAction = errorEmptyEmail || submit.running
 
         Form {
             FormSection {
@@ -217,7 +218,7 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
                 }
             }
             DialogMainButton {
-                disabled = stale || errorEmptyEmail || submit.running
+                disabled = useDisconnected() || errorEmptyEmail || submit.running
                 onClick = { submitUser() }
                 +if (newUser) "Create user" else "Save"
             }
@@ -287,7 +288,7 @@ val userTypeColors = mapOf(
 )
 
 val UserAdmin = FC<Props> {
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     if (!appState.isAdmin()) return@FC
 
     // The user directory is a surface-local subscription (no global users map).
@@ -374,13 +375,13 @@ val UserAdmin = FC<Props> {
                                 Stack {
                                     direction = FlexDirection.row
                                     IconButton {
-                                        disabled = stale
+                                        disabled = useDisconnected()
                                         onClick = { editUserOpen(user) }
                                         EditIcon{ size = 14 }
                                     }
                                     if (!(appState.user eqid user)) {
                                         IconButton {
-                                            disabled = stale
+                                            disabled = useDisconnected()
                                             onClick = { deleteUserOpen(user) }
                                             css {
                                                 color = RoomPalette.red.color

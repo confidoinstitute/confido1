@@ -16,7 +16,7 @@ import tools.confido.refs.Ref
 
 val RoomContext = createContext<Room>()
 val Room = FC<Props> {
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val roomId = useParams()["roomID"] ?: return@FC
     // Component-scoped subscription to the full room (member lists, invite links,
     // presentation state); the global rooms map only carries directory-level rooms.

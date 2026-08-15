@@ -125,7 +125,7 @@ external interface MyScoresContentProps : Props {
  * Used both on the standalone "Your scores" page and in the room Score tab.
  */
 val MyScoresContent = FC<MyScoresContentProps> { props ->
-    val (appState, _) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val layoutMode = use(LayoutModeContext)!!
     val isDesktop = layoutMode >= LayoutMode.DESKTOP
     val isPhone = layoutMode == LayoutMode.PHONE

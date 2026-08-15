@@ -62,7 +62,7 @@ external interface NumericExactEstimateDialogProps : ExactEstimateDialogProps {
 }
 
 val ExactEstimateDialog = FC<GenericExactEstimateDialogProps> { props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     props.question.answerSpace.let { answerSpace ->
         when (answerSpace) {
             BinarySpace -> {

@@ -86,7 +86,7 @@ val ScoringHelpDialog = FC<DialogProps> { props->
 
 val RoomScore = FC<Props> {
     val room = use(RoomContext)!!
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val canViewScoreboard = appState.hasPermission(room, RoomPermission.VIEW_SCORES)
 
     var helpOpen by useState(false)

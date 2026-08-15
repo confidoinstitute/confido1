@@ -1,5 +1,6 @@
 package components.redesign.questions.dialog
 
+import components.useDisconnected
 import Client
 import components.*
 import components.redesign.*
@@ -25,7 +26,7 @@ external interface QuestionQuickSettingsDialogProps : Props {
 }
 
 val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props ->
-    val (appState, stale) = use(AppStateContext)!!
+    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val navigate = useNavigate()
 
@@ -102,7 +103,7 @@ val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props -
             DialogMenuItem {
                 text = "Edit this question"
                 icon = EditIcon
-                disabled = stale
+                disabled = useDisconnected()
                 onClick = {
                     props.onEdit?.invoke()
                 }
@@ -116,7 +117,7 @@ val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props -
                 text = "Delete this question"
                 icon = BinIcon
                 variant = DialogMenuItemVariant.dangerous
-                disabled = stale
+                disabled = useDisconnected()
                 onClick = {
                     props.onClose?.invoke()
                     deleteConfirmOpen = true
