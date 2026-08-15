@@ -922,6 +922,45 @@ working untouched mid-transition.
     update_scatter_plot had been calling the default hook and shipping null
     presentations. The hook is renamed `overrideUserPresentation`, un-shadowing
     the core function (and fixing the scatter plot as a side effect).
+  - **Client endgame agreed (discussion of 2026-08-15): dissolve the AppState facade
+    and the `globalState` expect; deref becomes server-only.** Components get data
+    from subscriptions directly (plus payload-carrying scoped contexts à la
+    RoomContext), self/permissions from a narrow SelfContext with accessor hooks,
+    connection state from its own context. The facade's frame-consistency service is
+    already provided by MultiplexWS's atomic frame apply, so it can dissolve. The
+    commonMain deref tail is enumerated and small: dead `GlobalState.get/getRef`;
+    `Question.room`/count props → jvm extensions (server should use the questionRoom
+    fold) with client uses dissolving into the per-room questions topic;
+    `PresenterView.isValid` → server-side validation via an extension hook (a jvm
+    sealed-`when` can't cover extension-registered subclasses); `Utils.mapDeref` et
+    al. platform-split. **The one genuinely new obligation: `describe()` strings** —
+    presenter/flow descriptions rendered client-side deref question names today, so
+    they must ship precomputed in the presentation payloads once Question goes
+    client-opaque (§5.2 "computed data lives only in payloads", applied once more).
+    Order: connection split first, then SelfContext, then per-room questions, then
+    cross-room surfaces, then the eviction commit deleting `expect globalState`,
+    `BaseState`, `ClientState` and `AppStateContext` together.
+  - **Session projection.** `SelfState` replaced `session: UserSession` with the two
+    fields client code reads (`presenterInfo`, `followingPresentation`): the session
+    is a credential-bearing server entity (its id is the auth key) and shipping it
+    whole both leaked that into JS-readable state and required the expiryTime-pinning
+    dedup hack — both retired. `UserSession` is `ServerImmediateDerefEntity` now;
+    sessions never reach the client in any form.
+  - **Connection state split out (endgame step 1).** `stale` left AppStateContext
+    (which now carries `ClientState` directly) for a dedicated ConnectionContext.
+    Systematic gating policy, by *commit timing* rather than widget type:
+    MultiplexWS owns a debounced (1.5s) `disconnected` flag shared by React and
+    non-React code; dialog action buttons gate automatically inside DialogHeader
+    (every dialog commit covered with zero per-dialog code — the old scattered
+    `disabled = stale` plumbing covered maybe half); immediate-commit controls
+    (send-on-interaction: prediction input, role selects, quick-settings/presenter
+    actions, drag reorder) opt in via `useDisconnected()`; typing/local edits and
+    navigation are never gated (browsing cached data while offline is a topic-cache
+    feature); `Client.send*` refuses with a clear toast as the backstop for missed
+    affordances; a global ConnectionBanner (+ "back online" flash, deliberately no
+    stale-data content marks for now) names the state in both layouts. Verified by
+    a kill-the-server-under-a-live-browser test: banner + role-select disabling
+    after the debounce, clean recovery with flowing updates on restart.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or
