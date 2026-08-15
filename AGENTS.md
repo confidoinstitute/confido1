@@ -19,7 +19,7 @@ Confido is a **Kotlin Multiplatform** collaborative forecasting/prediction web a
 
 - **JVM target**: Java 17, main class `tools.confido.application.ServerKt`
 - **JS target**: ES2015 with IR compiler, Webpack bundling
-- **Testing**: No testing framework configured
+- **Testing**: runtime state-sync suite in `tests/state/` (`run_all.sh [--browser]` — self-managed scratch server; see its README); no unit-test framework
 - **Database**: MongoDB with replica set required; init demo data via `GET /init`
 
 ## Directory Structure
