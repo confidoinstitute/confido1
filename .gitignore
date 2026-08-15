@@ -6,3 +6,4 @@ gradlew.bat
 gradle
 .aider*
 .kotlin
+__pycache__/
