@@ -961,6 +961,23 @@ working untouched mid-transition.
     stale-data content marks for now) names the state in both layouts. Verified by
     a kill-the-server-under-a-live-browser test: banner + role-select disabling
     after the debounce, clean recovery with flowing updates on restart.
+  - **SelfContext with inline accessors (endgame step 2).** Simpler than originally
+    sketched, at the user's suggestion: React's `use` is callable anywhere during
+    render (conditionals, loops, helper functions), so the permission "checker
+    facade" collapses into plain functions — `usePermission(room, perm)` /
+    `useMyUser()` / `useIsAdmin()` / `useMyPredictions()` / `usePresenterInfo()` … —
+    that read SelfContext internally and are called inline at the point of a check.
+    No hook plumbing, no wrapper components; the check itself stays the pure
+    commonMain `Room.hasPermission`. ClientState reduced to the two data maps
+    backing shared-code deref (questions+counts, rooms directory) plus the self
+    slice it feeds SelfContext from. Two `use`-semantics disciplines, now enforced
+    in review and documented on the context: capture values *before* `useMemo`
+    bodies (a context read inside would not invalidate the memo) and before event
+    handlers (not render time) — the sweep hit both for real (route memos in
+    RootLayout/RoomLayout/Room; PresenterController's offer(), MemberRoleSelect's
+    onChange via a now-pure `canChangeRole(myUser, room, role)`). Remaining for
+    the eviction: per-room questions topic, cross-room surfaces, then
+    `globalState`/`BaseState`/`ClientState`/`AppStateContext` die together.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or
