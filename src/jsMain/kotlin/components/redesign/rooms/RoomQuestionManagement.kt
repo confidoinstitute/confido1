@@ -143,7 +143,7 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
     val (appState, stale) = use(AppStateContext)!!
     val room = props.room
 
-    val groupPredsWS = useSubscription<Map<String, Prediction?>>(Topics.roomGroupPred(room.ref))
+    val groupPredsWS = useSubscription(Topics.roomGroupPred(room.ref))
     val groupPreds = groupPredsWS.data ?: emptyMap()
 
     val mouseSensor = useSensor<MouseSensorOptions>(MouseSensor)
@@ -431,7 +431,7 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
                                     this.question = question
                                     this.room = room
                                     this.showGroupPredCol = showGroupPredCol
-                                    this.groupPred = groupPreds.get(question.id)
+                                    this.groupPred = groupPreds.get(question.ref)
                                     this.showResolutionCol = showResolutionCol
                                     this.onEdit = { preset = QuestionPreset.NONE; editQuestionOpen(question) }
                                 }

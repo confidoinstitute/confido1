@@ -26,7 +26,7 @@ external interface QuestionListProps : Props {
 val QuestionList = FC<QuestionListProps> { props ->
     val (appState, _) = use(AppStateContext)!!
     val room = use(RoomContext)!!
-    val groupPredsWS = useSubscription<Map<String, Prediction?>>(Topics.roomGroupPred(room.ref))
+    val groupPredsWS = useSubscription(Topics.roomGroupPred(room.ref))
     val groupPreds = groupPredsWS.data ?: emptyMap()
     val layoutMode = use(LayoutModeContext)!!
 
@@ -171,7 +171,7 @@ val QuestionList = FC<QuestionListProps> { props ->
                 // When I am the only one prediction, show it as "your prediction" instead of "group prediction",
                 // which is confusing.
                 if (!(appState.myPredictions[question.ref] != null && appState.predictorCount[question.ref] == 1)) {
-                    this.groupPred = groupPreds[question.id]
+                    this.groupPred = groupPreds[question.ref]
                 }
                 this.href = room.urlPrefix+question.urlPrefix
             }

@@ -18,9 +18,11 @@ import kotlinx.html.HTML
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.KSerializer
 import payloads.responses.WSData
 import payloads.responses.WSError
 import payloads.responses.WSResponse
+import payloads.responses.WSResponseSerializer
 import tools.confido.application.index
 import tools.confido.application.singleThreadContext
 import tools.confido.serialization.confidoJSON
@@ -28,9 +30,9 @@ import tools.confido.store.MemoView
 import tools.confido.store.TxClock
 import tools.confido.store.View
 import tools.confido.utils.PathTemplate
-import tools.confido.utils.PathTemplate0
-import tools.confido.utils.PathTemplate1
-import tools.confido.utils.PathTemplate2
+import tools.confido.utils.TopicSpec0
+import tools.confido.utils.TopicSpec1
+import tools.confido.utils.TopicSpec2
 
 typealias RouteBodyCall = suspend RoutingContext.() -> Unit
 
@@ -143,13 +145,14 @@ object TopicRegistry {
  * compute re-runs and captures the error as a WSError payload; error states forgo
  * cutoff and re-evaluate per flush, recovering when state changes.
  */
-inline fun <reified T> topicPayloadView(view: View<T>): View<JsonElement> =
+fun <P> topicPayloadView(serializer: KSerializer<P>, view: View<P>): View<JsonElement> =
     object : MemoView<JsonElement>() {
         override fun validateSources(): Long =
             try { view.validate() } catch (e: ResponseError) { TxClock.serial }
 
         override fun compute(): JsonElement =
-            confidoJSON.encodeToJsonElement<WSResponse<T>>(
+            confidoJSON.encodeToJsonElement(
+                WSResponseSerializer(serializer),
                 try {
                     WSData(view.value)
                 } catch (e: ResponseError) {
@@ -160,21 +163,21 @@ inline fun <reified T> topicPayloadView(view: View<T>): View<JsonElement> =
         override val changes get() = view.changes
     }
 
-inline fun <reified T> Route.viewWS(t: PathTemplate0, crossinline body: suspend WSBody.() -> View<T>) {
-    TopicRegistry.handlers.add(ViewTopic(t) { ctx, _ -> topicPayloadView(ctx.body()) })
+fun <P> Route.viewWS(spec: TopicSpec0<P>, body: suspend WSBody.() -> View<P>) {
+    TopicRegistry.handlers.add(ViewTopic(spec.path) { ctx, _ -> topicPayloadView(spec.serializer, ctx.body()) })
 }
 
-inline fun <A : Any, reified T> Route.viewWS(t: PathTemplate1<A>, crossinline body: suspend WSBody.(A) -> View<T>) {
-    TopicRegistry.handlers.add(ViewTopic(t) { ctx, args ->
+fun <A : Any, P> Route.viewWS(spec: TopicSpec1<A, P>, body: suspend WSBody.(A) -> View<P>) {
+    TopicRegistry.handlers.add(ViewTopic(spec.path) { ctx, args ->
         @Suppress("UNCHECKED_CAST")
-        topicPayloadView(ctx.body(args[0] as A))
+        topicPayloadView(spec.serializer, ctx.body(args[0] as A))
     })
 }
 
-inline fun <A : Any, B : Any, reified T> Route.viewWS(t: PathTemplate2<A, B>, crossinline body: suspend WSBody.(A, B) -> View<T>) {
-    TopicRegistry.handlers.add(ViewTopic(t) { ctx, args ->
+fun <A : Any, B : Any, P> Route.viewWS(spec: TopicSpec2<A, B, P>, body: suspend WSBody.(A, B) -> View<P>) {
+    TopicRegistry.handlers.add(ViewTopic(spec.path) { ctx, args ->
         @Suppress("UNCHECKED_CAST")
-        topicPayloadView(ctx.body(args[0] as A, args[1] as B))
+        topicPayloadView(spec.serializer, ctx.body(args[0] as A, args[1] as B))
     })
 }
 
@@ -188,45 +191,48 @@ inline fun <A : Any, B : Any, reified T> Route.viewWS(t: PathTemplate2<A, B>, cr
  * plus output dedup keeps the delivered payload correct. Errors from either stage are
  * per-computation, as in the [View]-only overload.
  */
-inline fun <G, reified T> gateFetchFlow(
-    crossinline gate: suspend () -> View<G>,
-    crossinline fetch: suspend (G) -> T,
-): Flow<JsonElement> =
-    flow {
+fun <G, P> gateFetchFlow(
+    serializer: KSerializer<P>,
+    gate: suspend () -> View<G>,
+    fetch: suspend (G) -> P,
+): Flow<JsonElement> {
+    val wsSerializer = WSResponseSerializer(serializer)
+    return flow {
         val view = gate()
         val frame: suspend () -> JsonElement = {
-            val message: WSResponse<T> = try {
+            val message: WSResponse<P> = try {
                 WSData(fetch(view.value))
             } catch (e: ResponseError) {
                 WSError(e.wsCode, e.message)
             }
-            confidoJSON.encodeToJsonElement(message)
+            confidoJSON.encodeToJsonElement(wsSerializer, message)
         }
         emit(frame())
         emitAll(view.changes.conflate().map { frame() })
     }.catch { e ->
-        if (e is ResponseError) emit(confidoJSON.encodeToJsonElement<WSResponse<T>>(WSError(e.wsCode, e.message)))
+        if (e is ResponseError) emit(confidoJSON.encodeToJsonElement(wsSerializer, WSError(e.wsCode, e.message)))
         else throw e
     }
+}
 
-inline fun <G, reified T> Route.viewWS(
-    t: PathTemplate0,
-    crossinline gate: suspend WSBody.() -> View<G>,
-    crossinline fetch: suspend WSBody.(G) -> T,
+fun <G, P> Route.viewWS(
+    spec: TopicSpec0<P>,
+    gate: suspend WSBody.() -> View<G>,
+    fetch: suspend WSBody.(G) -> P,
 ) {
-    TopicRegistry.handlers.add(FlowTopic(t) { ctx, _ ->
-        gateFetchFlow(gate = { ctx.gate() }, fetch = { g -> ctx.fetch(g) })
+    TopicRegistry.handlers.add(FlowTopic(spec.path) { ctx, _ ->
+        gateFetchFlow(spec.serializer, gate = { ctx.gate() }, fetch = { g -> ctx.fetch(g) })
     })
 }
 
-inline fun <A : Any, G, reified T> Route.viewWS(
-    t: PathTemplate1<A>,
-    crossinline gate: suspend WSBody.(A) -> View<G>,
-    crossinline fetch: suspend WSBody.(A, G) -> T,
+fun <A : Any, G, P> Route.viewWS(
+    spec: TopicSpec1<A, P>,
+    gate: suspend WSBody.(A) -> View<G>,
+    fetch: suspend WSBody.(A, G) -> P,
 ) {
-    TopicRegistry.handlers.add(FlowTopic(t) { ctx, args ->
+    TopicRegistry.handlers.add(FlowTopic(spec.path) { ctx, args ->
         @Suppress("UNCHECKED_CAST")
-        gateFetchFlow(gate = { ctx.gate(args[0] as A) }, fetch = { g -> ctx.fetch(args[0] as A, g) })
+        gateFetchFlow(spec.serializer, gate = { ctx.gate(args[0] as A) }, fetch = { g -> ctx.fetch(args[0] as A, g) })
     })
 }
 
@@ -236,21 +242,23 @@ inline fun <A : Any, G, reified T> Route.viewWS(
  * becomes a single WSError frame. Use try/finally (or onStart/onCompletion) inside the
  * flow for per-subscription effects and cleanup.
  */
-inline fun <reified T> payloadFlow(crossinline body: suspend () -> Flow<T>): Flow<JsonElement> =
-    flow { emitAll(body()) }  // flow {} defers the body itself to collection time
-        .map { confidoJSON.encodeToJsonElement<WSResponse<T>>(WSData(it)) }
+fun <P> payloadFlow(serializer: KSerializer<P>, body: suspend () -> Flow<P>): Flow<JsonElement> {
+    val wsSerializer = WSResponseSerializer(serializer)
+    return flow { emitAll(body()) }  // flow {} defers the body itself to collection time
+        .map { confidoJSON.encodeToJsonElement(wsSerializer, WSData(it)) }
         .catch { e ->
-            if (e is ResponseError) emit(confidoJSON.encodeToJsonElement<WSResponse<T>>(WSError(e.wsCode, e.message)))
+            if (e is ResponseError) emit(confidoJSON.encodeToJsonElement(wsSerializer, WSError(e.wsCode, e.message)))
             else throw e
         }
-
-inline fun <reified T> Route.flowWS(t: PathTemplate0, crossinline body: suspend WSBody.() -> Flow<T>) {
-    TopicRegistry.handlers.add(FlowTopic(t) { ctx, _ -> payloadFlow { ctx.body() } })
 }
 
-inline fun <A : Any, B : Any, reified T> Route.flowWS(t: PathTemplate2<A, B>, crossinline body: suspend WSBody.(A, B) -> Flow<T>) {
-    TopicRegistry.handlers.add(FlowTopic(t) { ctx, args ->
+fun <P> Route.flowWS(spec: TopicSpec0<P>, body: suspend WSBody.() -> Flow<P>) {
+    TopicRegistry.handlers.add(FlowTopic(spec.path) { ctx, _ -> payloadFlow(spec.serializer) { ctx.body() } })
+}
+
+fun <A : Any, B : Any, P> Route.flowWS(spec: TopicSpec2<A, B, P>, body: suspend WSBody.(A, B) -> Flow<P>) {
+    TopicRegistry.handlers.add(FlowTopic(spec.path) { ctx, args ->
         @Suppress("UNCHECKED_CAST")
-        payloadFlow { ctx.body(args[0] as A, args[1] as B) }
+        payloadFlow(spec.serializer) { ctx.body(args[0] as A, args[1] as B) }
     })
 }

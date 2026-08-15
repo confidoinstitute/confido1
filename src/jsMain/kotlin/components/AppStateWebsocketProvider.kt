@@ -70,18 +70,18 @@ val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
             } catch (e: Exception) {
             }
         }
-        val unsubQuestions = MultiplexWS.subscribe(Topics.questions(), decodeTopicPayload<QuestionsState>(Topics.questions())) { response, _ ->
+        val unsubQuestions = MultiplexWS.subscribe(Topics.questions().name, decodeTopicPayload(Topics.questions())) { response, _ ->
             (response as? WSData)?.data?.let { curQuestions = it; apply() }
         }
-        val unsubSelf = MultiplexWS.subscribe(Topics.self(), decodeTopicPayload<SelfState>(Topics.self())) { response, _ ->
+        val unsubSelf = MultiplexWS.subscribe(Topics.self().name, decodeTopicPayload(Topics.self())) { response, _ ->
             (response as? WSData)?.data?.let { curSelf = it; apply() }
         }
-        val unsubRooms = MultiplexWS.subscribe(Topics.rooms(), decodeTopicPayload<Map<String, Room>>(Topics.rooms())) { response, isStale ->
+        val unsubRooms = MultiplexWS.subscribe(Topics.rooms().name, decodeTopicPayload(Topics.rooms())) { response, isStale ->
             (response as? WSData)?.data?.let { curRooms = it; apply() }
             // Staleness is connection-level; tracking it on one root topic suffices.
             stale = isStale
         }
-        val unsubUsers = MultiplexWS.subscribe(Topics.users(), decodeTopicPayload<Map<String, User>>(Topics.users())) { response, _ ->
+        val unsubUsers = MultiplexWS.subscribe(Topics.users().name, decodeTopicPayload(Topics.users())) { response, _ ->
             (response as? WSData)?.data?.let { curUsers = it; apply() }
         }
         MultiplexWS.start()

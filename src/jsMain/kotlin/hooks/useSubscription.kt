@@ -1,18 +1,19 @@
 package hooks
 
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.JsonElement
 import payloads.responses.*
 import react.useEffectWithCleanup
 import react.useState
 import tools.confido.serialization.confidoJSON
+import tools.confido.utils.BoundTopic
 import websocket.MultiplexWS
 
 /**
- * Decoder for a topic's `WSResponse<T>` payloads, for [MultiplexWS.subscribe]'s typed
- * cache. Never throws — decode failures become [WSError] values.
+ * Decoder for a bound topic's `WSResponse<P>` payloads, for [MultiplexWS.subscribe]'s
+ * typed cache — the serializer travels in the [BoundTopic], so nothing is reified.
+ * Never throws — decode failures become [WSError] values.
  */
-inline fun <reified T> decodeTopicPayload(topic: String): (JsonElement) -> WSResponse<T> = { element ->
+fun <P> decodeTopicPayload(topic: BoundTopic<P>): (JsonElement) -> WSResponse<P> = { element ->
     try {
         // Deliberately decodeFromString, NOT decodeFromJsonElement: the streaming
         // decoder is the path every payload historically went through, while tree
@@ -21,24 +22,26 @@ inline fun <reified T> decodeTopicPayload(topic: String): (JsonElement) -> WSRes
         // decodeSerializableElement, which streaming ignores — see the
         // ExtensionDataSerializer bug this surfaced). Conservative choice; the
         // stringify cost is negligible at these payload sizes.
-        confidoJSON.decodeFromString(element.toString())
+        confidoJSON.decodeFromString(WSResponseSerializer(topic.serializer), element.toString())
     } catch (e: Exception) {
-        console.error("Failed to decode payload of topic", topic, e.toString())
+        console.error("Failed to decode payload of topic", topic.name, e.toString())
         WSError(WSErrorType.INTERNAL_ERROR, "Malformed payload")
     }
 }
 
 /**
  * Subscribe to a server topic on the multiplexed state websocket and receive its
- * continuously updated payload. Topics are the URL paths of the former dedicated
- * websocket endpoints (e.g. `"/state${'$'}{room.urlPrefix}/comments"`). Subscriptions
- * to the same topic share one server subscription and one decoded payload cache.
+ * continuously updated payload. The [BoundTopic] (obtained by invoking a
+ * `Topics` spec with entity refs, e.g. `Topics.groupPred(question.ref)`) carries the
+ * payload serializer, so the payload type is inferred and cannot diverge from what
+ * the server sends. Subscriptions to the same topic share one server subscription
+ * and one decoded payload cache.
  */
-inline fun <reified T> useSubscription(topic: String, clearOnStale: Boolean = false): WSResponse<T> {
-    var value by useState<WSResponse<T>>(WSLoading())
+fun <P> useSubscription(topic: BoundTopic<P>, clearOnStale: Boolean = false): WSResponse<P> {
+    var value by useState<WSResponse<P>>(WSLoading())
 
-    useEffectWithCleanup(topic, clearOnStale) {
-        val unsubscribe = MultiplexWS.subscribe(topic, decodeTopicPayload<T>(topic)) { decoded, stale ->
+    useEffectWithCleanup(topic.name, clearOnStale) {
+        val unsubscribe = MultiplexWS.subscribe(topic.name, decodeTopicPayload(topic)) { decoded, stale ->
             value = when {
                 decoded == null -> WSLoading()
                 !stale -> decoded

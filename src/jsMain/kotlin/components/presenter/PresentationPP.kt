@@ -8,6 +8,7 @@ import tools.confido.state.PresentationPV
 import tools.confido.state.PresentationWSData
 import tools.confido.state.PresenterView
 import tools.confido.state.Topics
+import tools.confido.refs.Ref
 
 /**
  * Presenter page for a live presentation. Acts as a proxy that subscribes
@@ -20,7 +21,7 @@ import tools.confido.state.Topics
  */
 val PresentationPP = FC<PresenterPageProps<PresentationPV>> { props ->
     val roomId = props.view.room.id
-    val ws = useSubscription<PresentationWSData>(Topics.presentation(tools.confido.refs.Ref(roomId)))
+    val ws = useSubscription(Topics.presentation(Ref(roomId)))
 
     // Allow keyboard/presenter-remote navigation directly from the presenter window
     usePresentationKeyboardNav(roomId)

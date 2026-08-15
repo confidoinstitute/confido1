@@ -28,7 +28,7 @@ val PresentationTab = FC<Props> {
     val room = use(RoomContext)!!
     val submitLock = useCoroutineLock()
 
-    val ws = useSubscription<PresentationWSData>(Topics.presentation(room.ref))
+    val ws = useSubscription(Topics.presentation(room.ref))
 
     when (ws) {
         is WSLoading -> {

@@ -46,7 +46,7 @@ val PredictionShowcasePP = FC<PresenterPageProps<PredictionShowcasePV>> { props 
     val view = props.view
     val question = view.question.deref() ?: return@FC
 
-    val predictions = useSubscription<List<ValueWithUser>>(showcasePredictionsTopic(question.ref))
+    val predictions = useSubscription(showcasePredictionsTopic(question.ref))
     if (predictions !is WSData) return@FC
 
     Stack {
@@ -122,7 +122,7 @@ val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> 
         } ?: true
     }
 
-    val groupPreds = useSubscription<Map<Ref<Question>, Prediction?>>(Topics.roomGroupPred(room.ref))
+    val groupPreds = useSubscription(Topics.roomGroupPred(room.ref))
     if (groupPreds !is WSData) return@FC
     val data = groupPreds.data
 

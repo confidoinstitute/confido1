@@ -11,6 +11,9 @@ import tools.confido.refs.Ref
 import tools.confido.state.FlowAction
 import tools.confido.state.PresenterView
 import users.User
+import kotlinx.serialization.serializer
+import tools.confido.utils.TopicSpec0
+import tools.confido.utils.path
 
 /**
  * A training question loaded from the CSV/TSV file.
@@ -156,4 +159,4 @@ open class CalibrationTrainingExtension : Extension {
 }
 
 // Topic owned by this extension (see tools.confido.state.Topics for the scheme).
-val calibrationLeaderboardTopic = tools.confido.utils.path("ext/calibration_training/leaderboard")
+val calibrationLeaderboardTopic = TopicSpec0(path("ext/calibration_training/leaderboard"), serializer<List<CalibrationLeaderboardEntry>>())

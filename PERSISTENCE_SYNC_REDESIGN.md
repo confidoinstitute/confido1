@@ -850,10 +850,23 @@ working untouched mid-transition.
     overloads for handler bodies that used to re-read path params from the call.
     Param `decode` validates shape only (never derefs) — existence stays a
     gate/handler concern, preserving NOT_FOUND and gate-recovery semantics. Wire
-    strings are unchanged; the whole suite passes verbatim. Natural follow-on
-    (deferred): `TopicSpec<Args, Payload>` binding the payload serializer to the
-    template, making `useSubscription`'s explicit payload-type generic inferred and
-    unforgeable.
+    strings are unchanged; the whole suite passes verbatim.
+  - **Payload binding (`TopicSpec`)**: each `Topics` entry now binds its path template
+    *and* its payload serializer in one declaration
+    (`TopicSpec1(questionPath / "group_pred", serializer<Prediction?>())`), making the
+    topic tree the single source of truth for name shape, parameter types and wire
+    payload. Server registration takes the spec and type-checks the handler's return
+    against it (registration functions stopped being inline/reified — the serializer
+    travels in the spec, encoding goes through the explicit `WSResponseSerializer`);
+    invoking a spec yields a `BoundTopic` carrying the serializer, so the client side
+    is `useSubscription(Topics.groupPred(question.ref))` — no type argument, no
+    per-site decoder, and no way to assert a wrong payload type. Converting
+    immediately caught a real drift instance: three room-`group_pred` consumers had
+    declared `Map<String, Prediction?>` against the server's
+    `Map<Ref<Question>, Prediction?>` — wire-compatible only because `Ref` serializes
+    as a string, i.e. exactly the silently-fragile case the binding forbids. Extension
+    topics bind their payloads in the same common-source declarations. Wire strings
+    unchanged; full suite passes.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or

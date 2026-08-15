@@ -21,7 +21,7 @@ import tools.confido.refs.ref
 
 val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
     val question = props.view.question.deref() ?: return@FC
-    val response = useSubscription<Prediction?>(Topics.groupPred(question.ref))
+    val response = useSubscription(Topics.groupPred(question.ref))
 
     Stack {
         css {

@@ -22,7 +22,7 @@ val RoomComments = FC<Props> {
     val (appState, _) = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val layoutMode = use(LayoutModeContext)!!
-    val roomComments = useSubscription<List<CommentPresentation<CommentExtraData>>>(Topics.roomComments(room.ref))
+    val roomComments = useSubscription(Topics.roomComments(room.ref))
 
     var addCommentOpen by useState(false)
     var sortType by useState(SortType.NEWEST)

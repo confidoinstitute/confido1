@@ -22,6 +22,10 @@ import tools.confido.utils.mapDeref
 import tools.confido.utils.toInt
 import kotlin.math.pow
 import tools.confido.refs.deref
+import kotlinx.serialization.serializer
+import tools.confido.state.Topics
+import tools.confido.utils.TopicSpec1
+import users.User
 
 // --- Mode & Configuration ---
 
@@ -228,6 +232,6 @@ abstract class MillionaireExt : Extension {
 }
 
 // Topics owned by this extension (see tools.confido.state.Topics for the scheme).
-val millionaireConfigTopic = tools.confido.state.Topics.room / "ext/millionaire/config"
-val millionaireScoreboardTopic = tools.confido.state.Topics.room / "ext/millionaire/scoreboard"
-val millionaireTimerTopic = tools.confido.state.Topics.room / "ext/millionaire/timer"
+val millionaireConfigTopic = TopicSpec1(Topics.roomPath / "ext/millionaire/config", serializer<MillionaireGameAction?>())
+val millionaireScoreboardTopic = TopicSpec1(Topics.roomPath / "ext/millionaire/scoreboard", serializer<Map<Ref<User>, Double>>())
+val millionaireTimerTopic = TopicSpec1(Topics.roomPath / "ext/millionaire/timer", serializer<TimerState?>())

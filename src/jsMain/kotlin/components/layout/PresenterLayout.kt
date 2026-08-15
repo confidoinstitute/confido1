@@ -37,7 +37,7 @@ val PresenterLayoutInner = FC<Props> {
     val (appState, stale) = use(AppStateContext)!!
 
     // Presence subscription: tells the server a presenter window is open.
-    useSubscription<Unit>(Topics.presenterTrack())
+    useSubscription(Topics.presenterTrack())
 
     Global {
         styles {
