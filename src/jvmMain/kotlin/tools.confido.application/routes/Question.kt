@@ -31,6 +31,7 @@ import users.User
 import kotlin.math.min
 
 val questionUrl = Question.urlPrefix("{qID}")
+val questionTopic = Question.topicPrefix("{qID}")
 
 data class QuestionContext(val inUser: User?, val question: Question) {
     val user: User by lazy { inUser ?: unauthorized("Not logged in.") }
@@ -295,7 +296,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
     // reads — the question (visibility settings), its room (permissions), the viewer
     // (type changes), the viewer's own prediction (ANSWERED gate), and the group
     // aggregate itself. Recomputation is driven by those same reads.
-    viewWS("/state$questionUrl/group_pred") {
+    viewWS("$questionTopic/group_pred") {
         val qRef = Ref<Question>(call.parameters["qID"] ?: "")
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
         val roomView = roomStore.questionRoomState.asView().at(qRef)
@@ -320,7 +321,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
 
     // View a histogram: same View composition as group_pred, plus the whole users map
     // (per-bin UserPresentation embedding when the viewer may see individual predictions).
-    viewWS("/state$questionUrl/histogram") {
+    viewWS("$questionTopic/histogram") {
         val qRef = Ref<Question>(call.parameters["qID"] ?: "")
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
         val roomView = roomStore.questionRoomState.asView().at(qRef)

@@ -45,7 +45,7 @@ val PredictionShowcasePP = FC<PresenterPageProps<PredictionShowcasePV>> { props 
     val view = props.view
     val question = view.question.deref() ?: return@FC
 
-    val predictions = useSubscription<List<ValueWithUser>>("/api${questionUrl(question.id)}/ext/prediction_showcase/predictions.ws")
+    val predictions = useSubscription<List<ValueWithUser>>("${tools.confido.question.Question.topicPrefix(question.id)}/ext/prediction_showcase/predictions")
     if (predictions !is WSData) return@FC
 
     Stack {
@@ -121,7 +121,7 @@ val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> 
         } ?: true
     }
 
-    val groupPreds = useSubscription<Map<Ref<Question>, Prediction?>>("/state${room.urlPrefix}/group_pred")
+    val groupPreds = useSubscription<Map<Ref<Question>, Prediction?>>("${room.topicPrefix}/group_pred")
     if (groupPreds !is WSData) return@FC
     val data = groupPreds.data
 

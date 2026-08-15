@@ -805,9 +805,35 @@ working untouched mid-transition.
     peel + versioned views combined: a room rename produces frames on the two rooms
     topics only — the `/state` monolith stays silent. Membership churn now
     invalidates the room's detail subscribers and the directory, not every user's
-    full snapshot. Remaining decomposition: `room/<id>/questions` (+ folding the
-    per-question count maps into question payloads), `admin/users` /
-    UserPresentation rollout / users-map weaning.
+    full snapshot.
+  - **The monolith is dead — `SentState` deleted.** The last two slices peeled:
+    `/state/questions` carries all viewer-visible questions with the three
+    per-question count maps riding along (they are per-question facts that only were
+    separate maps because the monolith was flat; their fold surfaces are wake inputs
+    of their own, since a prediction or comment bumps a count without touching the
+    question entity), and `/state/users` carries the censored user directory (its
+    wake set includes the comment archives and the viewer's predictions via the
+    `referencedUsers` gates). The `"/state"` *topic* no longer exists (the websocket
+    URL keeps the name); `SentState` and `StateCensor.censor()` are gone, and the
+    client facade assembles `BaseState` from four root slices (questions+counts,
+    rooms directory, users, self) — all subscribed in one tick, initial state in one
+    consistent frame. §4.2's topic table is now realized at transitional granularity:
+    questions and users are still global rather than per-room/admin-scoped — those
+    narrowings ride on the UserPresentation rollout and a later per-room questions
+    split — and topic invalidation is fully semantic (verified: a room rename frames
+    only the rooms topics; questions/users/self stay silent). Remaining: per-room
+    `room/<id>/questions` granularity, `admin/users` narrowing via UserPresentation
+    rollout / users-map weaning, permission-class sharing.
+  - **Topic names systematized** — they no longer mirror the retired per-subscription
+    websocket URLs. The scheme (shared `TopicNames` constants + `Room.topicPrefix` /
+    `Question.topicPrefix` helpers in commonMain, so client and server cannot drift):
+    root slices are bare plurals plus `self` (`questions`, `users`, `rooms`, `self`);
+    entity-scoped topics use a singular instance prefix (`room/<id>`,
+    `room/<id>/comments`, `question/<id>/group_pred`, …); extension topics append
+    `ext/<extensionId>/<name>` to their owning scope, dropping the legacy `/api` prefix
+    and `.ws` suffix (`room/<id>/ext/millionaire/timer`,
+    `ext/calibration_training/leaderboard`). The websocket *URL* stays `/state` —
+    connection endpoint and topic namespace are separate concerns.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or

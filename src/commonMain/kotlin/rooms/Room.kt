@@ -93,9 +93,12 @@ data class Room(
     }
 
     override val urlPrefix get() = urlPrefix(id)
+    /** Prefix of this room's topics on the state websocket (see TopicNames). */
+    val topicPrefix get() = topicPrefix(id)
 
     companion object {
         fun urlPrefix(id: String) = "/rooms/$id"
+        fun topicPrefix(id: String) = "room/$id"
 
         private fun colorFromId(id: String): RoomColor {
             val base = id.fold(47) { acc, c ->

@@ -30,7 +30,7 @@ object ReferenceForecastSE : ServerExtension, ReferenceForecastExtension() {
     }
 
     override fun initRoutes(r: Routing) {
-        r.viewWS("/api$roomUrl/ext/reference_forecast/scoreboard.ws", gate = {
+        r.viewWS("$roomTopic/ext/reference_forecast/scoreboard", gate = {
             val rId = call.parameters["rID"] ?: ""
             combineViews(
                 roomStore.state.asView().at(rId),

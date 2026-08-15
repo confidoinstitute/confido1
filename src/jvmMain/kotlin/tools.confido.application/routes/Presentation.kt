@@ -284,7 +284,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
     }
 
     // WebSocket endpoint for live presentation data (moderators only)
-    viewWS("/state$roomUrl/presentation") {
+    viewWS("$roomTopic/presentation") {
         val rRef = Ref<Room>(call.parameters["rID"] ?: "")
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
         val roomView = roomStore.state.asView().at(rRef.id)
@@ -328,7 +328,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
     // WebSocket endpoint for presentation followers: sends currentNavigateUrl.
     // The per-viewer input here is the *session* (followingPresentation), which is
     // store-backed — so even this "personal" topic is an ordinary View composition.
-    viewWS<String?>("/state$roomUrl/presentation/follow") {
+    viewWS<String?>("$roomTopic/presentation/follow") {
         val rRef = Ref<Room>(call.parameters["rID"] ?: "")
         val sessionId = call.userSession?.id ?: unauthorized("Not logged in.")
         combineViews(

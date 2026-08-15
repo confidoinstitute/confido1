@@ -142,7 +142,7 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
     val (appState, stale) = use(AppStateContext)!!
     val room = props.room
 
-    val groupPredsWS = useSubscription<Map<String, Prediction?>>("/state${room.urlPrefix}/group_pred")
+    val groupPredsWS = useSubscription<Map<String, Prediction?>>("${room.topicPrefix}/group_pred")
     val groupPreds = groupPredsWS.data ?: emptyMap()
 
     val mouseSensor = useSensor<MouseSensorOptions>(MouseSensor)

@@ -58,7 +58,7 @@ private external interface PresentationFollowNavigatorProps : Props {
 
 private val PresentationFollowNavigator = FC<PresentationFollowNavigatorProps> { props ->
     val navigate = useNavigate()
-    val ws = useSubscription<String?>("/state${rooms.Room.urlPrefix(props.roomId)}/presentation/follow")
+    val ws = useSubscription<String?>("${rooms.Room.topicPrefix(props.roomId)}/presentation/follow")
     val navUrl = (ws as? WSData)?.data
     val lastNavUrl = useRef<String>()
 

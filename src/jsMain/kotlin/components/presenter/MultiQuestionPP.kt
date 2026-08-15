@@ -112,7 +112,7 @@ private external interface TileGroupPredProps : Props {
 
 private val TileGroupPred = FC<TileGroupPredProps> { props ->
     val question = props.question
-    val response = useSubscription<Prediction?>("/state${question.urlPrefix}/group_pred")
+    val response = useSubscription<Prediction?>("${question.topicPrefix}/group_pred")
 
     div {
         css {
@@ -160,7 +160,7 @@ private external interface TileHistogramProps : Props {
 
 private val TileHistogram = FC<TileHistogramProps> { props ->
     val question = props.question
-    val response = useSubscription<BinaryHistogram>("/state${question.urlPrefix}/histogram")
+    val response = useSubscription<BinaryHistogram>("${question.topicPrefix}/histogram")
 
     if (response !is WSData) return@FC
     val histogram = response.data

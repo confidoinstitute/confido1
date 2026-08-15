@@ -27,7 +27,7 @@ val PresentationTab = FC<Props> {
     val room = use(RoomContext)!!
     val submitLock = useCoroutineLock()
 
-    val ws = useSubscription<PresentationWSData>("/state${room.urlPrefix}/presentation")
+    val ws = useSubscription<PresentationWSData>("${room.topicPrefix}/presentation")
 
     when (ws) {
         is WSLoading -> {

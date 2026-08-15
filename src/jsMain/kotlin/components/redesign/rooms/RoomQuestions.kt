@@ -25,7 +25,7 @@ external interface QuestionListProps : Props {
 val QuestionList = FC<QuestionListProps> { props ->
     val (appState, _) = use(AppStateContext)!!
     val room = use(RoomContext)!!
-    val groupPredsWS = useSubscription<Map<String, Prediction?>>("/state${room.urlPrefix}/group_pred")
+    val groupPredsWS = useSubscription<Map<String, Prediction?>>("${room.topicPrefix}/group_pred")
     val groupPreds = groupPredsWS.data ?: emptyMap()
     val layoutMode = use(LayoutModeContext)!!
 

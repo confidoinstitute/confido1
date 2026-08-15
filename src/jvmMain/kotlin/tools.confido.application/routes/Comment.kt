@@ -46,7 +46,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
     // signal. The users map is a gate input: author presentations embed users, and it
     // also refreshes the topic after user deletion (which strips likes without a
     // version bump).
-    viewWS("/state$questionUrl/comments", gate = {
+    viewWS("$questionTopic/comments", gate = {
         val qRef = Ref<Question>(call.parameters["qID"] ?: "")
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
         val roomView = roomStore.questionRoomState.asView().at(qRef)
@@ -151,7 +151,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
 }
 
 fun roomCommentsRoutes(routing: Routing) = routing.apply {
-    viewWS("/state$roomUrl/comments", gate = {
+    viewWS("$roomTopic/comments", gate = {
         val rRef = Ref<Room>(call.parameters["rID"] ?: "")
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
         combineViews(

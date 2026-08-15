@@ -19,7 +19,7 @@ import tools.confido.state.GroupPredPV
 
 val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
     val question = props.view.question.deref() ?: return@FC
-    val response = useSubscription<Prediction?>("/state${question.urlPrefix}/group_pred")
+    val response = useSubscription<Prediction?>("${question.topicPrefix}/group_pred")
 
     Stack {
         css {

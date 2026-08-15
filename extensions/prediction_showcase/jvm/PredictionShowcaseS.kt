@@ -19,7 +19,7 @@ object PredictionShowcaseSE : ServerExtension, PredictionShowcaseExtension() {
     val referenceText = System.getenv("CONFIDO_REFERENCE_FORECAST_LABEL") ?: "Reference"
 
     override fun initRoutes(r: Routing) {
-        r.viewWS("/api$questionUrl/ext/prediction_showcase/predictions.ws", gate = {
+        r.viewWS("$questionTopic/ext/prediction_showcase/predictions", gate = {
             val qId = call.parameters["qID"] ?: ""
             val qRef = tools.confido.refs.Ref<tools.confido.question.Question>(qId)
             combineViews(

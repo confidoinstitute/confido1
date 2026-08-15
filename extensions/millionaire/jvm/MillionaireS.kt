@@ -249,7 +249,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
 
     override fun initRoutes(r: Routing) {
         // Active game config (WebSocket) — consumed by clients for theme/scoring
-        r.viewWS("/api$roomUrl/ext/millionaire/config.ws", gate = {
+        r.viewWS("$roomTopic/ext/millionaire/config", gate = {
             val rId = call.parameters["rID"] ?: ""
             combineViews(roomStore.state.asView().at(rId), activeConfigsState.asView().at(rId))
         }) {
@@ -261,7 +261,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
         // (my_score.ws deleted: it had no client consumers.)
 
         // Scoreboard for all players (WebSocket, requires permission)
-        r.viewWS("/api$roomUrl/ext/millionaire/scoreboard.ws", gate = {
+        r.viewWS("$roomTopic/ext/millionaire/scoreboard", gate = {
             val rId = call.parameters["rID"] ?: ""
             combineViews(
                 roomStore.state.asView().at(rId),
@@ -281,7 +281,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
         }
 
         // Timer state (WebSocket)
-        r.viewWS("/api$roomUrl/ext/millionaire/timer.ws", gate = {
+        r.viewWS("$roomTopic/ext/millionaire/timer", gate = {
             val rId = call.parameters["rID"] ?: ""
             combineViews(roomStore.state.asView().at(rId), timerStatesState.asView().at(rId))
         }) {

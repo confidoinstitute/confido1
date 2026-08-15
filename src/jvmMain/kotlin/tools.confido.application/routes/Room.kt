@@ -30,6 +30,7 @@ import users.UserType
 import kotlin.time.Duration.Companion.days
 
 val roomUrl = Room.urlPrefix("{rID}")
+val roomTopic = Room.topicPrefix("{rID}")
 val iconNames = iconDir?.listFiles()?.filter { it.isFile }?.map { it.name }?.sorted() ?: emptyList()
 
 data class RoomContext(val inUser: User?, val room: Room) {
@@ -243,7 +244,7 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
     // Group predictions of a room's questions (optionally filtered by ?qids=): a
     // multi-question payload, so the composition uses whole-map views rather than
     // keyed cells — output dedup keeps unrelated changes off the wire.
-    viewWS("/state$roomUrl/group_pred") {
+    viewWS("$roomTopic/group_pred") {
         val wantedIds = call.request.queryParameters["qids"]?.split(',')?.toSet()
         val rId = call.parameters["rID"] ?: ""
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
@@ -269,7 +270,7 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
 
 
     // Flow topic: rotates a short invite code for the subscription's lifetime.
-    flowWS<String>("/state$roomUrl/invites/{id}/shortlink") {
+    flowWS<String>("$roomTopic/invites/{id}/shortlink") {
         call.withRoom {
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members.")
             val linkId = call.parameters["id"] ?: return@withRoom emptyFlow()

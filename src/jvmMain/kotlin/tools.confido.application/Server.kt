@@ -53,6 +53,7 @@ import tools.confido.serialization.confidoJSON
 import tools.confido.serialization.confidoSM
 import tools.confido.state.appConfig
 import tools.confido.state.serverState
+import tools.confido.state.TopicNames
 import users.DebugAdmin
 import users.DebugMember
 import users.User
@@ -354,7 +355,7 @@ fun main() {
                 // prediction or comment bumps a count without touching the question
                 // entity. latestPredictions is included for extension censor hooks that
                 // read the viewer's predictions.
-                viewWS("/state/questions") {
+                viewWS(TopicNames.QUESTIONS) {
                     if (call.userSession?.user == null) unauthorized("Not logged in.")
                     combineViews(
                         questionStore.state.asView(),
@@ -375,7 +376,7 @@ fun main() {
                 // comment authors via referencedUsers, whose gates read the comment
                 // archives and the viewer's own predictions). Shrinks to admin/moderator
                 // scope once the UserPresentation rollout embeds authors in payloads.
-                viewWS("/state/users") {
+                viewWS(TopicNames.USERS) {
                     if (call.userSession?.user == null) unauthorized("Not logged in.")
                     combineViews(
                         userStore.state.asView(),
@@ -396,7 +397,7 @@ fun main() {
                 // Member lists, invite links and presentation state live on the per-room
                 // detail topic below; this is what backs the client's global rooms map
                 // (deref, room list, cross-room surfaces).
-                viewWS("/state/rooms") {
+                viewWS(TopicNames.ROOMS) {
                     if (call.userSession?.user == null) unauthorized("Not logged in.")
                     combineViews(
                         roomStore.state.asView(),
@@ -413,7 +414,7 @@ fun main() {
                 // permissions), invite links, presentation state. Component-scoped: the
                 // room page (and the presenter's invite view) subscribe it on demand.
                 // The gate errors for non-members and recovers on join (same subscription).
-                viewWS("/state/rooms/{rID}") {
+                viewWS(roomTopic) {
                     if (call.userSession?.user == null) unauthorized("Not logged in.")
                     val rRef = tools.confido.refs.Ref<Room>(
                         call.parameters["rID"] ?: badRequest("Missing room id"))
@@ -437,7 +438,7 @@ fun main() {
                 // updates through the session cell), own predictions, password flag,
                 // presenter-window state. Split from "/state" so per-user churn (session
                 // renewals, presenting, predicting) never invalidates the big snapshot.
-                viewWS("/state/self") {
+                viewWS(TopicNames.SELF) {
                     val transientData = call.transientUserData
                     if (call.userSession?.user == null || transientData == null) unauthorized("Not logged in.")
                     combineViews(

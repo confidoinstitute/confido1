@@ -43,7 +43,7 @@ import web.html.number
 
 val ReferenceForcastScoreboardPP = FC<PresenterPageProps<ReferenceForcastScoreboardPV>> { props ->
     val room = props.view.room.deref() ?: return@FC
-    val scores = useSubscription<List<UserScore>>("/api${roomUrl(room.id)}/ext/reference_forecast/scoreboard.ws")
+    val scores = useSubscription<List<UserScore>>("${Room.topicPrefix(room.id)}/ext/reference_forecast/scoreboard")
     if (scores !is WSData) return@FC
 
     Stack {
@@ -117,7 +117,7 @@ private val RefForecastScoreboardPVEditorComponent = FC<tools.confido.extensions
 object ReferenceForecastCE : ClientExtension, ReferenceForecastExtension() {
     override fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {
         val presenterCtl = use(PresenterContext)!!
-        val groupPredsWS = useSubscription<Map<String, Prediction?>>("/state${room.urlPrefix}/group_pred")
+        val groupPredsWS = useSubscription<Map<String, Prediction?>>("${room.topicPrefix}/group_pred")
         val groupPreds = groupPredsWS.data ?: emptyMap()
 
 

@@ -24,7 +24,7 @@ private fun binLabel(bin: HistogramBin) =
 
 val BinaryHistogramPP = FC<PresenterPageProps<BinaryHistogramPV>> { props ->
     val question = props.view.question.deref() ?: return@FC
-    val response = useSubscription<BinaryHistogram>("/state${question.urlPrefix}/histogram")
+    val response = useSubscription<BinaryHistogram>("${question.topicPrefix}/histogram")
 
     Stack {
         css {

@@ -32,7 +32,7 @@ private val NavButton = Button.withStyle {
  */
 val PresentationPC = FC<PresenterControlsProps<PresentationPV>> { props ->
     val roomUrl = Room.urlPrefix(props.view.room.id)
-    val ws = useSubscription<PresentationWSData>("/state$roomUrl/presentation")
+    val ws = useSubscription<PresentationWSData>("${Room.topicPrefix(props.view.room.id)}/presentation")
     val submitLock = useCoroutineLock()
     val data = (ws as? WSData)?.data
     val runState = data?.runState

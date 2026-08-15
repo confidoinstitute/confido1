@@ -115,7 +115,7 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
     val (appState, stale) = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val myPrediction = appState.myPredictions[props.question.ref]
-    val groupPrediction = useSubscription<Prediction?>("/state${props.question.urlPrefix}/group_pred")
+    val groupPrediction = useSubscription<Prediction?>("${props.question.topicPrefix}/group_pred")
     val layoutMode = use(LayoutModeContext)!!
     val roomPalette = room.color.palette
 
@@ -512,7 +512,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
 }
 
 private val BinaryHistogramSection = FC<BinaryHistogramSectionProps> { props ->
-    val histogram = useSubscription<BinaryHistogram>("/state${props.question.urlPrefix}/histogram")
+    val histogram = useSubscription<BinaryHistogram>("${props.question.topicPrefix}/histogram")
     val layoutMode = use(LayoutModeContext)!!
     val presenterCtl = use(PresenterContext)!!
     div {
@@ -717,7 +717,7 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
 }
 
 private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
-    val comments = useSubscription<List<CommentPresentation<QuestionCommentExtraData>>>("/state${props.question.urlPrefix}/comments")
+    val comments = useSubscription<List<CommentPresentation<QuestionCommentExtraData>>>("${props.question.topicPrefix}/comments")
     val layoutMode = use(LayoutModeContext)!!
 
     var addCommentOpen by useState(false)
