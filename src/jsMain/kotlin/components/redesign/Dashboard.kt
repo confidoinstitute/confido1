@@ -176,7 +176,7 @@ val DesktopHeader = FC<DashboardHeaderProps> { props ->
                 }
             }
 
-            appState.session.user?.let { user ->
+            appState.user?.let { user ->
                 ButtonBase {
                     css {
                         borderRadius = 30.px
@@ -235,7 +235,7 @@ val PhoneHeader = FC<DashboardHeaderProps> { props ->
                 padding = Padding(0.px, layoutMode.contentSidePad)
                 width = layoutMode.contentWidth
             }
-            appState.session.user?.let { user ->
+            appState.user?.let { user ->
                 AccountFrame {
                     css {
                         flexGrow = number(1.0)
@@ -481,7 +481,7 @@ val Dashboard = FC<Props> {
         title("Rooms", layoutMode.contentSidePad)
 
         RoomList {
-            canCreate = appState.session.user?.type?.isProper() ?: false
+            canCreate = appState.user?.type?.isProper() ?: false
         }
     }
 }

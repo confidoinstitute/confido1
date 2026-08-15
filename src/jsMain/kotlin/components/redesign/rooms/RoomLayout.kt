@@ -46,7 +46,7 @@ private val PresentationFollowBanner = FC<Props> {
     val room = use(RoomContext)!!
     val isFollowing = appState.session.followingPresentation?.id == room.id
     val presentationRunning = room._presentationRunning == true
-    val isGuest = appState.session.user?.type == users.UserType.GUEST
+    val isGuest = appState.user?.type == users.UserType.GUEST
     // Don't show anything if no presentation is running
     if (!presentationRunning && !isFollowing) return@FC
     // Don't show to moderators who manage the presentation

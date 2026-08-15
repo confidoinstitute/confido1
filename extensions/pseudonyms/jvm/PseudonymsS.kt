@@ -76,7 +76,7 @@ object PseudonymsSE : ServerExtension, PseudonymsExtension() {
         )
     }
 
-    override fun getUserPresentation(
+    override fun overrideUserPresentation(
         user: User?,
         observer: User,
         context: UserPresentationContext,

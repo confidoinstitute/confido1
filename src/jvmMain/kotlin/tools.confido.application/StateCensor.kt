@@ -5,6 +5,7 @@ import java.security.MessageDigest
 import payloads.responses.MembershipPayload
 import rooms.*
 import tools.confido.application.sessions.TransientData
+import tools.confido.application.sessions.user
 import tools.confido.extensions.ServerExtension
 import tools.confido.question.Question
 import tools.confido.refs.*
@@ -176,7 +177,7 @@ enum class UserPresentationContext {
 }
 
 fun getUserPresentation(user: User?, observer: User, context: UserPresentationContext, room: Room?): UserPresentation {
-    ServerExtension.forEach { ext-> ext.getUserPresentation(user, observer, context, room)?.let { return it } }
+    ServerExtension.forEach { ext-> ext.overrideUserPresentation(user, observer, context, room)?.let { return it } }
     if (user == null) return UserPresentation(false, "(Deleted user)")
     val amIModerator = room?.hasPermission(observer, RoomPermission.MANAGE_MEMBERS) ?: false
     // Member list: email travels as its own MembershipPayload field, so the name slot

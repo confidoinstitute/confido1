@@ -2,6 +2,7 @@ package tools.confido.application.sessions
 
 import io.ktor.server.application.*
 import io.ktor.util.*
+import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.state.UserSession
 import tools.confido.state.UserSessionValidity
@@ -52,6 +53,14 @@ fun ApplicationCall.getSessionIdOrCreateNew(): String {
     }
     return id
 }
+
+/**
+ * The session's user, resolved against the resident user store. Server-only by
+ * design: on the client the viewer's own user travels on the self slice
+ * (`SelfState.user` / `ClientState.user`), and no other user is client-resolvable
+ * (User is [tools.confido.refs.ServerImmediateDerefEntity]; §5.3).
+ */
+val UserSession.user: User? get() = userRef?.deref()
 
 /**
  * Provides access to user session data.

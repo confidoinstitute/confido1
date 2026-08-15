@@ -100,7 +100,7 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
 
     val newUser = props.entity == null
     val htmlId = useId()
-    val isSelf = props.entity?.let { appState.session.user eqid it } ?: false
+    val isSelf = props.entity?.let { appState.user eqid it } ?: false
 
     var nick by useState(props.entity?.nick ?: "")
     var email by useState(props.entity?.email ?: "")
@@ -378,7 +378,7 @@ val UserAdmin = FC<Props> {
                                         onClick = { editUserOpen(user) }
                                         EditIcon{ size = 14 }
                                     }
-                                    if (!(appState.session.user eqid user)) {
+                                    if (!(appState.user eqid user)) {
                                         IconButton {
                                             disabled = stale
                                             onClick = { deleteUserOpen(user) }

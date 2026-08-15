@@ -43,6 +43,7 @@ import tools.confido.application.routes.*
 import tools.confido.application.sessions.Sessions
 import tools.confido.application.sessions.renewUserSession
 import tools.confido.application.sessions.transientUserData
+import tools.confido.application.sessions.user
 import tools.confido.application.sessions.userSession
 import tools.confido.store.*
 import tools.confido.extensions.ServerExtension

@@ -605,11 +605,11 @@ val MillionaireScoreboardPP = FC<PresenterPageProps<MillionaireScoreboardPV>> { 
                     columnGap = 32.px
                 }
 
-                val sorted = scoreboard.data.entries.sortedByDescending { it.value }
-                val topScore = sorted.firstOrNull()?.value
+                val sorted = scoreboard.data  // sorted by descending score server-side
+                val topScore = sorted.firstOrNull()?.score
 
                 sorted.forEachIndexed { idx, entry ->
-                    val isLeader = entry.value == topScore && entry.value > 0
+                    val isLeader = entry.score == topScore && entry.score > 0
                     div {
                         css {
                             display = Display.flex
@@ -638,7 +638,7 @@ val MillionaireScoreboardPP = FC<PresenterPageProps<MillionaireScoreboardPV>> { 
                                 flexGrow = number(1.0)
                                 fontWeight = if (isLeader) FontWeight.bold else FontWeight.normal
                             }
-                            +(entry.key.deref()?.nick ?: "(Anonymous)")
+                            +(entry.user.displayName ?: "(Anonymous)")
                         }
                         // Score
                         span {
@@ -646,13 +646,13 @@ val MillionaireScoreboardPP = FC<PresenterPageProps<MillionaireScoreboardPV>> { 
                                 fontFamily = string("monospace")
                                 fontWeight = FontWeight.bold
                                 fontSize = 3.vh
-                                color = if (entry.value >= 0) MilColors.scorePositive else MilColors.scoreNegative
+                                color = if (entry.score >= 0) MilColors.scorePositive else MilColors.scoreNegative
                                 if (isLeader) {
                                     textShadow = "0 0 10px rgba(68,221,102,0.4)".unsafeCast<TextShadow>()
                                 }
                             }
-                            val sign = if (entry.value >= 0) "+" else "-"
-                            +"$sign€${entry.value.absoluteValue.roundToInt()}"
+                            val sign = if (entry.score >= 0) "+" else "-"
+                            +"$sign€${entry.score.absoluteValue.roundToInt()}"
                         }
                     }
                 }
@@ -677,14 +677,14 @@ val MillionaireScoreboardPP = FC<PresenterPageProps<MillionaireScoreboardPV>> { 
                         borderBottom = Border(1.px, LineStyle.solid, NamedColor.black)
                     }
                 }
-                scoreboard.data.entries.sortedBy { -it.value }.forEach {
+                scoreboard.data.forEach {
                     ReactHTML.tr {
                         ReactHTML.td {
-                            +(it.key.deref()?.nick ?: "(Anonymous)")
+                            +(it.user.displayName ?: "(Anonymous)")
                         }
                         ReactHTML.td {
                             css { paddingLeft = 32.px }
-                            +"€ ${it.value.roundToInt()}"
+                            +"€ ${it.score.roundToInt()}"
                         }
                     }
                 }

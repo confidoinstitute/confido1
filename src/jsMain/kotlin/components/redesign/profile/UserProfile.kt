@@ -30,7 +30,7 @@ import web.html.submit
 
 val UserProfile = FC<Props> {
     val (appState, stale) = use(AppStateContext)!!
-    val user = appState.session.user
+    val user = appState.user
 
     var nick by useState(user?.nick ?: "")
 

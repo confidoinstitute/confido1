@@ -52,7 +52,7 @@ import web.window.WindowTarget
 import web.window._blank
 
 fun canChangeRole(appState: ClientState, room: Room, role: RoomRole) =
-    canChangeRole(room.userRole(appState.session.user), role)
+    canChangeRole(room.userRole(appState.user), role)
 
 val RoomMembers = FC<Props> {
     val (appState, stale) = use(AppStateContext)!!

@@ -26,6 +26,7 @@ import kotlinx.serialization.serializer
 import tools.confido.state.Topics
 import tools.confido.utils.TopicSpec1
 import users.User
+import users.UserPresentation
 
 // --- Mode & Configuration ---
 
@@ -231,7 +232,16 @@ abstract class MillionaireExt : Extension {
     }
 }
 
+/** One scoreboard row: identity as a presentation (§5.3 — no joinable user refs on
+ *  the wire), pseudonymized by the SCOREBOARD presentation context where configured. */
+@Serializable
+data class MillionaireScoreEntry(
+    val user: UserPresentation,
+    val score: Double,
+)
+
 // Topics owned by this extension (see tools.confido.state.Topics for the scheme).
 val millionaireConfigTopic = TopicSpec1(Topics.roomPath / "ext/millionaire/config", serializer<MillionaireGameAction?>())
-val millionaireScoreboardTopic = TopicSpec1(Topics.roomPath / "ext/millionaire/scoreboard", serializer<Map<Ref<User>, Double>>())
+/** Scoreboard rows, sorted by descending score server-side. */
+val millionaireScoreboardTopic = TopicSpec1(Topics.roomPath / "ext/millionaire/scoreboard", serializer<List<MillionaireScoreEntry>>())
 val millionaireTimerTopic = TopicSpec1(Topics.roomPath / "ext/millionaire/timer", serializer<TimerState?>())

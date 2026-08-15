@@ -13,12 +13,15 @@ import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import tools.confido.application.getUserPresentation
+import tools.confido.application.UserPresentationContext
 import tools.confido.application.routes.*
 import tools.confido.store.*
 import tools.confido.application.sessions.TransientData
 import tools.confido.application.singleThreadContext
 import tools.confido.question.QuestionState
 import tools.confido.refs.Ref
+import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.state.*
 import tools.confido.utils.generateId
@@ -273,10 +276,14 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
         }) { rRef, _ ->
             call.withRoom(rRef) {
                 assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
-                val config = activeConfigs[room.id] ?: return@withRoom emptyMap<Ref<User>, Double>()
-                room.members.mapNotNull {
-                    it.user to (userScore(room, it.user, config) ?: return@mapNotNull null)
-                }.toMap()
+                val config = activeConfigs[room.id] ?: return@withRoom emptyList<MillionaireScoreEntry>()
+                room.members.mapNotNull { m ->
+                    val score = userScore(room, m.user, config) ?: return@mapNotNull null
+                    MillionaireScoreEntry(
+                        getUserPresentation(m.user.deref(), user, UserPresentationContext.SCOREBOARD, room),
+                        score,
+                    )
+                }.sortedByDescending { it.score }
             }
         }
 

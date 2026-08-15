@@ -117,7 +117,7 @@ private val RootLayoutInner = FC<Props> {
         }
     }
     
-    val routes = useMemo(appState.session.user?.type) {
+    val routes = useMemo(appState.user?.type) {
         buildList {
             add(jso<RouteObject> {
                 index = true
@@ -163,7 +163,7 @@ private val RootLayoutInner = FC<Props> {
                         path = "email_login"
                         element = EmailLoginAlreadyLoggedIn.create()
                     })
-                    if (appState.session.user?.type?.isProper() == true) {
+                    if (appState.user?.type?.isProper() == true) {
                         add(jso<RouteObject> {
                             path = "new_room"
                             element = CreateRoom.create()
@@ -185,7 +185,7 @@ private val RootLayoutInner = FC<Props> {
                         path = "scores"
                         element = MyScoresPage.create()
                     })
-                    if (appState.session.user?.type == UserType.ADMIN) {
+                    if (appState.user?.type == UserType.ADMIN) {
                         add(jso<RouteObject> {
                             path = "admin/users"
                             element = UserAdmin.create()

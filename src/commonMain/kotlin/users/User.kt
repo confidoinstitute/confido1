@@ -8,6 +8,7 @@ import kotlinx.serialization.Serializable
 import tools.confido.refs.ExpiringEntity
 import tools.confido.refs.ImmediateDerefEntity
 import tools.confido.refs.Ref
+import tools.confido.refs.ServerImmediateDerefEntity
 import tools.confido.state.UserSessionValidity
 
 @Serializable
@@ -22,7 +23,9 @@ data class User(
     val createdAt: Instant = Clock.System.now(),
     val lastLoginAt: Instant? = null,
     val active: Boolean = true
-) : ImmediateDerefEntity {
+    // Server-only deref: clients hold no user collection (§5.3) — the viewer's own
+    // user travels on the self slice, all other identities as UserPresentations.
+) : ServerImmediateDerefEntity {
     fun isAnonymous(): Boolean {
         return email == null
     }

@@ -273,7 +273,7 @@ val Sidebar = FC<SidebarProps> { props ->
             }
         }
         SidebarHeader {}
-        appState.session.user?.let { user ->
+        appState.user?.let { user ->
             AccountFrame {
                 this.user = user
             }
@@ -292,7 +292,7 @@ val Sidebar = FC<SidebarProps> { props ->
             title("Rooms", layoutMode.contentSidePad)
             ClientExtension.forEach { it.sidebarExtra(SidebarPlace.ROOMS_TOP, true, this) }
             RoomList {
-                canCreate = appState.session.user?.type?.isProper() ?: false
+                canCreate = appState.user?.type?.isProper() ?: false
                 small = true
             }
             ClientExtension.forEach { it.sidebarExtra(SidebarPlace.ROOMS_BOTTOM, true, this) }

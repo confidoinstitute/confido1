@@ -150,7 +150,7 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
         appBarColor = roomPalette.color
     }
 
-    if (!room.hasPermission(appState.session.user, RoomPermission.VIEW_QUESTIONS))
+    if (!room.hasPermission(appState.user, RoomPermission.VIEW_QUESTIONS))
     // TODO proper no permission page
         return@FC
 
@@ -161,7 +161,7 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
         QuestionQuickSettingsDialog {
             question = props.question
             open = quickSettingsOpen
-            canEdit = room.hasPermission(appState.session.user, RoomPermission.MANAGE_QUESTIONS)
+            canEdit = room.hasPermission(appState.user, RoomPermission.MANAGE_QUESTIONS)
             onEdit = { quickSettingsOpen = false; editDialog(props.question) }
             onOpenResolution = { quickSettingsOpen = false; resolutionDialogOpen = true; }
             onExport = { quickSettingsOpen = false; csvDialogOpen = true; }

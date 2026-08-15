@@ -7,12 +7,9 @@ import rooms.RoomPermission
 import tools.confido.serialization.confidoJSON
 import kotlinx.serialization.json.decodeFromDynamic
 import tools.confido.extensions.ClientExtension
-import tools.confido.refs.DelicateRefAPI
-import tools.confido.refs.Entity
 import users.User
 import users.UserType
 import web.window.window
-import kotlin.reflect.KClass
 
 /**
  * The client's global-state facade: assembles the topic slices — the questions
@@ -35,15 +32,12 @@ class ClientState(
     override val predictorCount get() = questionsState.predictorCount
     override val commentCount get() = questionsState.commentCount
 
-    // The only client-derefable user is oneself, resolved from the self slice
-    // (UserSession.user is a shared-code deref). Other identities arrive as
-    // UserPresentations embedded in payloads; the users directory topic is a
-    // surface-local subscription (admin directory, add-member dialog), not
-    // part of the global state.
-    @DelicateRefAPI
-    override fun derefNonBlocking(entityType: KClass<*>, id: String): Entity? =
-        if (entityType == User::class) self.user?.takeIf { it.id == id }
-        else super.derefNonBlocking(entityType, id)
+    /** The viewer's own user, from the self slice. This is the *only* User object
+     *  that exists client-side: `Ref<User>` has no client deref (User is
+     *  ServerImmediateDerefEntity), other identities arrive as UserPresentations
+     *  embedded in payloads, and the users directory topic is a surface-local
+     *  subscription (admin directory, add-member dialog), not global state. */
+    val user: User? get() = self.user
 
     val session by self::session
     val myPredictions by self::myPredictions
@@ -52,23 +46,23 @@ class ClientState(
     override val extensions: List<ClientExtension> get() =
         ClientExtension.enabled
 
-    fun isAdmin() = session.user?.type == UserType.ADMIN
+    fun isAdmin() = user?.type == UserType.ADMIN
     fun hasPermission(room: Room, permission: RoomPermission) =
-        room.hasPermission(session.user, permission)
+        room.hasPermission(user, permission)
     fun hasAnyPermission(room: Room, vararg permissions: RoomPermission) =
-        permissions.any { room.hasPermission(session.user, it) }
+        permissions.any { room.hasPermission(user, it) }
     fun hasAllPermissions(room: Room, vararg permissions: RoomPermission) =
-        permissions.all { room.hasPermission(session.user, it) }
+        permissions.all { room.hasPermission(user, it) }
 
-    val isAnonymous get() = session.user?.isAnonymous() ?: true
-    val isFullUser get() = session.user?.type?.isProper() ?: false
+    val isAnonymous get() = user?.isAnonymous() ?: true
+    val isFullUser get() = user?.type?.isProper() ?: false
 }
 
 var clientState: ClientState = ClientState(QuestionsState(), SelfState(), emptyMap())
 actual val globalState: GlobalState get() = clientState
 
 fun Room.havePermission(permission: RoomPermission): Boolean {
-    val myself = clientState.session.user
+    val myself = clientState.user
     return hasPermission(myself, permission)
 }
 
