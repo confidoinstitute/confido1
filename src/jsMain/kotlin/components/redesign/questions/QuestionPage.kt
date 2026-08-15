@@ -115,7 +115,7 @@ val QuestionPageExtra = FC<QuestionPageExtraProps> { props->
 val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
     val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
-    val myPrediction = appState.myPredictions[props.question.ref]
+    val myPrediction = useMyPredictions()[props.question.ref]
     val groupPrediction = useSubscription(Topics.groupPred(props.question.ref))
     val layoutMode = use(LayoutModeContext)!!
     val roomPalette = room.color.palette
@@ -150,7 +150,7 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
         appBarColor = roomPalette.color
     }
 
-    if (!room.hasPermission(appState.user, RoomPermission.VIEW_QUESTIONS))
+    if (!room.hasPermission(useMyUser(), RoomPermission.VIEW_QUESTIONS))
     // TODO proper no permission page
         return@FC
 
@@ -161,7 +161,7 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
         QuestionQuickSettingsDialog {
             question = props.question
             open = quickSettingsOpen
-            canEdit = room.hasPermission(appState.user, RoomPermission.MANAGE_QUESTIONS)
+            canEdit = room.hasPermission(useMyUser(), RoomPermission.MANAGE_QUESTIONS)
             onEdit = { quickSettingsOpen = false; editDialog(props.question) }
             onOpenResolution = { quickSettingsOpen = false; resolutionDialogOpen = true; }
             onExport = { quickSettingsOpen = false; csvDialogOpen = true; }
@@ -228,11 +228,11 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
                 this.numPredictors = props.question.numPredictors
                 this.groupPrediction = groupPrediction.data
             }
-            if (props.question.allowComments && appState.hasPermission(room, RoomPermission.VIEW_QUESTION_COMMENTS)) {
+            if (props.question.allowComments && usePermission(room, RoomPermission.VIEW_QUESTION_COMMENTS)) {
                     QuestionCommentSection {
                         this.question = props.question
                         this.myPrediction = myPrediction
-                        this.allowAddingComment = appState.hasPermission(room, RoomPermission.POST_QUESTION_COMMENT) && props.question.allowComments
+                        this.allowAddingComment = usePermission(room, RoomPermission.POST_QUESTION_COMMENT) && props.question.allowComments
                     }
                 }
             }
@@ -304,7 +304,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
     val appState = use(AppStateContext)!!
     val layoutMode = use(LayoutModeContext)!!
     val room = use(RoomContext)!!
-    val hasPredictPermission = appState.hasPermission(room, RoomPermission.SUBMIT_PREDICTION)
+    val hasPredictPermission = usePermission(room, RoomPermission.SUBMIT_PREDICTION)
 
     val question = props.question
     // false = your estimate open, true = group estimate open
@@ -484,7 +484,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     this.question = props.question
                     onHistogramButtonClick = { groupHistogramOpen = !groupHistogramOpen }
                 }
-                val canViewAll = appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+                val canViewAll = usePermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
                 if (question.groupPredictionVisibility == GroupPredictionVisibility.ANSWERED && props.myPrediction == null && !canViewAll) {
                     PredictionOverlay {
                         +"You will be able to see the group $predictionTerm once you add your own."
@@ -781,8 +781,8 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
             marginBottom = 44.px
         }
 
-        val canViewAll = props.question.room?.let { room -> appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS) } ?: false
-        val lastPrediction = appState.myPredictions[props.question.ref]
+        val canViewAll = props.question.room?.let { room -> usePermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS) } ?: false
+        val lastPrediction = useMyPredictions()[props.question.ref]
         val canView = when (props.question.commentVisibility) {
             CommentVisibility.EVERYONE -> true
             CommentVisibility.ANSWERED -> lastPrediction != null

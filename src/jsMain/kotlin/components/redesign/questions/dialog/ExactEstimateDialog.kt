@@ -1,6 +1,7 @@
 package components.redesign.questions.dialog
 
 import components.AppStateContext
+import components.useMyPredictions
 import components.redesign.basic.*
 import components.redesign.forms.*
 import components.redesign.questions.predictions.NormalishDistSpec
@@ -66,7 +67,7 @@ val ExactEstimateDialog = FC<GenericExactEstimateDialogProps> { props ->
     props.question.answerSpace.let { answerSpace ->
         when (answerSpace) {
             BinarySpace -> {
-                val dist = (props.dist  ?: appState.myPredictions[props.question.ref]?.dist) as? BinaryDistribution?
+                val dist = (props.dist  ?: useMyPredictions()[props.question.ref]?.dist) as? BinaryDistribution?
                 BinaryExactEstimateDialog {
                     +props
                     this.space = BinarySpace
@@ -76,7 +77,7 @@ val ExactEstimateDialog = FC<GenericExactEstimateDialogProps> { props ->
 
             is NumericSpace -> {
 
-                val dist = ( props.dist  ?: appState.myPredictions[props.question.ref]?.dist) as? ContinuousProbabilityDistribution
+                val dist = ( props.dist  ?: useMyPredictions()[props.question.ref]?.dist) as? ContinuousProbabilityDistribution
                 NumericExactEstimateDialog {
                     +props
                     this.dist = dist

@@ -71,7 +71,7 @@ val QuestionList = FC<QuestionListProps> { props ->
             onChange = { sort -> sortType = sort }
         }
 
-        if (appState.hasPermission(room, RoomPermission.ADD_QUESTION)) {
+        if (usePermission(room, RoomPermission.ADD_QUESTION)) {
             Link {
                 to = "import"
                 css(LinkUnstyled) {}
@@ -170,7 +170,7 @@ val QuestionList = FC<QuestionListProps> { props ->
                 this.question = question
                 // When I am the only one prediction, show it as "your prediction" instead of "group prediction",
                 // which is confusing.
-                if (!(appState.myPredictions[question.ref] != null && appState.predictorCount[question.ref] == 1)) {
+                if (!(useMyPredictions()[question.ref] != null && appState.predictorCount[question.ref] == 1)) {
                     this.groupPred = groupPreds[question.ref]
                 }
                 this.href = room.urlPrefix+question.urlPrefix

@@ -2,6 +2,7 @@ package components.redesign.calibration
 
 import Client
 import components.AppStateContext
+import components.useMyUser
 import components.redesign.PresenterIcon
 import components.redesign.basic.*
 import components.redesign.forms.*
@@ -341,7 +342,7 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
             entries.size > 0 &&
                 (req.who == Myself || (
                     req.rooms != null
-                    && req.rooms.all { it.deref()?.hasPermission(appState.user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)?:false }
+                    && req.rooms.all { it.deref()?.hasPermission(useMyUser(), RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)?:false }
                 )
             )
         )
@@ -379,7 +380,7 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
             this.externalHelpOpen = combineRefs(calibrationHelpOpen, props.externalHelpOpen)
             onHelpChange = { helpOpen = it }
         }
-        if (appState.user?.type != UserType.GUEST && layoutMode >= LayoutMode.TABLET && req.who != Myself)
+        if (useMyUser()?.type != UserType.GUEST && layoutMode >= LayoutMode.TABLET && req.who != Myself)
         div {
             css {
                 position = Position.absolute

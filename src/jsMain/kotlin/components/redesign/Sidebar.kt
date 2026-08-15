@@ -2,6 +2,8 @@ package components.redesign
 
 import web.window.window
 import components.AppStateContext
+import components.useIsAdmin
+import components.useMyUser
 import components.redesign.basic.*
 import components.redesign.feedback.FeedbackContext
 import components.redesign.layout.LayoutMode
@@ -208,7 +210,7 @@ val SidebarActions = FC<SidebarActionsProps> {props->
     // Extension hook for workspace items
     ClientExtension.forEach { it.sidebarExtra(SidebarPlace.WORKSPACE_BOTTOM, props.small, this) }
 
-    if (appState.isAdmin())
+    if (useIsAdmin())
     RoomLink {
         key = "::users"
         to = "/admin/users"
@@ -273,7 +275,7 @@ val Sidebar = FC<SidebarProps> { props ->
             }
         }
         SidebarHeader {}
-        appState.user?.let { user ->
+        useMyUser()?.let { user ->
             AccountFrame {
                 this.user = user
             }
@@ -292,7 +294,7 @@ val Sidebar = FC<SidebarProps> { props ->
             title("Rooms", layoutMode.contentSidePad)
             ClientExtension.forEach { it.sidebarExtra(SidebarPlace.ROOMS_TOP, true, this) }
             RoomList {
-                canCreate = appState.user?.type?.isProper() ?: false
+                canCreate = useMyUser()?.type?.isProper() ?: false
                 small = true
             }
             ClientExtension.forEach { it.sidebarExtra(SidebarPlace.ROOMS_BOTTOM, true, this) }

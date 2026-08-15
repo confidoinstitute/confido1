@@ -3,6 +3,8 @@ package components.redesign.admin
 
 import Client
 import components.AppStateContext
+import components.useIsAdmin
+import components.useMyUser
 import components.useDisconnected
 import components.redesign.BinIcon
 import components.redesign.EditIcon
@@ -101,7 +103,7 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
 
     val newUser = props.entity == null
     val htmlId = useId()
-    val isSelf = props.entity?.let { appState.user eqid it } ?: false
+    val isSelf = props.entity?.let { useMyUser() eqid it } ?: false
 
     var nick by useState(props.entity?.nick ?: "")
     var email by useState(props.entity?.email ?: "")
@@ -289,7 +291,7 @@ val userTypeColors = mapOf(
 
 val UserAdmin = FC<Props> {
     val appState = use(AppStateContext)!!
-    if (!appState.isAdmin()) return@FC
+    if (!useIsAdmin()) return@FC
 
     // The user directory is a surface-local subscription (no global users map).
     val usersWS = useSubscription(Topics.users())
@@ -379,7 +381,7 @@ val UserAdmin = FC<Props> {
                                         onClick = { editUserOpen(user) }
                                         EditIcon{ size = 14 }
                                     }
-                                    if (!(appState.user eqid user)) {
+                                    if (!(useMyUser() eqid user)) {
                                         IconButton {
                                             disabled = useDisconnected()
                                             onClick = { deleteUserOpen(user) }

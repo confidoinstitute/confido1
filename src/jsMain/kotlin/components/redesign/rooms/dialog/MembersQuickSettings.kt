@@ -1,6 +1,7 @@
 package components.redesign.rooms.dialog
 
 import components.AppStateContext
+import components.usePermission
 import components.useDisconnected
 import components.redesign.*
 import components.redesign.basic.DialogMenu
@@ -142,7 +143,7 @@ val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {prop
             }
             +"There are members who joined this room via this invitation link. By deleting it, you must choose whether these members are kept and become permanent members or are also removed."
         }
-        if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS)) {
+        if (usePermission(room, RoomPermission.MANAGE_MEMBERS)) {
             DialogMenuItem {
                 text = "Keep invited users as members"
                 // TODO icon

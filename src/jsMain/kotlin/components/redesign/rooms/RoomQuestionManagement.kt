@@ -2,6 +2,7 @@ package components.redesign.rooms
 
 import Client
 import components.AppStateContext
+import components.usePermission
 import components.useDisconnected
 import components.redesign.*
 import components.redesign.basic.*
@@ -64,7 +65,6 @@ import tools.confido.question.Question
 import tools.confido.question.QuestionState
 import tools.confido.refs.Ref
 import tools.confido.refs.ref
-import tools.confido.state.havePermission
 import tools.confido.utils.capFirst
 import tools.confido.utils.toInt
 import utils.except
@@ -202,14 +202,14 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
     val showGroupPredCol = (
             props.questions.any{it.numPredictions > 0}
                     && (
-                    room.havePermission(RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+                    usePermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
                             || props.questions.any{it.groupPredVisible}
                     )
             )
     val showResolutionCol = (
             props.questions.any{it.resolution != null}
                     && (
-                    room.havePermission(RoomPermission.VIEW_ALL_RESOLUTIONS)
+                    usePermission(room, RoomPermission.VIEW_ALL_RESOLUTIONS)
                             || props.questions.any{it.resolutionVisible}
                     )
             )
@@ -234,7 +234,7 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
                 onClick = { helpOpen = true }
             }
 
-            if (appState.hasPermission(room, RoomPermission.ADD_QUESTION)) {
+            if (usePermission(room, RoomPermission.ADD_QUESTION)) {
                 div { css {flexGrow = number(1.0)} }
                 Link {
                     to = "../import"

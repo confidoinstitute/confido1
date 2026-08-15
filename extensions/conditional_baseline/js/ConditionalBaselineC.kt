@@ -1,6 +1,7 @@
 package extensions.conditional_baseline
 
 import components.AppStateContext
+import components.useMyPredictions
 import components.redesign.forms.FormField
 import components.redesign.forms.FormSection
 import components.redesign.forms.TextInput
@@ -83,10 +84,10 @@ object ConditionalBaselineCE: ClientExtension, ConditionalBaselineExtension() {
     override fun myPredictionDescriptionExtra(props: MyPredictionDescriptionProps, cb: ChildrenBuilder) {
         val appState = use(AppStateContext)!!
         val q = props.question ?: return
-        val myPred = (appState.myPredictions[q.ref]?.dist as? BinaryDistribution)?.yesProb
+        val myPred = (useMyPredictions()[q.ref]?.dist as? BinaryDistribution)?.yesProb
         val baselineRef = q.extensionData.get(BaselineQuestionKey) ?: return
         val baselineQ = appState.questions[baselineRef.id] ?: return
-        val baselinePred =  (appState.myPredictions[baselineRef]?.dist as? BinaryDistribution)?.yesProb ?: return
+        val baselinePred =  (useMyPredictions()[baselineRef]?.dist as? BinaryDistribution)?.yesProb ?: return
         val rr = myPred ?.let {myPred / baselinePred}
         cb.apply  {
             div {
@@ -143,7 +144,7 @@ object ConditionalBaselineCE: ClientExtension, ConditionalBaselineExtension() {
         zoom ?: return
         val baselineRef = q.extensionData.get(BaselineQuestionKey) ?: return
         val baselineQ = appState.questions[baselineRef.id] ?: return
-        val baselinePred =  (appState.myPredictions[baselineRef]?.dist as? BinaryDistribution)?.yesProb ?: return
+        val baselinePred =  (useMyPredictions()[baselineRef]?.dist as? BinaryDistribution)?.yesProb ?: return
         cb.apply {
             div {
                 style = jso {

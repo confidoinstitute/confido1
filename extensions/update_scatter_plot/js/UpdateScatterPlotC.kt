@@ -1,6 +1,7 @@
 package extensions.update_scatter_plot
 
 import components.AppStateContext
+import components.usePermission
 import components.presenter.PresenterControlsProps
 import components.presenter.PresenterPageProps
 import components.presenter.presenterControlsMap
@@ -471,7 +472,7 @@ val SnapshotManagerDialog = FC<SnapshotManagerDialogProps> { props->
                         onChange  = { newSnapshotName = it.target.value }
                     }
                 }
-                if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
+                if (usePermission(room, RoomPermission.MANAGE_QUESTIONS))
                 FormSwitch {
                     label = "Public"
                     comment = "Public snapshots are visible to all users in this room. Private snapshots are only visible to you."
@@ -785,7 +786,7 @@ object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
         var updatePlotState  by useContextState(ExtensionContextPlace.QUESTION_PAGE, "state", default = UpdatePlotState.NONE)
         val room = use(RoomContext)!!
         val appState = use(AppStateContext)!!
-        if (appState.hasPermission(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS))
+        if (usePermission(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS))
         cb.apply {
             DialogMenuItem {
                 text = "Update plot"

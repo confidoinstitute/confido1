@@ -91,7 +91,7 @@ val RoomTabs = FC<RoomTabsProps> { props ->
     val layoutMode = use(LayoutModeContext)!!
 
     val scoringEnabled = room.scoring != null
-    val canViewScoreboard = appState.hasPermission(room, RoomPermission.VIEW_SCORES)
+    val canViewScoreboard = usePermission(room, RoomPermission.VIEW_SCORES)
 
     Stack {
         direction = FlexDirection.row
@@ -115,18 +115,18 @@ val RoomTabs = FC<RoomTabsProps> { props ->
             }
         }
 
-        if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
+        if (usePermission(room, RoomPermission.VIEW_QUESTIONS))
             tab("", "Questions")
 
-        if (appState.hasPermission(room, RoomPermission.VIEW_ROOM_COMMENTS))
+        if (usePermission(room, RoomPermission.VIEW_ROOM_COMMENTS))
             tab("discussion",
                 if (layoutMode == LayoutMode.PHONE) "Discuss" else "Discussion"
             )
 
-        if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS))
+        if (usePermission(room, RoomPermission.MANAGE_MEMBERS))
             tab("members", if (layoutMode >= LayoutMode.TABLET) "Room members" else "Members")
 
-        if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
+        if (usePermission(room, RoomPermission.VIEW_QUESTIONS))
             tab("calibration",
                 if (scoringEnabled && layoutMode == LayoutMode.PHONE) "Calib." else "Calibration"
             )
@@ -137,10 +137,10 @@ val RoomTabs = FC<RoomTabsProps> { props ->
         }
 
 
-        if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS) && layoutMode >= LayoutMode.TABLET)
+        if (usePermission(room, RoomPermission.MANAGE_QUESTIONS) && layoutMode >= LayoutMode.TABLET)
             tab("manage_questions", "Question management")
 
-        if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)
+        if (usePermission(room, RoomPermission.MANAGE_QUESTIONS)
             && room.presentation != null && layoutMode >= LayoutMode.TABLET)
             tab("presentation",
                 if (room._presentationRunning == true) "Presentation \u25CF" else "Presentation")

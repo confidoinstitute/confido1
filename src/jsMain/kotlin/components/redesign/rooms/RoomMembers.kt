@@ -2,6 +2,9 @@ package components.redesign.rooms
 
 import web.window.window
 import components.AppStateContext
+import components.usePermission
+import components.useIsAdmin
+import components.useMyUser
 import components.useDisconnected
 import components.redesign.InviteLinkIcon
 import components.redesign.NavMenuIcon
@@ -40,7 +43,7 @@ import react.useState
 import rooms.*
 import tools.confido.extensions.ClientExtension
 import tools.confido.refs.ref
-import tools.confido.state.ClientState
+import users.User
 import tools.confido.state.Topics
 import tools.confido.state.appConfig
 import tools.confido.utils.pluralize
@@ -52,8 +55,10 @@ import web.navigator.navigator
 import web.window.WindowTarget
 import web.window._blank
 
-fun canChangeRole(appState: ClientState, room: Room, role: RoomRole) =
-    canChangeRole(room.userRole(appState.user), role)
+// Pure (takes the viewer explicitly): also called from event handlers, where the
+// use()-based accessors are off-limits — capture useMyUser() during render.
+fun canChangeRole(myUser: User?, room: Room, role: RoomRole) =
+    canChangeRole(room.userRole(myUser), role)
 
 val RoomMembers = FC<Props> {
     val appState = use(AppStateContext)!!
@@ -81,7 +86,7 @@ val RoomMembers = FC<Props> {
     }
 
     RoomHeader {
-        if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS)) {
+        if (usePermission(room, RoomPermission.MANAGE_MEMBERS)) {
             RoomHeaderButton {
                 +"Create an invitation link"
                 onClick = { editInviteLinkDialog(null) }
@@ -188,7 +193,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
         val ref = userRef ?: return@runCoroutine
         Client.sendData("${room.urlPrefix}/members/add", AddedExistingMember(ref, role) as AddedMember, onError = { showError(it)}) {}
     }
-    fun canChangeSelf() = (!member.user.isMyself || appState.isAdmin())
+    val canChangeSelf = !member.user.isMyself || useIsAdmin()
 
     fun memberDelete() = runCoroutine {
         val ref = userRef ?: return@runCoroutine
@@ -199,7 +204,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
         open = dialogOpen
         name = member.user.displayName ?: "Anonymous user"
         hasEmail = member.email != null
-        canDelete = canChangeSelf() && appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS) == true
+        canDelete = canChangeSelf && usePermission(room, RoomPermission.MANAGE_MEMBERS) == true
         onClose = { dialogOpen = false }
         onMail = { window.open("mailto:${member.email}", WindowTarget._blank) }
         onDelete = ::memberDelete
@@ -252,7 +257,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
         MemberRoleSelect {
             value = member.role
             isGuest = !member.isProperUser
-            disabled = props.disabled || !canChangeSelf() || userRef == null
+            disabled = props.disabled || !canChangeSelf || userRef == null
             onChange = ::memberRoleChange
         }
         IconButton {
@@ -387,9 +392,9 @@ external interface MemberRoleSelectProps : Props {
 }
 
 val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
-    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
-    val canChange = canChangeRole(appState, room, props.value)
+    val myUser = useMyUser()  // captured for the onChange handler
+    val canChange = canChangeRole(myUser, room, props.value)
 
     Select {
         value = props.value.id
@@ -397,14 +402,14 @@ val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
         onChange = { event ->
             val changedRole = appConfig.roleById(event.target.value)
                 ?: error("Unknown role: ${event.target.value}")
-            if (canChangeRole(appState, room, changedRole))
+            if (canChangeRole(myUser, room, changedRole))
                 props.onChange?.invoke(changedRole)
         }
         appConfig.roles.map { role ->
             option {
                 value = role.id
                 +role.name
-                if (!canChangeRole(appState, room, role) || (props.isGuest && !role.availableToGuests))
+                if (!canChangeRole(myUser, room, role) || (props.isGuest && !role.availableToGuests))
                     disabled = true
             }
         }

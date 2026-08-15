@@ -1,6 +1,7 @@
 package components.layout
 
 import components.AppStateContext
+import components.usePresenterInfo
 import components.AppStateWebsocketProvider
 import components.presenter.PresenterPage
 import components.redesign.basic.ConnectionBanner
@@ -60,6 +61,6 @@ val PresenterLayoutInner = FC<Props> {
             display = Display.flex
             flexDirection = FlexDirection.column
         }
-        PresenterPage { view = appState.presenterInfo?.view ?: EmptyPV }
+        PresenterPage { view = usePresenterInfo()?.view ?: EmptyPV }
     }
 }

@@ -1,6 +1,7 @@
 package extensions.onn_nuclear_hints
 
 import components.AppStateContext
+import components.useMyPredictions
 import components.redesign.questions.predictions.MyPredictionDescriptionProps
 import react.ChildrenBuilder
 import react.dom.html.ReactHTML.b
@@ -31,7 +32,7 @@ object OnnNuclearHintsCE : ClientExtension, ONNNuclearHintsExtension() {
                 +" (if the risk remained constant)."
             }
         }
-        val otherProbs = r.questions.filter{it.id != q.id}.mapNotNull { (appState.myPredictions[it]?.dist as? BinaryDistribution)?.yesProb }
+        val otherProbs = r.questions.filter{it.id != q.id}.mapNotNull { (useMyPredictions()[it]?.dist as? BinaryDistribution)?.yesProb }
         val allProbs = listOf(prob) + otherProbs
         if (allProbs.size >= 2) {
             val totalRisk = 1 - allProbs.map { 1 - it }.reduce { a, b -> a * b }

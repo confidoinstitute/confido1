@@ -103,12 +103,13 @@ private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
     val appState = use(AppStateContext)!!
     val navigate = useNavigate()
 
-    val user = appState.user
+    val user = useMyUser()
     val missingRequiredEmail = user != null && user.email == null && props.emailPolicy == InviteFieldPolicy.REQUIRED
 
     useEffectOnce {
+        // `user` is captured at render — effects run outside render, no use() here.
         val alreadyAccepted = appState.rooms[props.roomId]?.let { room ->
-            room.members.any { membership -> membership.user eqid appState.user }
+            room.members.any { membership -> membership.user eqid user }
         } ?: false
 
         if (alreadyAccepted) {
@@ -163,7 +164,7 @@ val POTENTIAL_SHORTLINK_RE = Regex("^[0-9]+$")
 private val MissingEmailConditionalAlert = FC<RoomInviteAlertProps> { props ->
     val appState = use(AppStateContext)!!
 
-    val user = appState.user
+    val user = useMyUser()
     val missingRequiredEmail = user != null && user.email == null && props.emailPolicy == InviteFieldPolicy.REQUIRED
     if (missingRequiredEmail) {
         Alert {

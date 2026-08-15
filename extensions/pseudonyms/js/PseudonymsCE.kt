@@ -1,5 +1,6 @@
 package extensions.pseudonyms
 
+import components.useMyUser
 import components.redesign.basic.sansSerif
 import components.redesign.forms.*
 import web.cssom.*
@@ -28,7 +29,7 @@ object PseudonymsCE : ClientExtension, PseudonymsExtension() {
         // userId is granted to MANAGE_MEMBERS viewers; others can still resolve their
         // own row (their own assignment is the only one they can see anyway).
         val userId = membership.user.userId?.id
-            ?: (if (membership.user.isMyself) clientState.user?.id else null)
+            ?: (if (membership.user.isMyself) clientState.self.user?.id else null)
             ?: return
         val pseudonym = assignments[userId]
 
@@ -54,7 +55,7 @@ object PseudonymsCE : ClientExtension, PseudonymsExtension() {
         val pseudonymList = room.extensionData[PseudonymsListKey]
         if (pseudonymList.isEmpty()) return
         val assignments = room.extensionData[PseudonymAssignmentsKey]
-        val myId = appState.user?.id ?: return
+        val myId = useMyUser()?.id ?: return
         val myPseudonym = assignments[myId] ?: return
 
         cb.apply {
@@ -75,7 +76,7 @@ object PseudonymsCE : ClientExtension, PseudonymsExtension() {
         val pseudonymList = room.extensionData[PseudonymsListKey]
         if (pseudonymList.isEmpty()) return
         val assignments = room.extensionData[PseudonymAssignmentsKey]
-        val myId = appState.user?.id ?: return
+        val myId = useMyUser()?.id ?: return
         val myPseudonym = assignments[myId] ?: return
 
         cb.apply {

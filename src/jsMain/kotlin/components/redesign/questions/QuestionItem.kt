@@ -40,7 +40,7 @@ external interface StatusChipProps : PropsWithClassName {
 
 val QuestionItem = FC<QuestionItemProps> { props ->
     val appState = use(AppStateContext)!!
-    val prediction = appState.myPredictions[props.question.ref]
+    val prediction = useMyPredictions()[props.question.ref]
 
     val questionState = props.question.state
 

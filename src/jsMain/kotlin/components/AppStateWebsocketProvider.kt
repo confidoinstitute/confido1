@@ -93,9 +93,12 @@ val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
     ConnectionContext.Provider {
         value = disconnected
         if (appState != null) {
-            AppStateContext.Provider {
-                value = appState ?: error("No app state!")
-                +props.children
+            SelfContext.Provider {
+                value = (appState ?: error("No app state!")).self
+                AppStateContext.Provider {
+                    value = appState ?: error("No app state!")
+                    +props.children
+                }
             }
         } else {
             props.loadingComponent?.invoke {

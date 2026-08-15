@@ -2,6 +2,7 @@ package components.redesign.rooms.dialog
 
 import web.dom.document
 import components.AppStateContext
+import components.usePermission
 import components.redesign.basic.Dialog
 import components.redesign.basic.Stack
 import components.redesign.forms.*
@@ -117,7 +118,7 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
                             title = "Export predictions as..."
                             options = buildList {
                                 add(false to "Group aggregate")
-                                if (appState.hasPermission(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS))
+                                if (usePermission(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS))
                                     add(true to "Individual predictions")
                             }
                             value = individual

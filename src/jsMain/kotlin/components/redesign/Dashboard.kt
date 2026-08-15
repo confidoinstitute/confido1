@@ -176,7 +176,7 @@ val DesktopHeader = FC<DashboardHeaderProps> { props ->
                 }
             }
 
-            appState.user?.let { user ->
+            useMyUser()?.let { user ->
                 ButtonBase {
                     css {
                         borderRadius = 30.px
@@ -235,7 +235,7 @@ val PhoneHeader = FC<DashboardHeaderProps> { props ->
                 padding = Padding(0.px, layoutMode.contentSidePad)
                 width = layoutMode.contentWidth
             }
-            appState.user?.let { user ->
+            useMyUser()?.let { user ->
                 AccountFrame {
                     css {
                         flexGrow = number(1.0)
@@ -473,7 +473,7 @@ val Dashboard = FC<Props> {
             }
         }
 
-        if ((!showCalibGraph && !showScores) || appState.isAdmin()) {
+        if ((!showCalibGraph && !showScores) || useIsAdmin()) {
             title("Workspace", layoutMode.contentSidePad)
             SidebarActions { hideCalib = showCalibGraph }
         }
@@ -481,7 +481,7 @@ val Dashboard = FC<Props> {
         title("Rooms", layoutMode.contentSidePad)
 
         RoomList {
-            canCreate = appState.user?.type?.isProper() ?: false
+            canCreate = useMyUser()?.type?.isProper() ?: false
         }
     }
 }
@@ -532,7 +532,7 @@ val UserMenu = FC<UserMenuProps> { props ->
             pageName = "Dashboard"
             onClose = props.onClose
         }
-        if (appState.isAdmin()) {
+        if (useIsAdmin()) {
             DialogMenuSeparator{}
             DialogMenuHeader { this.text = "Administration" }
             DialogMenuNav {

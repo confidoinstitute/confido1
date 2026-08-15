@@ -1,6 +1,7 @@
 package extensions.millionaire
 
 import components.AppStateContext
+import components.useMyPredictions
 import components.presenter.PresenterPageProps
 import components.presenter.presenterPageMap
 
@@ -871,7 +872,7 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
             // Ladder mode: two-tile layout showing gain/loss for each outcome
             val scores = resolvedQuestions.mapIndexed { idx, rq ->
                 val prizeValue = ladder.getOrElse(idx) { ladder.lastOrNull() ?: 0 }
-                computeScoreLadder(appState.myPredictions[rq.ref], rq.resolution!!, prizeValue) ?: 0.0
+                computeScoreLadder(useMyPredictions()[rq.ref], rq.resolution!!, prizeValue) ?: 0.0
             }
 
             cb.apply {
@@ -976,7 +977,7 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
         } else {
             // Multiplicative mode: original behavior
             val scoreCoef = resolvedQuestions.map { rq ->
-                computeScore(appState.myPredictions[rq.ref], rq.resolution!!) ?: 1.0
+                computeScore(useMyPredictions()[rq.ref], rq.resolution!!) ?: 1.0
             }
             val scoreAfterQ = scoreCoef.runningFold(INITIAL_SCORE) { a, b -> a * b }
             val diffScores = scoreAfterQ.zipWithNext { a, b -> b - a }

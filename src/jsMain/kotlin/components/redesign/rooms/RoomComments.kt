@@ -42,7 +42,7 @@ val RoomComments = FC<Props> {
         }
 
         if (layoutMode == LayoutMode.PHONE) {
-            if (appState.hasPermission(room, RoomPermission.POST_ROOM_COMMENT)) {
+            if (usePermission(room, RoomPermission.POST_ROOM_COMMENT)) {
                 RoomHeaderButton {
                     +"Write a comment"
                     onClick = { addCommentOpen = true }
@@ -68,7 +68,7 @@ val RoomComments = FC<Props> {
         }
 
         if (layoutMode != LayoutMode.PHONE) {
-            if (appState.hasPermission(room, RoomPermission.POST_ROOM_COMMENT)) {
+            if (usePermission(room, RoomPermission.POST_ROOM_COMMENT)) {
                 AddCommentField {
                     id = room.id
                     variant = CommentInputVariant.ROOM
@@ -115,7 +115,7 @@ val RoomComments = FC<Props> {
     }
 
     if (layoutMode == LayoutMode.PHONE) {
-        if (appState.hasPermission(room, RoomPermission.POST_ROOM_COMMENT)) {
+        if (usePermission(room, RoomPermission.POST_ROOM_COMMENT)) {
             div {
                 css {
                     width = layoutMode.contentWidth

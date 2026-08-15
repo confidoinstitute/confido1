@@ -2,6 +2,7 @@ package components.redesign.presenter
 
 import web.window.window
 import components.AppStateContext
+import components.usePresenterWindowActive
 import components.presenter.getPresenterControlsComponent
 import components.redesign.basic.Dialog
 import components.redesign.basic.DialogMainButton
@@ -136,9 +137,12 @@ val PresenterControllerProvider = FC<PropsWithChildren> { props->
     val appState = use(AppStateContext)!!
 
     val ctl = useMemo { PresenterController()}
+    // Captured at render: offer() runs from other components' event handlers, where
+    // the use()-based accessors are off-limits.
+    val presenterWindowActive = usePresenterWindowActive()
     fun offer(view: PresenterView, forceDialog: Boolean) {
         val desc = view.describe()
-        if (appState.presenterWindowActive && !forceDialog) {
+        if (presenterWindowActive && !forceDialog) {
             showMessage(Message("${desc.capFirst()} displayed in existing presentation window.", MessageType.SUCCESS))
             ctl.set(view)
             offeredView = null
@@ -157,11 +161,11 @@ val PresenterControllerProvider = FC<PropsWithChildren> { props->
             key = "presenterDialog"
             this.view = offeredView ?: EmptyPV
             this.open = offeredView != null
-            this.windowActive = appState.presenterWindowActive
+            this.windowActive = presenterWindowActive
             onConfirm = { finalView ->
                 ctl.set(finalView)
                 offeredView = null
-                if (!appState.presenterWindowActive)
+                if (!presenterWindowActive)
                     openPresenterWindow()
             }
             onClose = {

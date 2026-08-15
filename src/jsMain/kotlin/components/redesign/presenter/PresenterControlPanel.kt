@@ -1,6 +1,8 @@
 package components.redesign.presenter
 
 import components.AppStateContext
+import components.usePresenterWindowActive
+import components.usePresenterInfo
 import components.useDisconnected
 import components.presenter.getPresenterControlsComponent
 import components.redesign.CloseIcon
@@ -60,11 +62,11 @@ val PresenterControlPanel = FC<Props> {
     val ctl = use(PresenterContext)!!
     var expanded by useState(false)
 
-    val info = appState.presenterInfo
+    val info = usePresenterInfo()
     val view = info?.view
     // Show the panel while a presenter window is open, or while a recently set
     // presenter view lingers (offering to reopen the window or stop presenting).
-    val visible = info != null && view != null && (appState.presenterWindowActive || info.isValid)
+    val visible = info != null && view != null && (usePresenterWindowActive() || info.isValid)
     val controlsComp = view?.let { getPresenterControlsComponent(it) }
 
     // Auto-expand when a view with controls becomes active, so the controls are discoverable.
@@ -143,7 +145,7 @@ val PresenterControlPanel = FC<Props> {
                 Stack {
                     direction = FlexDirection.row
                     css { gap = 8.px }
-                    if (!appState.presenterWindowActive) {
+                    if (!usePresenterWindowActive()) {
                         PanelButton {
                             palette = MainPalette.primary
                             disabled = useDisconnected()

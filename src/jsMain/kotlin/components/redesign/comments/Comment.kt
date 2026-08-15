@@ -86,7 +86,7 @@ val Comment = FC<CommentProps> { props ->
                 }
             }
         }
-        if (comment.isMine || appState.hasPermission(room, RoomPermission.MANAGE_COMMENTS))
+        if (comment.isMine || usePermission(room, RoomPermission.MANAGE_COMMENTS))
         DialogMenuItem {
             text = "Delete comment" 
             icon = BinIcon
@@ -145,7 +145,7 @@ val Comment = FC<CommentProps> { props ->
                 lineHeight = 14.px
             }
 
-            val moreDialogVisible = comment.isMine || appState.hasPermission(room, RoomPermission.MANAGE_COMMENTS)
+            val moreDialogVisible = comment.isMine || usePermission(room, RoomPermission.MANAGE_COMMENTS)
             if (moreDialogVisible) {
                 FooterAction {
                     icon = MoreIcon

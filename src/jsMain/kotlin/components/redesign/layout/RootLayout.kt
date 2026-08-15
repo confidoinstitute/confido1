@@ -1,6 +1,8 @@
 package components.redesign.layout
 
 import components.AppStateContext
+import components.useFollowingPresentation
+import components.useMyUser
 import components.AppStateWebsocketProvider
 import components.redesign.*
 import components.redesign.admin.UserAdmin
@@ -103,7 +105,7 @@ private val RootLayoutInner = FC<Props> {
     }
 
     // Presentation follow navigation: conditionally render the navigator component
-    val followingRoom = appState.followingPresentation
+    val followingRoom = useFollowingPresentation()
     if (followingRoom != null) {
         PresentationFollowNavigator {
             roomId = followingRoom.id
@@ -118,7 +120,10 @@ private val RootLayoutInner = FC<Props> {
         }
     }
     
-    val routes = useMemo(appState.user?.type) {
+    // Captured before the memo: use()-based accessors inside a useMemo body would
+    // not invalidate it on context change.
+    val myUser = useMyUser()
+    val routes = useMemo(myUser?.type) {
         buildList {
             add(jso<RouteObject> {
                 index = true
@@ -164,7 +169,7 @@ private val RootLayoutInner = FC<Props> {
                         path = "email_login"
                         element = EmailLoginAlreadyLoggedIn.create()
                     })
-                    if (appState.user?.type?.isProper() == true) {
+                    if (myUser?.type?.isProper() == true) {
                         add(jso<RouteObject> {
                             path = "new_room"
                             element = CreateRoom.create()
@@ -186,7 +191,7 @@ private val RootLayoutInner = FC<Props> {
                         path = "scores"
                         element = MyScoresPage.create()
                     })
-                    if (appState.user?.type == UserType.ADMIN) {
+                    if (myUser?.type == UserType.ADMIN) {
                         add(jso<RouteObject> {
                             path = "admin/users"
                             element = UserAdmin.create()

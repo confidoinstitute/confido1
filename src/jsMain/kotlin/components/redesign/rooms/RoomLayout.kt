@@ -2,6 +2,10 @@ package components.redesign.rooms
 
 import Client
 import components.AppStateContext
+import components.useFollowingPresentation
+import components.usePermission
+import components.useMyUser
+import components.useSelf
 import components.useDisconnected
 import components.redesign.*
 import components.redesign.basic.*
@@ -45,13 +49,13 @@ import web.window.window
 private val PresentationFollowBanner = FC<Props> {
     val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
-    val isFollowing = appState.followingPresentation?.id == room.id
+    val isFollowing = useFollowingPresentation()?.id == room.id
     val presentationRunning = room._presentationRunning == true
-    val isGuest = appState.user?.type == users.UserType.GUEST
+    val isGuest = useMyUser()?.type == users.UserType.GUEST
     // Don't show anything if no presentation is running
     if (!presentationRunning && !isFollowing) return@FC
     // Don't show to moderators who manage the presentation
-    if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)) return@FC
+    if (usePermission(room, RoomPermission.MANAGE_QUESTIONS)) return@FC
     // Hide the "stop following" banner for guests (they follow via invite link and shouldn't be confused)
     if (isFollowing && isGuest) return@FC
 
@@ -219,14 +223,14 @@ val RoomLayout = FC<RoomLayoutProps> { props->
         open = dialogOpen
         onClose = { dialogOpen = false }
 
-        if (appState.hasPermission(room, RoomPermission.ROOM_OWNER)) {
+        if (usePermission(room, RoomPermission.ROOM_OWNER)) {
             DialogMenuItem {
                 text = "Change settings of this room"
                 icon = EditIcon
                 onClick = { editOpen = true; dialogOpen = false }
             }
         }
-        if (appState.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)) {
+        if (usePermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)) {
             DialogMenuItem {
                 icon = ExportIcon
                 text = "Export to CSV..."
@@ -234,7 +238,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
             }
         }
 
-        if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS) && room.presentation == null) {
+        if (usePermission(room, RoomPermission.MANAGE_QUESTIONS) && room.presentation == null) {
             DialogMenuItem {
                 text = "Create presentation"
                 icon = PresentationIcon
@@ -249,7 +253,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
             }
         }
 
-        if (appState.hasPermission(room, RoomPermission.ROOM_OWNER)) {
+        if (usePermission(room, RoomPermission.ROOM_OWNER)) {
             DialogMenuItem {
                 text = "Delete this room"
                 variant = DialogMenuItemVariant.dangerous
@@ -404,9 +408,12 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                 flexDirection = FlexDirection.column
             }
             
-            val routes = useMemo(room.id, appState.self) {
+            // Captured before the memo: use()-based accessors inside a useMemo body
+            // would not invalidate it on context change.
+            val myUser = useMyUser()
+            val routes = useMemo(room.id, myUser) {
                 buildList {
-                    if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS)) {
+                    if (room.hasPermission(myUser, RoomPermission.VIEW_QUESTIONS)) {
                         add(jso<RouteObject> {
                             index = true
                             element = QuestionList.create {
@@ -416,23 +423,23 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                                     ?.filter { it.visibleInList }
                                     ?.mapNotNull { it.question.deref() }
                                 questions = effQuestions ?: room.questions.mapDeref()
-                                showHiddenQuestions = appState.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
+                                showHiddenQuestions = room.hasPermission(myUser, RoomPermission.VIEW_HIDDEN_QUESTIONS)
                             }
                         })
                     }
-                    if (appState.hasPermission(room, RoomPermission.VIEW_ROOM_COMMENTS)) {
+                    if (room.hasPermission(myUser, RoomPermission.VIEW_ROOM_COMMENTS)) {
                         add(jso<RouteObject> {
                             path = "discussion"
                             element = RoomComments.create()
                         })
                     }
-                    if (appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS)) {
+                    if (room.hasPermission(myUser, RoomPermission.MANAGE_MEMBERS)) {
                         add(jso<RouteObject> {
                             path = "members"
                             element = RoomMembers.create()
                         })
                     }
-                    if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS)) {
+                    if (room.hasPermission(myUser, RoomPermission.VIEW_QUESTIONS)) {
                         add(jso<RouteObject> {
                             path = "calibration"
                             element = RoomCalibration.create {
@@ -448,7 +455,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                             element = RoomScore.create()
                         })
                     }
-                    if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS)) {
+                    if (room.hasPermission(myUser, RoomPermission.MANAGE_QUESTIONS)) {
                         add(jso<RouteObject> {
                             path = "manage_questions"
                             element = QuestionManagement.create {
@@ -458,7 +465,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                         })
                     }
                     
-                    if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS) && room.presentation != null) {
+                    if (room.hasPermission(myUser, RoomPermission.MANAGE_QUESTIONS) && room.presentation != null) {
                         add(jso<RouteObject> {
                             path = "presentation"
                             element = PresentationTab.create()

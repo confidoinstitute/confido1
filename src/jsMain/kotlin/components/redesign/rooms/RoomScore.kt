@@ -2,6 +2,7 @@ package components.redesign.rooms
 
 import Client
 import components.AppStateContext
+import components.usePermission
 import components.redesign.basic.*
 import components.redesign.forms.InlineHelpButton
 import components.redesign.questions.QuestionEstimateTabButton
@@ -87,7 +88,7 @@ val ScoringHelpDialog = FC<DialogProps> { props->
 val RoomScore = FC<Props> {
     val room = use(RoomContext)!!
     val appState = use(AppStateContext)!!
-    val canViewScoreboard = appState.hasPermission(room, RoomPermission.VIEW_SCORES)
+    val canViewScoreboard = usePermission(room, RoomPermission.VIEW_SCORES)
 
     var helpOpen by useState(false)
     // Default to Scoreboard when user has VIEW_SCORES, otherwise My scores
@@ -176,7 +177,7 @@ val RoomScore = FC<Props> {
             } else if (scores.isEmpty()) {
                 p { b { +"There are no scored predictions in this room yet." } }
                 // Only show the tips to moderators, who can do something about them.
-                if (appState.hasPermission(room, RoomPermission.MANAGE_QUESTIONS))
+                if (usePermission(room, RoomPermission.MANAGE_QUESTIONS))
                     p {
                         +"In order for a prediction on a question to be scored:"
                         ul {

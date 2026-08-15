@@ -1,6 +1,8 @@
 package components.redesign.profile
 
 import components.AppStateContext
+import components.useMyPasswordIsSet
+import components.useMyUser
 import components.useDisconnected
 import components.redesign.*
 import components.redesign.basic.Alert
@@ -31,7 +33,7 @@ import web.html.submit
 
 val UserProfile = FC<Props> {
     val appState = use(AppStateContext)!!
-    val user = appState.user
+    val user = useMyUser()
 
     var nick by useState(user?.nick ?: "")
 
@@ -80,7 +82,7 @@ val UserProfile = FC<Props> {
 
         Client.sendData("/profile/edit", EditProfile(
                 nick, email,
-                if (appState.myPasswordIsSet) oldPassword else null,
+                if (useMyPasswordIsSet()) oldPassword else null,
                 newPassword.ifEmpty { null }),
             onError = {showError(it)}) {
             editResult = body()
@@ -145,7 +147,7 @@ val UserProfile = FC<Props> {
                             gap = 7.px
                         }
 
-                        if (appState.myPasswordIsSet)
+                        if (useMyPasswordIsSet())
                             TextInput {
                                 name = "old_password"
                                 type = InputType.password
@@ -167,7 +169,7 @@ val UserProfile = FC<Props> {
                             value = confirmPassword
                             onChange = { confirmPassword = it.target.value }
                         }
-                        if (appState.myPasswordIsSet && !passwordReset)
+                        if (useMyPasswordIsSet() && !passwordReset)
                             TextButton {
                                 type = ButtonType.button
                                 css {
@@ -178,7 +180,7 @@ val UserProfile = FC<Props> {
                             }
                     }
                     error = editResult?.passwordError
-                    comment = if (!appState.myPasswordIsSet)
+                    comment = if (!useMyPasswordIsSet())
                         "Your password is not set."
                     else if (passwordReset)
                         "Password reset request was sent."

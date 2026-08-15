@@ -33,7 +33,11 @@ val Room = FC<Props> {
         }
     }
 
-    val routes = useMemo(roomId, appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS)) {
+    // Captured before the memo: use()-based accessors inside a useMemo body would
+    // not invalidate it on context change.
+    val canViewQuestions = usePermission(room, RoomPermission.VIEW_QUESTIONS)
+    val canAddQuestion = usePermission(room, RoomPermission.ADD_QUESTION)
+    val routes = useMemo(roomId, canViewQuestions, canAddQuestion) {
         buildList {
             add(jso<RouteObject> {
                 path = "*"
@@ -49,13 +53,13 @@ val Room = FC<Props> {
                     openSchedule = URLSearchParams(loc.search).get("schedule") == "1"
                 }
             })
-            if (appState.hasPermission(room, RoomPermission.ADD_QUESTION)) {
+            if (canAddQuestion) {
                 add(jso<RouteObject> {
                     path = "import"
                     element = ImportWizard.create()
                 })
             }
-            if (appState.hasPermission(room, RoomPermission.VIEW_QUESTIONS)) {
+            if (canViewQuestions) {
                 add(jso<RouteObject> {
                     path = "questions/:questionID"
                     children = arrayOf(
