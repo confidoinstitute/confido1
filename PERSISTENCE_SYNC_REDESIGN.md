@@ -978,6 +978,24 @@ working untouched mid-transition.
     onChange via a now-pure `canChangeRole(myUser, room, role)`). Remaining for
     the eviction: per-room questions topic, cross-room surfaces, then
     `globalState`/`BaseState`/`ClientState`/`AppStateContext` die together.
+  - **Descriptions are client-side components (describe() unblocked).** Three designs
+    were weighed: creation-time snapshot (rejected — bakes a wire concern into
+    long-lived persisted flows, exactly where staleness shows), server describe +
+    payload strings (rejected — every `.describe()` consumer in the codebase is
+    client-side; the server never renders one), and the winner: rich descriptions as
+    *UI components* (`PresenterViewDescription`/`FlowActionDescription`), which also
+    upgraded the labels (question names, live-updating) and unified the saved-flow /
+    in-edit / offer-dialog paths. Data flows through the **`useQuestion(ref?)`
+    accessor seam**: v0 reads the global questions slice; v1 subscribes
+    `question/<id>` (needed anyway — post-eviction presenter pages hold bare
+    question refs with no room context); v2, only if profiling demands, subsumption
+    from covering collection subscriptions inside the accessor. Overlapping
+    subscriptions are deliberately tolerated rather than optimized: dedup makes
+    same-topic consumers free, and flush-time recompute into atomic frames makes
+    duplicated data *consistent* duplication — bounded bytes, no divergence window.
+    The commonMain `describe()` remains as a deref-free generic fallback (the two
+    name-bearing FlowAction describes went generic); remaining eviction blockers:
+    only the server-only-called `isValid`/`getNavigateUrl`.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or
