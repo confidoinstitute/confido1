@@ -154,3 +154,6 @@ open class CalibrationTrainingExtension : Extension {
         builder.subclass(ShowCalibrationLeaderboardAction::class)
     }
 }
+
+// Topic owned by this extension (see tools.confido.state.Topics for the scheme).
+val calibrationLeaderboardTopic = tools.confido.utils.path("ext/calibration_training/leaderboard")

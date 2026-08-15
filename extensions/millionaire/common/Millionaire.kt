@@ -226,3 +226,8 @@ abstract class MillionaireExt : Extension {
         return MillionaireState(MillionaireStateType.RESOLVED, qs.size - 1, qs.last())
     }
 }
+
+// Topics owned by this extension (see tools.confido.state.Topics for the scheme).
+val millionaireConfigTopic = tools.confido.state.Topics.room / "ext/millionaire/config"
+val millionaireScoreboardTopic = tools.confido.state.Topics.room / "ext/millionaire/scoreboard"
+val millionaireTimerTopic = tools.confido.state.Topics.room / "ext/millionaire/timer"

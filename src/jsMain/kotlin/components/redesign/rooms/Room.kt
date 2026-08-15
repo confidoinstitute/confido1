@@ -11,6 +11,7 @@ import react.router.*
 import rooms.*
 import web.url.URLSearchParams
 import web.window.window
+import tools.confido.state.Topics
 
 val RoomContext = createContext<Room>()
 val Room = FC<Props> {
@@ -20,7 +21,7 @@ val Room = FC<Props> {
     // presentation state); the global rooms map only carries directory-level rooms.
     // Until the detail payload arrives, fall back to the directory entry — the page
     // renders with configuration data and fills in member detail when it lands.
-    val roomWS = useSubscription<Room>("${rooms.Room.topicPrefix(roomId)}")
+    val roomWS = useSubscription<Room>(Topics.room(tools.confido.refs.Ref(roomId)))
     val room = (roomWS as? WSData)?.data ?: appState.rooms[roomId] ?: return@FC
     val loc = useLocation()
 

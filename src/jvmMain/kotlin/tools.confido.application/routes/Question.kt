@@ -29,9 +29,9 @@ import tools.confido.store.*
 import tools.confido.utils.unixNow
 import users.User
 import kotlin.math.min
+import tools.confido.state.Topics
 
 val questionUrl = Question.urlPrefix("{qID}")
-val questionTopic = Question.topicPrefix("{qID}")
 
 data class QuestionContext(val inUser: User?, val question: Question) {
     val user: User by lazy { inUser ?: unauthorized("Not logged in.") }
@@ -62,9 +62,12 @@ fun canViewGroupPred(question: Question?, myPred: Prediction?): Boolean =
         null -> false
     }
 
-suspend fun <T> ApplicationCall.withQuestion(body: suspend QuestionContext.() -> T): T {
+suspend fun <T> ApplicationCall.withQuestion(body: suspend QuestionContext.() -> T): T =
+    withQuestion(Ref(parameters["qID"] ?: ""), body)
+
+/** Topic-handler variant: the question ref comes as a typed path-template argument. */
+suspend fun <T> ApplicationCall.withQuestion(qRef: Ref<Question>, body: suspend QuestionContext.() -> T): T {
     val user = userSession?.user
-    val qRef = Ref<Question>(parameters["qID"] ?: "")
     val question = qRef.deref() ?: notFound("No such question.")
     return body(QuestionContext(user, question))
 }
@@ -296,8 +299,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
     // reads — the question (visibility settings), its room (permissions), the viewer
     // (type changes), the viewer's own prediction (ANSWERED gate), and the group
     // aggregate itself. Recomputation is driven by those same reads.
-    viewWS("$questionTopic/group_pred") {
-        val qRef = Ref<Question>(call.parameters["qID"] ?: "")
+    viewWS(Topics.groupPred) { qRef ->
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
         val roomView = roomStore.questionRoomState.asView().at(qRef)
             .flatMap { rRef -> rRef?.let { roomStore.state.asView().at(it.id) } ?: viewOf(null) }
@@ -321,8 +323,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
 
     // View a histogram: same View composition as group_pred, plus the whole users map
     // (per-bin UserPresentation embedding when the viewer may see individual predictions).
-    viewWS("$questionTopic/histogram") {
-        val qRef = Ref<Question>(call.parameters["qID"] ?: "")
+    viewWS(Topics.histogram) { qRef ->
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
         val roomView = roomStore.questionRoomState.asView().at(qRef)
             .flatMap { rRef -> rRef?.let { roomStore.state.asView().at(it.id) } ?: viewOf(null) }

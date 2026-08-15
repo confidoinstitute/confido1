@@ -16,6 +16,8 @@ import tools.confido.refs.deref
 import tools.confido.state.BinaryHistogramPV
 import tools.confido.utils.formatPercent
 import kotlin.math.roundToInt
+import tools.confido.state.Topics
+import tools.confido.refs.ref
 
 private val BAR_COLOR = Color("#8BF08E")
 
@@ -24,7 +26,7 @@ private fun binLabel(bin: HistogramBin) =
 
 val BinaryHistogramPP = FC<PresenterPageProps<BinaryHistogramPV>> { props ->
     val question = props.view.question.deref() ?: return@FC
-    val response = useSubscription<BinaryHistogram>("${question.topicPrefix}/histogram")
+    val response = useSubscription<BinaryHistogram>(Topics.histogram(question.ref))
 
     Stack {
         css {

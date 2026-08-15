@@ -28,6 +28,7 @@ import tools.confido.store.*
 import java.io.File
 import java.io.StringWriter
 import javax.imageio.ImageIO
+import tools.confido.state.Topics
 
 val presentationDir = File(System.getenv("CONFIDO_PRESENTATION_PATH") ?: "presentations").canonicalFile
 
@@ -284,8 +285,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
     }
 
     // WebSocket endpoint for live presentation data (moderators only)
-    viewWS("$roomTopic/presentation") {
-        val rRef = Ref<Room>(call.parameters["rID"] ?: "")
+    viewWS(Topics.presentation) { rRef ->
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
         val roomView = roomStore.state.asView().at(rRef.id)
         val presView = roomView.flatMap { room ->
@@ -328,8 +328,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
     // WebSocket endpoint for presentation followers: sends currentNavigateUrl.
     // The per-viewer input here is the *session* (followingPresentation), which is
     // store-backed — so even this "personal" topic is an ordinary View composition.
-    viewWS<String?>("$roomTopic/presentation/follow") {
-        val rRef = Ref<Room>(call.parameters["rID"] ?: "")
+    viewWS<Ref<Room>, String?>(Topics.presentationFollow) { rRef ->
         val sessionId = call.userSession?.id ?: unauthorized("Not logged in.")
         combineViews(
             roomStore.state.asView().at(rRef.id),

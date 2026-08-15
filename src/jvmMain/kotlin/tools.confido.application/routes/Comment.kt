@@ -20,6 +20,7 @@ import tools.confido.state.serverState
 import tools.confido.store.*
 import tools.confido.utils.unixNow
 import users.User
+import tools.confido.state.Topics
 
 const val commentUrl = "/comments/{cID}"
 
@@ -46,8 +47,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
     // signal. The users map is a gate input: author presentations embed users, and it
     // also refreshes the topic after user deletion (which strips likes without a
     // version bump).
-    viewWS("$questionTopic/comments", gate = {
-        val qRef = Ref<Question>(call.parameters["qID"] ?: "")
+    viewWS(Topics.questionComments, gate = { qRef ->
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
         val roomView = roomStore.questionRoomState.asView().at(qRef)
             .flatMap { rRef -> rRef?.let { roomStore.state.asView().at(it.id) } ?: viewOf(null) }
@@ -70,8 +70,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
             }
             CommentGate(viewer, room, canViewAll || canView)
         }
-    }) { (viewer, room, canSeeOthers) ->
-        val qRef = Ref<Question>(call.parameters["qID"] ?: "")
+    }) { qRef, (viewer, room, canSeeOthers) ->
         questionCommentArchive.all(qRef).filter { comment ->
             comment.user == viewer.ref || canSeeOthers
         }.map { comment ->
@@ -151,8 +150,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
 }
 
 fun roomCommentsRoutes(routing: Routing) = routing.apply {
-    viewWS("$roomTopic/comments", gate = {
-        val rRef = Ref<Room>(call.parameters["rID"] ?: "")
+    viewWS(Topics.roomComments, gate = { rRef ->
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
         combineViews(
             roomStore.state.asView().at(rRef.id),
@@ -165,7 +163,7 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
                 forbidden("You cannot view the discussion.")
             CommentGate(viewer, room)
         }
-    }) { (viewer, room) ->
+    }) { _, (viewer, room) ->
         roomCommentArchive.all(room.ref).map { comment ->
             makeCommentPresentation(comment, null, viewer, room)
         }

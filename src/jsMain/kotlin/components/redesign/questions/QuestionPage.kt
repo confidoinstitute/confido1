@@ -46,6 +46,7 @@ import tools.confido.state.BinaryHistogramPV
 import tools.confido.state.appConfig
 import tools.confido.utils.*
 import utils.*
+import tools.confido.state.Topics
 
 val QuestionContext = createContext<Question?>(null)
 enum class PendingPredictionState {
@@ -115,7 +116,7 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
     val (appState, stale) = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val myPrediction = appState.myPredictions[props.question.ref]
-    val groupPrediction = useSubscription<Prediction?>("${props.question.topicPrefix}/group_pred")
+    val groupPrediction = useSubscription<Prediction?>(Topics.groupPred(props.question.ref))
     val layoutMode = use(LayoutModeContext)!!
     val roomPalette = room.color.palette
 
@@ -512,7 +513,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
 }
 
 private val BinaryHistogramSection = FC<BinaryHistogramSectionProps> { props ->
-    val histogram = useSubscription<BinaryHistogram>("${props.question.topicPrefix}/histogram")
+    val histogram = useSubscription<BinaryHistogram>(Topics.histogram(props.question.ref))
     val layoutMode = use(LayoutModeContext)!!
     val presenterCtl = use(PresenterContext)!!
     div {
@@ -717,7 +718,7 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
 }
 
 private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
-    val comments = useSubscription<List<CommentPresentation<QuestionCommentExtraData>>>("${props.question.topicPrefix}/comments")
+    val comments = useSubscription<List<CommentPresentation<QuestionCommentExtraData>>>(Topics.questionComments(props.question.ref))
     val layoutMode = use(LayoutModeContext)!!
 
     var addCommentOpen by useState(false)

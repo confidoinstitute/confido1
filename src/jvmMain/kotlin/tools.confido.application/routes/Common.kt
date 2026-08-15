@@ -27,6 +27,10 @@ import tools.confido.serialization.confidoJSON
 import tools.confido.store.MemoView
 import tools.confido.store.TxClock
 import tools.confido.store.View
+import tools.confido.utils.PathTemplate
+import tools.confido.utils.PathTemplate0
+import tools.confido.utils.PathTemplate1
+import tools.confido.utils.PathTemplate2
 
 typealias RouteBodyCall = suspend RoutingContext.() -> Unit
 
@@ -72,12 +76,13 @@ data class WSBody(val call: ApplicationCall)
 // ==== Topic-multiplexed state websocket (PERSISTENCE_SYNC_REDESIGN.md §4.1) ====
 //
 // All subscription data is carried by the single /state websocket. Topics are
-// identified by the URL paths the former dedicated websocket endpoints used
-// (e.g. "/state/rooms/{rID}/comments"), optionally with a query string; handlers
-// therefore keep reading call.parameters / call.request.queryParameters through
-// a synthetic TopicCall. The connection loop lives in Server.kt.
+// identified by typed PathTemplates (tools.confido.state.Topics): registration and
+// client-side construction share one template per topic, and handlers receive the
+// decoded path parameters as typed arguments. An optional query string (e.g. the
+// room group_pred `?qids=`) still reaches handlers through a synthetic TopicCall.
+// The connection loop lives in Server.kt.
 
-/** An [ApplicationCall] view whose parameters come from a topic string rather than routing. */
+/** An [ApplicationCall] view whose query parameters come from a topic string rather than routing. */
 class TopicCall(delegate: ApplicationCall, override val parameters: Parameters) : ApplicationCall by delegate {
     override val request: ApplicationRequest = object : ApplicationRequest by delegate.request {
         override val queryParameters: Parameters = parameters
@@ -85,8 +90,8 @@ class TopicCall(delegate: ApplicationCall, override val parameters: Parameters) 
     }
 }
 
-/** Base of the two topic shapes; [pattern] is the split topic path. */
-sealed class Topic(val pattern: List<String>)
+/** Base of the two topic shapes; [template] serves matching (typed) and display. */
+sealed class Topic(val template: PathTemplate)
 
 /**
  * A topic backed by a [Flow] — for payloads that suspend (archive fetches) or time
@@ -99,7 +104,7 @@ sealed class Topic(val pattern: List<String>)
  * from the call parameters. FlowTopic payloads sit *outside* the frame-consistency
  * guarantee of [ViewTopic]s (they are computed at emission time, not at flush time).
  */
-class FlowTopic(pattern: List<String>, val flow: (WSBody) -> Flow<JsonElement>) : Topic(pattern)
+class FlowTopic(template: PathTemplate, val flow: (WSBody, List<Any>) -> Flow<JsonElement>) : Topic(template)
 
 /**
  * A topic backed by a [View]: [build] composes the encoded-payload view for one
@@ -109,27 +114,15 @@ class FlowTopic(pattern: List<String>, val flow: (WSBody) -> Flow<JsonElement>) 
  * signals arrived in. [View.changes] only schedules a flush; the per-topic wire diff
  * in the connection loop keeps unchanged recomputations off the wire.
  */
-class ViewTopic(pattern: List<String>, val build: suspend (WSBody) -> View<JsonElement>) : Topic(pattern)
+class ViewTopic(template: PathTemplate, val build: suspend (WSBody, List<Any>) -> View<JsonElement>) : Topic(template)
 
 object TopicRegistry {
     val handlers = mutableListOf<Topic>()
 
-    fun split(path: String) = path.split('/')
-
-    /** Match a topic path (query string already stripped) against registered patterns. */
-    fun match(topicPath: String): Pair<Topic, Parameters>? {
-        val segments = split(topicPath)
-        outer@ for (h in handlers) {
-            if (h.pattern.size != segments.size) continue
-            val params = ParametersBuilder()
-            for ((pat, seg) in h.pattern.zip(segments)) {
-                if (pat.startsWith("{") && pat.endsWith("}")) {
-                    if (seg.isEmpty()) continue@outer
-                    params.append(pat.substring(1, pat.length - 1), seg.decodeURLPart())
-                } else if (pat != seg) continue@outer
-            }
-            return h to params.build()
-        }
+    /** Match a topic path (query string already stripped): typed decoded params or null. */
+    fun match(topicPath: String): Pair<Topic, List<Any>>? {
+        val segments = topicPath.split('/').map { it.decodeURLPart() }
+        for (h in handlers) h.template.matchValues(segments)?.let { return h to it }
         return null
     }
 }
@@ -143,33 +136,45 @@ object TopicRegistry {
  * change recomputes. A [ResponseError] from [body] itself (e.g. unparseable parameters)
  * yields a single error frame.
  */
-inline fun <reified T> Route.viewWS(path: String, crossinline body: suspend WSBody.() -> View<T>) {
-    TopicRegistry.handlers.add(ViewTopic(TopicRegistry.split(path)) { ctx ->
-        val view = ctx.body()
-        object : MemoView<JsonElement>() {
-            // A throwing validate (e.g. a gate's ResponseError surfacing during a
-            // source recompute) counts as "changed now": the compute below re-runs
-            // and captures the error as a payload. Error states forgo cutoff and
-            // re-evaluate per flush, recovering when state changes — same semantics
-            // the un-memoized wrapper had.
-            override fun validateSources(): Long =
-                try { view.validate() } catch (e: ResponseError) { TxClock.serial }
+/**
+ * The encoded-payload wrapper: memoizes the JSON-encoded payload (so the equality
+ * cutoff deduplicates at the payload level). A throwing validate (e.g. a gate's
+ * ResponseError surfacing during a source recompute) counts as "changed now": the
+ * compute re-runs and captures the error as a WSError payload; error states forgo
+ * cutoff and re-evaluate per flush, recovering when state changes.
+ */
+inline fun <reified T> topicPayloadView(view: View<T>): View<JsonElement> =
+    object : MemoView<JsonElement>() {
+        override fun validateSources(): Long =
+            try { view.validate() } catch (e: ResponseError) { TxClock.serial }
 
-            // Per-computation error semantics: a ResponseError from the view's
-            // transforms encodes as a WSError payload; the subscription stays live
-            // and recovers on the next state change. Encoding here means the memo's
-            // equality cutoff deduplicates at the payload level.
-            override fun compute(): JsonElement =
-                confidoJSON.encodeToJsonElement<WSResponse<T>>(
-                    try {
-                        WSData(view.value)
-                    } catch (e: ResponseError) {
-                        WSError(e.wsCode, e.message)
-                    }
-                )
+        override fun compute(): JsonElement =
+            confidoJSON.encodeToJsonElement<WSResponse<T>>(
+                try {
+                    WSData(view.value)
+                } catch (e: ResponseError) {
+                    WSError(e.wsCode, e.message)
+                }
+            )
 
-            override val changes get() = view.changes
-        }
+        override val changes get() = view.changes
+    }
+
+inline fun <reified T> Route.viewWS(t: PathTemplate0, crossinline body: suspend WSBody.() -> View<T>) {
+    TopicRegistry.handlers.add(ViewTopic(t) { ctx, _ -> topicPayloadView(ctx.body()) })
+}
+
+inline fun <A : Any, reified T> Route.viewWS(t: PathTemplate1<A>, crossinline body: suspend WSBody.(A) -> View<T>) {
+    TopicRegistry.handlers.add(ViewTopic(t) { ctx, args ->
+        @Suppress("UNCHECKED_CAST")
+        topicPayloadView(ctx.body(args[0] as A))
+    })
+}
+
+inline fun <A : Any, B : Any, reified T> Route.viewWS(t: PathTemplate2<A, B>, crossinline body: suspend WSBody.(A, B) -> View<T>) {
+    TopicRegistry.handlers.add(ViewTopic(t) { ctx, args ->
+        @Suppress("UNCHECKED_CAST")
+        topicPayloadView(ctx.body(args[0] as A, args[1] as B))
     })
 }
 
@@ -183,28 +188,45 @@ inline fun <reified T> Route.viewWS(path: String, crossinline body: suspend WSBo
  * plus output dedup keeps the delivered payload correct. Errors from either stage are
  * per-computation, as in the [View]-only overload.
  */
+inline fun <G, reified T> gateFetchFlow(
+    crossinline gate: suspend () -> View<G>,
+    crossinline fetch: suspend (G) -> T,
+): Flow<JsonElement> =
+    flow {
+        val view = gate()
+        val frame: suspend () -> JsonElement = {
+            val message: WSResponse<T> = try {
+                WSData(fetch(view.value))
+            } catch (e: ResponseError) {
+                WSError(e.wsCode, e.message)
+            }
+            confidoJSON.encodeToJsonElement(message)
+        }
+        emit(frame())
+        emitAll(view.changes.conflate().map { frame() })
+    }.catch { e ->
+        if (e is ResponseError) emit(confidoJSON.encodeToJsonElement<WSResponse<T>>(WSError(e.wsCode, e.message)))
+        else throw e
+    }
+
 inline fun <G, reified T> Route.viewWS(
-    path: String,
+    t: PathTemplate0,
     crossinline gate: suspend WSBody.() -> View<G>,
     crossinline fetch: suspend WSBody.(G) -> T,
 ) {
-    TopicRegistry.handlers.add(FlowTopic(TopicRegistry.split(path)) { ctx ->
-        flow {
-            val view = ctx.gate()
-            val frame: suspend () -> JsonElement = {
-                val message: WSResponse<T> = try {
-                    WSData(ctx.fetch(view.value))
-                } catch (e: ResponseError) {
-                    WSError(e.wsCode, e.message)
-                }
-                confidoJSON.encodeToJsonElement(message)
-            }
-            emit(frame())
-            emitAll(view.changes.conflate().map { frame() })
-        }.catch { e ->
-            if (e is ResponseError) emit(confidoJSON.encodeToJsonElement<WSResponse<T>>(WSError(e.wsCode, e.message)))
-            else throw e
-        }
+    TopicRegistry.handlers.add(FlowTopic(t) { ctx, _ ->
+        gateFetchFlow(gate = { ctx.gate() }, fetch = { g -> ctx.fetch(g) })
+    })
+}
+
+inline fun <A : Any, G, reified T> Route.viewWS(
+    t: PathTemplate1<A>,
+    crossinline gate: suspend WSBody.(A) -> View<G>,
+    crossinline fetch: suspend WSBody.(A, G) -> T,
+) {
+    TopicRegistry.handlers.add(FlowTopic(t) { ctx, args ->
+        @Suppress("UNCHECKED_CAST")
+        gateFetchFlow(gate = { ctx.gate(args[0] as A) }, fetch = { g -> ctx.fetch(args[0] as A, g) })
     })
 }
 
@@ -214,13 +236,21 @@ inline fun <G, reified T> Route.viewWS(
  * becomes a single WSError frame. Use try/finally (or onStart/onCompletion) inside the
  * flow for per-subscription effects and cleanup.
  */
-inline fun <reified T> Route.flowWS(path: String, crossinline body: suspend WSBody.() -> Flow<T>) {
-    TopicRegistry.handlers.add(FlowTopic(TopicRegistry.split(path)) { ctx ->
-        flow { emitAll(ctx.body()) }  // flow {} defers the body itself to collection time
-            .map { confidoJSON.encodeToJsonElement<WSResponse<T>>(WSData(it)) }
-            .catch { e ->
-                if (e is ResponseError) emit(confidoJSON.encodeToJsonElement<WSResponse<T>>(WSError(e.wsCode, e.message)))
-                else throw e
-            }
+inline fun <reified T> payloadFlow(crossinline body: suspend () -> Flow<T>): Flow<JsonElement> =
+    flow { emitAll(body()) }  // flow {} defers the body itself to collection time
+        .map { confidoJSON.encodeToJsonElement<WSResponse<T>>(WSData(it)) }
+        .catch { e ->
+            if (e is ResponseError) emit(confidoJSON.encodeToJsonElement<WSResponse<T>>(WSError(e.wsCode, e.message)))
+            else throw e
+        }
+
+inline fun <reified T> Route.flowWS(t: PathTemplate0, crossinline body: suspend WSBody.() -> Flow<T>) {
+    TopicRegistry.handlers.add(FlowTopic(t) { ctx, _ -> payloadFlow { ctx.body() } })
+}
+
+inline fun <A : Any, B : Any, reified T> Route.flowWS(t: PathTemplate2<A, B>, crossinline body: suspend WSBody.(A, B) -> Flow<T>) {
+    TopicRegistry.handlers.add(FlowTopic(t) { ctx, args ->
+        @Suppress("UNCHECKED_CAST")
+        payloadFlow { ctx.body(args[0] as A, args[1] as B) }
     })
 }

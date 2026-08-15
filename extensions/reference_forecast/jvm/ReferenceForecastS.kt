@@ -30,8 +30,8 @@ object ReferenceForecastSE : ServerExtension, ReferenceForecastExtension() {
     }
 
     override fun initRoutes(r: Routing) {
-        r.viewWS("$roomTopic/ext/reference_forecast/scoreboard", gate = {
-            val rId = call.parameters["rID"] ?: ""
+        r.viewWS(referenceScoreboardTopic, gate = { rRef ->
+            val rId = rRef.id
             combineViews(
                 roomStore.state.asView().at(rId),
                 questionStore.state.asView(),
@@ -39,8 +39,8 @@ object ReferenceForecastSE : ServerExtension, ReferenceForecastExtension() {
                 latestPredictions.state.asView(),
                 predictionData.groupPredState.asView(),
             )
-        }) {
-            call.withRoom {
+        }) { rRef, _ ->
+            call.withRoom(rRef) {
                 assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, "You cannot view individual predictions.")
 
                 // Find all questions with reference forecasts

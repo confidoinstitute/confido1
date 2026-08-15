@@ -19,9 +19,8 @@ object PredictionShowcaseSE : ServerExtension, PredictionShowcaseExtension() {
     val referenceText = System.getenv("CONFIDO_REFERENCE_FORECAST_LABEL") ?: "Reference"
 
     override fun initRoutes(r: Routing) {
-        r.viewWS("$questionTopic/ext/prediction_showcase/predictions", gate = {
-            val qId = call.parameters["qID"] ?: ""
-            val qRef = tools.confido.refs.Ref<tools.confido.question.Question>(qId)
+        r.viewWS(showcasePredictionsTopic, gate = { qRef ->
+            val qId = qRef.id
             combineViews(
                 questionStore.state.asView().at(qId),
                 roomStore.state.asView(),
@@ -29,8 +28,8 @@ object PredictionShowcaseSE : ServerExtension, PredictionShowcaseExtension() {
                 latestPredictions.state.asView().at(qRef),
                 predictionData.groupPredState.asView().at(qRef),
             )
-        }) {
-            call.withQuestion {
+        }) { qRef, _ ->
+            call.withQuestion(qRef) {
                 assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, "You cannot view individual predictions.")
                 val predictions = mutableListOf<ValueWithUser>()
 

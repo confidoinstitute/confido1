@@ -21,13 +21,14 @@ import react.dom.html.ReactHTML.span
 import tools.confido.refs.ref
 import tools.confido.state.*
 import web.cssom.*
+import tools.confido.state.Topics
 
 val PresentationTab = FC<Props> {
     val (appState, stale) = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val submitLock = useCoroutineLock()
 
-    val ws = useSubscription<PresentationWSData>("${room.topicPrefix}/presentation")
+    val ws = useSubscription<PresentationWSData>(Topics.presentation(room.ref))
 
     when (ws) {
         is WSLoading -> {

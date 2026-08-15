@@ -249,11 +249,11 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
 
     override fun initRoutes(r: Routing) {
         // Active game config (WebSocket) — consumed by clients for theme/scoring
-        r.viewWS("$roomTopic/ext/millionaire/config", gate = {
-            val rId = call.parameters["rID"] ?: ""
+        r.viewWS(millionaireConfigTopic, gate = { rRef ->
+            val rId = rRef.id
             combineViews(roomStore.state.asView().at(rId), activeConfigsState.asView().at(rId))
-        }) {
-            call.withRoom {
+        }) { rRef, _ ->
+            call.withRoom(rRef) {
                 activeConfigs[room.id]
             }
         }
@@ -261,8 +261,8 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
         // (my_score.ws deleted: it had no client consumers.)
 
         // Scoreboard for all players (WebSocket, requires permission)
-        r.viewWS("$roomTopic/ext/millionaire/scoreboard", gate = {
-            val rId = call.parameters["rID"] ?: ""
+        r.viewWS(millionaireScoreboardTopic, gate = { rRef ->
+            val rId = rRef.id
             combineViews(
                 roomStore.state.asView().at(rId),
                 questionStore.state.asView(),
@@ -270,8 +270,8 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
                 latestPredictions.state.asView(),
                 activeConfigsState.asView().at(rId),
             )
-        }) {
-            call.withRoom {
+        }) { rRef, _ ->
+            call.withRoom(rRef) {
                 assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
                 val config = activeConfigs[room.id] ?: return@withRoom emptyMap<Ref<User>, Double>()
                 room.members.mapNotNull {
@@ -281,11 +281,11 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
         }
 
         // Timer state (WebSocket)
-        r.viewWS("$roomTopic/ext/millionaire/timer", gate = {
-            val rId = call.parameters["rID"] ?: ""
+        r.viewWS(millionaireTimerTopic, gate = { rRef ->
+            val rId = rRef.id
             combineViews(roomStore.state.asView().at(rId), timerStatesState.asView().at(rId))
-        }) {
-            call.withRoom {
+        }) { rRef, _ ->
+            call.withRoom(rRef) {
                 timerStates[room.id]
             }
         }

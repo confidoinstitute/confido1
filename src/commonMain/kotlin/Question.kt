@@ -263,13 +263,10 @@ data class Question(
         get() = GroupPredictionVisibility.fromBooleans(groupPredVisible, groupPredRequirePrediction)
 
     override val urlPrefix get() = urlPrefix(id)
-    /** Prefix of this question's topics on the state websocket (see TopicNames). */
-    val topicPrefix get() = topicPrefix(id)
 
     val room get() = globalState.rooms.values.firstOrNull { ref in it.questions }
     val effectiveSchedule get() = schedule ?: room?.defaultSchedule ?: QuestionSchedule()
     companion object {
         fun urlPrefix(id: String) = "/questions/$id"
-        fun topicPrefix(id: String) = "question/$id"
     }
 }

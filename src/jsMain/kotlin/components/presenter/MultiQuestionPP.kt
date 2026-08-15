@@ -21,6 +21,8 @@ import tools.confido.state.MultiQuestionPV
 import tools.confido.utils.formatPercent
 import web.cssom.*
 import kotlin.math.roundToInt
+import tools.confido.state.Topics
+import tools.confido.refs.ref
 
 val MultiQuestionPP = FC<PresenterPageProps<MultiQuestionPV>> { props ->
     val questions = props.view.questions.mapNotNull { it.deref() }
@@ -112,7 +114,7 @@ private external interface TileGroupPredProps : Props {
 
 private val TileGroupPred = FC<TileGroupPredProps> { props ->
     val question = props.question
-    val response = useSubscription<Prediction?>("${question.topicPrefix}/group_pred")
+    val response = useSubscription<Prediction?>(Topics.groupPred(question.ref))
 
     div {
         css {
@@ -160,7 +162,7 @@ private external interface TileHistogramProps : Props {
 
 private val TileHistogram = FC<TileHistogramProps> { props ->
     val question = props.question
-    val response = useSubscription<BinaryHistogram>("${question.topicPrefix}/histogram")
+    val response = useSubscription<BinaryHistogram>(Topics.histogram(question.ref))
 
     if (response !is WSData) return@FC
     val histogram = response.data

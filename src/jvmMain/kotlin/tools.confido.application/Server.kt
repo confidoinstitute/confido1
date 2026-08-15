@@ -53,7 +53,7 @@ import tools.confido.serialization.confidoJSON
 import tools.confido.serialization.confidoSM
 import tools.confido.state.appConfig
 import tools.confido.state.serverState
-import tools.confido.state.TopicNames
+import tools.confido.state.Topics
 import users.DebugAdmin
 import users.DebugMember
 import users.User
@@ -355,7 +355,7 @@ fun main() {
                 // prediction or comment bumps a count without touching the question
                 // entity. latestPredictions is included for extension censor hooks that
                 // read the viewer's predictions.
-                viewWS(TopicNames.QUESTIONS) {
+                viewWS(Topics.questions) {
                     if (call.userSession?.user == null) unauthorized("Not logged in.")
                     combineViews(
                         questionStore.state.asView(),
@@ -376,7 +376,7 @@ fun main() {
                 // comment authors via referencedUsers, whose gates read the comment
                 // archives and the viewer's own predictions). Shrinks to admin/moderator
                 // scope once the UserPresentation rollout embeds authors in payloads.
-                viewWS(TopicNames.USERS) {
+                viewWS(Topics.users) {
                     if (call.userSession?.user == null) unauthorized("Not logged in.")
                     combineViews(
                         userStore.state.asView(),
@@ -397,7 +397,7 @@ fun main() {
                 // Member lists, invite links and presentation state live on the per-room
                 // detail topic below; this is what backs the client's global rooms map
                 // (deref, room list, cross-room surfaces).
-                viewWS(TopicNames.ROOMS) {
+                viewWS(Topics.rooms) {
                     if (call.userSession?.user == null) unauthorized("Not logged in.")
                     combineViews(
                         roomStore.state.asView(),
@@ -414,10 +414,8 @@ fun main() {
                 // permissions), invite links, presentation state. Component-scoped: the
                 // room page (and the presenter's invite view) subscribe it on demand.
                 // The gate errors for non-members and recovers on join (same subscription).
-                viewWS(roomTopic) {
+                viewWS(Topics.room) { rRef ->
                     if (call.userSession?.user == null) unauthorized("Not logged in.")
-                    val rRef = tools.confido.refs.Ref<Room>(
-                        call.parameters["rID"] ?: badRequest("Missing room id"))
                     combineViews(
                         // Whole-map room view (not a cell): effective-membership extension
                         // hooks (room groups) read other rooms too.
@@ -438,7 +436,7 @@ fun main() {
                 // updates through the session cell), own predictions, password flag,
                 // presenter-window state. Split from "/state" so per-user churn (session
                 // renewals, presenting, predicting) never invalidates the big snapshot.
-                viewWS(TopicNames.SELF) {
+                viewWS(Topics.self) {
                     val transientData = call.transientUserData
                     if (call.userSession?.user == null || transientData == null) unauthorized("Not logged in.")
                     combineViews(
@@ -562,19 +560,19 @@ fun main() {
                         }
                     }
 
-                    fun parseTopic(topic: String): Pair<Topic, Parameters>? {
+                    fun parseTopic(topic: String): Triple<Topic, List<Any>, Parameters>? {
                         val qIdx = topic.indexOf('?')
                         val path = if (qIdx >= 0) topic.substring(0, qIdx) else topic
                         val query = if (qIdx >= 0) parseQueryString(topic.substring(qIdx + 1)) else Parameters.Empty
-                        val (handler, pathParams) = TopicRegistry.match(path) ?: return null
-                        return handler to Parameters.build { appendAll(pathParams); appendAll(query) }
+                        val (handler, args) = TopicRegistry.match(path) ?: return null
+                        return Triple(handler, args, query)
                     }
 
                     // Explicit context everywhere below: `launch` here binds to the websocket
                     // session's scope, which does not inherit the handler's single-threaded one.
                     suspend fun subscribe(topic: String) {
                         if (topic in subs) return
-                        val (handler, params) = parseTopic(topic) ?: run {
+                        val (handler, args, query) = parseTopic(topic) ?: run {
                             stage(topic, errorElement(WSErrorType.NOT_FOUND, "No such topic"))
                             return
                         }
@@ -583,7 +581,7 @@ fun main() {
                         when (handler) {
                             is ViewTopic -> {
                                 try {
-                                    val view = handler.build(WSBody(TopicCall(call, params)))
+                                    val view = handler.build(WSBody(TopicCall(call, query)), args)
                                     sub.view = view
                                     sub.job = launch(singleThreadContext) {
                                         view.changes.collect { poke() }
@@ -602,7 +600,7 @@ fun main() {
                                 try {
                                     // stage() never suspends, so a blocked send cannot
                                     // back-pressure the collector; the outbox coalesces.
-                                    handler.flow(WSBody(TopicCall(call, params)))
+                                    handler.flow(WSBody(TopicCall(call, query)), args)
                                         .collect { element -> stage(topic, element) }
                                 } catch (e: CancellationException) {
                                     throw e

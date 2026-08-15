@@ -36,3 +36,6 @@ open class PredictionShowcaseExtension: Extension {
         builder.subclass(GroupPredictionComparePV::class)
     }
 }
+
+// Topic owned by this extension (see tools.confido.state.Topics for the scheme).
+val showcasePredictionsTopic = tools.confido.state.Topics.question / "ext/prediction_showcase/predictions"

@@ -74,6 +74,7 @@ import web.cssom.Position.Companion.sticky
 import web.cssom.TextOverflow.Companion.ellipsis
 import web.window.WindowTarget
 import web.window._blank
+import tools.confido.state.Topics
 
 external interface QuestionManagementProps : Props {
     var room: Room
@@ -142,7 +143,7 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
     val (appState, stale) = use(AppStateContext)!!
     val room = props.room
 
-    val groupPredsWS = useSubscription<Map<String, Prediction?>>("${room.topicPrefix}/group_pred")
+    val groupPredsWS = useSubscription<Map<String, Prediction?>>(Topics.roomGroupPred(room.ref))
     val groupPreds = groupPredsWS.data ?: emptyMap()
 
     val mouseSensor = useSensor<MouseSensorOptions>(MouseSensor)

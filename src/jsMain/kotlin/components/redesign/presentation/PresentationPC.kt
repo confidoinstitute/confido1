@@ -18,6 +18,7 @@ import rooms.Room
 import tools.confido.state.*
 import utils.runCoroutine
 import web.cssom.*
+import tools.confido.state.Topics
 
 private val NavButton = Button.withStyle {
     margin = 0.px
@@ -32,7 +33,7 @@ private val NavButton = Button.withStyle {
  */
 val PresentationPC = FC<PresenterControlsProps<PresentationPV>> { props ->
     val roomUrl = Room.urlPrefix(props.view.room.id)
-    val ws = useSubscription<PresentationWSData>("${Room.topicPrefix(props.view.room.id)}/presentation")
+    val ws = useSubscription<PresentationWSData>(Topics.presentation(props.view.room))
     val submitLock = useCoroutineLock()
     val data = (ws as? WSData)?.data
     val runState = data?.runState

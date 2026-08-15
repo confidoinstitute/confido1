@@ -12,7 +12,7 @@ import emotion.react.css
 import emotion.react.styles
 import hooks.useSubscription
 import react.*
-import tools.confido.state.TopicNames
+import tools.confido.state.Topics
 import react.dom.html.ReactHTML.div
 import tools.confido.state.EmptyPV
 import web.cssom.Display
@@ -37,7 +37,7 @@ val PresenterLayoutInner = FC<Props> {
     val (appState, stale) = use(AppStateContext)!!
 
     // Presence subscription: tells the server a presenter window is open.
-    useSubscription<Unit>(TopicNames.PRESENTER_TRACK)
+    useSubscription<Unit>(Topics.presenterTrack())
 
     Global {
         styles {

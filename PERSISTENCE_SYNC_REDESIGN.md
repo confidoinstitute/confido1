@@ -834,6 +834,26 @@ working untouched mid-transition.
     and `.ws` suffix (`room/<id>/ext/millionaire/timer`,
     `ext/calibration_training/leaderboard`). The websocket *URL* stays `/state` —
     connection endpoint and topic namespace are separate concerns.
+  - **Typed path templates** (`tools/confido/utils/PathTemplate.kt` + the `Topics`
+    tree in commonMain): one object per topic serves construction (typed refs in,
+    string out — `Topics.groupPred(question.ref)`) and matching (server registration;
+    handlers receive decoded `Ref`s as typed lambda arguments) from the same
+    declaration. Templates compose with `/` — a literal keeps the arity, a `PathParam`
+    raises it — so subtopic templates derive from shared prefixes (`Topics.room /
+    "comments"`), and extension topics are declared in each extension's common source
+    off the same prefixes. The fixed arity family (`PathTemplate0/1/2`, the
+    `combineViews` pattern) covers every current path, with the invite-shortlink topic
+    the lone 2-ary. This deletes the `topicPrefix`/`TopicNames`/pattern-const layer,
+    every `call.parameters["rID"] ?: badRequest(...)` in topic handlers, and the
+    registry's stringly `{param}` matching; the 1-ary gate+fetch shape passes the
+    typed arg to both stages, and `withRoom`/`withQuestion` gained ref-taking
+    overloads for handler bodies that used to re-read path params from the call.
+    Param `decode` validates shape only (never derefs) — existence stays a
+    gate/handler concern, preserving NOT_FOUND and gate-recovery semantics. Wire
+    strings are unchanged; the whole suite passes verbatim. Natural follow-on
+    (deferred): `TopicSpec<Args, Payload>` binding the payload serializer to the
+    template, making `useSubscription`'s explicit payload-type generic inferred and
+    unforgeable.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or

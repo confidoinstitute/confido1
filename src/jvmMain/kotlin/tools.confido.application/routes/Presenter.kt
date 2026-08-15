@@ -9,14 +9,14 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.flow
 import tools.confido.application.sessions.modifyUserSession
 import tools.confido.state.PresenterInfo
-import tools.confido.state.TopicNames
+import tools.confido.state.Topics
 import tools.confido.state.PresenterView
 import tools.confido.utils.unixNow
 
 fun presenterRoutes(routing: Routing) = routing.apply {
     // Presence-only topic: tracks open presenter windows via subscription lifetime.
     // The flow never emits; its collection lifetime is the signal.
-    flowWS<Unit>(TopicNames.PRESENTER_TRACK) {
+    flowWS<Unit>(Topics.presenterTrack) {
         call.withUser {
             flow {
                 transientData.activePresenterWindows += 1

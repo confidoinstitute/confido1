@@ -28,9 +28,9 @@ import users.LoginLink
 import users.User
 import users.UserType
 import kotlin.time.Duration.Companion.days
+import tools.confido.state.Topics
 
 val roomUrl = Room.urlPrefix("{rID}")
-val roomTopic = Room.topicPrefix("{rID}")
 val iconNames = iconDir?.listFiles()?.filter { it.isFile }?.map { it.name }?.sorted() ?: emptyList()
 
 data class RoomContext(val inUser: User?, val room: Room) {
@@ -42,9 +42,12 @@ data class RoomContext(val inUser: User?, val room: Room) {
     }
 }
 
-suspend fun <T> ApplicationCall.withRoom(body: suspend RoomContext.() -> T): T {
+suspend fun <T> ApplicationCall.withRoom(body: suspend RoomContext.() -> T): T =
+    withRoom(Ref(parameters["rID"] ?: ""), body)
+
+/** Topic-handler variant: the room ref comes as a typed path-template argument. */
+suspend fun <T> ApplicationCall.withRoom(rRef: Ref<Room>, body: suspend RoomContext.() -> T): T {
     val user = userSession?.user
-    val rRef = Ref<Room>(parameters["rID"] ?: "")
     val room = rRef.deref() ?: notFound("No such room.")
     return body(RoomContext(user, room))
 }
@@ -244,9 +247,9 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
     // Group predictions of a room's questions (optionally filtered by ?qids=): a
     // multi-question payload, so the composition uses whole-map views rather than
     // keyed cells — output dedup keeps unrelated changes off the wire.
-    viewWS("$roomTopic/group_pred") {
+    viewWS(Topics.roomGroupPred) { rRef ->
         val wantedIds = call.request.queryParameters["qids"]?.split(',')?.toSet()
-        val rId = call.parameters["rID"] ?: ""
+        val rId = rRef.id
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
         combineViews(
             roomStore.state.asView().at(rId),
@@ -270,10 +273,9 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
 
 
     // Flow topic: rotates a short invite code for the subscription's lifetime.
-    flowWS<String>("$roomTopic/invites/{id}/shortlink") {
-        call.withRoom {
+    flowWS(Topics.inviteShortlink) { rRef, linkId ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members.")
-            val linkId = call.parameters["id"] ?: return@withRoom emptyFlow()
             room.inviteLinks.firstOrNull { it.id == linkId } ?: return@withRoom emptyFlow()
 
             flow {

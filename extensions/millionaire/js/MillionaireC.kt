@@ -98,7 +98,7 @@ private val fadeIn = keyframes {
  * via WebSocket. Returns null when no millionaire game is running.
  */
 fun useMillionaireConfig(roomId: String): MillionaireGameAction? {
-    val ws = useSubscription<MillionaireGameAction?>("${Room.topicPrefix(roomId)}/ext/millionaire/config")
+    val ws = useSubscription<MillionaireGameAction?>(millionaireConfigTopic(tools.confido.refs.Ref(roomId)))
     return (ws as? WSData)?.data
 }
 
@@ -111,7 +111,7 @@ external interface MillionaireTimerBarProps : Props {
 }
 
 val MillionaireTimerBar = FC<MillionaireTimerBarProps> { props ->
-    val timerWS = useSubscription<TimerState?>("${Room.topicPrefix(props.roomId)}/ext/millionaire/timer")
+    val timerWS = useSubscription<TimerState?>(millionaireTimerTopic(tools.confido.refs.Ref(props.roomId)))
     var fraction by useState(1.0)
 
     val timerState = (timerWS as? WSData)?.data
@@ -554,7 +554,7 @@ val MillionaireLadderQuestionPP = FC<PresenterPageProps<MillionaireLadderQuestio
 val MillionaireScoreboardPP = FC<PresenterPageProps<MillionaireScoreboardPV>> { props ->
     val room = props.view.room
     val config = useMillionaireConfig(room.id)
-    val scoreboard = useSubscription<Map<Ref<User>, Double>>("${Room.topicPrefix(room.id)}/ext/millionaire/scoreboard")
+    val scoreboard = useSubscription<Map<Ref<User>, Double>>(millionaireScoreboardTopic(room))
     if (config == null) return@FC
     if (scoreboard !is WSData) return@FC
 

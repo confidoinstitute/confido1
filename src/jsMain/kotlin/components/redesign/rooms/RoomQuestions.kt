@@ -16,6 +16,7 @@ import react.router.dom.Link
 import rooms.*
 import tools.confido.question.*
 import tools.confido.refs.ref
+import tools.confido.state.Topics
 
 external interface QuestionListProps : Props {
     var questions: List<Question>
@@ -25,7 +26,7 @@ external interface QuestionListProps : Props {
 val QuestionList = FC<QuestionListProps> { props ->
     val (appState, _) = use(AppStateContext)!!
     val room = use(RoomContext)!!
-    val groupPredsWS = useSubscription<Map<String, Prediction?>>("${room.topicPrefix}/group_pred")
+    val groupPredsWS = useSubscription<Map<String, Prediction?>>(Topics.roomGroupPred(room.ref))
     val groupPreds = groupPredsWS.data ?: emptyMap()
     val layoutMode = use(LayoutModeContext)!!
 

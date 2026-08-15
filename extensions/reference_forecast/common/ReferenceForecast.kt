@@ -42,3 +42,6 @@ open class ReferenceForecastExtension: Extension {
         builder.subclass(ReferenceForcastScoreboardPV::class)
     }
 }
+
+// Topic owned by this extension (see tools.confido.state.Topics for the scheme).
+val referenceScoreboardTopic = tools.confido.state.Topics.room / "ext/reference_forecast/scoreboard"

@@ -28,6 +28,7 @@ import tools.confido.state.*
 import users.UserType
 import web.dom.document
 import web.window.window
+import tools.confido.state.Topics
 
 val RoomRedirect = FC<Props> {
     val navigate = useNavigate()
@@ -58,7 +59,7 @@ private external interface PresentationFollowNavigatorProps : Props {
 
 private val PresentationFollowNavigator = FC<PresentationFollowNavigatorProps> { props ->
     val navigate = useNavigate()
-    val ws = useSubscription<String?>("${rooms.Room.topicPrefix(props.roomId)}/presentation/follow")
+    val ws = useSubscription<String?>(Topics.presentationFollow(tools.confido.refs.Ref(props.roomId)))
     val navUrl = (ws as? WSData)?.data
     val lastNavUrl = useRef<String>()
 

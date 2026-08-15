@@ -40,12 +40,13 @@ import utils.questionUrl
 import extensions.shared.ValueWithUser
 import tools.confido.refs.Ref
 import tools.confido.utils.formatPercent
+import tools.confido.state.Topics
 
 val PredictionShowcasePP = FC<PresenterPageProps<PredictionShowcasePV>> { props ->
     val view = props.view
     val question = view.question.deref() ?: return@FC
 
-    val predictions = useSubscription<List<ValueWithUser>>("${tools.confido.question.Question.topicPrefix(question.id)}/ext/prediction_showcase/predictions")
+    val predictions = useSubscription<List<ValueWithUser>>(showcasePredictionsTopic(question.ref))
     if (predictions !is WSData) return@FC
 
     Stack {
@@ -121,7 +122,7 @@ val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> 
         } ?: true
     }
 
-    val groupPreds = useSubscription<Map<Ref<Question>, Prediction?>>("${room.topicPrefix}/group_pred")
+    val groupPreds = useSubscription<Map<Ref<Question>, Prediction?>>(Topics.roomGroupPred(room.ref))
     if (groupPreds !is WSData) return@FC
     val data = groupPreds.data
 

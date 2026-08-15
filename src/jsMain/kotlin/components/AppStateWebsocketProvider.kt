@@ -11,7 +11,7 @@ import tools.confido.serialization.confidoJSON
 import tools.confido.state.ClientState
 import tools.confido.state.QuestionsState
 import tools.confido.state.SelfState
-import tools.confido.state.TopicNames
+import tools.confido.state.Topics
 import tools.confido.state.clientState
 import users.User
 import websocket.MultiplexWS
@@ -70,18 +70,18 @@ val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
             } catch (e: Exception) {
             }
         }
-        val unsubQuestions = MultiplexWS.subscribe(TopicNames.QUESTIONS, decodeTopicPayload<QuestionsState>(TopicNames.QUESTIONS)) { response, _ ->
+        val unsubQuestions = MultiplexWS.subscribe(Topics.questions(), decodeTopicPayload<QuestionsState>(Topics.questions())) { response, _ ->
             (response as? WSData)?.data?.let { curQuestions = it; apply() }
         }
-        val unsubSelf = MultiplexWS.subscribe(TopicNames.SELF, decodeTopicPayload<SelfState>(TopicNames.SELF)) { response, _ ->
+        val unsubSelf = MultiplexWS.subscribe(Topics.self(), decodeTopicPayload<SelfState>(Topics.self())) { response, _ ->
             (response as? WSData)?.data?.let { curSelf = it; apply() }
         }
-        val unsubRooms = MultiplexWS.subscribe(TopicNames.ROOMS, decodeTopicPayload<Map<String, Room>>(TopicNames.ROOMS)) { response, isStale ->
+        val unsubRooms = MultiplexWS.subscribe(Topics.rooms(), decodeTopicPayload<Map<String, Room>>(Topics.rooms())) { response, isStale ->
             (response as? WSData)?.data?.let { curRooms = it; apply() }
             // Staleness is connection-level; tracking it on one root topic suffices.
             stale = isStale
         }
-        val unsubUsers = MultiplexWS.subscribe(TopicNames.USERS, decodeTopicPayload<Map<String, User>>(TopicNames.USERS)) { response, _ ->
+        val unsubUsers = MultiplexWS.subscribe(Topics.users(), decodeTopicPayload<Map<String, User>>(Topics.users())) { response, _ ->
             (response as? WSData)?.data?.let { curUsers = it; apply() }
         }
         MultiplexWS.start()

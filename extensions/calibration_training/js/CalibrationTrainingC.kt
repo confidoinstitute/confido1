@@ -90,7 +90,7 @@ private fun scoreBarColor(score: Double): Color {
  * Supports click-through to individual calibration graphs.
  */
 val CalibrationLeaderboardPP = FC<PresenterPageProps<CalibrationLeaderboardPV>> { props ->
-    val scores = useSubscription<List<CalibrationLeaderboardEntry>>("ext/calibration_training/leaderboard")
+    val scores = useSubscription<List<CalibrationLeaderboardEntry>>(calibrationLeaderboardTopic())
     var selectedEntry by useState<CalibrationLeaderboardEntry?>(null)
 
     if (scores !is WSData) return@FC

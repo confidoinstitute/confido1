@@ -16,10 +16,12 @@ import tools.confido.question.Prediction
 import tools.confido.refs.deref
 import tools.confido.spaces.BinaryValue
 import tools.confido.state.GroupPredPV
+import tools.confido.state.Topics
+import tools.confido.refs.ref
 
 val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
     val question = props.view.question.deref() ?: return@FC
-    val response = useSubscription<Prediction?>("${question.topicPrefix}/group_pred")
+    val response = useSubscription<Prediction?>(Topics.groupPred(question.ref))
 
     Stack {
         css {

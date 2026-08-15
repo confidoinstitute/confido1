@@ -15,12 +15,14 @@ import payloads.responses.*
 import react.*
 import react.dom.html.ReactHTML.div
 import rooms.*
+import tools.confido.state.Topics
+import tools.confido.refs.ref
 
 val RoomComments = FC<Props> {
     val (appState, _) = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val layoutMode = use(LayoutModeContext)!!
-    val roomComments = useSubscription<List<CommentPresentation<CommentExtraData>>>("${room.topicPrefix}/comments")
+    val roomComments = useSubscription<List<CommentPresentation<CommentExtraData>>>(Topics.roomComments(room.ref))
 
     var addCommentOpen by useState(false)
     var sortType by useState(SortType.NEWEST)

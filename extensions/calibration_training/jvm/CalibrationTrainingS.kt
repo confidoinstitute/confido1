@@ -404,7 +404,7 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
             }
 
             // Calibration training leaderboard (WebSocket, live-updating)
-            viewWS("ext/calibration_training/leaderboard", gate = {
+            viewWS(calibrationLeaderboardTopic, gate = {
                 combineViews(userStore.state.asView(), responsesVersion.state.asView())
             }) {
                 call.withUser {
