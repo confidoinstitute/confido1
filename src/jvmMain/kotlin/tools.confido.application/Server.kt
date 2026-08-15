@@ -410,10 +410,11 @@ fun main() {
                     }
                 }
 
-                // §4.2 "room/<id>": the full censored room — member lists (with effective
-                // permissions), invite links, presentation state. Component-scoped: the
-                // room page (and the presenter's invite view) subscribe it on demand.
-                // The gate errors for non-members and recovers on join (same subscription).
+                // §4.2 "room/<id>": the full censored room — invite links, presentation
+                // state, the viewer's own effective membership (member lists travel on
+                // "room/<id>/members"). Component-scoped: the room page (and the
+                // presenter's invite view) subscribe it on demand. The gate errors for
+                // non-members and recovers on join (same subscription).
                 viewWS(Topics.room) { rRef ->
                     if (call.userSession?.user == null) unauthorized("Not logged in.")
                     combineViews(
@@ -428,6 +429,26 @@ fun main() {
                         if (sessionData.user == null) unauthorized("Not logged in.")
                         val room = rRef.deref() ?: notFound("No such room.")
                         StateCensor(sessionData).censorRoom(room)
+                            ?: unauthorized("You cannot view this room.")
+                    }
+                }
+
+                // §5.3 "room/<id>/members": memberships as viewer-censored presentations
+                // — never joinable user refs; userId/email are granted only to
+                // MANAGE_MEMBERS viewers. Split from the detail topic so member data
+                // reaches only the members tab / add-member dialog that subscribe it.
+                viewWS(Topics.roomMembers) { rRef ->
+                    if (call.userSession?.user == null) unauthorized("Not logged in.")
+                    combineViews(
+                        // Whole-map room view: effective-membership extension hooks
+                        // (room groups) read other rooms; admin injection reads users.
+                        roomStore.state.asView(),
+                        userStore.state.asView(),
+                    ).map {
+                        val sessionData = call.userSession ?: unauthorized("Not logged in.")
+                        if (sessionData.user == null) unauthorized("Not logged in.")
+                        val room = rRef.deref() ?: notFound("No such room.")
+                        StateCensor(sessionData).censorRoomMembers(room)
                             ?: unauthorized("You cannot view this room.")
                     }
                 }

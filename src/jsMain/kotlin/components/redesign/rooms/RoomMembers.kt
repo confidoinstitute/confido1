@@ -21,11 +21,14 @@ import web.cssom.*
 import emotion.react.css
 import hooks.useCoroutineLock
 import hooks.useEditDialog
+import hooks.useSubscription
 import io.ktor.client.request.*
 import io.ktor.http.*
 import payloads.requests.AddedExistingMember
 import payloads.requests.AddedMember
 import payloads.requests.DeleteInvite
+import payloads.responses.MembershipPayload
+import payloads.responses.WSData
 import react.FC
 import react.Props
 import react.dom.html.ReactHTML
@@ -35,9 +38,9 @@ import react.use
 import react.useState
 import rooms.*
 import tools.confido.extensions.ClientExtension
-import tools.confido.refs.deref
-import tools.confido.refs.eqid
+import tools.confido.refs.ref
 import tools.confido.state.ClientState
+import tools.confido.state.Topics
 import tools.confido.state.appConfig
 import tools.confido.utils.pluralize
 import tools.confido.utils.stringToColor
@@ -56,12 +59,15 @@ val RoomMembers = FC<Props> {
     val room = use(RoomContext)!!
     val layoutMode = use(LayoutModeContext)!!
 
+    val membersWS = useSubscription(Topics.roomMembers(room.ref))
+    val allMembers = (membersWS as? WSData)?.data ?: emptyList()
+
     // Separate implied (inherited) members from direct members
-    val impliedMembers = room.effectiveMembers.filter { it.implied }
-    val directMembers = room.members.filter { !it.implied }
+    val impliedMembers = allMembers.filter { it.implied }
+    val directMembers = allMembers.filter { !it.implied }
 
     val groupedMembership = directMembers.groupBy {
-        it.invitedVia ?: if (it.user.deref()?.type?.isProper()?:false) "internal" else "guest"
+        it.invitedVia ?: if (it.isProperUser) "internal" else "guest"
     }
     val invitations = room.inviteLinks.associateWith { groupedMembership[it.id] }
 
@@ -102,6 +108,7 @@ val RoomMembers = FC<Props> {
                 css { gap = 10.px; padding = 15.px; backgroundColor = bgColor }
                 it.map {
                     RoomMember {
+                        key = it.rowKey
                         disabled = false
                         membership = it
                     }
@@ -115,6 +122,7 @@ val RoomMembers = FC<Props> {
                 css { gap = 10.px; padding = 15.px; backgroundColor = bgColor }
                 it.map {
                     RoomMember {
+                        key = it.rowKey
                         disabled = false
                         membership = it
                     }
@@ -144,6 +152,7 @@ val RoomMembers = FC<Props> {
                     css { gap = 10.px; padding = 15.px; backgroundColor = bgColor; opacity = number(0.7) }
                     members.map {
                         RoomMember {
+                            key = it.rowKey
                             disabled = true
                             membership = it
                         }
@@ -162,32 +171,36 @@ val RoomMembers = FC<Props> {
 
 external interface RoomMemberProps : Props {
     var disabled: Boolean
-    var membership: RoomMembership
+    var membership: MembershipPayload
 }
 
 val RoomMember = FC<RoomMemberProps> {props ->
     val (appState, stale) = use(AppStateContext)!!
     val room = use(RoomContext)!!
-    val user = props.membership.user.deref() ?: return@FC
+    val member = props.membership
+    // Granted only to MANAGE_MEMBERS viewers — management actions need it.
+    val userRef = member.user.userId
 
     var dialogOpen by useState(false)
 
     fun memberRoleChange(role: RoomRole) = runCoroutine {
-        Client.sendData("${room.urlPrefix}/members/add", AddedExistingMember(props.membership.user, role) as AddedMember, onError = { showError(it)}) {}
+        val ref = userRef ?: return@runCoroutine
+        Client.sendData("${room.urlPrefix}/members/add", AddedExistingMember(ref, role) as AddedMember, onError = { showError(it)}) {}
     }
-    fun canChangeSelf() = (!(user eqid appState.session.user) || appState.isAdmin())
+    fun canChangeSelf() = (!member.user.isMyself || appState.isAdmin())
 
     fun memberDelete() = runCoroutine {
-        Client.httpClient.delete("${room.urlPrefix}/members/${user.id}")
+        val ref = userRef ?: return@runCoroutine
+        Client.httpClient.delete("${room.urlPrefix}/members/${ref.id}")
     }
 
     MemberQuickSettingsDialog {
         open = dialogOpen
-        name = user.displayName
-        hasEmail = user.email != null
+        name = member.user.displayName ?: "Anonymous user"
+        hasEmail = member.email != null
         canDelete = canChangeSelf() && appState.hasPermission(room, RoomPermission.MANAGE_MEMBERS) == true
         onClose = { dialogOpen = false }
-        onMail = { window.open("mailto:${user.email}", WindowTarget._blank) }
+        onMail = { window.open("mailto:${member.email}", WindowTarget._blank) }
         onDelete = ::memberDelete
     }
 
@@ -203,7 +216,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
                 width = 32.px
                 height = 32.px
                 borderRadius = 50.pct
-                backgroundColor = Color(stringToColor(user.id))
+                backgroundColor = Color(member.user.color ?: stringToColor(member.rowKey))
                 flexShrink = number(0.0)
             }
         }
@@ -222,7 +235,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
                     fontSize = 12.px
                     lineHeight = 15.px
                 }
-                +user.displayName
+                +(member.user.displayName ?: "Anonymous user")
             }
             ReactHTML.div {
                 css {
@@ -231,14 +244,14 @@ val RoomMember = FC<RoomMemberProps> {props ->
                     lineHeight = 15.px
                     color = rgb(0,0,0,0.5)
                 }
-                +(user.email ?: "")
+                +(member.email ?: "")
             }
-            ClientExtension.forEach { it.roomMemberExtra(room, props.membership, user, this) }
+            ClientExtension.forEach { it.roomMemberExtra(room, member, this) }
         }
         MemberRoleSelect {
-            value = props.membership.role
-            isGuest = !user.type.isProper()
-            disabled = props.disabled || !canChangeSelf()
+            value = member.role
+            isGuest = !member.isProperUser
+            disabled = props.disabled || !canChangeSelf() || userRef == null
             onChange = ::memberRoleChange
         }
         IconButton {
@@ -252,7 +265,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
 }
 external interface InvitationMembersProps : Props {
     var invitation: InviteLink
-    var members: List<RoomMembership>?
+    var members: List<MembershipPayload>?
     var canManage: Boolean
     var onEditDialog: ((InviteLink) -> Unit)?
 }
@@ -355,7 +368,7 @@ val InvitationMembers = FC<InvitationMembersProps> { props ->
                 }
                 justMembers.map { membership ->
                     RoomMember {
-                        key = membership.user.id
+                        key = membership.rowKey
                         this.membership = membership
                         this.disabled = !props.invitation.canAccess
                     }

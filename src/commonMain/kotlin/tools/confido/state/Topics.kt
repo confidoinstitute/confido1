@@ -4,6 +4,7 @@ import BinaryHistogram
 import kotlinx.serialization.serializer
 import payloads.responses.CommentExtraData
 import payloads.responses.CommentPresentation
+import payloads.responses.MembershipPayload
 import payloads.responses.QuestionCommentExtraData
 import rooms.Room
 import tools.confido.question.Prediction
@@ -47,8 +48,12 @@ object Topics {
     val self = TopicSpec0(path("self"), serializer<SelfState>())
     val presenterTrack = TopicSpec0(path("presenter/track"), serializer<Unit>())
 
-    /** The per-room detail topic (full censored room incl. members and invite links). */
+    /** The per-room detail topic (full censored room incl. invite links; member lists
+     *  travel on [roomMembers] — the detail room carries only the viewer's own membership). */
     val room = TopicSpec1(roomPath, serializer<Room>())
+    /** The member list as viewer-censored presentations (§5.3); subscribed by the members
+     *  tab and the add-member dialog only, so membership churn stays off other surfaces. */
+    val roomMembers = TopicSpec1(roomPath / "members", serializer<List<MembershipPayload>>())
     val roomComments = TopicSpec1(roomPath / "comments", serializer<List<CommentPresentation<CommentExtraData>>>())
     val roomGroupPred = TopicSpec1(roomPath / "group_pred", serializer<Map<Ref<Question>, Prediction?>>())
     val presentation = TopicSpec1(roomPath / "presentation", serializer<PresentationWSData>())

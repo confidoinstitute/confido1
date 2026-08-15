@@ -6,9 +6,13 @@ import components.redesign.forms.*
 import components.redesign.rooms.RoomContext
 import web.cssom.*
 import emotion.react.css
+import hooks.useSubscription
 import payloads.requests.AddedExistingMember
 import payloads.requests.AddedNewMember
+import payloads.responses.WSData
 import react.*
+import tools.confido.refs.ref
+import tools.confido.state.Topics
 import react.dom.html.ReactHTML
 import rooms.RoomRole
 import tools.confido.refs.ref
@@ -110,7 +114,12 @@ val AddMemberDialog = dialogStateWrapper(FC<BaseDialogProps> { props ->
     var role by useState<RoomRole>(defaultRole)
     var search by useState("")
 
-    val members = room.members.filter {it.invitedVia == null}.map {it.user.id}.toSet()
+    // Existing direct members, to exclude from the add list. This dialog is reachable
+    // only with MANAGE_MEMBERS, so the members payload carries userIds for us.
+    val membersWS = useSubscription(Topics.roomMembers(room.ref))
+    val members = ((membersWS as? WSData)?.data ?: emptyList())
+        .filter { !it.implied && it.invitedVia == null }
+        .mapNotNull { it.user.userId?.id }.toSet()
 
     val users = useMemo(appState.users) {
         appState.users.values.sortedWith(

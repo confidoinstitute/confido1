@@ -9,23 +9,28 @@ import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
+import payloads.responses.MembershipPayload
 import rooms.Room
-import rooms.RoomMembership
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionData
 import tools.confido.extensions.get
 import tools.confido.extensions.with
 import tools.confido.state.ClientState
-import users.User
+import tools.confido.state.clientState
 
 object PseudonymsCE : ClientExtension, PseudonymsExtension() {
-    override fun roomMemberExtra(room: Room, membership: RoomMembership, user: User, cb: ChildrenBuilder) {
+    override fun roomMemberExtra(room: Room, membership: MembershipPayload, cb: ChildrenBuilder) {
         val pseudonymList = room.extensionData[PseudonymsListKey]
         if (pseudonymList.isEmpty()) return
         val assignments = room.extensionData[PseudonymAssignmentsKey]
         // If assignments map is empty, the current user likely can't see it (censored)
         if (assignments.isEmpty()) return
-        val pseudonym = assignments[user.id]
+        // userId is granted to MANAGE_MEMBERS viewers; others can still resolve their
+        // own row (their own assignment is the only one they can see anyway).
+        val userId = membership.user.userId?.id
+            ?: (if (membership.user.isMyself) clientState.session.user?.id else null)
+            ?: return
+        val pseudonym = assignments[userId]
 
         cb.apply {
             div {

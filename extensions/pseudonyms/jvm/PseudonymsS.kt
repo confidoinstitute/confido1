@@ -83,6 +83,10 @@ object PseudonymsSE : ServerExtension, PseudonymsExtension() {
         room: Room?,
     ): UserPresentation? {
         if (room == null || user == null) return null
+        // The member list shows real identities (its whole point is knowing who is in
+        // the room); pseudonym annotations are added client-side for viewers who can
+        // see the assignment map.
+        if (context == UserPresentationContext.MEMBER_LIST) return null
         val pseudonymList = room.extensionData[PseudonymsListKey]
         if (pseudonymList.isEmpty()) return null
 

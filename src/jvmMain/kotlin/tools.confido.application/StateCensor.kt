@@ -1,6 +1,8 @@
 package tools.confido.application
 
 import kotlinx.datetime.Instant
+import java.security.MessageDigest
+import payloads.responses.MembershipPayload
 import rooms.*
 import tools.confido.application.sessions.TransientData
 import tools.confido.extensions.ServerExtension
@@ -55,11 +57,6 @@ class StateCensor(val sess: UserSession) {
         return referencedUsers
     }
 
-    fun censorMembership(room: Room, membership: RoomMembership) =
-        membership.takeIf{user?.type in setOf(UserType.ADMIN, UserType.MEMBER) ||
-                            membership.user eqid user}
-
-
     fun censorInviteLink(room: Room, inviteLink: InviteLink) =
         if (room.hasPermission(user, RoomPermission.VIEW_ALL_INVITE_TOKENS) || inviteLink.createdBy == user?.ref)
             inviteLink
@@ -71,8 +68,10 @@ class StateCensor(val sess: UserSession) {
         // Which tabs/content they see is controlled by their effective permissions.
         if (user == null || room.effectiveMembers.none { it.user eqid user }) return null
 
-        // Compute effective members with their effective permissions for wire transmission.
-        val effMembers = room.effectiveMembers.map { m ->
+        // Only the viewer's own (effective) membership travels on Room — it is what
+        // client-side permission checks read. Other members' data is granted per
+        // context by the room/<id>/members topic (censorRoomMembers) as presentations.
+        val ownMembers = room.effectiveMembers.filter { it.user eqid user }.map { m ->
             m.copy(effectivePermissions = room.memberEffectivePermissions(m))
         }
 
@@ -87,10 +86,8 @@ class StateCensor(val sess: UserSession) {
             questions = room.questions.filter {
                 (it.deref() ?: return@filter false).visible || room.hasPermission(user, RoomPermission.VIEW_HIDDEN_QUESTIONS)
             },
-            // guests cannot see member list; members stays as direct members only
-            members = room.members.mapNotNull { censorMembership(room, it) },
-            // _effectiveMembers carries the full effective list (including implied) for the client
-            _effectiveMembers = effMembers.mapNotNull { censorMembership(room, it) },
+            members = room.members.filter { it.user eqid user },
+            _effectiveMembers = ownMembers,
             _effectiveQuestions = effQuestions,
             _presentationRunning = presentationRunning,
             // Strip presentation ref for non-moderators
@@ -125,22 +122,51 @@ class StateCensor(val sess: UserSession) {
     fun censorQuestions() = state.questions.mapValuesNotNull{ censorQuestion(it.value) }
 
     /**
-     * Directory-level room censoring (§4.2 "rooms" topic): the full censor minus
-     * per-member data — other users' memberships, invite links, presentation state.
-     * The viewer's *own* (effective) membership is kept so client-side permission
-     * checks work everywhere, and question refs are kept for the client-side
+     * Directory-level room censoring (§4.2 "rooms" topic): the room detail minus
+     * invite links and presentation state. Memberships need no extra stripping —
+     * [censorRoom] itself keeps only the viewer's own (so client-side permission
+     * checks work everywhere); full member lists are a separate topic
+     * ([censorRoomMembers]). Question refs are kept for the client-side
      * question→room reverse lookup and cross-room surfaces (dashboard, search).
-     * Full member lists travel on the per-room "/state/rooms/{id}" detail topic.
      */
-    fun censorRoomDirectory(room: Room): Room? = censorRoom(room)?.let { c ->
-        c.copy(
-            members = c.members.filter { it.user eqid user },
-            _effectiveMembers = c._effectiveMembers?.filter { it.user eqid user },
-            inviteLinks = emptyList(),
-            presentation = null,
-            _presentationRunning = null,
-        )
+    fun censorRoomDirectory(room: Room): Room? = censorRoom(room)?.copy(
+        inviteLinks = emptyList(),
+        presentation = null,
+        _presentationRunning = null,
+    )
+
+    /**
+     * The "room/<id>/members" topic payload (§5.3): memberships as viewer-censored
+     * presentations. Ordinary members see names/colors only; `userId` and `email`
+     * are granted to MANAGE_MEMBERS viewers (their management actions need them);
+     * guests see just their own entry. Null = viewer cannot see the room at all.
+     */
+    fun censorRoomMembers(room: Room): List<MembershipPayload>? {
+        if (user == null || room.effectiveMembers.none { it.user eqid user }) return null
+        val canManage = room.hasPermission(user, RoomPermission.MANAGE_MEMBERS)
+        val isProperViewer = user.type in setOf(UserType.ADMIN, UserType.MEMBER)
+        return room.effectiveMembers.mapNotNull { m ->
+            if (!isProperViewer && !(m.user eqid user)) return@mapNotNull null
+            val target = m.user.deref()
+            val presentation = getUserPresentation(target, user, UserPresentationContext.MEMBER_LIST, room)
+            MembershipPayload(
+                user = presentation.copy(userId = if (canManage) m.user else null),
+                rowKey = memberRowKey(room, m),
+                email = if (canManage) target?.email else null,
+                isProperUser = target?.type?.isProper() ?: false,
+                role = m.role,
+                invitedVia = m.invitedVia,
+                implied = m.implied,
+                impliedFrom = m.impliedFrom,
+            )
+        }
     }
+
+    private fun memberRowKey(room: Room, m: RoomMembership): String =
+        MessageDigest.getInstance("SHA-256")
+            .digest("member:${room.id}:${m.user.id}:${m.impliedFrom ?: ""}".encodeToByteArray())
+            .joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
+            .take(16)
 
     fun censorRoomsDirectory() = state.rooms.mapValuesNotNull { censorRoomDirectory(it.value) }
 
@@ -178,12 +204,17 @@ enum class UserPresentationContext {
     COMMENT_AUTHOR,
     SCOREBOARD,
     INDIVIDUAL_PREDICTION,
+    MEMBER_LIST,
 }
 
 fun getUserPresentation(user: User?, observer: User, context: UserPresentationContext, room: Room?): UserPresentation {
     ServerExtension.forEach { ext-> ext.getUserPresentation(user, observer, context, room)?.let { return it } }
     if (user == null) return UserPresentation(false, "(Deleted user)")
     val amIModerator = room?.hasPermission(observer, RoomPermission.MANAGE_MEMBERS) ?: false
-    return UserPresentation(user.id == observer.id, user.nick ?: (if (amIModerator) user.email else null) ?: "(Anonymous)",
-    color = stringToColor(user.id))
+    // Member list: email travels as its own MembershipPayload field, so the name slot
+    // keeps the plain display name instead of the moderator email fallback.
+    val displayName =
+        if (context == UserPresentationContext.MEMBER_LIST) user.displayName
+        else user.nick ?: (if (amIModerator) user.email else null) ?: "(Anonymous)"
+    return UserPresentation(user.id == observer.id, displayName, color = stringToColor(user.id))
 }

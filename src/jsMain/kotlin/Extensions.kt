@@ -13,8 +13,8 @@ import react.FC
 import react.Props
 import react.createContext
 import react.router.RouteObject
+import payloads.responses.MembershipPayload
 import rooms.Room
-import rooms.RoomMembership
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.extensions.ExtensionData
 import tools.confido.question.Question
@@ -23,7 +23,6 @@ import tools.confido.state.PresenterView
 import tools.confido.state.ClientState
 import tools.confido.state.appConfig
 import react.PropsWithChildren
-import users.User
 import utils.panzoom1d.PZState
 import kotlin.reflect.KClass
 
@@ -89,7 +88,7 @@ interface ClientExtension : Extension {
     fun registerPresenterPages(): Map<KClass<out PresenterView>, PresenterPageType> = emptyMap()
     fun registerPresenterControls(): Map<KClass<out PresenterView>, PresenterControlsType> = emptyMap()
     fun editRoomSettingsExtra(room: Room?, onExtensionDataChange: ((ExtensionData) -> ExtensionData) -> Unit, cb: ChildrenBuilder) {}
-    fun roomMemberExtra(room: Room, membership: RoomMembership, user: User, cb: ChildrenBuilder) {}
+    fun roomMemberExtra(room: Room, membership: MembershipPayload, cb: ChildrenBuilder) {}
     fun commentFieldExtra(room: Room, appState: ClientState, cb: ChildrenBuilder) {}
     fun roomInfoExtra(room: Room, appState: ClientState, cb: ChildrenBuilder) {}
     fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {}
