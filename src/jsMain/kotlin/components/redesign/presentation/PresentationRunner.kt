@@ -10,6 +10,8 @@ import hooks.useCoroutineLock
 import hooks.usePresentationKeyboardNav
 import payloads.requests.NavigateDirection
 import payloads.requests.NavigatePresentation
+import components.redesign.presenter.FlowActionDescription
+import components.redesign.presenter.PresenterViewDescription
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.img
@@ -163,7 +165,7 @@ val PresentationRunner = FC<PresentationRunnerProps> { props ->
                                 })
                             }
                             span {
-                                +currentItem.action.describe()
+                                FlowActionDescription { action = currentItem.action }
                             }
                             when {
                                 justExecuted -> span {
@@ -198,7 +200,8 @@ val PresentationRunner = FC<PresentationRunnerProps> { props ->
                     is PresenterViewItem -> {
                         div {
                             css { fontSize = 14.px }
-                            +"Showing: ${currentItem.view.describe()}"
+                            +"Showing: "
+                            PresenterViewDescription { view = currentItem.view }
                         }
                     }
                 }
@@ -279,11 +282,11 @@ val PresentationRunner = FC<PresentationRunnerProps> { props ->
                             textOverflow = TextOverflow.ellipsis
                             whiteSpace = WhiteSpace.nowrap
                         }
-                        +when (item) {
-                            is SlideItem -> pres.slideLabels.getOrElse(item.slideIndex) { "Slide ${item.slideIndex + 1}" }
-                            is ActionItem -> item.action.describe()
-                            is NoteItem -> item.text.ifEmpty { "(empty note)" }
-                            is PresenterViewItem -> item.view.describe()
+                        when (item) {
+                            is SlideItem -> +pres.slideLabels.getOrElse(item.slideIndex) { "Slide ${item.slideIndex + 1}" }
+                            is ActionItem -> FlowActionDescription { action = item.action }
+                            is NoteItem -> +item.text.ifEmpty { "(empty note)" }
+                            is PresenterViewItem -> PresenterViewDescription { view = item.view }
                         }
                     }
                 }

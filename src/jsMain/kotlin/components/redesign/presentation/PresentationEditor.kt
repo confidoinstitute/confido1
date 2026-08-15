@@ -19,6 +19,8 @@ import io.ktor.http.*
 import js.objects.unsafeJso as jso
 import kotlinx.coroutines.await
 import payloads.requests.EditPresentation
+import components.redesign.presenter.FlowActionDescription
+import components.redesign.presenter.PresenterViewDescription
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.img
@@ -634,7 +636,7 @@ val FlowItemRow = FC<FlowItemRowProps> { props ->
                             color = Color("#333")
                             "&:hover" { color = flowItemBadgeColor(item) }
                         }
-                        +item.action.describe()
+                        FlowActionDescription { action = item.action }
                         SettingsIcon {
                             css { height = 14.px; width = 14.px }
                         }
@@ -661,7 +663,7 @@ val FlowItemRow = FC<FlowItemRowProps> { props ->
                 }
                 is PresenterViewItem -> {
                     // Legacy: kept for backward compat deserialization
-                    span { +item.view.describe() }
+                    span { PresenterViewDescription { view = item.view } }
                 }
             }
         }

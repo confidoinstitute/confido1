@@ -126,7 +126,8 @@ val PresenterControlPanel = FC<Props> {
                             lineHeight = 17.px
                             fontWeight = integer(600)
                         }
-                        +"Presenting: ${view.describe().capFirst()}"
+                        +"Presenting: "
+                        PresenterViewDescription { this.view = view }
                     }
                     CollapseButton {
                         title = "Hide controls"

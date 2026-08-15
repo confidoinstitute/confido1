@@ -45,6 +45,31 @@ async def main():
                        desc="live self update (presenterInfo projected field)")
         print("PASS: live self-topic update (presenterInfo arrived)")
 
+        # Rich client-side describer: present a question, expand the floating panel,
+        # expect the question NAME in the label (PresenterViewDescription + useQuestion).
+        st = await evaluate(cdp, s, """
+            fetch('/rooms/testroom/questions/add', {method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({_id:'', name:'Presented q', answerSpace:{type:'binary'}})})
+              .then(r => r.status)""", await_promise=True)
+        if st != 200:
+            print("FAIL: questions/add ->", st); sys.exit(1)
+        qid = await wait_for(cdp, s,
+            "(Object.entries((window.curQuestions||{}).questions||{}).filter(([k,v])=>v.name==='Presented q').map(([k])=>k)[0]) || false",
+            desc="new question in questions slice")
+        st = await evaluate(cdp, s, f"""
+            fetch('/presenter/set', {{method:'POST', headers:{{'Content-Type':'application/json'}},
+                body: JSON.stringify({{type:'question', question:'{qid}'}})}}).then(r => r.status)""",
+            await_promise=True)
+        if st != 200:
+            print("FAIL: presenter/set question ->", st); sys.exit(1)
+        await wait_for(cdp, s, "!!document.querySelector('button[title=\"Presentation controls\"]')",
+                       desc="floating presenter pill")
+        await evaluate(cdp, s, "document.querySelector('button[title=\"Presentation controls\"]').click()")
+        await wait_for(cdp, s,
+            "document.body.innerText.includes('Presenting:') && document.body.innerText.includes('Presented q')",
+            desc="rich description with question name in floating panel")
+        print("PASS: floating panel shows rich client-side description (question name)")
+
         # Members tab renders from the members topic
         st = await evaluate(cdp, s, """
             fetch('/rooms/testroom/members/add', {method:'POST', headers:{'Content-Type':'application/json'},

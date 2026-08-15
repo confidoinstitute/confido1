@@ -74,11 +74,15 @@ val PresenterDialog = FC<PresenterDialogProps> {props->
         onClose = { props.onClose?.invoke() }
         if (props.windowActive) {
             p {
-                +"This will show the ${props.view.describe()} in the open presentation window."
+                +"This will show the "
+                PresenterViewDescription { view = props.view }
+                +" in the open presentation window."
             }
         } else {
             p {
-                +"This will open a new browser window showing the ${props.view.describe()}."
+                +"This will open a new browser window showing the "
+                PresenterViewDescription { view = props.view }
+                +"."
             }
             p {
                 + "This is most useful for presenting "

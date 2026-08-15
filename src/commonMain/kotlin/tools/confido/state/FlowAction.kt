@@ -11,7 +11,6 @@ import tools.confido.question.QuestionState
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.refs.deref
-import tools.confido.utils.ellipsize
 import rooms.Room
 
 /** Where to navigate presentation followers as a side effect of an action. */
@@ -55,9 +54,11 @@ data class SetQuestionStateAction(
     /** If non-null, also change the question's group prediction visibility. */
     val setGroupPredVisibility: GroupPredictionVisibility? = null,
 ) : FlowAction() {
+    // Generic, deliberately deref-free (describe() serves string-only contexts and
+    // fallbacks): the name-bearing rich description is a client UI concern —
+    // components/redesign/presenter/Descriptions.kt renders it via useQuestion.
     override fun describe(): String {
-        val qName = question.deref()?.name?.ellipsize(50) ?: "?"
-        val base = "${newState.name.lowercase().replaceFirstChar { it.uppercase() }} \"$qName\""
+        val base = "${newState.name.lowercase().replaceFirstChar { it.uppercase() }} question"
         return base + describeGroupPredVisibility(setGroupPredVisibility)
     }
     override fun getNavigateUrl(room: Room): String? = when (navigateViewers) {
@@ -111,10 +112,8 @@ data class SetTaggedQuestionsStateAction(
 data class NavigateToQuestionAction(
     val question: Ref<Question>,
 ) : FlowAction() {
-    override fun describe(): String {
-        val qName = question.deref()?.name?.ellipsize(50) ?: "?"
-        return "Navigate viewers to \"$qName\""
-    }
+    // Generic, deref-free — see SetQuestionStateAction.describe.
+    override fun describe() = "Navigate viewers to a question"
     override fun getNavigateUrl(room: Room) = room.urlPrefix + Question.urlPrefix(question.id)
 }
 
