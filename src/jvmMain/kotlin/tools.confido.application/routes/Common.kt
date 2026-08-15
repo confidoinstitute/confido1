@@ -24,6 +24,8 @@ import payloads.responses.WSResponse
 import tools.confido.application.index
 import tools.confido.application.singleThreadContext
 import tools.confido.serialization.confidoJSON
+import tools.confido.store.MemoView
+import tools.confido.store.TxClock
 import tools.confido.store.View
 
 typealias RouteBodyCall = suspend RoutingContext.() -> Unit
@@ -144,18 +146,28 @@ object TopicRegistry {
 inline fun <reified T> Route.viewWS(path: String, crossinline body: suspend WSBody.() -> View<T>) {
     TopicRegistry.handlers.add(ViewTopic(TopicRegistry.split(path)) { ctx ->
         val view = ctx.body()
-        object : View<JsonElement> {
+        object : MemoView<JsonElement>() {
+            // A throwing validate (e.g. a gate's ResponseError surfacing during a
+            // source recompute) counts as "changed now": the compute below re-runs
+            // and captures the error as a payload. Error states forgo cutoff and
+            // re-evaluate per flush, recovering when state changes — same semantics
+            // the un-memoized wrapper had.
+            override fun validateSources(): Long =
+                try { view.validate() } catch (e: ResponseError) { TxClock.serial }
+
             // Per-computation error semantics: a ResponseError from the view's
             // transforms encodes as a WSError payload; the subscription stays live
-            // and recovers on the next state change.
-            override val value: JsonElement
-                get() = confidoJSON.encodeToJsonElement<WSResponse<T>>(
+            // and recovers on the next state change. Encoding here means the memo's
+            // equality cutoff deduplicates at the payload level.
+            override fun compute(): JsonElement =
+                confidoJSON.encodeToJsonElement<WSResponse<T>>(
                     try {
                         WSData(view.value)
                     } catch (e: ResponseError) {
                         WSError(e.wsCode, e.message)
                     }
                 )
+
             override val changes get() = view.changes
         }
     })

@@ -227,6 +227,80 @@ The same head/past split resolves the old sentinel kludge: the *head* of the pre
 is resident (bounded by users × questions), its *past* is archived — expressed in types, not
 in a magic timestamp.
 
+### 3.5 Versioned views and the transaction DAG (conversation of 2026-08-15; core implemented)
+
+The server model sharpens into a DAG: **source nodes mutated only inside transactions,
+everything downstream pure**. Two agreed extensions to the as-built View layer (§7 Phase 3),
+motivated by the recompute-all cost of the flush pass:
+
+- **Every source mutation is a transaction — including transient state.** `transact` bumps a
+  global transaction serial after apply+emit; a transient-only transaction does the same but
+  must skip the Mongo session entirely (the single-op fast path stops being an optimization
+  and becomes a design requirement). Durability becomes a per-node policy: a `Store` is a
+  versioned source cell whose commit path includes the backend, transient state
+  (`presentationRunStates`, presenter-window counts, archive version counters) is the same
+  cell without one, and a §3.4 materialized view is a derived node with a durable cache.
+  The ad-hoc `MutableStateFlow` surfaces unify into one `VersionedCell` shape, and
+  cross-kind atomicity falls out (e.g. the presentationStore-listener + run-state pair
+  becomes one observable step). Memory-only vs. persisted becomes an implementation detail
+  of the node, not of the consumers.
+- **Views memoize with two counters** — `computedAt` (txid when the cache was last known
+  valid) and `changedAt` (txid when the value last actually differed). `validate()` recurses:
+  inputs unchanged since `computedAt` → stamp current without recomputing (input cutoff,
+  a chain of Long compares); recomputed-but-equal → keep the old `changedAt` so downstream
+  still cuts off (early cutoff — the Incremental/Adapton/Salsa discipline). Single-writer
+  single-thread makes validation atomic and the serial a plain Long; the flush pass becomes
+  *validate-all* — a synchronous, complete dirtiness check that preserves the strict frame
+  consistency of recompute-all while skipping all unaffected work. Shared views then compute
+  once per txid regardless of reader count, so the permission-class memoization stage
+  reduces to a registry of shared per-(topic, class) views.
+- **Partial recompute via keyed combinators, not changed-set lambdas.** For wide keyed views,
+  a `mapValuesMemo`-style combinator re-runs the per-entry function only for entries whose
+  identity changed (persistent-map structural sharing makes the sweep pointer-cheap) —
+  O(changed entities) censoring instead of O(all). Which-inputs-changed information is
+  deliberately *not* exposed to arbitrary transforms: branching on it by hand is the manual-
+  refresh bug class one level up. The §4.3 discipline rule stands: true delta folds for
+  aggregates, memoized recompute (now with cutoffs) for derivations; the transitional
+  monolith gets no incrementalization investment — decomposition is its fix.
+*As-built notes (core, same day):* `TxClock` is a plain monotone `Long`; `transact` bumps
+once after apply+emit (covering store applies and synchronous fold dispatch), and the
+out-of-transaction transient surfaces (`presentationRunStates`, presenter-window count,
+millionaire game/timer state, calibration response counter) became `TransientCell`s that
+bump on set — multiple bumps per logical transaction are deliberately fine (validation
+needs monotonicity, not one-tick-per-transaction, and all bumps of one mutation happen in
+one non-suspending span). `View.validate()` defaults to conservative "changed now" so
+ad-hoc Views stay sound; the combinators memoize via a shared `MemoView` base
+(`map`/typed `combineViews`/`flatMap` — the vararg wake-set combine just maxes its
+inputs); `asView(StateFlow)` leaves detect changes identity-then-structurally, stamping
+at first observation. The `viewWS` wrapper is itself a `MemoView` whose compute encodes
+the payload (so equality cutoff deduplicates at the payload level) and maps
+`ResponseError` to a `WSError` element — error states forgo cutoff and re-evaluate per
+flush, preserving the gate-recovery semantics (verified live: closed ANSWERED gate →
+error frame once, unrelated mutations don't re-send it, predicting unlocks data on the
+same subscription). The sender's flush pass validates instead of recomputing:
+`view.validate() <= sub.sentAt` skips a topic at the cost of a chain of Long compares.
+
+- **Transaction-aligned collection deltas (future direction, opt-in per topic).** For
+  collection-shaped views, one stream type serves store change surface, archive tail, and
+  wire format alike: `CollectionUpdate<E> = Full(entities) | Incremental(added, changed,
+  removed)`, transaction-tagged, with changed entities carried in full — **no deep/field
+  diffs** (whole-entity granularity keeps delta composition a keyed last-writer map:
+  associative, coalescable; field patches would forfeit that). This is the third appearance
+  of "snapshot for reads, deltas for maintenance" (§2.4): the store `Change<E>` batch of one
+  transaction *is* an Incremental; §3.1's `all + tail` *is* Full-then-Incrementals (the
+  deferred comment `tail` is the natural first customer, replacing refetch-per-version-bump);
+  the wire gains O(changed) updates for large collections. Transform algebra: per-entity
+  maps (censoring) thread deltas untouched; filters synthesize Added/Removed on visibility
+  transitions (the `Updated(old,new)` shape already carries what they need); aggregations
+  stay folds. The outbox's later-wins coalescing generalizes to delta composition (Full
+  resets the slot); the client materializes into the typed cache inside the same atomic
+  frame apply, so consumers still see plain maps. Duality with versioned views: validation
+  answers *whether* since txid N, the delta answers *what* — one node can expose both, and
+  deltas make `mapValuesMemo` exact without pointer sweeps. Candidates: comment tails,
+  prediction histories, admin user directory, per-room question payloads. Non-candidates:
+  small payloads, fold outputs. Reconnect = fresh Full (a last-seen-txid catch-up ring is a
+  possible later refinement the txid tags leave room for).
+
 ---
 
 ## 4. Sync: one socket, topics, censor pipeline
@@ -681,19 +755,38 @@ working untouched mid-transition.
     client-side merged `SentState`. `MultiplexWS`'s refcounted topic registry grows a
     typed decoded-payload cache; `ClientState` becomes a facade over that cache (peeled
     fields read topic caches, the rest reads the shrinking monolith), and components
-    drive subscriptions via `useSub(topic)` with dedup making redundant subscriptions
-    free. Peel full-stack, field by field: `self` first (root-mounted; deletes the
-    `expiryTime` pinning hack), then `rooms`/`room/<id>` as the component-scoped pilot.
+    drive subscriptions via `useSubscription(topic)` with dedup making redundant
+    subscriptions free. Peel full-stack, field by field.
     Client-deref audit result: ~35 call sites in three buckets — room-scoped question
     joins (dissolve into the `room/<id>/questions` topic payload, which ships the join),
     user derefs (die with UserPresentation), and a small tail (presenter views,
     calibration, dashboard) converted per-surface, with the `ClientImmediateDerefEntity`
     marker interface as the compile-time ratchet: peel a bucket, remove the entity from
     the marker, fix what turns red. Endpoint: no global entity maps on the client.
-  - Deferred: the shared/memoized keyed-flow registry (`shareIn` per (topic, permission
-    class), refcounted teardown) until the censor-memoization stage — strict at-commit
-    frame atomicity lands with it; UserPresentation rollout / users-map weaning; a
-    `.memo()` dedup combinator if a hot spot appears.
+  - **Typed cache + `self` peeled (first slice out of the monolith).** `MultiplexWS`
+    decodes each frame once per topic into a cached decoded value (late subscribers get
+    it synchronously; the atomic two-phase frame apply covers the decoded cache too);
+    `useSubscription` rides on it. `SentState` lost `session`/`myPredictions`/
+    `myPasswordIsSet`/`presenterWindowActive` (and its session-reading permission
+    helpers) to the new `SelfState` payload of `/state/self` — session cell (which also
+    carries `presenterInfo` updates), own predictions, password flag and
+    presenter-window transient are its wake set, so per-user churn no longer touches
+    the big snapshot, whose payload is now purely a function of the viewer's permission
+    class (its combine keeps `latestPredictions` only because the censor's ANSWERED
+    comment-visibility gate reads the viewer's own prediction; the `expiryTime` pinning
+    moved to `self`). Client side, `AppStateContext` now carries the `ClientState`
+    facade (monolith + self slice; permission helpers moved here, `deref()` unchanged)
+    assembled in the provider's frame listeners — the global is reassigned before React
+    re-renders, and the two root subscriptions issue in one tick so their initial
+    payloads arrive in one consistent frame. Next slice: `rooms`/`room/<id>` as the
+    component-scoped pilot.
+  - **Versioned views implemented (§3.5 core)**: the flush pass validates instead of
+    recomputing — unaffected topics cost Long compares, per-user churn no longer
+    re-censors the world. Still ahead from §3.5: shared per-(topic, permission class)
+    view registries (a cached view shared by N readers computes once per transaction,
+    so sharing subsumes the old `shareIn` keyed-flow-registry idea), `mapValuesMemo`
+    keyed combinators, collection deltas. Also remaining: `SentState` decomposition
+    continues (`rooms`/`room/<id>` next), UserPresentation rollout / users-map weaning.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or

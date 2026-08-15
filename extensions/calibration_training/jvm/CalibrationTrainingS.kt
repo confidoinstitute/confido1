@@ -40,7 +40,7 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
     private lateinit var responseCollection: CoroutineCollection<TrainingResponse>
     // Monotonic change counter for the responses collection (wake signal for the
     // leaderboard topic; bumped after every insert).
-    private val responsesVersion = MutableStateFlow(0L)
+    private val responsesVersion = tools.confido.store.TransientCell(0L)
     
     override suspend fun serverInit() {
         // Initialize MongoDB collection
@@ -352,7 +352,7 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
                         timestamp = unixNow().toLong(),
                     )
                     responseCollection.insertOne(response)
-                    responsesVersion.update { it + 1 }
+                    responsesVersion.value += 1
                     
                     // Get all user responses including the new one
                     val allResponses = getUserResponses(user.ref)
@@ -405,7 +405,7 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
 
             // Calibration training leaderboard (WebSocket, live-updating)
             viewWS("/api/ext/calibration_training/leaderboard.ws", gate = {
-                combineViews(userStore.state.asView(), responsesVersion.asView())
+                combineViews(userStore.state.asView(), responsesVersion.state.asView())
             }) {
                 call.withUser {
                     val allResponses = responseCollection.find().toList()

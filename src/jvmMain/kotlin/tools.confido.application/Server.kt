@@ -439,22 +439,24 @@ fun main() {
                     class ActiveSub {
                         var job: Job? = null                 // changes-watcher (ViewTopic) / collector (FlowTopic)
                         var view: View<JsonElement>? = null  // present for ViewTopic subscriptions
+                        var sentAt = -1L                     // TxClock serial as of the last sent payload
                         var broken = false                   // internal error: dead until resubscribed
                     }
                     val subs = mutableMapOf<String, ActiveSub>()
 
-                    // Per-connection outbox with flush-time recomputation. Wake signals carry
-                    // no data — they only schedule a flush. At flush, the sender recomputes
-                    // EVERY subscribed ViewTopic in one non-suspending pass: by the View
-                    // consistency contract all payloads of a frame observe the same
+                    // Per-connection outbox with flush-time validation (§3.5). Wake signals
+                    // carry no data — they only schedule a flush. At flush, the sender
+                    // *validates* every subscribed ViewTopic in one non-suspending pass: by
+                    // the View consistency contract all payloads of a frame observe the same
                     // transactional snapshot, no matter how raggedly the wake signals arrived
-                    // (strict cross-topic atomicity; recompute-all is the v0 cost model, to be
-                    // narrowed by the permission-class memoization stage). The per-topic diff
-                    // against the last payload actually sent keeps wire traffic proportional
-                    // to real changes. FlowTopic payloads (suspending fetches, timed streams)
-                    // are computed at emission time and staged; they sit outside the
-                    // consistency pass. A slow client never blocks producers or queues
-                    // unboundedly — a flush just covers more accumulated change.
+                    // (strict cross-topic atomicity), while the versioned-memo cutoffs reduce
+                    // an unaffected topic's cost to a chain of Long comparisons — no
+                    // recompute, no encode. The per-topic diff against the last payload sent
+                    // remains as a backstop (and serves FlowTopics). FlowTopic payloads
+                    // (suspending fetches, timed streams) are computed at emission time and
+                    // staged; they sit outside the consistency pass. A slow client never
+                    // blocks producers or queues unboundedly — a flush just covers more
+                    // accumulated change.
                     val staged = LinkedHashMap<String, JsonElement>()
                     val lastSent = mutableMapOf<String, JsonElement>()
                     val flushSignal = Channel<Unit>(Channel.CONFLATED)
@@ -481,8 +483,10 @@ fun main() {
                             subs.forEach { (topic, sub) ->
                                 val view = sub.view
                                 if (view == null || sub.broken) return@forEach
-                                val data = try {
-                                    view.value
+                                try {
+                                    if (view.validate() <= sub.sentAt) return@forEach
+                                    sub.sentAt = TxClock.serial
+                                    offer(topic, view.value)  // memoized — validate just computed it
                                 } catch (e: Exception) {
                                     // ResponseErrors are already encoded as WSError payloads
                                     // by viewWS; anything reaching here is a bug in the topic —
@@ -490,9 +494,8 @@ fun main() {
                                     // on every flush.
                                     call.application.log.error("Error computing topic $topic", e)
                                     sub.broken = true
-                                    errorElement(WSErrorType.INTERNAL_ERROR, "Internal error")
+                                    offer(topic, errorElement(WSErrorType.INTERNAL_ERROR, "Internal error"))
                                 }
-                                offer(topic, data)
                             }
                             if (updates.isNotEmpty())
                                 send(Frame.Text(confidoJSON.encodeToString(TopicFrame(updates))))

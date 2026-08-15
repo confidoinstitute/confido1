@@ -2,6 +2,7 @@ package tools.confido.application.sessions
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import tools.confido.store.TransientCell
 
 /**
  * Short-lived session data. Will be lost upon server restart.
@@ -11,8 +12,8 @@ import kotlinx.coroutines.flow.*
  * signals; see PERSISTENCE_SYNC_REDESIGN.md §4.2 and the Phase 3 notes in §7.)
  */
 class TransientData {
-    private val _activePresenterWindows = MutableStateFlow(0)
+    private val _activePresenterWindows = TransientCell(0)
     /** Snapshot flow of the presenter-window count; topic derivations subscribe here. */
-    val activePresenterWindowsState: StateFlow<Int> get() = _activePresenterWindows
+    val activePresenterWindowsState: StateFlow<Int> get() = _activePresenterWindows.state
     var activePresenterWindows by _activePresenterWindows::value
 }

@@ -35,6 +35,7 @@ import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.spaces.*
 import tools.confido.store.Stores
+import tools.confido.store.TransientCell
 import tools.confido.store.commentData
 import tools.confido.store.latestPredictions
 import tools.confido.store.predictionData
@@ -140,10 +141,10 @@ object serverState : GlobalState() {
 
     /** Room-scoped presentation run states. In-memory only, lost on server restart. */
     private val _presentationRunStates =
-        MutableStateFlow<PersistentMap<Ref<Room>, PresentationRunState>>(persistentMapOf())
+        TransientCell<PersistentMap<Ref<Room>, PresentationRunState>>(persistentMapOf())
     /** Snapshot flow of the run states; topic derivations subscribe here. */
     val presentationRunStatesState: StateFlow<PersistentMap<Ref<Room>, PresentationRunState>>
-        get() = _presentationRunStates
+        get() = _presentationRunStates.state
     private var presentationRunStatesMap by _presentationRunStates::value
     val presentationRunStates: Map<Ref<Room>, PresentationRunState> get() = presentationRunStatesMap
 

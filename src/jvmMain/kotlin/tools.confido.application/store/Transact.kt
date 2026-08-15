@@ -60,6 +60,10 @@ suspend fun <R> transact(block: suspend () -> R): R {
         }
     }
     scope.staged.forEach { it.apply() }
+    // Advance the transaction clock strictly after apply+emit: one bump covers the
+    // store applies and everything the synchronous fold dispatch updated, so view
+    // validation (§3.5) observes the whole transaction as one tick.
+    TxClock.bump()
     return ret
 }
 

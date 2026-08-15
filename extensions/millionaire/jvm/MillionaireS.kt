@@ -29,15 +29,15 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
 
     // --- Active game config per room (set during presentation expansion, cleared on stop) ---
 
-    private val _activeConfigs = MutableStateFlow<PersistentMap<String, MillionaireGameAction>>(persistentMapOf())
-    val activeConfigsState: StateFlow<PersistentMap<String, MillionaireGameAction>> get() = _activeConfigs
+    private val _activeConfigs = tools.confido.store.TransientCell<PersistentMap<String, MillionaireGameAction>>(persistentMapOf())
+    val activeConfigsState: StateFlow<PersistentMap<String, MillionaireGameAction>> get() = _activeConfigs.state
     private var activeConfigsMap by _activeConfigs::value
     val activeConfigs: Map<String, MillionaireGameAction> get() = activeConfigsMap
 
     // --- Timer state (in-memory, lost on restart) ---
 
-    private val _timerStates = MutableStateFlow<PersistentMap<String, TimerState>>(persistentMapOf())
-    val timerStatesState: StateFlow<PersistentMap<String, TimerState>> get() = _timerStates
+    private val _timerStates = tools.confido.store.TransientCell<PersistentMap<String, TimerState>>(persistentMapOf())
+    val timerStatesState: StateFlow<PersistentMap<String, TimerState>> get() = _timerStates.state
     private var timerStatesMap by _timerStates::value
     private val timerStates: Map<String, TimerState> get() = timerStatesMap   // roomId -> TimerState
     private val timerTasks = mutableMapOf<String, java.util.TimerTask>()
