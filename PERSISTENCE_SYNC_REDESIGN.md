@@ -867,6 +867,39 @@ working untouched mid-transition.
     as a string, i.e. exactly the silently-fragile case the binding forbids. Extension
     topics bind their payloads in the same common-source declarations. Wire strings
     unchanged; full suite passes.
+  - **UserPresentation rollout completed (§5.3) — two slices.** An audit first showed
+    the rollout was mostly *already done*: comments, histograms, scoreboards and the
+    update-plot extension ship embedded `UserPresentation`s (with `getUserPresentation`
+    + extension hook, and `UserPresentation.userId` as the granted-linkage field), and
+    the client users map had exactly three consumers — the room member list (the only
+    client-side `Ref<User>` derefs), the add-member search, and the admin directory.
+    `referencedUsers` existed solely so guests could see comment-author User records
+    that no guest surface read anymore. The two slices:
+    (1) **Member lists → `room/<id>/members`** carrying `MembershipPayload`s (a
+    presentation + role/invitedVia/implied data + a room-scoped `rowKey` digest for
+    list reconciliation); `userId`/`email` are granted only to MANAGE_MEMBERS viewers
+    (whose management actions need them), guests get their own entry only. `censorRoom`
+    keeps just the viewer's own effective membership on Room — what client permission
+    checks read — so the detail topic is member-data-free (`censorMembership` died; the
+    directory censor reduces to stripping links/presentation). A new
+    `UserPresentationContext.MEMBER_LIST` keeps the plain display name (email is its
+    own field); the pseudonyms extension opts out of it — member lists show real
+    identities, with pseudonym annotations added client-side for viewers who can see
+    the assignment map. Note: the members *tab* is MANAGE_MEMBERS-gated in the UI, so
+    the ordinary-member presentation tier is currently latent wire capability.
+    (2) **Users topic narrowed to proper (admin/member) users** — the visibility set
+    `censorUser` already granted, so no capability change — and demoted from root
+    slice to a surface-local subscription of its two consumers. `referencedUsers`,
+    the `commentAuthors` folds and `RefCountIndex` are deleted; the topic's wake set
+    shrank from six inputs to the user store alone. **Load-bearing discovery:**
+    `UserSession.user` is a shared-code deref (`userRef?.deref()`), so the self slice
+    now carries the viewer's own User and `ClientState.derefNonBlocking` resolves
+    `Ref<User>` against it — the only client-derefable user is oneself, by
+    construction (`BaseState` lost `users`; the server keeps its own map). The
+    planned `ClientImmediateDerefEntity` ratchet for User is therefore *not* applied:
+    own-user deref must stay legal, and the remaining audit surface is zero sites.
+    Further narrowing to admin-only (the §4.2 `admin/users` endpoint) would need a
+    server-side search endpoint for the add-member dialog — deferred until wanted.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or
@@ -880,8 +913,13 @@ working untouched mid-transition.
 - Field-by-field component assignment for Question and Room (domain judgment; propose
   drafting the actual component declarations and arguing about the ~10 ambiguous fields).
 - Membership: component-of-Room first vs. own store immediately.
-- Pseudonymous-key scheme for UserPresentation (per-context stability requirements, salt
-  rotation on demand?).
+- Pseudonymous-key scheme for UserPresentation — **deferred until a surface needs it**:
+  presentations carry displayName + color, and no current UI needs stable-but-unlinkable
+  identity across payloads (the members topic's `rowKey` — a room-scoped SHA-256 digest —
+  is the first precedent for the shape). Known caveat when it comes up: presentation
+  `color` is `stringToColor(user.id)`, a deterministic function of the user id shared
+  across all contexts, so colors are already a weak cross-context join key by design
+  (consistent avatar colors); a real pseudonymity scheme would have to include color.
 - Session store: stays resident-with-expiry (hourly sweep) — is a TTL/expiry concern worth
   building into the store shape, or leave it a background task?
 - Topic payload versioning during Phase 3 rollout (old `state` topic and new topics coexist —
