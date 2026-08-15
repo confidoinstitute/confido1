@@ -900,6 +900,28 @@ working untouched mid-transition.
     own-user deref must stay legal, and the remaining audit surface is zero sites.
     Further narrowing to admin-only (the §4.2 `admin/users` endpoint) would need a
     server-side search endpoint for the add-member dialog — deferred until wanted.
+  - **`Ref<User>` made client-opaque** (follow-up, same day): the "ratchet not
+    applied" caveat above is resolved by removing `UserSession.user` — the one
+    shared-code user deref — instead of accommodating it. The server keeps it
+    verbatim as a jvmMain extension in the sessions package; the client reads the
+    viewer's own user via `ClientState.user` (from the self slice), and
+    `appState.session.user` → `appState.user` everywhere. The permission story
+    needed no new machinery: `Room.hasPermission`/`userRole` are already pure
+    (id-only `eqid` comparisons — admin powers come from injected implied
+    memberships, not `user.type`), and `AppStateContext` already delivers the self
+    slice reactively, so the existing facade helpers are the client-side checker
+    (a `usePermissionChecker` hook / `PermissionGate` component were considered
+    and skipped as redundant with the facade; a gate component remains possible
+    sugar). With that, `User` dropped to `ServerImmediateDerefEntity` — client
+    deref of a user ref is now a compile error — and the ratchet immediately
+    earned its keep: it caught the millionaire scoreboard shipping
+    `Map<Ref<User>, Double>` (now `List<MillionaireScoreEntry>` of presentations
+    via the SCOREBOARD context, sorted server-side), and fixing that exposed a
+    latent bug where the `ServerExtension.getUserPresentation` hook member
+    *shadowed* the imported core function inside extension objects —
+    update_scatter_plot had been calling the default hook and shipping null
+    presentations. The hook is renamed `overrideUserPresentation`, un-shadowing
+    the core function (and fixing the scatter plot as a side effect).
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or
