@@ -59,16 +59,17 @@ expect val globalState: GlobalState
 
 // The shared (permission-class-shaped) state snapshot sent over the "/state" topic.
 // Transitional Phase 3 monolith: decomposes field by field into the §4.2 semantic
-// topics; the per-user fields already moved to [SelfState] (the "self" topic).
+// topics; the per-user fields moved to [SelfState] ("self") and rooms to the
+// "/state/rooms" directory + "/state/rooms/{id}" detail topics. No longer implements
+// BaseState — the client's ClientState facade assembles that from the topic slices.
 @Serializable
 data class SentState(
-    override val rooms: Map<String, Room> = emptyMap(),
-    override val questions: Map<String, Question> = emptyMap(),
-    override val users: Map<String, User> = emptyMap(),
-    override val predictionCount: Map<Ref<Question>, Int> = emptyMap(),
-    override val predictorCount: Map<Ref<Question>, Int> = emptyMap(),
-    override val commentCount: Map<Ref<Question>, Int> = emptyMap(),
-) : BaseState
+    val questions: Map<String, Question> = emptyMap(),
+    val users: Map<String, User> = emptyMap(),
+    val predictionCount: Map<Ref<Question>, Int> = emptyMap(),
+    val predictorCount: Map<Ref<Question>, Int> = emptyMap(),
+    val commentCount: Map<Ref<Question>, Int> = emptyMap(),
+)
 
 // The per-user state slice sent over the "/state/self" topic
 // (PERSISTENCE_SYNC_REDESIGN.md §4.2). Small and per-user by nature; keeping it out

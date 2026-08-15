@@ -785,8 +785,29 @@ working untouched mid-transition.
     re-censors the world. Still ahead from §3.5: shared per-(topic, permission class)
     view registries (a cached view shared by N readers computes once per transaction,
     so sharing subsumes the old `shareIn` keyed-flow-registry idea), `mapValuesMemo`
-    keyed combinators, collection deltas. Also remaining: `SentState` decomposition
-    continues (`rooms`/`room/<id>` next), UserPresentation rollout / users-map weaning.
+    keyed combinators, collection deltas.
+  - **Rooms peeled — the component-scoped pilot.** Two topics: `/state/rooms`
+    (root-subscribed directory: the full censor minus per-member data — no other
+    users' memberships, no invite links, no presentation state — but keeping the
+    viewer's *own* effective membership, so client-side permission checks work
+    everywhere, and question refs, which the client-side `Question.room` reverse
+    lookup and the cross-room surfaces — dashboard, search, calibration — need) and
+    `/state/rooms/{rID}` (the full `censorRoom` output; the gate errors for
+    non-members and recovers on join). The room page's `Room` FC subscribes the
+    detail topic and feeds `RoomContext` — all room-page components already read
+    that context, so one subscription site covers the page — falling back to the
+    directory entry while the detail payload is in flight (the page renders with
+    configuration data and fills in member detail when it lands); the presenter's
+    `InviteLinkPP` subscribes it likewise. `SentState` lost `rooms` *and its
+    `BaseState` conformance* — the client facade now implements `BaseState`
+    directly, reading rooms from the directory slice and the rest from the shrinking
+    monolith (payload down to questions/users/counts). Observed effect of the
+    peel + versioned views combined: a room rename produces frames on the two rooms
+    topics only — the `/state` monolith stays silent. Membership churn now
+    invalidates the room's detail subscribers and the directory, not every user's
+    full snapshot. Remaining decomposition: `room/<id>/questions` (+ folding the
+    per-question count maps into question payloads), `admin/users` /
+    UserPresentation rollout / users-map weaning.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or

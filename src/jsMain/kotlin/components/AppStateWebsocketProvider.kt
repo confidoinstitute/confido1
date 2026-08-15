@@ -6,6 +6,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.encodeToDynamic
 import payloads.responses.WSData
 import react.*
+import rooms.Room
 import tools.confido.serialization.confidoJSON
 import tools.confido.state.ClientState
 import tools.confido.state.SelfState
@@ -41,10 +42,12 @@ val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
     useEffectOnceWithCleanup {
         var curSent: SentState? = null
         var curSelf: SelfState? = null
+        var curRooms: Map<String, Room>? = null
         fun apply() {
             val sent = curSent ?: return
             val self = curSelf ?: return
-            val cs = ClientState(sent, self)
+            val roomDir = curRooms ?: return
+            val cs = ClientState(sent, self, roomDir)
             clientState = cs
             appState = cs
 
@@ -55,6 +58,9 @@ val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
                 @OptIn(ExperimentalSerializationApi::class)
                 window.asDynamic().curSelf =
                     confidoJSON.encodeToDynamic(self)
+                @OptIn(ExperimentalSerializationApi::class)
+                window.asDynamic().curRooms =
+                    confidoJSON.encodeToDynamic(roomDir)
             } catch (e: Exception) {
             }
         }
@@ -65,10 +71,14 @@ val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
         val unsubSelf = MultiplexWS.subscribe("/state/self", decodeTopicPayload<SelfState>("/state/self")) { response, _ ->
             (response as? WSData)?.data?.let { curSelf = it; apply() }
         }
+        val unsubRooms = MultiplexWS.subscribe("/state/rooms", decodeTopicPayload<Map<String, Room>>("/state/rooms")) { response, _ ->
+            (response as? WSData)?.data?.let { curRooms = it; apply() }
+        }
         MultiplexWS.start()
         onCleanup {
             unsubState()
             unsubSelf()
+            unsubRooms()
         }
     }
 

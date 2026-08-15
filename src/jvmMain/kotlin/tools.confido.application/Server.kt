@@ -374,6 +374,48 @@ fun main() {
                     }
                 }
 
+                // §4.2 "rooms": the room directory — configuration + the viewer's own
+                // membership + question refs, one map for all rooms the viewer can see.
+                // Member lists, invite links and presentation state live on the per-room
+                // detail topic below; this is what backs the client's global rooms map
+                // (deref, room list, cross-room surfaces).
+                viewWS("/state/rooms") {
+                    if (call.userSession?.user == null) unauthorized("Not logged in.")
+                    combineViews(
+                        roomStore.state.asView(),
+                        questionStore.state.asView(),
+                        userStore.state.asView(),
+                    ).map {
+                        val sessionData = call.userSession ?: unauthorized("Not logged in.")
+                        if (sessionData.user == null) unauthorized("Not logged in.")
+                        StateCensor(sessionData).censorRoomsDirectory()
+                    }
+                }
+
+                // §4.2 "room/<id>": the full censored room — member lists (with effective
+                // permissions), invite links, presentation state. Component-scoped: the
+                // room page (and the presenter's invite view) subscribe it on demand.
+                // The gate errors for non-members and recovers on join (same subscription).
+                viewWS("/state/rooms/{rID}") {
+                    if (call.userSession?.user == null) unauthorized("Not logged in.")
+                    val rRef = tools.confido.refs.Ref<Room>(
+                        call.parameters["rID"] ?: badRequest("Missing room id"))
+                    combineViews(
+                        // Whole-map room view (not a cell): effective-membership extension
+                        // hooks (room groups) read other rooms too.
+                        roomStore.state.asView(),
+                        questionStore.state.asView(),
+                        userStore.state.asView(),
+                        serverState.presentationRunStatesState.asView(),
+                    ).map {
+                        val sessionData = call.userSession ?: unauthorized("Not logged in.")
+                        if (sessionData.user == null) unauthorized("Not logged in.")
+                        val room = rRef.deref() ?: notFound("No such room.")
+                        StateCensor(sessionData).censorRoom(room)
+                            ?: unauthorized("You cannot view this room.")
+                    }
+                }
+
                 // The per-user slice (§4.2 "self"): session (incl. presenterInfo, which
                 // updates through the session cell), own predictions, password flag,
                 // presenter-window state. Split from "/state" so per-user churn (session

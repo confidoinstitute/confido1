@@ -17,7 +17,10 @@ import tools.confido.state.InviteLinkPV
 import web.location.location
 
 val InviteLinkPP = FC<PresenterPageProps<InviteLinkPV>> { props->
-    val room = props.view.room.deref() ?: return@FC
+    // Invite links only travel on the per-room detail topic (the global rooms map
+    // carries directory-level rooms without them), so subscribe it here.
+    val roomWS = useSubscription<rooms.Room>("/state/rooms/${props.view.room.id}")
+    val room = (roomWS as? payloads.responses.WSData)?.data ?: return@FC
     val link = room.inviteLinks.firstOrNull { it.id == props.view.id  || props.view.id == "FIRST" } ?: return@FC
     val baseUrl = link.link(location.origin, room)
     // Use /pres/ prefix for follow-enabled links (cleaner URL for QR codes and display)

@@ -22,9 +22,13 @@ import users.UserType
 class StateCensor(val sess: UserSession) {
     val user = sess.user
     val state = serverState
-    val referencedUsers: MutableSet<Ref<User>> = mutableSetOf()
 
-    init {
+    // Lazy: only the users-map censoring needs this; topic bodies that censor rooms
+    // alone (the directory/detail topics) never pay for the walk.
+    val referencedUsers: Set<Ref<User>> by lazy { computeReferencedUsers() }
+
+    private fun computeReferencedUsers(): Set<Ref<User>> {
+        val referencedUsers = mutableSetOf<Ref<User>>()
         // Iterates precomputed per-thread author sets (folds over the comment archives'
         // change streams), not individual comments; cost is O(threads × distinct authors).
         commentData.questionCommentAuthors.forEach { qref, authors ->
@@ -48,6 +52,7 @@ class StateCensor(val sess: UserSession) {
             if (!room.hasPermission(user, RoomPermission.VIEW_ROOM_COMMENTS)) return@forEach
             referencedUsers.addAll(authors)
         }
+        return referencedUsers
     }
 
     fun censorMembership(room: Room, membership: RoomMembership) =
@@ -118,7 +123,26 @@ class StateCensor(val sess: UserSession) {
     }
 
     fun censorQuestions() = state.questions.mapValuesNotNull{ censorQuestion(it.value) }
-    fun censorRooms() = state.rooms.mapValuesNotNull{ censorRoom(it.value) }
+
+    /**
+     * Directory-level room censoring (§4.2 "rooms" topic): the full censor minus
+     * per-member data — other users' memberships, invite links, presentation state.
+     * The viewer's *own* (effective) membership is kept so client-side permission
+     * checks work everywhere, and question refs are kept for the client-side
+     * question→room reverse lookup and cross-room surfaces (dashboard, search).
+     * Full member lists travel on the per-room "/state/rooms/{id}" detail topic.
+     */
+    fun censorRoomDirectory(room: Room): Room? = censorRoom(room)?.let { c ->
+        c.copy(
+            members = c.members.filter { it.user eqid user },
+            _effectiveMembers = c._effectiveMembers?.filter { it.user eqid user },
+            inviteLinks = emptyList(),
+            presentation = null,
+            _presentationRunning = null,
+        )
+    }
+
+    fun censorRoomsDirectory() = state.rooms.mapValuesNotNull { censorRoomDirectory(it.value) }
 
     fun <T> censorQuestionInfo(what: Map<Ref<Question>, T>) =
         what.filterKeys { k -> k.deref()?.let{ q -> censorQuestion(q) } != null }
@@ -128,7 +152,6 @@ class StateCensor(val sess: UserSession) {
 
     fun censor(): SentState {
         return SentState(
-            rooms = censorRooms(),
             questions = censorQuestions(),
             commentCount = censorQuestionInfo(state.commentCount),
             predictorCount = censorQuestionInfo(state.predictorCount),
