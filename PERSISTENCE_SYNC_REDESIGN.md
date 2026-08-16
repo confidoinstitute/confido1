@@ -1263,17 +1263,23 @@ working untouched mid-transition.
     a per-subscription reactive key view (it may read the session and query
     parameters — everything per-viewer must flow into the key), and the body
     receives the key, keeping the leak-proof property (registry key = censor
-    input); the class-scoped form is now sugar over it. Key design principle:
-    collapse per-viewer facts to constants when irrelevant, so the common case
-    shares maximally — `question/<id>/group_pred` keys on (question-scoped class,
-    answered) where answered is false unless visibility is ANSWERED (one key per
-    class for EVERYONE questions; a first prediction or visibility change re-keys
-    the live subscription — gate_test's ANSWERED unlock now exercises exactly the
-    re-selection path); `room/<id>/group_pred` keys on (room-scoped class, ?qids=
-    filter, answered-set over ANSWERED-visibility questions) — empty answered-set
-    constant in the common all-EVERYONE room, so the room-page cohort shares one
-    entry, and the query filter lives in the key because the registry key carries
-    only path args. Conversion fixed a **latent leak**: the room topic had no
+    input); the class-scoped form is now sugar over it. Key design principle
+    (sharpened by the user to its fixed point): **the key is whatever the payload
+    is a function of, and nothing more** — for gate-shaped topics whose data is
+    observer-independent past the gate, that is the gate *outcome*, not the class.
+    `question/<id>/group_pred` keys on a four-valued access outcome
+    (visible/hidden/forbidden/not-found): every viewer who may see the aggregate
+    shares one entry regardless of permission class (verified: an admin
+    subscribing after a member cohort adds zero computes); the whole gate runs in
+    the per-subscription key view (cheap booleans), and a first prediction,
+    visibility change or deletion re-keys the live subscription — gate_test's
+    ANSWERED unlock now exercises exactly the re-selection path.
+    `room/<id>/group_pred` keys on the *visible-question set* (null = non-member),
+    which fully determines the multi-question payload — same-visibility viewers of
+    any class share. Its `?qids=` filter is **removed** (an intermediate keyed
+    version briefly carried it in the key): it predated the multiplexed socket, no
+    client ever passed it, and selective consumers subscribe per-question topics.
+    Conversion fixed a **latent leak**: the room topic had no
     membership gate and served EVERYONE-visibility aggregates of foreign rooms to
     any logged-in user (the per-question topic always checked VIEW_QUESTIONS); it
     now requires VIEW_QUESTIONS, gate-recovering on join. The histogram topic

@@ -65,9 +65,11 @@ fun canViewGroupPred(question: Question?, myPred: Prediction?): Boolean =
         null -> false
     }
 
-/** Sharing key for the group-prediction topic (§4.3 extended keys): the class
- *  projected to the question's room plus the gate-relevant answered flag. */
-data class GroupPredKey(val cls: PermClass, val answered: Boolean)
+/** Sharing key for the group-prediction topic (§4.3 extended keys): the gate
+ *  *outcome*. The payload is observer-independent past the gate (one shared
+ *  aggregate), so the key space is these few values per question — every viewer
+ *  who may see the aggregate shares one entry regardless of permission class. */
+enum class GroupPredAccess { VISIBLE, HIDDEN, FORBIDDEN, NOT_FOUND }
 
 suspend fun <T> ApplicationCall.withQuestion(body: suspend QuestionContext.() -> T): T =
     withQuestion(Ref(parameters["qID"] ?: ""), body)
@@ -302,46 +304,36 @@ fun questionRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK, Cbor.encodeToByteArray(updates))
     }
 
-    // View group predictions: shared per (question-scoped class, gate-relevant
-    // answered flag) — the workshop hot path (tens of participants watching the same
-    // question's aggregate) computes once per key, not per subscriber. The answered
-    // flag is false unless the question's visibility is ANSWERED, so EVERYONE-
-    // visibility questions collapse to one key per class; a viewer's first
-    // prediction (or a visibility change) re-keys their live subscription.
+    // View group predictions: shared per gate *outcome* — the workshop hot path
+    // (tens of participants watching the same question's aggregate) computes once
+    // per outcome, not per subscriber or class. The whole gate lives in the
+    // per-subscription key view (cheap booleans); a viewer's first prediction, a
+    // visibility change, or a question deletion re-keys the live subscription.
     sharedViewWS(Topics.groupPred, key = { qRef ->
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
         combineViews(
             sharedClassView(),
             roomStore.state.asView(),
             questionStore.state.asView().at(qRef.id),
-            latestPredictions.state.asView().map { it[qRef]?.get(viewerRef) != null },
-        ) { cls, _, question, answered ->
-            GroupPredKey(
-                questionTopicScope(cls, qRef),
-                answered = question?.groupPredictionVisibility == GroupPredictionVisibility.ANSWERED && answered,
-            )
-        }
-    }) { key, qRef ->
-        val roomView = roomStore.questionRoomState.asView().at(qRef)
-            .flatMap { rRef -> rRef?.let { roomStore.state.asView().at(it.id) } ?: viewOf(null) }
-        combineViews(
-            questionStore.state.asView().at(qRef.id),
-            roomView,
-            predictionData.groupPredState.asView().at(qRef),
-        ) { question, room, groupPred ->
-            if (question == null || room == null) notFound("No such question.")
-            val censor = ClassCensor(key.cls)
-            if (!censor.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
-                forbidden("You cannot view this group prediction.")
-            val canViewAll = censor.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
-            val canView = when (question.groupPredictionVisibility) {
-                GroupPredictionVisibility.EVERYONE -> true
-                GroupPredictionVisibility.ANSWERED -> key.answered
-                GroupPredictionVisibility.MODERATOR_ONLY -> false
+            latestPredictions.state.asView().map { it[qRef]?.get(viewerRef) },
+        ) { cls, _, question, myPred ->
+            val room = serverState.questionRoom[qRef]?.deref()
+            val censor = ClassCensor(cls)
+            when {
+                question == null || room == null -> GroupPredAccess.NOT_FOUND
+                !censor.hasPermission(room, RoomPermission.VIEW_QUESTIONS) -> GroupPredAccess.FORBIDDEN
+                censor.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+                    || canViewGroupPred(question, myPred) -> GroupPredAccess.VISIBLE
+                else -> GroupPredAccess.HIDDEN
             }
-            if (!(canViewAll || canView))
-                unauthorized("You cannot view this group prediction.")
-            groupPred ?: notFound("There is no group prediction.")
+        }
+    }) { access, qRef ->
+        when (access) {
+            GroupPredAccess.VISIBLE -> predictionData.groupPredState.asView().at(qRef)
+                .map { it ?: notFound("There is no group prediction.") }
+            GroupPredAccess.HIDDEN -> viewOf(Unit).map { unauthorized("You cannot view this group prediction.") }
+            GroupPredAccess.FORBIDDEN -> viewOf(Unit).map { forbidden("You cannot view this group prediction.") }
+            GroupPredAccess.NOT_FOUND -> viewOf(Unit).map { notFound("No such question.") }
         }
     }
 

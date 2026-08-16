@@ -142,6 +142,15 @@ async def main():
                 f"gp {c0gp}->{computes('question/{question}/group_pred')} "
                 f"rgp {c0rgp}->{computes('room/{room}/group_pred')}")
 
+        # Outcome keys share across permission classes: the admin subscribing the
+        # same question's group_pred lands on the members' VISIBLE entry — zero new
+        # computes, identical payload.
+        cgp = computes("question/{question}/group_pred")
+        await ws3.send(json.dumps({"sub": [gp]}))
+        g3 = by_topic(await recv_updates(ws3, 2.0))
+        t.check(g3.get(gp) == g1.get(gp) and computes("question/{question}/group_pred") == cgp,
+                "TEST-7b", f"outcome key shares across classes: admin sub adds zero computes ({cgp})")
+
         # Membership gate on the room group-pred topic (the fixed latent leak):
         # a room the member cannot see must yield UNAUTHORIZED, not aggregates.
         roomd = post("/rooms/add", {"name": "Shared room D", "description": "", "color": "RED", "icon": None},

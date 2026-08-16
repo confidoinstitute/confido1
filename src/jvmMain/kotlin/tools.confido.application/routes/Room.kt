@@ -31,12 +31,6 @@ import kotlin.time.Duration.Companion.days
 import tools.confido.state.Topics
 
 val roomUrl = Room.urlPrefix("{rID}")
-
-/** Sharing key for the room group-prediction topic (§4.3 extended keys): the class
- *  projected to the room, the subscription's ?qids= filter, and the set of
- *  ANSWERED-visibility questions the viewer has answered (empty — a constant — in
- *  the common all-EVERYONE room, so the whole room-page cohort shares one entry). */
-data class RoomGroupPredKey(val cls: PermClass, val qids: Set<String>?, val answered: Set<String>)
 val iconNames = iconDir?.listFiles()?.filter { it.isFile }?.map { it.name }?.sorted() ?: emptyList()
 
 data class RoomContext(val inUser: User?, val room: Room) {
@@ -250,16 +244,16 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
 
         call.respond(HttpStatusCode.OK)
     }
-    // Group predictions of a room's questions (optionally filtered by ?qids=): a
-    // multi-question payload, so the composition uses whole-map views rather than
-    // keyed cells — output dedup keeps unrelated changes off the wire. Shared per
-    // (room-scoped class, qids filter, answered-set): the answered-set contains only
-    // ANSWERED-visibility questions the viewer answered, so it is a constant (empty)
-    // in the common all-EVERYONE room and the whole room page cohort shares one
-    // payload. The qids filter must live in the key — the registry key carries only
-    // path args, and subscriptions with different filters must not collide.
+    // Group predictions of a room's questions: a multi-question payload, so the
+    // composition uses whole-map views rather than keyed cells — output dedup keeps
+    // unrelated changes off the wire. Shared per *visible-question set* (the payload
+    // is fully determined by it, so viewers of any class with the same visibility
+    // share one entry; null = viewer cannot see the room — the membership gate,
+    // fixing a latent leak: the topic used to serve EVERYONE-visibility aggregates
+    // to non-members too). The former ?qids= filter is gone: it predates the
+    // multiplexed socket, no client ever passed it, and selective consumers
+    // subscribe per-question group_pred topics.
     sharedViewWS(Topics.roomGroupPred, key = { rRef ->
-        val wantedIds = call.request.queryParameters["qids"]?.split(',')?.toSet()
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
         combineViews(
             sharedClassView(),
@@ -267,37 +261,22 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
             questionStore.state.asView(),
             latestPredictions.state.asView(),
         ) { cls, rooms, questions, preds ->
-            val answered = rooms[rRef.id]?.questions.orEmpty().mapNotNullTo(mutableSetOf()) { ref ->
-                ref.id.takeIf {
-                    questions[ref.id]?.groupPredictionVisibility == GroupPredictionVisibility.ANSWERED &&
-                        preds[ref]?.get(viewerRef) != null
-                }
-            }
-            RoomGroupPredKey(cls.scopedTo(setOf(rRef)), wantedIds, answered)
+            val room = rooms[rRef.id] ?: return@combineViews null
+            val censor = ClassCensor(cls)
+            if (!censor.hasPermission(room, RoomPermission.VIEW_QUESTIONS)) return@combineViews null
+            val canViewAll = censor.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+            room.questions.mapNotNullTo(mutableSetOf()) { ref ->
+                ref.id.takeIf { canViewAll || canViewGroupPred(questions[ref.id], preds[ref]?.get(viewerRef)) }
+            } as Set<String>
         }
-    }) { key, rRef ->
+    }) { visible, rRef ->
         combineViews(
             roomStore.state.asView().at(rRef.id),
-            questionStore.state.asView(),
             predictionData.groupPredState.asView(),
-        ) { room, questions, groupPreds ->
+        ) { room, groupPreds ->
             if (room == null) notFound("No such room.")
-            val censor = ClassCensor(key.cls)
-            // Membership gate (fixes a latent leak: the topic used to serve
-            // EVERYONE-visibility aggregates to non-members too).
-            if (!censor.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
-                unauthorized("You cannot view this room.")
-            val canViewAll = censor.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
-
-            room.questions.associateWith { ref ->
-                val wanted = (key.qids?.contains(ref.id) ?: true)
-                val canView = when (questions[ref.id]?.groupPredictionVisibility) {
-                    GroupPredictionVisibility.EVERYONE -> true
-                    GroupPredictionVisibility.ANSWERED -> ref.id in key.answered
-                    else -> false
-                }
-                if ((canViewAll || canView) && wanted) groupPreds[ref] else null
-            }
+            if (visible == null) unauthorized("You cannot view this room.")
+            room.questions.associateWith { ref -> if (ref.id in visible) groupPreds[ref] else null }
         }
     }
 
