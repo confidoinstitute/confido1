@@ -1026,6 +1026,28 @@ working untouched mid-transition.
     of `use(AppStateContext)` reads deleted along the way were already dead — kept
     alive only as accidental re-render triggers for bodies that read `deref()` behind
     React's back; the subscriptions now provide that reactivity honestly.
+  - **The globalState-reading `Question` props evicted from commonMain.**
+    `Question.numPredictions`/`numPredictors`/`room` (and `effectiveSchedule`, which
+    read `room` internally) were the last shared-code properties whose values came
+    from global state. They are now jvmMain extensions over the resident folds
+    (`room` via the `questionRoom` fold as planned; `effectiveSchedule` delegates to
+    a new pure commonMain `effectiveScheduleIn(room)` that both sides share). Client
+    consumers split by what they hold:
+    *room-scoped surfaces* (question page, list items, dialogs) read counts via the
+    new accessor or the room questions slice and get the room from `RoomContext`;
+    *bare-ref surfaces* (presenter tiles, incl. the millionaire and
+    prediction-showcase extensions) subscribe the new **`question/<id>/counts`**
+    topic — a sibling of `question/<id>` rather than a field of it, preserving the
+    step-27 cutoff in both directions (count churn never frames the entity topic,
+    entity edits never re-send counts; verified by test). Access shapes:
+    `useQuestionCounts(ref?)` (same call discipline as `useQuestion`) and a
+    `QuestionPredictors` text-node *component* for render-position sites — table
+    cells and tile footers inside loops stay hook-safe by construction. Two
+    disciplines enforced on the way: real hooks hoisted above extension hook
+    methods' early returns (stable hook order — the old `use()`-only reads were
+    exempt; subscriptions are not), and `EditQuestionDialog`'s answer-space lock
+    became a derived value instead of `useState`-captured, since the counts
+    subscription may deliver after first render.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or
