@@ -1010,6 +1010,22 @@ working untouched mid-transition.
     search, calibration, presenter pages) to direct subscriptions, the
     `isValid`/`getNavigateUrl` server dispatch, then the eviction commit;
     permission-class sharing rides after.
+  - **Cross-room surfaces converted to direct subscriptions.** The dashboard, workspace
+    search, calibration views, scores page and room list stopped reading the AppState
+    facade (and stopped client-side deref): they call `useRooms()` /
+    `useWorkspaceQuestions()` — surface-local subscriptions of the existing `rooms` and
+    `questions` topics, the users-topic precedent applied again. The *root* questions
+    subscription still dies at the eviction, but the topics themselves survive at this
+    granularity: a surface that displays cross-room data (dashboard's recently-opened
+    feed, search-on-every-keystroke) genuinely needs the cross-room slice, and paying
+    for exactly what the surface shows is the honest cost model; per-room fan-out would
+    need dynamic multi-subscription machinery for zero censoring benefit (the global
+    topics censor per room already). `searchWorkspace` now takes the two maps as
+    parameters instead of `ClientState`; `roomOf(question)` (a directory lookup)
+    replaces the commonMain `Question.room` reverse-scan on these surfaces. A handful
+    of `use(AppStateContext)` reads deleted along the way were already dead — kept
+    alive only as accidental re-render triggers for bodies that read `deref()` behind
+    React's back; the subscriptions now provide that reactivity honestly.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or
