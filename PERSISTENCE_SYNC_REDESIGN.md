@@ -1061,6 +1061,48 @@ working untouched mid-transition.
     deref-y core branch, tag-navigation's first-question scan, goes through the
     lookup). `isValid` also drops its vestigial `suspend` — deref was the only
     reason for it.
+  - **The eviction: the client global-state layer is gone.** Landed in three
+    passes. (1) *Presenter pages and every remaining client deref* went through
+    subscriptions: PP/PC components resolve view refs via `useQuestion`
+    (`MultiQuestionPP` tiles take the ref and subscribe per tile), room-scoped
+    dialogs and extension surfaces read the room questions slice, presenter room
+    refs resolve against the directory, and the millionaire shared helpers take
+    resolved question lists instead of deref'ing inside (`useMillionaireConfig`
+    accepts a nullable room id so hooks stay unconditional). (2) *The remaining
+    facade field-reads* converted — `useRoomQuestions()` now reads the room slice
+    and serves all flow-editor components; the three `ClientExtension` hooks that
+    carried a `ClientState` parameter dropped it (no implementation used it);
+    `conditional_baseline.extractBaseline` takes an optional known-questions map
+    (its submit-path caller skips the existence check, which the dialog's own
+    render-time validation already surfaces) — after which the ~35 remaining
+    `use(AppStateContext)` reads were *all bare*, kept alive only as re-render
+    triggers for deref, and were deleted. (3) *The machinery*: `BaseState`,
+    `GlobalState`, `expect globalState`, `ClientState`, `AppStateContext`, the
+    client deref (`ClientRefs.kt`, the `ClientImmediateDerefEntity` marker) and
+    the accessor/RoomLayout transitional fallbacks are gone; `serverState` is a
+    plain object; `deref`/`mapDeref`/`forEachDeref` are jvmMain-only over
+    `ServerImmediateDerefEntity` (`ImmediateDerefEntity` remains as an alias);
+    the provider owns only the websocket lifecycle and the root `self`
+    subscription feeding SelfContext. Client entities now flow exclusively
+    through topic payloads; the topics a page pays for are exactly the ones its
+    surfaces display. Devtools/tests read `window.curTopics` (the last raw
+    payload per subscribed topic, maintained in MultiplexWS's frame apply) in
+    place of the retired per-slice exports.
+    **The eviction's one behavioral lesson (React #310 on cold loads):** with the
+    facade, every page's first render already had data (root slices were applied
+    before children mounted), so `val x = <data> ?: return@FC` followed by more
+    hooks never changed its hook count. Post-eviction a first render *without*
+    data is the normal cold-load case, and the moment the subscription delivers,
+    such a component renders more hooks than before — a crash the old world
+    structurally never exercised. Fixed across the tree by the now-standing
+    discipline: *all real hooks precede any data-dependent early return*
+    (nullable-topic subscriptions make this cheap), with `Room` split into a
+    data-resolving outer component and an inner page that only mounts with the
+    room in hand. Two pre-existing latent instances of the same shape
+    (`DeleteUserDialog`'s builder-nested `useState` behind `props.entity ?:
+    return`, `PredictionFlags`' emptiness return) were left as found — their
+    conditions are mount-stable in practice — but the pattern is now on the
+    review checklist.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or
