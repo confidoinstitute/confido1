@@ -12,13 +12,13 @@ import payloads.responses.WSData
 import react.FC
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
-import tools.confido.refs.deref
 import tools.confido.state.BinaryHistogramPV
 import tools.confido.utils.formatPercent
 import kotlin.math.roundToInt
 import tools.confido.state.Topics
 import tools.confido.refs.ref
 import components.QuestionPredictors
+import components.useQuestion
 
 private val BAR_COLOR = Color("#8BF08E")
 
@@ -26,7 +26,7 @@ private fun binLabel(bin: HistogramBin) =
     "${(bin.min * 100).roundToInt()}–${(bin.max * 100).roundToInt()}%"
 
 val BinaryHistogramPP = FC<PresenterPageProps<BinaryHistogramPV>> { props ->
-    val question = props.view.question.deref() ?: return@FC
+    val question = useQuestion(props.view.question) ?: return@FC
     val response = useSubscription(Topics.histogram(question.ref))
 
     Stack {

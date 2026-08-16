@@ -13,15 +13,15 @@ import react.FC
 import react.dom.html.ReactHTML.div
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.question.Prediction
-import tools.confido.refs.deref
 import tools.confido.spaces.BinaryValue
 import tools.confido.state.GroupPredPV
 import tools.confido.state.Topics
 import tools.confido.refs.ref
 import components.QuestionPredictors
+import components.useQuestion
 
 val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
-    val question = props.view.question.deref() ?: return@FC
+    val question = useQuestion(props.view.question) ?: return@FC
     val response = useSubscription(Topics.groupPred(question.ref))
 
     Stack {

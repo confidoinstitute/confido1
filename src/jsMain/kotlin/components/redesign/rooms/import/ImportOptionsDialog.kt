@@ -11,6 +11,10 @@ import tools.confido.question.QuestionState
 import tools.confido.refs.deref
 import web.cssom.*
 import emotion.react.css
+import hooks.useSubscription
+import payloads.responses.WSData
+import tools.confido.state.Topics
+import tools.confido.refs.ref
 
 external interface ImportOptionsDialogProps : BaseDialogProps {
     var options: ImportQuestionOptions
@@ -21,8 +25,9 @@ val ImportOptionsDialog = FC<ImportOptionsDialogProps> { props ->
     val options = props.options
     val gpv = GroupPredictionVisibility.fromBooleans(options.groupPredVisible, options.groupPredRequirePrediction)
     val room = use(RoomContext)
-    val tagSuggestions: List<String> = useMemo(room?.questions) {
-        room?.questions?.mapNotNull { it.deref() }?.flatMap { it.tags }?.distinct()?.sorted() ?: emptyList()
+    val roomQuestions = (useSubscription(room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data?.questions ?: emptyMap()
+    val tagSuggestions: List<String> = useMemo(roomQuestions) {
+        room?.questions?.mapNotNull { roomQuestions[it.id] }?.flatMap { it.tags }?.distinct()?.sorted() ?: emptyList()
     }
 
     Dialog {

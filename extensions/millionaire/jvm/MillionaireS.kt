@@ -64,7 +64,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
                     // Re-read room state; auto-close current question if still asking
                     val freshRoom = serverState.rooms[room.id] ?: return@launch
                     val config = activeConfigs[room.id] ?: return@launch
-                    val currentState = getState(freshRoom, config.tag)
+                    val currentState = getState(freshRoom.questions.mapDeref(), config.tag)
                     if (currentState.type == MillionaireStateType.ASKING) {
                         setState(freshRoom, config, MillionaireState(MillionaireStateType.RESOLVED, currentState.curIndex, null))
                     }
@@ -83,7 +83,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
     // --- Scoring ---
 
     fun userScore(room: Room, user: Ref<User>, config: MillionaireGameAction): Double? {
-        val qs = questions(room, config.tag)
+        val qs = questions(room.questions.mapDeref(), config.tag)
         return when (config.mode) {
             MillionaireMode.MULTIPLICATIVE -> {
                 var score: Double? = null
@@ -118,7 +118,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
 
     private suspend fun setState(room: Room, config: MillionaireGameAction, state: MillionaireState) {
         tools.confido.store.transact {
-            questions(room, config.tag).forEachIndexed { idx, q ->
+            questions(room.questions.mapDeref(), config.tag).forEachIndexed { idx, q ->
                 tools.confido.store.questionStore.modify(q.id) {
                     val newState =
                         if (idx < state.curIndex) QuestionState.RESOLVED
@@ -161,7 +161,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
         // Store active config for this room (used by WS endpoints and timer)
         activeConfigsMap = activeConfigsMap.put(room.id, config)
 
-        val qs = questions(room, config.tag)
+        val qs = questions(room.questions.mapDeref(), config.tag)
         if (qs.isEmpty()) return emptyList()
 
         return buildList {

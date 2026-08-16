@@ -12,7 +12,6 @@ import payloads.responses.WSData
 import react.FC
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.i
-import tools.confido.refs.deref
 import tools.confido.state.InviteLinkPV
 import web.location.location
 import tools.confido.state.Topics

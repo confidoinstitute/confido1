@@ -4,9 +4,9 @@ import components.redesign.forms.FormSwitch
 import react.FC
 import react.Props
 import tools.confido.extensions.ClientExtension
-import tools.confido.refs.deref
 import tools.confido.state.*
 import kotlin.reflect.KClass
+import components.useQuestion
 
 external interface PresenterControlsProps<V: PresenterView> : Props {
     var view: V
@@ -22,7 +22,7 @@ inline fun <reified V: PresenterView> presenterControlsMap(pc: FC<PresenterContr
 
 /** Controls for the group prediction view: toggle resolution display. */
 val GroupPredPC = FC<PresenterControlsProps<GroupPredPV>> { props ->
-    val question = props.view.question.deref() ?: return@FC
+    val question = useQuestion(props.view.question) ?: return@FC
     FormSwitch {
         label = "Show resolution"
         disabled = props.disabled || question.resolution == null

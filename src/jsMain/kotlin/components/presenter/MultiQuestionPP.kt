@@ -14,7 +14,6 @@ import react.dom.html.ReactHTML.div
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.question.Prediction
 import tools.confido.question.Question
-import tools.confido.refs.deref
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.BinaryValue
 import tools.confido.state.MultiQuestionPV
@@ -24,9 +23,10 @@ import kotlin.math.roundToInt
 import tools.confido.state.Topics
 import tools.confido.refs.ref
 import components.QuestionPredictors
+import components.useQuestion
+import tools.confido.refs.Ref
 
 val MultiQuestionPP = FC<PresenterPageProps<MultiQuestionPV>> { props ->
-    val questions = props.view.questions.mapNotNull { it.deref() }
 
     div {
         css {
@@ -39,7 +39,7 @@ val MultiQuestionPP = FC<PresenterPageProps<MultiQuestionPV>> { props ->
             gap = 2.vh
             alignContent = AlignContent.center
         }
-        questions.forEach { question ->
+        props.view.questions.forEach { question ->
             MultiQuestionTile {
                 key = question.id
                 this.question = question
@@ -52,14 +52,15 @@ val MultiQuestionPP = FC<PresenterPageProps<MultiQuestionPV>> { props ->
 }
 
 private external interface MultiQuestionTileProps : Props {
-    var question: Question
+    var question: Ref<Question>
     var showGroupPred: Boolean
     var showHistogram: Boolean
     var showResolution: Boolean
 }
 
 private val MultiQuestionTile = FC<MultiQuestionTileProps> { props ->
-    val question = props.question
+    // Component-per-tile so each tile owns its question subscription (hook-safe).
+    val question = useQuestion(props.question) ?: return@FC
     val isBinary = question.answerSpace is BinarySpace
 
     Stack {

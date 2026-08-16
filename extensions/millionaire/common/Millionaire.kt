@@ -18,7 +18,6 @@ import tools.confido.spaces.Value
 import tools.confido.state.FlowAction
 import tools.confido.state.PresenterView
 import tools.confido.utils.ellipsize
-import tools.confido.utils.mapDeref
 import tools.confido.utils.toInt
 import kotlin.math.pow
 import tools.confido.refs.deref
@@ -214,12 +213,14 @@ abstract class MillionaireExt : Extension {
 
     // --- Question helpers ---
 
-    fun questions(room: Room, tag: String) = room.questions.reversed().mapDeref().filter {
+    /** [roomQuestions] = the room's resolved questions in room order (server:
+     *  mapDeref; client: the room questions slice) — keeps this deref-free. */
+    fun questions(roomQuestions: List<Question>, tag: String) = roomQuestions.reversed().filter {
         tag in it.tags
     }
 
-    fun getState(room: Room, tag: String): MillionaireState {
-        val qs = questions(room, tag)
+    fun getState(roomQuestions: List<Question>, tag: String): MillionaireState {
+        val qs = questions(roomQuestions, tag)
         if (qs.isEmpty()) return MillionaireState(MillionaireStateType.BEFORE_START, -1, null)
         qs.forEachIndexed { idx, q ->
             if (q.state == QuestionState.OPEN) {

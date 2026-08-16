@@ -46,6 +46,8 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 import components.QuestionPredictors
+import components.useRooms
+import tools.confido.state.Topics
 
 // =============================================================================
 // WWTBAM Color Palette
@@ -99,8 +101,8 @@ private val fadeIn = keyframes {
  * Hook that reads the active [MillionaireGameAction] config from the server
  * via WebSocket. Returns null when no millionaire game is running.
  */
-fun useMillionaireConfig(roomId: String): MillionaireGameAction? {
-    val ws = useSubscription(millionaireConfigTopic(Ref(roomId)))
+fun useMillionaireConfig(roomId: String?): MillionaireGameAction? {
+    val ws = useSubscription(roomId?.let { millionaireConfigTopic(Ref(it)) })
     return (ws as? WSData)?.data
 }
 
@@ -395,11 +397,14 @@ private val MillionaireGameActionEditor = FC<tools.confido.extensions.FlowItemEd
 // =============================================================================
 
 val MillionaireLadderQuestionPP = FC<PresenterPageProps<MillionaireLadderQuestionPV>> { props ->
-    val room = props.view.room.deref() ?: return@FC
-    val config = useMillionaireConfig(room.id) ?: return@FC
-    val st = MillionaireCE.getState(room, config.tag)
+    val room = useRooms()[props.view.room.id]
+    val qmap = (useSubscription(room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data?.questions ?: emptyMap()
+    val config = useMillionaireConfig(room?.id)
+    if (room == null || config == null) return@FC
+    val roomQs = room.questions.mapNotNull { qmap[it.id] }
+    val st = MillionaireCE.getState(roomQs, config.tag)
     val question = st.curQuestion ?: return@FC
-    val qs = MillionaireCE.questions(room, config.tag)
+    val qs = MillionaireCE.questions(roomQs, config.tag)
     val ladder = config.prizeLadderForCount(qs.size)
     val currentPrize = ladder.getOrElse(st.curIndex) { ladder.lastOrNull() ?: 0 }
 
@@ -731,14 +736,14 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
     // --- Question page theming and extra content ---
 
     override fun questionPageExtra(q: Question, place: ClientExtension.QuestionPagePlace, cb: ChildrenBuilder) {
-        use(AppStateContext)!!
         val room = use(RoomContext)!!
+        val qmap = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data?.questions ?: emptyMap()
         val config = useMillionaireConfig(room.id)
 
         // All hooks have been called above -- safe to early-return now
         if (config == null) return
 
-        val qs = questions(room, config.tag)
+        val qs = questions(room.questions.mapNotNull { qmap[it.id] }, config.tag)
 
         // Inject WWTBAM theme for millionaire questions in ladder mode
         val isMilQuestion = q.id in qs.map { it.id }
@@ -853,11 +858,13 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
     // --- Player Prediction Description ---
 
     override fun myPredictionDescriptionExtra(props: MyPredictionDescriptionProps, cb: ChildrenBuilder) {
-        val room = use(RoomContext) ?: return
-        val q = use(QuestionContext) ?: return
-        val appState = use(AppStateContext)!!
-        val config = useMillionaireConfig(room.id) ?: return
-        val qs = questions(room, config.tag)
+        // Real hooks first, before any early return (stable hook order).
+        val room = use(RoomContext)
+        val q = use(QuestionContext)
+        val qmap = (useSubscription(room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data?.questions ?: emptyMap()
+        val config = useMillionaireConfig(room?.id)
+        if (room == null || q == null || config == null) return
+        val qs = questions(room.questions.mapNotNull { qmap[it.id] }, config.tag)
         val qids = qs.map { it.id }
         if (q.id !in qids) return
         if (q.answerSpace !is BinarySpace) return

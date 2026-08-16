@@ -23,6 +23,10 @@ import tools.confido.extensions.ExtensionData
 import tools.confido.question.QuestionSchedule
 import tools.confido.refs.deref
 import web.html.submit
+import hooks.useSubscription
+import payloads.responses.WSData
+import tools.confido.state.Topics
+import tools.confido.refs.ref
 
 external interface RoomSettingsProps : Props {
     var room: Room?
@@ -32,6 +36,7 @@ external interface RoomSettingsProps : Props {
 }
 
 val RoomSettings = FC<RoomSettingsProps> { props ->
+    val roomQuestions = (useSubscription(props.room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data?.questions ?: emptyMap()
     val appState = use(AppStateContext)!!
 
     var name by useState(props.room?.name ?: "")
@@ -113,7 +118,7 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                     }
                 }
                 props.room?.let { room->
-                    val affectedQuestions = room.questions.mapNotNull { it.deref() }.filter{ it.schedule == null }
+                    val affectedQuestions = room.questions.mapNotNull { roomQuestions[it.id] }.filter{ it.schedule == null }
                     console.log("AQ ${room.questions.size} ${affectedQuestions.size}")
 
                     if (affectedQuestions.isNotEmpty())

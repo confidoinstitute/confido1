@@ -75,6 +75,7 @@ import web.html.submit
 import web.prompts.confirm
 import components.useRooms
 import components.roomOf
+import components.useQuestion
 
 // ============================================================
 //  QuestionSelector (existing, for reference question config)
@@ -506,7 +507,7 @@ external interface UpdatePlotProps : Props {
 }
 val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
     val view = props.view
-    val q = view.question.deref()
+    val q = useQuestion(view.question)
     val referenceForecast = q?.extensionData?.get(ReferenceForcastKey)
     val rawData = useSuspendResult(view.timepoint1, view.timepoint2, view.question.id) {
         fetchUpdatePlotData(view.question.id, view.timepoint1, view.timepoint2)
@@ -601,7 +602,7 @@ val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
 val UpdatePlotPC = FC<PresenterControlsProps<UpdatePlotPV>> { props ->
     val rooms = useRooms()
     val view = props.view
-    val q = view.question.deref() ?: return@FC
+    val q = useQuestion(view.question) ?: return@FC
     val room = rooms.roomOf(q)
     val tz = TimeZone.currentSystemDefault()
     val today = Clock.System.now().toLocalDateTime(tz).date

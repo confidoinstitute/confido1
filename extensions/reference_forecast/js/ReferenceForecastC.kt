@@ -41,9 +41,10 @@ import extensions.shared.ValueWithUser
 import web.html.InputType
 import web.html.number
 import tools.confido.state.Topics
+import components.useRooms
 
 val ReferenceForcastScoreboardPP = FC<PresenterPageProps<ReferenceForcastScoreboardPV>> { props ->
-    val room = props.view.room.deref() ?: return@FC
+    val room = useRooms()[props.view.room.id] ?: return@FC
     val scores = useSubscription(referenceScoreboardTopic(room.ref))
     if (scores !is WSData) return@FC
 
@@ -120,10 +121,11 @@ object ReferenceForecastCE : ClientExtension, ReferenceForecastExtension() {
         val presenterCtl = use(PresenterContext)!!
         val groupPredsWS = useSubscription(Topics.roomGroupPred(room.ref))
         val groupPreds = groupPredsWS.data ?: emptyMap()
+        val qmap = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data?.questions ?: emptyMap()
 
 
         // Show scoreboard button if there are any questions with reference forecasts
-        if (room.questions.any { qRef -> qRef.deref()?.extensionData?.get(ReferenceForcastKey) != null }) {
+        if (room.questions.any { qRef -> qmap[qRef.id]?.extensionData?.get(ReferenceForcastKey) != null }) {
             cb.apply {
                 Button {
                     +"Show Reference Forecast Scoreboard"

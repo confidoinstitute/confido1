@@ -30,6 +30,9 @@ import web.html.ButtonType
 import web.html.InputType
 import web.html.number
 import web.html.submit
+import hooks.useSubscription
+import payloads.responses.WSData
+import tools.confido.state.Topics
 
 external  interface  CsvExportDialogProps : Props {
     var open: Boolean
@@ -37,7 +40,6 @@ external  interface  CsvExportDialogProps : Props {
     var question: Question?
 }
 val CsvExportDialog = FC<CsvExportDialogProps> {props->
-    val appState = use(AppStateContext)!!
     var exportWhat by useState("predictions")
     val room = use(RoomContext)!!
     var individual by useState(false)
@@ -45,14 +47,15 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
     var bucketsStr by useState("32")
     var buckets by useState(32)
     val selectedQuestions = props.question?.let { listOf(it.ref) } ?: room.questions
+    val roomQuestions = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data?.questions ?: emptyMap()
     val layoutMode = use(LayoutModeContext)!!
 
-    val selectedNumeric = useMemo(selectedQuestions) {
-        selectedQuestions.any { it.deref()?.answerSpace is NumericSpace }
+    val selectedNumeric = useMemo(selectedQuestions, roomQuestions) {
+        selectedQuestions.any { roomQuestions[it.id]?.answerSpace is NumericSpace }
     }
 
-    val canScored = useMemo(selectedQuestions.joinToString(",") { it.id }) {
-        selectedQuestions.all { it.deref()?.effectiveScheduleIn(room)?.score != null }
+    val canScored = useMemo(selectedQuestions.joinToString(",") { it.id }, roomQuestions) {
+        selectedQuestions.all { roomQuestions[it.id]?.effectiveScheduleIn(room)?.score != null }
     }
 
     val params = parametersOf(

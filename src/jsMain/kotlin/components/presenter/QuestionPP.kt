@@ -10,15 +10,15 @@ import react.dom.html.ReactHTML.h1
 import react.dom.html.ReactHTML.h2
 import react.dom.html.ReactHTML.h4
 import react.dom.html.ReactHTML.h6
-import tools.confido.refs.deref
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.NumericSpace
 import tools.confido.state.QuestionPV
 import components.QuestionPredictors
 import tools.confido.refs.ref
+import components.useQuestion
 
 val QuestionPP = FC<PresenterPageProps<QuestionPV>> { props ->
-    val question = props.view.question.deref() ?: return@FC
+    val question = useQuestion(props.view.question) ?: return@FC
     val space = question.answerSpace
 
     Stack {

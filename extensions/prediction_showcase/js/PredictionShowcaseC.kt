@@ -42,10 +42,12 @@ import tools.confido.refs.Ref
 import tools.confido.utils.formatPercent
 import tools.confido.state.Topics
 import components.QuestionPredictors
+import components.useQuestion
+import components.useRooms
 
 val PredictionShowcasePP = FC<PresenterPageProps<PredictionShowcasePV>> { props ->
     val view = props.view
-    val question = view.question.deref() ?: return@FC
+    val question = useQuestion(view.question) ?: return@FC
 
     val predictions = useSubscription(showcasePredictionsTopic(question.ref))
     if (predictions !is WSData) return@FC
@@ -115,9 +117,11 @@ val PredictionShowcasePP = FC<PresenterPageProps<PredictionShowcasePV>> { props 
 
 val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> { props ->
     val view = props.view
-    val room = view.room.deref() ?: return@FC
+    val room = useRooms()[view.room.id]
+    val qmap = (useSubscription(room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data?.questions ?: emptyMap()
+    if (room == null) return@FC
 
-    val questions = room.questions.mapNotNull { it.deref() }.filter { q ->
+    val questions = room.questions.mapNotNull { qmap[it.id] }.filter { q ->
         view.questionGroup?.let { group ->
             group in q.tags
         } ?: true
@@ -225,6 +229,7 @@ private val GroupPredComparePVEditorComponent = FC<tools.confido.extensions.Flow
 object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
     override fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {
         val presenterCtl = use(PresenterContext)!!
+        val qmap = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data?.questions ?: emptyMap()
 
         cb.apply {
             h2 {+"Prediction showcase"}
@@ -240,7 +245,7 @@ object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
                 }
                 tbody {
                     room.questions.reversed().forEach { qRef ->
-                        val q = qRef.deref() ?: return@forEach
+                        val q = qmap[qRef.id] ?: return@forEach
                         tr {
                             td { +q.name }
                             td { QuestionPredictors { this.question = q.ref } }
