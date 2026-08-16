@@ -14,6 +14,7 @@ import users.User
 import kotlinx.serialization.serializer
 import tools.confido.utils.TopicSpec0
 import tools.confido.utils.path
+import tools.confido.state.EntityLookup
 
 /**
  * A training question loaded from the CSV/TSV file.
@@ -140,7 +141,7 @@ class CalibrationLeaderboardPV : PresenterView() {
 class ShowCalibrationLeaderboardAction : FlowAction() {
     override fun describe() = "Show calibration training leaderboard"
     override val presenterView get() = CalibrationLeaderboardPV()
-    override fun getNavigateUrl(room: Room) = "/training/stats"
+    override fun getNavigateUrl(room: Room, lookup: EntityLookup) = "/training/stats"
 }
 
 /**

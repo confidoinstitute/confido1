@@ -10,7 +10,6 @@ import tools.confido.question.GroupPredictionVisibility
 import tools.confido.question.QuestionState
 import tools.confido.question.Question
 import tools.confido.refs.Ref
-import tools.confido.refs.deref
 import rooms.Room
 
 /** Where to navigate presentation followers as a side effect of an action. */
@@ -39,8 +38,9 @@ abstract class FlowAction {
     /** If non-null, the presenter view should be set to this after execution. */
     open val presenterView: PresenterView? get() = null
     /** If non-null, presentation followers should be navigated to this URL.
-     *  Called with room context when the action is processed during a presentation run. */
-    open fun getNavigateUrl(room: Room): String? = null
+     *  Called with room context when the action is processed during a presentation
+     *  run (server-only; the [EntityLookup] is the server's resolver). */
+    open fun getNavigateUrl(room: Room, lookup: EntityLookup): String? = null
 }
 
 /** Change a question's state (e.g. open, close, hide). */
@@ -61,7 +61,7 @@ data class SetQuestionStateAction(
         val base = "${newState.name.lowercase().replaceFirstChar { it.uppercase() }} question"
         return base + describeGroupPredVisibility(setGroupPredVisibility)
     }
-    override fun getNavigateUrl(room: Room): String? = when (navigateViewers) {
+    override fun getNavigateUrl(room: Room, lookup: EntityLookup): String? = when (navigateViewers) {
         ViewerNavigateTarget.TO_QUESTION -> room.urlPrefix + Question.urlPrefix(question.id)
         ViewerNavigateTarget.TO_ROOM -> room.urlPrefix
         else -> null
@@ -96,9 +96,9 @@ data class SetTaggedQuestionsStateAction(
         val withHide = if (hideOtherQuestions) "$base (hide others)" else base
         return withHide + describeGroupPredVisibility(setGroupPredVisibility)
     }
-    override fun getNavigateUrl(room: Room): String? = when (navigateViewers) {
+    override fun getNavigateUrl(room: Room, lookup: EntityLookup): String? = when (navigateViewers) {
         ViewerNavigateTarget.TO_FIRST_QUESTION -> {
-            val q = room.questions.mapNotNull { it.deref() }.firstOrNull { tag in it.tags }
+            val q = room.questions.mapNotNull { lookup.question(it) }.firstOrNull { tag in it.tags }
             if (q != null) room.urlPrefix + Question.urlPrefix(q.id) else null
         }
         ViewerNavigateTarget.TO_ROOM -> room.urlPrefix
@@ -114,7 +114,7 @@ data class NavigateToQuestionAction(
 ) : FlowAction() {
     // Generic, deref-free — see SetQuestionStateAction.describe.
     override fun describe() = "Navigate viewers to a question"
-    override fun getNavigateUrl(room: Room) = room.urlPrefix + Question.urlPrefix(question.id)
+    override fun getNavigateUrl(room: Room, lookup: EntityLookup) = room.urlPrefix + Question.urlPrefix(question.id)
 }
 
 /** Navigate presentation followers to an arbitrary URL. */
@@ -124,7 +124,7 @@ data class NavigateViewersAction(
     val url: String,
 ) : FlowAction() {
     override fun describe() = "Navigate viewers to $url"
-    override fun getNavigateUrl(room: Room) = url
+    override fun getNavigateUrl(room: Room, lookup: EntityLookup) = url
 }
 
 /** Execute multiple actions in sequence. */

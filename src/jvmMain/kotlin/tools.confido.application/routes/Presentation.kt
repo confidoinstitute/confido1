@@ -29,6 +29,7 @@ import java.io.File
 import java.io.StringWriter
 import javax.imageio.ImageIO
 import tools.confido.state.Topics
+import tools.confido.state.ServerEntityLookup
 
 val presentationDir = File(System.getenv("CONFIDO_PRESENTATION_PATH") ?: "presentations").canonicalFile
 
@@ -254,7 +255,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
         call.withRoom {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot control presentation.")
             val view = call.receive<PresenterView>()
-            if (!view.isValid()) badRequest("View is not valid")
+            if (!view.isValid(ServerEntityLookup)) badRequest("View is not valid")
             val currentState = serverState.presentationRunStates[room.ref]
                 ?: badRequest("Presentation is not running.")
             serverState.setPresentationRunState(room.ref, currentState.copy(currentView = view))
@@ -400,7 +401,7 @@ private suspend fun processCurrentItem(
                 newState = newState.copy(currentView = pv)
             }
             // Always update navigate URL if the action declares one (idempotent)
-            val navUrl = item.action.getNavigateUrl(room)
+            val navUrl = item.action.getNavigateUrl(room, ServerEntityLookup)
             if (navUrl != null) {
                 newState = newState.copy(currentNavigateUrl = navUrl)
             }

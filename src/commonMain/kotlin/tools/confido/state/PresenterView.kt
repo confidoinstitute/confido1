@@ -10,13 +10,25 @@ import rooms.Room
 import tools.confido.extensions.Extension
 import tools.confido.question.Question
 import tools.confido.refs.Ref
-import tools.confido.refs.deref
 import tools.confido.spaces.BinarySpace
 import tools.confido.utils.unixNow
 
+/**
+ * Server-supplied entity resolver for the presentation-flow members that need
+ * lookups ([PresenterView.isValid], [FlowAction.getNavigateUrl]). commonMain stays
+ * deref-free — only the server calls these, passing its resolver; the overrides
+ * stay colocated with their classes as pure functions of the lookup (this
+ * replaces the originally planned jvm dispatch-`when` + extension hook, which
+ * would have torn the per-class logic out of the class).
+ */
+interface EntityLookup {
+    fun question(ref: Ref<Question>): Question?
+    fun room(ref: Ref<Room>): Room?
+}
+
 @Serializable
 abstract class PresenterView {
-    open suspend fun isValid() = true
+    open fun isValid(lookup: EntityLookup) = true
     abstract fun describe(): String
 }
 
@@ -32,7 +44,7 @@ object EmptyPV: PresenterView() {
 data class QuestionPV(
     val question: Ref<Question>
 ) : PresenterView() {
-    override suspend fun isValid() = question.deref() != null
+    override fun isValid(lookup: EntityLookup) = lookup.question(question) != null
     override fun describe() = "question text"
 }
 
@@ -42,7 +54,7 @@ data class GroupPredPV(
     val question: Ref<Question>,
     val showResolution: Boolean = false,
 ) : PresenterView() {
-    override suspend fun isValid() = question.deref() != null
+    override fun isValid(lookup: EntityLookup) = lookup.question(question) != null
     override fun describe() = "group predictions for this question"
 }
 
@@ -54,7 +66,7 @@ data class BinaryHistogramPV(
      *  presenting user may view individual predictions). */
     val showNames: Boolean = false,
 ) : PresenterView() {
-    override suspend fun isValid() = question.deref()?.answerSpace is BinarySpace
+    override fun isValid(lookup: EntityLookup) = lookup.question(question)?.answerSpace is BinarySpace
     override fun describe() = "prediction histogram"
 }
 
@@ -72,7 +84,7 @@ data class InviteLinkPV(
     /** If true, users joining via this invite link will automatically follow the presentation. */
     val followPresentation: Boolean = false,
 ) : PresenterView() {
-    override suspend fun isValid() = this.id == "FIRST" || room.deref()?.inviteLinks?.any { it.id == this.id } ?: false
+    override fun isValid(lookup: EntityLookup) = this.id == "FIRST" || lookup.room(room)?.inviteLinks?.any { it.id == this.id } ?: false
     override fun describe() = "invite link and QR code"
 }
 
@@ -114,7 +126,7 @@ data class MultiQuestionPV(
     val showHistogram: Boolean = false,
     val showResolution: Boolean = false,
 ) : PresenterView() {
-    override suspend fun isValid() = questions.all { it.deref() != null }
+    override fun isValid(lookup: EntityLookup) = questions.all { lookup.question(it) != null }
     override fun describe() = "${questions.size}-question overview"
 }
 

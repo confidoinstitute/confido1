@@ -27,6 +27,7 @@ import tools.confido.state.Topics
 import tools.confido.utils.TopicSpec1
 import users.User
 import users.UserPresentation
+import tools.confido.state.EntityLookup
 
 // --- Mode & Configuration ---
 
@@ -128,7 +129,7 @@ data class MillionaireSetStateAction(
             MillionaireStateType.BEFORE_START -> "Reset game"
         }
     }
-    override fun getNavigateUrl(room: Room): String? {
+    override fun getNavigateUrl(room: Room, lookup: EntityLookup): String? {
         // Navigate viewers to the question when opening it
         if (stateType != MillionaireStateType.ASKING) return null
         val qId = questionRef?.id ?: return null

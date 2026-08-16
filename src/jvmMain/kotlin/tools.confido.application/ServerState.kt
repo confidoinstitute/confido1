@@ -257,3 +257,10 @@ object serverState : GlobalState() {
     override val extensions: List<ServerExtension> get() = ServerExtension.enabled
 }
 actual val globalState: GlobalState = serverState
+
+/** The server's [EntityLookup] for the presentation-flow members
+ *  ([PresenterView.isValid], [FlowAction.getNavigateUrl]) — plain resident deref. */
+object ServerEntityLookup : EntityLookup {
+    override fun question(ref: Ref<Question>) = ref.deref()
+    override fun room(ref: Ref<Room>) = ref.deref()
+}

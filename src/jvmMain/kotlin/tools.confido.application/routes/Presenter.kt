@@ -12,6 +12,7 @@ import tools.confido.state.PresenterInfo
 import tools.confido.state.Topics
 import tools.confido.state.PresenterView
 import tools.confido.utils.unixNow
+import tools.confido.state.ServerEntityLookup
 
 fun presenterRoutes(routing: Routing) = routing.apply {
     // Presence-only topic: tracks open presenter windows via subscription lifetime.
@@ -41,7 +42,7 @@ fun presenterRoutes(routing: Routing) = routing.apply {
     postST("/presenter/set") {
         call.withUser {
             val view = call.receive<PresenterView>()
-            if (!view.isValid()) badRequest("View is not valid")
+            if (!view.isValid(ServerEntityLookup)) badRequest("View is not valid")
             call.modifyUserSession {
                 val oldInfo = it.presenterInfo ?: PresenterInfo()
                 val newInfo = oldInfo.copy(view = view, lastUpdate = unixNow())
