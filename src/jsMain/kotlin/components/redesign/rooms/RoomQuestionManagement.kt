@@ -1,8 +1,8 @@
 package components.redesign.rooms
 
 import Client
-import components.AppStateContext
 import components.usePermission
+import components.useQuestionCounts
 import components.useDisconnected
 import components.redesign.*
 import components.redesign.basic.*
@@ -31,6 +31,7 @@ import emotion.react.css
 import hooks.useCoroutineLock
 import hooks.useEditDialog
 import hooks.useSubscription
+import payloads.responses.WSData
 import js.objects.unsafeJso as jso
 import payloads.requests.DeleteQuestionMulti
 import payloads.requests.EditQuestion
@@ -141,8 +142,8 @@ private val QMHelpDialog = FC<DialogProps> { props->
 }
 
 val QuestionManagement = FC<QuestionManagementProps> { props ->
-    val appState = use(AppStateContext)!!
     val room = props.room
+    val roomCounts = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data
 
     val groupPredsWS = useSubscription(Topics.roomGroupPred(room.ref))
     val groupPreds = groupPredsWS.data ?: emptyMap()
@@ -200,7 +201,7 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
     }
 
     val showGroupPredCol = (
-            props.questions.any{it.numPredictions > 0}
+            props.questions.any{ (roomCounts?.predictionCount?.get(it.ref) ?: 0) > 0 }
                     && (
                     usePermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
                             || props.questions.any{it.groupPredVisible}
@@ -537,6 +538,7 @@ val StatusSelector = FC<StatusSelectorProps> { props->
 
 val QuestionRow = FC<QuestionRowProps> { props ->
     val question = props.question
+    val counts = useQuestionCounts(question.ref)
 
     val sortable = useSortable(jso {
         this.id = props.question.id
@@ -698,9 +700,9 @@ val QuestionRow = FC<QuestionRowProps> { props ->
             } }
             td {
                 autoSized()
-                +"${question.numPredictors} "
+                +"${counts.predictors} "
                 +" / "
-                +"${question.numPredictions}"
+                +"${counts.predictions}"
             }
             if (props.showGroupPredCol)
                 td {

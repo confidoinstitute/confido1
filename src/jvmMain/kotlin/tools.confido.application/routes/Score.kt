@@ -30,6 +30,7 @@ import tools.confido.question.Prediction
 import tools.confido.question.Question
 import users.User
 import java.lang.System.getenv
+import tools.confido.question.effectiveSchedule
 
 /** Compute the room scoreboard: list of [ScoreboardEntry] sorted descending by score. */
 private suspend fun computeScoreboard(room: Room, observer: User): List<ScoreboardEntry> {

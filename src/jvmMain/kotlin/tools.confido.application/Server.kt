@@ -52,6 +52,7 @@ import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.serialization.confidoJSON
 import tools.confido.serialization.confidoSM
+import tools.confido.state.QuestionCounts
 import tools.confido.state.appConfig
 import tools.confido.state.serverState
 import tools.confido.state.Topics
@@ -489,6 +490,33 @@ fun main() {
                         val question = qRef.deref() ?: notFound("No such question.")
                         StateCensor(sessionData).censorQuestion(question)
                             ?: unauthorized("You cannot view this question.")
+                    }
+                }
+
+                // "question/<id>/counts": the per-question counts for bare-ref surfaces
+                // (presenter tiles' "N people answered"). A sibling of the entity topic
+                // rather than a field of it, so count churn (every prediction/comment)
+                // and entity churn never frame each other. Same visibility gate.
+                viewWS(Topics.questionCounts) { qRef ->
+                    if (call.userSession?.user == null) unauthorized("Not logged in.")
+                    combineViews(
+                        questionStore.state.asView(),
+                        roomStore.state.asView(),
+                        userStore.state.asView(),
+                        predictionData.predictionCount.state.asView(),
+                        predictionData.predictorCount.state.asView(),
+                        commentData.commentCount.state.asView(),
+                    ).map {
+                        val sessionData = call.userSession ?: unauthorized("Not logged in.")
+                        if (sessionData.user == null) unauthorized("Not logged in.")
+                        val question = qRef.deref() ?: notFound("No such question.")
+                        StateCensor(sessionData).censorQuestion(question)
+                            ?: unauthorized("You cannot view this question.")
+                        QuestionCounts(
+                            predictions = serverState.predictionCount[qRef] ?: 0,
+                            predictors = serverState.predictorCount[qRef] ?: 0,
+                            comments = serverState.commentCount[qRef] ?: 0,
+                        )
                     }
                 }
 

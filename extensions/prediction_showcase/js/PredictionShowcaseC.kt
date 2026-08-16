@@ -41,6 +41,7 @@ import extensions.shared.ValueWithUser
 import tools.confido.refs.Ref
 import tools.confido.utils.formatPercent
 import tools.confido.state.Topics
+import components.QuestionPredictors
 
 val PredictionShowcasePP = FC<PresenterPageProps<PredictionShowcasePV>> { props ->
     val view = props.view
@@ -177,7 +178,7 @@ val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> 
                                 is NumericSpace -> +q.answerSpace.formatValue(v)
                             }
                         }
-                        td { +"${q.numPredictors}" }
+                        td { QuestionPredictors { this.question = q.ref } }
                     }
                 }
             }
@@ -242,7 +243,7 @@ object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
                         val q = qRef.deref() ?: return@forEach
                         tr {
                             td { +q.name }
-                            td { +"${q.numPredictors}" }
+                            td { QuestionPredictors { this.question = q.ref } }
                             td {
                                 IconButton {
                                     PresenterIcon {}

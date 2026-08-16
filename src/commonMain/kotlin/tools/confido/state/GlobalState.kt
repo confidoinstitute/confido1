@@ -70,6 +70,17 @@ data class QuestionsState(
     val commentCount: Map<Ref<Question>, Int> = emptyMap(),
 )
 
+// The "question/<id>/counts" topic payload: one question's per-question counts.
+// A sibling of "question/<id>" rather than part of it, so count churn (every
+// prediction and comment) never frames the entity topic — bare-ref surfaces
+// (presenter tiles) subscribe this one for the live "N people answered" line.
+@Serializable
+data class QuestionCounts(
+    val predictions: Int = 0,
+    val predictors: Int = 0,
+    val comments: Int = 0,
+)
+
 // The per-user state slice sent over the "/state/self" topic
 // (PERSISTENCE_SYNC_REDESIGN.md §4.2). Small and per-user by nature; keeping it out
 // of the shared topics makes those purely permission-class-shaped and stops session

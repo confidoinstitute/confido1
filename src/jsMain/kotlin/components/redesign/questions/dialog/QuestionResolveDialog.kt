@@ -18,6 +18,8 @@ import tools.confido.question.QuestionState
 import tools.confido.spaces.Value
 import web.html.ButtonType
 import web.html.submit
+import components.redesign.rooms.RoomContext
+import react.use
 
 
 external interface QuestionResolveDialogProps : BaseDialogProps{
@@ -26,19 +28,21 @@ external interface QuestionResolveDialogProps : BaseDialogProps{
 
 val QuestionResolveDialog = dialogStateWrapper(FC<QuestionResolveDialogProps>("QuestionResolveDialog") { props ->
     val question = props.question
+    val room = use(RoomContext)!!
+    val effSchedule = question.effectiveScheduleIn(room)
     var resolution by useState(question.resolution)
     var resolutionValid by useState(question.resolution != null)
     var publish by useState(question.resolution == null || question.resolutionVisible)
     val submitLock = useCoroutineLock()
-    var scoreTime by useState(props.question.effectiveSchedule.score)
+    var scoreTime by useState(effSchedule.score)
     val tz = TimeZone.currentSystemDefault()
 
     fun resolve() {
         // If we inherited schedule from room including score time and did not change
         // it, we want to keep it as inherited. However, if score time was changed in
         // resolve dialog, then we need to make a copy of the schedule for this question.
-        val newSchedule = if (scoreTime == props.question.effectiveSchedule.score) props.question.schedule
-                            else props.question.effectiveSchedule.copy(score = scoreTime)
+        val newSchedule = if (scoreTime == effSchedule.score) props.question.schedule
+                            else effSchedule.copy(score = scoreTime)
         val question = question.copy(resolution = resolution, schedule = newSchedule).let {
             if (publish) it.withState(QuestionState.RESOLVED)
             else it

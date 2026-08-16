@@ -52,7 +52,7 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
     }
 
     val canScored = useMemo(selectedQuestions.joinToString(",") { it.id }) {
-        selectedQuestions.all { it.deref()?.effectiveSchedule?.score != null }
+        selectedQuestions.all { it.deref()?.effectiveScheduleIn(room)?.score != null }
     }
 
     val params = parametersOf(

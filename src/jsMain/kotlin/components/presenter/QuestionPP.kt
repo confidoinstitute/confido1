@@ -14,6 +14,8 @@ import tools.confido.refs.deref
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.NumericSpace
 import tools.confido.state.QuestionPV
+import components.QuestionPredictors
+import tools.confido.refs.ref
 
 val QuestionPP = FC<PresenterPageProps<QuestionPV>> { props ->
     val question = props.view.question.deref() ?: return@FC
@@ -63,7 +65,8 @@ val QuestionPP = FC<PresenterPageProps<QuestionPV>> { props ->
                 fontSize = 4.vh
             }
             div {
-                +"${question.numPredictors} people answered"
+                QuestionPredictors { this.question = question.ref }
+                +" people answered"
             }
             div {
                 css {

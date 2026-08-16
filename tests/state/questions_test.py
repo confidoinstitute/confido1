@@ -77,6 +77,21 @@ async def main():
                 "TEST-6", "entity change frames both topics with the fresh value",
                 f"room={room_q.get('name')} single={single_q.get('name')}")
 
+        # question/<id>/counts: the per-question counts sibling topic — count churn
+        # frames it (that is its purpose), the entity topic still stays silent.
+        await ws.send(json.dumps({"sub": [f"question/{qid}/counts"]}))
+        d7 = by_topic(await recv_updates(ws))
+        counts = d7.get(f"question/{qid}/counts", {}).get("data") or {}
+        before = counts.get("comments", -1)
+        t.check(before >= 1,
+                "TEST-7a", "counts topic delivers current counts", str(counts))
+        post(f"/questions/{qid}/comments/add", {"content": "count bump 2", "attachPrediction": False}, admin)
+        d8 = by_topic(await recv_updates(ws, 2.0))
+        counts2 = d8.get(f"question/{qid}/counts", {}).get("data") or {}
+        t.check(counts2.get("comments") == before + 1 and f"question/{qid}" not in d8,
+                "TEST-7b", "count churn frames the counts topic, entity topic silent",
+                f"counts={counts2} framed={sorted(d8)}")
+
     t.finish()
 
 

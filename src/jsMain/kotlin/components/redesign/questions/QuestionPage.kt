@@ -113,8 +113,8 @@ val QuestionPageExtra = FC<QuestionPageExtraProps> { props->
 }
 
 val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
-    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
+    val counts = useQuestionCounts(props.question.ref)
     val myPrediction = useMyPredictions()[props.question.ref]
     val groupPrediction = useSubscription(Topics.groupPred(props.question.ref))
     val layoutMode = use(LayoutModeContext)!!
@@ -225,7 +225,7 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
                     this.resolution = props.question.resolution
                 }
                 this.myPrediction = myPrediction
-                this.numPredictors = props.question.numPredictors
+                this.numPredictors = counts.predictors
                 this.groupPrediction = groupPrediction.data
             }
             if (props.question.allowComments && usePermission(room, RoomPermission.VIEW_QUESTION_COMMENTS)) {
@@ -301,7 +301,6 @@ val PredictionOverlay = FC<PredictionOverlayProps> { props ->
 }
 
 private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props ->
-    val appState = use(AppStateContext)!!
     val layoutMode = use(LayoutModeContext)!!
     val room = use(RoomContext)!!
     val hasPredictPermission = usePermission(room, RoomPermission.SUBMIT_PREDICTION)
@@ -725,12 +724,12 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
 
     var addCommentOpen by useState(false)
     var sortType by useState(SortType.NEWEST)
-    val appState = use(AppStateContext)!!
+    val room = use(RoomContext)!!
 
     var spoilerExpanded by useState(false)
 
     val isFirstByMe = comments.data?.none { it.isMine } ?: true
-    val effectiveTemplate = if (isFirstByMe) props.question.room?.commentTemplate ?: "" else ""
+    val effectiveTemplate = if (isFirstByMe) room.commentTemplate else ""
 
     if (comments.data != null)
     AddCommentDialog {
@@ -781,7 +780,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
             marginBottom = 44.px
         }
 
-        val canViewAll = props.question.room?.let { room -> usePermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS) } ?: false
+        val canViewAll = usePermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
         val lastPrediction = useMyPredictions()[props.question.ref]
         val canView = when (props.question.commentVisibility) {
             CommentVisibility.EVERYONE -> true

@@ -18,6 +18,7 @@ import tools.confido.spaces.BinaryValue
 import tools.confido.state.GroupPredPV
 import tools.confido.state.Topics
 import tools.confido.refs.ref
+import components.QuestionPredictors
 
 val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
     val question = props.view.question.deref() ?: return@FC
@@ -87,7 +88,8 @@ val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
                 fontSize = 4.vh
             }
             div {
-                +"${question.numPredictors} people answered"
+                QuestionPredictors { this.question = question.ref }
+                +" people answered"
             }
         }
     }

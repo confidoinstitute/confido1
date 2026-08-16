@@ -73,6 +73,8 @@ import utils.roomUrl
 import web.html.ButtonType
 import web.html.submit
 import web.prompts.confirm
+import components.useRooms
+import components.roomOf
 
 // ============================================================
 //  QuestionSelector (existing, for reference question config)
@@ -282,7 +284,7 @@ val UpdatePlotConfigDialog = dialogStateWrapper(FC<UpdatePlotConfigDialogProps> 
     val tz = TimeZone.currentSystemDefault()
     val today = Clock.System.now().toLocalDateTime(tz).date
     val q = props.question
-    val room = q.room
+    val room = useRooms().roomOf(q)
 
     // Get available snapshots
     val questionSnapshots = q.extensionData[SnapshotsKey] ?: emptyList()
@@ -374,8 +376,9 @@ external interface SnapshotManagerDialogProps : BaseDialogProps {
 }
 
 val SnapshotManagerDialog = FC<SnapshotManagerDialogProps> { props->
+    val rooms = useRooms()
     val question = props.question
-    val room = props.room ?: props.question?.room
+    val room = props.room ?: props.question?.let { rooms.roomOf(it) }
     val questionSnapshots = question?.extensionData[SnapshotsKey] ?: emptyList()
     val roomSnapshots = room?.extensionData[SnapshotsKey] ?: emptyList()
     val snapshots = (questionSnapshots.map { it to SnapshotScope.QUESTION } +
@@ -596,9 +599,10 @@ val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
 // ============================================================
 
 val UpdatePlotPC = FC<PresenterControlsProps<UpdatePlotPV>> { props ->
+    val rooms = useRooms()
     val view = props.view
     val q = view.question.deref() ?: return@FC
-    val room = q.room
+    val room = rooms.roomOf(q)
     val tz = TimeZone.currentSystemDefault()
     val today = Clock.System.now().toLocalDateTime(tz).date
     val questionSnapshots = q.extensionData[SnapshotsKey] ?: emptyList()

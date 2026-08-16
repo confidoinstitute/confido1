@@ -18,6 +18,7 @@ import tools.confido.utils.formatPercent
 import kotlin.math.roundToInt
 import tools.confido.state.Topics
 import tools.confido.refs.ref
+import components.QuestionPredictors
 
 private val BAR_COLOR = Color("#8BF08E")
 
@@ -176,7 +177,8 @@ val BinaryHistogramPP = FC<PresenterPageProps<BinaryHistogramPV>> { props ->
                     fontSize = 4.vh
                 }
                 div {
-                    +"${question.numPredictors} people answered"
+                    QuestionPredictors { this.question = question.ref }
+                    +" people answered"
                 }
                 div {
                     listOfNotNull(

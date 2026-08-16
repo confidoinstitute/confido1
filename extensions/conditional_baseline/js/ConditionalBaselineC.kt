@@ -34,6 +34,9 @@ import tools.confido.utils.toFixed
 import utils.panzoom1d.PZState
 import web.window.WindowTarget
 import web.window._blank
+import components.useRooms
+import components.useWorkspaceQuestions
+import components.roomOf
 
 object ConditionalBaselineCE: ClientExtension, ConditionalBaselineExtension() {
     val qidRE = Regex("/questions/([a-zA-Z0-9]+)(?:$|/.*)")
@@ -82,18 +85,20 @@ object ConditionalBaselineCE: ClientExtension, ConditionalBaselineExtension() {
     }
 
     override fun myPredictionDescriptionExtra(props: MyPredictionDescriptionProps, cb: ChildrenBuilder) {
-        val appState = use(AppStateContext)!!
+        // Real hooks — called before the early returns so the hook order stays stable.
+        val rooms = useRooms()
+        val questions = useWorkspaceQuestions().questions
         val q = props.question ?: return
         val myPred = (useMyPredictions()[q.ref]?.dist as? BinaryDistribution)?.yesProb
         val baselineRef = q.extensionData.get(BaselineQuestionKey) ?: return
-        val baselineQ = appState.questions[baselineRef.id] ?: return
+        val baselineQ = questions[baselineRef.id] ?: return
         val baselinePred =  (useMyPredictions()[baselineRef]?.dist as? BinaryDistribution)?.yesProb ?: return
         val rr = myPred ?.let {myPred / baselinePred}
         cb.apply  {
             div {
                 +"Your baseline prediction ("
                 Link {
-                    to = "/rooms/${baselineQ.room?.id}/questions/${baselineRef.id}"
+                    to = "/rooms/${rooms.roomOf(baselineQ)?.id}/questions/${baselineRef.id}"
                     css {
                         color = NamedColor.darkgray
                     }
@@ -139,11 +144,12 @@ object ConditionalBaselineCE: ClientExtension, ConditionalBaselineExtension() {
     }
 
     override fun binarySliderExtra(props: BinaryPredInputProps, zoom: PZState?, cb: ChildrenBuilder) {
-        val appState = use(AppStateContext)!!
+        // Real hook before the early returns (stable hook order).
+        val questions = useWorkspaceQuestions().questions
         val q = props.question ?: return
         zoom ?: return
         val baselineRef = q.extensionData.get(BaselineQuestionKey) ?: return
-        val baselineQ = appState.questions[baselineRef.id] ?: return
+        val baselineQ = questions[baselineRef.id] ?: return
         val baselinePred =  (useMyPredictions()[baselineRef]?.dist as? BinaryDistribution)?.yesProb ?: return
         cb.apply {
             div {

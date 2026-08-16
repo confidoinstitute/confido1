@@ -13,12 +13,14 @@ import tools.confido.refs.ref
 import tools.confido.state.globalState
 import tools.confido.utils.formatPercent
 import tools.confido.utils.toFixed
+import components.useRooms
+import components.roomOf
 
 object OnnNuclearHintsCE : ClientExtension, ONNNuclearHintsExtension() {
     override fun myPredictionDescriptionExtra(props: MyPredictionDescriptionProps, cb: ChildrenBuilder) {
-        val appState = use(AppStateContext)!!
+        val rooms = useRooms()
         val q = props.question ?: return
-        val r = q.room ?: return
+        val r = rooms.roomOf(q) ?: return
         if (r.ref != nuclearRoom) return
         val prob = (props.dist as? BinaryDistribution)?.yesProb ?: return
         cb.apply {

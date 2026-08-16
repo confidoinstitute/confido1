@@ -45,6 +45,7 @@ import kotlin.math.absoluteValue
 import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
+import components.QuestionPredictors
 
 // =============================================================================
 // WWTBAM Color Palette
@@ -513,7 +514,8 @@ val MillionaireLadderQuestionPP = FC<PresenterPageProps<MillionaireLadderQuestio
                         fontSize = 2.5.vh
                         color = MilColors.textSecondary
                     }
-                    +"${question.numPredictors} predictions submitted"
+                    QuestionPredictors { this.question = question.ref }
+                    +" predictions submitted"
                 }
 
                 // Timer bar

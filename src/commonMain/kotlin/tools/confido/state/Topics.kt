@@ -70,6 +70,10 @@ object Topics {
      *  (dedup + atomic frames make it consistent duplication). */
     val question = TopicSpec1(questionPath, serializer<Question>())
 
+    /** Per-question counts, split from [question] so count churn never frames the
+     *  entity topic (and vice versa: entity edits don't re-send counts). */
+    val questionCounts = TopicSpec1(questionPath / "counts", serializer<QuestionCounts>())
+
     val questionComments = TopicSpec1(questionPath / "comments", serializer<List<CommentPresentation<QuestionCommentExtraData>>>())
     val groupPred = TopicSpec1(questionPath / "group_pred", serializer<Prediction?>())
     val histogram = TopicSpec1(questionPath / "histogram", serializer<BinaryHistogram>())

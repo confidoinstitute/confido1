@@ -1,6 +1,9 @@
 package components.redesign.questions.dialog
 
 import components.useDisconnected
+import hooks.useSubscription
+import payloads.responses.WSData
+import tools.confido.state.Topics
 import Client
 import components.*
 import components.redesign.basic.*
@@ -17,7 +20,7 @@ import react.dom.html.ReactHTML.div
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionContextPlace
 import tools.confido.question.*
-import tools.confido.refs.deref
+import tools.confido.refs.ref
 import tools.confido.spaces.*
 import web.html.ButtonType
 import web.html.submit
@@ -46,7 +49,6 @@ val EditQuestionDialogExtensions = FC<EditQuestionDialogProps> { props->
 }
 
 val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
-    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val extContext = ClientExtension.getContextValues(ExtensionContextPlace.EDIT_QUESTION_DIALOG)
 
@@ -58,7 +60,11 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     // ANSWER
     var answerSpace: Space? by useState(props.entity?.answerSpace ?: BinarySpace)
     var answerSpaceValid: Boolean by useState(false)
-    val answerSpaceReadOnly by useState(props.entity?.answerSpace != null && props.entity?.numPredictions != 0)
+    // Derived, not captured in state: the counts subscription may deliver after the
+    // first render, and a predicted question must lock its answer space then too.
+    // (Real hook — called unconditionally, before the short-circuiting check.)
+    val entityCounts = useQuestionCounts(props.entity?.ref)
+    val answerSpaceReadOnly = props.entity?.answerSpace != null && entityCounts.predictions != 0
 
     // RESOLUTION
     var questionStatus by useState {
@@ -102,9 +108,11 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     // TAGS
     var tags by useState { props.entity?.tags ?: emptySet() }
 
-    // Compute tag suggestions from all questions in this room
-    val tagSuggestions: List<String> = useMemo(room.questions) {
-        room.questions.mapNotNull { it.deref() }.flatMap { it.tags }.distinct().sorted()
+    // Compute tag suggestions from all questions in this room (the room questions
+    // slice; already subscribed by the room page, so this read is cache-warm)
+    val roomQuestions = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data?.questions ?: emptyMap()
+    val tagSuggestions: List<String> = useMemo(roomQuestions) {
+        room.questions.mapNotNull { roomQuestions[it.id] }.flatMap { it.tags }.distinct().sorted()
     }
 
     // Validity

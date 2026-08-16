@@ -12,7 +12,7 @@ import tools.confido.refs.ImmediateDerefEntity
 import tools.confido.refs.Ref
 import tools.confido.refs.ref
 import tools.confido.spaces.*
-import tools.confido.state.globalState
+import rooms.Room
 import tools.confido.utils.HasUrlPrefix
 import users.User
 
@@ -219,8 +219,6 @@ data class Question(
     }
 
     val resolved: Boolean get() = resolution != null
-    val numPredictions get() = globalState.predictionCount[ref] ?: 0
-    val numPredictors get() = globalState.predictorCount[ref] ?: 0
 
     fun withState(questionState: QuestionState): Question {
         return when (questionState) {
@@ -264,8 +262,10 @@ data class Question(
 
     override val urlPrefix get() = urlPrefix(id)
 
-    val room get() = globalState.rooms.values.firstOrNull { ref in it.questions }
-    val effectiveSchedule get() = schedule ?: room?.defaultSchedule ?: QuestionSchedule()
+    /** The question's schedule with the room default filled in. Pure — the caller
+     *  supplies the room (client: RoomContext; server: the `Question.room` extension
+     *  via the questionRoom fold). */
+    fun effectiveScheduleIn(room: Room?) = schedule ?: room?.defaultSchedule ?: QuestionSchedule()
     companion object {
         fun urlPrefix(id: String) = "/questions/$id"
     }

@@ -23,6 +23,7 @@ import web.cssom.*
 import kotlin.math.roundToInt
 import tools.confido.state.Topics
 import tools.confido.refs.ref
+import components.QuestionPredictors
 
 val MultiQuestionPP = FC<PresenterPageProps<MultiQuestionPV>> { props ->
     val questions = props.view.questions.mapNotNull { it.deref() }
@@ -102,7 +103,8 @@ private val MultiQuestionTile = FC<MultiQuestionTileProps> { props ->
                 color = Color("#666")
                 textAlign = TextAlign.center
             }
-            +"${question.numPredictors} people answered"
+            QuestionPredictors { this.question = question.ref }
+            +" people answered"
         }
     }
 }

@@ -39,7 +39,7 @@ external interface StatusChipProps : PropsWithClassName {
 }
 
 val QuestionItem = FC<QuestionItemProps> { props ->
-    val appState = use(AppStateContext)!!
+    val counts = useQuestionCounts(props.question.ref)
     val prediction = useMyPredictions()[props.question.ref]
 
     val questionState = props.question.state
@@ -195,7 +195,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                         lineHeight = 17.px
                     }
 
-                    +pluralize(predictionTerm, props.question.numPredictors, includeCount = true)
+                    +pluralize(predictionTerm, counts.predictors, includeCount = true)
                 }
             }
 
@@ -298,7 +298,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                                 +"your $predictionTerm from $predictionAgoText"
                             }
                         } else if (questionState == QuestionState.OPEN) {
-                            if (props.question.numPredictions == 0) {
+                            if (counts.predictions == 0) {
                                 +"be the first to answer!"
                             } else {
                                 if (props.question.groupPredictionVisibility == GroupPredictionVisibility.ANSWERED) {

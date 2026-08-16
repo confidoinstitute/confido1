@@ -20,6 +20,7 @@ import tools.confido.state.appConfig
 import tools.confido.state.serverState
 import tools.confido.utils.generateId
 import users.User
+import tools.confido.question.effectiveSchedule
 
 /**
  * Prediction storage, redesigned per PERSISTENCE_SYNC_REDESIGN.md §3.4:
