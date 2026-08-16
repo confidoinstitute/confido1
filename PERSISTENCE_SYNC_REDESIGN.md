@@ -1048,6 +1048,19 @@ working untouched mid-transition.
     exempt; subscriptions are not), and `EditQuestionDialog`'s answer-space lock
     became a derived value instead of `useState`-captured, since the counts
     subscription may deliver after first render.
+  - **`isValid`/`getNavigateUrl` deref-free via `EntityLookup` (amends the planned
+    server hook).** The last commonMain deref users take a *lookup parameter*
+    instead of moving to a jvm dispatch: `PresenterView.isValid(lookup)` /
+    `FlowAction.getNavigateUrl(room, lookup)` where `EntityLookup` resolves
+    question/room refs, and the server (their only caller) passes
+    `ServerEntityLookup` (plain resident deref). This solves the same problem the
+    step-22 plan's extension hook targeted — a jvm sealed-`when` can't cover
+    extension subclasses — without the hook *or* the `when`: overrides stay
+    colocated with their classes as pure functions of the lookup, extensions
+    override normally (their current `getNavigateUrl` bodies are pure; the one
+    deref-y core branch, tag-navigation's first-question scan, goes through the
+    lookup). `isValid` also drops its vestigial `suspend` — deref was the only
+    reason for it.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or
