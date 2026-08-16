@@ -121,7 +121,7 @@ val flowItemTypes: List<FlowItemTypeEntry> by kotlin.lazy {
  *  call unconditionally within an FC. */
 fun useRoomQuestions(): List<tools.confido.question.Question> {
     val room = use(RoomContext)!!
-    val qmap = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data?.questions ?: emptyMap()
+    val qmap = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data ?: emptyMap()
     return room.questions.mapNotNull { qmap[it.id] }.sortedBy { it.name }
 }
 

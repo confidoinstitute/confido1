@@ -88,7 +88,7 @@ external interface QuestionSelectorProps : Props {
 
 val QID_RE = Regex("\\[([a-zA-Z0-9_-]+)\\]\$")
 val QuestionSelector = FC<QuestionSelectorProps>("QuestionSelector") { props ->
-    val allQuestions = useWorkspaceQuestions().questions
+    val allQuestions = useWorkspaceQuestions()
     val datalistId = useId()
     fun fmtq(q: Question) = "${q.name} [${q.id}]"
     var internalVal by useState(props.value?.let { allQuestions[it] }?.let {fmtq(it)} ?: "")

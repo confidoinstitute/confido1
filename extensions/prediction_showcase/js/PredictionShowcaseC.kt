@@ -115,7 +115,7 @@ val PredictionShowcasePP = FC<PresenterPageProps<PredictionShowcasePV>> { props 
 val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> { props ->
     val view = props.view
     val room = useRooms()[view.room.id]
-    val qmap = (useSubscription(room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data?.questions ?: emptyMap()
+    val qmap = (useSubscription(room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data ?: emptyMap()
     val groupPreds = useSubscription(room?.let { Topics.roomGroupPred(it.ref) })
     if (room == null || groupPreds !is WSData) return@FC
 
@@ -221,7 +221,7 @@ private val GroupPredComparePVEditorComponent = FC<tools.confido.extensions.Flow
 object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
     override fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {
         val presenterCtl = use(PresenterContext)!!
-        val qmap = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data?.questions ?: emptyMap()
+        val qmap = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data ?: emptyMap()
 
         cb.apply {
             h2 {+"Prediction showcase"}

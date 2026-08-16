@@ -57,7 +57,7 @@ object ConditionalBaselineCE: ClientExtension, ConditionalBaselineExtension() {
             }
         }
     override fun editQuestionDialogExtra(props: EditQuestionDialogProps, cb: ChildrenBuilder) {
-        val questions = useWorkspaceQuestions().questions
+        val questions = useWorkspaceQuestions()
         var rawID by useContextState(ExtensionContextPlace.EDIT_QUESTION_DIALOG, "baseline_question", props.entity?.extensionData?.get(
             BaselineQuestionKey)?.id?:"")
         val baselineRef = extractBaseline(rawID, questions)
@@ -90,7 +90,7 @@ object ConditionalBaselineCE: ClientExtension, ConditionalBaselineExtension() {
     override fun myPredictionDescriptionExtra(props: MyPredictionDescriptionProps, cb: ChildrenBuilder) {
         // Real hooks — called before the early returns so the hook order stays stable.
         val rooms = useRooms()
-        val questions = useWorkspaceQuestions().questions
+        val questions = useWorkspaceQuestions()
         val q = props.question ?: return
         val myPred = (useMyPredictions()[q.ref]?.dist as? BinaryDistribution)?.yesProb
         val baselineRef = q.extensionData.get(BaselineQuestionKey) ?: return
@@ -148,7 +148,7 @@ object ConditionalBaselineCE: ClientExtension, ConditionalBaselineExtension() {
 
     override fun binarySliderExtra(props: BinaryPredInputProps, zoom: PZState?, cb: ChildrenBuilder) {
         // Real hook before the early returns (stable hook order).
-        val questions = useWorkspaceQuestions().questions
+        val questions = useWorkspaceQuestions()
         val q = props.question ?: return
         zoom ?: return
         val baselineRef = q.extensionData.get(BaselineQuestionKey) ?: return

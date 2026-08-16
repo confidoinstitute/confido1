@@ -34,7 +34,7 @@ external interface RoomSettingsProps : Props {
 }
 
 val RoomSettings = FC<RoomSettingsProps> { props ->
-    val roomQuestions = (useSubscription(props.room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data?.questions ?: emptyMap()
+    val roomQuestions = (useSubscription(props.room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data ?: emptyMap()
 
     var name by useState(props.room?.name ?: "")
     var description by useState(props.room?.description ?: "")

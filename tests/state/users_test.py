@@ -35,7 +35,7 @@ async def main():
              {"_id": "", "name": "users-test q", "answerSpace": {"type": "binary"}}, admin)
         ups0 = await recv_updates(ws, 2.0)
         qstate = by_topic(ups0).get("questions", d.get("questions", {})).get("data", {})
-        qid = next(q for q, qq in qstate.get("questions", {}).items() if qq["name"] == "users-test q")
+        qid = next(q for q, qq in qstate.items() if qq["name"] == "users-test q")
         post(f"/questions/{qid}/comments/add", {"content": "hello", "attachPrediction": False}, admin)
         topics = sorted(set(u["topic"] for u in await recv_updates(ws, 2.0)))
         t.check("users" not in topics,

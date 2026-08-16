@@ -5,7 +5,6 @@ import payloads.responses.WSData
 import rooms.Room
 import tools.confido.question.Question
 import tools.confido.refs.ref
-import tools.confido.state.QuestionsState
 import tools.confido.state.Topics
 
 /**
@@ -25,9 +24,9 @@ fun useRooms(): Map<String, Room> {
     return (sub as? WSData)?.data ?: emptyMap()
 }
 
-fun useWorkspaceQuestions(): QuestionsState {
+fun useWorkspaceQuestions(): Map<String, Question> {
     val sub = useSubscription(Topics.questions())
-    return (sub as? WSData)?.data ?: QuestionsState()
+    return (sub as? WSData)?.data ?: emptyMap()
 }
 
 /** The room a question belongs to, resolved against a subscribed directory. */

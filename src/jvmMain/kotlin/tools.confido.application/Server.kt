@@ -351,26 +351,23 @@ fun main() {
                 calibrationRoutes(this)
                 scoreRoutes(this)
 
-                // §4.2 "questions" (transitionally global rather than per-room): all
-                // questions the viewer can see, with the per-question count maps riding
-                // along. The counts' fold surfaces are wake inputs of their own — a
-                // prediction or comment bumps a count without touching the question
-                // entity. latestPredictions is included for extension censor hooks that
-                // read the viewer's predictions.
+                // §4.2 "questions" (global by design — cross-room surfaces pay for the
+                // cross-room slice they display): all questions the viewer can see,
+                // entities only. Counts live on the sibling counts topics, so this one
+                // never wakes on prediction/comment churn — its wake set is entity
+                // stores alone. (latestPredictions was dropped from the wake set along
+                // with the counts: it existed "for extension censor hooks that read the
+                // viewer's predictions", and no extension overrides censorQuestion.)
                 viewWS(Topics.questions) {
                     if (call.userSession?.user == null) unauthorized("Not logged in.")
                     combineViews(
                         questionStore.state.asView(),
                         roomStore.state.asView(),
                         userStore.state.asView(),
-                        latestPredictions.state.asView(),
-                        predictionData.predictionCount.state.asView(),
-                        predictionData.predictorCount.state.asView(),
-                        commentData.commentCount.state.asView(),
                     ).map {
                         val sessionData = call.userSession ?: unauthorized("Not logged in.")
                         if (sessionData.user == null) unauthorized("Not logged in.")
-                        StateCensor(sessionData).censorQuestionsState()
+                        StateCensor(sessionData).censorQuestions()
                     }
                 }
 
@@ -452,16 +449,35 @@ fun main() {
                 }
 
                 // §4.2 "room/<id>/questions": the room page's question slice — own +
-                // effective questions with their counts. Same wake set as the global
-                // questions topic (counts change without entity changes) plus rooms
-                // (question membership/order and effective-question hooks).
+                // effective questions, entities only (counts on the sibling below).
+                // Wake set is entity stores alone, so prediction/comment churn never
+                // re-censors or re-sends the collection.
                 viewWS(Topics.roomQuestions) { rRef ->
                     if (call.userSession?.user == null) unauthorized("Not logged in.")
                     combineViews(
                         questionStore.state.asView(),
                         roomStore.state.asView(),
                         userStore.state.asView(),
-                        latestPredictions.state.asView(),
+                    ).map {
+                        val sessionData = call.userSession ?: unauthorized("Not logged in.")
+                        if (sessionData.user == null) unauthorized("Not logged in.")
+                        val room = rRef.deref() ?: notFound("No such room.")
+                        StateCensor(sessionData).censorRoomQuestions(room)
+                            ?: unauthorized("You cannot view this room.")
+                    }
+                }
+
+                // "room/<id>/questions/counts": the room slice's counts — the
+                // question/<id> vs question/<id>/counts cutoff applied at collection
+                // scale. Wakes on the count folds; the entity stores are gate inputs
+                // (visibility filtering), with the equality cutoff suppressing frames
+                // when an entity edit recomputes the same counts.
+                viewWS(Topics.roomQuestionCounts) { rRef ->
+                    if (call.userSession?.user == null) unauthorized("Not logged in.")
+                    combineViews(
+                        questionStore.state.asView(),
+                        roomStore.state.asView(),
+                        userStore.state.asView(),
                         predictionData.predictionCount.state.asView(),
                         predictionData.predictorCount.state.asView(),
                         commentData.commentCount.state.asView(),
@@ -469,7 +485,7 @@ fun main() {
                         val sessionData = call.userSession ?: unauthorized("Not logged in.")
                         if (sessionData.user == null) unauthorized("Not logged in.")
                         val room = rRef.deref() ?: notFound("No such room.")
-                        StateCensor(sessionData).censorRoomQuestionsState(room)
+                        StateCensor(sessionData).censorRoomQuestionCounts(room)
                             ?: unauthorized("You cannot view this room.")
                     }
                 }

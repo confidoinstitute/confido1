@@ -110,7 +110,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
 
     // Compute tag suggestions from all questions in this room (the room questions
     // slice; already subscribed by the room page, so this read is cache-warm)
-    val roomQuestions = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data?.questions ?: emptyMap()
+    val roomQuestions = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data ?: emptyMap()
     val tagSuggestions: List<String> = useMemo(roomQuestions) {
         room.questions.mapNotNull { roomQuestions[it.id] }.flatMap { it.tags }.distinct().sorted()
     }

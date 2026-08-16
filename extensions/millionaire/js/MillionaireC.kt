@@ -396,7 +396,7 @@ private val MillionaireGameActionEditor = FC<tools.confido.extensions.FlowItemEd
 
 val MillionaireLadderQuestionPP = FC<PresenterPageProps<MillionaireLadderQuestionPV>> { props ->
     val room = useRooms()[props.view.room.id]
-    val qmap = (useSubscription(room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data?.questions ?: emptyMap()
+    val qmap = (useSubscription(room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data ?: emptyMap()
     val config = useMillionaireConfig(room?.id)
     if (room == null || config == null) return@FC
     val roomQs = room.questions.mapNotNull { qmap[it.id] }
@@ -735,7 +735,7 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
 
     override fun questionPageExtra(q: Question, place: ClientExtension.QuestionPagePlace, cb: ChildrenBuilder) {
         val room = use(RoomContext)!!
-        val qmap = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data?.questions ?: emptyMap()
+        val qmap = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data ?: emptyMap()
         val config = useMillionaireConfig(room.id)
 
         // All hooks have been called above -- safe to early-return now
@@ -859,7 +859,7 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
         // Real hooks first, before any early return (stable hook order).
         val room = use(RoomContext)
         val q = use(QuestionContext)
-        val qmap = (useSubscription(room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data?.questions ?: emptyMap()
+        val qmap = (useSubscription(room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data ?: emptyMap()
         val config = useMillionaireConfig(room?.id)
         if (room == null || q == null || config == null) return
         val qs = questions(room.questions.mapNotNull { qmap[it.id] }, config.tag)

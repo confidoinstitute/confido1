@@ -409,11 +409,10 @@ val RoomLayout = FC<RoomLayoutProps> { props->
             // Captured before the memo: use()-based accessors inside a useMemo body
             // would not invalidate it on context change.
             val myUser = useMyUser()
-            // The room's question slice: censored questions (own + effective) with
-            // counts. The global-slice fallback bridges the initial load and dies
-            // with the global slice at the eviction.
+            // The room's question slice: censored questions (own + effective),
+            // entities only — counts travel on room/<id>/questions/counts.
             val roomQuestionsWS = useSubscription(Topics.roomQuestions(room.ref))
-            val questionMap = (roomQuestionsWS as? WSData)?.data?.questions ?: emptyMap()
+            val questionMap = (roomQuestionsWS as? WSData)?.data ?: emptyMap()
             val routes = useMemo(room.id, myUser, questionMap) {
                 buildList {
                     if (room.hasPermission(myUser, RoomPermission.VIEW_QUESTIONS)) {

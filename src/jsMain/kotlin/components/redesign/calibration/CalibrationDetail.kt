@@ -249,7 +249,7 @@ external interface CalibrationDetailProps: Props {
 
 val CalibrationDetail = FC<CalibrationDetailProps> { props ->
     val rooms = useRooms()
-    val questions = useWorkspaceQuestions().questions
+    val questions = useWorkspaceQuestions()
     val data = props.data.sortedWith(compareBy({ !it.isCorrect }, { questions[it.question.id]?.name ?: "" }))
     val binData = data.mapNotNull { it as? BinaryCalibrationQuestion }
     val numData = data.mapNotNull { it as? NumericCalibrationQuestion }

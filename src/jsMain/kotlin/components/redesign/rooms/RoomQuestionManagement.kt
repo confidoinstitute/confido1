@@ -143,7 +143,7 @@ private val QMHelpDialog = FC<DialogProps> { props->
 
 val QuestionManagement = FC<QuestionManagementProps> { props ->
     val room = props.room
-    val roomCounts = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data
+    val roomCounts = (useSubscription(Topics.roomQuestionCounts(room.ref)) as? WSData)?.data
 
     val groupPredsWS = useSubscription(Topics.roomGroupPred(room.ref))
     val groupPreds = groupPredsWS.data ?: emptyMap()
@@ -201,7 +201,7 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
     }
 
     val showGroupPredCol = (
-            props.questions.any{ (roomCounts?.predictionCount?.get(it.ref) ?: 0) > 0 }
+            props.questions.any{ (roomCounts?.get(it.ref)?.predictions ?: 0) > 0 }
                     && (
                     usePermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
                             || props.questions.any{it.groupPredVisible}

@@ -54,7 +54,7 @@ async def main():
         if st != 200:
             print("FAIL: questions/add ->", st); sys.exit(1)
         qid = await wait_for(cdp, s,
-            "(Object.entries((((window.curTopics||{}).questions||{}).data||{}).questions||{}).filter(([k,v])=>v.name==='Presented q').map(([k])=>k)[0]) || false",
+            "(Object.entries(((window.curTopics||{}).questions||{}).data||{}).filter(([k,v])=>v.name==='Presented q').map(([k])=>k)[0]) || false",
             desc="new question in questions slice")
         st = await evaluate(cdp, s, f"""
             fetch('/presenter/set', {{method:'POST', headers:{{'Content-Type':'application/json'}},

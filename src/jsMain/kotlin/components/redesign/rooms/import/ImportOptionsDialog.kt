@@ -24,7 +24,7 @@ val ImportOptionsDialog = FC<ImportOptionsDialogProps> { props ->
     val options = props.options
     val gpv = GroupPredictionVisibility.fromBooleans(options.groupPredVisible, options.groupPredRequirePrediction)
     val room = use(RoomContext)
-    val roomQuestions = (useSubscription(room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data?.questions ?: emptyMap()
+    val roomQuestions = (useSubscription(room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data ?: emptyMap()
     val tagSuggestions: List<String> = useMemo(roomQuestions) {
         room?.questions?.mapNotNull { roomQuestions[it.id] }?.flatMap { it.tags }?.distinct()?.sorted() ?: emptyList()
     }

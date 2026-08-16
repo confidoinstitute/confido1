@@ -42,7 +42,7 @@ object Topics {
     val roomPath = path("room") / roomRefParam
     val questionPath = path("question") / questionRefParam
 
-    val questions = TopicSpec0(path("questions"), serializer<QuestionsState>())
+    val questions = TopicSpec0(path("questions"), serializer<Map<String, Question>>())
     val users = TopicSpec0(path("users"), serializer<Map<String, User>>())
     val rooms = TopicSpec0(path("rooms"), serializer<Map<String, Room>>())
     val self = TopicSpec0(path("self"), serializer<SelfState>())
@@ -60,9 +60,16 @@ object Topics {
     val presentationFollow = TopicSpec1(roomPath / "presentation/follow", serializer<String?>())
     val inviteShortlink = TopicSpec2(roomPath / "invites" / idParam / "shortlink", serializer<String>())
 
-    /** Room-scoped questions + per-question counts (§4.2): the room page's slice.
+    /** Room-scoped questions (§4.2): the room page's slice, entities only.
      *  Includes extension-provided effective questions (e.g. group-room aggregation). */
-    val roomQuestions = TopicSpec1(roomPath / "questions", serializer<QuestionsState>())
+    val roomQuestions = TopicSpec1(roomPath / "questions", serializer<Map<String, Question>>())
+
+    /** The room slice's counts, split from [roomQuestions] so count churn (every
+     *  prediction/comment) never re-sends the entity collection and entity edits
+     *  never re-send counts — the [question]/[questionCounts] sibling cutoff at
+     *  collection scale. Serves collection-shaped reads (management table columns);
+     *  per-row display uses [questionCounts]. */
+    val roomQuestionCounts = TopicSpec1(roomPath / "questions/counts", serializer<Map<Ref<Question>, QuestionCounts>>())
 
     /** Single censored question — the by-id access behind `useQuestion` (client
      *  endgame): presenter surfaces and describers hold bare refs with no room

@@ -26,7 +26,7 @@ async def main():
         ups = await recv_updates(ws)
         qstate = next(u["data"]["data"] for u in ups if u["topic"] == "questions")
         # Select our own question by name — other suites seed questions too.
-        qid = next(q for q, qq in qstate.get("questions", {}).items() if qq["name"] == "Gate test q")
+        qid = next(q for q, qq in qstate.items() if qq["name"] == "Gate test q")
 
         gp = f"question/{qid}/group_pred"
         await ws.send(json.dumps({"sub": [gp]}))

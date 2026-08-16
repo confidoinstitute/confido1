@@ -7,25 +7,20 @@ import tools.confido.refs.*
 import users.User
 
 
-// The "/state/questions" topic payload (§4.2): all questions the viewer can see, with
-// the per-question count maps riding along — they are per-question facts that only
-// ever existed as separate maps because the retired SentState monolith was flat.
-// (The former "/state" monolith is fully decomposed: rooms → the rooms directory
-// topic (+ the per-room detail topic), per-user fields → "self", users → "users",
-// questions+counts → here and the per-room "room/<id>/questions" slice. The client
-// has no global facade — surfaces subscribe the slices they display.)
-@Serializable
-data class QuestionsState(
-    val questions: Map<String, Question> = emptyMap(),
-    val predictionCount: Map<Ref<Question>, Int> = emptyMap(),
-    val predictorCount: Map<Ref<Question>, Int> = emptyMap(),
-    val commentCount: Map<Ref<Question>, Int> = emptyMap(),
-)
+// The question collection topics ("questions", "room/<id>/questions") carry plain
+// censored-entity maps keyed by question id, like the other root slices. Counts
+// travel on sibling topics ("question/<id>/counts", "room/<id>/questions/counts"):
+// count churn (every prediction and comment) and entity churn (occasional edits)
+// have wake frequencies orders apart, so bundling them made every prediction
+// re-send whole entity collections. (The former "/state" monolith is fully
+// decomposed: rooms → the rooms directory topic (+ the per-room detail topic),
+// per-user fields → "self", users → "users", questions → the slices above. The
+// client has no global facade — surfaces subscribe the slices they display.)
 
-// The "question/<id>/counts" topic payload: one question's per-question counts.
-// A sibling of "question/<id>" rather than part of it, so count churn (every
-// prediction and comment) never frames the entity topic — bare-ref surfaces
-// (presenter tiles) subscribe this one for the live "N people answered" line.
+// The "question/<id>/counts" topic payload: one question's per-question counts —
+// bare-ref surfaces (presenter tiles) subscribe it for the live "N people
+// answered" line; "room/<id>/questions/counts" ships a map of these for
+// collection-shaped reads (management table columns).
 @Serializable
 data class QuestionCounts(
     val predictions: Int = 0,

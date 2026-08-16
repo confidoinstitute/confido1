@@ -120,7 +120,7 @@ object ReferenceForecastCE : ClientExtension, ReferenceForecastExtension() {
         val presenterCtl = use(PresenterContext)!!
         val groupPredsWS = useSubscription(Topics.roomGroupPred(room.ref))
         val groupPreds = groupPredsWS.data ?: emptyMap()
-        val qmap = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data?.questions ?: emptyMap()
+        val qmap = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data ?: emptyMap()
 
 
         // Show scoreboard button if there are any questions with reference forecasts

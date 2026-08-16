@@ -1103,6 +1103,31 @@ working untouched mid-transition.
     return`, `PredictionFlags`' emptiness return) were left as found — their
     conditions are mount-stable in practice — but the pattern is now on the
     review checklist.
+  - **Counts split out of the question collection topics** (2026-08-16; *reverses* the
+    question-topics bullet's "counts riding along" — recorded rather than silently
+    flipped). Two facts changed the calculus. First, the churn asymmetry: counts bump
+    on every prediction/comment, entities change on occasional edits — and since the
+    wire diff is whole-payload, bundling meant **every prediction re-sent the entire
+    censored entity collection** to every `questions`/`room/<id>/questions`
+    subscriber. Second, a consumer audit showed the client had already migrated:
+    after the `question/<id>/counts` accessor rollout, count *display* everywhere
+    rides the per-question sibling, and exactly two collection-shaped readers
+    remained (the question-list "sole predictor" hint, the management table's
+    any-predictions column gate). As-built: the collection payloads are bare censored
+    entity maps (`QuestionsState` deleted); their wake sets are entity stores only
+    (`latestPredictions` dropped as vestigial — no extension overrides
+    `censorQuestion`); a new `room/<id>/questions/counts` topic
+    (`Map<Ref<Question>, QuestionCounts>`) serves collection-shaped reads, its
+    visibility set reusing `censorRoomQuestions` so counts can't leak and a
+    visibility transition moves entity and counts in one frame; the memo equality
+    cutoff keeps entity edits from framing counts and count churn from framing
+    entities (verified both directions, collection and per-question scale). No
+    global counts sibling — it would have zero readers. Sequencing note: this went
+    *before* permission-class sharing because the two divide the per-mutation cost
+    by different factors — sharing by subscribers-per-class, splitting by churn
+    ratio — and here the churn ratio is the larger divisor; with count churn no
+    longer waking the entity topics, sharing's remaining value is the entity-censor
+    recompute under many same-class connections.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or

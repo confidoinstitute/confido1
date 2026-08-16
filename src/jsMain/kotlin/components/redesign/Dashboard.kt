@@ -251,7 +251,7 @@ val PhoneHeader = FC<DashboardHeaderProps> { props ->
 
 val Dashboard = FC<Props> {
     val rooms = useRooms()
-    val questions = useWorkspaceQuestions().questions
+    val questions = useWorkspaceQuestions()
     val layoutMode = use(LayoutModeContext)!!
     val navigate = useNavigate()
 

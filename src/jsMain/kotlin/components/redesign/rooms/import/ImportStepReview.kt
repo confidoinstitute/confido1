@@ -265,7 +265,7 @@ val ImportStepReview = FC<ImportStepReviewProps> { props ->
     var optionsDialogOpen by useState(false)
 
     // Existing questions in this room, from the room questions slice
-    val importQmap = (useSubscription(Topics.roomQuestions(props.room.ref)) as? WSData)?.data?.questions ?: emptyMap()
+    val importQmap = (useSubscription(Topics.roomQuestions(props.room.ref)) as? WSData)?.data ?: emptyMap()
     val existingQuestions = useMemo(importQmap, props.room) {
         props.room.questions.mapNotNull { qRef -> importQmap[qRef.id] }
     }

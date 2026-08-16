@@ -106,7 +106,7 @@ private val ScopeChip = FC<ScopeChipProps> { props ->
  */
 val SearchPage = FC<Props> {
     val rooms = useRooms()
-    val questions = useWorkspaceQuestions().questions
+    val questions = useWorkspaceQuestions()
     val layoutMode = use(LayoutModeContext)!!
     val navigate = useNavigate()
     val (searchParams, _) = useSearchParams()

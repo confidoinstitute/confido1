@@ -44,7 +44,7 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
     var bucketsStr by useState("32")
     var buckets by useState(32)
     val selectedQuestions = props.question?.let { listOf(it.ref) } ?: room.questions
-    val roomQuestions = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data?.questions ?: emptyMap()
+    val roomQuestions = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data ?: emptyMap()
     val layoutMode = use(LayoutModeContext)!!
 
     val selectedNumeric = useMemo(selectedQuestions, roomQuestions) {

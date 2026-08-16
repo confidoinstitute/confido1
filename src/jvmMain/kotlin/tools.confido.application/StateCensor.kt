@@ -135,41 +135,42 @@ class StateCensor(val sess: UserSession) {
 
     fun censorRoomsDirectory() = state.rooms.mapValuesNotNull { censorRoomDirectory(it.value) }
 
-    fun <T> censorQuestionInfo(what: Map<Ref<Question>, T>) =
-        what.filterKeys { k -> k.deref()?.let{ q -> censorQuestion(q) } != null }
-
     fun censorUsers() =
         state.users.mapValuesNotNull { censorUser(it.value) }
 
-    /** The "/state/questions" topic payload: censored questions + per-question counts. */
-    fun censorQuestionsState() = QuestionsState(
-        questions = censorQuestions(),
-        commentCount = censorQuestionInfo(state.commentCount),
-        predictorCount = censorQuestionInfo(state.predictorCount),
-        predictionCount = censorQuestionInfo(state.predictionCount),
-    )
-
     /**
      * The "room/<id>/questions" topic payload (§4.2): the room's questions (own +
-     * extension-provided effective ones, e.g. group-room aggregation) with their
-     * counts. Each question is censored by [censorQuestion] against its *own* room,
-     * so cross-room effective questions keep exactly the visibility the viewer has
-     * there. Null = viewer cannot see the room at all.
+     * extension-provided effective ones, e.g. group-room aggregation), keyed by id.
+     * Each question is censored by [censorQuestion] against its *own* room, so
+     * cross-room effective questions keep exactly the visibility the viewer has
+     * there. Counts travel on the "room/<id>/questions/counts" sibling
+     * ([censorRoomQuestionCounts]) so count churn never re-sends the entities.
+     * Null = viewer cannot see the room at all.
      */
-    fun censorRoomQuestionsState(room: Room): QuestionsState? {
+    fun censorRoomQuestions(room: Room): Map<String, Question>? {
         if (user == null || room.effectiveMembers.none { it.user eqid user }) return null
         val refs = (room.questions + (room.effectiveQuestions?.map { it.question } ?: emptyList())).toSet()
-        val questions = refs.mapNotNull { it.deref() }
+        return refs.mapNotNull { it.deref() }
             .mapNotNull { censorQuestion(it) }
             .associateBy { it.id }
-        fun <T> counts(what: Map<Ref<Question>, T>) = what.filterKeys { it.id in questions }
-        return QuestionsState(
-            questions = questions,
-            commentCount = counts(state.commentCount),
-            predictorCount = counts(state.predictorCount),
-            predictionCount = counts(state.predictionCount),
-        )
     }
+
+    /**
+     * The "room/<id>/questions/counts" topic payload: per-question counts for
+     * exactly the questions visible in the room slice. The visibility set reuses
+     * [censorRoomQuestions] — counts of a question the viewer cannot see must not
+     * leak, and a question's visibility transition must move its counts in the
+     * same frame as its entity.
+     */
+    fun censorRoomQuestionCounts(room: Room): Map<Ref<Question>, QuestionCounts>? =
+        censorRoomQuestions(room)?.keys?.associate { id ->
+            val ref = Ref<Question>(id)
+            ref to QuestionCounts(
+                predictions = state.predictionCount[ref] ?: 0,
+                predictors = state.predictorCount[ref] ?: 0,
+                comments = state.commentCount[ref] ?: 0,
+            )
+        }
 }
 
 /** The per-user "/state/self" topic payload (PERSISTENCE_SYNC_REDESIGN.md §4.2). */
