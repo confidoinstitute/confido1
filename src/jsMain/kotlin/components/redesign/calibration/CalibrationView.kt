@@ -1,8 +1,8 @@
 package components.redesign.calibration
 
 import Client
-import components.AppStateContext
 import components.useMyUser
+import components.useRooms
 import components.redesign.PresenterIcon
 import components.redesign.basic.*
 import components.redesign.forms.*
@@ -330,7 +330,8 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
     }
     val req = props.req
     val entries = data?.entries?.filter { it.value.enoughData } ?: emptyList()
-    val appState = use(AppStateContext)!!
+    val rooms = useRooms()
+    val myUser = useMyUser()
     val detailFetch = useCoroutineLock()
     var detailBin by useState<CalibrationBin>()
     val calibrationHelpOpen = useRef<(CalibrationHelpSection)->Unit>()
@@ -342,7 +343,7 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
             entries.size > 0 &&
                 (req.who == Myself || (
                     req.rooms != null
-                    && req.rooms.all { it.deref()?.hasPermission(useMyUser(), RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)?:false }
+                    && req.rooms.all { rooms[it.id]?.hasPermission(myUser, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)?:false }
                 )
             )
         )

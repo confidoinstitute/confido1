@@ -1,6 +1,7 @@
 package components.redesign.search
 
-import components.AppStateContext
+import components.useRooms
+import components.useWorkspaceQuestions
 import components.redesign.ZoomIcon
 import components.redesign.basic.*
 import components.redesign.forms.TextInput
@@ -100,11 +101,12 @@ private val ScopeChip = FC<ScopeChipProps> { props ->
 }
 
 /**
- * Workspace-wide search. Everything shown here comes out of the client state snapshot, so results
- * update as you type without hitting the server; see [searchWorkspace].
+ * Workspace-wide search. Everything shown here comes out of the subscribed workspace slices, so
+ * results update as you type without hitting the server; see [searchWorkspace].
  */
 val SearchPage = FC<Props> {
-    val appState = use(AppStateContext)!!
+    val rooms = useRooms()
+    val questions = useWorkspaceQuestions().questions
     val layoutMode = use(LayoutModeContext)!!
     val navigate = useNavigate()
     val (searchParams, _) = useSearchParams()
@@ -127,8 +129,8 @@ val SearchPage = FC<Props> {
             navigate(searchUrl(query, scope), jso<dynamic> { replace = true })
     }
 
-    val results = useMemo(appState, query, scope.toParam()) {
-        searchWorkspace(appState, query, scope)
+    val results = useMemo(rooms, questions, query, scope.toParam()) {
+        searchWorkspace(rooms, questions, query, scope)
     }
 
     PageHeader {

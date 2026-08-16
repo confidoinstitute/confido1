@@ -1,7 +1,6 @@
 package components.redesign
 
 import web.window.window
-import components.AppStateContext
 import components.useIsAdmin
 import components.useMyUser
 import components.redesign.basic.*
@@ -127,7 +126,6 @@ external interface SidebarActionsProps: Props {
 val SidebarActions = FC<SidebarActionsProps> {props->
     val iconSize = if(props.small) 36.px else 48.px
     val iconSizeInner = if(props.small) 34 else 46
-    val appState = use(AppStateContext)!!
 
     // Extension hook for items before workspace actions
     ClientExtension.forEach { it.sidebarExtra(SidebarPlace.WORKSPACE_TOP, props.small, this) }
@@ -239,7 +237,6 @@ val SidebarActions = FC<SidebarActionsProps> {props->
 }
 
 val Sidebar = FC<SidebarProps> { props ->
-    val appState = use(AppStateContext)!!
     val layoutMode = use(LayoutModeContext)!!
 
     Stack {

@@ -1,7 +1,7 @@
 package components.redesign.scores
 
 import Client
-import components.AppStateContext
+import components.useRooms
 import components.redesign.HelpIcon
 import components.redesign.basic.*
 import components.redesign.forms.IconButton
@@ -125,7 +125,7 @@ external interface MyScoresContentProps : Props {
  * Used both on the standalone "Your scores" page and in the room Score tab.
  */
 val MyScoresContent = FC<MyScoresContentProps> { props ->
-    val appState = use(AppStateContext)!!
+    val rooms = useRooms()
     val layoutMode = use(LayoutModeContext)!!
     val isDesktop = layoutMode >= LayoutMode.DESKTOP
     val isPhone = layoutMode == LayoutMode.PHONE
@@ -203,7 +203,7 @@ val MyScoresContent = FC<MyScoresContentProps> { props ->
             response.items.forEach { item ->
                 add(item.roomRef.id to item.roomName)
                 item.additionalRooms.forEach { ref ->
-                    val room = appState.rooms[ref.id]
+                    val room = rooms[ref.id]
                     if (room != null) add(ref.id to room.name)
                 }
             }

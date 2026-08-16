@@ -1,5 +1,8 @@
 package components.redesign.calibration
 
+import components.roomOf
+import components.useRooms
+import components.useWorkspaceQuestions
 import components.redesign.basic.BaseDialogProps
 import components.redesign.basic.Dialog
 import components.redesign.basic.Stack
@@ -34,7 +37,6 @@ import react.router.dom.Link
 import tools.confido.calibration.CalibrationBin
 import tools.confido.calibration.CalibrationEntry
 import tools.confido.question.Question
-import tools.confido.refs.deref
 import tools.confido.spaces.NumericSpace
 import tools.confido.utils.List2
 import tools.confido.utils.endpoints
@@ -246,7 +248,9 @@ external interface CalibrationDetailProps: Props {
 }
 
 val CalibrationDetail = FC<CalibrationDetailProps> { props ->
-    val data = props.data.sortedWith(compareBy({ !it.isCorrect }, { it.question.deref()?.name ?: "" }))
+    val rooms = useRooms()
+    val questions = useWorkspaceQuestions().questions
+    val data = props.data.sortedWith(compareBy({ !it.isCorrect }, { questions[it.question.id]?.name ?: "" }))
     val binData = data.mapNotNull { it as? BinaryCalibrationQuestion }
     val numData = data.mapNotNull { it as? NumericCalibrationQuestion }
     val numConfidences = numData.map { it.confidence }.toSet()
@@ -275,7 +279,7 @@ val CalibrationDetail = FC<CalibrationDetailProps> { props ->
             }
             title = q.name
             target = WindowTarget._blank
-            href = q.room?.urlPrefix?.let { it + q.urlPrefix } ?: ""
+            href = rooms.roomOf(q)?.urlPrefix?.let { it + q.urlPrefix } ?: ""
             div {
                 css {
                     whiteSpace = WhiteSpace.nowrap
@@ -375,7 +379,7 @@ val CalibrationDetail = FC<CalibrationDetailProps> { props ->
                 }
                 tbody {
                     binData.forEach {
-                        val q = it.question.deref() ?: return@forEach
+                        val q = questions[it.question.id] ?: return@forEach
                         tr {
                             td {
                                 questionLink(q)
@@ -445,7 +449,7 @@ val CalibrationDetail = FC<CalibrationDetailProps> { props ->
                 }
                 tbody {
                     numData.forEach {
-                        val q = it.question.deref() ?: return@forEach
+                        val q = questions[it.question.id] ?: return@forEach
                         val space = q.answerSpace as? NumericSpace ?: return@forEach
                         tr {
                             td {

@@ -2,15 +2,13 @@ package components.redesign.search
 
 import rooms.Room
 import tools.confido.question.Question
-import tools.confido.refs.deref
-import tools.confido.state.ClientState
 
 /**
  * Which parts of the workspace a query is matched against.
  *
- * Every scope here is served from the client-side [ClientState], which already holds each room and
- * question the user is allowed to see, so searching needs no server round trip and can run on
- * every keystroke.
+ * Every scope here is served from the client's subscribed rooms directory and questions slice,
+ * which already hold each room and question the user is allowed to see, so searching needs no
+ * server round trip and can run on every keystroke.
  *
  * TODO: comment search. Comment bodies are never part of the state snapshot (they are streamed
  * per room / per question, see routes/Comment.kt), so a COMMENTS scope needs a server endpoint
@@ -169,11 +167,17 @@ fun makeSnippet(text: String, terms: List<String>): Snippet? {
 }
 
 /**
- * Searches everything the client knows about. Rooms are matched only into their own result
- * section: a query hitting a room name deliberately does *not* pull in all of that room's
- * questions, which would swamp the question results.
+ * Searches everything the client knows about — the subscribed rooms directory and questions
+ * slice, which already hold each room and question the user is allowed to see. Rooms are
+ * matched only into their own result section: a query hitting a room name deliberately does
+ * *not* pull in all of that room's questions, which would swamp the question results.
  */
-fun searchWorkspace(state: ClientState, query: String, scope: Set<SearchScope>): SearchResults {
+fun searchWorkspace(
+    rooms: Map<String, Room>,
+    questions: Map<String, Question>,
+    query: String,
+    scope: Set<SearchScope>,
+): SearchResults {
     val terms = searchTerms(query)
     if (terms.isEmpty()) return SearchResults(terms, emptyList(), emptyList())
 
@@ -181,8 +185,8 @@ fun searchWorkspace(state: ClientState, query: String, scope: Set<SearchScope>):
     val questionHits = mutableListOf<QuestionHit>()
     if (questionScopeActive) {
         val seen = mutableSetOf<String>()
-        state.rooms.values.forEach { room ->
-            room.questions.mapNotNull { it.deref() }.forEach { question ->
+        rooms.values.forEach { room ->
+            room.questions.mapNotNull { questions[it.id] }.forEach { question ->
                 // A question normally lives in exactly one room; guard anyway so extensions that
                 // aggregate questions across rooms cannot produce duplicate rows.
                 if (!seen.add(question.id)) return@forEach
@@ -206,7 +210,7 @@ fun searchWorkspace(state: ClientState, query: String, scope: Set<SearchScope>):
 
     val roomHits = mutableListOf<RoomHit>()
     if (SearchScope.ROOM in scope) {
-        state.rooms.values.forEach { room ->
+        rooms.values.forEach { room ->
             val score = totalScore(terms) { roomTermScore(room, it) }
             if (score == 0) return@forEach
             roomHits.add(RoomHit(room, score, makeSnippet(room.description, terms)))

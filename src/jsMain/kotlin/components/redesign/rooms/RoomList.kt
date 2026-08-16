@@ -109,7 +109,7 @@ val RoomListEntries = FC<RoomListEntriesProps> { props ->
 }
 
 val RoomList = FC<RoomListProps> {props ->
-    val appState = use(AppStateContext)!!
+    val rooms = useRooms()
     val layoutMode = use(LayoutModeContext)!!
 
     val iconSize = if(props.small) 36.px else 48.px
@@ -122,11 +122,11 @@ val RoomList = FC<RoomListProps> {props ->
 
         // Let extensions override room entries rendering (e.g. for grouped/hierarchical display)
         val handled = ClientExtension.enabled.any { ext ->
-            ext.renderSidebarRoomEntries(appState.rooms, props.small, this)
+            ext.renderSidebarRoomEntries(rooms, props.small, this)
         }
         if (!handled) {
             RoomListEntries {
-                rooms = appState.rooms.values.toList()
+                this.rooms = rooms.values.toList()
                 small = props.small
             }
         }
