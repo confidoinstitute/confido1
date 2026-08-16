@@ -782,10 +782,11 @@ working untouched mid-transition.
     component-scoped pilot.
   - **Versioned views implemented (§3.5 core)**: the flush pass validates instead of
     recomputing — unaffected topics cost Long compares, per-user churn no longer
-    re-censors the world. Still ahead from §3.5: shared per-(topic, permission class)
-    view registries (a cached view shared by N readers computes once per transaction,
-    so sharing subsumes the old `shareIn` keyed-flow-registry idea), `mapValuesMemo`
-    keyed combinators, collection deltas.
+    re-censors the world. Still ahead from §3.5 at this point: shared per-(topic,
+    permission class) view registries (a cached view shared by N readers computes
+    once per transaction, so sharing subsumes the old `shareIn` keyed-flow-registry
+    idea — *implemented later, see the permission-class sharing bullet below*),
+    `mapValuesMemo` keyed combinators, collection deltas.
   - **Rooms peeled — the component-scoped pilot.** Two topics: `/state/rooms`
     (root-subscribed directory: the full censor minus per-member data — no other
     users' memberships, no invite links, no presentation state — but keeping the
@@ -1128,6 +1129,65 @@ working untouched mid-transition.
     ratio — and here the churn ratio is the larger divisor; with count churn no
     longer waking the entity topics, sharing's remaining value is the entity-censor
     recompute under many same-class connections.
+  - **Permission-class sharing implemented** (2026-08-16) — the §4.3 censor-memoization
+    stage, realized as the §3.5 prediction said: a registry of shared views, no new
+    memoization machinery. `PermClass` = user type + per-room effective-permission
+    sets (union across direct/implied memberships; entry presence = membership, so
+    room-visibility gates read the class too). `ClassCensor` holds the class-pure
+    censor family (question entity/collections/counts, users), split from the
+    per-viewer `StateCensor`; the `ServerExtension.censorQuestion` hook now takes the
+    class instead of a user — class-purity by construction (a per-viewer read there
+    would leak between same-class viewers; per-viewer extension data belongs in
+    extension-owned per-viewer topics). `sharedViewWS` registrations: the body
+    receives the class and no session/call; each subscription resolves its viewer's
+    class through a per-session *class view* (shared by all the session's
+    subscriptions; memo equality cutoff makes session renewals and unrelated
+    membership churn dedup away) and `flatMap`s into a weakly-referenced registry
+    keyed (topic pattern, args, class) — all same-class subscribers hold the *same*
+    memoized encoded-payload view, so a payload computes and encodes once per
+    transaction regardless of subscriber count; a role change re-selects the registry
+    entry on the live subscription (verified). A thin per-subscription error boundary
+    passes the shared encoded element through by reference and turns class-resolution
+    `ResponseError`s into WSError frames. Lifecycle: entries are pinned by their
+    subscribers and survive dormancy weakly — sharing works *across time* too: a
+    fresh subscription served from a still-valid entry costs zero computes, and the
+    §3.5 equality cutoff means even revalidation after unrelated churn skips the
+    encode (both observed in testing; the compute counters exposed at the devmode
+    `/diag/topic_computes` endpoint count encodes, which is why the test suite's
+    sharing assertions are relative to visibly payload-changing mutations).
+    Shared tier: `questions`, `room/<id>/questions[/counts]`, `question/<id>[/counts]`,
+    `users`. Deliberately per-viewer (decision of 2026-08-16): the rooms family
+    (viewer's own membership embedded — and the directory is where the class key is
+    *maximally fragmenting* while payload and recompute are smallest), `members`
+    (own-row flag), `self`, and the own-prediction-gated topics. The rule of thumb:
+    share when payload×churn is large *and* the class key is narrower than the
+    subscriber set; where it isn't, per-connection is the honest granularity and the
+    `myMemberships`-into-self move remains the escape hatch if the directory ever
+    profiles hot.
+    *Class-key projection (same day, user-driven):* a global class key fragments to
+    near-per-user as soon as membership vectors vary, so per-topic **scope
+    projections** narrow the key to the rooms the topic's censor actually reads
+    (`PermClass.scopedTo`): question-instance topics key on the question's own room
+    (collapsing to user type + one permission set — a handful of values per
+    deployment), the room questions/counts topics on the room *plus the rooms of its
+    effective questions* (group-room viewers with different child-room permissions
+    legitimately differ), and `users` on the user type alone (all proper users share
+    one payload). The soundness design: the topic body receives the *projected*
+    class — the registry key and the censor's input are the same value — so an
+    under-projection reads as "no permissions" and censors too much, visibly,
+    rather than leaking between same-key viewers (fail-closed key-narrowing). The
+    projection recomputes on room churn as well as class churn (room structure can
+    change which rooms are in scope without the class map changing), with the
+    equality cutoff ensuring re-selection only on a real projected-class change —
+    which also cuts churn: a membership change in an unrelated room no longer
+    touches a room-scoped topic at all (verified: an unrelated-room join produces
+    zero recomputes and zero frames on the scoped topics while the global
+    `questions` slice re-frames). The global `questions` topic deliberately keeps
+    the identity key: with fragmented classes identity-sharing degrades to
+    per-viewer cost anyway (registry entries are the same order as the sender's
+    per-connection lastSent maps), and cohort collisions still share — unsharing
+    would buy nothing in either regime. Still ahead from §3.5:
+    `mapValuesMemo` keyed combinators, collection deltas.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or

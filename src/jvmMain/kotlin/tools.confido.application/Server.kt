@@ -303,6 +303,15 @@ fun main() {
                     serveFrontend()
                 }
                 if (devMode) {
+                    // Topic payload computations per topic pattern — makes the shared
+                    // per-(topic, permission-class) views' compute-once observable
+                    // (tests/state/shared_test.py).
+                    getST("/diag/topic_computes") {
+                        call.respondText(
+                            confidoJSON.encodeToString(TopicStats.computes as Map<String, Long>),
+                            ContentType.Application.Json
+                        )
+                    }
                     getST("/init/") {
                         val userPasswordHash = Password.hash(DebugAdmin.password).addRandomSalt().withArgon2().result
                         tools.confido.store.userStore.insert(
@@ -358,17 +367,12 @@ fun main() {
                 // stores alone. (latestPredictions was dropped from the wake set along
                 // with the counts: it existed "for extension censor hooks that read the
                 // viewer's predictions", and no extension overrides censorQuestion.)
-                viewWS(Topics.questions) {
-                    if (call.userSession?.user == null) unauthorized("Not logged in.")
+                sharedViewWS(Topics.questions) { cls ->
                     combineViews(
                         questionStore.state.asView(),
                         roomStore.state.asView(),
                         userStore.state.asView(),
-                    ).map {
-                        val sessionData = call.userSession ?: unauthorized("Not logged in.")
-                        if (sessionData.user == null) unauthorized("Not logged in.")
-                        StateCensor(sessionData).censorQuestions()
-                    }
+                    ).map { ClassCensor(cls).censorQuestions() }
                 }
 
                 // §4.2 users: the user directory, proper (admin/member) users only —
@@ -376,14 +380,13 @@ fun main() {
                 // payloads (§5.3), so the referencedUsers machinery is gone and the
                 // wake set is just the user store. Subscribed on demand by the admin
                 // directory and the add-member dialog, not root-subscribed.
-                viewWS(Topics.users) {
-                    if (call.userSession?.user == null) unauthorized("Not logged in.")
+                // Scope: the users censor reads only the user type, so all proper
+                // users share one payload — the widest sharing in the system.
+                sharedViewWS(Topics.users, scope = { cls -> cls.scopedTo(emptySet()) }) { cls ->
                     userStore.state.asView().map {
-                        val sessionData = call.userSession ?: unauthorized("Not logged in.")
-                        val viewer = sessionData.user ?: unauthorized("Not logged in.")
-                        if (viewer.type !in setOf(UserType.ADMIN, UserType.MEMBER))
+                        if (cls.userType !in setOf(UserType.ADMIN, UserType.MEMBER))
                             unauthorized("Cannot list users.")
-                        StateCensor(sessionData).censorUsers()
+                        ClassCensor(cls).censorUsers()
                     }
                 }
 
@@ -452,17 +455,14 @@ fun main() {
                 // effective questions, entities only (counts on the sibling below).
                 // Wake set is entity stores alone, so prediction/comment churn never
                 // re-censors or re-sends the collection.
-                viewWS(Topics.roomQuestions) { rRef ->
-                    if (call.userSession?.user == null) unauthorized("Not logged in.")
+                sharedViewWS(Topics.roomQuestions, scope = ::roomQuestionsTopicScope) { cls, rRef ->
                     combineViews(
                         questionStore.state.asView(),
                         roomStore.state.asView(),
                         userStore.state.asView(),
                     ).map {
-                        val sessionData = call.userSession ?: unauthorized("Not logged in.")
-                        if (sessionData.user == null) unauthorized("Not logged in.")
                         val room = rRef.deref() ?: notFound("No such room.")
-                        StateCensor(sessionData).censorRoomQuestions(room)
+                        ClassCensor(cls).censorRoomQuestions(room)
                             ?: unauthorized("You cannot view this room.")
                     }
                 }
@@ -472,8 +472,7 @@ fun main() {
                 // scale. Wakes on the count folds; the entity stores are gate inputs
                 // (visibility filtering), with the equality cutoff suppressing frames
                 // when an entity edit recomputes the same counts.
-                viewWS(Topics.roomQuestionCounts) { rRef ->
-                    if (call.userSession?.user == null) unauthorized("Not logged in.")
+                sharedViewWS(Topics.roomQuestionCounts, scope = ::roomQuestionsTopicScope) { cls, rRef ->
                     combineViews(
                         questionStore.state.asView(),
                         roomStore.state.asView(),
@@ -482,10 +481,8 @@ fun main() {
                         predictionData.predictorCount.state.asView(),
                         commentData.commentCount.state.asView(),
                     ).map {
-                        val sessionData = call.userSession ?: unauthorized("Not logged in.")
-                        if (sessionData.user == null) unauthorized("Not logged in.")
                         val room = rRef.deref() ?: notFound("No such room.")
-                        StateCensor(sessionData).censorRoomQuestionCounts(room)
+                        ClassCensor(cls).censorRoomQuestionCounts(room)
                             ?: unauthorized("You cannot view this room.")
                     }
                 }
@@ -494,17 +491,14 @@ fun main() {
                 // client's useQuestion (presenter surfaces and describers hold bare
                 // refs with no room context). Entity data only; counts ride on the
                 // collection topics, so count churn never frames this one.
-                viewWS(Topics.question) { qRef ->
-                    if (call.userSession?.user == null) unauthorized("Not logged in.")
+                sharedViewWS(Topics.question, scope = ::questionTopicScope) { cls, qRef ->
                     combineViews(
                         questionStore.state.asView(),
                         roomStore.state.asView(),
                         userStore.state.asView(),
                     ).map {
-                        val sessionData = call.userSession ?: unauthorized("Not logged in.")
-                        if (sessionData.user == null) unauthorized("Not logged in.")
                         val question = qRef.deref() ?: notFound("No such question.")
-                        StateCensor(sessionData).censorQuestion(question)
+                        ClassCensor(cls).censorQuestion(question)
                             ?: unauthorized("You cannot view this question.")
                     }
                 }
@@ -513,8 +507,7 @@ fun main() {
                 // (presenter tiles' "N people answered"). A sibling of the entity topic
                 // rather than a field of it, so count churn (every prediction/comment)
                 // and entity churn never frame each other. Same visibility gate.
-                viewWS(Topics.questionCounts) { qRef ->
-                    if (call.userSession?.user == null) unauthorized("Not logged in.")
+                sharedViewWS(Topics.questionCounts, scope = ::questionTopicScope) { cls, qRef ->
                     combineViews(
                         questionStore.state.asView(),
                         roomStore.state.asView(),
@@ -523,10 +516,8 @@ fun main() {
                         predictionData.predictorCount.state.asView(),
                         commentData.commentCount.state.asView(),
                     ).map {
-                        val sessionData = call.userSession ?: unauthorized("Not logged in.")
-                        if (sessionData.user == null) unauthorized("Not logged in.")
                         val question = qRef.deref() ?: notFound("No such question.")
-                        StateCensor(sessionData).censorQuestion(question)
+                        ClassCensor(cls).censorQuestion(question)
                             ?: unauthorized("You cannot view this question.")
                         QuestionCounts(
                             predictions = serverState.predictionCount[qRef] ?: 0,

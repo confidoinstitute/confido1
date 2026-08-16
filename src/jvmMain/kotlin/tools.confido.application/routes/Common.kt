@@ -23,12 +23,13 @@ import payloads.responses.WSData
 import payloads.responses.WSError
 import payloads.responses.WSResponse
 import payloads.responses.WSResponseSerializer
+import tools.confido.application.PermClass
 import tools.confido.application.index
+import tools.confido.application.permClassOf
+import tools.confido.application.sessions.userSession
 import tools.confido.application.singleThreadContext
 import tools.confido.serialization.confidoJSON
-import tools.confido.store.MemoView
-import tools.confido.store.TxClock
-import tools.confido.store.View
+import tools.confido.store.*
 import tools.confido.utils.PathTemplate
 import tools.confido.utils.TopicSpec0
 import tools.confido.utils.TopicSpec1
@@ -144,14 +145,17 @@ object TopicRegistry {
  * ResponseError surfacing during a source recompute) counts as "changed now": the
  * compute re-runs and captures the error as a WSError payload; error states forgo
  * cutoff and re-evaluate per flush, recovering when state changes.
+ * [statsKey] attributes payload computations in [TopicStats] (devmode diagnostics;
+ * also what makes shared-view compute-once observable to the test suite).
  */
-fun <P> topicPayloadView(serializer: KSerializer<P>, view: View<P>): View<JsonElement> =
+fun <P> topicPayloadView(serializer: KSerializer<P>, view: View<P>, statsKey: String? = null): View<JsonElement> =
     object : MemoView<JsonElement>() {
         override fun validateSources(): Long =
             try { view.validate() } catch (e: ResponseError) { TxClock.serial }
 
-        override fun compute(): JsonElement =
-            confidoJSON.encodeToJsonElement(
+        override fun compute(): JsonElement {
+            statsKey?.let { TopicStats.bump(it) }
+            return confidoJSON.encodeToJsonElement(
                 WSResponseSerializer(serializer),
                 try {
                     WSData(view.value)
@@ -159,25 +163,151 @@ fun <P> topicPayloadView(serializer: KSerializer<P>, view: View<P>): View<JsonEl
                     WSError(e.wsCode, e.message)
                 }
             )
+        }
 
         override val changes get() = view.changes
     }
 
+/** Payload computations per topic pattern (single-threaded, like all view code).
+ *  Exposed in devmode via GET /diag/topic_computes. */
+object TopicStats {
+    val computes = mutableMapOf<String, Long>()
+    fun bump(key: String) { computes[key] = (computes[key] ?: 0L) + 1L }
+}
+
 fun <P> Route.viewWS(spec: TopicSpec0<P>, body: suspend WSBody.() -> View<P>) {
-    TopicRegistry.handlers.add(ViewTopic(spec.path) { ctx, _ -> topicPayloadView(spec.serializer, ctx.body()) })
+    TopicRegistry.handlers.add(ViewTopic(spec.path) { ctx, _ -> topicPayloadView(spec.serializer, ctx.body(), spec.path.pattern) })
 }
 
 fun <A : Any, P> Route.viewWS(spec: TopicSpec1<A, P>, body: suspend WSBody.(A) -> View<P>) {
     TopicRegistry.handlers.add(ViewTopic(spec.path) { ctx, args ->
         @Suppress("UNCHECKED_CAST")
-        topicPayloadView(spec.serializer, ctx.body(args[0] as A))
+        topicPayloadView(spec.serializer, ctx.body(args[0] as A), spec.path.pattern)
     })
 }
 
 fun <A : Any, B : Any, P> Route.viewWS(spec: TopicSpec2<A, B, P>, body: suspend WSBody.(A, B) -> View<P>) {
     TopicRegistry.handlers.add(ViewTopic(spec.path) { ctx, args ->
         @Suppress("UNCHECKED_CAST")
-        topicPayloadView(spec.serializer, ctx.body(args[0] as A, args[1] as B))
+        topicPayloadView(spec.serializer, ctx.body(args[0] as A, args[1] as B), spec.path.pattern)
+    })
+}
+
+// ==== Shared per-(topic, permission-class) views (§4.3, the censor-memoization stage) ====
+//
+// A topic registered via [sharedViewWS] declares its payload to be a pure function of
+// the viewer's [PermClass]: the body receives the class and — deliberately — no
+// session/call, so per-viewer reads are impossible by construction (they would leak
+// between same-class viewers). Each subscription resolves its viewer's class
+// *reactively* (a per-session class view, shared by all of the session's
+// subscriptions) and [flatMap]s into the registry entry for (topic, args, class): all
+// same-class subscribers hold the *same* memoized encoded-payload view, so by the
+// §3.5 memo counters a payload computes and encodes once per transaction regardless
+// of subscriber count — sharing subsumes the old shareIn keyed-registry idea. A class
+// change (role change, join/leave) re-selects the registry entry on the live
+// subscription via the flatMap re-selection path.
+
+/**
+ * Weakly-referenced registry of shared views. Entries are pinned by the
+ * subscriptions that hold them (the flatMap selection cache and the changes
+ * collectors); once the last same-class subscriber unsubscribes, the entry becomes
+ * collectable — views are passive (no jobs, no upstream collection), so lifecycle is
+ * purely a memory concern and a prematurely collected entry just rebuilds on demand
+ * (views are pure; the cost is one recompute). Single-threaded like all view code.
+ */
+object SharedViews {
+    private val map = HashMap<Any, java.lang.ref.WeakReference<Any>>()
+
+    @Suppress("UNCHECKED_CAST")
+    fun <V : Any> get(key: Any, build: () -> V): V {
+        map[key]?.get()?.let { return it as V }
+        map.entries.removeIf { it.value.get() == null }  // opportunistic prune
+        return build().also { map[key] = java.lang.ref.WeakReference(it) }
+    }
+}
+
+/**
+ * The viewer's [PermClass] as a view: recomputes on session/user/room churn, with the
+ * memo equality cutoff ensuring downstream shared views only re-select when the class
+ * *actually* changes (session renewals and unrelated membership churn dedup away).
+ * Shared per session — all of a connection's (and a session's connections')
+ * subscriptions validate one instance.
+ */
+private fun WSBody.sharedClassView(): View<PermClass> {
+    val sessionId = call.userSession?.id ?: unauthorized("Not logged in.")
+    return SharedViews.get("permclass" to sessionId) {
+        combineViews(
+            userSessionStore.state.asView().at(sessionId),
+            userStore.state.asView(),
+            roomStore.state.asView(),
+        ) { sess, users, _ ->
+            val user = sess?.userRef?.let { users[it.id] } ?: unauthorized("Not logged in.")
+            permClassOf(user)
+        }
+    }
+}
+
+/**
+ * Per-subscription error boundary over the shared chain: on the happy path it passes
+ * the shared encoded element through by reference (identity-equal — no re-encoding,
+ * cheap cutoff); a [ResponseError] surfacing from class resolution becomes a WSError
+ * payload with the usual per-computation recovery semantics.
+ */
+private fun wsErrorView(view: View<JsonElement>): View<JsonElement> = object : MemoView<JsonElement>() {
+    override fun validateSources(): Long =
+        try { view.validate() } catch (e: ResponseError) { TxClock.serial }
+
+    override fun compute(): JsonElement =
+        try { view.value }
+        catch (e: ResponseError) {
+            confidoJSON.encodeToJsonElement(WSError<Unit>(e.wsCode, e.message) as WSResponse<Unit>)
+        }
+
+    override val changes get() = view.changes
+}
+
+// The [scope] parameter projects the class onto the rooms the topic's censor actually
+// reads (PermClass.scopedTo) — the registry key AND the class the body receives are
+// the projected class, so key-narrowing cannot leak (an under-projection reads as "no
+// permissions" and censors too much, visibly). The projection is recomputed on room
+// churn as well as class churn — room *structure* (a question moving, an
+// effective-question set changing) can change which rooms are in scope without the
+// viewer's class map changing — with the memo equality cutoff ensuring downstream
+// re-selection only happens when the projected class actually differs. Default:
+// identity (cross-room topics key on the full class; with fragmented membership
+// vectors that degrades gracefully to per-viewer cost, and cohorts still share).
+
+fun <P> Route.sharedViewWS(
+    spec: TopicSpec0<P>,
+    scope: (PermClass) -> PermClass = { it },
+    body: (PermClass) -> View<P>,
+) {
+    TopicRegistry.handlers.add(ViewTopic(spec.path) { ctx, _ ->
+        val scopedClass = combineViews(ctx.sharedClassView(), roomStore.state.asView()) { cls, _ -> scope(cls) }
+        wsErrorView(scopedClass.flatMap { cls ->
+            SharedViews.get(Triple(spec.path.pattern, emptyList<Any>(), cls)) {
+                topicPayloadView(spec.serializer, body(cls), spec.path.pattern)
+            }
+        })
+    })
+}
+
+// Note: shared topics must not read query parameters (the registry key carries only
+// the typed path args) — none of the shared topics has any.
+fun <A : Any, P> Route.sharedViewWS(
+    spec: TopicSpec1<A, P>,
+    scope: (PermClass, A) -> PermClass = { cls, _ -> cls },
+    body: (PermClass, A) -> View<P>,
+) {
+    TopicRegistry.handlers.add(ViewTopic(spec.path) { ctx, args ->
+        @Suppress("UNCHECKED_CAST")
+        val a = args[0] as A
+        val scopedClass = combineViews(ctx.sharedClassView(), roomStore.state.asView()) { cls, _ -> scope(cls, a) }
+        wsErrorView(scopedClass.flatMap { cls ->
+            SharedViews.get(Triple(spec.path.pattern, args, cls)) {
+                topicPayloadView(spec.serializer, body(cls, a), spec.path.pattern)
+            }
+        })
     })
 }
 

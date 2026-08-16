@@ -63,29 +63,6 @@ class StateCensor(val sess: UserSession) {
     }
 
 
-    fun censorQuestion(q: Question): Question? {
-        val room = state.questionRoom[q.ref]?.deref() ?: return null
-        if (!room.hasPermission(user, RoomPermission.VIEW_QUESTIONS)) return null
-        if (!q.visible && !room.hasPermission(user, RoomPermission.VIEW_HIDDEN_QUESTIONS)) return null
-
-        var ret = q
-        // Hide prepared resolutions if question is not set to resolved yet.
-        if (!ret.resolutionVisible && !room.hasPermission(user, RoomPermission.VIEW_ALL_RESOLUTIONS)) {
-            ret = ret.copy(resolution = null)
-        }
-        ServerExtension.forEach { ret = it.censorQuestion(ret, room, user) }
-        return ret
-    }
-
-    // The users directory is only served to proper users (the topic gate); guests'
-    // identity needs are covered by presentations embedded in payloads (§5.3).
-    fun censorUser(u: User): User? {
-        if (user?.type in setOf(UserType.ADMIN, UserType.MEMBER) || user eqid u) return u.copy(password = null)
-        else return null
-    }
-
-    fun censorQuestions() = state.questions.mapValuesNotNull{ censorQuestion(it.value) }
-
     /**
      * Directory-level room censoring (§4.2 "rooms" topic): the room detail minus
      * invite links and presentation state. Memberships need no extra stripping —
@@ -134,6 +111,95 @@ class StateCensor(val sess: UserSession) {
             .take(16)
 
     fun censorRoomsDirectory() = state.rooms.mapValuesNotNull { censorRoomDirectory(it.value) }
+}
+
+/**
+ * The permission class (§4.3): everything the class-pure censors depend on — the
+ * viewer's user type plus, per room where the viewer is an effective member, the
+ * viewer's effective permission set. Two viewers with an equal PermClass receive
+ * byte-identical payloads on the shared topics, which is what makes the
+ * per-(topic, class) view registry sound. Deliberately a small equality-friendly
+ * value: the shared-topic machinery uses it both as a memo cutoff (class churn is
+ * rare) and as a registry key.
+ */
+data class PermClass(
+    val userType: UserType,
+    val roomPerms: Map<Ref<Room>, Set<RoomPermission>>,
+)
+
+/**
+ * Project the class onto [rooms] — the key-narrowing for room-scoped shared topics
+ * (a global class fragments to near-per-user once membership vectors vary; the
+ * projection collapses a topic's key to the rooms its censor actually reads).
+ * Fail-closed by construction: the topic body receives the *projected* class, so a
+ * room missing from the scope reads as "no permissions" — an under-projection
+ * censors too much, visibly, and can never leak data between same-key viewers.
+ */
+fun PermClass.scopedTo(rooms: Set<Ref<Room>>): PermClass =
+    copy(roomPerms = roomPerms.filterKeys { it in rooms })
+
+/** Scope for question-instance topics: the question's own room — the key collapses
+ *  to (user type, one permission set), a handful of values per deployment. */
+fun questionTopicScope(cls: PermClass, qRef: Ref<Question>): PermClass =
+    cls.scopedTo(setOfNotNull(serverState.questionRoom[qRef]))
+
+/** Scope for the room questions/counts topics: the room *plus the rooms of its
+ *  effective questions* — each effective question is censored against its own room,
+ *  so group-room viewers with different child-room permissions legitimately differ. */
+fun roomQuestionsTopicScope(cls: PermClass, rRef: Ref<Room>): PermClass {
+    val effRooms = rRef.deref()?.effectiveQuestions
+        ?.mapNotNull { serverState.questionRoom[it.question] }?.toSet() ?: emptySet()
+    return cls.scopedTo(effRooms + rRef)
+}
+
+fun permClassOf(user: User): PermClass = PermClass(
+    user.type,
+    serverState.rooms.values.mapNotNull { room ->
+        val memberships = room.effectiveMembers.filter { it.user eqid user }
+        if (memberships.isEmpty()) null
+        // Union across memberships (direct + implied) — hasPermission accepts any.
+        // An entry with an empty set still records membership (room visibility).
+        else room.ref to memberships.flatMap { room.memberEffectivePermissions(it) }.toSet()
+    }.toMap()
+)
+
+/**
+ * Censoring that is a pure function of the viewer's [PermClass] (§4.3) — the censors
+ * behind the *shared* topics (question collections/instances, counts, users), computed
+ * once per (topic, class) however many viewers subscribe. Per-viewer censoring (own
+ * membership on Room, presentation self flags) stays on [StateCensor]. Anything added
+ * here must read nothing viewer-specific beyond the class — otherwise same-class
+ * viewers would receive each other's data.
+ */
+class ClassCensor(val cls: PermClass) {
+    val state = serverState
+
+    fun hasPermission(room: Room, permission: RoomPermission) =
+        permission in (cls.roomPerms[room.ref] ?: emptySet())
+
+    /** Effective membership in [room] — the entry exists even with an empty permission set. */
+    fun isMember(room: Room) = room.ref in cls.roomPerms
+
+    fun censorQuestion(q: Question): Question? {
+        val room = state.questionRoom[q.ref]?.deref() ?: return null
+        if (!hasPermission(room, RoomPermission.VIEW_QUESTIONS)) return null
+        if (!q.visible && !hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)) return null
+
+        var ret = q
+        // Hide prepared resolutions if question is not set to resolved yet.
+        if (!ret.resolutionVisible && !hasPermission(room, RoomPermission.VIEW_ALL_RESOLUTIONS)) {
+            ret = ret.copy(resolution = null)
+        }
+        ServerExtension.forEach { ret = it.censorQuestion(ret, room, cls) }
+        return ret
+    }
+
+    fun censorQuestions() = state.questions.mapValuesNotNull { censorQuestion(it.value) }
+
+    // The users directory is only served to proper users (gated in the topic body);
+    // guests' identity needs are covered by presentations embedded in payloads (§5.3).
+    fun censorUser(u: User): User? =
+        if (cls.userType in setOf(UserType.ADMIN, UserType.MEMBER)) u.copy(password = null) else null
 
     fun censorUsers() =
         state.users.mapValuesNotNull { censorUser(it.value) }
@@ -148,7 +214,7 @@ class StateCensor(val sess: UserSession) {
      * Null = viewer cannot see the room at all.
      */
     fun censorRoomQuestions(room: Room): Map<String, Question>? {
-        if (user == null || room.effectiveMembers.none { it.user eqid user }) return null
+        if (!isMember(room)) return null
         val refs = (room.questions + (room.effectiveQuestions?.map { it.question } ?: emptyList())).toSet()
         return refs.mapNotNull { it.deref() }
             .mapNotNull { censorQuestion(it) }

@@ -51,6 +51,11 @@ def post(path, body, cookie):
     return urllib.request.urlopen(req).read().decode()
 
 
+def get_json(path, cookie=""):
+    req = urllib.request.Request(BASE + path, headers={"Cookie": cookie})
+    return json.loads(urllib.request.urlopen(req).read().decode())
+
+
 async def connect_ws(cookie):
     import websockets
     return await websockets.connect(WS_URL, additional_headers={"Cookie": cookie}, max_size=2**24)

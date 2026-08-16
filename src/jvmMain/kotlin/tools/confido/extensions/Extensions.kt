@@ -5,6 +5,7 @@ import rooms.EffectiveQuestion
 import rooms.Room
 import rooms.RoomMembership
 import rooms.RoomPermission
+import tools.confido.application.PermClass
 import tools.confido.application.UserPresentationContext
 import tools.confido.question.Prediction
 import tools.confido.question.Question
@@ -37,8 +38,13 @@ interface ServerExtension: Extension {
     /** Censor room data before sending to a client. Called after the built-in censoring. */
     fun censorRoom(room: Room, user: User?): Room = room
 
-    /** Censor question data before sending to a client. Called after the built-in censoring. */
-    fun censorQuestion(question: Question, room: Room, user: User?): Question = question
+    /** Censor question data before sending to a client. Called after the built-in
+     *  censoring. Question topics are *shared* per permission class (§4.3), so this
+     *  hook receives the viewer's [PermClass] rather than a user — it must be a pure
+     *  function of it (deliberate: a per-viewer read here would leak between
+     *  same-class viewers). Genuinely per-viewer data belongs in an extension-owned
+     *  per-viewer topic instead. */
+    fun censorQuestion(question: Question, room: Room, cls: PermClass): Question = question
 
     /** Compute the effective member list for a room (e.g. with members inherited from a parent group).
      *  Return null to use room.members as-is (default). */
