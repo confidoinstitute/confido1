@@ -13,17 +13,34 @@ import web.url.URLSearchParams
 import web.window.window
 import tools.confido.state.Topics
 import tools.confido.refs.Ref
+import components.useRooms
 
 val RoomContext = createContext<Room>()
 val Room = FC<Props> {
-    val appState = use(AppStateContext)!!
     val roomId = useParams()["roomID"] ?: return@FC
     // Component-scoped subscription to the full room (member lists, invite links,
-    // presentation state); the global rooms map only carries directory-level rooms.
+    // presentation state); the rooms directory only carries directory-level rooms.
     // Until the detail payload arrives, fall back to the directory entry — the page
     // renders with configuration data and fills in member detail when it lands.
     val roomWS = useSubscription(Topics.room(Ref(roomId)))
-    val room = (roomWS as? WSData)?.data ?: appState.rooms[roomId] ?: return@FC
+    val roomDir = useRooms()
+    // On a cold load both may still be in flight; the page body lives in an inner
+    // component that only mounts once the room is in hand, so its hook order can
+    // never differ between a loading and a loaded render (React #310).
+    val room = (roomWS as? WSData)?.data ?: roomDir[roomId] ?: return@FC
+    RoomInner {
+        key = roomId
+        this.room = room
+    }
+}
+
+private external interface RoomInnerProps : Props {
+    var room: Room
+}
+
+private val RoomInner = FC<RoomInnerProps> { props ->
+    val room = props.room
+    val roomId = room.id
     val loc = useLocation()
 
     useEffectWithCleanup(roomId) {

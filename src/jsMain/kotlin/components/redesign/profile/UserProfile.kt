@@ -1,6 +1,5 @@
 package components.redesign.profile
 
-import components.AppStateContext
 import components.useMyPasswordIsSet
 import components.useMyUser
 import components.useDisconnected
@@ -32,7 +31,6 @@ import web.html.password
 import web.html.submit
 
 val UserProfile = FC<Props> {
-    val appState = use(AppStateContext)!!
     val user = useMyUser()
 
     var nick by useState(user?.nick ?: "")

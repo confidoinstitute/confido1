@@ -21,13 +21,17 @@ val InviteLinkPP = FC<PresenterPageProps<InviteLinkPV>> { props->
     // Invite links only travel on the per-room detail topic (the global rooms map
     // carries directory-level rooms without them), so subscribe it here.
     val roomWS = useSubscription(Topics.room(props.view.room))
-    val room = (roomWS as? WSData)?.data ?: return@FC
-    val link = room.inviteLinks.firstOrNull { it.id == props.view.id  || props.view.id == "FIRST" } ?: return@FC
+    // Hooks precede the data-dependent early returns: on a cold load the
+    // subscriptions deliver after the first render, and the hook order must
+    // not change between the loading and loaded renders (React #310).
+    val room = (roomWS as? WSData)?.data
+    val link = room?.inviteLinks?.firstOrNull { it.id == props.view.id  || props.view.id == "FIRST" }
+    val ws = useSubscription(if (room != null && link != null) Topics.inviteShortlink(room.ref, link.id) else null)
+    val viewportSize = useViewportSize()
+    if (room == null || link == null) return@FC
     val baseUrl = link.link(location.origin, room)
     // Use /pres/ prefix for follow-enabled links (cleaner URL for QR codes and display)
     val url = if (props.view.followPresentation) baseUrl.replace("/join/", "/pres/") else baseUrl
-    val ws = useSubscription(Topics.inviteShortlink(room.ref, link.id))
-    val viewportSize = useViewportSize()
 
     Stack {
         css {

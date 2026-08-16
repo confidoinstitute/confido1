@@ -1,6 +1,5 @@
 package extensions.onn_nuclear_hints
 
-import components.AppStateContext
 import components.useMyPredictions
 import components.redesign.questions.predictions.MyPredictionDescriptionProps
 import react.ChildrenBuilder
@@ -10,7 +9,6 @@ import react.use
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.extensions.ClientExtension
 import tools.confido.refs.ref
-import tools.confido.state.globalState
 import tools.confido.utils.formatPercent
 import tools.confido.utils.toFixed
 import components.useRooms

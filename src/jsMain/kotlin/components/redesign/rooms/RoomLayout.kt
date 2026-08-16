@@ -1,7 +1,6 @@
 package components.redesign.rooms
 
 import Client
-import components.AppStateContext
 import components.useFollowingPresentation
 import components.usePermission
 import components.useMyUser
@@ -34,7 +33,6 @@ import payloads.requests.CreatePresentation
 import tools.confido.extensions.ClientExtension
 import tools.confido.refs.*
 import tools.confido.state.Topics
-import tools.confido.state.clientState
 import utils.roomUrl
 import utils.runCoroutine
 import web.animations.requestAnimationFrame
@@ -49,7 +47,6 @@ import web.window.window
 
 /** Banner shown in a room when a presentation is running, allowing the user to follow/unfollow. */
 private val PresentationFollowBanner = FC<Props> {
-    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val isFollowing = useFollowingPresentation()?.id == room.id
     val presentationRunning = room._presentationRunning == true
@@ -177,7 +174,6 @@ external interface RoomLayoutProps : Props {
 
 val RoomLayout = FC<RoomLayoutProps> { props->
     react.useEffectOnceWithCleanup { console.log("MOUNT RoomLayout"); onCleanup { console.log("UNMOUNT RoomLayout") } } // XXX TEMP DEBUG
-    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val navigate = useNavigate()
     val location = useLocation()
@@ -382,7 +378,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                     text = room.description
                 }
             }
-            ClientExtension.forEach { it.roomInfoExtra(room, appState, this) }
+            ClientExtension.forEach { it.roomInfoExtra(room, this) }
         }
         div {
             css {
@@ -417,7 +413,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
             // counts. The global-slice fallback bridges the initial load and dies
             // with the global slice at the eviction.
             val roomQuestionsWS = useSubscription(Topics.roomQuestions(room.ref))
-            val questionMap = (roomQuestionsWS as? WSData)?.data?.questions ?: appState.questions
+            val questionMap = (roomQuestionsWS as? WSData)?.data?.questions ?: emptyMap()
             val routes = useMemo(room.id, myUser, questionMap) {
                 buildList {
                     if (room.hasPermission(myUser, RoomPermission.VIEW_QUESTIONS)) {
@@ -480,7 +476,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                     }
 
                     // Add extension routes
-                    clientState.extensions.forEach { extension ->
+                    ClientExtension.enabled.forEach { extension ->
                         addAll(extension.roomRoutesExtra(room))
                     }
 

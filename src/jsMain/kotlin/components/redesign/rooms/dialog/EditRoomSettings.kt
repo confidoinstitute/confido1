@@ -1,6 +1,5 @@
 package components.redesign.rooms.dialog
 
-import components.AppStateContext
 import components.redesign.basic.Dialog
 import components.redesign.basic.DialogCoreProps
 import components.redesign.basic.DialogProps

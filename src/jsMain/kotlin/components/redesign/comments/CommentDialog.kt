@@ -107,7 +107,6 @@ private external interface CommentDialogProps : Props {
 }
 
 private val CommentDialog = FC<CommentDialogProps> { props ->
-    val appState = use(AppStateContext)!!
     val room = use(RoomContext)
     val initialContent = props.initialContent ?: ""
 
@@ -219,7 +218,7 @@ private val CommentDialog = FC<CommentDialogProps> { props ->
                             gap = 10.px
                             flexGrow = number(1.0)
                         }
-                        room?.let { r -> ClientExtension.forEach { it.commentFieldExtra(r, appState, this) } }
+                        room?.let { r -> ClientExtension.forEach { it.commentFieldExtra(r, this) } }
                         props.attachablePrediction?.let { pred ->
                             if (!attachPrediction) {
                                 TextButton {

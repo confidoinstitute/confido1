@@ -20,7 +20,7 @@ async def main():
             print("FAIL: login"); sys.exit(1)
 
         await cdp.cmd("Page.navigate", {"url": BASE + "/"}, session=s)
-        await wait_for(cdp, s, "!!(window.curRooms && window.curSelf && window.curSelf.user)",
+        await wait_for(cdp, s, "!!(window.curTopics && window.curTopics.rooms && window.curTopics.rooms.data && window.curTopics && window.curTopics.self && window.curTopics.self.data && window.curTopics.self.data.user)",
                        desc="app state via MultiplexWS (self slice carries own user)")
         print("PASS: app connected, topic slices applied")
 
@@ -31,7 +31,7 @@ async def main():
                                       icon:null, color:'GRAY'})}).then(r => r.status)""", await_promise=True)
         if st != 200:
             print("FAIL: room edit ->", st); sys.exit(1)
-        await wait_for(cdp, s, "window.curRooms.testroom.name === 'Browser renamed'",
+        await wait_for(cdp, s, "window.curTopics.rooms.data.testroom.name === 'Browser renamed'",
                        desc="live room rename via websocket")
         print("PASS: live update applied (room renamed)")
 
@@ -41,7 +41,7 @@ async def main():
                 body: JSON.stringify({type:'empty'})}).then(r => r.status)""", await_promise=True)
         if st != 200:
             print("FAIL: presenter/set ->", st); sys.exit(1)
-        await wait_for(cdp, s, "!!(window.curSelf && window.curSelf.presenterInfo)",
+        await wait_for(cdp, s, "!!(window.curTopics && window.curTopics.self && window.curTopics.self.data && window.curTopics.self.data.presenterInfo)",
                        desc="live self update (presenterInfo projected field)")
         print("PASS: live self-topic update (presenterInfo arrived)")
 
@@ -54,7 +54,7 @@ async def main():
         if st != 200:
             print("FAIL: questions/add ->", st); sys.exit(1)
         qid = await wait_for(cdp, s,
-            "(Object.entries((window.curQuestions||{}).questions||{}).filter(([k,v])=>v.name==='Presented q').map(([k])=>k)[0]) || false",
+            "(Object.entries((((window.curTopics||{}).questions||{}).data||{}).questions||{}).filter(([k,v])=>v.name==='Presented q').map(([k])=>k)[0]) || false",
             desc="new question in questions slice")
         st = await evaluate(cdp, s, f"""
             fetch('/presenter/set', {{method:'POST', headers:{{'Content-Type':'application/json'}},

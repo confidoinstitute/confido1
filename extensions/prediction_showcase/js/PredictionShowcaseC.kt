@@ -23,7 +23,6 @@ import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
 import rooms.Room
 import tools.confido.distributions.*
-import components.AppStateContext
 import components.redesign.forms.QuestionPicker
 import components.redesign.forms.Select
 import components.redesign.rooms.RoomContext
@@ -31,7 +30,6 @@ import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionDataKeyWithDefault
 import tools.confido.question.Prediction
 import tools.confido.question.Question
-import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.refs.eqid
 import tools.confido.spaces.BinarySpace
@@ -47,10 +45,9 @@ import components.useRooms
 
 val PredictionShowcasePP = FC<PresenterPageProps<PredictionShowcasePV>> { props ->
     val view = props.view
-    val question = useQuestion(view.question) ?: return@FC
-
-    val predictions = useSubscription(showcasePredictionsTopic(question.ref))
-    if (predictions !is WSData) return@FC
+    val question = useQuestion(view.question)
+    val predictions = useSubscription(question?.let { showcasePredictionsTopic(it.ref) })
+    if (question == null || predictions !is WSData) return@FC
 
     Stack {
         css {
@@ -119,16 +116,14 @@ val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> 
     val view = props.view
     val room = useRooms()[view.room.id]
     val qmap = (useSubscription(room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data?.questions ?: emptyMap()
-    if (room == null) return@FC
+    val groupPreds = useSubscription(room?.let { Topics.roomGroupPred(it.ref) })
+    if (room == null || groupPreds !is WSData) return@FC
 
     val questions = room.questions.mapNotNull { qmap[it.id] }.filter { q ->
         view.questionGroup?.let { group ->
             group in q.tags
         } ?: true
     }
-
-    val groupPreds = useSubscription(Topics.roomGroupPred(room.ref))
-    if (groupPreds !is WSData) return@FC
     val data = groupPreds.data
 
     Stack {
@@ -191,11 +186,9 @@ val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> 
 }
 
 private val PredictionShowcasePVEditorComponent = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
+    val questions = components.redesign.presentation.useRoomQuestions()
     val view = (props.action as? tools.confido.state.SetPresenterViewAction)?.view as? PredictionShowcasePV ?: return@FC
     val onViewChange: (tools.confido.state.PresenterView) -> Unit = { v -> props.onChange(tools.confido.state.SetPresenterViewAction(v)) }
-    val appState = use(AppStateContext)!!
-    val room = use(RoomContext)!!
-    val questions = appState.questions.values.filter { q -> room.questions.any { it.id == q.id } }.sortedBy { it.name }
     components.redesign.presentation.FieldLabel { +"Question" }
     QuestionPicker {
         this.questions = questions
@@ -205,11 +198,10 @@ private val PredictionShowcasePVEditorComponent = FC<tools.confido.extensions.Fl
 }
 
 private val GroupPredComparePVEditorComponent = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
+    val allTags0 = components.redesign.presentation.useRoomQuestions()
     val view = (props.action as? tools.confido.state.SetPresenterViewAction)?.view as? GroupPredictionComparePV ?: return@FC
     val onViewChange: (tools.confido.state.PresenterView) -> Unit = { v -> props.onChange(tools.confido.state.SetPresenterViewAction(v)) }
-    val appState = use(AppStateContext)!!
-    val room = use(RoomContext)!!
-    val allTags = appState.questions.values.filter { q -> room.questions.any { it.id == q.id } }
+    val allTags = allTags0
         .flatMap { it.tags }.distinct().sorted()
     components.redesign.presentation.FieldLabel { +"Filter by tag (optional)" }
     Select {

@@ -120,14 +120,14 @@ data class ShortLink(
     }
 }
 
-object serverState : GlobalState() {
+object serverState {
     // Prediction data lives in the new store layer (tools.confido.store.Predictions);
     // these facade properties keep the read surface unchanged for censors and routes.
     val groupPred: Map<Ref<Question>, Prediction> get() = predictionData.groupPred
-    override val predictorCount: Map<Ref<Question>, Int> get() = predictionData.predictorCount.asMap
-    override val predictionCount: Map<Ref<Question>, Int> get() = predictionData.predictionCount.asMap
+    val predictorCount: Map<Ref<Question>, Int> get() = predictionData.predictorCount.asMap
+    val predictionCount: Map<Ref<Question>, Int> get() = predictionData.predictionCount.asMap
     val userPred: Map<Ref<Question>, Map<Ref<User>, Prediction>> get() = latestPredictions.asMap
-    override val commentCount: Map<Ref<Question>, Int> get() = commentData.commentCount.asMap
+    val commentCount: Map<Ref<Question>, Int> get() = commentData.commentCount.asMap
     //val presenterByUser: MutableMap<Ref<User>, PresenterInfo> = mutableMapOf() // this does not persist after restart
     //val presenterByToken: MutableMap<String, PresenterInfo> = mutableMapOf() // this does not persist after restart
 
@@ -158,8 +158,8 @@ object serverState : GlobalState() {
     }
 
     val questionRoom: Map<Ref<Question>, Ref<Room>> get() = roomStore.questionRoom
-    override val rooms: Map<String, Room> get() = roomStore.asMap
-    override val questions: Map<String, Question> get() = questionStore.asMap
+    val rooms: Map<String, Room> get() = roomStore.asMap
+    val questions: Map<String, Question> get() = questionStore.asMap
     val users: Map<String, User> get() = userStore.asMap
 
 
@@ -249,14 +249,13 @@ object serverState : GlobalState() {
     }
 
     @DelicateRefAPI
-    override fun derefNonBlocking(entityType: KClass<*>, id: String): Entity? {
+    fun derefNonBlocking(entityType: KClass<*>, id: String): Entity? {
         Stores.resident[entityType]?.let { return it.get(id) }
-        return super.derefNonBlocking(entityType, id)
+        return null
     }
 
-    override val extensions: List<ServerExtension> get() = ServerExtension.enabled
+    val extensions: List<ServerExtension> get() = ServerExtension.enabled
 }
-actual val globalState: GlobalState = serverState
 
 /** The server's [EntityLookup] for the presentation-flow members
  *  ([PresenterView.isValid], [FlowAction.getNavigateUrl]) — plain resident deref. */

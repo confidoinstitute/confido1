@@ -34,8 +34,6 @@ val AddCommentField = FC<AddCommentFieldProps> { props ->
         console.error("Invalid comment variant")
         return@FC
     }
-
-    val appState = use(AppStateContext)!!
     val room = use(RoomContext)
 
     var attachPrediction by useState(false)
@@ -87,7 +85,7 @@ val AddCommentField = FC<AddCommentFieldProps> { props ->
                     gap = 10.px
                     flexGrow = number(1.0)
                 }
-                room?.let { r -> ClientExtension.forEach { it.commentFieldExtra(r, appState, this) } }
+                room?.let { r -> ClientExtension.forEach { it.commentFieldExtra(r, this) } }
                 props.prediction?.let { pred ->
                     if (!attachPrediction) {
                         TextButton {

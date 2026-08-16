@@ -12,8 +12,8 @@ import payloads.requests.*
 import react.*
 import react.router.*
 import tools.confido.question.*
-import tools.confido.state.clientState
 import utils.*
+import tools.confido.extensions.ClientExtension
 
 external interface QuestionQuickSettingsDialogProps : Props {
     var question: Question
@@ -26,7 +26,6 @@ external interface QuestionQuickSettingsDialogProps : Props {
 }
 
 val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props ->
-    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val navigate = useNavigate()
 
@@ -124,7 +123,7 @@ val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props -
                 }
             }
             DialogMenuSeparator {}
-            clientState.extensions.forEach {
+            ClientExtension.enabled.forEach {
                 it.questionQuickSettingsExtra(props, this, props.onClose?: {})
             }
         }

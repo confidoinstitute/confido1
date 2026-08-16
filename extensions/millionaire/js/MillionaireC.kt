@@ -1,6 +1,5 @@
 package extensions.millionaire
 
-import components.AppStateContext
 import components.useMyPredictions
 import components.presenter.PresenterPageProps
 import components.presenter.presenterPageMap
@@ -29,7 +28,6 @@ import tools.confido.extensions.ClientExtension
 import tools.confido.question.Question
 import tools.confido.question.QuestionState
 import tools.confido.refs.Ref
-import tools.confido.refs.deref
 import tools.confido.refs.ref
 
 

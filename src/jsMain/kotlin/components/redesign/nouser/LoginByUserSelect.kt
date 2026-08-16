@@ -19,7 +19,6 @@ import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.option
 import tools.confido.refs.*
 import tools.confido.state.UserSessionValidity
-import tools.confido.state.globalState
 import users.*
 import utils.*
 

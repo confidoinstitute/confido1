@@ -31,7 +31,6 @@ import tools.confido.extensions.ExtensionContextPlace
 import tools.confido.extensions.get
 import tools.confido.extensions.with
 import tools.confido.question.Question
-import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.spaces.BinarySpace
 import tools.confido.utils.toFixed
@@ -44,9 +43,9 @@ import tools.confido.state.Topics
 import components.useRooms
 
 val ReferenceForcastScoreboardPP = FC<PresenterPageProps<ReferenceForcastScoreboardPV>> { props ->
-    val room = useRooms()[props.view.room.id] ?: return@FC
-    val scores = useSubscription(referenceScoreboardTopic(room.ref))
-    if (scores !is WSData) return@FC
+    val room = useRooms()[props.view.room.id]
+    val scores = useSubscription(room?.let { referenceScoreboardTopic(it.ref) })
+    if (room == null || scores !is WSData) return@FC
 
     Stack {
         css {

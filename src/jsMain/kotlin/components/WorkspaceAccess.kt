@@ -2,7 +2,6 @@ package components
 
 import hooks.useSubscription
 import payloads.responses.WSData
-import react.use
 import rooms.Room
 import tools.confido.question.Question
 import tools.confido.refs.ref
@@ -23,14 +22,12 @@ import tools.confido.state.Topics
  */
 fun useRooms(): Map<String, Room> {
     val sub = useSubscription(Topics.rooms())
-    // Transitional bridge while the directory is still root-subscribed; dies
-    // with the AppState facade at the eviction.
-    return (sub as? WSData)?.data ?: use(AppStateContext)?.rooms ?: emptyMap()
+    return (sub as? WSData)?.data ?: emptyMap()
 }
 
 fun useWorkspaceQuestions(): QuestionsState {
     val sub = useSubscription(Topics.questions())
-    return (sub as? WSData)?.data ?: use(AppStateContext)?.questionsState ?: QuestionsState()
+    return (sub as? WSData)?.data ?: QuestionsState()
 }
 
 /** The room a question belongs to, resolved against a subscribed directory. */

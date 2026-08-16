@@ -1,7 +1,6 @@
 package components.redesign.presentation
 
 import Client
-import components.AppStateContext
 import components.redesign.*
 import components.redesign.basic.*
 import components.redesign.forms.*
@@ -104,7 +103,6 @@ private fun readFileAsBytes(file: dynamic): kotlin.js.Promise<ByteArray> = kotli
 }
 
 val PresentationEditor = FC<PresentationEditorProps> { props ->
-    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val submitLock = useCoroutineLock()
     val pres = props.data.presentation

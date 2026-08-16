@@ -1,7 +1,6 @@
 package extensions.room_groups
 
 import Client
-import components.AppStateContext
 import components.redesign.basic.Stack
 import components.redesign.basic.sansSerif
 import components.redesign.basic.showError
@@ -21,10 +20,9 @@ import react.router.RouteObject
 import rooms.*
 import tools.confido.extensions.*
 import tools.confido.refs.Ref
-import tools.confido.state.ClientState
-import tools.confido.state.globalState
 import kotlinx.coroutines.delay
 import utils.runCoroutine
+import components.useRooms
 
 object RoomGroupsCE : ClientExtension, RoomGroupsExtension() {
 
@@ -77,7 +75,7 @@ object RoomGroupsCE : ClientExtension, RoomGroupsExtension() {
     // --- Room tabs: "Rooms" tab for group rooms ---
 
     override fun roomTabsExtra(
-        room: Room, appState: ClientState, layoutMode: LayoutMode
+        room: Room, layoutMode: LayoutMode
     ): List<Pair<String, String>> {
         if (!room.isGroup) return emptyList()
         return listOf("rooms" to "Rooms")
@@ -100,12 +98,13 @@ object RoomGroupsCE : ClientExtension, RoomGroupsExtension() {
         onExtensionDataChange: ((ExtensionData) -> ExtensionData) -> Unit,
         cb: ChildrenBuilder,
     ) {
+        // Real hook first, before the early returns (stable hook order).
+        val allRooms = useRooms()
         if (room == null) return  // skip during room creation for now
 
         // Don't show group settings for group rooms themselves
         if (room.isGroup) return
 
-        val allRooms = globalState.rooms
         val availableGroups = allRooms.values.filter { it.isGroup && it.id != room.id }
 
         // Track selected group locally (initialized from room's current parent)
@@ -197,9 +196,7 @@ private external interface GroupChildRoomListProps : Props {
 }
 
 private val GroupChildRoomList = FC<GroupChildRoomListProps> { props ->
-    val appState = use(AppStateContext)!!
-
-    val children = appState.rooms.values.filter { it.parentRoomId == props.group.id }
+    val children = useRooms().values.filter { it.parentRoomId == props.group.id }
 
     Stack {
         css {

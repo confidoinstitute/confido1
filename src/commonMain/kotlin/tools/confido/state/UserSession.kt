@@ -43,7 +43,7 @@ data class UserSession(
     // NOTE deliberately NO `user` shortcut here: resolving userRef requires a deref,
     // which only the server can do (User is ServerImmediateDerefEntity). The server
     // has `UserSession.user` as a jvmMain extension; the client reads the viewer's
-    // own user from the self slice (ClientState.user / SelfState.user) — no other
+    // own user from the self slice (SelfState.user) — no other
     // user is client-resolvable, by construction (§5.3).
     fun renew() = copy(expiryTime = Clock.System.now() + validity.validTime)
 

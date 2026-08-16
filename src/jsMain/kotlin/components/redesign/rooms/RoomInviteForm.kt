@@ -29,6 +29,7 @@ import users.UserType
 import utils.*
 import web.location.*
 import web.url.URLSearchParams
+import components.useRooms
 
 val RoomInviteLoggedIn = FC<Props> {
     Stack {
@@ -100,15 +101,15 @@ external interface RoomInviteFormProps : Props {
 
 
 private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
-    val appState = use(AppStateContext)!!
     val navigate = useNavigate()
 
     val user = useMyUser()
     val missingRequiredEmail = user != null && user.email == null && props.emailPolicy == InviteFieldPolicy.REQUIRED
 
+    val rooms = useRooms()
     useEffectOnce {
-        // `user` is captured at render — effects run outside render, no use() here.
-        val alreadyAccepted = appState.rooms[props.roomId]?.let { room ->
+        // `user` and `rooms` are captured at render — effects run outside render, no hooks here.
+        val alreadyAccepted = rooms[props.roomId]?.let { room ->
             room.members.any { membership -> membership.user eqid user }
         } ?: false
 
@@ -162,7 +163,6 @@ external interface RoomInviteAlertProps : Props {
 val POTENTIAL_SHORTLINK_RE = Regex("^[0-9]+$")
 
 private val MissingEmailConditionalAlert = FC<RoomInviteAlertProps> { props ->
-    val appState = use(AppStateContext)!!
 
     val user = useMyUser()
     val missingRequiredEmail = user != null && user.email == null && props.emailPolicy == InviteFieldPolicy.REQUIRED

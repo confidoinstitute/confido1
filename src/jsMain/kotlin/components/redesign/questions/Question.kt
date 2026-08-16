@@ -13,17 +13,19 @@ import web.timers.clearTimeout
 import web.timers.setTimeout
 import web.window.window
 import kotlin.time.Duration.Companion.milliseconds
+import components.useQuestion
+import tools.confido.refs.Ref
 
 external interface QuestionProps : Props {
     var openResolve: Boolean?
 }
 
 val Question = FC<QuestionProps> { props->
-    val appState = use(AppStateContext)!!
     val roomCtx = use(RoomContext)!!
 
-    val questionID = useParams()["questionID"] ?: return@FC
-    val question = appState.questions[questionID]
+    val questionID = useParams()["questionID"]
+    val question = useQuestion(questionID?.let { Ref(it) })
+    if (questionID == null) return@FC
 
     // Show "not available" after a short debounce when question is null.
     // The delay avoids a flash when the question is about to appear from a pending state update

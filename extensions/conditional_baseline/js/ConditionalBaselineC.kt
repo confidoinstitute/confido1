@@ -1,6 +1,5 @@
 package extensions.conditional_baseline
 
-import components.AppStateContext
 import components.useMyPredictions
 import components.redesign.forms.FormField
 import components.redesign.forms.FormSection
@@ -28,7 +27,6 @@ import tools.confido.extensions.withOrWithout
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.refs.ref
-import tools.confido.state.globalState
 import tools.confido.utils.formatPercent
 import tools.confido.utils.toFixed
 import utils.panzoom1d.PZState
@@ -41,13 +39,17 @@ import components.roomOf
 object ConditionalBaselineCE: ClientExtension, ConditionalBaselineExtension() {
     val qidRE = Regex("/questions/([a-zA-Z0-9]+)(?:$|/.*)")
     val baselineColor = NamedColor.darkcyan
-    fun extractBaseline(rawID: String?) = rawID?.ifBlank { null }
+    /** [knownQuestions] = the viewer-visible questions to validate against (render
+     *  callers pass the workspace slice); null skips the existence check — the
+     *  submit path has no subscription in scope, and the dialog UI already
+     *  surfaces "question not found" from its own render-time validation. */
+    fun extractBaseline(rawID: String?, knownQuestions: Map<String, Question>? = null) = rawID?.ifBlank { null }
         ?.let {
             qidRE.find(it)?.let { m ->
                 m.groups[1]?.value
             } ?: it
         }?.let {
-            if (it in globalState.questions) {
+            if (knownQuestions == null || it in knownQuestions) {
                 Ref<Question>(it)
             } else {
                 println("Baseline question '$it' not found, resetting.")
@@ -55,10 +57,11 @@ object ConditionalBaselineCE: ClientExtension, ConditionalBaselineExtension() {
             }
         }
     override fun editQuestionDialogExtra(props: EditQuestionDialogProps, cb: ChildrenBuilder) {
+        val questions = useWorkspaceQuestions().questions
         var rawID by useContextState(ExtensionContextPlace.EDIT_QUESTION_DIALOG, "baseline_question", props.entity?.extensionData?.get(
             BaselineQuestionKey)?.id?:"")
-        val baselineRef = extractBaseline(rawID)
-        val baselineText = baselineRef?.let { globalState.questions[it.id] }?.name
+        val baselineRef = extractBaseline(rawID, questions)
+        val baselineText = baselineRef?.let { questions[it.id] }?.name
         val comment = when {
                 rawID == "" -> "paste question ID or URL"
                 baselineText == null -> "question not found"

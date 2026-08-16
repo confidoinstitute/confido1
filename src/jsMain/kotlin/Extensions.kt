@@ -20,7 +20,6 @@ import tools.confido.extensions.ExtensionData
 import tools.confido.question.Question
 import tools.confido.state.FlowAction
 import tools.confido.state.PresenterView
-import tools.confido.state.ClientState
 import tools.confido.state.appConfig
 import react.PropsWithChildren
 import utils.panzoom1d.PZState
@@ -89,11 +88,11 @@ interface ClientExtension : Extension {
     fun registerPresenterControls(): Map<KClass<out PresenterView>, PresenterControlsType> = emptyMap()
     fun editRoomSettingsExtra(room: Room?, onExtensionDataChange: ((ExtensionData) -> ExtensionData) -> Unit, cb: ChildrenBuilder) {}
     fun roomMemberExtra(room: Room, membership: MembershipPayload, cb: ChildrenBuilder) {}
-    fun commentFieldExtra(room: Room, appState: ClientState, cb: ChildrenBuilder) {}
-    fun roomInfoExtra(room: Room, appState: ClientState, cb: ChildrenBuilder) {}
+    fun commentFieldExtra(room: Room, cb: ChildrenBuilder) {}
+    fun roomInfoExtra(room: Room, cb: ChildrenBuilder) {}
     fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {}
     fun selectionActionMenuExtra(selectedQuestions: Set<Question>, cb: ChildrenBuilder) {}
-    fun roomTabsExtra(room: Room, appState: ClientState, layoutMode: LayoutMode): List<Pair<String, String>>  = emptyList()
+    fun roomTabsExtra(room: Room, layoutMode: LayoutMode): List<Pair<String, String>>  = emptyList()
     fun roomRoutesExtra(room: Room): Array<RouteObject> = emptyArray()
     fun rootLayoutStartHook() {}
     fun renderPredictionInput(props: components.redesign.questions.predictions.PredictionInputProps): react.ReactNode? = null

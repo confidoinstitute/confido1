@@ -2,7 +2,6 @@ package components.redesign.admin
 
 
 import Client
-import components.AppStateContext
 import components.useIsAdmin
 import components.useMyUser
 import components.useDisconnected
@@ -99,7 +98,6 @@ val DeleteUserDialog = FC<EditEntityDialogProps<User>> { props ->
 }
 
 val EditUserDialog = FC<EditUserDialogProps> { props ->
-    val appState = use(AppStateContext)!!
 
     val newUser = props.entity == null
     val htmlId = useId()
@@ -290,7 +288,6 @@ val userTypeColors = mapOf(
 )
 
 val UserAdmin = FC<Props> {
-    val appState = use(AppStateContext)!!
     if (!useIsAdmin()) return@FC
 
     // The user directory is a surface-local subscription (no global users map).

@@ -1,6 +1,5 @@
 package components.redesign.rooms.dialog
 
-import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.forms.*
 import components.redesign.rooms.RoomContext
@@ -106,7 +105,6 @@ internal val AddMemberItem = FC<AddMemberItemProps> {props ->
 }
 
 val AddMemberDialog = dialogStateWrapper(FC<BaseDialogProps> { props ->
-    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
 
     // Default to the first guest-available role, or the first role

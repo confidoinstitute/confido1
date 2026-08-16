@@ -1,7 +1,6 @@
 package components.redesign.rooms.import
 
 import Client
-import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.forms.*
 import components.redesign.questions.StatusChip
@@ -24,6 +23,10 @@ import tools.confido.spaces.*
 import web.cssom.*
 import emotion.react.css
 import hooks.useCoroutineLock
+import hooks.useSubscription
+import payloads.responses.WSData
+import tools.confido.state.Topics
+import tools.confido.refs.ref
 
 enum class MatchType {
     NEW,       // no match found, will be created
@@ -256,15 +259,15 @@ external interface ImportStepReviewProps : Props {
 
 val ImportStepReview = FC<ImportStepReviewProps> { props ->
     val state = props.state
-    val appState = use(AppStateContext)!!
     val navigate = useNavigate()
     val submitLock = useCoroutineLock()
     var importError by useState<String?>(null)
     var optionsDialogOpen by useState(false)
 
-    // Get existing questions in this room from client-side state
-    val existingQuestions = useMemo(appState, props.room) {
-        props.room.questions.mapNotNull { qRef -> appState.questions[qRef.id] }
+    // Existing questions in this room, from the room questions slice
+    val importQmap = (useSubscription(Topics.roomQuestions(props.room.ref)) as? WSData)?.data?.questions ?: emptyMap()
+    val existingQuestions = useMemo(importQmap, props.room) {
+        props.room.questions.mapNotNull { qRef -> importQmap[qRef.id] }
     }
 
     val parsedQuestions = useMemo(state, existingQuestions) { parseRows(state, existingQuestions) }

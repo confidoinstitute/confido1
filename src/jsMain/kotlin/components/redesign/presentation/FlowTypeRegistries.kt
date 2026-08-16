@@ -1,6 +1,5 @@
 package components.redesign.presentation
 
-import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.forms.Checkbox
 import components.redesign.forms.QuestionPicker
@@ -23,6 +22,9 @@ import tools.confido.refs.ref
 import tools.confido.state.*
 import tools.confido.utils.capFirst
 import web.cssom.*
+import hooks.useSubscription
+import payloads.responses.WSData
+import tools.confido.state.Topics
 
 // ============================================================
 //  Unified Registry (populated lazily on first access)
@@ -115,13 +117,12 @@ val flowItemTypes: List<FlowItemTypeEntry> by kotlin.lazy {
 //  Helpers (shared by core editors)
 // ============================================================
 
-/** Resolve the room's questions from context. Must be called within an FC. */
+/** Resolve the room's questions from the room questions slice. Real hook —
+ *  call unconditionally within an FC. */
 fun useRoomQuestions(): List<tools.confido.question.Question> {
-    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
-    return appState.questions.values.filter { q ->
-        room.questions.any { it.id == q.id }
-    }.sortedBy { it.name }
+    val qmap = (useSubscription(Topics.roomQuestions(room.ref)) as? WSData)?.data?.questions ?: emptyMap()
+    return room.questions.mapNotNull { qmap[it.id] }.sortedBy { it.name }
 }
 
 /** All tags from the room's questions. Must be called within an FC. */
@@ -195,8 +196,8 @@ private fun wrapViewChange(onChange: (FlowAction) -> Unit): (PresenterView) -> U
 
 /** Editor for [SetQuestionStateAction]. */
 val SetQuestionStateEditor = FC<FlowItemEditorProps> { props ->
-    val action = props.action as? SetQuestionStateAction ?: return@FC
     val questions = useRoomQuestions()
+    val action = props.action as? SetQuestionStateAction ?: return@FC
 
     FieldLabel { +"Question" }
     QuestionPicker {
@@ -308,8 +309,8 @@ val SetTaggedQuestionsStateEditor = FC<FlowItemEditorProps> { props ->
 
 /** Editor for [QuestionPV]: just a question picker. */
 val QuestionPVEditor = FC<FlowItemEditorProps> { props ->
-    val view = props.action.innerView() as? QuestionPV ?: return@FC
     val questions = useRoomQuestions()
+    val view = props.action.innerView() as? QuestionPV ?: return@FC
     val onViewChange = wrapViewChange(props.onChange)
 
     FieldLabel { +"Question" }
@@ -322,8 +323,8 @@ val QuestionPVEditor = FC<FlowItemEditorProps> { props ->
 
 /** Editor for [GroupPredPV]: question picker + showResolution toggle. */
 val GroupPredPVEditor = FC<FlowItemEditorProps> { props ->
-    val view = props.action.innerView() as? GroupPredPV ?: return@FC
     val questions = useRoomQuestions()
+    val view = props.action.innerView() as? GroupPredPV ?: return@FC
     val onViewChange = wrapViewChange(props.onChange)
 
     FieldLabel { +"Question" }
@@ -348,8 +349,8 @@ val GroupPredPVEditor = FC<FlowItemEditorProps> { props ->
 
 /** Editor for [BinaryHistogramPV]: question picker (binary questions only) + showNames toggle. */
 val BinaryHistogramPVEditor = FC<FlowItemEditorProps> { props ->
-    val view = props.action.innerView() as? BinaryHistogramPV ?: return@FC
     val questions = useRoomQuestions().filter { it.answerSpace is tools.confido.spaces.BinarySpace }
+    val view = props.action.innerView() as? BinaryHistogramPV ?: return@FC
     val onViewChange = wrapViewChange(props.onChange)
 
     FieldLabel { +"Question" }
@@ -375,14 +376,16 @@ val BinaryHistogramPVEditor = FC<FlowItemEditorProps> { props ->
 /** Editor for [InviteLinkPV]: informational text, sets room ref from context on mount. */
 val InviteLinkPVEditor = FC<FlowItemEditorProps> { props ->
     val room = use(RoomContext)!!
-    val view = props.action.innerView() as? InviteLinkPV ?: return@FC
+    val view = props.action.innerView() as? InviteLinkPV
     val onViewChange = wrapViewChange(props.onChange)
-    // Set the room ref once when mounted (createDefault uses a placeholder Ref(""))
+    // Set the room ref once when mounted (createDefault uses a placeholder Ref("")).
+    // The effect hook stays above the early return (stable hook order).
     useEffect(room.id) {
-        if (view.room.id != room.id) {
+        if (view != null && view.room.id != room.id) {
             onViewChange(InviteLinkPV(room.ref, "FIRST", followPresentation = view.followPresentation))
         }
     }
+    if (view == null) return@FC
     div {
         css { fontFamily = sansSerif; fontSize = 13.px; color = Color("#888"); marginTop = 4.px }
         +"Will show the room's invite link as a QR code on the presenter screen."
@@ -407,8 +410,8 @@ val InviteLinkPVEditor = FC<FlowItemEditorProps> { props ->
 
 /** Editor for [NavigateToQuestionAction]: question picker. */
 val NavigateToQuestionEditor = FC<FlowItemEditorProps> { props ->
-    val action = props.action as? NavigateToQuestionAction ?: return@FC
     val questions = useRoomQuestions()
+    val action = props.action as? NavigateToQuestionAction ?: return@FC
 
     FieldLabel { +"Question" }
     QuestionPicker {

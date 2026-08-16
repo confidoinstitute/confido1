@@ -1,6 +1,5 @@
 package components.redesign.presenter
 
-import components.AppStateContext
 import components.usePresenterWindowActive
 import components.usePresenterInfo
 import components.useDisconnected
@@ -58,7 +57,6 @@ private val CollapseButton = ButtonBase.withStyle<ButtonBaseProps> {
  * itself.
  */
 val PresenterControlPanel = FC<Props> {
-    val appState = use(AppStateContext)!!
     val ctl = use(PresenterContext)!!
     var expanded by useState(false)
 

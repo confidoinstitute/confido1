@@ -1,7 +1,6 @@
 package components.redesign.presentation
 
 import Client
-import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.forms.Button
 import components.redesign.forms.IconButton
@@ -24,7 +23,6 @@ import web.cssom.*
 import tools.confido.state.Topics
 
 val PresentationTab = FC<Props> {
-    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val submitLock = useCoroutineLock()
 

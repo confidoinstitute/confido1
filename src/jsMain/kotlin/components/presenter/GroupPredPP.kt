@@ -21,8 +21,12 @@ import components.QuestionPredictors
 import components.useQuestion
 
 val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
-    val question = useQuestion(props.view.question) ?: return@FC
-    val response = useSubscription(Topics.groupPred(question.ref))
+    // Hooks precede the data-dependent early returns: on a cold load the
+    // subscriptions deliver after the first render, and the hook order must
+    // not change between the loading and loaded renders (React #310).
+    val question = useQuestion(props.view.question)
+    val response = useSubscription(question?.let { Topics.groupPred(it.ref) })
+    if (question == null) return@FC
 
     Stack {
         css {

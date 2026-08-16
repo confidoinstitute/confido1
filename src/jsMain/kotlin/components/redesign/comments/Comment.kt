@@ -37,7 +37,6 @@ external interface CommentProps : Props {
 val Comment = FC<CommentProps> { props ->
     val comment = props.comment
     val room = use(RoomContext)!!
-    val appState = use(AppStateContext)!!
 
     var moreDialogOpen by useState(false)
     var editDialogOpen by useState(false)

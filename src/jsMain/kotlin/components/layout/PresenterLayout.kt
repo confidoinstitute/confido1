@@ -1,6 +1,5 @@
 package components.layout
 
-import components.AppStateContext
 import components.usePresenterInfo
 import components.AppStateWebsocketProvider
 import components.presenter.PresenterPage
@@ -37,7 +36,6 @@ val PresenterLayout = FC<Props> {
     }
 }
 val PresenterLayoutInner = FC<Props> {
-    val appState = use(AppStateContext)!!
 
     // Presence subscription: tells the server a presenter window is open.
     useSubscription(Topics.presenterTrack())

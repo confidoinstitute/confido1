@@ -1,7 +1,6 @@
 package components.redesign.rooms
 
 import web.window.window
-import components.AppStateContext
 import components.usePermission
 import components.useIsAdmin
 import components.useMyUser
@@ -61,7 +60,6 @@ fun canChangeRole(myUser: User?, room: Room, role: RoomRole) =
     canChangeRole(room.userRole(myUser), role)
 
 val RoomMembers = FC<Props> {
-    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val layoutMode = use(LayoutModeContext)!!
 
@@ -181,7 +179,6 @@ external interface RoomMemberProps : Props {
 }
 
 val RoomMember = FC<RoomMemberProps> {props ->
-    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val member = props.membership
     // Granted only to MANAGE_MEMBERS viewers — management actions need it.
@@ -277,7 +274,6 @@ external interface InvitationMembersProps : Props {
 }
 
 val InvitationMembers = FC<InvitationMembersProps> { props ->
-    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
 
     val active = props.invitation.canJoin && props.invitation.canAccess

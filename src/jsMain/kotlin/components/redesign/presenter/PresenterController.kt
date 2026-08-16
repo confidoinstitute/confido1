@@ -1,7 +1,6 @@
 package components.redesign.presenter
 
 import web.window.window
-import components.AppStateContext
 import components.usePresenterWindowActive
 import components.presenter.getPresenterControlsComponent
 import components.redesign.basic.Dialog
@@ -138,7 +137,6 @@ val PresenterContext = react.createContext<PresenterController>()
 
 val PresenterControllerProvider = FC<PropsWithChildren> { props->
     var offeredView by useState<PresenterView>()
-    val appState = use(AppStateContext)!!
 
     val ctl = useMemo { PresenterController()}
     // Captured at render: offer() runs from other components' event handlers, where

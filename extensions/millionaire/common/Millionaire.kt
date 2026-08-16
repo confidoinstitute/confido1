@@ -20,7 +20,6 @@ import tools.confido.state.PresenterView
 import tools.confido.utils.ellipsize
 import tools.confido.utils.toInt
 import kotlin.math.pow
-import tools.confido.refs.deref
 import kotlinx.serialization.serializer
 import tools.confido.state.Topics
 import tools.confido.utils.TopicSpec1

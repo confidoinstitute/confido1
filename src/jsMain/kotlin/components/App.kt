@@ -9,14 +9,10 @@ import react.*
 import react.router.RouteObject
 import react.router.RouterProvider
 import react.router.dom.createBrowserRouter
-import tools.confido.state.ClientState
 import tools.confido.state.appConfig
 import web.location.location
 import web.url.URL
 
-// Carries the ClientState facade directly; connection status (the former `stale`
-// tuple member) is its own concern — see ConnectionContext / useDisconnected.
-val AppStateContext = createContext<ClientState>()
 val LoginContext = createContext<Login>()
 data class Login(val isLoggedIn: Boolean, private val changeState: (Boolean) -> Unit) {
     /** Change state to logged in. The session cookie must be set already. **/

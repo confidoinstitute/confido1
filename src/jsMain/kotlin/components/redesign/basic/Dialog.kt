@@ -1,6 +1,5 @@
 package components.redesign.basic
 
-import components.AppStateContext
 import components.useDisconnected
 import components.redesign.AboutIcon
 import components.redesign.IconProps
@@ -546,7 +545,6 @@ external interface DialogMenuCommonActionsProps : Props {
 }
 
 val DialogMenuCommonActions = FC<DialogMenuCommonActionsProps> { props ->
-    val appState = use(AppStateContext)!!
     FeedbackMenuItem {
         pageName = props.pageName
         onClick = {

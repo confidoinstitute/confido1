@@ -4,7 +4,6 @@ import hooks.useSubscription
 import payloads.responses.WSData
 import react.FC
 import react.Props
-import react.use
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.state.QuestionCounts
@@ -26,10 +25,7 @@ import tools.confido.state.Topics
  */
 fun useQuestion(ref: Ref<Question>?): Question? {
     val sub = useSubscription(ref?.let { Topics.question(it) })
-    // Transitional bridge: while the global questions slice is still root-subscribed
-    // it covers the subscription's initial-load gap (and pre-existing consumers).
-    // Dies with the slice at the eviction, leaving the subscription alone.
-    return (sub as? WSData)?.data ?: ref?.let { use(AppStateContext)?.questions?.get(it.id) }
+    return (sub as? WSData)?.data
 }
 
 /**
@@ -39,17 +35,7 @@ fun useQuestion(ref: Ref<Question>?): Question? {
  */
 fun useQuestionCounts(ref: Ref<Question>?): QuestionCounts {
     val sub = useSubscription(ref?.let { Topics.questionCounts(it) })
-    // Transitional bridge: the global questions slice carries the same counts
-    // until the eviction.
-    return (sub as? WSData)?.data ?: ref?.let { r ->
-        use(AppStateContext)?.questionsState?.let { qs ->
-            QuestionCounts(
-                predictions = qs.predictionCount[r] ?: 0,
-                predictors = qs.predictorCount[r] ?: 0,
-                comments = qs.commentCount[r] ?: 0,
-            )
-        }
-    } ?: QuestionCounts()
+    return (sub as? WSData)?.data ?: QuestionCounts()
 }
 
 external interface QuestionPredictorsProps : Props {

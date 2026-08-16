@@ -16,8 +16,6 @@ import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionData
 import tools.confido.extensions.get
 import tools.confido.extensions.with
-import tools.confido.state.ClientState
-import tools.confido.state.clientState
 
 object PseudonymsCE : ClientExtension, PseudonymsExtension() {
     override fun roomMemberExtra(room: Room, membership: MembershipPayload, cb: ChildrenBuilder) {
@@ -29,7 +27,7 @@ object PseudonymsCE : ClientExtension, PseudonymsExtension() {
         // userId is granted to MANAGE_MEMBERS viewers; others can still resolve their
         // own row (their own assignment is the only one they can see anyway).
         val userId = membership.user.userId?.id
-            ?: (if (membership.user.isMyself) clientState.self.user?.id else null)
+            ?: (if (membership.user.isMyself) useMyUser()?.id else null)
             ?: return
         val pseudonym = assignments[userId]
 
@@ -51,7 +49,7 @@ object PseudonymsCE : ClientExtension, PseudonymsExtension() {
         }
     }
 
-    override fun commentFieldExtra(room: Room, appState: ClientState, cb: ChildrenBuilder) {
+    override fun commentFieldExtra(room: Room, cb: ChildrenBuilder) {
         val pseudonymList = room.extensionData[PseudonymsListKey]
         if (pseudonymList.isEmpty()) return
         val assignments = room.extensionData[PseudonymAssignmentsKey]
@@ -72,7 +70,7 @@ object PseudonymsCE : ClientExtension, PseudonymsExtension() {
         }
     }
 
-    override fun roomInfoExtra(room: Room, appState: ClientState, cb: ChildrenBuilder) {
+    override fun roomInfoExtra(room: Room, cb: ChildrenBuilder) {
         val pseudonymList = room.extensionData[PseudonymsListKey]
         if (pseudonymList.isEmpty()) return
         val assignments = room.extensionData[PseudonymAssignmentsKey]

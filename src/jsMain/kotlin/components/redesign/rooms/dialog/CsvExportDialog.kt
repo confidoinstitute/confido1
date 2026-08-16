@@ -1,7 +1,6 @@
 package components.redesign.rooms.dialog
 
 import web.dom.document
-import components.AppStateContext
 import components.usePermission
 import components.redesign.basic.Dialog
 import components.redesign.basic.Stack
@@ -22,10 +21,8 @@ import rooms.ExportHistory
 import rooms.RoomPermission
 import tools.confido.question.Question
 import tools.confido.refs.Ref
-import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.spaces.NumericSpace
-import tools.confido.utils.forEachDeref
 import web.html.ButtonType
 import web.html.InputType
 import web.html.number

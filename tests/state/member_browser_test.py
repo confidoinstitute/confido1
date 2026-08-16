@@ -27,7 +27,7 @@ async def main():
             print("FAIL: login"); sys.exit(1)
 
         await cdp.cmd("Page.navigate", {"url": BASE + "/room/testroom/members"}, session=s)
-        await wait_for(cdp, s, "!!(window.curRooms && window.curSelf)", desc="app state")
+        await wait_for(cdp, s, "!!(window.curTopics && window.curTopics.rooms && window.curTopics.rooms.data && window.curTopics && window.curTopics.self && window.curTopics.self.data)", desc="app state")
         await wait_for(cdp, s, "document.body.innerText.includes('Questions')", desc="room page")
         body = await evaluate(cdp, s, "document.body.innerText")
         if "Members" in body:

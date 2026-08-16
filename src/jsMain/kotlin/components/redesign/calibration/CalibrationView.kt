@@ -41,7 +41,6 @@ import tools.confido.calibration.CalibrationBin
 import tools.confido.calibration.CalibrationVector
 import tools.confido.question.Question
 import tools.confido.refs.Ref
-import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.state.CalibrationReqPV
 import tools.confido.utils.capFirst

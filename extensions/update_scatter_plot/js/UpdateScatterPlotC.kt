@@ -1,6 +1,5 @@
 package extensions.update_scatter_plot
 
-import components.AppStateContext
 import components.usePermission
 import components.presenter.PresenterControlsProps
 import components.presenter.PresenterPageProps
@@ -57,7 +56,6 @@ import tools.confido.question.GroupTerminology
 import tools.confido.question.Prediction
 import tools.confido.question.PredictionTerminology
 import tools.confido.question.Question
-import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.refs.Ref
 import tools.confido.spaces.BinarySpace
@@ -76,6 +74,7 @@ import web.prompts.confirm
 import components.useRooms
 import components.roomOf
 import components.useQuestion
+import components.useWorkspaceQuestions
 
 // ============================================================
 //  QuestionSelector (existing, for reference question config)
@@ -89,10 +88,10 @@ external interface QuestionSelectorProps : Props {
 
 val QID_RE = Regex("\\[([a-zA-Z0-9_-]+)\\]\$")
 val QuestionSelector = FC<QuestionSelectorProps>("QuestionSelector") { props ->
-    val appState = use(AppStateContext)!!
+    val allQuestions = useWorkspaceQuestions().questions
     val datalistId = useId()
     fun fmtq(q: Question) = "${q.name} [${q.id}]"
-    var internalVal by useState(props.value?.let { appState.questions[it] }?.let {fmtq(it)} ?: "")
+    var internalVal by useState(props.value?.let { allQuestions[it] }?.let {fmtq(it)} ?: "")
 
     div {
         css { width = 100.pct }
@@ -114,7 +113,7 @@ val QuestionSelector = FC<QuestionSelectorProps>("QuestionSelector") { props ->
         }
         datalist {
             id = datalistId
-            appState.questions.values.filter{it.answerSpace == BinarySpace }.forEach { question ->
+            allQuestions.values.filter{it.answerSpace == BinarySpace }.forEach { question ->
                 option { value = fmtq(question); +fmtq(question) }
             }
         }
@@ -392,7 +391,6 @@ val SnapshotManagerDialog = FC<SnapshotManagerDialogProps> { props->
     var newPublic by useState(false)
     val tz = TimeZone.currentSystemDefault()
     val today = Clock.System.now().toLocalDateTime(tz).date
-    val appState = use(AppStateContext)!!
     val submitLock = useCoroutineLock()
     if (room == null) return@FC
     Dialog {
@@ -653,11 +651,9 @@ val UpdatePlotPC = FC<PresenterControlsProps<UpdatePlotPV>> { props ->
 
 /** PV editor for UpdatePlotPV with timepoint selectors (wrapped as FlowItemEditorProps). */
 private val UpdatePlotPVEditorComponent = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
+    val questions = components.redesign.presentation.useRoomQuestions()
     val view = (props.action as? tools.confido.state.SetPresenterViewAction)?.view as? UpdatePlotPV ?: return@FC
     val onViewChange: (tools.confido.state.PresenterView) -> Unit = { v -> props.onChange(tools.confido.state.SetPresenterViewAction(v)) }
-    val appState = use(AppStateContext)!!
-    val room = use(components.redesign.rooms.RoomContext)!!
-    val questions = appState.questions.values.filter { q -> room.questions.any { it.id == q.id } }.sortedBy { it.name }
     val tz = TimeZone.currentSystemDefault()
     val today = Clock.System.now().toLocalDateTime(tz).date
 
@@ -715,10 +711,8 @@ private val UpdatePlotPVEditorComponent = FC<tools.confido.extensions.FlowItemEd
 
 /** Flow action editor for CreateSnapshotAction. */
 private val CreateSnapshotActionEditor = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
+    val questions = components.redesign.presentation.useRoomQuestions()
     val action = props.action as? CreateSnapshotAction ?: return@FC
-    val appState = use(AppStateContext)!!
-    val room = use(components.redesign.rooms.RoomContext)!!
-    val questions = appState.questions.values.filter { q -> room.questions.any { it.id == q.id } }.sortedBy { it.name }
 
     FieldLabel { +"Snapshot name" }
     TextInput {
@@ -790,7 +784,6 @@ object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
     override fun questionQuickSettingsExtra(props: QuestionQuickSettingsDialogProps, cb: ChildrenBuilder, onClose: ()->Unit) {
         var updatePlotState  by useContextState(ExtensionContextPlace.QUESTION_PAGE, "state", default = UpdatePlotState.NONE)
         val room = use(RoomContext)!!
-        val appState = use(AppStateContext)!!
         if (usePermission(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS))
         cb.apply {
             DialogMenuItem {

@@ -8,7 +8,6 @@ import react.*
 import tools.confido.question.CommentVisibility
 import tools.confido.question.GroupPredictionVisibility
 import tools.confido.question.QuestionState
-import tools.confido.refs.deref
 import web.cssom.*
 import emotion.react.css
 import hooks.useSubscription

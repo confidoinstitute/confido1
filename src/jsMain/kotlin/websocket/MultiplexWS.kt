@@ -163,6 +163,12 @@ object MultiplexWS {
             // decoded values) before any listener runs, so listeners (and anything they
             // render synchronously) never observe a multi-topic update half-applied.
             val applied = frame.updates.mapNotNull { update: TopicUpdate ->
+                // Devtools/test surface: the last raw payload per topic, as plain JS.
+                try {
+                    if (window.asDynamic().curTopics == null) window.asDynamic().curTopics = js("({})")
+                    window.asDynamic().curTopics[update.topic] =
+                        update.data?.let { JSON.parse<dynamic>(it.toString()) }
+                } catch (e: Exception) {}
                 subs[update.topic]?.let { entry ->
                     entry.last = update.data
                     entry.decoded = update.data?.let { entry.decoder?.invoke(it) }

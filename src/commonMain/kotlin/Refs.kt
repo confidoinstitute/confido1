@@ -15,7 +15,6 @@ import rooms.Room
 import tools.confido.question.*
 import tools.confido.state.Presentation
 import tools.confido.state.UserSession
-import tools.confido.state.globalState
 import tools.confido.utils.generateId
 import users.EmailVerificationLink
 import users.LoginLink
@@ -38,26 +37,12 @@ interface HasExpiration {
 interface ExpiringEntity: Entity, HasExpiration
 
 
-inline fun <reified T: ImmediateDerefEntity> Ref<T>.deref(): T? {
-    @OptIn(DelicateRefAPI::class)
-    return globalState.derefNonBlocking(T::class, id) as T?
-}
-inline suspend fun <reified T: Entity> Ref<T>.derefBlocking(): T? {
-    @OptIn(DelicateRefAPI::class)
-    return globalState.derefBlocking(T::class, id) as T?
-}
-inline fun <reified T: Entity> Ref<T>.derefNonBlocking(): T? {
-    @OptIn(DelicateRefAPI::class)
-    return globalState.derefNonBlocking(T::class, id) as T?
-}
-
-// Used to mark entities that can always be dereferenced without suspending...
-// .. on client
-interface ClientImmediateDerefEntity : Entity {}
-// .. on server
+// Marks entities that can always be dereferenced without suspending on the
+// server (`Ref<T>.deref()` is a jvmMain extension over the resident stores —
+// the client has no deref at all: it reads entities from topic payloads).
 interface ServerImmediateDerefEntity : Entity {}
-// .. on both
-interface ImmediateDerefEntity : ClientImmediateDerefEntity, ServerImmediateDerefEntity {}
+// Legacy alias from the era of client-side deref; all entities are server-only now.
+interface ImmediateDerefEntity : ServerImmediateDerefEntity {}
 
 @RequiresOptIn(message = "Ref internal API.")
 @Retention(AnnotationRetention.BINARY)

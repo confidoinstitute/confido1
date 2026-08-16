@@ -1,18 +1,10 @@
 package components
 
-import web.window.window
 import hooks.decodeTopicPayload
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.encodeToDynamic
 import payloads.responses.WSData
 import react.*
-import rooms.Room
-import tools.confido.serialization.confidoJSON
-import tools.confido.state.ClientState
-import tools.confido.state.QuestionsState
 import tools.confido.state.SelfState
 import tools.confido.state.Topics
-import tools.confido.state.clientState
 import websocket.MultiplexWS
 
 external interface NoAppStateProps : Props {
@@ -24,18 +16,16 @@ external interface AppStateWebsocketProviderProps : PropsWithChildren {
 }
 
 /**
- * Owns the root subscriptions of the multiplexed websocket and provides
- * [AppStateContext] as a [ClientState] facade assembled from the topic slices
- * (questions+counts, rooms directory, self — the former SentState monolith is
- * fully decomposed; the users directory is a surface-local subscription, not a
- * root slice). All root subscriptions issue in the same tick, so their
- * initial payloads arrive in one consistent frame; the global [clientState]
- * (which backs shared-code `deref()`) is reassigned inside the frame's listener
- * pass, i.e. always before React re-renders anything.
+ * Owns the multiplexed websocket's lifecycle and the root `self` subscription
+ * feeding [SelfContext] (the one slice every page needs — identity, permissions
+ * inputs, own predictions). Everything else is subscribed by the surfaces that
+ * display it (`useSubscription` and the accessors built on it); there is no
+ * client-global state facade. Children render once the self payload has arrived,
+ * so SelfContext is always populated below this point.
  */
 val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
     val loginState = use(LoginContext)!!
-    var appState by useState<ClientState?>(null)
+    var self by useState<SelfState?>(null)
     // The debounced connection flag, mirrored from MultiplexWS (which owns the
     // debounce so that non-React code shares the same notion of "disconnected").
     var disconnected by useState(MultiplexWS.disconnected)
@@ -50,55 +40,19 @@ val AppStateWebsocketProvider = FC<AppStateWebsocketProviderProps> { props ->
     }
 
     useEffectOnceWithCleanup {
-        var curQuestions: QuestionsState? = null
-        var curSelf: SelfState? = null
-        var curRooms: Map<String, Room>? = null
-        fun apply() {
-            val cs = ClientState(
-                curQuestions ?: return,
-                curSelf ?: return,
-                curRooms ?: return,
-            )
-            clientState = cs
-            appState = cs
-
-            try {
-                // For easy inspection in devtools.
-                @OptIn(ExperimentalSerializationApi::class)
-                window.asDynamic().curQuestions = confidoJSON.encodeToDynamic(cs.questionsState)
-                @OptIn(ExperimentalSerializationApi::class)
-                window.asDynamic().curSelf = confidoJSON.encodeToDynamic(cs.self)
-                @OptIn(ExperimentalSerializationApi::class)
-                window.asDynamic().curRooms = confidoJSON.encodeToDynamic(cs.roomDir)
-            } catch (e: Exception) {
-            }
-        }
-        val unsubQuestions = MultiplexWS.subscribe(Topics.questions().name, decodeTopicPayload(Topics.questions())) { response, _ ->
-            (response as? WSData)?.data?.let { curQuestions = it; apply() }
-        }
         val unsubSelf = MultiplexWS.subscribe(Topics.self().name, decodeTopicPayload(Topics.self())) { response, _ ->
-            (response as? WSData)?.data?.let { curSelf = it; apply() }
-        }
-        val unsubRooms = MultiplexWS.subscribe(Topics.rooms().name, decodeTopicPayload(Topics.rooms())) { response, _ ->
-            (response as? WSData)?.data?.let { curRooms = it; apply() }
+            (response as? WSData)?.data?.let { self = it }
         }
         MultiplexWS.start()
-        onCleanup {
-            unsubQuestions()
-            unsubSelf()
-            unsubRooms()
-        }
+        onCleanup { unsubSelf() }
     }
 
     ConnectionContext.Provider {
         value = disconnected
-        if (appState != null) {
+        if (self != null) {
             SelfContext.Provider {
-                value = (appState ?: error("No app state!")).self
-                AppStateContext.Provider {
-                    value = appState ?: error("No app state!")
-                    +props.children
-                }
+                value = self ?: error("No self state!")
+                +props.children
             }
         } else {
             props.loadingComponent?.invoke {

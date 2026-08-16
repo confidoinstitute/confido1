@@ -1,6 +1,5 @@
 package components.redesign.questions.dialog
 
-import components.AppStateContext
 import components.useMyPredictions
 import components.redesign.basic.*
 import components.redesign.forms.*
@@ -63,7 +62,6 @@ external interface NumericExactEstimateDialogProps : ExactEstimateDialogProps {
 }
 
 val ExactEstimateDialog = FC<GenericExactEstimateDialogProps> { props ->
-    val appState = use(AppStateContext)!!
     props.question.answerSpace.let { answerSpace ->
         when (answerSpace) {
             BinarySpace -> {

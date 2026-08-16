@@ -1,6 +1,5 @@
 package components.redesign.layout
 
-import components.AppStateContext
 import components.useFollowingPresentation
 import components.useMyUser
 import components.AppStateWebsocketProvider
@@ -97,7 +96,6 @@ enum class LayoutMode(val contentWidth: Length, val contentSidePad: Length) {
 val LayoutModeContext = createContext<LayoutMode>()
 
 private val RootLayoutInner = FC<Props> {
-    val appState = use(AppStateContext)!!
     val layoutMode = useBreakpoints(LayoutMode.PHONE to 740, LayoutMode.TABLET to 1020, default =LayoutMode.DESKTOP)
     var showDemoWelcome by useState(appConfig.demoMode && window.asDynamic().demoDismissed != true)
     ClientExtension.enabled.forEach {

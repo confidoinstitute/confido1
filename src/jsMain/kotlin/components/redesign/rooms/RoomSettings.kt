@@ -1,6 +1,5 @@
 package components.redesign.rooms
 
-import components.AppStateContext
 import components.useDisconnected
 import components.redesign.basic.LinkUnstyled
 import components.redesign.basic.Stack
@@ -21,7 +20,6 @@ import rooms.*
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionData
 import tools.confido.question.QuestionSchedule
-import tools.confido.refs.deref
 import web.html.submit
 import hooks.useSubscription
 import payloads.responses.WSData
@@ -37,7 +35,6 @@ external interface RoomSettingsProps : Props {
 
 val RoomSettings = FC<RoomSettingsProps> { props ->
     val roomQuestions = (useSubscription(props.room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data?.questions ?: emptyMap()
-    val appState = use(AppStateContext)!!
 
     var name by useState(props.room?.name ?: "")
     var description by useState(props.room?.description ?: "")

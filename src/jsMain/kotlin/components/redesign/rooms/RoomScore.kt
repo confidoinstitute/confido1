@@ -1,7 +1,6 @@
 package components.redesign.rooms
 
 import Client
-import components.AppStateContext
 import components.usePermission
 import components.redesign.basic.*
 import components.redesign.forms.InlineHelpButton
@@ -87,7 +86,6 @@ val ScoringHelpDialog = FC<DialogProps> { props->
 
 val RoomScore = FC<Props> {
     val room = use(RoomContext)!!
-    val appState = use(AppStateContext)!!
     val canViewScoreboard = usePermission(room, RoomPermission.VIEW_SCORES)
 
     var helpOpen by useState(false)

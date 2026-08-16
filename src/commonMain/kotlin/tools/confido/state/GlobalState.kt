@@ -2,66 +2,18 @@ package tools.confido.state
 
 import kotlinx.serialization.Serializable
 import rooms.Room
-import rooms.RoomPermission
-import tools.confido.extensions.Extension
 import tools.confido.question.*
 import tools.confido.refs.*
 import users.User
-import users.UserType
-import kotlin.reflect.KClass
 
-interface BaseState {
-    val rooms:  Map<String, Room>
-    val questions:  Map<String, Question>
-    val predictorCount : Map<Ref<Question>, Int>
-    val predictionCount : Map<Ref<Question>, Int>
-    val commentCount : Map<Ref<Question>, Int>
-}
-
-abstract class GlobalState : BaseState {
-
-    // This function should dereference the entity if it is possible to do so
-    // without suspending, return null otherwise.
-    // This is an internal function, most code should use the
-    // Ref<T>.{deref,maybeDeref,derefLazy} extensions methods
-    // from tools.confido.refs.
-    @DelicateRefAPI
-    open fun  derefNonBlocking(entityType: KClass<*>, id: String): Entity? =
-        when (entityType) {
-            Question::class -> questions[id]
-            Room::class -> rooms[id]
-            else -> null
-        }
-    // This function should dereference the entity, even if it involves blocking
-    // (e.g. loading it from database or network). It may fail with all kinds
-    // of exceptions.
-    // This is an internal function, most code should use the
-    // Ref<T>.{deref,maybeDeref,derefLazy} extensions methods
-    // from tools.confido.refs.
-    @DelicateRefAPI
-    open suspend fun  derefBlocking(entityType: KClass<*>, id: String): Entity? =
-        derefNonBlocking(entityType, id)
-
-    inline fun <reified T: ImmediateDerefEntity> get(id: String) = Ref<T>(id).deref()
-    inline fun <reified T: ImmediateDerefEntity> getRef(id: String): Ref<T>? {
-        val ref = Ref<T>(id)
-        ref.deref() ?: return null
-        return ref
-    }
-
-    abstract val extensions: List<Extension>
-}
-
-// Client or server will provide concrete implementation
-expect val globalState: GlobalState
 
 // The "/state/questions" topic payload (§4.2): all questions the viewer can see, with
 // the per-question count maps riding along — they are per-question facts that only
 // ever existed as separate maps because the retired SentState monolith was flat.
-// (The former "/state" monolith is fully decomposed: rooms → "/state/rooms" (+ the
-// per-room detail topic), per-user fields → "/state/self", users → "/state/users",
-// questions+counts → here. The client's ClientState facade assembles BaseState from
-// these slices.)
+// (The former "/state" monolith is fully decomposed: rooms → the rooms directory
+// topic (+ the per-room detail topic), per-user fields → "self", users → "users",
+// questions+counts → here and the per-room "room/<id>/questions" slice. The client
+// has no global facade — surfaces subscribe the slices they display.)
 @Serializable
 data class QuestionsState(
     val questions: Map<String, Question> = emptyMap(),

@@ -57,7 +57,7 @@ fun ApplicationCall.getSessionIdOrCreateNew(): String {
 /**
  * The session's user, resolved against the resident user store. Server-only by
  * design: on the client the viewer's own user travels on the self slice
- * (`SelfState.user` / `ClientState.user`), and no other user is client-resolvable
+ * (`SelfState.user`), and no other user is client-resolvable
  * (User is [tools.confido.refs.ServerImmediateDerefEntity]; §5.3).
  */
 val UserSession.user: User? get() = userRef?.deref()

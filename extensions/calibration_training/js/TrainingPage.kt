@@ -1,7 +1,6 @@
 package extensions.calibration_training
 
 import Client
-import components.AppStateContext
 import components.redesign.basic.*
 import components.redesign.forms.Button
 import components.redesign.forms.TextButton
@@ -51,7 +50,6 @@ enum class TrainingViewState {
  * Main training page component.
  */
 val TrainingPage = FC<Props> {
-    val appState = use(AppStateContext)!!
     val navigate = useNavigate()
     
     var viewState by useState(TrainingViewState.LOADING)

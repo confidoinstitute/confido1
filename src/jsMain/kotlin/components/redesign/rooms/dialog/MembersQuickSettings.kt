@@ -1,6 +1,5 @@
 package components.redesign.rooms.dialog
 
-import components.AppStateContext
 import components.usePermission
 import components.useDisconnected
 import components.redesign.*
@@ -43,7 +42,6 @@ external interface InvitationQuickSettingsDialogProps : Props {
 }
 
 val MemberQuickSettingsDialog = FC<MemberQuickSettingsDialogProps> {props ->
-    val appState = use(AppStateContext)!!
 
     DialogMenu {
         open = props.open
@@ -74,7 +72,6 @@ val MemberQuickSettingsDialog = FC<MemberQuickSettingsDialogProps> {props ->
 }
 
 val InvitationQuickSettingsDialog = FC<InvitationQuickSettingsDialogProps> {props ->
-    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val presenterCtl = use(PresenterContext)!!
 

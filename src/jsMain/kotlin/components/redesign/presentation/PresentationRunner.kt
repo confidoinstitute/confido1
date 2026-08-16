@@ -28,11 +28,11 @@ external interface PresentationRunnerProps : Props {
 val PresentationRunner = FC<PresentationRunnerProps> { props ->
     val room = use(RoomContext)!!
     val submitLock = useCoroutineLock()
+    val listRef = useRef<web.html.HTMLElement>(null)
     val runState = props.data.runState ?: return@FC
     val items = runState.expandedItems
     val pres = props.data.presentation
     val currentItem = items.getOrNull(runState.currentIndex)
-    val listRef = useRef<web.html.HTMLElement>(null)
 
     fun navigate(dir: NavigateDirection, index: Int? = null) {
         submitLock {

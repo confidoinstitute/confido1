@@ -11,9 +11,9 @@ import react.dom.html.ReactHTML.div
 import react.router.*
 import react.router.dom.*
 import rooms.*
-import tools.confido.state.clientState
 import utils.ExtendableLinkProps
 import utils.except
+import tools.confido.extensions.ClientExtension
 
 external interface RoomTabsProps : PropsWithPalette<RoomPalette>, PropsWithClassName {
     var onChange: (() -> Unit)?
@@ -83,8 +83,6 @@ val RoomTab = FC<RoomTabProps> { props->
 
 val RoomTabs = FC<RoomTabsProps> { props ->
     val palette = props.palette ?: RoomPalette.red
-
-    val appState = use(AppStateContext)!!
     val room = use(RoomContext)!!
     val location = useLocation()
     val locationValue = location.pathname.split('/').getOrNull(3) ?: ""
@@ -145,8 +143,8 @@ val RoomTabs = FC<RoomTabsProps> { props ->
             tab("presentation",
                 if (room._presentationRunning == true) "Presentation \u25CF" else "Presentation")
 
-        clientState.extensions.forEach {
-            it.roomTabsExtra(room, appState, layoutMode).forEach { (path, title) -> tab(path, title)  }
+        ClientExtension.enabled.forEach {
+            it.roomTabsExtra(room, layoutMode).forEach { (path, title) -> tab(path, title)  }
         }
     }
 }

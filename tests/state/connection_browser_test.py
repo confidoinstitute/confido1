@@ -56,7 +56,7 @@ async def main():
 
         # Open the members tab: MemberRoleSelect is an immediate-commit control.
         await cdp.cmd("Page.navigate", {"url": BASE + "/room/testroom/members"}, session=s)
-        await wait_for(cdp, s, "!!(window.curRooms && window.curSelf)", desc="app state")
+        await wait_for(cdp, s, "!!(window.curTopics && window.curTopics.rooms && window.curTopics.rooms.data && window.curTopics && window.curTopics.self && window.curTopics.self.data)", desc="app state")
         await wait_for(cdp, s, "document.body.innerText.includes('debugmember')", desc="member rows")
         if await evaluate(cdp, s, "document.body.innerText.includes('Connection lost')"):
             print("FAIL: banner shown while connected"); sys.exit(1)
@@ -98,7 +98,7 @@ async def main():
                                       icon:null, color:'GRAY'})}).then(r => r.status)""", await_promise=True)
         if st != 200:
             print("FAIL: post-reconnect edit ->", st); sys.exit(1)
-        await wait_for(cdp, s, "window.curRooms.testroom.name === 'Reconnected room'",
+        await wait_for(cdp, s, "window.curTopics.rooms.data.testroom.name === 'Reconnected room'",
                        desc="live update after reconnect")
         print("PASS: live updates flow after reconnect")
         print("OVERALL: PASS")

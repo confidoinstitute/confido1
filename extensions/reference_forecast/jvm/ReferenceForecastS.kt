@@ -13,7 +13,6 @@ import tools.confido.distributions.BinaryDistribution
 import tools.confido.extensions.get
 import tools.confido.refs.*
 import tools.confido.state.getenvBool
-import tools.confido.state.globalState
 import tools.confido.state.serverState
 import users.User
 import kotlin.math.pow
