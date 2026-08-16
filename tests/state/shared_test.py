@@ -116,6 +116,41 @@ async def main():
                 "TEST-6", "unrelated-room join: room-scoped shared topics neither recompute nor frame",
                 f"framed={sorted(j1)} q {cq}->{computes('question/{question}')} r {cr}->{computes('room/{room}/questions')}")
 
+        # --- Group-prediction topics: shared per (scoped class, answered flag) ---
+        post("/rooms/testroom/questions/add",
+             {"_id": "", "name": "Shared gp q", "answerSpace": {"type": "binary"},
+              "groupPredVisible": True}, admin)
+        m = by_topic(await recv_updates(ws1, 2.0))
+        await recv_updates(ws2, 1.0)  # drain
+        gq = next(k for k, v in (m.get("questions", {}).get("data") or {}).items()
+                  if v["name"] == "Shared gp q")
+        gp, rgp = f"question/{gq}/group_pred", "room/testroom/group_pred"
+        await ws1.send(json.dumps({"sub": [gp, rgp]}))
+        await ws2.send(json.dumps({"sub": [gp, rgp]}))
+        await recv_updates(ws1, 2.0); await recv_updates(ws2, 2.0)
+        c0gp = computes("question/{question}/group_pred")
+        c0rgp = computes("room/{room}/group_pred")
+
+        post(f"/questions/{gq}/predict", {"type": "binary", "yesProb": 0.7}, member1)
+        g1 = by_topic(await recv_updates(ws1, 2.0))
+        g2 = by_topic(await recv_updates(ws2, 2.0))
+        t.check(g1.get(gp, {}).get("type") == "ok" and g1.get(gp) == g2.get(gp)
+                and g1.get(rgp, {}).get("data", {}).get(gq) is not None
+                and computes("question/{question}/group_pred") == c0gp + 1
+                and computes("room/{room}/group_pred") == c0rgp + 1,
+                "TEST-7", "group-pred topics: one compute per class serves both subscribers",
+                f"gp {c0gp}->{computes('question/{question}/group_pred')} "
+                f"rgp {c0rgp}->{computes('room/{room}/group_pred')}")
+
+        # Membership gate on the room group-pred topic (the fixed latent leak):
+        # a room the member cannot see must yield UNAUTHORIZED, not aggregates.
+        roomd = post("/rooms/add", {"name": "Shared room D", "description": "", "color": "RED", "icon": None},
+                     admin).strip('"')
+        await ws1.send(json.dumps({"sub": [f"room/{roomd}/group_pred"]}))
+        dresp = by_topic(await recv_updates(ws1, 2.0)).get(f"room/{roomd}/group_pred", {})
+        t.check(dresp.get("type") == "err" and dresp.get("errType") == "UNAUTHORIZED",
+                "TEST-8", "room group-pred gated for non-members", str(dresp))
+
     t.finish()
 
 

@@ -31,6 +31,12 @@ import kotlin.time.Duration.Companion.days
 import tools.confido.state.Topics
 
 val roomUrl = Room.urlPrefix("{rID}")
+
+/** Sharing key for the room group-prediction topic (§4.3 extended keys): the class
+ *  projected to the room, the subscription's ?qids= filter, and the set of
+ *  ANSWERED-visibility questions the viewer has answered (empty — a constant — in
+ *  the common all-EVERYONE room, so the whole room-page cohort shares one entry). */
+data class RoomGroupPredKey(val cls: PermClass, val qids: Set<String>?, val answered: Set<String>)
 val iconNames = iconDir?.listFiles()?.filter { it.isFile }?.map { it.name }?.sorted() ?: emptyList()
 
 data class RoomContext(val inUser: User?, val room: Room) {
@@ -246,26 +252,50 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
     }
     // Group predictions of a room's questions (optionally filtered by ?qids=): a
     // multi-question payload, so the composition uses whole-map views rather than
-    // keyed cells — output dedup keeps unrelated changes off the wire.
-    viewWS(Topics.roomGroupPred) { rRef ->
+    // keyed cells — output dedup keeps unrelated changes off the wire. Shared per
+    // (room-scoped class, qids filter, answered-set): the answered-set contains only
+    // ANSWERED-visibility questions the viewer answered, so it is a constant (empty)
+    // in the common all-EVERYONE room and the whole room page cohort shares one
+    // payload. The qids filter must live in the key — the registry key carries only
+    // path args, and subscriptions with different filters must not collide.
+    sharedViewWS(Topics.roomGroupPred, key = { rRef ->
         val wantedIds = call.request.queryParameters["qids"]?.split(',')?.toSet()
-        val rId = rRef.id
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
         combineViews(
-            roomStore.state.asView().at(rId),
+            sharedClassView(),
+            roomStore.state.asView(),
             questionStore.state.asView(),
-            userStore.state.asView().at(viewerRef.id),
             latestPredictions.state.asView(),
+        ) { cls, rooms, questions, preds ->
+            val answered = rooms[rRef.id]?.questions.orEmpty().mapNotNullTo(mutableSetOf()) { ref ->
+                ref.id.takeIf {
+                    questions[ref.id]?.groupPredictionVisibility == GroupPredictionVisibility.ANSWERED &&
+                        preds[ref]?.get(viewerRef) != null
+                }
+            }
+            RoomGroupPredKey(cls.scopedTo(setOf(rRef)), wantedIds, answered)
+        }
+    }) { key, rRef ->
+        combineViews(
+            roomStore.state.asView().at(rRef.id),
+            questionStore.state.asView(),
             predictionData.groupPredState.asView(),
-        ) { room, questions, viewer, userPreds, groupPreds ->
-            if (viewer == null) unauthorized("Not logged in.")
+        ) { room, questions, groupPreds ->
             if (room == null) notFound("No such room.")
-            val canViewAll = room.hasPermission(viewer, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+            val censor = ClassCensor(key.cls)
+            // Membership gate (fixes a latent leak: the topic used to serve
+            // EVERYONE-visibility aggregates to non-members too).
+            if (!censor.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
+                unauthorized("You cannot view this room.")
+            val canViewAll = censor.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
 
             room.questions.associateWith { ref ->
-                val wanted = (wantedIds?.contains(ref.id) ?: true)
-                val canView = canViewGroupPred(questions[ref.id], userPreds[ref]?.get(viewerRef))
-
+                val wanted = (key.qids?.contains(ref.id) ?: true)
+                val canView = when (questions[ref.id]?.groupPredictionVisibility) {
+                    GroupPredictionVisibility.EVERYONE -> true
+                    GroupPredictionVisibility.ANSWERED -> ref.id in key.answered
+                    else -> false
+                }
                 if ((canViewAll || canView) && wanted) groupPreds[ref] else null
             }
         }

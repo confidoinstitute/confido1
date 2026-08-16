@@ -1256,6 +1256,34 @@ working untouched mid-transition.
     unsub+resub within the grace period reuses the lingering cache. Payload shape
     unchanged except ordering, now explicitly sorted by timestamp (the cache is a
     map; the old collection-scan order was incidental) — no client changes.
+  - **Group-prediction topics shared via extended keys** (2026-08-16) — the
+    remaining realtime-event multiplier (tens of participants watching one
+    question's aggregate paid one gate+aggregate compute per subscriber per
+    prediction). `sharedViewWS` gained its general *keyed* form: the topic declares
+    a per-subscription reactive key view (it may read the session and query
+    parameters — everything per-viewer must flow into the key), and the body
+    receives the key, keeping the leak-proof property (registry key = censor
+    input); the class-scoped form is now sugar over it. Key design principle:
+    collapse per-viewer facts to constants when irrelevant, so the common case
+    shares maximally — `question/<id>/group_pred` keys on (question-scoped class,
+    answered) where answered is false unless visibility is ANSWERED (one key per
+    class for EVERYONE questions; a first prediction or visibility change re-keys
+    the live subscription — gate_test's ANSWERED unlock now exercises exactly the
+    re-selection path); `room/<id>/group_pred` keys on (room-scoped class, ?qids=
+    filter, answered-set over ANSWERED-visibility questions) — empty answered-set
+    constant in the common all-EVERYONE room, so the room-page cohort shares one
+    entry, and the query filter lives in the key because the registry key carries
+    only path args. Conversion fixed a **latent leak**: the room topic had no
+    membership gate and served EVERYONE-visibility aggregates of foreign rooms to
+    any logged-in user (the per-question topic always checked VIEW_QUESTIONS); it
+    now requires VIEW_QUESTIONS, gate-recovering on join. The histogram topic
+    deliberately stays per-connection (user decision): its per-bin
+    UserPresentations are observer-dependent (isMyself), and an audit confirmed
+    every client subscription is display-scoped (QuestionPage mounts it only
+    while the histogram is open; presenter PPs subscribe only while rendering) —
+    if it ever needs sharing, the keyed form with a viewer-ref key component for
+    VIEW_INDIVIDUAL_PREDICTIONS holders (class-pure for ordinary participants)
+    is the recorded design.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or

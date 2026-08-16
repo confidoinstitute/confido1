@@ -16,8 +16,11 @@ import payloads.requests.*
 import payloads.responses.*
 import rooms.Room
 import rooms.RoomPermission
+import tools.confido.application.ClassCensor
+import tools.confido.application.PermClass
 import tools.confido.application.UserPresentationContext
 import tools.confido.application.getUserPresentation
+import tools.confido.application.questionTopicScope
 import tools.confido.application.sessions.*
 import tools.confido.distributions.*
 import tools.confido.question.*
@@ -61,6 +64,10 @@ fun canViewGroupPred(question: Question?, myPred: Prediction?): Boolean =
         GroupPredictionVisibility.MODERATOR_ONLY -> false
         null -> false
     }
+
+/** Sharing key for the group-prediction topic (§4.3 extended keys): the class
+ *  projected to the question's room plus the gate-relevant answered flag. */
+data class GroupPredKey(val cls: PermClass, val answered: Boolean)
 
 suspend fun <T> ApplicationCall.withQuestion(body: suspend QuestionContext.() -> T): T =
     withQuestion(Ref(parameters["qID"] ?: ""), body)
@@ -295,27 +302,44 @@ fun questionRoutes(routing: Routing) = routing.apply {
         call.respond(HttpStatusCode.OK, Cbor.encodeToByteArray(updates))
     }
 
-    // View group predictions: a View composition over exactly the state the payload
-    // reads — the question (visibility settings), its room (permissions), the viewer
-    // (type changes), the viewer's own prediction (ANSWERED gate), and the group
-    // aggregate itself. Recomputation is driven by those same reads.
-    viewWS(Topics.groupPred) { qRef ->
+    // View group predictions: shared per (question-scoped class, gate-relevant
+    // answered flag) — the workshop hot path (tens of participants watching the same
+    // question's aggregate) computes once per key, not per subscriber. The answered
+    // flag is false unless the question's visibility is ANSWERED, so EVERYONE-
+    // visibility questions collapse to one key per class; a viewer's first
+    // prediction (or a visibility change) re-keys their live subscription.
+    sharedViewWS(Topics.groupPred, key = { qRef ->
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
+        combineViews(
+            sharedClassView(),
+            roomStore.state.asView(),
+            questionStore.state.asView().at(qRef.id),
+            latestPredictions.state.asView().map { it[qRef]?.get(viewerRef) != null },
+        ) { cls, _, question, answered ->
+            GroupPredKey(
+                questionTopicScope(cls, qRef),
+                answered = question?.groupPredictionVisibility == GroupPredictionVisibility.ANSWERED && answered,
+            )
+        }
+    }) { key, qRef ->
         val roomView = roomStore.questionRoomState.asView().at(qRef)
             .flatMap { rRef -> rRef?.let { roomStore.state.asView().at(it.id) } ?: viewOf(null) }
         combineViews(
             questionStore.state.asView().at(qRef.id),
             roomView,
-            userStore.state.asView().at(viewerRef.id),
-            latestPredictions.state.asView().map { it[qRef]?.get(viewerRef) },
             predictionData.groupPredState.asView().at(qRef),
-        ) { question, room, viewer, myPred, groupPred ->
-            if (viewer == null) unauthorized("Not logged in.")
+        ) { question, room, groupPred ->
             if (question == null || room == null) notFound("No such question.")
-            if (!room.hasPermission(viewer, RoomPermission.VIEW_QUESTIONS))
+            val censor = ClassCensor(key.cls)
+            if (!censor.hasPermission(room, RoomPermission.VIEW_QUESTIONS))
                 forbidden("You cannot view this group prediction.")
-            val canViewAll = room.hasPermission(viewer, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
-            if (!(canViewAll || canViewGroupPred(question, myPred)))
+            val canViewAll = censor.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+            val canView = when (question.groupPredictionVisibility) {
+                GroupPredictionVisibility.EVERYONE -> true
+                GroupPredictionVisibility.ANSWERED -> key.answered
+                GroupPredictionVisibility.MODERATOR_ONLY -> false
+            }
+            if (!(canViewAll || canView))
                 unauthorized("You cannot view this group prediction.")
             groupPred ?: notFound("There is no group prediction.")
         }

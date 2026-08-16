@@ -250,7 +250,7 @@ object SharedViews {
  * Shared per session — all of a connection's (and a session's connections')
  * subscriptions validate one instance.
  */
-private fun WSBody.sharedClassView(): View<PermClass> {
+internal fun WSBody.sharedClassView(): View<PermClass> {
     val sessionId = call.userSession?.id ?: unauthorized("Not logged in.")
     return SharedViews.get("permclass" to sessionId) {
         combineViews(
@@ -309,24 +309,45 @@ fun <P> Route.sharedViewWS(
     })
 }
 
-// Note: shared topics must not read query parameters (the registry key carries only
-// the typed path args) — none of the shared topics has any.
-fun <A : Any, P> Route.sharedViewWS(
+/**
+ * The general keyed form: [key] builds the per-subscription *reactive sharing key* —
+ * it runs with the WSBody in scope, so it may read the session and query parameters;
+ * everything per-viewer the payload depends on must flow into the key (e.g. the
+ * gate-relevant "has answered" flag of the group-prediction topics, or a query
+ * filter). [body] receives the key: the registry entry and the censor input are the
+ * same value, so per-viewer reads outside the key are impossible by construction,
+ * and an under-keyed topic fails closed. Key types must be equality-friendly (data
+ * classes); prefer keys that collapse to constants when a per-viewer fact is
+ * irrelevant (e.g. answered=false unless visibility is ANSWERED), so the common case
+ * shares maximally.
+ */
+@JvmName("sharedViewWSKeyed")  // same erased signature as the class-scoped overload
+fun <A : Any, K, P> Route.sharedViewWS(
     spec: TopicSpec1<A, P>,
-    scope: (PermClass, A) -> PermClass = { cls, _ -> cls },
-    body: (PermClass, A) -> View<P>,
+    key: WSBody.(A) -> View<K>,
+    body: (K, A) -> View<P>,
 ) {
     TopicRegistry.handlers.add(ViewTopic(spec.path) { ctx, args ->
         @Suppress("UNCHECKED_CAST")
         val a = args[0] as A
-        val scopedClass = combineViews(ctx.sharedClassView(), roomStore.state.asView()) { cls, _ -> scope(cls, a) }
-        wsErrorView(scopedClass.flatMap { cls ->
-            SharedViews.get(Triple(spec.path.pattern, args, cls)) {
-                topicPayloadView(spec.serializer, body(cls, a), spec.path.pattern)
+        wsErrorView(ctx.key(a).flatMap { k ->
+            SharedViews.get(Triple(spec.path.pattern, args, k)) {
+                topicPayloadView(spec.serializer, body(k, a), spec.path.pattern)
             }
         })
     })
 }
+
+// The class-scoped form is the keyed form with key = the (projected) PermClass.
+// Only such topics may skip query parameters entirely; a keyed topic reading a query
+// filter must fold it into the key (the registry key carries only path args).
+fun <A : Any, P> Route.sharedViewWS(
+    spec: TopicSpec1<A, P>,
+    scope: (PermClass, A) -> PermClass = { cls, _ -> cls },
+    body: (PermClass, A) -> View<P>,
+) = sharedViewWS(spec,
+    key = { a -> combineViews(sharedClassView(), roomStore.state.asView()) { cls, _ -> scope(cls, a) } },
+    body = body)
 
 /**
  * [View]-gated topic with a suspending fetch stage: [gate] composes the consistent,
