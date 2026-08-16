@@ -123,6 +123,29 @@ authors ship inside the comment topic payload as presentations, and likes travel
 comment's topic. `Ref<Comment>` loses synchronous deref; nothing on a synchronous path needs a
 comment body, and the type system now enforces that.
 
+*Amendment (2026-08-16): tier-2 residency — subscription-scoped hot partitions.* The client
+eviction retired criterion (a) — no shared code derefs synchronously anymore — and the topic
+architecture supplies a natural hotness signal: a subscription *is* the declaration that an
+entity is being looked at. `ResidentPartitions` (store package) makes an archive partition
+resident while pinned by at least one subscription (plus a grace period covering page
+refreshes/reconnects): first pinner loads, the partition is maintained from the archive's
+synchronous change dispatch (load race closed by buffering transforms and keyed replay —
+idempotent against a fetch that already saw the change), and the entry drops when the last
+pin releases and the grace expires. Memory is bounded by connected UI surfaces, not by
+activity × time, so this is not §3.1 residency — cold access stays suspend-only on the
+archive. Comments are the pilot (see the Phase 3 notes). The same shape is the intended
+*future* path for loosening strict residency of workspace-structure entities (questions
+partitioned by room) if instance age ever makes full residency heavy; the agreed API for
+that day is a *split*, not a change: `suspend load()` anywhere, non-suspending reads only
+through a pinned view — preserving both the "synchronous deref is a compile-time fact"
+principle and the View-consistency theorem's non-suspending-transform hypothesis. Named
+blockers, recorded so they aren't re-derived: the cross-room surfaces (global questions
+topic, search-per-keystroke, dashboard, calibration) read all questions by design and would
+need server-side endpoints first; the per-topic pin-set functions coincide with the §4.3
+class-scope projections; `latestPredictions`' head is the actually-large resident state on
+old instances and follows the same partition pattern. No near-term need — questions/rooms
+grow with workspace structure, which is slow.
+
 ### 3.2 Core interfaces (sketch)
 
 ```kotlin
@@ -300,6 +323,12 @@ same subscription). The sender's flush pass validates instead of recomputing:
   prediction histories, admin user directory, per-room question payloads. Non-candidates:
   small payloads, fold outputs. Reconnect = fresh Full (a last-seen-txid catch-up ring is a
   possible later refinement the txid tags leave room for).
+  *(Decision of 2026-08-16: deferred indefinitely — after the counts split and the
+  comment-partition residency, no topic pays O(large collection) wire on a hot path;
+  every collection payload is bounded-small and changes infrequently, and comments'
+  actual multiplier (per-subscriber fetches) was server-side, fixed by residency. The
+  `mapValuesMemo` half is likewise deferred: a keyed memo sweep and delta emission fall
+  out of one combinator if ever needed. This bullet stays as the design for that day.)*
 
 ---
 
@@ -1188,6 +1217,34 @@ working untouched mid-transition.
     per-connection lastSent maps), and cohort collisions still share — unsharing
     would buy nothing in either regime. Still ahead from §3.5:
     `mapValuesMemo` keyed combinators, collection deltas.
+  - **Comment topics over resident partitions** (2026-08-16) — the last
+    O(everything × subscribers)-per-event shape retired, and the §3.1 `all + tail`
+    promise honored by *residency* rather than wire deltas (user-driven decision:
+    post-split no payload is large, comments' real multiplier was the per-subscriber
+    Mongo refetch per version bump — thirty watchers meant thirty partition fetches
+    per comment — and that lives server-side; the §3.5 delta bullet is annotated as
+    deferred-indefinitely with its design intact). `ResidentPartitions` (§3.1
+    amendment: subscription-scoped tier-2 residency) pins a partition while
+    subscribed + grace; the comment topics became plain `viewWS` View compositions
+    over the pin's cell — the gate+fetch split, the archive `versionView` machinery
+    and the per-viewer refetch are gone (gate+fetch remains for extension topics).
+    ViewTopics gained the minimal resource protocol this needed:
+    `SubscriptionResources` on `WSBody` (`resources.onClose { pin.close() }`),
+    closed by the connection loop on unsubscribe/disconnect/build failure. Two
+    subtleties worth recording: `stripUserLikes` deliberately emits no change
+    events, so it patches live partition caches explicitly in its apply step (the
+    old design's users-map-gate refetch covered this implicitly); and the fetch
+    hook is an abstract *member function* because a suspend *lambda* whose
+    parameter type is a generic bounded by a value class (`Ref`) miscompiles —
+    coroutine spilling resumed with a null parameter (hit for real, cost a debug
+    round). Verified end-to-end (tests/state/comments_test.py + diag load
+    counters): one partition load serves N subscribers and all subsequent churn
+    (zero refetches across add/like/edit/delete), a comment and its count arrive
+    in ONE frame (the frame-consistency win — previously impossible for a
+    FlowTopic), likedByMe stays per-viewer over the shared cache, and
+    unsub+resub within the grace period reuses the lingering cache. Payload shape
+    unchanged except ordering, now explicitly sorted by timestamp (the cache is a
+    map; the old collection-scan order was incidental) — no client changes.
 - **Phase 4 — semantic component splits** (§5.1): membership first, then invite links, then
   Question's resolution cluster; one tolerant-reader migration each.
 - **Phase 5 (optional) — SqliteBackend** (§3.3): when the replica-set ops burden or

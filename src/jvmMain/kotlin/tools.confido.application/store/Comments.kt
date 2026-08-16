@@ -1,10 +1,6 @@
 package tools.confido.store
 
 import com.mongodb.reactivestreams.client.ClientSession
-import kotlinx.collections.immutable.PersistentMap
-import kotlinx.collections.immutable.persistentMapOf
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.Serializable
 import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.CoroutineCollection
@@ -22,7 +18,8 @@ import kotlin.reflect.KProperty1
 
 /**
  * Comments as an Archive (PERSISTENCE_SYNC_REDESIGN.md §3.1): non-resident, suspend-only,
- * with partition fetch (`all(question)` / `all(room)`) as the core read primitive. Likes
+ * with partition fetch (`all(question)` / `all(room)`) as the core read primitive — plus
+ * subscription-scoped hot partitions ([ResidentPartitions]) for the comment topics. Likes
  * are a `likes` array on the comment document itself, so they travel with the comment.
  *
  * One fold is maintained from the change stream and boot-initialized by an aggregate:
@@ -34,27 +31,15 @@ open class MongoCommentArchive<E : tools.confido.question.Comment, P : Ref<*>>(
     private val partitionProp: KProperty1<E, P>,
     private val userProp: KProperty1<E, Ref<User>>,
     private val withId: (E, String) -> E,
+    private val withLikes: (E, List<Ref<User>>) -> E,
 ) : ChangeSource<E>(), Archive<E, P> {
 
-    // Per-partition change counter — the wake signal for View-gated topics over this
-    // archive (the payload itself is non-resident and must be fetched, so unlike
-    // resident views the "value" here is only a version, not the data). Note
-    // [stripUserLikes] deliberately emits no change and therefore bumps no version;
-    // topics whose gate combines the users map still refresh on user deletion.
-    private val _versions = MutableStateFlow<PersistentMap<P, Long>>(persistentMapOf())
-    private var versionMap by _versions::value
-    private var versionCounter = 0L
-
-    /** Whole-archive version map; wake signal for topics spanning all partitions. */
-    val versionsState: StateFlow<PersistentMap<P, Long>> get() = _versions
-
-    /** Wake-signal view for one partition; the value is a monotonic change counter. */
-    fun versionView(partition: P): View<Long> = _versions.asView().map { it[partition] ?: 0L }
-
-    init {
-        onChange { change ->
-            versionMap = versionMap.put(partitionProp.get(change.entity), ++versionCounter)
-        }
+    /** Subscription-scoped residency (tier-2, §3.1 amendment): comment topics pin
+     *  their partition here, making their payloads plain [View] compositions — one
+     *  load per hot partition instead of a fetch per subscriber per change, and
+     *  frame consistency with the count folds (same synchronous change dispatch). */
+    val partitions = object : ResidentPartitions<E, P>(this@MongoCommentArchive, { partitionProp.get(it) }) {
+        override suspend fun fetch(partition: P) = all(partition)
     }
 
     override suspend fun all(partition: P): List<E> =
@@ -115,9 +100,12 @@ open class MongoCommentArchive<E : tools.confido.question.Comment, P : Ref<*>>(
                     if (sess == null) coll.updateMany(filter, update)
                     else coll.updateMany(sess, filter, update)
                 }
-                // Likes live only in the documents; no resident state to update. (Change
-                // emission is skipped: like-only updates affect no fold.)
-                override fun apply() {}
+                // Change emission is skipped (like-only updates affect no fold), so the
+                // resident partitions are patched explicitly — the cache must not keep
+                // a deleted user's likes alive.
+                override fun apply() = partitions.mutateAll { c ->
+                    if (user in c.likes) withLikes(c, c.likes - user) else c
+                }
             })
         }
     }
@@ -134,12 +122,14 @@ object questionCommentArchive : MongoCommentArchive<QuestionComment, Ref<Questio
     serverState.database.getCollection("questionComments"),
     QuestionComment::question, QuestionComment::user,
     { e, id -> e.copy(id = id) },
+    { e, likes -> e.copy(likes = likes) },
 )
 
 object roomCommentArchive : MongoCommentArchive<RoomComment, Ref<Room>>(
     serverState.database.getCollection("roomComments"),
     RoomComment::room, RoomComment::user,
     { e, id -> e.copy(id = id) },
+    { e, likes -> e.copy(likes = likes) },
 )
 
 object commentData : ManagedStore {

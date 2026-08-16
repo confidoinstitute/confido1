@@ -74,7 +74,24 @@ fun Route.webSocketST(
 }
 
 
-data class WSBody(val call: ApplicationCall)
+/**
+ * Per-subscription resources (ViewTopics are otherwise passive): a topic build that
+ * acquires something with a lifetime — e.g. a [tools.confido.store.ResidentPartitions]
+ * pin — registers its release via [onClose]; the connection loop runs [closeAll] on
+ * unsubscribe, disconnect, and build failure.
+ */
+class SubscriptionResources {
+    private val closers = mutableListOf<() -> Unit>()
+    fun onClose(f: () -> Unit) { closers += f }
+    fun closeAll() {
+        closers.forEach { runCatching(it) }
+        closers.clear()
+    }
+}
+
+data class WSBody(val call: ApplicationCall) {
+    val resources = SubscriptionResources()
+}
 
 // ==== Topic-multiplexed state websocket (PERSISTENCE_SYNC_REDESIGN.md §4.1) ====
 //
@@ -312,10 +329,11 @@ fun <A : Any, P> Route.sharedViewWS(
 }
 
 /**
- * [View]-gated topic with a suspending fetch stage, for Archive-backed payloads: [gate]
- * composes the consistent, non-suspending part (permission checks, per-viewer gate
- * inputs — include the archive partition's `versionView` so content changes wake the
- * topic) and [fetch] receives the gate's value and may suspend (the partition query).
+ * [View]-gated topic with a suspending fetch stage: [gate] composes the consistent,
+ * non-suspending part (permission checks, per-viewer gate inputs — include a version
+ * counter for content the fetch reads, so content changes wake the topic) and [fetch]
+ * receives the gate's value and may suspend. (The comment topics left this shape for
+ * resident partitions + plain views; extension topics still use it.)
  * The fetch runs outside the consistency window; it reads committed post-transaction
  * state, and any interleaved change re-wakes the topic, so at-least-once recomputation
  * plus output dedup keeps the delivered payload correct. Errors from either stage are

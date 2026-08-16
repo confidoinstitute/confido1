@@ -37,18 +37,18 @@ fun<T: CommentExtraData> makeCommentPresentation(comment: Comment, extraData: T?
         extraData
     )
 
-/** Gate result for the comment topics: who is looking, where, and whether they may see
- *  other people's comments (own comments are always visible). */
-private data class CommentGate(val viewer: User, val room: Room, val canSeeOthers: Boolean = true)
-
 fun questionCommentsRoutes(routing: Routing) = routing.apply {
-    // View comments: the gate (permissions + ANSWERED visibility) is a View composition;
-    // the partition fetch is the suspending stage, re-woken by the archive's version
-    // signal. The users map is a gate input: author presentations embed users, and it
-    // also refreshes the topic after user deletion (which strips likes without a
-    // version bump).
-    viewWS(Topics.questionComments, gate = { qRef ->
+    // Comment topics are plain View compositions over a pinned resident partition
+    // (ResidentPartitions): the build acquires the pin (first subscriber loads the
+    // partition, everyone else reads memory) and releases it via the subscription's
+    // resource hook. Payloads are per-viewer (likedByMe, own-comment visibility), but
+    // the fetch amplification is gone and the payload is frame-consistent with the
+    // comment-count folds (same synchronous change dispatch). The users map is an
+    // input for author presentations.
+    viewWS(Topics.questionComments) { qRef ->
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
+        val pin = questionCommentArchive.partitions.acquire(qRef)
+        resources.onClose { pin.close() }
         val roomView = roomStore.questionRoomState.asView().at(qRef)
             .flatMap { rRef -> rRef?.let { roomStore.state.asView().at(it.id) } ?: viewOf(null) }
         combineViews(
@@ -56,8 +56,8 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
             roomView,
             userStore.state.asView(),
             latestPredictions.state.asView().map { it[qRef]?.get(viewerRef) },
-            questionCommentArchive.versionView(qRef),
-        ) { question, room, users, myPred, _ ->
+            pin.view,
+        ) { question, room, users, myPred, comments ->
             val viewer = users[viewerRef.id] ?: unauthorized("Not logged in.")
             if (question == null || room == null) notFound("No such question.")
             if (!room.hasPermission(viewer, RoomPermission.VIEW_QUESTION_COMMENTS))
@@ -68,13 +68,10 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
                 CommentVisibility.ANSWERED -> myPred != null
                 CommentVisibility.MODERATOR_ONLY -> false
             }
-            CommentGate(viewer, room, canViewAll || canView)
-        }
-    }) { qRef, (viewer, room, canSeeOthers) ->
-        questionCommentArchive.all(qRef).filter { comment ->
-            comment.user == viewer.ref || canSeeOthers
-        }.map { comment ->
-            makeCommentPresentation(comment, QuestionCommentExtraData(comment.prediction?.dist), viewer, room)
+            val canSeeOthers = canViewAll || canView
+            comments.values.sortedBy { it.timestamp }
+                .filter { it.user == viewer.ref || canSeeOthers }
+                .map { makeCommentPresentation(it, QuestionCommentExtraData(it.prediction?.dist), viewer, room) }
         }
     }
 
@@ -150,22 +147,21 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
 }
 
 fun roomCommentsRoutes(routing: Routing) = routing.apply {
-    viewWS(Topics.roomComments, gate = { rRef ->
+    viewWS(Topics.roomComments) { rRef ->
         val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
+        val pin = roomCommentArchive.partitions.acquire(rRef)
+        resources.onClose { pin.close() }
         combineViews(
             roomStore.state.asView().at(rRef.id),
             userStore.state.asView(),
-            roomCommentArchive.versionView(rRef),
-        ) { room, users, _ ->
+            pin.view,
+        ) { room, users, comments ->
             val viewer = users[viewerRef.id] ?: unauthorized("Not logged in.")
             if (room == null) notFound("No such room.")
             if (!room.hasPermission(viewer, RoomPermission.VIEW_ROOM_COMMENTS))
                 forbidden("You cannot view the discussion.")
-            CommentGate(viewer, room)
-        }
-    }) { _, (viewer, room) ->
-        roomCommentArchive.all(room.ref).map { comment ->
-            makeCommentPresentation(comment, null, viewer, room)
+            comments.values.sortedBy { it.timestamp }
+                .map { makeCommentPresentation(it, null, viewer, room) }
         }
     }
 

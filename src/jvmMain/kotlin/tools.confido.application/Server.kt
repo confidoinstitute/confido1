@@ -307,8 +307,12 @@ fun main() {
                     // per-(topic, permission-class) views' compute-once observable
                     // (tests/state/shared_test.py).
                     getST("/diag/topic_computes") {
+                        val stats = TopicStats.computes + mapOf(
+                            "load:questionComments" to questionCommentArchive.partitions.loads,
+                            "load:roomComments" to roomCommentArchive.partitions.loads,
+                        )
                         call.respondText(
-                            confidoJSON.encodeToString(TopicStats.computes as Map<String, Long>),
+                            confidoJSON.encodeToString(stats),
                             ContentType.Application.Json
                         )
                     }
@@ -594,6 +598,7 @@ fun main() {
                         var view: View<JsonElement>? = null  // present for ViewTopic subscriptions
                         var sentAt = -1L                     // TxClock serial as of the last sent payload
                         var broken = false                   // internal error: dead until resubscribed
+                        var resources: SubscriptionResources? = null  // released on unsub/disconnect
                     }
                     val subs = mutableMapOf<String, ActiveSub>()
 
@@ -673,10 +678,12 @@ fun main() {
                         }
                         val sub = ActiveSub()
                         subs[topic] = sub
+                        val body = WSBody(TopicCall(call, query))
+                        sub.resources = body.resources
                         when (handler) {
                             is ViewTopic -> {
                                 try {
-                                    val view = handler.build(WSBody(TopicCall(call, query)), args)
+                                    val view = handler.build(body, args)
                                     sub.view = view
                                     sub.job = launch(singleThreadContext) {
                                         view.changes.collect { poke() }
@@ -685,8 +692,10 @@ fun main() {
                                 } catch (e: ResponseError) {
                                     // Build-time error (e.g. unparseable parameters): single
                                     // error payload, subscription stays dead until resub.
+                                    body.resources.closeAll()
                                     stage(topic, errorElement(e.wsCode, e.message))
                                 } catch (e: Exception) {
+                                    body.resources.closeAll()
                                     call.application.log.error("Error building topic $topic", e)
                                     stage(topic, errorElement(WSErrorType.INTERNAL_ERROR, "Internal error"))
                                 }
@@ -695,7 +704,7 @@ fun main() {
                                 try {
                                     // stage() never suspends, so a blocked send cannot
                                     // back-pressure the collector; the outbox coalesces.
-                                    handler.flow(WSBody(TopicCall(call, query)), args)
+                                    handler.flow(body, args)
                                         .collect { element -> stage(topic, element) }
                                 } catch (e: CancellationException) {
                                     throw e
@@ -740,7 +749,7 @@ fun main() {
                             // page's topic set arrive as one consistent frame.
                             cmd.sub.forEach { subscribe(it) }
                             cmd.unsub.forEach { topic ->
-                                subs.remove(topic)?.job?.cancel()
+                                subs.remove(topic)?.let { it.job?.cancel(); it.resources?.closeAll() }
                                 staged.remove(topic)  // don't deliver to a topic just unsubscribed
                                 lastSent.remove(topic)
                             }
@@ -749,8 +758,9 @@ fun main() {
                         sessionWatch.cancel()
                         renewJob.cancel()
                         senderJob.cancel()
-                        // Cancel stream jobs so their try/finally cleanups run.
-                        subs.values.forEach { it.job?.cancel() }
+                        // Cancel stream jobs so their try/finally cleanups run; release
+                        // subscription resources (partition pins).
+                        subs.values.forEach { it.job?.cancel(); it.resources?.closeAll() }
                     }
                 }
                 application.log.info("static dir: $staticDir")
