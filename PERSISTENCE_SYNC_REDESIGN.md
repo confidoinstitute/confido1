@@ -930,6 +930,17 @@ working untouched mid-transition.
     own-user deref must stay legal, and the remaining audit surface is zero sites.
     Further narrowing to admin-only (the §4.2 `admin/users` endpoint) would need a
     server-side search endpoint for the add-member dialog — deferred until wanted.
+    *(Resolved 2026-08-16: admin-only narrowing declared moot, not deferred — the
+    permission model boxes it in by design: any full user can create a room, any
+    moderator can invite, and inviting needs the directory, so the member-visible
+    list is a load-bearing capability, and under the nominal "members of your
+    organization" semantics colleague emails are intended to be visible. What the
+    audit did surface: the directory over-shipped administrative *fields* no member
+    surface consumes — `lastLoginAt` (colleague-activity data), `createdAt`,
+    `emailVerified`, `active` — while the add-member search reads only
+    id/type/nick/email. `censorUser` is now two-tier (admin full, member stripped
+    with the metadata pinned to constants), which the shared users topic gets for
+    free since its class key is already the user type.)*
   - **`Ref<User>` made client-opaque** (follow-up, same day): the "ratchet not
     applied" caveat above is resolved by removing `UserSession.user` — the one
     shared-code user deref — instead of accommodating it. The server keeps it

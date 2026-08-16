@@ -25,6 +25,14 @@ async def main():
                 and users["debugadmin"].get("email") == ADMIN_EMAIL,
                 "TEST-1", "proper member receives the users directory (password scrubbed)",
                 json.dumps(users)[:300])
+        # Member tier: administrative metadata stripped (lastLoginAt is colleague
+        # activity data; createdAt pinned to epoch, emailVerified/active to defaults —
+        # kotlinx omits default-valued fields, so they must be absent on the wire).
+        ua = users.get("debugadmin", {})
+        t.check(ua.get("lastLoginAt") is None and ua.get("createdAt") == "1970-01-01T00:00:00Z"
+                and "emailVerified" not in ua and "active" not in ua,
+                "TEST-1b", "member-tier directory strips administrative fields",
+                json.dumps(ua)[:300])
         selfd = d.get("self", {}).get("data") or {}
         u = selfd.get("user") or {}
         t.check(u.get("_id") == "debugmember" and u.get("password") is None and "session" not in selfd,
@@ -43,8 +51,12 @@ async def main():
 
     # --- Self projected fields: presenterInfo flows via the session cell ---
     async with await connect_ws(admin) as ws:
-        await ws.send(json.dumps({"sub": ["self"]}))
-        await recv_updates(ws)
+        await ws.send(json.dumps({"sub": ["self", "users"]}))
+        d0 = by_topic(await recv_updates(ws))
+        au = (d0.get("users", {}).get("data") or {}).get("debugadmin", {})
+        t.check(au.get("lastLoginAt") is not None,
+                "TEST-3b", "admin tier keeps administrative fields (lastLoginAt)",
+                json.dumps(au)[:300])
         post("/presenter/set", {"type": "empty"}, admin)
         ups = await recv_updates(ws)
         selfs = [u["data"] for u in ups if u["topic"] == "self"]

@@ -1,6 +1,7 @@
 package tools.confido.application
 
 import java.security.MessageDigest
+import kotlinx.datetime.Instant
 import payloads.responses.MembershipPayload
 import rooms.*
 import tools.confido.application.sessions.TransientData
@@ -198,8 +199,22 @@ class ClassCensor(val cls: PermClass) {
 
     // The users directory is only served to proper users (gated in the topic body);
     // guests' identity needs are covered by presentations embedded in payloads (§5.3).
-    fun censorUser(u: User): User? =
-        if (cls.userType in setOf(UserType.ADMIN, UserType.MEMBER)) u.copy(password = null) else null
+    // Two tiers: admins get the administrative fields their directory renders; members
+    // get only what the add-member search reads (id/type/nick/email) — the rest is
+    // pinned to constants (audit of 2026-08-16: lastLoginAt is colleague-activity
+    // data, createdAt/emailVerified/active administrative metadata; no member surface
+    // consumes any of them).
+    fun censorUser(u: User): User? = when (cls.userType) {
+        UserType.ADMIN -> u.copy(password = null)
+        UserType.MEMBER -> u.copy(
+            password = null,
+            emailVerified = false,
+            createdAt = Instant.fromEpochSeconds(0),
+            lastLoginAt = null,
+            active = true,
+        )
+        else -> null
+    }
 
     fun censorUsers() =
         state.users.mapValuesNotNull { censorUser(it.value) }
