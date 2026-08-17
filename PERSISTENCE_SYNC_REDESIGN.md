@@ -302,6 +302,23 @@ flush, preserving the gate-recovery semantics (verified live: closed ANSWERED ga
 error frame once, unrelated mutations don't re-send it, predicting unlocks data on the
 same subscription). The sender's flush pass validates instead of recomputing:
 `view.validate() <= sub.sentAt` skips a topic at the cost of a chain of Long compares.
+*Amendment (2026-08-17): the first bullet's transient-transaction requirement is
+implemented.* `transact` now separates the abstract transaction (writer lock + staged
+scope) from the database transaction: the Mongo session opens lazily at flush time,
+only when a staged op actually writes the database (`StagedWrite.needsDb`), so a
+transient-only transaction never touches Mongo and the legacy `withTransaction`
+wrapper is deleted. `TransientCell` writes are transactional: suspend `set`/`update`
+stage into the ambient transaction (apply+emit strictly after commit) or apply
+immediately as their own tick when none is open — only suspending code can see the
+ambient transaction (it lives in the coroutine context), which is why the write API is
+suspend and why RMW goes through `update` (the *function* is staged, so updates of one
+cell compose within a transaction instead of losing writes against committed-state
+reads; the bump-on-set surface is retained as `setImmediate` strictly for
+non-suspending post-commit contexts — change dispatch, `ResidentPartitions`). The
+presentationStore run-state listener moved from `onChange` to `beforeEntityDelete`,
+realizing the bullet's cross-kind-atomicity example: the store delete and the cell
+clear are one transaction, so a failed commit no longer leaves the run state cleared
+against a surviving presentation.
 
 - **Transaction-aligned collection deltas (future direction, opt-in per topic).** For
   collection-shaped views, one stream type serves store change surface, archive tail, and

@@ -70,10 +70,10 @@ interface ServerExtension: Extension {
      * does not handle the given action. Return a list of [FlowItem]s to replace the
      * original action item in the expanded flow.
      */
-    open fun expandFlowItem(action: FlowAction, room: Room): List<FlowItem>? = null
+    open suspend fun expandFlowItem(action: FlowAction, room: Room): List<FlowItem>? = null
 
     /** Called when a presentation run is stopped, allowing extensions to clean up transient state. */
-    open fun onPresentationStopped(room: Room) {}
+    open suspend fun onPresentationStopped(room: Room) {}
 
     companion object {
         val enabled get() = Extension.enabled.map{ it as ServerExtension }

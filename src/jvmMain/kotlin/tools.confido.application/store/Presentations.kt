@@ -10,9 +10,11 @@ object presentationStore : MongoStore<Presentation>(
 ) {
     init {
         // Clean up the (transient, in-memory) run state when a presentation is deleted.
-        onChange { change ->
-            if (change is Change.Removed)
-                serverState.setPresentationRunState(Ref(change.entity.room.id), null)
+        // As a before-delete hook the clear stages into the deleting transaction, so the
+        // store removal and the run-state cell change land as one observable tick
+        // (§3.5's cross-kind atomicity; an onChange listener fired one tick later).
+        beforeEntityDelete { pres ->
+            serverState.setPresentationRunState(Ref(pres.room.id), null)
         }
     }
 }

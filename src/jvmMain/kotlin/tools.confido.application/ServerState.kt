@@ -60,9 +60,6 @@ object MutationLockedContextElement : AbstractCoroutineContextElement(Key) {
     object Key : CoroutineContext.Key<MutationLockedContextElement>
 
 }
-class TransactionContextElement(val sess: ClientSession) : AbstractCoroutineContextElement(Key) {
-    companion object Key : CoroutineContext.Key<TransactionContextElement>
-}
 
 fun getenvBool(name: String, default: Boolean = false): Boolean {
     return (System.getenv(name)?.ifEmpty {null} ?: return default) == "1"
@@ -145,15 +142,17 @@ object serverState {
     /** Snapshot flow of the run states; topic derivations subscribe here. */
     val presentationRunStatesState: StateFlow<PersistentMap<Ref<Room>, PresentationRunState>>
         get() = _presentationRunStates.state
-    private var presentationRunStatesMap by _presentationRunStates::value
-    val presentationRunStates: Map<Ref<Room>, PresentationRunState> get() = presentationRunStatesMap
+    val presentationRunStates: Map<Ref<Room>, PresentationRunState> get() = _presentationRunStates.value
 
-    /** Set or clear (null) a room's presentation run state. Returns the previous state. */
-    fun setPresentationRunState(room: Ref<Room>, state: PresentationRunState?): PresentationRunState? {
-        val prev = presentationRunStatesMap[room]
-        presentationRunStatesMap =
-            if (state == null) presentationRunStatesMap.remove(room)
-            else presentationRunStatesMap.put(room, state)
+    /** Set or clear (null) a room's presentation run state. Returns the previous
+     *  (committed) state. Stages into the ambient transaction if one is open —
+     *  e.g. presentationStore's delete cascade clears the run state in the same
+     *  tick that removes the presentation. */
+    suspend fun setPresentationRunState(room: Ref<Room>, state: PresentationRunState?): PresentationRunState? {
+        val prev = presentationRunStates[room]
+        _presentationRunStates.update {
+            if (state == null) it.remove(room) else it.put(room, state)
+        }
         return prev
     }
 
@@ -215,10 +214,6 @@ object serverState {
             }
         }
 
-    fun CoroutineContext.getSession() =
-        this[TransactionContextElement]?.sess
-
-
     suspend inline fun <R> withMutationLock(crossinline body: suspend ()->R): R =
         if (coroutineContext[MutationLockedContextElement.Key] != null) { // parent has already locked
             body()
@@ -232,21 +227,9 @@ object serverState {
 
 
 
-    suspend inline fun <R> withTransaction(crossinline body: suspend serverState.()->R): R {
-        if (coroutineContext[TransactionContextElement.Key] != null)
-            throw RuntimeException("Nested transactions are not supported")
-        return withMutationLock{
-            client.startSession().use { clientSession ->
-                clientSession.startTransaction()
-                var ret: R
-                withContext(TransactionContextElement(clientSession)) {
-                    ret = body()
-                }
-                clientSession.commitTransactionAndAwait()
-                return@use ret
-            }
-        }
-    }
+    // (The legacy withTransaction wrapper is gone: `transact` in the store package holds
+    // the mutation lock itself and opens the Mongo session lazily at flush time, only
+    // when a staged op actually writes the database.)
 
     @DelicateRefAPI
     fun derefNonBlocking(entityType: KClass<*>, id: String): Entity? {

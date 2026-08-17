@@ -34,32 +34,30 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
 
     private val _activeConfigs = tools.confido.store.TransientCell<PersistentMap<String, MillionaireGameAction>>(persistentMapOf())
     val activeConfigsState: StateFlow<PersistentMap<String, MillionaireGameAction>> get() = _activeConfigs.state
-    private var activeConfigsMap by _activeConfigs::value
-    val activeConfigs: Map<String, MillionaireGameAction> get() = activeConfigsMap
+    val activeConfigs: Map<String, MillionaireGameAction> get() = _activeConfigs.value
 
     // --- Timer state (in-memory, lost on restart) ---
 
     private val _timerStates = tools.confido.store.TransientCell<PersistentMap<String, TimerState>>(persistentMapOf())
     val timerStatesState: StateFlow<PersistentMap<String, TimerState>> get() = _timerStates.state
-    private var timerStatesMap by _timerStates::value
-    private val timerStates: Map<String, TimerState> get() = timerStatesMap   // roomId -> TimerState
+    private val timerStates: Map<String, TimerState> get() = _timerStates.value   // roomId -> TimerState
     private val timerTasks = mutableMapOf<String, java.util.TimerTask>()
     private val scheduler = java.util.Timer("millionaire-timer", true)
 
-    private fun startTimer(room: Room, durationSeconds: Int) {
+    private suspend fun startTimer(room: Room, durationSeconds: Int) {
         cancelTimer(room)
         val state = TimerState(
             startedAt = System.currentTimeMillis().toDouble(),
             durationMs = durationSeconds * 1000,
             running = true,
         )
-        timerStatesMap = timerStatesMap.put(room.id, state)
+        _timerStates.update { it.put(room.id, state) }
 
         val task = object : java.util.TimerTask() {
             override fun run() {
                 @Suppress("OPT_IN_USAGE")
                 GlobalScope.launch(singleThreadContext) {
-                    timerStatesMap = timerStatesMap.remove(room.id)
+                    _timerStates.update { it.remove(room.id) }
                     timerTasks.remove(room.id)
                     // Re-read room state; auto-close current question if still asking
                     val freshRoom = serverState.rooms[room.id] ?: return@launch
@@ -75,9 +73,9 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
         scheduler.schedule(task, durationSeconds * 1000L)
     }
 
-    private fun cancelTimer(room: Room) {
+    private suspend fun cancelTimer(room: Room) {
         timerTasks.remove(room.id)?.cancel()
-        timerStatesMap = timerStatesMap.remove(room.id)
+        _timerStates.update { it.remove(room.id) }
     }
 
     // --- Scoring ---
@@ -155,11 +153,11 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
 
     // --- Expandable flow item: produce the millionaire game sequence ---
 
-    override fun expandFlowItem(action: FlowAction, room: Room): List<FlowItem>? {
+    override suspend fun expandFlowItem(action: FlowAction, room: Room): List<FlowItem>? {
         val config = action as? MillionaireGameAction ?: return null
 
         // Store active config for this room (used by WS endpoints and timer)
-        activeConfigsMap = activeConfigsMap.put(room.id, config)
+        _activeConfigs.update { it.put(room.id, config) }
 
         val qs = questions(room.questions.mapDeref(), config.tag)
         if (qs.isEmpty()) return emptyList()
@@ -243,8 +241,8 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
 
     // --- Cleanup on presentation stop ---
 
-    override fun onPresentationStopped(room: Room) {
-        activeConfigsMap = activeConfigsMap.remove(room.id)
+    override suspend fun onPresentationStopped(room: Room) {
+        _activeConfigs.update { it.remove(room.id) }
         cancelTimer(room)
     }
 

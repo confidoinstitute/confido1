@@ -2,8 +2,8 @@ package tools.confido.store
 
 import com.mongodb.reactivestreams.client.ClientSession
 import kotlinx.coroutines.withContext
+import org.litote.kmongo.coroutine.commitTransactionAndAwait
 import org.slf4j.LoggerFactory
-import tools.confido.state.TransactionContextElement
 import tools.confido.state.serverState
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
@@ -17,6 +17,10 @@ private val storeLog = LoggerFactory.getLogger("confido.store")!!
  * a successful commit) — so a failed commit leaves RAM untouched.
  */
 interface StagedWrite {
+    /** Whether [flush] performs a database write. A transaction that stages no such op
+     *  never opens a Mongo session at all (transient-only transactions are memory-only —
+     *  durability is a per-node policy, not a property of the transaction, §3.5). */
+    val needsDb: Boolean get() = true
     /** Perform the database write, inside the transaction when [sess] is non-null. */
     suspend fun flush(sess: ClientSession?)
     /** Swap in-memory state and emit changes. Runs only after the commit succeeded. */
@@ -34,17 +38,16 @@ class TxnContextElement(val scope: TxnScope) : AbstractCoroutineContextElement(K
 
 /**
  * Atomic multi-store read-modify-write. Serializes against all other writers (via the
- * global mutation lock inside [serverState.withTransaction]), so reads inside the block
- * see the latest committed state and it cannot change before the block commits.
+ * global mutation lock), so reads inside the block see the latest committed state and
+ * it cannot change before the block commits.
  *
- * Order of operations: run block (store ops stage themselves; legacy manager ops execute
- * as today, sharing the same Mongo session) → flush staged writes → Mongo commit → apply
- * staged writes to memory and emit changes.
+ * Order of operations: run block (store and cell ops stage themselves) → open a Mongo
+ * session iff any staged op writes the database → flush → commit → apply staged writes
+ * to memory and emit changes. A transaction that stages only transient (memory-only)
+ * ops skips the Mongo session entirely.
  *
  * Nesting: a transact inside a transact joins the ambient transaction (the outermost one
- * flushes and applies). A transact inside a *legacy* `withTransaction` fails loudly
- * ("Nested transactions are not supported") — convert that call site to transact instead;
- * legacy manager ops keep working unchanged inside it.
+ * flushes and applies).
  *
  * No slow I/O inside the block: it holds the single writer. The flush+commit at the end
  * is the only awaited I/O.
@@ -54,11 +57,21 @@ suspend fun <R> transact(block: suspend () -> R): R {
         return block() // join the ambient transaction; outermost flushes and applies
     }
     val scope = TxnScope()
-    val ret = serverState.withTransaction {
+    val ret = serverState.withMutationLock {
         withContext(TxnContextElement(scope)) {
             val r = block()
-            val sess = coroutineContext[TransactionContextElement]?.sess
-            scope.staged.forEach { it.flush(sess) }
+            // The abstract transaction (writer lock + staged scope) and the database
+            // transaction are separate concerns: the Mongo session opens lazily, only
+            // once something actually staged a database write. A transient-only
+            // transaction — cell updates — never touches Mongo.
+            val dbOps = scope.staged.filter { it.needsDb }
+            if (dbOps.isNotEmpty()) {
+                serverState.client.startSession().use { sess ->
+                    sess.startTransaction()
+                    dbOps.forEach { it.flush(sess) }
+                    sess.commitTransactionAndAwait()
+                }
+            }
             r
         }
     }
@@ -92,4 +105,21 @@ suspend fun withTxnScope(body: suspend (TxnScope) -> Unit) {
     val ambient = coroutineContext[TxnContextElement]?.scope
     if (ambient != null) body(ambient)
     else transact { body(coroutineContext[TxnContextElement]!!.scope) }
+}
+
+/**
+ * Stage a memory-only [apply] into the ambient transaction, if one is open; returns
+ * false (having done nothing) otherwise. The transactional half of [TransientCell]'s
+ * write path: staged applies run strictly after commit, in stage order, so cell
+ * updates observe the same emit-after-commit discipline as store writes and a
+ * transaction that stages only these never opens a Mongo session.
+ */
+suspend fun stageIfInTransaction(apply: () -> Unit): Boolean {
+    val scope = coroutineContext[TxnContextElement]?.scope ?: return false
+    scope.stage(object : StagedWrite {
+        override val needsDb get() = false
+        override suspend fun flush(sess: ClientSession?) {}
+        override fun apply() = apply()
+    })
+    return true
 }

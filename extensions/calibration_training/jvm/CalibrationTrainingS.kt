@@ -352,7 +352,7 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
                         timestamp = unixNow().toLong(),
                     )
                     responseCollection.insertOne(response)
-                    responsesVersion.value += 1
+                    responsesVersion.update { it + 1 }
                     
                     // Get all user responses including the new one
                     val allResponses = getUserResponses(user.ref)
@@ -388,7 +388,7 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
             postST("/api/training/reset") {
                 call.withUser {
                     responseCollection.deleteMany(TrainingResponse::user eq user.ref)
-                    responsesVersion.value += 1  // wake the leaderboard topic
+                    responsesVersion.update { it + 1 }  // wake the leaderboard topic
                     call.respond(HttpStatusCode.OK)
                 }
             }

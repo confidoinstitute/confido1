@@ -226,20 +226,42 @@ fun <T> View<T>.asFlow(): Flow<T> =
     changes.conflate().map { value }.onStart { emit(value) }.distinctUntilChanged()
 
 /**
- * Mutable transient server state as a versioned source cell (§3.5): the same
- * StateFlow surface the topic derivations already subscribe, plus a [TxClock] bump on
- * every actual change — required for out-of-transaction mutations (timer callbacks,
- * connection lifecycle), harmless extra bumps when set inside a transaction. Durability
- * is a property of the node: a [TransientCell] is simply a source with none.
+ * Mutable transient server state as a versioned source cell (§3.5): the same StateFlow
+ * surface the topic derivations already subscribe, fully embedded in the transact
+ * ecosystem. Durability is a property of the node — a [TransientCell] is simply a
+ * source with none: inside a `transact` block its writes stage like store writes
+ * (applied and emitted strictly after commit; a transaction staging only cell writes
+ * never opens a Mongo session), outside one a write is its own atomic tick.
+ *
+ * Semantics shared with stores: reads inside a transaction see the *committed* value,
+ * never staged ones — which is why the read-modify-write primitive is [update] (the
+ * function is staged and applied against the then-current value, so multiple updates
+ * of one cell in one transaction compose instead of losing writes).
  */
 class TransientCell<T>(initial: T) {
     private val _state = MutableStateFlow(initial)
     val state: StateFlow<T> get() = _state
-    var value: T
-        get() = _state.value
-        set(v) {
-            if (v === _state.value) return
-            TxClock.bump()
-            _state.value = v
-        }
+    val value: T get() = _state.value
+
+    /** Transactional write: stages into the ambient transaction, or applies
+     *  immediately as its own tick when none is open. */
+    suspend fun update(f: (T) -> T) {
+        if (!stageIfInTransaction { setImmediate(f(value)) }) setImmediate(f(value))
+    }
+
+    suspend fun set(v: T) = update { v }
+
+    /**
+     * Immediate write for non-suspending post-commit contexts — change listeners and
+     * synchronous fold dispatch (e.g. [ResidentPartitions]' cache maintenance), which
+     * run during a transaction's apply phase and are naturally part of its tick. Only
+     * suspending code can see the ambient transaction (it lives in the coroutine
+     * context), so this must never be called from inside a `transact` block — writes
+     * there go through [set]/[update], which stage.
+     */
+    fun setImmediate(v: T) {
+        if (v === _state.value) return
+        TxClock.bump()
+        _state.value = v
+    }
 }

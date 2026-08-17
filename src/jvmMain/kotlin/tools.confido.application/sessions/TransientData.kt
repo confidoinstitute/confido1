@@ -15,5 +15,6 @@ class TransientData {
     private val _activePresenterWindows = TransientCell(0)
     /** Snapshot flow of the presenter-window count; topic derivations subscribe here. */
     val activePresenterWindowsState: StateFlow<Int> get() = _activePresenterWindows.state
-    var activePresenterWindows by _activePresenterWindows::value
+    val activePresenterWindows: Int get() = _activePresenterWindows.value
+    suspend fun addPresenterWindows(delta: Int) = _activePresenterWindows.update { it + delta }
 }
