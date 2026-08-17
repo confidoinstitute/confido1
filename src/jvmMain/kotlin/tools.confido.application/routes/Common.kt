@@ -167,16 +167,28 @@ object TopicRegistry {
  */
 fun <P> topicPayloadView(serializer: KSerializer<P>, view: View<P>, statsKey: String? = null): View<JsonElement> =
     object : MemoView<JsonElement>() {
+        // While the cached payload is an error frame, forgo the input cutoff entirely.
+        // Upstream change stamps describe the *data* value, which the error payload did
+        // not consume — the memo soundness argument ("downstream consumed the cache it
+        // cuts off against") does not hold across a substituted error. Concretely: gate
+        // closes → error frame; gate reopens onto a value EQUAL to the pre-error one
+        // (hide/unhide, remove/re-add) → upstream early cutoff reports "unchanged since
+        // before the error" and without this flag the subscription would stay wedged on
+        // the stale error forever.
+        private var wasError = false
+
         override fun validateSources(): Long =
-            try { view.validate() } catch (e: ResponseError) { TxClock.serial }
+            if (wasError) TxClock.serial
+            else try { view.validate() } catch (e: ResponseError) { TxClock.serial }
 
         override fun compute(): JsonElement {
             statsKey?.let { TopicStats.bump(it) }
             return confidoJSON.encodeToJsonElement(
                 WSResponseSerializer(serializer),
                 try {
-                    WSData(view.value)
+                    WSData(view.value).also { wasError = false }
                 } catch (e: ResponseError) {
+                    wasError = true
                     WSError(e.wsCode, e.message)
                 }
             )
@@ -271,12 +283,18 @@ internal fun WSBody.sharedClassView(): View<PermClass> {
  * payload with the usual per-computation recovery semantics.
  */
 private fun wsErrorView(view: View<JsonElement>): View<JsonElement> = object : MemoView<JsonElement>() {
+    // Same error-state cutoff exemption as in topicPayloadView (see the comment there):
+    // while the cache holds a substituted error, upstream stamps must not cut off.
+    private var wasError = false
+
     override fun validateSources(): Long =
-        try { view.validate() } catch (e: ResponseError) { TxClock.serial }
+        if (wasError) TxClock.serial
+        else try { view.validate() } catch (e: ResponseError) { TxClock.serial }
 
     override fun compute(): JsonElement =
-        try { view.value }
+        try { view.value.also { wasError = false } }
         catch (e: ResponseError) {
+            wasError = true
             confidoJSON.encodeToJsonElement(WSError<Unit>(e.wsCode, e.message) as WSResponse<Unit>)
         }
 
@@ -376,8 +394,12 @@ fun <G, P> gateFetchFlow(
             }
             confidoJSON.encodeToJsonElement(wsSerializer, message)
         }
-        emit(frame())
-        emitAll(view.changes.conflate().map { frame() })
+        // The wake flow must be subscribed BEFORE the initial fetch starts: a change
+        // landing while the fetch suspends must trigger a refetch, or the topic serves
+        // the pre-change payload until the next unrelated wake. merge() launches its
+        // collectors up front; on the single server thread a mutation can only be
+        // dispatched after them, so the subscription is in place by the first suspension.
+        emitAll(merge(flowOf(Unit), view.changes).conflate().map { frame() })
     }.catch { e ->
         if (e is ResponseError) emit(confidoJSON.encodeToJsonElement(wsSerializer, WSError(e.wsCode, e.message)))
         else throw e
