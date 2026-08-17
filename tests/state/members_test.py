@@ -14,7 +14,7 @@ async def main():
     t = Suite()
 
     post("/rooms/testroom/members/add",
-         {"type": "payloads.requests.AddedExistingMember", "user": "debugmember", "role": "forecaster"}, admin)
+         {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
 
     # --- Member view: presentations only, no joinable identity ---
     async with await connect_ws(member) as ws:
@@ -47,13 +47,13 @@ async def main():
                 "TEST-4", "rename does not frame the members topic", str(topics))
 
         post("/rooms/testroom/members/add",
-             {"type": "payloads.requests.AddedExistingMember", "user": "debugmember", "role": "moderator"}, admin)
+             {"type": "existingMember", "user": "debugmember", "role": "moderator"}, admin)
         d5 = by_topic(await recv_updates(ws))
         own5 = [e for e in (d5.get("room/testroom/members", {}).get("data") or []) if e["user"]["isMyself"]]
         t.check(bool(own5) and own5[0]["role"] == "moderator",
                 "TEST-5", "role change framed the members topic (own role now moderator)")
         post("/rooms/testroom/members/add",
-             {"type": "payloads.requests.AddedExistingMember", "user": "debugmember", "role": "forecaster"}, admin)
+             {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
 
     # --- Moderator/admin view: userId + email granted ---
     async with await connect_ws(admin) as ws:

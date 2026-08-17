@@ -23,7 +23,7 @@ async def main():
     t = Suite()
 
     post("/rooms/testroom/members/add",
-         {"type": "payloads.requests.AddedExistingMember", "user": "debugmember", "role": "forecaster"}, admin)
+         {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
     post("/rooms/testroom/questions/add",
          {"_id": "", "name": "Comments test q", "answerSpace": {"type": "binary"}}, admin)
 

@@ -17,7 +17,7 @@ async def main():
     t = Suite()
 
     post("/rooms/testroom/members/add",
-         {"type": "payloads.requests.AddedExistingMember", "user": "debugmember", "role": "forecaster"}, admin)
+         {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
     post("/rooms/testroom/questions/add",
          {"_id": "", "name": "Topic test q", "answerSpace": {"type": "binary"}}, admin)
     # A second, admin-only room with its own question (for gate + isolation tests).
@@ -82,7 +82,7 @@ async def main():
         # counts topics stay silent (recompute-but-equal, equality cutoff).
         edit = dict(q); edit["name"] = "Topic test q RENAMED"
         post(f"/questions/{qid}/edit",
-             {"type": "payloads.requests.EditQuestionComplete", "question": edit}, admin)
+             {"type": "complete", "question": edit}, admin)
         d6 = by_topic(await recv_updates(ws))
         room_q = (d6.get("room/testroom/questions", {}).get("data") or {}).get(qid, {})
         single_q = d6.get(f"question/{qid}", {}).get("data") or {}

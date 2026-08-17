@@ -41,6 +41,7 @@ sealed class Comment : Entity {
     abstract val scope: CommentScope
 }
 @Serializable
+@SerialName("question")
 data class QuestionComment(
     @SerialName("_id")
     override val id: String = "",
@@ -56,6 +57,7 @@ data class QuestionComment(
 }
 
 @Serializable
+@SerialName("room")
 data class RoomComment(
     @SerialName("_id")
     override val id: String,

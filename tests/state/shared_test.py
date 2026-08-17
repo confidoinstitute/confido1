@@ -33,7 +33,7 @@ async def main():
     t = Suite()
 
     post("/rooms/testroom/members/add",
-         {"type": "payloads.requests.AddedExistingMember", "user": "debugmember", "role": "forecaster"}, admin)
+         {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
     # An admin-only room whose question the member must not see until joining (TEST-5).
     roomc = post("/rooms/add", {"name": "Shared room C", "description": "", "color": "RED", "icon": None},
                  admin).strip('"')
@@ -101,7 +101,7 @@ async def main():
         # Class change on live subscriptions: joining room C changes the member class,
         # both member subs re-select the new registry entry and see the new question.
         post(f"/rooms/{roomc}/members/add",
-             {"type": "payloads.requests.AddedExistingMember", "user": "debugmember", "role": "forecaster"}, admin)
+             {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
         j1 = by_topic(await recv_updates(ws1, 2.0))
         j2 = by_topic(await recv_updates(ws2, 2.0))
         t.check("Shared secret q" in qnames(j1, "questions") and "Shared secret q" in qnames(j2, "questions"),

@@ -273,6 +273,7 @@ interface TransformedDistribution : ContinuousProbabilityDistribution {
 
 enum class Half { LEFT, RIGHT }
 @Serializable
+@SerialName("canonicalHalfNormal")
 data class CanonicalHalfNormalDistribution(val half: Half): ContinuousProbabilityDistribution {
     override val space = when (half) {
         Half.LEFT -> NumericSpace(Double.NEGATIVE_INFINITY,0.0)

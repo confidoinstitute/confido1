@@ -73,7 +73,7 @@ async def main():
         # Members tab renders from the members topic
         st = await evaluate(cdp, s, """
             fetch('/rooms/testroom/members/add', {method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({type:'payloads.requests.AddedExistingMember',
+                body: JSON.stringify({type:'existingMember',
                                       user:'debugmember', role:'forecaster'})}).then(r => r.status)""",
             await_promise=True)
         if st != 200:
@@ -111,7 +111,7 @@ async def main():
         print("PASS: confirming the dialog applies the promotion")
         st = await evaluate(cdp, s, """
             fetch('/rooms/testroom/members/add', {method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({type:'payloads.requests.AddedExistingMember',
+                body: JSON.stringify({type:'existingMember',
                                       user:'debugmember', role:'forecaster'})}).then(r => r.status)""",
             await_promise=True)
         if st != 200:

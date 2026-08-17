@@ -14,7 +14,7 @@ async def main():
     t = Suite()
 
     post("/rooms/testroom/members/add",
-         {"type": "payloads.requests.AddedExistingMember", "user": "debugmember", "role": "forecaster"}, admin)
+         {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
 
     async with await connect_ws(member) as ws:
         # One batched command with the root slices + a page topic: the initial
@@ -48,7 +48,7 @@ async def main():
         # A no-change mutation (re-adding a member with the same role) must be fully
         # deduped by the versioned-view cutoffs: zero frames.
         post("/rooms/testroom/members/add",
-             {"type": "payloads.requests.AddedExistingMember", "user": "debugmember", "role": "forecaster"}, admin)
+             {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
         ups = await recv_updates(ws, 2.0)
         t.check(not ups, "TEST-4", "no-change mutation fully deduped",
                 str(sorted(set(u["topic"] for u in ups))))

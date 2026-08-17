@@ -151,11 +151,13 @@ data class MillionaireStartTimerAction(
 // --- Presenter Views ---
 
 @Serializable
+@SerialName("millionaireScoreboard")
 data class MillionaireScoreboardPV(val room: Ref<Room>) : PresenterView() {
     override fun describe() = "Millionaire scoreboard"
 }
 
 @Serializable
+@SerialName("millionaireLadderQuestion")
 data class MillionaireLadderQuestionPV(val room: Ref<Room>) : PresenterView() {
     override fun describe() = "Millionaire ladder question view"
 }

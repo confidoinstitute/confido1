@@ -13,7 +13,7 @@ async def main():
     t = Suite()
 
     post("/rooms/testroom/members/add",
-         {"type": "payloads.requests.AddedExistingMember", "user": "debugmember", "role": "forecaster"}, admin)
+         {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
 
     async with await connect_ws(member) as ws:
         await ws.send(json.dumps({"sub": ["questions", "rooms", "self"]}))
@@ -49,7 +49,7 @@ async def main():
                 "TEST-4", "detail gated for non-member", str(resp))
 
         post(f"/rooms/{newroom}/members/add",
-             {"type": "payloads.requests.AddedExistingMember", "user": "debugmember", "role": "forecaster"}, admin)
+             {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
         d4 = by_topic(await recv_updates(ws))
         got_detail = d4.get(f"room/{newroom}", {}).get("type") == "ok"
         got_dir = newroom in (d4.get("rooms", {}).get("data") or {})

@@ -61,6 +61,7 @@ data class SnapshotTimepoint(
 // ============================================================
 
 @Serializable
+@SerialName("updatePlot")
 data class UpdatePlotPV(
     val question: Ref<Question>,
     val timepoint1: TimepointReference = NowTimepoint,

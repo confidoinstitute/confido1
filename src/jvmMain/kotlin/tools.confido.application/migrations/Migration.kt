@@ -84,6 +84,7 @@ object MigrationRunner {
         RoleFormatMigration,
         QuestionGroupsToTagsMigration,
         FoldCommentLikesMigration,
+        ShortSerialNamesMigration,
     )
 
     /**

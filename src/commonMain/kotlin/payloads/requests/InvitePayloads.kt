@@ -1,5 +1,6 @@
 package payloads.requests
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import rooms.InviteFieldPolicy
 import rooms.RoomRole
@@ -74,6 +75,7 @@ sealed class AddedMember {
  * Add a new member with a given [e-mail].
  */
 @Serializable
+@SerialName("newMember")
 data class AddedNewMember(
     val email: String,
     @Serializable(with = RoomRoleRefSerializer::class)
@@ -84,6 +86,7 @@ data class AddedNewMember(
  * Add already existing [user] as a member.
  */
 @Serializable
+@SerialName("existingMember")
 data class AddedExistingMember(
     val user: Ref<User>,
     @Serializable(with = RoomRoleRefSerializer::class)

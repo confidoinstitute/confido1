@@ -1,6 +1,7 @@
 package payloads.requests
 
 import kotlinx.datetime.Instant
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import rooms.Room
 import tools.confido.question.Question
@@ -10,8 +11,10 @@ import users.User
 @Serializable
 sealed class CalibrationWho
 @Serializable
+@SerialName("myself")
 data object Myself: CalibrationWho()
 @Serializable
+@SerialName("everyone")
 data object Everyone: CalibrationWho()
 //data class UserSet(val users: Set<Ref<User>>) : CalibrationWho()
 

@@ -1,5 +1,6 @@
 package payloads.responses
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import tools.confido.distributions.ProbabilityDistribution
@@ -13,6 +14,7 @@ import users.UserPresentation
 @Serializable
 sealed class CommentExtraData
 @Serializable
+@SerialName("question")
 data class QuestionCommentExtraData(val dist: ProbabilityDistribution?) : CommentExtraData()
 
 /**

@@ -16,7 +16,7 @@ async def main():
     # Setup: member joins testroom; an ANSWERED-gated binary question exists
     # (group prediction only visible after you predict yourself).
     post("/rooms/testroom/members/add",
-         {"type": "payloads.requests.AddedExistingMember", "user": "debugmember", "role": "forecaster"}, admin)
+         {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
     post("/rooms/testroom/questions/add",
          {"_id": "", "name": "Gate test q", "answerSpace": {"type": "binary"},
           "groupPredVisible": True, "groupPredRequirePrediction": True}, admin)

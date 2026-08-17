@@ -1,5 +1,6 @@
 package payloads.requests
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import tools.confido.question.Question
 import tools.confido.question.QuestionState
@@ -30,6 +31,7 @@ sealed class EditQuestionCanMulti : EditQuestion()
  * Quickly change a binary option [fieldType] of a question to a given [value].
  */
 @Serializable
+@SerialName("flag")
 data class EditQuestionFlag(
     val fieldType: EditQuestionFieldType,
     val value: Boolean,
@@ -40,6 +42,7 @@ data class EditQuestionFlag(
  * Set the question resolution to a given [value].
  */
 @Serializable
+@SerialName("resolution")
 data class EditQuestionResolution(
     val resolution: Value,
 ) : EditQuestionCanMulti()
@@ -48,16 +51,19 @@ data class EditQuestionResolution(
  * Edit question as a whole, some of the fields may be ignored.
  */
 @Serializable
+@SerialName("complete")
 data class EditQuestionComplete(
     val question: Question,
 ) : EditQuestion()
 
 @Serializable
+@SerialName("state")
 data class EditQuestionState(
     val newState: QuestionState
 ): EditQuestionCanMulti()
 
 @Serializable
+@SerialName("clearAnswers")
 object EditQuestionClearAnswers: EditQuestionCanMulti()
 
 @Serializable

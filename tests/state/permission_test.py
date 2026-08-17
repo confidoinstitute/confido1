@@ -35,7 +35,7 @@ async def main():
     t = Suite()
 
     post("/rooms/testroom/members/add",
-         {"type": "payloads.requests.AddedExistingMember", "user": "debugmember", "role": "forecaster"}, admin)
+         {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
 
     # --- Invite-link revocation: DISABLED_FULL must revoke, live ---
     rid = post("/rooms/add", {"name": "Perm revoke room", "description": "", "color": "RED", "icon": None},
@@ -95,7 +95,7 @@ async def main():
                 str([u["data"].get("type") for u in ups if u["topic"] == "room/testroom"]))
 
         post("/rooms/testroom/members/add",
-             {"type": "payloads.requests.AddedExistingMember", "user": "debugmember", "role": "forecaster"}, admin)
+             {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
         ups = await recv_updates(ws)
         t.check(any(u["topic"] == "room/testroom" and u["data"].get("type") == "ok" for u in ups),
                 "TEST-6", "re-adding with the same role restores data on the same subscription "
@@ -124,7 +124,7 @@ async def main():
 
         hidden = dict(qdata, visible=False)
         post(f"/questions/{qid}/edit",
-             {"type": "payloads.requests.EditQuestionComplete", "question": hidden}, admin)
+             {"type": "complete", "question": hidden}, admin)
         d2 = by_topic(await recv_updates(ws))
         t.check(d2.get(f"question/{qid}", {}).get("type") == "err"
                 and d2.get(gp, {}).get("type") == "err"
@@ -146,7 +146,7 @@ async def main():
 
         visible = dict(qdata, visible=True)
         post(f"/questions/{qid}/edit",
-             {"type": "payloads.requests.EditQuestionComplete", "question": visible}, admin)
+             {"type": "complete", "question": visible}, admin)
         d3 = by_topic(await recv_updates(ws))
         t.check(d3.get(f"question/{qid}", {}).get("type") == "ok"
                 and d3.get(gp, {}).get("type") == "ok"
@@ -207,9 +207,9 @@ async def main():
     t.check(bool(mal_id), "TEST-14", "proper-member invitee created", str(mal_id))
 
     post(f"/rooms/{ridd}/members/add",
-         {"type": "payloads.requests.AddedExistingMember", "user": mal_id, "role": "moderator"}, member)
+         {"type": "existingMember", "user": mal_id, "role": "moderator"}, member)
     status = post_status(f"/rooms/{ridd}/members/add",
-                         {"type": "payloads.requests.AddedExistingMember",
+                         {"type": "existingMember",
                           "user": "debugmember", "role": "viewer"}, mallory)
     async with await connect_ws(member) as ws:
         await ws.send(json.dumps({"sub": [f"room/{ridd}"]}))
@@ -221,7 +221,7 @@ async def main():
 
     # The new check must not break stepping down from your own role.
     t.check(post_status(f"/rooms/{ridd}/members/add",
-                        {"type": "payloads.requests.AddedExistingMember",
+                        {"type": "existingMember",
                          "user": mal_id, "role": "viewer"}, mallory) == 200,
             "TEST-16", "moderator can still demote themselves (step down)")
 

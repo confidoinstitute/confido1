@@ -1,6 +1,7 @@
 package payloads.responses
 
 import kotlinx.datetime.Instant
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import tools.confido.calibration.CalibrationBin
 import tools.confido.question.Prediction
@@ -20,6 +21,7 @@ sealed class CalibrationQuestion(
 }
 
 @Serializable
+@SerialName("binary")
 data class BinaryCalibrationQuestion(
     override val question: Ref<Question>,
     override val scoredPrediction: Prediction,
@@ -34,6 +36,7 @@ data class BinaryCalibrationQuestion(
 
 
 @Serializable
+@SerialName("numeric")
 data class NumericCalibrationQuestion(
     override val question: Ref<Question>,
     override val scoredPrediction: Prediction,

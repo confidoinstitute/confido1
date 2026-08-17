@@ -51,7 +51,7 @@ async def main():
             print("FAIL: login ->", code); sys.exit(1)
         await evaluate(cdp, s, """
             fetch('/rooms/testroom/members/add', {method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({type:'payloads.requests.AddedExistingMember',
+                body: JSON.stringify({type:'existingMember',
                                       user:'debugmember', role:'forecaster'})}).then(r => r.status)""",
             await_promise=True)
 
