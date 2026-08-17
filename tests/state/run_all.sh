@@ -108,6 +108,7 @@ run shared_test.py
 run comments_test.py
 run ws_test.py
 run gate_test.py
+run permission_test.py
 
 if [ "$BROWSER" = 1 ]; then
     run browser_test.py
