@@ -257,6 +257,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
             combineViews(roomStore.state.asView().at(rId), activeConfigsState.asView().at(rId))
         }) { rRef, _ ->
             call.withRoom(rRef) {
+                assertPermission(RoomPermission.VIEW_QUESTIONS, "You cannot view this room.")
                 activeConfigs[room.id]
             }
         }
@@ -293,6 +294,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
             combineViews(roomStore.state.asView().at(rId), timerStatesState.asView().at(rId))
         }) { rRef, _ ->
             call.withRoom(rRef) {
+                assertPermission(RoomPermission.VIEW_QUESTIONS, "You cannot view this room.")
                 timerStates[room.id]
             }
         }

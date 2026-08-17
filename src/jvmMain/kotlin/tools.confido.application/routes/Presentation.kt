@@ -312,7 +312,8 @@ fun presentationRoutes(routing: Routing) = routing.apply {
     // Follow a room's presentation (set session flag)
     postST("$roomUrl/presentation/follow") {
         call.withRoom {
-            // Any room member can follow
+            // Any room member can follow — but only members.
+            if (room.accessibleMemberships(user).isEmpty()) unauthorized("Not a member of this room.")
             call.modifyUserSession { it.copy(followingPresentation = room.ref) }
         }
         call.respond(HttpStatusCode.OK)
@@ -334,11 +335,16 @@ fun presentationRoutes(routing: Routing) = routing.apply {
         combineViews(
             roomStore.state.asView().at(rRef.id),
             userSessionStore.state.asView().at(sessionId),
+            userStore.state.asView(),
             serverState.presentationRunStatesState.asView().at(rRef),
-        ) { room, session, runState ->
+        ) { room, session, users, runState ->
             if (room == null) notFound("No such room.")
+            // Membership gates the payload (reactively: a member removed or revoked
+            // mid-follow stops receiving navigate URLs too).
+            val viewer = session?.userRef?.let { users[it.id] }
+            if (viewer == null || room.accessibleMemberships(viewer).isEmpty()) null
             // Only send navigate URL if session is following this room's presentation
-            if (session?.followingPresentation?.id != room.id) null
+            else if (session.followingPresentation?.id != room.id) null
             else runState?.currentNavigateUrl
         }
     }
