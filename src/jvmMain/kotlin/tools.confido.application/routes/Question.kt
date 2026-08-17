@@ -193,14 +193,16 @@ fun questionRoutes(routing: Routing) = routing.apply {
             if (!questionRooms.all { it.hasPermission(user, RoomPermission.MANAGE_QUESTIONS) }) unauthorized("missing permissions")
             // transact (not legacy withTransaction) so the prediction/comment cascade
             // hooks can stage into the ambient transaction
+            val toDelete = questions.map { it.ref }.toSet()
             transact {
-                questions.forEach { q ->
-                    tools.confido.store.questionStore.delete(q.ref)
-                    serverState.rooms.values.toList().forEach { room ->
-                        if (room.questions.contains(q.ref)) {
-                            tools.confido.store.roomStore.modify(room.id) {
-                                it.copy(questions = it.questions.filter { it != q.ref }.toList())
-                            }
+                questions.forEach { q -> tools.confido.store.questionStore.delete(q.ref) }
+                // One modify per room: in-transaction reads see pre-transaction state,
+                // so per-question modifies of the same room would each recompute from
+                // the original list and the last write would resurrect earlier removals.
+                serverState.rooms.values.toList().forEach { room ->
+                    if (room.questions.any { it in toDelete }) {
+                        tools.confido.store.roomStore.modify(room.id) {
+                            it.copy(questions = it.questions.filterNot { q -> q in toDelete })
                         }
                     }
                 }

@@ -213,6 +213,16 @@ open class ExpiringMongoStore<E>(
     override suspend fun cleanupExpired() {
         val now = Clock.System.now()
         asMap.values.filter { now > it.expiryTime + tolerance }
-            .forEach { delete(Ref<E>(it.id)) }
+            .forEach { stale ->
+                // Each delete suspends, so the snapshot goes stale mid-sweep: the entity
+                // may have been renewed under the same id (e.g. a session the user just
+                // logged back into) or deleted concurrently. Re-check inside the deleting
+                // transaction and tolerate a concurrent disappearance.
+                transact {
+                    val cur = get(stale.id)
+                    if (cur != null && now > cur.expiryTime + tolerance)
+                        delete(Ref<E>(cur.id), ignoreNonexistent = true)
+                }
+            }
     }
 }

@@ -2,11 +2,14 @@ package tools.confido.store
 
 import com.mongodb.reactivestreams.client.ClientSession
 import kotlinx.coroutines.withContext
+import org.slf4j.LoggerFactory
 import tools.confido.state.TransactionContextElement
 import tools.confido.state.serverState
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
+
+private val storeLog = LoggerFactory.getLogger("confido.store")!!
 
 /**
  * A store write staged inside a [transact] block. Split into the database write (inside
@@ -59,11 +62,22 @@ suspend fun <R> transact(block: suspend () -> R): R {
             r
         }
     }
-    scope.staged.forEach { it.apply() }
-    // Advance the transaction clock strictly after apply+emit: one bump covers the
-    // store applies and everything the synchronous fold dispatch updated, so view
-    // validation (§3.5) observes the whole transaction as one tick.
-    TxClock.bump()
+    try {
+        scope.staged.forEach {
+            // The commit already happened — there is no rollback. A throwing apply
+            // (typically a fold listener or extension onChange) must not skip the
+            // remaining applies, or RAM diverges from the committed writes wholesale;
+            // log it and keep the divergence to the one broken consumer.
+            try { it.apply() }
+            catch (e: Throwable) { storeLog.error("Post-commit apply failed; state may be partially stale", e) }
+        }
+    } finally {
+        // Advance the transaction clock strictly after apply+emit: one bump covers the
+        // store applies and everything the synchronous fold dispatch updated, so view
+        // validation (§3.5) observes the whole transaction as one tick. In a `finally`
+        // so a failed apply cannot leave views cutting off against a stale serial.
+        TxClock.bump()
+    }
     return ret
 }
 
