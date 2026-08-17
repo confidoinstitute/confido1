@@ -16,6 +16,7 @@ import org.simplejavamail.MailException
 import payloads.requests.*
 import payloads.responses.*
 import rooms.*
+import tools.confido.api.Api
 import tools.confido.application.*
 import tools.confido.application.sessions.*
 import tools.confido.question.GroupPredictionVisibility
@@ -53,15 +54,14 @@ suspend fun <T> ApplicationCall.withRoom(rRef: Ref<Room>, body: suspend RoomCont
 }
 
 fun roomRoutes(routing: Routing) = routing.apply {
-    getST("/rooms/icons") {
+    apiST(Api.roomIcons) { _ ->
         // Icon names are only loaded when the application is started.
-        call.respond(HttpStatusCode.OK, iconNames)
+        iconNames
     }
-    // Create a room
-    postST("/rooms/add") {
+    // Create a room; responds with the new room's id
+    apiST(Api.roomAdd) { information ->
         val room = call.withUser {
             if (!user.type.isProper()) unauthorized("Guests cannot do this.")
-            val information: BaseRoomInformation = call.receive()
 
             val myMembership = RoomMembership(user.ref, appConfig.roleById("owner") ?: error("Role 'owner' not found"), null)
             tools.confido.store.roomStore.insert(
@@ -78,13 +78,11 @@ fun roomRoutes(routing: Routing) = routing.apply {
             )
         }
 
-        call.respond(HttpStatusCode.OK, room.id)
+        room.id
     }
     // Edit a room's details
-    postST("$roomUrl/edit") {
-        call.withRoom {
-            val information: BaseRoomInformation = call.receive()
-
+    apiST(Api.roomEdit) { rRef, information ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.ROOM_OWNER, "You cannot edit room details.")
             val roomName = information.name.ifEmpty {room.name}
 
@@ -101,14 +99,11 @@ fun roomRoutes(routing: Routing) = routing.apply {
                 )
             }
         }
-
-        call.respond(HttpStatusCode.OK)
     }
     // Add a new member, either an existing user directly or a new user by e-mail
-    postST("$roomUrl/members/add") {
-        call.withRoom {
+    apiST(Api.roomMemberAdd) { rRef, member ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members.")
-            val member: AddedMember = call.receive()
             if (!(user.type == UserType.ADMIN || canChangeRole(
                     room.userRole(user),
                     member.role
@@ -192,11 +187,9 @@ fun roomRoutes(routing: Routing) = routing.apply {
                 }
             }
         }
-
-        call.respond(HttpStatusCode.OK)
     }
-    deleteST(roomUrl) {
-        call.withRoom {
+    apiST(Api.roomDelete) { rRef, _ ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.ROOM_OWNER, "You cannot delete this room.")
             // transact (not legacy withTransaction) so the per-question cascade hooks
             // can stage into the ambient transaction
@@ -209,32 +202,26 @@ fun roomRoutes(routing: Routing) = routing.apply {
                 tools.confido.store.roomStore.delete(room.ref)
             }
         }
-
-        call.respond(HttpStatusCode.OK)
     }
     // Remove a room's member
-    deleteST("$roomUrl/members/{cID}") {
-        call.withRoom {
-            val id = call.parameters["cID"] ?: ""
-            val membership = room.members.find { it.user eqid id } ?: notFound("No such member.")
+    apiST(Api.roomMemberDelete) { rRef, uRef, _ ->
+        call.withRoom(rRef) {
+            val membership = room.members.find { it.user eqid uRef } ?: notFound("No such member.")
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members.")
 
             if (!canChangeRole(room.userRole(user), membership.role)) unauthorized("You cannot give this role.")
 
             tools.confido.store.roomStore.modify(room.ref) {
-                it.copy(members = it.members.filterNot { m -> m.user eqid id })
+                it.copy(members = it.members.filterNot { m -> m.user eqid uRef })
             }
         }
-
-        call.respond(HttpStatusCode.OK)
     }
 }
 
 fun roomQuestionRoutes(routing: Routing) = routing.apply {
-    postST("$roomUrl/questions/reorder") {
-        call.withRoom {
+    apiST(Api.questionsReorder) { rRef, move ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot manage questions.")
-            val move: ReorderQuestions = call.receive()
 
             tools.confido.store.roomStore.modify(room.ref) {
                 // Questions may have gotten removed before this request happened
@@ -250,8 +237,6 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
                 return@modify it.copy(questions = newQuestions)
             }
         }
-
-        call.respond(HttpStatusCode.OK)
     }
     // Group predictions of a room's questions: a multi-question payload, so the
     // composition uses whole-map views rather than keyed cells — output dedup keeps

@@ -1,5 +1,7 @@
 package components.redesign.rooms.dialog
 
+import tools.confido.api.Api
+import tools.confido.refs.ref
 import components.useDisconnected
 import components.redesign.basic.Dialog
 import components.redesign.basic.Stack
@@ -50,9 +52,8 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
     fun submitInviteLink() = submit {
         if (i == null) {
             val invite = CreateNewInvite(description, role, nicknamePolicy, emailPolicy, targetUserType, preventDuplicateNicknames)
-            Client.sendData("${room.urlPrefix}/invites/create", invite, onError = { showError(it)}) {
-                props.onClose?.invoke()
-            }
+            Client.call(Api.inviteCreate(room.ref), invite)
+            props.onClose?.invoke()
         } else {
             val invite = i.copy(
                 description = description,
@@ -63,9 +64,8 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
                 preventDuplicateNicknames = preventDuplicateNicknames,
                 state = linkState,
             )
-            Client.sendData("${room.urlPrefix}/invites/edit", invite, onError = { showError(it)}) {
-                props.onClose?.invoke()
-            }
+            Client.call(Api.inviteEdit(room.ref), invite)
+            props.onClose?.invoke()
         }
     }
 

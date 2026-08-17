@@ -30,6 +30,7 @@ import react.router.*
 import rooms.*
 import components.redesign.presentation.PresentationTab
 import payloads.requests.CreatePresentation
+import tools.confido.api.Api
 import tools.confido.extensions.ClientExtension
 import tools.confido.refs.*
 import tools.confido.state.Topics
@@ -102,11 +103,9 @@ private val PresentationFollowBanner = FC<Props> {
             onClick = {
                 runCoroutine {
                     if (isFollowing) {
-                        Client.send("${room.urlPrefix}/presentation/unfollow", method = HttpMethod.Post,
-                            onError = { showError(it) }) {}
+                        Client.call(Api.presentationUnfollow(room.ref))
                     } else {
-                        Client.send("${room.urlPrefix}/presentation/follow", method = HttpMethod.Post,
-                            onError = { showError(it) }) {}
+                        Client.call(Api.presentationFollow(room.ref))
                     }
                 }
             }
@@ -191,12 +190,8 @@ val RoomLayout = FC<RoomLayoutProps> { props->
     var deleteConfirmOpen by useState(false)
 
     fun delete() = runCoroutine {
-        Client.send(
-            roomUrl(room.id),
-            HttpMethod.Delete,
-            onError = { showError(it) }) {
-            navigate("/")
-        }
+        Client.call(Api.roomDelete(room.ref))
+        navigate("/")
     }
 
     EditRoomSettingsDialog {
@@ -243,9 +238,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                 onClick = {
                     dialogOpen = false
                     runCoroutine {
-                        Client.sendData("${room.urlPrefix}/presentation/create",
-                            CreatePresentation(),
-                            onError = { showError(it) }) {}
+                        Client.call(Api.presentationCreate(room.ref), CreatePresentation())
                     }
                 }
             }

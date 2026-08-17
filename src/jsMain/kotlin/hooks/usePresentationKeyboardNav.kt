@@ -1,5 +1,7 @@
 package hooks
 
+import tools.confido.api.Api
+import ApiError
 import Client
 import components.redesign.presenter.setPresenterView
 import payloads.requests.NavigateDirection
@@ -61,11 +63,10 @@ fun usePresentationKeyboardNav(roomId: String) {
                     if (elapsed >= NAV_DEBOUNCE_MS) {
                         lastNavTime.current = now
                         submitLock {
-                            Client.sendData("$roomUrlPrefix/presentation/navigate",
-                                NavigatePresentation(dir),
-                                onError = {}) {
+                            try {
+                                Client.call(Api.presentationNavigate(roomRef), NavigatePresentation(dir))
                                 setPresenterView(PresentationPV(roomRef))
-                            }
+                            } catch (e: ApiError) {}
                         }
                     }
                 }

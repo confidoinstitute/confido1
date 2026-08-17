@@ -1,5 +1,7 @@
 package hooks
 
+import ApiError
+import components.redesign.basic.showError
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import react.useMemo
@@ -28,6 +30,8 @@ inline fun useCoroutineLock(): CoroutineLock {
                 running = true
                 try {
                     block()
+                } catch (e: ApiError) {
+                    showError(e.message)
                 } catch (e: Throwable) {
                     console.error(e)
                 } finally {

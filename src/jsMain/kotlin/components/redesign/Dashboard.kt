@@ -1,5 +1,6 @@
 package components.redesign
 
+import tools.confido.api.Api
 import Client
 import components.*
 import components.redesign.basic.*
@@ -354,9 +355,7 @@ val Dashboard = FC<Props> {
 
 
         val myCalib = useSuspendResult {
-            val resp = Client.sendDataRequest("/calibration", CalibrationRequest())
-            if (resp.status.isSuccess()) resp.body<CalibrationVector>()
-            else null
+            Client.call(Api.calibration(), CalibrationRequest())
         }
         val showCalibGraph = (myCalib != null && myCalib.entries.any { it.value.enoughData })
 
@@ -408,9 +407,7 @@ val Dashboard = FC<Props> {
         }
 
         val myScores = useSuspendResult {
-            val resp = Client.httpClient.get("/scores/my")
-            if (resp.status.isSuccess()) resp.body<MyScoresResponse>()
-            else null
+            Client.call(Api.myScores())
         }
         val showScores = myScores != null && myScores.items.isNotEmpty()
 
@@ -517,10 +514,9 @@ val UserMenu = FC<UserMenuProps> { props ->
             variant = DialogMenuItemVariant.dangerous
             onClick = {
                 runCoroutine {
-                    Client.send("/logout", onError = { showError(it) }) {
-                        navigate("/")
-                        loginState.logout()
-                    }
+                    Client.call(Api.logout())
+                    navigate("/")
+                    loginState.logout()
                 }
             }
         }

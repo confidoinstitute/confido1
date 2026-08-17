@@ -1,5 +1,6 @@
 package components.redesign.scores
 
+import tools.confido.api.Api
 import Client
 import components.useRooms
 import components.redesign.HelpIcon
@@ -141,7 +142,7 @@ val MyScoresContent = FC<MyScoresContentProps> { props ->
     }
 
     val response = useSuspendResult {
-        Client.httpClient.get("/scores/my").body<MyScoresResponse>()
+        Client.call(Api.myScores())
     }
 
     if (response == null) {

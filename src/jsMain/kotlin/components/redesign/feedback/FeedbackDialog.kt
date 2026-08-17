@@ -1,5 +1,6 @@
 package components.redesign.feedback
 
+import tools.confido.api.Api
 import components.redesign.*
 import components.redesign.basic.Dialog
 import components.redesign.basic.showError
@@ -59,13 +60,9 @@ val FeedbackDialog = FC<FeedbackDialogProps> { props ->
         sendingLock {
             when (sendTo) {
                 SendFeedbackTo.CONFIDO_DEVELOPERS -> {
-                    Client.send("/feedback", req = {
-                        this.parameter("url", pathname ?: "not provided")
-                        setBody(feedbackText)
-                    }, onError = { showError(it) }) {
-                        feedbackText = ""
-                        props.onClose?.invoke()
-                    }
+                    Client.call(Api.feedback(), feedbackText)
+                    feedbackText = ""
+                    props.onClose?.invoke()
                 }
             }
         }

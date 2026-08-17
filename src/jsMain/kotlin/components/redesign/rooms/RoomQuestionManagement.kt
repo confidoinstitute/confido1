@@ -59,6 +59,7 @@ import react.dom.html.ReactHTML.ul
 import react.router.dom.Link
 import rooms.Room
 import rooms.RoomPermission
+import tools.confido.api.Api
 import tools.confido.extensions.ClientExtension
 import tools.confido.question.Prediction
 import tools.confido.state.MultiQuestionPV
@@ -345,7 +346,7 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
                 val newOrder = moved.map { Ref<Question>(it) }.toList()
                 val reorder = ReorderQuestions(newOrder)
                 runCoroutine {
-                    Client.sendData("${room.urlPrefix}/questions/reorder", reorder, onError = { showError(it) }) {}
+                    Client.call(Api.questionsReorder(room.ref), reorder)
                 }
             }
         }
@@ -678,11 +679,9 @@ val QuestionRow = FC<QuestionRowProps> { props ->
                             if (newState == QuestionState.RESOLVED && question.resolution == null) {
                                 resolveOpen = true
                             } else submitLock {
-                                val edit: EditQuestion = EditQuestionState(newState)
-                                Client.sendData(
-                                    "${props.question.urlPrefix}/edit",
-                                    edit,
-                                    onError = { showError(it); changingState = false }) {
+                                try {
+                                    Client.call(Api.questionEdit(props.question.ref), EditQuestionState(newState))
+                                } finally {
                                     changingState = false
                                 }
                             }
@@ -785,15 +784,14 @@ val SelectionActionMenu = FC<SelectionActionMenuProps> { props->
         p { +"This action cannot be undone." }
         onConfirm = {
             submitLock {
-                Client.sendData(
-                    "/questions/multiedit",
-                    EditQuestionMulti(
+                try {
+                    Client.call(Api.questionMultiedit(), EditQuestionMulti(
                         selectedQuestions.map { it.ref }.toSet(),
                         EditQuestionClearAnswers
-                    ),
-                    onError = { showError(it); clearConfirmOpen=false }) {
-                    clearConfirmOpen=false
+                    ))
                     props.onActionDone?.invoke()
+                } finally {
+                    clearConfirmOpen=false
                 }
             }
         }
@@ -817,14 +815,13 @@ val SelectionActionMenu = FC<SelectionActionMenuProps> { props->
         p { +"This action cannot be undone." }
         onConfirm = {
             submitLock {
-                Client.sendData(
-                    "/questions/multidelete",
-                    DeleteQuestionMulti(
+                try {
+                    Client.call(Api.questionMultidelete(), DeleteQuestionMulti(
                         selectedQuestions.map { it.ref }.toSet(),
-                    ),
-                    onError = { showError(it); deleteConfirmOpen=false }) {
-                    deleteConfirmOpen=false
+                    ))
                     props.onActionDone?.invoke()
+                } finally {
+                    deleteConfirmOpen=false
                 }
             }
         }
@@ -909,13 +906,11 @@ val SelectionActionRow = FC<SelectionActionRowProps> { props->
                 arrow = true
                 onSelect={ newState->
                     submitLock {
-                        Client.sendData(
-                            "/questions/multiedit",
-                            EditQuestionMulti(
-                                selectedQuestions.map { it.ref }.toSet(),
-                                EditQuestionState(newState)
-                            ),
-                            onError = { showError(it) }) {  props.onClose?.invoke() }
+                        Client.call(Api.questionMultiedit(), EditQuestionMulti(
+                            selectedQuestions.map { it.ref }.toSet(),
+                            EditQuestionState(newState)
+                        ))
+                        props.onClose?.invoke()
                     }
                 }
             }

@@ -1,5 +1,6 @@
 package components.redesign.presentation
 
+import tools.confido.api.Api
 import Client
 import components.redesign.basic.*
 import components.redesign.forms.Button
@@ -36,13 +37,10 @@ val PresentationRunner = FC<PresentationRunnerProps> { props ->
 
     fun navigate(dir: NavigateDirection, index: Int? = null) {
         submitLock {
-            Client.sendData("${room.urlPrefix}/presentation/navigate",
-                NavigatePresentation(dir, index),
-                onError = { showError(it) }) {
-                // Ensure the session's presenter view points at this presentation,
-                // so that even if the user manually changed it, navigating brings it back.
-                setPresenterView(PresentationPV(room.ref))
-            }
+            Client.call(Api.presentationNavigate(room.ref), NavigatePresentation(dir, index))
+            // Ensure the session's presenter view points at this presentation,
+            // so that even if the user manually changed it, navigating brings it back.
+            setPresenterView(PresentationPV(room.ref))
         }
     }
 
@@ -190,8 +188,7 @@ val PresentationRunner = FC<PresentationRunnerProps> { props ->
                                 +"Re-execute"
                                 onClick = {
                                     submitLock {
-                                        Client.sendData("${room.urlPrefix}/presentation/reexecute", "",
-                                            onError = { showError(it) }) {}
+                                        Client.call(Api.presentationReexecute(room.ref))
                                     }
                                 }
                             }

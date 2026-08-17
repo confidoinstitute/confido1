@@ -13,8 +13,10 @@ import payloads.requests.EditQuestion
 import payloads.requests.EditQuestionComplete
 import react.FC
 import react.useState
+import tools.confido.api.Api
 import tools.confido.question.Question
 import tools.confido.question.QuestionState
+import tools.confido.refs.ref
 import tools.confido.spaces.Value
 import web.html.ButtonType
 import web.html.submit
@@ -48,14 +50,9 @@ val QuestionResolveDialog = dialogStateWrapper(FC<QuestionResolveDialogProps>("Q
             else it
         }
         // TODO: Make a dedicated edit mode for this to prevent overwrites!
-        val editQuestion: EditQuestion = EditQuestionComplete(question)
         submitLock {
-            Client.sendData(
-                "${question.urlPrefix}/edit",
-                editQuestion,
-                onError = { showError(it) }) {
-                props.onClose?.invoke()
-            }
+            Client.call(Api.questionEdit(question.ref), EditQuestionComplete(question))
+            props.onClose?.invoke()
         }
     }
 

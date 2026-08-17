@@ -17,13 +17,6 @@ def loads():
     return get_json("/diag/topic_computes").get("load:questionComments", 0)
 
 
-def post_raw(path, body, cookie):
-    req = urllib.request.Request(
-        BASE + path, data=body.encode(),
-        headers={"Content-Type": "text/plain", "Cookie": cookie}, method="POST")
-    return urllib.request.urlopen(req).read().decode()
-
-
 async def main():
     admin = login(ADMIN_EMAIL)
     member = login(MEMBER_EMAIL)
@@ -85,8 +78,8 @@ async def main():
                 "TEST-4", "likedByMe differs per viewer over the shared partition",
                 f"admin={ca.get('likedByMe')}/{ca.get('likeCount')} member={cm.get('likedByMe')}/{cm.get('likeCount')}")
 
-        # Edit propagates (raw-body route: content travels verbatim, not JSON-quoted).
-        post_raw(f"/questions/{qid}/comments/{cid}/edit", "hello cache EDITED", admin)
+        # Edit propagates (typed ApiSpec route: the content is a JSON string).
+        post(f"/questions/{qid}/comments/{cid}/edit", "hello cache EDITED", admin)
         em = by_topic(await recv_updates(wsm, 2.0)).get(ctopic, {}).get("data") or []
         t.check(any(c["content"] == "hello cache EDITED" for c in em) and loads() == c0 + 1,
                 "TEST-5", "edit propagates from the change stream, still zero refetches")

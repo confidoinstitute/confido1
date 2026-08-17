@@ -1,5 +1,7 @@
 package components.redesign.nouser
 
+import ApiError
+import tools.confido.api.Api
 import Client
 import components.*
 import components.redesign.Header
@@ -117,19 +119,19 @@ val LoginForm = FC<LoginFormProps> { props ->
         login {
             when (mode) {
                 LoginMode.MagicLink -> {
-                    Client.sendData("/login_email/create", SendMailLink(trimmedEmail, "/", validity = UserSessionValidity.fromBool(permanent)), onError = {showError(it)}) {
-                        emailSent = true
-                    }
+                    Client.call(Api.loginEmailCreate(), SendMailLink(trimmedEmail, "/", validity = UserSessionValidity.fromBool(permanent)))
+                    emailSent = true
                 }
 
                 LoginMode.Password -> {
-                    Client.sendData("/login", PasswordLogin(trimmedEmail, password, validity = UserSessionValidity.fromBool(permanent)), onError = {
-                        if (status == HttpStatusCode.Unauthorized) {
+                    try {
+                        Client.call(Api.login(), PasswordLogin(trimmedEmail, password, validity = UserSessionValidity.fromBool(permanent)))
+                        loginState.login()
+                    } catch (e: ApiError) {
+                        if (e.status == HttpStatusCode.Unauthorized) {
                             passwordError = "Wrong password or email. Please try again."
                             password = ""
-                        }
-                    }) {
-                        loginState.login()
+                        } else throw e
                     }
                 }
             }

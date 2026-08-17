@@ -1,5 +1,7 @@
 package components.redesign.presentation
 
+import tools.confido.api.Api
+import tools.confido.refs.ref
 import Client
 import components.redesign.*
 import components.redesign.basic.*
@@ -134,11 +136,9 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
 
     fun save() {
         submitLock {
-            Client.sendData("${room.urlPrefix}/presentation/edit",
-                EditPresentation(items = items, slideLabels = slideLabels),
-                onError = { showError(it) }) {
-                dirty = false
-            }
+            Client.call(Api.presentationEdit(room.ref),
+                EditPresentation(items = items, slideLabels = slideLabels))
+            dirty = false
         }
     }
 

@@ -19,8 +19,11 @@ import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.textarea
+import tools.confido.api.Api
+import tools.confido.api.editApi
 import tools.confido.extensions.ClientExtension
 import tools.confido.question.*
+import tools.confido.refs.Ref
 import tools.confido.spaces.*
 import tools.confido.utils.*
 import utils.*
@@ -57,12 +60,12 @@ val AddCommentDialog = FC<AddCommentDialogProps> { props ->
     fun createComment(text: String, attachPrediction: Boolean) {
         submit {
             val createdComment = CreateComment(unixNow(), text, attachPrediction)
-            val url = when (props.variant) {
-                CommentInputVariant.QUESTION -> "${questionUrl(props.id)}/comments/add"
-                CommentInputVariant.ROOM -> "${roomUrl(props.id)}/comments/add"
+            val api = when (props.variant) {
+                CommentInputVariant.QUESTION -> Api.questionCommentAdd(Ref(props.id))
+                CommentInputVariant.ROOM -> Api.roomCommentAdd(Ref(props.id))
             }
 
-            Client.sendData(url, createdComment, onError = { showError(it) }) { }
+            Client.call(api, createdComment)
         }
     }
 
@@ -83,8 +86,7 @@ val EditCommentDialog = FC<EditCommentDialogProps> { props ->
     fun editComment(content: String, attachPrediction: Boolean) {
         // TODO: Handle attach prediction change
         submit {
-            val url = "${props.comment.urlPrefix}/edit"
-            Client.sendData(url, content, onError = { showError(it) }) { }
+            Client.call(props.comment.editApi(), content)
         }
     }
 

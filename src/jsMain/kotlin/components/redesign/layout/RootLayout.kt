@@ -1,5 +1,6 @@
 package components.redesign.layout
 
+import tools.confido.api.Api
 import components.useFollowingPresentation
 import components.useMyUser
 import components.AppStateWebsocketProvider
@@ -146,7 +147,7 @@ private val RootLayoutInner = FC<Props> {
                     add(jso<RouteObject> {
                         path = "email_verify"
                         element = VerifyToken.create {
-                            url = "/profile/email/verify"
+                            api = Api.profileEmailVerify()
                             failureTitle = "Email verification failed"
                             successTitle = "Email verification success"
                             failureText = "The verification link is expired or invalid."
@@ -156,7 +157,7 @@ private val RootLayoutInner = FC<Props> {
                     add(jso<RouteObject> {
                         path = "password_reset"
                         element = VerifyToken.create {
-                            url = "/profile/password/reset/finish"
+                            api = Api.profilePasswordResetFinish()
                             failureTitle = "Password reset failed"
                             successTitle = "Password was reset"
                             failureText = "The link is expired or invalid."

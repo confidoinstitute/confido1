@@ -41,6 +41,7 @@ import react.dom.html.ReactHTML.option
 import react.use
 import react.useState
 import rooms.*
+import tools.confido.api.Api
 import tools.confido.extensions.ClientExtension
 import tools.confido.refs.ref
 import users.User
@@ -191,13 +192,13 @@ val RoomMember = FC<RoomMemberProps> {props ->
 
     fun memberRoleChange(role: RoomRole) = runCoroutine {
         val ref = userRef ?: return@runCoroutine
-        Client.sendData("${room.urlPrefix}/members/add", AddedExistingMember(ref, role) as AddedMember, onError = { showError(it)}) {}
+        Client.call(Api.roomMemberAdd(room.ref), AddedExistingMember(ref, role))
     }
     val canChangeSelf = !member.user.isMyself || useIsAdmin()
 
     fun memberDelete() = runCoroutine {
         val ref = userRef ?: return@runCoroutine
-        Client.httpClient.delete("${room.urlPrefix}/members/${ref.id}")
+        Client.call(Api.roomMemberDelete(room.ref, ref))
     }
 
     MemberQuickSettingsDialog {
@@ -302,7 +303,7 @@ val InvitationMembers = FC<InvitationMembersProps> { props ->
     val delete = useCoroutineLock()
     fun deleteInviteLink(keepMembers: Boolean) = delete {
         val i = props.invitation
-        Client.sendData("${room.urlPrefix}/invite", DeleteInvite(i.id, keepMembers), method = HttpMethod.Delete, onError = {showError(it)}) { }
+        Client.call(Api.inviteDelete(room.ref), DeleteInvite(i.id, keepMembers))
     }
 
     InvitationQuickSettingsDialog {

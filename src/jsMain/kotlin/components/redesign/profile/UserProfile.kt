@@ -1,5 +1,6 @@
 package components.redesign.profile
 
+import tools.confido.api.Api
 import components.useMyPasswordIsSet
 import components.useMyUser
 import components.useDisconnected
@@ -48,7 +49,8 @@ val UserProfile = FC<Props> {
     val edit = useCoroutineLock()
 
     fun resetPassword() = runCoroutine {
-        Client.send("/profile/password/reset", onError = { showError(it) }) { passwordReset = true }
+        Client.call(Api.profilePasswordReset())
+        passwordReset = true
         oldPassword = ""
         newPassword = ""
         confirmPassword = ""
@@ -78,13 +80,10 @@ val UserProfile = FC<Props> {
                 }
             }
 
-        Client.sendData("/profile/edit", EditProfile(
+        editResult = Client.call(Api.profileEdit(), EditProfile(
                 nick, email,
                 if (useMyPasswordIsSet()) oldPassword else null,
-                newPassword.ifEmpty { null }),
-            onError = {showError(it)}) {
-            editResult = body()
-        }
+                newPassword.ifEmpty { null }))
     }
 
     PageHeader {

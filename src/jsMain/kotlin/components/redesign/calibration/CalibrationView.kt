@@ -1,5 +1,6 @@
 package components.redesign.calibration
 
+import tools.confido.api.Api
 import Client
 import components.useMyUser
 import components.useRooms
@@ -323,9 +324,7 @@ external interface CalibrationReqViewProps : CalibrationViewBaseProps {
 
 val CalibrationReqView = FC<CalibrationReqViewProps> { props->
     val data = useSuspendResult(props.req.identify()) {
-        val resp = Client.sendDataRequest("/calibration", props.req)
-        if (resp.status.isSuccess()) resp.body<CalibrationVector>()
-        else null
+        Client.call(Api.calibration(), props.req)
     }
     val req = props.req
     val entries = data?.entries?.filter { it.value.enoughData } ?: emptyList()
@@ -367,9 +366,7 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
                 this.onDetail = { bin ->
                     if (detail == null) {
                         detailFetch {
-                            Client.sendData("/calibration/detail", props.req, onError = { showError(it) }) {
-                                detail = body<List<CalibrationQuestion>>()
-                            }
+                            detail = Client.call(Api.calibrationDetail(), props.req)
                         }
                     }
                     detailBin = bin

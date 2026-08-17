@@ -1,6 +1,8 @@
 package components.redesign.admin
 
 
+import tools.confido.api.Api
+import tools.confido.refs.ref
 import Client
 import components.useIsAdmin
 import components.useMyUser
@@ -69,7 +71,7 @@ val DeleteUserDialog = FC<EditEntityDialogProps<User>> { props ->
                 val options = DeleteUserOptions(
                     deleteComments = commentHandling == "delete"
                 )
-                Client.sendData("/users/${user.id}", options, method = HttpMethod.Delete, onError = { showError(it) }) {}
+                Client.call(Api.userDelete(user.ref), options)
                 props.onClose?.invoke()
             }
         }
@@ -132,14 +134,13 @@ val EditUserDialog = FC<EditUserDialogProps> { props ->
             lastLoginAt = props.entity?.lastLoginAt
         )
 
-        val url = if (newUser) "add" else "edit"
+        val api = if (newUser) Api.userAdd() else Api.userEdit()
         submit {
-            Client.sendData("/users/$url", user, req = {
+            Client.call(api, user, req = {
                 if (invite)
                     this.parameter("invite", 1)
-            }, onError = {showError(it)}) {
-                props.onClose?.invoke()
-            }
+            })
+            props.onClose?.invoke()
         }
     }
 

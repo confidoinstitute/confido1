@@ -1,5 +1,6 @@
 package components.redesign.presentation
 
+import tools.confido.api.Api
 import Client
 import components.presenter.PresenterControlsProps
 import components.presenter.getPresenterControlsComponent
@@ -49,8 +50,7 @@ val PresentationPC = FC<PresenterControlsProps<PresentationPV>> { props ->
 
     fun navigate(dir: NavigateDirection) {
         submitLock {
-            Client.sendData("$roomUrl/presentation/navigate", NavigatePresentation(dir, null),
-                onError = { showError(it) }) {}
+            Client.call(Api.presentationNavigate(props.view.room), NavigatePresentation(dir, null))
         }
     }
 
@@ -104,8 +104,7 @@ val PresentationPC = FC<PresenterControlsProps<PresentationPV>> { props ->
                 this.disabled = props.disabled
                 this.onChange = { newView ->
                     runCoroutine {
-                        Client.sendData("$roomUrl/presentation/setview", newView,
-                            onError = { showError(it) }) {}
+                        Client.call(Api.presentationSetView(props.view.room), newView)
                     }
                 }
             }

@@ -1,15 +1,12 @@
 package tools.confido.application.routes
 
-import io.ktor.http.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import payloads.requests.CreateComment
 import payloads.responses.CommentExtraData
 import payloads.responses.CommentPresentation
 import payloads.responses.QuestionCommentExtraData
 import rooms.Room
 import rooms.RoomPermission
+import tools.confido.api.Api
 import tools.confido.application.UserPresentationContext
 import tools.confido.application.getUserPresentation
 import tools.confido.application.sessions.TransientData
@@ -22,12 +19,10 @@ import tools.confido.utils.unixNow
 import users.User
 import tools.confido.state.Topics
 
-const val commentUrl = "/comments/{cID}"
-
 fun<T: CommentExtraData> makeCommentPresentation(comment: Comment, extraData: T?, observer: User, room: Room) =
     CommentPresentation(
         comment.ref,
-        comment.urlPrefix,
+        comment.scope,
         getUserPresentation(comment.user.deref(), observer, UserPresentationContext.COMMENT_AUTHOR, room),
         comment.timestamp,
         comment.content,
@@ -77,14 +72,13 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
         }
     }
 
-    postST("$questionUrl/comments/add") {
-        call.withQuestion {
+    apiST(Api.questionCommentAdd) { qRef, createdComment ->
+        call.withQuestion(qRef) {
             assertVisible()
             assertPermission(RoomPermission.POST_QUESTION_COMMENT, "You cannot post a comment to this question.")
 
             if (!question.allowComments) unauthorized("Commenting is not allowed for this question.")
 
-            val createdComment: CreateComment = call.receive()
             if (createdComment.content.isEmpty()) badRequest("No comment content.")
             if (room.commentTemplate.isNotBlank() && createdComment.content.trim() == room.commentTemplate.trim())
                 badRequest("Please modify the comment template before posting.")
@@ -97,15 +91,11 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
                 content = createdComment.content, prediction = prediction)
             questionCommentArchive.insert(comment)
         }
-
-        call.respond(HttpStatusCode.OK)
     }
 
-    postST("$questionUrl$commentUrl/edit") {
-        call.withQuestion {
+    apiST(Api.questionCommentEdit) { qRef, id, newContent ->
+        call.withQuestion(qRef) {
             assertVisible()
-            val id = call.parameters["cID"] ?: ""
-            val newContent: String = call.receive()
             if (newContent.isEmpty()) badRequest("No comment content.")
 
             transact {
@@ -115,14 +105,11 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
                 questionCommentArchive.update(comment, comment.copy(content = newContent, modified = unixNow()))
             }
         }
-
-        call.respond(HttpStatusCode.OK)
     }
 
-    deleteST("$questionUrl$commentUrl") {
-        call.withQuestion {
+    apiST(Api.questionCommentDelete) { qRef, id, _ ->
+        call.withQuestion(qRef) {
             assertVisible()
-            val id = call.parameters["cID"] ?: ""
             transact {
                 val comment = questionCommentArchive.get(question.ref, id) ?: notFound("No such comment.")
                 if (!room.hasPermission(user, RoomPermission.MANAGE_COMMENTS) && !(comment.user eqid user))
@@ -130,14 +117,10 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
                 questionCommentArchive.delete(comment) // likes are part of the document
             }
         }
-
-        call.respond(HttpStatusCode.OK)
     }
-    postST("$questionUrl$commentUrl/like") {
-        call.withQuestion {
-            val id = call.parameters["cID"] ?: ""
-            val state = call.receive<Boolean>()
 
+    apiST(Api.questionCommentLike) { qRef, id, state ->
+        call.withQuestion(qRef) {
             assertVisible()
             assertPermission(RoomPermission.VIEW_QUESTION_COMMENTS, "You cannot like this comment.")
             transact {
@@ -148,7 +131,6 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
                     questionCommentArchive.update(comment, comment.copy(likes = newLikes))
             }
         }
-        call.respond(HttpStatusCode.OK)
     }
 }
 
@@ -171,24 +153,19 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
         }
     }
 
-    postST("$roomUrl/comments/add") {
-        call.withRoom {
+    apiST(Api.roomCommentAdd) { rRef, createdComment ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.POST_ROOM_COMMENT, "You cannot add comments to this room.")
 
-            val createdComment: CreateComment = call.receive()
             if (createdComment.content.isEmpty()) badRequest("No comment content.")
 
             val comment = RoomComment(id = "", room = room.ref, user = user.ref, timestamp = unixNow(),
                 content = createdComment.content, isAnnotation = false)
             roomCommentArchive.insert(comment)
         }
-
-        call.respond(HttpStatusCode.OK)
     }
-    postST("$roomUrl/comments/{cID}/edit") {
-        call.withRoom {
-            val id = call.parameters["cID"] ?: ""
-            val newContent: String = call.receive()
+    apiST(Api.roomCommentEdit) { rRef, id, newContent ->
+        call.withRoom(rRef) {
             if (newContent.isEmpty()) unauthorized("No comment content.")
 
             transact {
@@ -198,12 +175,9 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
                 roomCommentArchive.update(comment, comment.copy(content = newContent, modified = unixNow()))
             }
         }
-
-        call.respond(HttpStatusCode.OK)
     }
-    deleteST("$roomUrl/comments/{cID}") {
-        call.withRoom {
-            val id = call.parameters["cID"] ?: ""
+    apiST(Api.roomCommentDelete) { rRef, id, _ ->
+        call.withRoom(rRef) {
             transact {
                 val comment = roomCommentArchive.get(room.ref, id) ?: notFound("No such comment.")
                 if (!room.hasPermission(user, RoomPermission.MANAGE_COMMENTS) && !(comment.user eqid user))
@@ -211,13 +185,9 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
                 roomCommentArchive.delete(comment)
             }
         }
-        call.respond(HttpStatusCode.OK)
     }
-    postST("$roomUrl/comments/{cID}/like") {
-        call.withRoom {
-            val id = call.parameters["cID"] ?: ""
-            val state = call.receive<Boolean>()
-
+    apiST(Api.roomCommentLike) { rRef, id, state ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.VIEW_ROOM_COMMENTS, "You cannot like this comment.")
             transact {
                 val comment = roomCommentArchive.get(room.ref, id) ?: notFound("No such comment.")
@@ -227,6 +197,5 @@ fun roomCommentsRoutes(routing: Routing) = routing.apply {
                     roomCommentArchive.update(comment, comment.copy(likes = newLikes))
             }
         }
-        call.respond(HttpStatusCode.OK)
     }
 }

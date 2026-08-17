@@ -1,5 +1,6 @@
 package components.redesign.profile
 
+import ApiError
 import components.redesign.basic.Alert
 import components.redesign.basic.Backdrop
 import components.redesign.basic.Stack
@@ -9,6 +10,7 @@ import js.array.component1
 import js.array.component2
 import web.cssom.*
 import payloads.requests.TokenVerification
+import tools.confido.utils.BoundApi
 import react.FC
 import react.Props
 import react.dom.html.ReactHTML.b
@@ -27,7 +29,7 @@ enum class CheckStatus {
 }
 
 external interface VerifyTokenProps : Props {
-    var url: String
+    var api: BoundApi<TokenVerification, Unit>
     var successTitle: String
     var successText: String
     var failureTitle: String
@@ -43,11 +45,11 @@ val VerifyToken = FC<VerifyTokenProps> { props ->
 
     useEffectOnce {
         runCoroutine {
-            Client.sendData(
-                props.url,
-                TokenVerification(verificationToken),
-                onError = { status = CheckStatus.FAILURE }) {
-                status = CheckStatus.SUCCESS
+            status = try {
+                Client.call(props.api, TokenVerification(verificationToken))
+                CheckStatus.SUCCESS
+            } catch (e: ApiError) {
+                CheckStatus.FAILURE
             }
         }
     }

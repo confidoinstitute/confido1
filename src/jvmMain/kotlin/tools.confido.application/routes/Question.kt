@@ -16,6 +16,7 @@ import payloads.requests.*
 import payloads.responses.*
 import rooms.Room
 import rooms.RoomPermission
+import tools.confido.api.Api
 import tools.confido.application.ClassCensor
 import tools.confido.application.PermClass
 import tools.confido.application.UserPresentationContext
@@ -92,11 +93,11 @@ suspend fun <T> ApplicationCall.withQuestion(qRef: Ref<Question>, body: suspend 
 
 fun questionRoutes(routing: Routing) = routing.apply {
     // Add a new question
-    postST("$roomUrl/questions/add") {
-        call.withRoom {
+    apiST(Api.questionAdd) { rRef, newQuestion ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.ADD_QUESTION, "You cannot add questions.")
 
-            var q: Question = call.receive()
+            var q = newQuestion
             // Add the initial state to the history if it has not been added already.
             if (q.stateHistory.isEmpty()) {
                 q = q.copy(stateHistory = listOf(QuestionStateChange(q.state, Clock.System.now(), user.ref)))
@@ -110,7 +111,6 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 }
             }
         }
-        call.respond(HttpStatusCode.OK)
     }
 
     suspend fun doEditQuestion(question: Question, edit: EditQuestion, user: User) {
@@ -173,17 +173,14 @@ fun questionRoutes(routing: Routing) = routing.apply {
     }
 
     // Edit a question
-    postST("$questionUrl/edit") {
-        call.withQuestion {
-            val edit: EditQuestion = call.receive()
+    apiST(Api.questionEdit) { qRef, edit ->
+        call.withQuestion(qRef) {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "You cannot edit this question.")
             doEditQuestion(question, edit, user)
         }
-        call.respond(HttpStatusCode.OK)
     }
-    postST("/questions/multiedit") {
+    apiST(Api.questionMultiedit) { req ->
         call.withUser {
-            val req = call.receive<EditQuestionMulti>()
             val questions = req.questions.mapNotNull { it.deref() }
             val rooms = questions.map{ it.room ?: badRequest("cannot modify roomless question") }
             if (!rooms.all { it.hasPermission(user, RoomPermission.MANAGE_QUESTIONS)}) unauthorized("missing permissions")
@@ -191,12 +188,10 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 doEditQuestion(q, req.edit, user)
             }
         }
-        call.respond(HttpStatusCode.OK)
     }
     // Delete multiple questions at once
-    postST("/questions/multidelete") {
+    apiST(Api.questionMultidelete) { req ->
         call.withUser {
-            val req = call.receive<DeleteQuestionMulti>()
             val questions = req.questions.mapNotNull { it.deref() }
             val questionRooms = questions.map { it.room ?: badRequest("cannot delete roomless question") }
             if (!questionRooms.all { it.hasPermission(user, RoomPermission.MANAGE_QUESTIONS) }) unauthorized("missing permissions")
@@ -217,14 +212,11 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 }
             }
         }
-        call.respond(HttpStatusCode.OK)
     }
     // Bulk state change for all questions with a given tag
-    postST("$roomUrl/tags/{tag}/set_state") {
-        call.withRoom {
+    apiST(Api.questionTagSetState) { rRef, tag, newState ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Need moderator privilege to alter state.")
-            val tag = call.parameters["tag"]?.ifEmpty { null } ?: badRequest("Missing tag.")
-            val newState = call.receive<QuestionState>()
             tools.confido.store.transact {
                 room.questions.mapNotNull { it.deref() }.filter { tag in it.tags }.forEach { q ->
                     tools.confido.store.questionStore.modify(q.id) {
@@ -233,24 +225,21 @@ fun questionRoutes(routing: Routing) = routing.apply {
                     }
                 }
             }
-            call.respond(HttpStatusCode.OK)
         }
     }
 
-    postST("$questionUrl/state") {
-        call.withQuestion {
-            val newState: QuestionState = call.receive()
+    apiST(Api.questionSetState) { qRef, newState ->
+        call.withQuestion(qRef) {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "You cannot edit this question.")
             tools.confido.store.questionStore.modify(ref) {
                 val newHistory = question.stateHistory + QuestionStateChange(newState, Clock.System.now(), user.ref)
                 it.withState(newState).copy(stateHistory = newHistory)
             }
         }
-        call.respond(HttpStatusCode.OK)
     }
     // Delete question
-    deleteST("$questionUrl") {
-        call.withQuestion {
+    apiST(Api.questionDelete) { qRef, _ ->
+        call.withQuestion(qRef) {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "You cannot delete this question.")
 
             transact {
@@ -263,15 +252,11 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 }
             }
         }
-        call.respond(HttpStatusCode.OK)
     }
 
     // Make prediction!
-    postST("$questionUrl/predict") {
-        println("pre")
-        call.withQuestion {
-            val dist: ProbabilityDistribution = confidoJSON.decodeFromString(call.receiveText()) // XXX WORKAROUND KTRO-8835
-
+    apiST(Api.questionPredict) { qRef, dist ->
+        call.withQuestion(qRef) {
             assertVisible()
             assertPermission(RoomPermission.SUBMIT_PREDICTION, "You cannot submit a prediction.")
             if (!question.open) badRequest("You cannot predict to closed questions.")
@@ -280,8 +265,6 @@ fun questionRoutes(routing: Routing) = routing.apply {
             val pred = Prediction(ts=unixNow(), dist = dist, question = question.ref, user = user.ref)
             addPrediction(pred)
         }
-
-        call.respond(HttpStatusCode.OK)
     }
 
     // Get question updates

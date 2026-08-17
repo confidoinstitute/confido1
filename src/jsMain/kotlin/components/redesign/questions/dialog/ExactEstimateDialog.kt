@@ -18,6 +18,7 @@ import react.dom.html.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.label
 import react.dom.html.ReactHTML.span
+import tools.confido.api.Api
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.distributions.ProbabilityDistribution
@@ -145,13 +146,9 @@ val BinaryExactEstimateDialog = FC<BinaryExactEstimateDialogProps> { props ->
 
     fun estimate() {
         submitLock {
-            estimate?.let { typedEstimate ->
-                val dist: ProbabilityDistribution = typedEstimate
-                Client.sendData("${props.question.urlPrefix}/predict", dist, onError = {
-                    showError(it)
-                }) {
-                    props.onClose?.invoke()
-                }
+            estimate?.let { dist ->
+                Client.call(Api.questionPredict(props.question.ref), dist)
+                props.onClose?.invoke()
             }
         }
     }
@@ -304,11 +301,8 @@ val NumericExactEstimateDialog = FC<NumericExactEstimateDialogProps> { props ->
     fun send() {
         submitLock {
             previewDist?.let { dist ->
-                Client.sendData("${props.question.urlPrefix}/predict", dist as ProbabilityDistribution, onError = {
-                    showError(it)
-                }) {
-                    props.onClose?.invoke()
-                }
+                Client.call(Api.questionPredict(props.question.ref), dist)
+                props.onClose?.invoke()
             }
         }
     }

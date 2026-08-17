@@ -1,5 +1,8 @@
 package components.redesign.rooms.import
 
+import ApiError
+import tools.confido.api.Api
+import tools.confido.refs.ref
 import Client
 import components.redesign.basic.*
 import components.redesign.forms.*
@@ -231,18 +234,13 @@ val ImportStepUpload = FC<ImportStepUploadProps> { props ->
                             submitLock {
                                 fetchingUrl = true
                                 try {
-                                    val resp = Client.sendDataRequest(
-                                        "${props.room.urlPrefix}/questions/import/parse-url",
+                                    val parseResponse = Client.call(
+                                        Api.importParseUrl(props.room.ref),
                                         ImportUrlRequest(url = sheetsUrl),
                                     )
-
-                                    if (resp.status.isSuccess()) {
-                                        val parseResponse: CsvParseResponse = resp.body()
-                                        props.onParsed(parseResponse)
-                                    } else {
-                                        val errorMsg: String = resp.body()
-                                        error = errorMsg
-                                    }
+                                    props.onParsed(parseResponse)
+                                } catch (e: ApiError) {
+                                    error = e.message
                                 } catch (e: Exception) {
                                     error = e.message ?: "Failed to fetch spreadsheet"
                                 } finally {

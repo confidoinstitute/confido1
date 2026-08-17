@@ -1,5 +1,6 @@
 package tools.confido.application.routes
 
+import tools.confido.api.Api
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -32,23 +33,20 @@ fun presenterRoutes(routing: Routing) = routing.apply {
         }
     }
 
-    postST("/presenter/stop") {
+    apiST(Api.presenterStop) { _ ->
         call.withUser {
             call.modifyUserSession { it.copy(presenterInfo = null) }
-            call.respond(HttpStatusCode.OK)
         }
     }
 
-    postST("/presenter/set") {
+    apiST(Api.presenterSet) { view ->
         call.withUser {
-            val view = call.receive<PresenterView>()
             if (!view.isValid(ServerEntityLookup)) badRequest("View is not valid")
             call.modifyUserSession {
                 val oldInfo = it.presenterInfo ?: PresenterInfo()
                 val newInfo = oldInfo.copy(view = view, lastUpdate = unixNow())
                 it.copy(presenterInfo = newInfo)
             }
-            call.respond(HttpStatusCode.OK)
         }
     }
 }

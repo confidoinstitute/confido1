@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.Comment
+import tools.confido.question.CommentScope
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.refs.Ref
@@ -20,7 +21,7 @@ data class QuestionCommentExtraData(val dist: ProbabilityDistribution?) : Commen
 @Serializable
 data class CommentPresentation<out T: CommentExtraData>(
     val commentId: Ref<Comment>,
-    val urlPrefix: String,
+    val scope: CommentScope,
     val user: UserPresentation,
     val timestamp: Int,
     val content: String,

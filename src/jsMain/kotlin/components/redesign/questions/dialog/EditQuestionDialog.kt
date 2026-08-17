@@ -17,6 +17,7 @@ import payloads.requests.*
 import react.*
 import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.div
+import tools.confido.api.Api
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionContextPlace
 import tools.confido.question.*
@@ -152,12 +153,13 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     fun submitQuestion() = submit {
         val question = assembleQuestion() ?: return@submit
 
-        if (props.entity == null) {
-            Client.sendData("${room.urlPrefix}/questions/add", question, onError = {showError(it)}) {props.onClose?.invoke()}
+        val entity = props.entity
+        if (entity == null) {
+            Client.call(Api.questionAdd(room.ref), question)
         } else {
-            val editQuestion: EditQuestion = EditQuestionComplete(question)
-            Client.sendData("${props.entity?.urlPrefix}/edit", editQuestion, onError = {showError(it)}) {props.onClose?.invoke()}
+            Client.call(Api.questionEdit(entity.ref), EditQuestionComplete(question))
         }
+        props.onClose?.invoke()
     }
 
     ClientExtension.contexts[ExtensionContextPlace.EDIT_QUESTION_DIALOG]!!.Provider {

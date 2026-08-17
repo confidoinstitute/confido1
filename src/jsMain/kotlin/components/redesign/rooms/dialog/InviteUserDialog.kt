@@ -14,6 +14,7 @@ import tools.confido.refs.ref
 import tools.confido.state.Topics
 import react.dom.html.ReactHTML
 import rooms.RoomRole
+import tools.confido.api.Api
 import tools.confido.refs.ref
 import tools.confido.state.appConfig
 import tools.confido.utils.stringToColor
@@ -37,7 +38,7 @@ internal val AddMemberItem = FC<AddMemberItemProps> {props ->
         console.log(member)
         member?.let { addedMember -> runCoroutine {
             console.log("Adding user")
-            Client.sendData("${room.urlPrefix}/members/add", addedMember, onError = {showError(it)}) {}
+            Client.call(Api.roomMemberAdd(room.ref), addedMember)
         } }
     }
 

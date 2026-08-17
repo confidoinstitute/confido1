@@ -1,5 +1,7 @@
 package components.redesign.nouser
 
+import ApiError
+import tools.confido.api.Api
 import Client
 import components.*
 import components.redesign.basic.*
@@ -29,9 +31,12 @@ val EmailLogin = FC<Props> {
 
     useEffectOnce {
         runCoroutine {
-            Client.sendData("/login_email", EmailLogin(loginToken), onError = { failed = true }) {
-                navigate(body<String>())
+            try {
+                val redirectUrl = Client.call(Api.loginEmail(), EmailLogin(loginToken))
+                navigate(redirectUrl)
                 loginState.login()
+            } catch (e: ApiError) {
+                failed = true
             }
         }
     }

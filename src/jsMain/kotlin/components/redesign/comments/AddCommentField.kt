@@ -13,8 +13,10 @@ import payloads.requests.*
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.div
+import tools.confido.api.Api
 import tools.confido.extensions.ClientExtension
 import tools.confido.question.*
+import tools.confido.refs.Ref
 import tools.confido.utils.*
 import utils.*
 import web.html.ButtonType
@@ -44,15 +46,14 @@ val AddCommentField = FC<AddCommentFieldProps> { props ->
     fun createComment() {
         submit {
             val createdComment = CreateComment(unixNow(), commentText, attachPrediction)
-            val url = when (props.variant) {
-                CommentInputVariant.QUESTION -> "${questionUrl(props.id)}/comments/add"
-                CommentInputVariant.ROOM -> "${roomUrl(props.id)}/comments/add"
+            val api = when (props.variant) {
+                CommentInputVariant.QUESTION -> Api.questionCommentAdd(Ref(props.id))
+                CommentInputVariant.ROOM -> Api.roomCommentAdd(Ref(props.id))
             }
 
-            Client.sendData(url, createdComment, onError = { showError(it) }) {
-                commentText = ""
-                attachPrediction = false
-            }
+            Client.call(api, createdComment)
+            commentText = ""
+            attachPrediction = false
         }
     }
     div {

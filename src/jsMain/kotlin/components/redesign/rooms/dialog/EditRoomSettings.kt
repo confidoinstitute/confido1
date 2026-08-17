@@ -11,6 +11,8 @@ import payloads.requests.BaseRoomInformation
 import react.FC
 import react.use
 import react.useState
+import tools.confido.api.Api
+import tools.confido.refs.ref
 import utils.runCoroutine
 
 external interface EditRoomSettingsDialogProps: DialogCoreProps {
@@ -23,7 +25,10 @@ val EditRoomSettingsDialog = FC<EditRoomSettingsDialogProps> { props ->
     var baseInfo by useState<BaseRoomInformation?>(null)
 
     fun editRoom() = runCoroutine {
-        Client.sendData("${room.urlPrefix}/edit", baseInfo, onError = { showError(it) }) { props.onClose?.invoke() }
+        baseInfo?.let {
+            Client.call(Api.roomEdit(room.ref), it)
+            props.onClose?.invoke()
+        }
     }
 
     Dialog {

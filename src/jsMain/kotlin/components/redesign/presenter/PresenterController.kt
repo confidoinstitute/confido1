@@ -1,5 +1,7 @@
 package components.redesign.presenter
 
+import ApiError
+import tools.confido.api.Api
 import web.window.window
 import components.usePresenterWindowActive
 import components.presenter.getPresenterControlsComponent
@@ -23,13 +25,15 @@ import utils.runCoroutine
 import web.window.WindowTarget
 import web.window._blank
 
+// Presenter-view updates are best-effort side channel writes — failures are
+// deliberately swallowed rather than toasted.
 suspend fun setPresenterView(view: PresenterView) {
-    Client.sendData("/presenter/set", view, onError ={}) {}
+    try { Client.call(Api.presenterSet(), view) } catch (e: ApiError) {}
 }
 
 /** Clear the session's presenter view entirely, marking the session as "not presenting". */
 suspend fun stopPresenting() {
-    Client.send("/presenter/stop", onError = {}) {}
+    try { Client.call(Api.presenterStop()) } catch (e: ApiError) {}
 }
 
 enum class  PresenterButtonState {

@@ -1,5 +1,6 @@
 package tools.confido.application.routes
 
+import tools.confido.api.Api
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -8,10 +9,7 @@ import io.ktor.server.routing.*
 import tools.confido.application.mailer
 
 fun genericRoutes(routing: Routing) = routing.apply {
-    postST("/feedback") {
-        val url = call.parameters["url"]
-        val feedback = call.receiveText()
-
+    apiST(Api.feedback) { feedback ->
         val feedbackAddress = System.getenv("CONFIDO_MAIL_FEEDBACK_TO") ?: "feedback@confido.tools"
 
         // Prefix each line of feedback by [FB]
@@ -21,7 +19,5 @@ fun genericRoutes(routing: Routing) = routing.apply {
         call.application.log.info("Sending feedback by email")
         val instanceName = System.getenv("CONFIDO_BASE_URL") ?: "?"
         call.mailer.sendFeedbackMail(feedbackAddress, feedback, instanceName)
-
-        call.respond(HttpStatusCode.OK)
     }
 }

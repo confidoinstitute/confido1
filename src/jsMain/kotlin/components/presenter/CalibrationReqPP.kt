@@ -1,5 +1,6 @@
 package components.presenter
 
+import tools.confido.api.Api
 import components.redesign.basic.Stack
 import components.redesign.calibration.CalibrationGraph
 import components.redesign.calibration.CalibrationReqView
@@ -16,9 +17,7 @@ import tools.confido.state.CalibrationReqPV
 val CalibrationReqPP = FC<PresenterPageProps<CalibrationReqPV>> { props->
     val req = props.view.req
     val data = useSuspendResult(req.identify()) {
-        val resp = Client.sendDataRequest("/calibration", req)
-        if (resp.status.isSuccess()) resp.body<CalibrationVector>()
-        else null
+        Client.call(Api.calibration(), req)
     }
     val entries = data?.entries?.filter { it.value.enoughData } ?: emptyList()
     data?.let {

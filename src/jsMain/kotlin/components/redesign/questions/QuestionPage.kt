@@ -1,5 +1,6 @@
 package components.redesign.questions
 
+import ApiError
 import BinaryHistogram
 import Client
 import web.window.window
@@ -34,6 +35,7 @@ import react.router.dom.Link
 import react.router.useLocation
 import react.router.useNavigate
 import rooms.*
+import tools.confido.api.Api
 import tools.confido.distributions.*
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionContextPlace
@@ -327,16 +329,17 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
         pendingPrediction?.let { dist ->
             runCoroutine {
                 pendingPredictionState = PendingPredictionState.SENDING
-                Client.sendData("${question.urlPrefix}/predict", dist, onError = {
-                    pendingPredictionState = PendingPredictionState.ERROR
-                }) {
+                try {
+                    Client.call(Api.questionPredict(question.ref), dist)
                     pendingPredictionState = PendingPredictionState.ACCEPTED
+                } catch (e: ApiError) {
+                    pendingPredictionState = PendingPredictionState.ERROR
                 }
                 pendingPrediction = null
             }
         }
     }
-    useOnUnmount(pendingPrediction) { runCoroutine { Client.sendData("${question.urlPrefix}/predict", it, onError = {showError(it)}) {} } }
+    useOnUnmount(pendingPrediction) { runCoroutine { Client.call(Api.questionPredict(question.ref), it) } }
 
 
     // Tabs

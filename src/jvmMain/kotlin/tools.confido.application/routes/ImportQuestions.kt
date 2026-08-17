@@ -1,5 +1,6 @@
 package tools.confido.application.routes
 
+import tools.confido.api.Api
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.get
@@ -235,11 +236,10 @@ fun importQuestionRoutes(routing: Routing) = routing.apply {
     }
 
     // Parse Google Sheets URL endpoint: fetches the spreadsheet as TSV and parses it
-    postST("$roomUrl/questions/import/parse-url") {
-        call.withRoom {
+    apiST(Api.importParseUrl) { rRef, payload ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.ADD_QUESTION, "You cannot add questions.")
 
-            val payload: ImportUrlRequest = call.receive()
             val url = payload.url.trim()
 
             // Validate and extract spreadsheet ID
@@ -278,8 +278,7 @@ fun importQuestionRoutes(routing: Routing) = routing.apply {
             if (bytes.isEmpty()) badRequest("Fetched spreadsheet is empty.")
 
             try {
-                val response = parseCsvBytes(bytes)
-                call.respond(HttpStatusCode.OK, response)
+                parseCsvBytes(bytes)
             } catch (e: IllegalArgumentException) {
                 badRequest(e.message ?: "Failed to parse spreadsheet data.")
             }
@@ -287,11 +286,9 @@ fun importQuestionRoutes(routing: Routing) = routing.apply {
     }
 
     // Import questions endpoint: receives structured JSON, creates or updates Question entities
-    postST("$roomUrl/questions/import") {
-        val result = call.withRoom {
+    apiST(Api.importQuestions) { rRef, payload ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.ADD_QUESTION, "You cannot add questions.")
-
-            val payload: ImportQuestions = call.receive()
 
             if (payload.questions.isEmpty()) badRequest("No questions to import.")
 
@@ -427,6 +424,5 @@ fun importQuestionRoutes(routing: Routing) = routing.apply {
 
             ImportResult(created = created, updated = updated, unchanged = unchanged)
         }
-        call.respond(HttpStatusCode.OK, result)
     }
 }

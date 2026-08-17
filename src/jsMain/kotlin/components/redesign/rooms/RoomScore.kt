@@ -1,5 +1,7 @@
 package components.redesign.rooms
 
+import tools.confido.api.Api
+import tools.confido.refs.ref
 import Client
 import components.usePermission
 import components.redesign.basic.*
@@ -100,7 +102,7 @@ val RoomScore = FC<Props> {
     // Only fetch scoreboard data when the user can view it
     val scores = useSuspendResult(room.id, canViewScoreboard) {
         if (canViewScoreboard)
-            Client.httpClient.get("${room.urlPrefix}/scoreboard.api").body<List<ScoreboardEntry>>()
+            Client.call(Api.scoreboard(room.ref))
         else
             null
     }

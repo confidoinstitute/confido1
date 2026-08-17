@@ -8,6 +8,7 @@ import io.ktor.http.*
 import react.*
 import react.dom.html.ReactHTML.div
 import rooms.RoomColor
+import tools.confido.api.Api
 import utils.runCoroutine
 
 external interface RoomIconChooserProps : Props {
@@ -21,13 +22,7 @@ val RoomIconChooser = FC<RoomIconChooserProps> { props ->
 
     useEffectOnce {
         runCoroutine {
-            Client.send("/rooms/icons",
-                method = HttpMethod.Get,
-                onError = {
-                    showError(it)
-                }) {
-                iconNames = body()
-            }
+            iconNames = Client.call(Api.roomIcons())
         }
     }
 

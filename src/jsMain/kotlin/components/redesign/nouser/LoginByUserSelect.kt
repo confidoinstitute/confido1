@@ -1,5 +1,6 @@
 package components.redesign.nouser
 
+import tools.confido.api.Api
 import Client
 import components.*
 import components.redesign.basic.*
@@ -39,14 +40,13 @@ val LoginByUserSelectInner = FC<LoginByUserSelectFormProps> { props->
     val login = useCoroutineLock()
 
     val users = useSuspendResult {
-        Client.httpClient.get("/login_users").body<List<User>>().sortedBy { it.type }
+        Client.call(Api.loginUsersList()).sortedBy { it.type }
     }
 
     fun attemptLogin() = login {
         chosenUser?.let {
-            Client.sendData("/login_users", UsernameLogin(it.ref, validity = UserSessionValidity.PERMANENT), onError = { showError(it) }) {
-                loginState.login()
-            }
+            Client.call(Api.loginUsers(), UsernameLogin(it.ref, validity = UserSessionValidity.PERMANENT))
+            loginState.login()
         }
     }
     Select {

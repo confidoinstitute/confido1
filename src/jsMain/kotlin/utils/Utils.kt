@@ -2,8 +2,10 @@
 
 package utils
 
+import ApiError
 import components.redesign.basic.css
 import components.redesign.basic.rowStyleTableCSS
+import components.redesign.basic.showError
 import csstype.Properties
 import csstype.PropertiesBuilder
 import io.ktor.client.*
@@ -113,7 +115,14 @@ fun <E> List<List<E>>.transposeForHeatmap(missingElementDefault: E? = null): Lis
 fun <E> Set<E>.xor(element: E) =
     if (element in this) this.minus(element) else this.plus(element)
 
-inline fun runCoroutine(noinline coro: suspend CoroutineScope.() -> Unit) { CoroutineScope(EmptyCoroutineContext).launch(block = coro) }
+/** Fire-and-forget coroutine for UI actions. An escaping [ApiError] becomes an error
+ *  toast — the default failure mode of every [Client.call]; catch it in [coro] for
+ *  custom handling. */
+inline fun runCoroutine(noinline coro: suspend CoroutineScope.() -> Unit) {
+    CoroutineScope(EmptyCoroutineContext).launch {
+        try { coro() } catch (e: ApiError) { showError(e.message) }
+    }
+}
 
 fun questionUrl(id: String) = Question.urlPrefix(id)
 fun roomUrl(id: String) = Room.urlPrefix(id)

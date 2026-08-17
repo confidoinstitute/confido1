@@ -1,5 +1,6 @@
 package tools.confido.application.routes
 
+import tools.confido.api.Api
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -76,19 +77,16 @@ fun calibrationRoutes(routing: Routing) = routing.apply {
             }
         }
 
-    postST("/calibration") {
+    apiST(Api.calibration) { req ->
         call.withUser {
-            val req = call.receive<CalibrationRequest>()
             val questions = calibQuestions(req, user)
             val qpred = calibAddPredictions(questions, req, user)
             //println("questions: ${questions.map{ listOf(it.id, it.name, getUserCalibration(it, user.ref))}}")
-            val calib = qpred.map { (q,pred) -> getCalibration(q, pred) }.sum()
-            call.respond(calib)
+            qpred.map { (q,pred) -> getCalibration(q, pred) }.sum()
         }
     }
-    postST("/calibration/detail") {
+    apiST(Api.calibrationDetail) { req ->
         call.withUser {
-            val req = call.receive<CalibrationRequest>()
             val questions = calibQuestions(req, user, exposingPredictions = true)
             val qpred = calibAddPredictions(questions, req, user)
             val ret = qpred.flatMap { (q,pred)->
@@ -132,7 +130,7 @@ fun calibrationRoutes(routing: Routing) = routing.apply {
                     }
                 }
             }
-            call.respond(ret)
+            ret
         }
     }
 }

@@ -6,9 +6,21 @@ import kotlinx.serialization.Serializable
 import rooms.Room
 import tools.confido.refs.Entity
 import tools.confido.refs.Ref
-import tools.confido.utils.HasUrlPrefix
 import tools.confido.utils.unixNow
 import users.User
+
+/**
+ * Where a comment lives (question or room discussion), as typed refs. Travels in
+ * CommentPresentation so the client can bind the comment's API endpoints
+ * (tools.confido.api) from refs instead of a server-composed URL string.
+ */
+@Serializable
+sealed class CommentScope {
+    @Serializable @SerialName("question")
+    data class QuestionScope(val question: Ref<Question>) : CommentScope()
+    @Serializable @SerialName("room")
+    data class RoomScope(val room: Ref<Room>) : CommentScope()
+}
 
 /**
  * Comments are non-resident on the server (fetched per question/room partition from the
@@ -20,12 +32,13 @@ import users.User
  * per-comment (like count, liked-by-me) and travel with the comment payload.
  */
 @Serializable
-sealed class Comment : Entity, HasUrlPrefix {
+sealed class Comment : Entity {
     abstract val user: Ref<User>
     abstract val timestamp: Int
     abstract val content: String
     abstract val modified: Int?
     abstract val likes: List<Ref<User>>
+    abstract val scope: CommentScope
 }
 @Serializable
 data class QuestionComment(
@@ -39,7 +52,7 @@ data class QuestionComment(
     val prediction: Prediction?,
     override val likes: List<Ref<User>> = emptyList(),
 ) : Comment() {
-    override val urlPrefix get() = "${Question.urlPrefix(question.id)}/comments/$id"
+    override val scope get() = CommentScope.QuestionScope(question)
 }
 
 @Serializable
@@ -55,5 +68,5 @@ data class RoomComment(
     val isAnnotation: Boolean = false,
     override val likes: List<Ref<User>> = emptyList(),
 ) : Comment() {
-    override val urlPrefix get() = "${Room.urlPrefix(room.id)}/comments/$id"
+    override val scope get() = CommentScope.RoomScope(room)
 }

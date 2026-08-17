@@ -1,5 +1,6 @@
 package components.redesign.layout
 
+import tools.confido.api.Api
 import components.LoginContext
 import components.cookieSet
 import components.redesign.AboutIcon
@@ -55,7 +56,7 @@ val NoUserLayout = FC<Props> {
             jso<RouteObject> {
                 path = "password_reset"
                 element = VerifyToken.create {
-                    url = "/profile/password/reset/finish"
+                    api = Api.profilePasswordResetFinish()
                     failureTitle = "Password reset failed"
                     successTitle = "Password was reset"
                     failureText = "The link is expired or invalid."

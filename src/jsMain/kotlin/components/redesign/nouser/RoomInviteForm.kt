@@ -1,5 +1,8 @@
 package components.redesign.nouser
 
+import ApiError
+import tools.confido.api.Api
+import tools.confido.refs.Ref
 import Client
 import components.*
 import components.redesign.basic.*
@@ -70,34 +73,30 @@ private val RoomInviteFormNoUser = FC<RoomInviteFormProps> { props ->
                 emailError = "An email address is required."
             } else {
                 runCoroutine {
-                    Client.sendData("${roomUrl(props.roomId)}/invite/accept_newuser",
-                        AcceptInviteAndCreateUser(
-                            props.inviteToken,
-                            name.trim().ifEmpty { null },
-                            userMail,
-                            UserSessionValidity.PERMANENT,
-                            followPresentation = props.followPresentation,
-                        ),
-                        onError = { error ->
-                            when {
-                                // XXX make this more structured
-                                error.contains("nickname is already taken", ignoreCase = true) == true -> {
-                                    nameError = if (props.targetUserType == UserType.MEMBER)
-                                        "This name is already taken in the workspace"
-                                    else
-                                        "This name is already taken in this room"
-                                }
-                                else -> showError(error)
-                            }
-                        }
-                    ) {
-                        if (body()) {
+                    try {
+                        val userAlreadyExists = Client.call(Api.inviteAcceptNewUser(Ref(props.roomId)),
+                            AcceptInviteAndCreateUser(
+                                props.inviteToken,
+                                name.trim().ifEmpty { null },
+                                userMail,
+                                UserSessionValidity.PERMANENT,
+                                followPresentation = props.followPresentation,
+                            ))
+                        if (userAlreadyExists) {
                             // We need to log in.
                             loginRequired = true
                         } else {
                             loginState.login()
                             navigate(roomUrl(props.roomId))
                         }
+                    } catch (e: ApiError) {
+                        // XXX make this more structured
+                        if (e.message.contains("nickname is already taken", ignoreCase = true)) {
+                            nameError = if (props.targetUserType == UserType.MEMBER)
+                                "This name is already taken in the workspace"
+                            else
+                                "This name is already taken in this room"
+                        } else throw e
                     }
                 }
             }

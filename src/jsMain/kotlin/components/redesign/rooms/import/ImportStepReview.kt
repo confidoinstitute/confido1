@@ -1,5 +1,7 @@
 package components.redesign.rooms.import
 
+import ApiError
+import tools.confido.api.Api
 import Client
 import components.redesign.basic.*
 import components.redesign.forms.*
@@ -536,13 +538,11 @@ val ImportStepReview = FC<ImportStepReviewProps> { props ->
                                 },
                                 options = state.options,
                             )
-                            Client.sendData(
-                                "${props.room.urlPrefix}/questions/import",
-                                importPayload,
-                                onError = { importError = it },
-                            ) {
-                                val result: ImportResult = body()
+                            try {
+                                Client.call(Api.importQuestions(props.room.ref), importPayload)
                                 navigate(props.room.urlPrefix)
+                            } catch (e: ApiError) {
+                                importError = e.message
                             }
                         }
                     }

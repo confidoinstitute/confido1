@@ -19,6 +19,8 @@ import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 import rooms.*
+import tools.confido.api.deleteApi
+import tools.confido.api.likeApi
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.*
 import tools.confido.refs.*
@@ -50,9 +52,8 @@ val Comment = FC<CommentProps> { props ->
 
     fun upvote() {
         runCoroutine {
-            val url = "${comment.urlPrefix}/like"
             val newState = voteState != VoteState.UPVOTED
-            Client.sendData(url, newState, onError = { showError(it) }) {}
+            Client.call(comment.likeApi(), newState)
         }
     }
 
@@ -62,8 +63,7 @@ val Comment = FC<CommentProps> { props ->
     }
 
     fun delete() = runCoroutine {
-        val url = comment.urlPrefix
-        Client.send(url, method = HttpMethod.Delete, onError = { showError(it) }) {}
+        Client.call(comment.deleteApi())
     }
 
     EditCommentDialog {

@@ -11,6 +11,7 @@ import payloads.requests.*
 import payloads.responses.EditProfileResult
 import payloads.responses.InviteStatus
 import rooms.*
+import tools.confido.api.Api
 import tools.confido.application.*
 import tools.confido.application.sessions.*
 import tools.confido.refs.*
@@ -53,9 +54,8 @@ suspend fun ApplicationCall.initSession(user: User, validity: UserSessionValidit
 
 fun loginRoutes(routing: Routing) = routing.apply {
     // Login by password
-    postST("/login") {
+    apiST(Api.login) { login ->
         // TODO: Rate limiting.
-        val login: PasswordLogin = call.receive()
         val user = serverState.users.values.find {
             it.email?.lowercase() == login.email.lowercase() && it.password != null
                     && Password.check(login.password, it.password).withArgon2()
@@ -68,13 +68,10 @@ fun loginRoutes(routing: Routing) = routing.apply {
 
         call.initSession(user, validity = login.validity)
         call.loginUserSession(user, login.validity)
-
-        call.respond(HttpStatusCode.OK)
     }
     // Login by e-mail: Step one (sending link)
-    postST("/login_email/create") {
+    apiST(Api.loginEmailCreate) { mail ->
         // TODO: Rate limiting.
-        val mail: SendMailLink = call.receive()
         val user = tools.confido.store.userStore.byEmail[mail.email.lowercase()]
 
         if (user != null && user.active) {
@@ -92,11 +89,9 @@ fun loginRoutes(routing: Routing) = routing.apply {
         } else {
             // Do not disclose the email does not exist.
         }
-        call.respond(HttpStatusCode.OK)
     }
-    // Login by e-mail: Step two (using token)
-    postST("/login_email") {
-        val login: EmailLogin = call.receive()
+    // Login by e-mail: Step two (using token); responds with the link's redirect URL
+    apiST(Api.loginEmail) { login ->
         val loginLink = loginLinkStore.byToken[login.token] ?: unauthorized("No such token exists.")
         try {
             if (loginLink.isExpired()) { unauthorized("The token has expired.") }
@@ -113,7 +108,7 @@ fun loginRoutes(routing: Routing) = routing.apply {
 
             call.initSession(user, loginLink.validity)
             call.loginUserSession(user, loginLink.validity)
-            call.respond(HttpStatusCode.OK, loginLink.url)
+            loginLink.url
         } finally {
             // Login links are single-use
             loginLinkStore.delete(loginLink.ref, ignoreNonexistent = true)
@@ -122,13 +117,11 @@ fun loginRoutes(routing: Routing) = routing.apply {
     // Login by id (dev mode and demo only; skips login checks and accessible for everyone)
     if (devMode || demoMode) {
         // Login by id: Get user list
-        getST("/login_users") {
-            val censoredUsers = serverState.users.values.map { it.copy(password = null) }.toTypedArray()
-            call.respond(HttpStatusCode.OK, censoredUsers)
+        apiST(Api.loginUsersList) { _ ->
+            serverState.users.values.map { it.copy(password = null) }
         }
         // Login by id: log in by only specifying a user ref
-        postST("/login_users") {
-            val login: UsernameLogin = call.receive()
+        apiST(Api.loginUsers) { login ->
             val user = login.username.deref() ?: unauthorized("The user does not exist.")
             if (!user.active) { unauthorized("The user is deactivated.") }
 
@@ -138,18 +131,16 @@ fun loginRoutes(routing: Routing) = routing.apply {
 
             call.initSession(user, login.validity)
             call.loginUserSession(user, login.validity)
-            call.respond(HttpStatusCode.OK)
         }
     }
     // Log out
-    postST("/logout") {
+    apiST(Api.logout) { _ ->
         // Must run before responding: committing the response also flushes the
         // session cookie, so a later destroyUserSession() cannot clear it.
         val session = call.userSession
         if (session?.user != null) {
             call.destroyUserSession()
         }
-        call.respond(HttpStatusCode.OK)
     }
 }
 
@@ -229,23 +220,19 @@ fun profileRoutes(routing: Routing) = routing.apply {
 
 
     // E-mail verification: Step one (sending e-mail)
-    postST("/profile/email/start_verification") {
+    apiST(Api.profileEmailStartVerification) { mail ->
         // TODO: Rate limiting
         call.withUser {
-            val mail: StartEmailVerification = call.receive()
-
             if (user.emailVerified && user.email?.lowercase() == mail.email.lowercase())
                 badRequest("The e-mail is already verified")
 
             changeEmail(mail.email)
         }
-        call.respond(HttpStatusCode.OK)
     }
     // E-mail verification: Step two (accepting token)
-    postST("/profile/email/verify") {
+    apiST(Api.profileEmailVerify) { validation ->
         call.assertSession()
 
-        val validation: TokenVerification = call.receive()
         val verificationLink = verificationLinkStore.byToken[validation.token] ?: unauthorized("No such token exists.")
         if (verificationLink.isExpired()) unauthorized("The token has already expired.")
 
@@ -257,22 +244,16 @@ fun profileRoutes(routing: Routing) = routing.apply {
             // Verification links are single-use
             verificationLinkStore.delete(verificationLink.ref)
         }
-
-        call.respond(HttpStatusCode.OK)
     }
     // Change password
-    postST("/profile/password") {
+    apiST(Api.profilePassword) { passwordChange ->
         call.withUser {
             if (user.email == null) badRequest("You cannot reset password without e-mail.")
-            val passwordChange: SetPassword = call.receive()
-
             changePassword(passwordChange.currentPassword, passwordChange.newPassword)
         }
-
-        call.respond(HttpStatusCode.OK)
     }
     // Remove password
-    postST("/profile/password/reset") {
+    apiST(Api.profilePasswordReset) { _ ->
         call.withUser {
             if (user.email == null) badRequest("You cannot reset password without e-mail.")
             // Prepare password change notification
@@ -292,14 +273,11 @@ fun profileRoutes(routing: Routing) = routing.apply {
 
             passwordResetLinkStore.insert(link)
         }
-
-        call.respond(HttpStatusCode.OK)
     }
     // Undo password change
-    postST("/profile/password/reset/finish") {
+    apiST(Api.profilePasswordResetFinish) { validation ->
         call.assertSession()
 
-        val validation: TokenVerification = call.receive()
         val verificationLink = passwordResetLinkStore.byToken[validation.token] ?: unauthorized("No such token exists.")
         if (verificationLink.isExpired()) unauthorized("The token has already expired.")
 
@@ -313,27 +291,21 @@ fun profileRoutes(routing: Routing) = routing.apply {
         }
 
         // TODO invalidate all user's sessions
-        call.respond(HttpStatusCode.OK)
     }
     // Change nick
-    postST("/profile/nick") {
+    apiST(Api.profileNick) { setNick ->
         call.withUser {
-            val setNick: SetNick = call.receive()
             val newNick = setNick.name.ifEmpty { null }
 
             tools.confido.store.userStore.modify(user.ref) {
                 it.copy(nick = newNick)
             }
         }
-
-        call.respond(HttpStatusCode.OK)
     }
 
     // Edit profile (everything, redesign)
-    postST("/profile/edit") {
-        val response = call.withUser {
-            val profileData: EditProfile = call.receive()
-
+    apiST(Api.profileEdit) { profileData ->
+        call.withUser {
             var nickChange = false
             if (profileData.nick != user.nick) {
                 changeNick(profileData.nick)
@@ -364,7 +336,6 @@ fun profileRoutes(routing: Routing) = routing.apply {
 
             EditProfileResult(nickChange, emailChange, emailError, passwordChange, passwordError)
         }
-        call.respond(HttpStatusCode.OK, response)
     }
 }
 
@@ -406,34 +377,30 @@ fun inviteRoutes(routing: Routing) = routing.apply {
         serveFrontend()
     }
     // Verify that this invitation is still valid
-    getST("/join/{token}/check") {
-        suspend fun invalid() {
-            call.respond(HttpStatusCode.OK, InviteStatus(
-                valid = false,
-                roomName = null,
-                roomRef = null,
-                roomColor = null,
-                nicknamePolicy = InviteFieldPolicy.OPTIONAL,
-                emailPolicy = InviteFieldPolicy.OPTIONAL,
-                targetUserType = UserType.GUEST,
-                preventDuplicateNicknames = false
-            ))
-        }
-
-        val token = call.parameters["token"] ?: return@getST invalid()
+    apiST(Api.joinCheck) { token, _ ->
+        val invalid = InviteStatus(
+            valid = false,
+            roomName = null,
+            roomRef = null,
+            roomColor = null,
+            nicknamePolicy = InviteFieldPolicy.OPTIONAL,
+            emailPolicy = InviteFieldPolicy.OPTIONAL,
+            targetUserType = UserType.GUEST,
+            preventDuplicateNicknames = false
+        )
 
         val linkMatch: (InviteLink)->Boolean = if (token.matches(ShortLink.REGEX)) {
-            val shortLink = serverState.shortInviteLinks[token] ?: return@getST invalid()
-            if (!shortLink.isValid()) return@getST invalid()
+            val shortLink = serverState.shortInviteLinks[token] ?: return@apiST invalid
+            if (!shortLink.isValid()) return@apiST invalid
             ({ it.id == shortLink.linkId })
         } else {
             ({ it.token == token })
         }
 
-        val room = serverState.rooms.values.firstOrNull { it.inviteLinks.any(linkMatch) } ?: return@getST invalid()
-        val invite = room.inviteLinks.find(linkMatch) ?: return@getST invalid()
+        val room = serverState.rooms.values.firstOrNull { it.inviteLinks.any(linkMatch) } ?: return@apiST invalid
+        val invite = room.inviteLinks.find(linkMatch) ?: return@apiST invalid
 
-        call.respond(HttpStatusCode.OK, InviteStatus(
+        InviteStatus(
             valid = true,
             roomName = room.name,
             roomRef = room.ref,
@@ -442,14 +409,12 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             emailPolicy = invite.emailPolicy,
             targetUserType = invite.targetUserType,
             preventDuplicateNicknames = invite.preventDuplicateNicknames
-        ))
+        )
     }
-    // Create an invitation link
-    postST("$roomUrl/invites/create") {
-        val inviteLink = call.withRoom {
+    // Create an invitation link; responds with the created link
+    apiST(Api.inviteCreate) { rRef, invited ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members")
-
-            val invited: CreateNewInvite = call.receive()
 
             if (!canChangeRole(room.userRole(user), invited.role)) unauthorized("This role cannot be changed")
             if (!invited.role.availableToGuests) badRequest("This role cannot be used for invite links.")
@@ -473,15 +438,11 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             }
             inviteLink
         }
-
-        call.respond(HttpStatusCode.OK, inviteLink)
     }
     // Edit an invitation link
-    postST("$roomUrl/invites/edit") {
-        call.withRoom {
+    apiST(Api.inviteEdit) { rRef, invite ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members")
-
-            val invite: InviteLink = call.receive()
 
             if (!canChangeRole(room.userRole(user), invite.role)) unauthorized("This role cannot be changed")
             if (!invite.role.availableToGuests) badRequest("This role cannot be used for invite links.")
@@ -504,15 +465,11 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                 r.copy(inviteLinks = inviteLinks)
             }
         }
-
-        call.respond(HttpStatusCode.OK)
     }
     // Delete an invitation link
-    deleteST("$roomUrl/invite") {
-        call.withRoom {
+    apiST(Api.inviteDelete) { rRef, delete ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members")
-
-            val delete: DeleteInvite = call.receive()
 
             tools.confido.store.roomStore.modify(room.ref) { r ->
                 val inviteLinks = r.inviteLinks.filterNot { it.id == delete.id }
@@ -524,13 +481,10 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                 r.copy(inviteLinks = inviteLinks, members = members)
             }
         }
-
-        call.respond(HttpStatusCode.OK)
     }
     // Accept an invitation link as an existing user (requires login)
-    postST("$roomUrl/invite/accept") {
-        call.withRoom {
-            val accept: AcceptInvite = call.receive()
+    apiST(Api.inviteAccept) { rRef, accept ->
+        call.withRoom(rRef) {
             val invite = room.inviteLinks.find { it.token == accept.inviteToken && it.canJoin }
                 ?: unauthorized("The invite does not exist or is currently not active.")
 
@@ -552,13 +506,11 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                 call.modifyUserSession { it.copy(followingPresentation = room.ref) }
             }
         }
-
-        call.respond(HttpStatusCode.OK)
     }
-    postST("$roomUrl/invite/accept_newuser") {
+    // Responds true if a user with the given email already existed
+    apiST(Api.inviteAcceptNewUser) { rRef, accept ->
         if (call.userSession?.user != null) badRequest("You are already logged in.")
-        val userAlreadyExists = call.withRoom {
-            val accept: AcceptInviteAndCreateUser = call.receive()
+        call.withRoom(rRef) {
             val invite = room.inviteLinks.find { it.token == accept.inviteToken && it.canJoin }
                 ?: unauthorized("The invite does not exist or is currently not active.")
 
@@ -632,15 +584,13 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             }
             userAlreadyExists
         }
-
-        call.respond(HttpStatusCode.OK, userAlreadyExists)
     }
 }
 
 fun adminUserRoutes(routing: Routing) = routing.apply {
-    postST("/users/edit") {
+    apiST(Api.userEdit) { receivedUser ->
         call.withAdmin {
-            var editedUser: User = call.receive()
+            var editedUser = receivedUser
             editedUser = editedUser.copy(email = editedUser.email?.lowercase()?.ifEmpty { null },
                 nick = editedUser.nick?.ifEmpty { null })
             if (editedUser.email == null && editedUser.type != UserType.GUEST) badRequest("Only guest can not have e-mail")
@@ -668,14 +618,10 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
             }
             if (duplicateEmail) badRequest("E-mail address already used by another account")
         }
-
-        call.respond(HttpStatusCode.OK)
     }
-    deleteST("/users/{id}") {
+    apiST(Api.userDelete) { uRef, options ->
         call.withAdmin {
-            val userIdToDelete = call.parameters["id"] ?: badRequest("Missing user ID")
-            val userToDelete = tools.confido.store.userStore.get(userIdToDelete) ?: notFound("User not found")
-            val options: DeleteUserOptions = call.receive()
+            val userToDelete = tools.confido.store.userStore.get(uRef.id) ?: notFound("User not found")
 
             if (userToDelete eqid user) unauthorized("Cannot delete your own account")
 
@@ -754,16 +700,14 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
                     tools.confido.store.userStore.delete(userToDelete.ref)
                 }
             }
-
-            call.respond(HttpStatusCode.OK)
         }
     }
 
-    postST("/users/add") {
+    apiST(Api.userAdd) { receivedUser ->
         call.withAdmin {
             val sendInvitationEmail = (call.parameters["invite"] != null)
 
-            var addedUser: User = call.receive()
+            var addedUser = receivedUser
             addedUser = addedUser.copy(email = addedUser.email?.lowercase()?.ifEmpty { null },
                 nick = addedUser.nick?.ifEmpty { null })
             if (addedUser.email == null && addedUser.type != UserType.GUEST) badRequest("Only guest can have empty e-mail")
@@ -790,7 +734,5 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
                 }
             }
         }
-
-        call.respond(HttpStatusCode.OK)
     }
 }

@@ -1,5 +1,6 @@
 package components.redesign.presentation
 
+import tools.confido.api.Api
 import Client
 import components.redesign.basic.*
 import components.redesign.forms.Button
@@ -88,8 +89,7 @@ val PresentationTab = FC<Props> {
                             +"Stop"
                             onClick = {
                                 submitLock {
-                                    Client.sendData("${room.urlPrefix}/presentation/stop", "",
-                                        onError = { showError(it) }) {}
+                                    Client.call(Api.presentationStop(room.ref))
                                 }
                             }
                         }
@@ -120,12 +120,10 @@ val PresentationTab = FC<Props> {
                                 +"Run"
                                 onClick = {
                                     submitLock {
-                                        Client.sendData("${room.urlPrefix}/presentation/start", "",
-                                            onError = { showError(it) }) {
-                                            // Set PresentationPV on user session and open presenter window
-                                            setPresenterView(PresentationPV(room.ref))
-                                            openPresenterWindow()
-                                        }
+                                        Client.call(Api.presentationStart(room.ref))
+                                        // Set PresentationPV on user session and open presenter window
+                                        setPresenterView(PresentationPV(room.ref))
+                                        openPresenterWindow()
                                     }
                                 }
                             }

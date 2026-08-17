@@ -1,5 +1,6 @@
 package components.redesign.rooms
 
+import tools.confido.api.Api
 import components.useDisconnected
 import Client
 import components.*
@@ -24,6 +25,7 @@ import react.router.dom.*
 import rooms.InviteFieldPolicy
 import rooms.RoomColor
 import tools.confido.refs.*
+import tools.confido.refs.Ref
 import tools.confido.utils.*
 import users.UserType
 import utils.*
@@ -146,9 +148,8 @@ private val RoomInviteFormLoggedIn = FC<RoomInviteFormProps> { props ->
         onClick = {
             val accept = AcceptInvite(props.inviteToken, followPresentation = props.followPresentation)
             runCoroutine {
-                Client.sendData("${roomUrl(props.roomId)}/invite/accept", accept, onError = { showError(it) }) {
-                    navigate(roomUrl(props.roomId))
-                }
+                Client.call(Api.inviteAccept(Ref(props.roomId)), accept)
+                navigate(roomUrl(props.roomId))
             }
         }
         disabled = useDisconnected() || missingRequiredEmail
@@ -200,9 +201,7 @@ internal val RoomInviteCore = FC<RoomInviteCoreProps> { props ->
 
     useEffectOnce {
         runCoroutine {
-            Client.send("/join/$inviteToken/check", method = HttpMethod.Get, onError = { showError(it) }) {
-                inviteStatus = body()
-            }
+            inviteStatus = Client.call(Api.joinCheck(inviteToken))
         }
     }
 

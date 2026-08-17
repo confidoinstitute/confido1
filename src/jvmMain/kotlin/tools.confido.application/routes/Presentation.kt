@@ -1,5 +1,6 @@
 package tools.confido.application.routes
 
+import tools.confido.api.Api
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.server.request.*
@@ -40,20 +41,19 @@ private suspend fun getPresentation(room: rooms.Room): Presentation? {
 }
 
 fun presentationRoutes(routing: Routing) = routing.apply {
-    // Create a new presentation for a room
-    postST("$roomUrl/presentation/create") {
-        call.withRoom {
+    // Create a new presentation for a room; responds with its id
+    apiST(Api.presentationCreate) { rRef, payload ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot manage presentations.")
             if (room.presentation != null) badRequest("Room already has a presentation.")
 
-            val payload = call.receive<CreatePresentation>()
             val pres = presentationStore.insert(
                 Presentation(room = room.ref, name = payload.name, fileToken = generateToken())
             )
             tools.confido.store.roomStore.modify(room.ref) {
                 it.copy(presentation = pres.ref)
             }
-            call.respond(HttpStatusCode.OK, pres.id)
+            pres.id
         }
     }
 
@@ -117,11 +117,10 @@ fun presentationRoutes(routing: Routing) = routing.apply {
     }
 
     // Edit presentation (items, labels, name)
-    postST("$roomUrl/presentation/edit") {
-        call.withRoom {
+    apiST(Api.presentationEdit) { rRef, edit ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot manage presentations.")
             val pres = getPresentation(room) ?: notFound("No presentation for this room.")
-            val edit = call.receive<EditPresentation>()
 
             presentationStore.modify(pres.id) { p ->
                 var updated = p
@@ -130,14 +129,12 @@ fun presentationRoutes(routing: Routing) = routing.apply {
                 edit.slideLabels?.let { updated = updated.copy(slideLabels = it) }
                 updated
             }
-
-            call.respond(HttpStatusCode.OK)
         }
     }
 
     // Delete presentation
-    deleteST("$roomUrl/presentation") {
-        call.withRoom {
+    apiST(Api.presentationDelete) { rRef, _ ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot manage presentations.")
             val pres = getPresentation(room) ?: notFound("No presentation for this room.")
 
@@ -157,8 +154,6 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             // Delete files from disk
             val presDir = File(presentationDir, pres.id)
             if (presDir.exists()) presDir.deleteRecursively()
-
-            call.respond(HttpStatusCode.OK)
         }
     }
 
@@ -184,8 +179,8 @@ fun presentationRoutes(routing: Routing) = routing.apply {
     }
 
     // Start presentation run
-    postST("$roomUrl/presentation/start") {
-        call.withRoom {
+    apiST(Api.presentationStart) { rRef, _ ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot control presentation.")
             val pres = getPresentation(room) ?: notFound("No presentation for this room.")
             if (pres.items.isEmpty()) badRequest("Presentation has no items.")
@@ -201,13 +196,12 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             runState = processCurrentItem(pres, runState, room)
 
             serverState.setPresentationRunState(room.ref, runState)
-            call.respond(HttpStatusCode.OK)
         }
     }
 
     // Stop presentation run
-    postST("$roomUrl/presentation/stop") {
-        call.withRoom {
+    apiST(Api.presentationStop) { rRef, _ ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot control presentation.")
             serverState.setPresentationRunState(room.ref, null)
             ServerExtension.forEach { it.onPresentationStopped(room) }
@@ -219,16 +213,14 @@ fun presentationRoutes(routing: Routing) = routing.apply {
                         it.copy(followingPresentation = null)
                     }
                 }
-            call.respond(HttpStatusCode.OK)
         }
     }
 
     // Navigate within a running presentation
-    postST("$roomUrl/presentation/navigate") {
-        call.withRoom {
+    apiST(Api.presentationNavigate) { rRef, nav ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot control presentation.")
             val pres = getPresentation(room) ?: notFound("No presentation for this room.")
-            val nav = call.receive<NavigatePresentation>()
             val currentState = serverState.presentationRunStates[room.ref]
                 ?: badRequest("Presentation is not running.")
 
@@ -244,28 +236,25 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             newState = processCurrentItem(pres, newState, room)
 
             serverState.setPresentationRunState(room.ref, newState)
-            call.respond(HttpStatusCode.OK)
         }
     }
 
     // Override the effective presenter view of a running presentation (e.g. tweak
     // options of the currently shown view without leaving the presentation).
     // The override lasts until the next navigation step recomputes the view.
-    postST("$roomUrl/presentation/setview") {
-        call.withRoom {
+    apiST(Api.presentationSetView) { rRef, view ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot control presentation.")
-            val view = call.receive<PresenterView>()
             if (!view.isValid(ServerEntityLookup)) badRequest("View is not valid")
             val currentState = serverState.presentationRunStates[room.ref]
                 ?: badRequest("Presentation is not running.")
             serverState.setPresentationRunState(room.ref, currentState.copy(currentView = view))
-            call.respond(HttpStatusCode.OK)
         }
     }
 
     // Re-execute the current action (even if already executed)
-    postST("$roomUrl/presentation/reexecute") {
-        call.withRoom {
+    apiST(Api.presentationReexecute) { rRef, _ ->
+        call.withRoom(rRef) {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot control presentation.")
             val pres = getPresentation(room) ?: notFound("No presentation for this room.")
             val currentState = serverState.presentationRunStates[room.ref]
@@ -281,7 +270,6 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             newState = processCurrentItem(pres, newState, room)
 
             serverState.setPresentationRunState(room.ref, newState)
-            call.respond(HttpStatusCode.OK)
         }
     }
 
@@ -310,21 +298,19 @@ fun presentationRoutes(routing: Routing) = routing.apply {
     }
 
     // Follow a room's presentation (set session flag)
-    postST("$roomUrl/presentation/follow") {
-        call.withRoom {
+    apiST(Api.presentationFollow) { rRef, _ ->
+        call.withRoom(rRef) {
             // Any room member can follow — but only members.
             if (room.accessibleMemberships(user).isEmpty()) unauthorized("Not a member of this room.")
             call.modifyUserSession { it.copy(followingPresentation = room.ref) }
         }
-        call.respond(HttpStatusCode.OK)
     }
 
     // Stop following a room's presentation (clear session flag)
-    postST("$roomUrl/presentation/unfollow") {
-        call.withRoom {
+    apiST(Api.presentationUnfollow) { rRef, _ ->
+        call.withRoom(rRef) {
             call.modifyUserSession { it.copy(followingPresentation = null) }
         }
-        call.respond(HttpStatusCode.OK)
     }
 
     // WebSocket endpoint for presentation followers: sends currentNavigateUrl.

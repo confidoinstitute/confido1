@@ -11,7 +11,9 @@ import io.ktor.http.*
 import payloads.requests.*
 import react.*
 import react.router.*
+import tools.confido.api.Api
 import tools.confido.question.*
+import tools.confido.refs.ref
 import utils.*
 import tools.confido.extensions.ClientExtension
 
@@ -33,13 +35,9 @@ val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props -
     var deleteConfirmOpen by useState(false)
 
     fun delete() = runCoroutine {
-        Client.send(
-            questionUrl(props.question.id),
-            HttpMethod.Delete,
-            onError = { showError(it) }) {
-            navigate(room.urlPrefix)
-            props.onClose?.invoke()
-        }
+        Client.call(Api.questionDelete(props.question.ref))
+        navigate(room.urlPrefix)
+        props.onClose?.invoke()
     }
 
     // TODO: Permissions
@@ -79,11 +77,7 @@ val QuestionQuickSettingsDialog = FC<QuestionQuickSettingsDialogProps> { props -
                             QuestionState.RESOLVED -> QuestionState.OPEN
                             QuestionState.CANCELLED -> QuestionState.OPEN
                         }
-                        Client.sendData(
-                            "${props.question.urlPrefix}/state",
-                            newState,
-                            onError = { showError(it) }) {
-                        }
+                        Client.call(Api.questionSetState(props.question.ref), newState)
                     }
                 }
             }

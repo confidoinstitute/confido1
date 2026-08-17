@@ -1,5 +1,6 @@
 package tools.confido.application.routes
 
+import tools.confido.api.Api
 import getScore
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.*
@@ -57,7 +58,7 @@ private suspend fun computeScoreboard(room: Room, observer: User): List<Scoreboa
 
 fun scoreRoutes(routing: Routing) = routing.apply {
 
-    getST("/scores/my") {
+    apiST(Api.myScores) { _ ->
         call.withUser {
             // One entry per question: the primary room is where the question actually lives;
             // additional rooms are group rooms that aggregate it via effectiveQuestions.
@@ -133,58 +134,52 @@ fun scoreRoutes(routing: Routing) = routing.apply {
                 }
             }
 
-            call.respond(MyScoresResponse(
+            MyScoresResponse(
                 items = items,
                 totalScore = items.sumOf { it.score },
                 roomRanks = roomRanks,
-            ))
+            )
         }
     }
 
-    getST("$roomUrl/scoreboard.api") {
+    apiST(Api.scoreboard) { rRef, _ ->
         call.withUser {
-            call.withRoom {
+            call.withRoom(rRef) {
                 assertPermission(RoomPermission.VIEW_SCORES, "Cannot view scoreboard.")
-                val res = computeScoreboard(room, user)
-                call.respond(res)
+                computeScoreboard(room, user)
             }
         }
     }
 
-    getST("$roomUrl/my_rank") {
+    apiST(Api.myRank) { rRef, _ ->
         call.withUser {
-            call.withRoom {
+            call.withRoom(rRef) {
                 // Only requires scoring to be enabled and user to be a room member;
                 // does not require VIEW_SCORES (that controls the full scoreboard).
                 if (room.scoring == null) notFound("Scoring is not enabled for this room.")
                 if (room.userRole(user) == null) unauthorized("Not a member of this room.")
                 val scoreboard = computeScoreboard(room, user)
                 val myEntry = scoreboard.indexOfFirst { it.user.isMyself }
-                if (myEntry < 0) {
-                    call.respond(io.ktor.http.HttpStatusCode.NotFound, "No scores for you in this room.")
-                } else {
-                    call.respond(MyRankResponse(
-                        rank = myEntry + 1,
-                        totalParticipants = scoreboard.size,
-                        myScore = scoreboard[myEntry].score,
-                    ))
-                }
+                if (myEntry < 0) notFound("No scores for you in this room.")
+                MyRankResponse(
+                    rank = myEntry + 1,
+                    totalParticipants = scoreboard.size,
+                    myScore = scoreboard[myEntry].score,
+                )
             }
         }
     }
 
-    getST("$questionUrl/my_score") {
+    apiST(Api.myScore) { qRef, _ ->
         call.withUser {
-            call.withQuestion {
+            call.withQuestion(qRef) {
                 val pred = getScoredPrediction(question, user.ref)
-                val resp: Pair<Prediction?, Double?> =
-                    if (question.state != QuestionState.RESOLVED || question.resolution == null
-                                || question.answerSpace !is BinarySpace || pred == null) {
+                if (question.state != QuestionState.RESOLVED || question.resolution == null
+                            || question.answerSpace !is BinarySpace || pred == null) {
                     null to null
                 } else {
                     pred to getScore(question, pred)
                 }
-                call.respond(HttpStatusCode.OK, resp)
             }
         }
     }

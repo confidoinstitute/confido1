@@ -30,10 +30,16 @@ import tools.confido.application.sessions.userSession
 import tools.confido.application.singleThreadContext
 import tools.confido.serialization.confidoJSON
 import tools.confido.store.*
+import tools.confido.utils.ApiMethod
+import tools.confido.utils.ApiSpec0
+import tools.confido.utils.ApiSpec1
+import tools.confido.utils.ApiSpec2
+import tools.confido.utils.ParamSeg
 import tools.confido.utils.PathTemplate
 import tools.confido.utils.TopicSpec0
 import tools.confido.utils.TopicSpec1
 import tools.confido.utils.TopicSpec2
+import tools.confido.utils.encodesUnit
 
 typealias RouteBodyCall = suspend RoutingContext.() -> Unit
 
@@ -59,6 +65,61 @@ fun Route.getST(path: String, body: RouteBodyCall) = performST(Route::get, path,
 fun Route.postST(path: String, body: RouteBodyCall) = performST(Route::post, path, body)
 fun Route.putST(path: String, body: RouteBodyCall) = performST(Route::put, path, body)
 fun Route.deleteST(path: String, body: RouteBodyCall) = performST(Route::delete, path, body)
+
+// ==== Typed API endpoints (tools.confido.api.Api) ====
+//
+// An ApiSpec-registered route is the HTTP analogue of viewWS(spec): the Ktor pattern
+// comes from the spec's PathTemplate (whose `{name}` syntax is Ktor's own), handlers
+// receive decoded path arguments as typed parameters, and request/response bodies go
+// through the spec's serializers — so both URL shape and wire types are pinned to the
+// same commonMain declaration the client invokes.
+
+private val ApiMethod.routeMeth: Route.(String, suspend RoutingContext.() -> Unit) -> Route
+    get() = when (this) {
+        ApiMethod.GET -> Route::get
+        ApiMethod.POST -> Route::post
+        ApiMethod.PUT -> Route::put
+        ApiMethod.DELETE -> Route::delete
+    }
+
+/** Positional typed path arguments from Ktor's matched parameters. A decode failure is
+ *  NOT_FOUND, matching the old behavior of dereferencing a Ref built from a blank id. */
+private fun PathTemplate.decodeCallParams(parameters: Parameters): List<Any> =
+    segments.filterIsInstance<ParamSeg>().map { seg ->
+        val raw = parameters[seg.param.name] ?: badRequest("Missing path parameter '${seg.param.name}'.")
+        seg.param.decode(raw) ?: notFound("No such ${seg.param.name}.")
+    }
+
+private suspend fun <Req> RoutingContext.receiveApi(ser: KSerializer<Req>): Req =
+    if (ser.encodesUnit) @Suppress("UNCHECKED_CAST") (Unit as Req)
+    else call.receiveText().let { text ->
+        try { confidoJSON.decodeFromString(ser, text) }
+        catch (e: Exception) { badRequest("Malformed request body.") }
+    }
+
+private suspend fun <Resp> RoutingContext.respondApi(ser: KSerializer<Resp>, value: Resp) {
+    if (ser.encodesUnit) call.respond(HttpStatusCode.OK)
+    else call.respondText(confidoJSON.encodeToString(ser, value), ContentType.Application.Json, HttpStatusCode.OK)
+}
+
+fun <Req, Resp> Route.apiST(spec: ApiSpec0<Req, Resp>, body: suspend RoutingContext.(Req) -> Resp) =
+    performST(spec.method.routeMeth, "/" + spec.path.pattern) {
+        respondApi(spec.respSer, body(receiveApi(spec.reqSer)))
+    }
+
+fun <A : Any, Req, Resp> Route.apiST(spec: ApiSpec1<A, Req, Resp>, body: suspend RoutingContext.(A, Req) -> Resp) =
+    performST(spec.method.routeMeth, "/" + spec.path.pattern) {
+        val args = spec.path.decodeCallParams(call.parameters)
+        @Suppress("UNCHECKED_CAST")
+        respondApi(spec.respSer, body(args[0] as A, receiveApi(spec.reqSer)))
+    }
+
+fun <A : Any, B : Any, Req, Resp> Route.apiST(spec: ApiSpec2<A, B, Req, Resp>, body: suspend RoutingContext.(A, B, Req) -> Resp) =
+    performST(spec.method.routeMeth, "/" + spec.path.pattern) {
+        val args = spec.path.decodeCallParams(call.parameters)
+        @Suppress("UNCHECKED_CAST")
+        respondApi(spec.respSer, body(args[0] as A, args[1] as B, receiveApi(spec.reqSer)))
+    }
 
 fun Route.webSocketST(
     path: String,

@@ -16,7 +16,20 @@ import react.dom.client.createRoot
 import tools.confido.extensions.ClientExtension
 import tools.confido.serialization.confidoJSON
 import tools.confido.state.appConfig
+import tools.confido.utils.ApiMethod
+import tools.confido.utils.BoundApi
+import tools.confido.utils.encodesUnit
 import web.dom.document
+
+/**
+ * Failure of a typed endpoint call ([Client.call]): carries the HTTP status and the
+ * server's message body ([status] is null when the call was refused locally because
+ * the state websocket is disconnected). Escaping ApiErrors are turned into an error
+ * toast by the standard coroutine entry points (runCoroutine, useCoroutineLock,
+ * useCoroutine) and into a null result by useSuspendResult — actions toast, loads
+ * render empty. Catch it explicitly for custom handling.
+ */
+class ApiError(val status: HttpStatusCode?, override val message: String) : Exception(message)
 
 object Client {
     val httpClient by lazy  { HttpClient {
@@ -92,6 +105,65 @@ object Client {
         else
             onError(resp, resp.body())
     }
+
+    // ==== Typed endpoints (tools.confido.api.Api) ====
+    //
+    // A BoundApi carries the method, URL and both wire serializers from the shared spec,
+    // so the payload and response types are pinned to the server's declaration — no
+    // string URLs, no reified guessing, and String payloads are JSON like everything else
+    // (unlike the raw-body special case in sendDataRequest above).
+
+    val ApiMethod.ktor get() = when (this) {
+        ApiMethod.GET -> HttpMethod.Get
+        ApiMethod.POST -> HttpMethod.Post
+        ApiMethod.PUT -> HttpMethod.Put
+        ApiMethod.DELETE -> HttpMethod.Delete
+    }
+
+    private suspend fun <Req, Resp> request(
+        api: BoundApi<Req, Resp>,
+        payload: Req,
+        req: HttpRequestBuilder.() -> Unit = {},
+    ) = httpClient.request(api.url) {
+        method = api.method.ktor
+        fetchOptions { credentials = "include" }
+        if (!api.reqSer.encodesUnit) {
+            contentType(ContentType.Application.Json.withParameter("charset", "utf-8"))
+            setBody(confidoJSON.encodeToString(api.reqSer, payload))
+        }
+        req()
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private suspend fun <Resp> decode(api: BoundApi<*, Resp>, resp: HttpResponse): Resp =
+        if (api.respSer.encodesUnit) Unit as Resp
+        else confidoJSON.decodeFromString(api.respSer, resp.bodyAsText())
+
+    /**
+     * Invoke a typed endpoint: the decoded response on success, [ApiError] on failure
+     * (non-2xx status, or a locally refused call while the state websocket is down —
+     * the disconnect-gating backstop, same policy as [refuseWhenDisconnected]).
+     * Plain suspend + exception, so results are values and error handling composes
+     * with ordinary control flow; the default toast lives in the coroutine entry
+     * points (see [ApiError]).
+     */
+    suspend fun <Req, Resp> call(
+        api: BoundApi<Req, Resp>,
+        payload: Req,
+        req: HttpRequestBuilder.() -> Unit = {},
+    ): Resp {
+        if (MultiplexWS.disconnected)
+            throw ApiError(null, "No connection to the server — try again when reconnected.")
+        if (appConfig.devMode) console.log("Call", api.toString(), payload)
+        val resp = request(api, payload, req)
+        if (!resp.status.isSuccess()) throw ApiError(resp.status, resp.bodyAsText())
+        return decode(api, resp)
+    }
+
+    suspend fun <Resp> call(
+        api: BoundApi<Unit, Resp>,
+        req: HttpRequestBuilder.() -> Unit = {},
+    ): Resp = call(api, Unit, req)
 }
 
 fun main() {

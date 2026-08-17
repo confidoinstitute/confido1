@@ -18,6 +18,7 @@ import react.Props
 import react.router.useNavigate
 import react.use
 import react.useState
+import tools.confido.api.Api
 import utils.roomUrl
 
 val CreateRoom = FC<Props> {
@@ -29,10 +30,8 @@ val CreateRoom = FC<Props> {
 
     fun createRoom() = create {
         baseInfo?.let {
-            Client.sendData("/rooms/add", it, onError = { showError(it) }) {
-                val roomId: String = body()
-                navigate(roomUrl(roomId))
-            }
+            val roomId = Client.call(Api.roomAdd(), it)
+            navigate(roomUrl(roomId))
         }
     }
 

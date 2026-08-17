@@ -1,5 +1,6 @@
 package extensions.room_groups
 
+import tools.confido.api.Api
 import Client
 import components.redesign.basic.Stack
 import components.redesign.basic.sansSerif
@@ -146,12 +147,10 @@ object RoomGroupsCE : ClientExtension, RoomGroupsExtension() {
                                             icon = null,
                                             extensionData = ExtensionData(RoomEDT).with(IsGroupKey, true),
                                         )
-                                        Client.sendData("/rooms/add", groupInfo, onError = { showError(it) }) {
-                                            val newGroupId: String = body()
-                                            selectedGroupId = newGroupId
-                                            onExtensionDataChange { ed ->
-                                                ed.with(ParentRoomKey, Ref<Room>(newGroupId))
-                                            }
+                                        val newGroupId = Client.call(Api.roomAdd(), groupInfo)
+                                        selectedGroupId = newGroupId
+                                        onExtensionDataChange { ed ->
+                                            ed.with(ParentRoomKey, Ref<Room>(newGroupId))
                                         }
                                     }
                                 }
