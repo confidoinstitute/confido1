@@ -60,6 +60,8 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
         ) { question, room, users, myPred, comments ->
             val viewer = users[viewerRef.id] ?: unauthorized("Not logged in.")
             if (question == null || room == null) notFound("No such question.")
+            if (!question.visible && !room.hasPermission(viewer, RoomPermission.VIEW_HIDDEN_QUESTIONS))
+                notFound("No such question.")
             if (!room.hasPermission(viewer, RoomPermission.VIEW_QUESTION_COMMENTS))
                 forbidden("You cannot view the discussion for this question.")
             val canViewAll = room.hasPermission(viewer, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)

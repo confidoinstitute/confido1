@@ -265,9 +265,16 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
             val censor = ClassCensor(cls)
             if (!censor.hasPermission(room, RoomPermission.VIEW_QUESTIONS)) return@combineViews null
             val canViewAll = censor.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
-            room.questions.mapNotNullTo(mutableSetOf()) { ref ->
-                ref.id.takeIf { canViewAll || canViewGroupPred(questions[ref.id], preds[ref]?.get(viewerRef)) }
-            } as Set<String>
+            val canViewHidden = censor.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS)
+            room.questions.mapNotNull { ref ->
+                val q = questions[ref.id]
+                ref.id.takeIf {
+                    // Questions the viewer cannot see stay out entirely — the payload
+                    // keys used to enumerate hidden/draft question ids to all members.
+                    q != null && (q.visible || canViewHidden) &&
+                        (canViewAll || canViewGroupPred(q, preds[ref]?.get(viewerRef)))
+                }
+            }.toSet()
         }
     }) { visible, rRef ->
         combineViews(
@@ -276,7 +283,7 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
         ) { room, groupPreds ->
             if (room == null) notFound("No such room.")
             if (visible == null) unauthorized("You cannot view this room.")
-            room.questions.associateWith { ref -> if (ref.id in visible) groupPreds[ref] else null }
+            room.questions.filter { it.id in visible }.associateWith { groupPreds[it] }
         }
     }
 

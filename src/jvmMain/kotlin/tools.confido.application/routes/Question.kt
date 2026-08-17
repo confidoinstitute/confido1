@@ -324,6 +324,10 @@ fun questionRoutes(routing: Routing) = routing.apply {
             when {
                 question == null || room == null -> GroupPredAccess.NOT_FOUND
                 !censor.hasPermission(room, RoomPermission.VIEW_QUESTIONS) -> GroupPredAccess.FORBIDDEN
+                // A question the viewer cannot see reads as nonexistent, matching
+                // censorQuestion (hidden questions used to leak their aggregates here).
+                !question.visible
+                    && !censor.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS) -> GroupPredAccess.NOT_FOUND
                 censor.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
                     || canViewGroupPred(question, myPred) -> GroupPredAccess.VISIBLE
                 else -> GroupPredAccess.HIDDEN
@@ -355,6 +359,8 @@ fun questionRoutes(routing: Routing) = routing.apply {
             if (question == null || room == null) notFound("No such question.")
             if (!room.hasPermission(viewer, RoomPermission.VIEW_QUESTIONS))
                 forbidden("You cannot view this group prediction.")
+            if (!question.visible && !room.hasPermission(viewer, RoomPermission.VIEW_HIDDEN_QUESTIONS))
+                notFound("No such question.")
             val canViewAll = room.hasPermission(viewer, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
             if (!(canViewAll || canViewGroupPred(question, preds?.get(viewerRef))))
                 unauthorized("You cannot view this group prediction.")
