@@ -1,7 +1,7 @@
 package extensions.update_scatter_plot
 
-import components.redesign.basic.PropsWithElementSize
-import components.redesign.basic.elementSizeWrapper
+import tools.confido.web.components.redesign.basic.PropsWithElementSize
+import tools.confido.web.components.redesign.basic.elementSizeWrapper
 import emotion.react.css
 import react.FC
 import react.dom.html.ReactHTML.div

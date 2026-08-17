@@ -1,12 +1,12 @@
 package extensions.calibration_training
 
-import components.presenter.PresenterPageProps
-import components.presenter.presenterPageMap
-import components.redesign.basic.*
-import components.redesign.calibration.CalibrationGraph
-import components.redesign.rooms.RoomLink
+import tools.confido.web.components.presenter.PresenterPageProps
+import tools.confido.web.components.presenter.presenterPageMap
+import tools.confido.web.components.redesign.basic.*
+import tools.confido.web.components.redesign.calibration.CalibrationGraph
+import tools.confido.web.components.redesign.rooms.RoomLink
 import emotion.react.css
-import hooks.useSubscription
+import tools.confido.web.hooks.useSubscription
 import js.objects.unsafeJso as jso
 import tools.confido.payloads.responses.WSData
 import react.*
@@ -325,7 +325,7 @@ val CalibrationLeaderboardPP = FC<PresenterPageProps<CalibrationLeaderboardPV>> 
  */
 object CalibrationTrainingCE : ClientExtension, CalibrationTrainingExtension() {
 
-    override fun registerPresenterPages(): Map<KClass<out PresenterView>, components.presenter.PresenterPageType> =
+    override fun registerPresenterPages(): Map<KClass<out PresenterView>, tools.confido.web.components.presenter.PresenterPageType> =
         mapOf(presenterPageMap(CalibrationLeaderboardPP))
 
     override fun registerFlowItemTypes() = listOf(

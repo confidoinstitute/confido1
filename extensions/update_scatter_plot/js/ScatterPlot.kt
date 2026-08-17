@@ -1,11 +1,11 @@
 package extensions.update_scatter_plot
 
-import components.ReactPlotly
-import components.addShape
-import components.buildShapes
-import components.ensureTwo
-import components.pathToSvg
-import components.plotlyVal
+import tools.confido.web.components.ReactPlotly
+import tools.confido.web.components.addShape
+import tools.confido.web.components.buildShapes
+import tools.confido.web.components.ensureTwo
+import tools.confido.web.components.pathToSvg
+import tools.confido.web.components.plotlyVal
 import js.objects.unsafeJso as jso
 import react.FC
 import react.Props

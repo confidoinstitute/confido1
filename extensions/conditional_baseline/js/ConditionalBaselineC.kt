@@ -1,12 +1,12 @@
 package extensions.conditional_baseline
 
-import components.useMyPredictions
-import components.redesign.forms.FormField
-import components.redesign.forms.FormSection
-import components.redesign.forms.TextInput
-import components.redesign.questions.dialog.EditQuestionDialogProps
-import components.redesign.questions.predictions.BinaryPredInputProps
-import components.redesign.questions.predictions.MyPredictionDescriptionProps
+import tools.confido.web.components.useMyPredictions
+import tools.confido.web.components.redesign.forms.FormField
+import tools.confido.web.components.redesign.forms.FormSection
+import tools.confido.web.components.redesign.forms.TextInput
+import tools.confido.web.components.redesign.questions.dialog.EditQuestionDialogProps
+import tools.confido.web.components.redesign.questions.predictions.BinaryPredInputProps
+import tools.confido.web.components.redesign.questions.predictions.MyPredictionDescriptionProps
 import web.cssom.NamedColor
 import web.cssom.Position
 import web.cssom.integer
@@ -29,12 +29,12 @@ import tools.confido.refs.Ref
 import tools.confido.refs.ref
 import tools.confido.utils.formatPercent
 import tools.confido.utils.toFixed
-import utils.panzoom1d.PZState
+import tools.confido.web.utils.panzoom1d.PZState
 import web.window.WindowTarget
 import web.window._blank
-import components.useRooms
-import components.useWorkspaceQuestions
-import components.roomOf
+import tools.confido.web.components.useRooms
+import tools.confido.web.components.useWorkspaceQuestions
+import tools.confido.web.components.roomOf
 
 object ConditionalBaselineCE: ClientExtension, ConditionalBaselineExtension() {
     val qidRE = Regex("/questions/([a-zA-Z0-9]+)(?:$|/.*)")

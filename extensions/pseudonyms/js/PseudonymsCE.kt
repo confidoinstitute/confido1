@@ -1,8 +1,8 @@
 package extensions.pseudonyms
 
-import components.useMyUser
-import components.redesign.basic.sansSerif
-import components.redesign.forms.*
+import tools.confido.web.components.useMyUser
+import tools.confido.web.components.redesign.basic.sansSerif
+import tools.confido.web.components.redesign.forms.*
 import web.cssom.*
 import emotion.react.css
 import react.*

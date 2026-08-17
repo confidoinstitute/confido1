@@ -1,31 +1,32 @@
 package extensions.update_scatter_plot
 
-import components.usePermission
-import components.presenter.PresenterControlsProps
-import components.presenter.PresenterPageProps
-import components.presenter.presenterControlsMap
-import components.presenter.presenterPageMap
-import components.redesign.BinIcon
-import components.redesign.PresenterIcon
-import components.redesign.basic.BaseDialogProps
-import components.redesign.basic.Dialog
-import components.redesign.basic.DialogMenuItem
-import components.redesign.basic.Stack
-import components.redesign.basic.dialogStateWrapper
-import components.redesign.basic.rowStyleTableCSS
-import components.redesign.basic.showError
-import components.redesign.basic.sansSerif
-import components.redesign.forms.*
-import components.redesign.presentation.FieldLabel
-import components.redesign.presenter.PresenterContext
-import components.redesign.questions.dialog.QuestionQuickSettingsDialogProps
-import components.redesign.questions.dialog.EditQuestionDialogProps
-import components.redesign.rooms.RoomContext
+import tools.confido.web.Client
+import tools.confido.web.components.usePermission
+import tools.confido.web.components.presenter.PresenterControlsProps
+import tools.confido.web.components.presenter.PresenterPageProps
+import tools.confido.web.components.presenter.presenterControlsMap
+import tools.confido.web.components.presenter.presenterPageMap
+import tools.confido.web.components.redesign.BinIcon
+import tools.confido.web.components.redesign.PresenterIcon
+import tools.confido.web.components.redesign.basic.BaseDialogProps
+import tools.confido.web.components.redesign.basic.Dialog
+import tools.confido.web.components.redesign.basic.DialogMenuItem
+import tools.confido.web.components.redesign.basic.Stack
+import tools.confido.web.components.redesign.basic.dialogStateWrapper
+import tools.confido.web.components.redesign.basic.rowStyleTableCSS
+import tools.confido.web.components.redesign.basic.showError
+import tools.confido.web.components.redesign.basic.sansSerif
+import tools.confido.web.components.redesign.forms.*
+import tools.confido.web.components.redesign.presentation.FieldLabel
+import tools.confido.web.components.redesign.presenter.PresenterContext
+import tools.confido.web.components.redesign.questions.dialog.QuestionQuickSettingsDialogProps
+import tools.confido.web.components.redesign.questions.dialog.EditQuestionDialogProps
+import tools.confido.web.components.redesign.rooms.RoomContext
 import web.cssom.*
 import emotion.react.css
 import extensions.reference_forecast.ReferenceForcastKey
-import hooks.useCoroutineLock
-import hooks.useSuspendResult
+import tools.confido.web.hooks.useCoroutineLock
+import tools.confido.web.hooks.useSuspendResult
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import kotlinx.datetime.*
@@ -63,18 +64,18 @@ import tools.confido.utils.List2
 import tools.confido.utils.capFirst
 import tools.confido.utils.formatPercent
 import tools.confido.utils.unixNow
-import utils.questionUrl
+import tools.confido.web.utils.questionUrl
 import web.autofill.AutoFill
 import web.html.InputType
 import web.html.text
-import utils.roomUrl
+import tools.confido.web.utils.roomUrl
 import web.html.ButtonType
 import web.html.submit
 import web.prompts.confirm
-import components.useRooms
-import components.roomOf
-import components.useQuestion
-import components.useWorkspaceQuestions
+import tools.confido.web.components.useRooms
+import tools.confido.web.components.roomOf
+import tools.confido.web.components.useQuestion
+import tools.confido.web.components.useWorkspaceQuestions
 
 // ============================================================
 //  QuestionSelector (existing, for reference question config)
@@ -511,7 +512,7 @@ val UpdatePlotPP = FC<PresenterPageProps<UpdatePlotPV>> { props ->
         fetchUpdatePlotData(view.question.id, view.timepoint1, view.timepoint2)
     }
     val flipped = view.flipped
-    val viewport = hooks.useViewportSize()
+    val viewport = tools.confido.web.hooks.useViewportSize()
     val availableHeight = (viewport.height * 0.88).coerceAtLeast(200.0)
     val availableWidth = viewport.width.toDouble()
     val chartWidth = if (flipped) availableWidth
@@ -651,7 +652,7 @@ val UpdatePlotPC = FC<PresenterControlsProps<UpdatePlotPV>> { props ->
 
 /** PV editor for UpdatePlotPV with timepoint selectors (wrapped as FlowItemEditorProps). */
 private val UpdatePlotPVEditorComponent = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
-    val questions = components.redesign.presentation.useRoomQuestions()
+    val questions = tools.confido.web.components.redesign.presentation.useRoomQuestions()
     val view = (props.action as? tools.confido.state.SetPresenterViewAction)?.view as? UpdatePlotPV ?: return@FC
     val onViewChange: (tools.confido.state.PresenterView) -> Unit = { v -> props.onChange(tools.confido.state.SetPresenterViewAction(v)) }
     val tz = TimeZone.currentSystemDefault()
@@ -711,7 +712,7 @@ private val UpdatePlotPVEditorComponent = FC<tools.confido.extensions.FlowItemEd
 
 /** Flow action editor for CreateSnapshotAction. */
 private val CreateSnapshotActionEditor = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
-    val questions = components.redesign.presentation.useRoomQuestions()
+    val questions = tools.confido.web.components.redesign.presentation.useRoomQuestions()
     val action = props.action as? CreateSnapshotAction ?: return@FC
 
     FieldLabel { +"Snapshot name" }

@@ -1,15 +1,15 @@
 package extensions.prediction_showcase
 
-import components.presenter.PresenterPageProps
-import components.presenter.presenterPageMap
-import components.redesign.PresenterIcon
-import components.redesign.basic.Stack
-import components.redesign.basic.rowStyleTableCSS
-import components.redesign.forms.IconButton
-import components.redesign.presenter.PresenterContext
+import tools.confido.web.components.presenter.PresenterPageProps
+import tools.confido.web.components.presenter.presenterPageMap
+import tools.confido.web.components.redesign.PresenterIcon
+import tools.confido.web.components.redesign.basic.Stack
+import tools.confido.web.components.redesign.basic.rowStyleTableCSS
+import tools.confido.web.components.redesign.forms.IconButton
+import tools.confido.web.components.redesign.presenter.PresenterContext
 import web.cssom.*
 import emotion.react.css
-import hooks.useSubscription
+import tools.confido.web.hooks.useSubscription
 import tools.confido.payloads.responses.WSData
 import react.*
 import react.dom.html.ReactHTML.div
@@ -23,9 +23,9 @@ import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
 import tools.confido.rooms.Room
 import tools.confido.distributions.*
-import components.redesign.forms.QuestionPicker
-import components.redesign.forms.Select
-import components.redesign.rooms.RoomContext
+import tools.confido.web.components.redesign.forms.QuestionPicker
+import tools.confido.web.components.redesign.forms.Select
+import tools.confido.web.components.redesign.rooms.RoomContext
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionDataKeyWithDefault
 import tools.confido.question.Prediction
@@ -34,14 +34,14 @@ import tools.confido.refs.ref
 import tools.confido.refs.eqid
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.NumericSpace
-import utils.questionUrl
+import tools.confido.web.utils.questionUrl
 import extensions.shared.ValueWithUser
 import tools.confido.refs.Ref
 import tools.confido.utils.formatPercent
 import tools.confido.state.Topics
-import components.QuestionPredictors
-import components.useQuestion
-import components.useRooms
+import tools.confido.web.components.QuestionPredictors
+import tools.confido.web.components.useQuestion
+import tools.confido.web.components.useRooms
 
 val PredictionShowcasePP = FC<PresenterPageProps<PredictionShowcasePV>> { props ->
     val view = props.view
@@ -186,10 +186,10 @@ val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> 
 }
 
 private val PredictionShowcasePVEditorComponent = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
-    val questions = components.redesign.presentation.useRoomQuestions()
+    val questions = tools.confido.web.components.redesign.presentation.useRoomQuestions()
     val view = (props.action as? tools.confido.state.SetPresenterViewAction)?.view as? PredictionShowcasePV ?: return@FC
     val onViewChange: (tools.confido.state.PresenterView) -> Unit = { v -> props.onChange(tools.confido.state.SetPresenterViewAction(v)) }
-    components.redesign.presentation.FieldLabel { +"Question" }
+    tools.confido.web.components.redesign.presentation.FieldLabel { +"Question" }
     QuestionPicker {
         this.questions = questions
         selectedId = view.question.id
@@ -198,12 +198,12 @@ private val PredictionShowcasePVEditorComponent = FC<tools.confido.extensions.Fl
 }
 
 private val GroupPredComparePVEditorComponent = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
-    val allTags0 = components.redesign.presentation.useRoomQuestions()
+    val allTags0 = tools.confido.web.components.redesign.presentation.useRoomQuestions()
     val view = (props.action as? tools.confido.state.SetPresenterViewAction)?.view as? GroupPredictionComparePV ?: return@FC
     val onViewChange: (tools.confido.state.PresenterView) -> Unit = { v -> props.onChange(tools.confido.state.SetPresenterViewAction(v)) }
     val allTags = allTags0
         .flatMap { it.tags }.distinct().sorted()
-    components.redesign.presentation.FieldLabel { +"Filter by tag (optional)" }
+    tools.confido.web.components.redesign.presentation.FieldLabel { +"Filter by tag (optional)" }
     Select {
         value = view.questionGroup ?: ""
         onChange = { e ->

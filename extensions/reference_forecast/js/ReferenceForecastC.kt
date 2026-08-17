@@ -1,17 +1,17 @@
 package extensions.reference_forecast
 
-import components.presenter.PresenterPageProps
-import components.presenter.presenterPageMap
-import components.redesign.basic.Stack
-import components.redesign.basic.rowStyleTableCSS
-import components.redesign.basic.sansSerif
-import components.redesign.forms.*
-import components.redesign.presenter.PresenterContext
-import components.redesign.questions.dialog.EditQuestionDialogProps
-import components.redesign.forms.Button
+import tools.confido.web.components.presenter.PresenterPageProps
+import tools.confido.web.components.presenter.presenterPageMap
+import tools.confido.web.components.redesign.basic.Stack
+import tools.confido.web.components.redesign.basic.rowStyleTableCSS
+import tools.confido.web.components.redesign.basic.sansSerif
+import tools.confido.web.components.redesign.forms.*
+import tools.confido.web.components.redesign.presenter.PresenterContext
+import tools.confido.web.components.redesign.questions.dialog.EditQuestionDialogProps
+import tools.confido.web.components.redesign.forms.Button
 import web.cssom.*
 import emotion.react.css
-import hooks.useSubscription
+import tools.confido.web.hooks.useSubscription
 import tools.confido.payloads.responses.WSData
 import tools.confido.question.Prediction
 import react.*
@@ -34,13 +34,13 @@ import tools.confido.question.Question
 import tools.confido.refs.ref
 import tools.confido.spaces.BinarySpace
 import tools.confido.utils.toFixed
-import utils.questionUrl
-import utils.roomUrl
+import tools.confido.web.utils.questionUrl
+import tools.confido.web.utils.roomUrl
 import extensions.shared.ValueWithUser
 import web.html.InputType
 import web.html.number
 import tools.confido.state.Topics
-import components.useRooms
+import tools.confido.web.components.useRooms
 
 val ReferenceForcastScoreboardPP = FC<PresenterPageProps<ReferenceForcastScoreboardPV>> { props ->
     val room = useRooms()[props.view.room.id]

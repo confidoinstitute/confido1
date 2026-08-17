@@ -1,22 +1,22 @@
 package extensions.point_estimate
 
-import components.redesign.basic.PropsWithElementSize
-import components.redesign.basic.Stack
-import components.redesign.basic.elementSizeWrapper
-import components.redesign.basic.sansSerif
-import components.redesign.layout.LayoutMode
-import components.redesign.layout.LayoutModeContext
-import components.redesign.questions.predictions.*
+import tools.confido.web.components.redesign.basic.PropsWithElementSize
+import tools.confido.web.components.redesign.basic.Stack
+import tools.confido.web.components.redesign.basic.elementSizeWrapper
+import tools.confido.web.components.redesign.basic.sansSerif
+import tools.confido.web.components.redesign.layout.LayoutMode
+import tools.confido.web.components.redesign.layout.LayoutModeContext
+import tools.confido.web.components.redesign.questions.predictions.*
 import web.cssom.*
 import web.html.HTMLElement
 import emotion.react.css
-import hooks.usePureClick
+import tools.confido.web.hooks.usePureClick
 import react.*
 import react.dom.html.ReactHTML.div
 import tools.confido.question.PredictionTerminology
 import tools.confido.question.Question
 import tools.confido.spaces.NumericSpace
-import utils.panzoom1d.*
+import tools.confido.web.utils.panzoom1d.*
 import js.objects.unsafeJso as jso
 
 external interface PointEstimateSliderProps : PropsWithElementSize {

@@ -1,7 +1,7 @@
 package extensions.onn_nuclear_hints
 
-import components.useMyPredictions
-import components.redesign.questions.predictions.MyPredictionDescriptionProps
+import tools.confido.web.components.useMyPredictions
+import tools.confido.web.components.redesign.questions.predictions.MyPredictionDescriptionProps
 import react.ChildrenBuilder
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
@@ -11,8 +11,8 @@ import tools.confido.extensions.ClientExtension
 import tools.confido.refs.ref
 import tools.confido.utils.formatPercent
 import tools.confido.utils.toFixed
-import components.useRooms
-import components.roomOf
+import tools.confido.web.components.useRooms
+import tools.confido.web.components.roomOf
 
 object OnnNuclearHintsCE : ClientExtension, ONNNuclearHintsExtension() {
     override fun myPredictionDescriptionExtra(props: MyPredictionDescriptionProps, cb: ChildrenBuilder) {

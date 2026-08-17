@@ -1,14 +1,14 @@
 package extensions.room_groups
 
 import tools.confido.api.Api
-import Client
-import components.redesign.basic.Stack
-import components.redesign.basic.sansSerif
-import components.redesign.basic.showError
-import components.redesign.forms.FormSection
-import components.redesign.forms.Select
-import components.redesign.layout.LayoutMode
-import components.redesign.rooms.*
+import tools.confido.web.Client
+import tools.confido.web.components.redesign.basic.Stack
+import tools.confido.web.components.redesign.basic.sansSerif
+import tools.confido.web.components.redesign.basic.showError
+import tools.confido.web.components.redesign.forms.FormSection
+import tools.confido.web.components.redesign.forms.Select
+import tools.confido.web.components.redesign.layout.LayoutMode
+import tools.confido.web.components.redesign.rooms.*
 import web.cssom.*
 import emotion.react.css
 import io.ktor.client.call.*
@@ -22,8 +22,8 @@ import tools.confido.rooms.*
 import tools.confido.extensions.*
 import tools.confido.refs.Ref
 import kotlinx.coroutines.delay
-import utils.runCoroutine
-import components.useRooms
+import tools.confido.web.utils.runCoroutine
+import tools.confido.web.components.useRooms
 
 object RoomGroupsCE : ClientExtension, RoomGroupsExtension() {
 

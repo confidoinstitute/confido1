@@ -1,19 +1,19 @@
 package extensions.millionaire
 
-import components.useMyPredictions
-import components.presenter.PresenterPageProps
-import components.presenter.presenterPageMap
+import tools.confido.web.components.useMyPredictions
+import tools.confido.web.components.presenter.PresenterPageProps
+import tools.confido.web.components.presenter.presenterPageMap
 
-import components.redesign.questions.QuestionContext
-import components.redesign.questions.predictions.MyPredictionDescriptionProps
-import components.redesign.questions.predictions.yesNoColored
-import components.redesign.rooms.RoomContext
+import tools.confido.web.components.redesign.questions.QuestionContext
+import tools.confido.web.components.redesign.questions.predictions.MyPredictionDescriptionProps
+import tools.confido.web.components.redesign.questions.predictions.yesNoColored
+import tools.confido.web.components.redesign.rooms.RoomContext
 import csstype.PropertiesBuilder
 import emotion.css.*
 import emotion.react.Global
 import emotion.react.css
 import emotion.react.styles
-import hooks.useSubscription
+import tools.confido.web.hooks.useSubscription
 import tools.confido.payloads.responses.WSData
 import react.*
 import react.dom.html.ReactHTML
@@ -43,8 +43,8 @@ import kotlin.math.absoluteValue
 import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
-import components.QuestionPredictors
-import components.useRooms
+import tools.confido.web.components.QuestionPredictors
+import tools.confido.web.components.useRooms
 import tools.confido.state.Topics
 
 // =============================================================================
@@ -290,11 +290,11 @@ private fun PropertiesBuilder.wwtbamBackground() {
 
 private val MillionaireGameActionEditor = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
     val action = props.action as? MillionaireGameAction ?: return@FC
-    val allTags = components.redesign.presentation.useRoomTags()
+    val allTags = tools.confido.web.components.redesign.presentation.useRoomTags()
 
-    components.redesign.presentation.FieldLabel { +"Question tag" }
+    tools.confido.web.components.redesign.presentation.FieldLabel { +"Question tag" }
     if (allTags.isNotEmpty()) {
-        components.redesign.forms.Select {
+        tools.confido.web.components.redesign.forms.Select {
             value = action.tag
             onChange = { e -> props.onChange(action.copy(tag = e.target.value)) }
             css { width = 100.pct }
@@ -307,13 +307,13 @@ private val MillionaireGameActionEditor = FC<tools.confido.extensions.FlowItemEd
         }
     } else {
         div {
-            css { fontFamily = components.redesign.basic.sansSerif; fontSize = 13.px; color = Color("#999") }
+            css { fontFamily = tools.confido.web.components.redesign.basic.sansSerif; fontSize = 13.px; color = Color("#999") }
             +"No tags defined on questions in this room."
         }
     }
 
-    components.redesign.presentation.FieldLabel { +"Mode" }
-    components.redesign.forms.Select {
+    tools.confido.web.components.redesign.presentation.FieldLabel { +"Mode" }
+    tools.confido.web.components.redesign.forms.Select {
         value = action.mode.name
         onChange = { e ->
             MillionaireMode.entries.find { it.name == e.target.value }?.let { props.onChange(action.copy(mode = it)) }
@@ -323,8 +323,8 @@ private val MillionaireGameActionEditor = FC<tools.confido.extensions.FlowItemEd
         react.dom.html.ReactHTML.option { value = MillionaireMode.MULTIPLICATIVE.name; +"Multiplicative" }
     }
 
-    components.redesign.presentation.FieldLabel { +"Timer" }
-    components.redesign.forms.Select {
+    tools.confido.web.components.redesign.presentation.FieldLabel { +"Timer" }
+    tools.confido.web.components.redesign.forms.Select {
         val timerKey = when (action.timer) {
             is TimerConfig.None -> "none"
             is TimerConfig.Fixed -> "fixed"
@@ -352,7 +352,7 @@ private val MillionaireGameActionEditor = FC<tools.confido.extensions.FlowItemEd
         else -> null
     }
     if (timerSeconds != null) {
-        components.redesign.presentation.FieldLabel { +"Timer duration (seconds)" }
+        tools.confido.web.components.redesign.presentation.FieldLabel { +"Timer duration (seconds)" }
         react.dom.html.ReactHTML.input {
             asDynamic().type = "number"
             value = timerSeconds.toString()
@@ -384,7 +384,7 @@ private val MillionaireGameActionEditor = FC<tools.confido.extensions.FlowItemEd
             }
         }
         span {
-            css { fontFamily = components.redesign.basic.sansSerif; fontSize = 14.px }
+            css { fontFamily = tools.confido.web.components.redesign.basic.sansSerif; fontSize = 14.px }
             +"Show scoreboard after each question"
         }
     }

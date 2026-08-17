@@ -1,12 +1,12 @@
 package extensions.calibration_training
 
-import Client
-import components.redesign.basic.*
-import components.redesign.calibration.CalibrationView
-import components.redesign.forms.Button
-import components.redesign.forms.TextButton
+import tools.confido.web.Client
+import tools.confido.web.components.redesign.basic.*
+import tools.confido.web.components.redesign.calibration.CalibrationView
+import tools.confido.web.components.redesign.forms.Button
+import tools.confido.web.components.redesign.forms.TextButton
 import emotion.react.css
-import hooks.useCoroutineLock
+import tools.confido.web.hooks.useCoroutineLock
 import io.ktor.client.call.*
 import io.ktor.http.*
 import tools.confido.payloads.requests.Myself
