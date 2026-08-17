@@ -1,4 +1,4 @@
-package extensions.reference_forecast
+package tools.confido.extensions.reference_forecast
 
 import tools.confido.web.components.presenter.PresenterPageProps
 import tools.confido.web.components.presenter.presenterPageMap
@@ -36,7 +36,7 @@ import tools.confido.spaces.BinarySpace
 import tools.confido.utils.toFixed
 import tools.confido.web.utils.questionUrl
 import tools.confido.web.utils.roomUrl
-import extensions.shared.ValueWithUser
+import tools.confido.extensions.shared.ValueWithUser
 import web.html.InputType
 import web.html.number
 import tools.confido.state.Topics

@@ -1,4 +1,4 @@
-package extensions.update_scatter_plot
+package tools.confido.extensions.update_scatter_plot
 
 import tools.confido.web.components.redesign.basic.PropsWithElementSize
 import tools.confido.web.components.redesign.basic.elementSizeWrapper

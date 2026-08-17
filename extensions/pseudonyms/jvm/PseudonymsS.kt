@@ -1,4 +1,4 @@
-package extensions.pseudonyms
+package tools.confido.extensions.pseudonyms
 
 import tools.confido.rooms.Room
 import tools.confido.rooms.RoomPermission

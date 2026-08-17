@@ -1,4 +1,4 @@
-package extensions.point_estimate
+package tools.confido.extensions.point_estimate
 import tools.confido.extensions.get
 
 import tools.confido.extensions.ServerExtension

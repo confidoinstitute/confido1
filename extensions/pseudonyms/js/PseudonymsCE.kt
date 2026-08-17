@@ -1,4 +1,4 @@
-package extensions.pseudonyms
+package tools.confido.extensions.pseudonyms
 
 import tools.confido.web.components.useMyUser
 import tools.confido.web.components.redesign.basic.sansSerif

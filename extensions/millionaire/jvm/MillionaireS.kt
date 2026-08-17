@@ -1,4 +1,4 @@
-package extensions.millionaire
+package tools.confido.extensions.millionaire
 
 import tools.confido.extensions.ServerExtension
 import io.ktor.http.*

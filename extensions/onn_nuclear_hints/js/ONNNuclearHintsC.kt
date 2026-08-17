@@ -1,4 +1,4 @@
-package extensions.onn_nuclear_hints
+package tools.confido.extensions.onn_nuclear_hints
 
 import tools.confido.web.components.useMyPredictions
 import tools.confido.web.components.redesign.questions.predictions.MyPredictionDescriptionProps

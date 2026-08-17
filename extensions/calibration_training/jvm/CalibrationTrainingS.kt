@@ -1,4 +1,4 @@
-package extensions.calibration_training
+package tools.confido.extensions.calibration_training
 
 import io.ktor.http.*
 import io.ktor.server.request.*

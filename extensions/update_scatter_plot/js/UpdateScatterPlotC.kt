@@ -1,4 +1,4 @@
-package extensions.update_scatter_plot
+package tools.confido.extensions.update_scatter_plot
 
 import tools.confido.web.Client
 import tools.confido.web.components.usePermission
@@ -24,7 +24,7 @@ import tools.confido.web.components.redesign.questions.dialog.EditQuestionDialog
 import tools.confido.web.components.redesign.rooms.RoomContext
 import web.cssom.*
 import emotion.react.css
-import extensions.reference_forecast.ReferenceForcastKey
+import tools.confido.extensions.reference_forecast.ReferenceForcastKey
 import tools.confido.web.hooks.useCoroutineLock
 import tools.confido.web.hooks.useSuspendResult
 import io.ktor.client.call.*

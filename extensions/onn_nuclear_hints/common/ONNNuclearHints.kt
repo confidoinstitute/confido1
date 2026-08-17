@@ -1,4 +1,4 @@
-package extensions.onn_nuclear_hints
+package tools.confido.extensions.onn_nuclear_hints
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

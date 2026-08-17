@@ -1,10 +1,10 @@
-package extensions.reference_forecast
+package tools.confido.extensions.reference_forecast
 import tools.confido.extensions.ServerExtension
 
-import extensions.reference_forecast.ReferenceForecastExtension
-import extensions.reference_forecast.ReferenceForcastKey
-import extensions.reference_forecast.UserScore
-import extensions.shared.ValueWithUser
+import tools.confido.extensions.reference_forecast.ReferenceForecastExtension
+import tools.confido.extensions.reference_forecast.ReferenceForcastKey
+import tools.confido.extensions.reference_forecast.UserScore
+import tools.confido.extensions.shared.ValueWithUser
 import io.ktor.server.routing.*
 import tools.confido.rooms.Room
 import tools.confido.rooms.RoomPermission

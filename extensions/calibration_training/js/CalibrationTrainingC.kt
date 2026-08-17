@@ -1,4 +1,4 @@
-package extensions.calibration_training
+package tools.confido.extensions.calibration_training
 
 import tools.confido.web.components.presenter.PresenterPageProps
 import tools.confido.web.components.presenter.presenterPageMap

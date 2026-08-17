@@ -1,4 +1,4 @@
-package extensions.conditional_baseline
+package tools.confido.extensions.conditional_baseline
 
 import tools.confido.web.components.useMyPredictions
 import tools.confido.web.components.redesign.forms.FormField

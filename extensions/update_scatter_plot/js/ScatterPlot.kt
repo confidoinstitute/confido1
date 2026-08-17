@@ -1,4 +1,4 @@
-package extensions.update_scatter_plot
+package tools.confido.extensions.update_scatter_plot
 
 import tools.confido.web.components.ReactPlotly
 import tools.confido.web.components.addShape

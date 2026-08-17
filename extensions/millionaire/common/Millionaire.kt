@@ -1,4 +1,4 @@
-package extensions.millionaire
+package tools.confido.extensions.millionaire
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

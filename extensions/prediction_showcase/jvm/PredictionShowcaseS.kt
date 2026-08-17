@@ -1,9 +1,9 @@
-package extensions.prediction_showcase
+package tools.confido.extensions.prediction_showcase
 import tools.confido.extensions.get
 
 import tools.confido.extensions.ServerExtension
-import extensions.reference_forecast.ReferenceForcastKey
-import extensions.shared.ValueWithUser
+import tools.confido.extensions.reference_forecast.ReferenceForcastKey
+import tools.confido.extensions.shared.ValueWithUser
 import io.ktor.server.routing.*
 import tools.confido.rooms.RoomPermission
 import tools.confido.application.routes.*

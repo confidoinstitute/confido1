@@ -1,4 +1,4 @@
-package extensions.prediction_showcase
+package tools.confido.extensions.prediction_showcase
 
 import tools.confido.web.components.presenter.PresenterPageProps
 import tools.confido.web.components.presenter.presenterPageMap
@@ -35,7 +35,7 @@ import tools.confido.refs.eqid
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.NumericSpace
 import tools.confido.web.utils.questionUrl
-import extensions.shared.ValueWithUser
+import tools.confido.extensions.shared.ValueWithUser
 import tools.confido.refs.Ref
 import tools.confido.utils.formatPercent
 import tools.confido.state.Topics

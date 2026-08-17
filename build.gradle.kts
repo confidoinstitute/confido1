@@ -51,10 +51,10 @@ val generateExtensionRegistries by tasks.registering {
         val currentExtDirs = extensionsDir.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList()
 
         val jsExtensions = currentExtDirs.filter { file("${it.path}/js").isDirectory }
-            .map { "extensions.${it.name}.${it.name.toPascalCase()}CE" }
+            .map { "tools.confido.extensions.${it.name}.${it.name.toPascalCase()}CE" }
 
         val jvmExtensions = currentExtDirs.filter { file("${it.path}/jvm").isDirectory }
-            .map { "extensions.${it.name}.${it.name.toPascalCase()}SE" }
+            .map { "tools.confido.extensions.${it.name}.${it.name.toPascalCase()}SE" }
 
         jsOutDir.mkdirs()
         file("$jsOutDir/registry.kt").writeText("""

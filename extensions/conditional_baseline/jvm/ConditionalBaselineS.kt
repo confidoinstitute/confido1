@@ -1,7 +1,7 @@
-package extensions.conditional_baseline
+package tools.confido.extensions.conditional_baseline
 import tools.confido.extensions.ServerExtension
 
-import extensions.conditional_baseline.ConditionalBaselineExtension
+import tools.confido.extensions.conditional_baseline.ConditionalBaselineExtension
 
 object ConditionalBaselineSE : ServerExtension, ConditionalBaselineExtension() {
 

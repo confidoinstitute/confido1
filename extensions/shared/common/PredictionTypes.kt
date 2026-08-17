@@ -1,4 +1,4 @@
-package extensions.shared
+package tools.confido.extensions.shared
 
 import kotlinx.serialization.Serializable
 

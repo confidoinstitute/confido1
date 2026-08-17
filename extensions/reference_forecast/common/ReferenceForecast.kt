@@ -1,4 +1,4 @@
-package extensions.reference_forecast
+package tools.confido.extensions.reference_forecast
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

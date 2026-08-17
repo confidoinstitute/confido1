@@ -1,4 +1,4 @@
-package extensions.prediction_showcase
+package tools.confido.extensions.prediction_showcase
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -10,7 +10,7 @@ import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.state.PresenterView
 import tools.confido.rooms.Room
-import extensions.shared.ValueWithUser
+import tools.confido.extensions.shared.ValueWithUser
 import kotlinx.serialization.serializer
 import tools.confido.state.Topics
 import tools.confido.utils.TopicSpec

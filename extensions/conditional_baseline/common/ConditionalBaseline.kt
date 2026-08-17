@@ -1,4 +1,4 @@
-package extensions.conditional_baseline
+package tools.confido.extensions.conditional_baseline
 
 import tools.confido.extensions.Extension
 import tools.confido.extensions.ExtensionDataKey

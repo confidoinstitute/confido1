@@ -1,4 +1,4 @@
-package extensions.pseudonyms
+package tools.confido.extensions.pseudonyms
 
 import kotlinx.serialization.*
 import tools.confido.extensions.*
