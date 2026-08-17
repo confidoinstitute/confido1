@@ -409,6 +409,10 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
                 combineViews(userStore.state.asView(), responsesVersion.state.asView())
             }) {
                 call.withUser {
+                    // Deployment-wide personal data (nicks, scores, calibration
+                    // vectors): proper users only, like the users directory. Guests
+                    // following a leaderboard presentation render the empty state.
+                    if (!user.type.isProper()) unauthorized("The leaderboard is only available to workspace members.")
                     val allResponses = responseCollection.find().toList()
                     val responsesByUser = allResponses.groupBy { it.user }
 
