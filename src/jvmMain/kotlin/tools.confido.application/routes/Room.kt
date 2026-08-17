@@ -115,18 +115,27 @@ fun roomRoutes(routing: Routing) = routing.apply {
                 ))
             ) unauthorized("This role cannot be changed.")
 
-            suspend fun addExistingMember(user: User, role: RoomRole) =
+            suspend fun addExistingMember(target: User, role: RoomRole) {
+                // Changing an existing member exercises power over their CURRENT role
+                // too, not just the new one — without this check a moderator could
+                // demote the room owner to viewer (assigning "viewer" is always within
+                // a moderator's power). Same rule as the member-removal route.
+                room.members.find { it.user eqid target }?.let { existing ->
+                    if (!(user.type == UserType.ADMIN || canChangeRole(room.userRole(user), existing.role)))
+                        unauthorized("This role cannot be changed.")
+                }
                 tools.confido.store.roomStore.modify(room.ref) {
                     var existing = false
                     val members = it.members.map { membership ->
-                        if (membership.user eqid user) {
+                        if (membership.user eqid target) {
                             existing = true
                             membership.copy(role = role, invitedVia = null)
                         } else membership
                     } + if (existing) emptyList() else
-                        listOf((RoomMembership(user.ref, role, null)))
+                        listOf((RoomMembership(target.ref, role, null)))
                     it.copy(members = members)
                 }
+            }
 
             when (member) {
                 is AddedExistingMember -> {
