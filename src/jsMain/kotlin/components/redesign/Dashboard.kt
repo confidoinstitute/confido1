@@ -19,9 +19,9 @@ import hooks.useSuspendResult
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import payloads.requests.CalibrationRequest
-import payloads.responses.MyScoresResponse
-import payloads.requests.Myself
+import tools.confido.payloads.requests.CalibrationRequest
+import tools.confido.payloads.responses.MyScoresResponse
+import tools.confido.payloads.requests.Myself
 import react.*
 import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.div
@@ -36,7 +36,7 @@ import tools.confido.utils.toFixed
 import tools.confido.question.QuestionState
 import tools.confido.state.appConfig
 import tools.confido.utils.stringToColor
-import users.User
+import tools.confido.users.User
 import utils.runCoroutine
 
 internal fun ChildrenBuilder.title(text: String, sidePad: Length) = div {

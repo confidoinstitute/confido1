@@ -1,7 +1,7 @@
 package components
 
 import hooks.decodeTopicPayload
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import react.*
 import tools.confido.state.SelfState
 import tools.confido.state.Topics

@@ -2,7 +2,7 @@ package components.presenter
 
 import hooks.usePresentationKeyboardNav
 import hooks.useSubscription
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import react.FC
 import tools.confido.state.PresentationPV
 import tools.confido.state.PresentationWSData

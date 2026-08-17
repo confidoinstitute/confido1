@@ -9,7 +9,7 @@ import emotion.react.css
 import hooks.useCoroutineLock
 import io.ktor.client.call.*
 import io.ktor.http.*
-import payloads.requests.Myself
+import tools.confido.payloads.requests.Myself
 import react.*
 import react.dom.html.ReactHTML.div
 import react.router.useNavigate

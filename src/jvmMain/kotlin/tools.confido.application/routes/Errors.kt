@@ -1,7 +1,7 @@
 package tools.confido.application.routes
 
 import io.ktor.http.*
-import payloads.responses.WSErrorType
+import tools.confido.payloads.responses.WSErrorType
 
 class ResponseError(override val message: String, val httpCode: HttpStatusCode, val wsCode: WSErrorType) : Exception()
 

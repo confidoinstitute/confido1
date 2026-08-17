@@ -8,7 +8,7 @@ import components.redesign.forms.*
 import components.redesign.questions.StatusChip
 import io.ktor.client.call.*
 import kotlinx.datetime.LocalDate
-import payloads.requests.*
+import tools.confido.payloads.requests.*
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
@@ -19,14 +19,14 @@ import react.dom.html.ReactHTML.th
 import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
 import react.router.useNavigate
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.question.Question
 import tools.confido.spaces.*
 import web.cssom.*
 import emotion.react.css
 import hooks.useCoroutineLock
 import hooks.useSubscription
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import tools.confido.state.Topics
 import tools.confido.refs.ref
 

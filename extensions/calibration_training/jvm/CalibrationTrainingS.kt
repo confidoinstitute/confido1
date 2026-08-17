@@ -25,7 +25,7 @@ import tools.confido.state.FlowAction
 import tools.confido.state.serverState
 import tools.confido.utils.generateId
 import tools.confido.utils.unixNow
-import users.User
+import tools.confido.users.User
 import java.io.File
 
 /**
@@ -397,7 +397,7 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
             getST("/api/training/questions") {
                 call.withUser {
                     // Only allow admins
-                    if (serverState.users[user.id]!!.type != users.UserType.ADMIN) {
+                    if (serverState.users[user.id]!!.type != tools.confido.users.UserType.ADMIN) {
                         return@withUser call.respond(HttpStatusCode.Forbidden, "Admin only")
                     }
                     call.respond(trainingQuestions)
@@ -433,7 +433,7 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
         }
     }
 
-    override suspend fun executeFlowAction(action: FlowAction, room: rooms.Room): Boolean {
+    override suspend fun executeFlowAction(action: FlowAction, room: tools.confido.rooms.Room): Boolean {
         // The presenter view change is handled automatically via action.presenterView;
         // no additional server-side effects needed.
         return action is ShowCalibrationLeaderboardAction

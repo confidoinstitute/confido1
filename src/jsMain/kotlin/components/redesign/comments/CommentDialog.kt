@@ -10,9 +10,9 @@ import web.cssom.*
 import web.html.*
 import emotion.react.*
 import hooks.*
-import payloads.requests.*
-import payloads.responses.CommentExtraData
-import payloads.responses.CommentPresentation
+import tools.confido.payloads.requests.*
+import tools.confido.payloads.responses.CommentExtraData
+import tools.confido.payloads.responses.CommentPresentation
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.button

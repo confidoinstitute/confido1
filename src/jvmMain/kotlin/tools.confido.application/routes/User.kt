@@ -7,10 +7,10 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.datetime.Clock
-import payloads.requests.*
-import payloads.responses.EditProfileResult
-import payloads.responses.InviteStatus
-import rooms.*
+import tools.confido.payloads.requests.*
+import tools.confido.payloads.responses.EditProfileResult
+import tools.confido.payloads.responses.InviteStatus
+import tools.confido.rooms.*
 import tools.confido.api.Api
 import tools.confido.application.*
 import tools.confido.application.sessions.*
@@ -23,7 +23,7 @@ import tools.confido.store.roomCommentArchive
 import tools.confido.store.transact
 import tools.confido.store.verificationLinkStore
 import tools.confido.utils.*
-import users.*
+import tools.confido.users.*
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 

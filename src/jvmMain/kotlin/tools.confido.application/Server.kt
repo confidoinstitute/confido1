@@ -30,7 +30,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
-import payloads.responses.*
+import tools.confido.payloads.responses.*
 import org.slf4j.LoggerFactory
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.codec.digest.MessageDigestAlgorithms.SHA_224
@@ -38,7 +38,7 @@ import org.litote.kmongo.serialization.registerModule
 import org.litote.kmongo.serialization.registerSerializer
 import org.simplejavamail.api.mailer.config.TransportStrategy
 import org.simplejavamail.mailer.MailerBuilder
-import rooms.*
+import tools.confido.rooms.*
 import tools.confido.application.routes.*
 import tools.confido.application.sessions.Sessions
 import tools.confido.application.sessions.renewUserSession
@@ -56,10 +56,10 @@ import tools.confido.state.QuestionCounts
 import tools.confido.state.appConfig
 import tools.confido.state.serverState
 import tools.confido.state.Topics
-import users.DebugAdmin
-import users.DebugMember
-import users.User
-import users.UserType
+import tools.confido.users.DebugAdmin
+import tools.confido.users.DebugMember
+import tools.confido.users.User
+import tools.confido.users.UserType
 import java.io.File
 import kotlin.collections.set
 import kotlin.time.Duration.Companion.hours
@@ -163,7 +163,7 @@ fun main() {
     // serialize Ref by default. So we must create a custom serializer and also register it
     // with KMongo.
     registerSerializer(RefAsStringSerializer)
-    registerSerializer(rooms.RoomRoleRefSerializer)
+    registerSerializer(tools.confido.rooms.RoomRoleRefSerializer)
 
     // Registration order = boot load order: base entity stores first, then the stores
     // whose boot folds dereference them (prediction group aggregates need questions).

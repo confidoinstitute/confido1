@@ -2,7 +2,7 @@ package tools.confido.application
 
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.question.Question
 import tools.confido.question.QuestionState
 import tools.confido.application.sessions.TransientData

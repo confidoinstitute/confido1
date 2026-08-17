@@ -2,8 +2,8 @@ package tools.confido.application
 
 import java.security.MessageDigest
 import kotlinx.datetime.Instant
-import payloads.responses.MembershipPayload
-import rooms.*
+import tools.confido.payloads.responses.MembershipPayload
+import tools.confido.rooms.*
 import tools.confido.application.sessions.TransientData
 import tools.confido.application.sessions.user
 import tools.confido.extensions.ServerExtension
@@ -11,9 +11,9 @@ import tools.confido.question.Question
 import tools.confido.refs.*
 import tools.confido.state.*
 import tools.confido.utils.*
-import users.User
-import users.UserPresentation
-import users.UserType
+import tools.confido.users.User
+import tools.confido.users.UserPresentation
+import tools.confido.users.UserType
 
 /**
  * Process-lifetime secret salting [StateCensor.memberRowKey]: without it the digest

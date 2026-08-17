@@ -18,9 +18,9 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import normalizedBrier
-import payloads.responses.MyRankResponse
-import payloads.responses.MyScoreItem
-import payloads.responses.MyScoresResponse
+import tools.confido.payloads.responses.MyRankResponse
+import tools.confido.payloads.responses.MyScoreItem
+import tools.confido.payloads.responses.MyScoresResponse
 import react.*
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.abbr
@@ -39,7 +39,7 @@ import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
 import react.dom.html.ReactHTML.ul
 import react.router.dom.Link
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.question.Question
 import tools.confido.utils.formatPercent
 import tools.confido.utils.toFixed

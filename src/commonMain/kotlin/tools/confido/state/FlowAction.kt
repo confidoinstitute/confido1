@@ -10,7 +10,7 @@ import tools.confido.question.GroupPredictionVisibility
 import tools.confido.question.QuestionState
 import tools.confido.question.Question
 import tools.confido.refs.Ref
-import rooms.Room
+import tools.confido.rooms.Room
 
 /** Where to navigate presentation followers as a side effect of an action. */
 @Serializable

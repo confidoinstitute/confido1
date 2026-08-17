@@ -13,12 +13,12 @@ import web.cssom.*
 import emotion.react.css
 import io.ktor.client.call.*
 import js.objects.unsafeJso as jso
-import payloads.requests.BaseRoomInformation
+import tools.confido.payloads.requests.BaseRoomInformation
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.option
 import react.router.RouteObject
-import rooms.*
+import tools.confido.rooms.*
 import tools.confido.extensions.*
 import tools.confido.refs.Ref
 import kotlinx.coroutines.delay

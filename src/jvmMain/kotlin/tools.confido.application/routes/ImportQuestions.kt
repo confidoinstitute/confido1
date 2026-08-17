@@ -15,8 +15,8 @@ import kotlinx.datetime.Clock
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVParser
 import org.mozilla.universalchardet.UniversalDetector
-import payloads.requests.*
-import rooms.RoomPermission
+import tools.confido.payloads.requests.*
+import tools.confido.rooms.RoomPermission
 import tools.confido.application.sessions.TransientData
 import tools.confido.question.*
 import tools.confido.refs.ref

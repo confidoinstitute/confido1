@@ -10,13 +10,13 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.http.*
-import payloads.requests.CsvParseResponse
-import payloads.requests.ImportUrlRequest
+import tools.confido.payloads.requests.CsvParseResponse
+import tools.confido.payloads.requests.ImportUrlRequest
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.input
 import react.dom.html.ReactHTML.p
-import rooms.Room
+import tools.confido.rooms.Room
 import web.cssom.*
 import emotion.react.css
 import hooks.useCoroutineLock

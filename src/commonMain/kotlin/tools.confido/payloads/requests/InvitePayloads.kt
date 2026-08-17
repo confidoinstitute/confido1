@@ -1,0 +1,94 @@
+package tools.confido.payloads.requests
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import tools.confido.rooms.InviteFieldPolicy
+import tools.confido.rooms.RoomRole
+import tools.confido.rooms.RoomRoleRefSerializer
+import tools.confido.refs.Ref
+import tools.confido.state.UserSessionValidity
+import tools.confido.users.User
+import tools.confido.users.UserType
+
+/**
+ * Accept invitation identified by [inviteToken] by an already logged-in user.
+ */
+@Serializable
+data class AcceptInvite(
+    val inviteToken: String,
+    /** If true, the session will start following the room's presentation. */
+    val followPresentation: Boolean = false,
+)
+
+/**
+ * Accept invitation identified by [inviteToken] by a not logged in client and create an user with given [userNick] and [e-mail].
+ */
+@Serializable
+data class AcceptInviteAndCreateUser(
+    val inviteToken: String,
+    val userNick: String?,
+    val email: String?,
+    val validity: UserSessionValidity,
+    /** If true, the session will start following the room's presentation. */
+    val followPresentation: Boolean = false,
+)
+
+/**
+ * Create a new room invitation link with given properties. The room is defined by the POST URL.
+ */
+@Serializable
+data class CreateNewInvite(
+    val description: String?,
+    @Serializable(with = RoomRoleRefSerializer::class)
+    val role: RoomRole,
+    val nicknamePolicy: InviteFieldPolicy = InviteFieldPolicy.OPTIONAL,
+    val emailPolicy: InviteFieldPolicy = InviteFieldPolicy.OPTIONAL,
+    val targetUserType: UserType = UserType.GUEST,
+    val preventDuplicateNicknames: Boolean = false,
+) {
+    init {
+        // Validate that only MEMBER or GUEST types are allowed for invite links
+        require(targetUserType == UserType.MEMBER || targetUserType == UserType.GUEST) {
+            "Invite links can only create MEMBER or GUEST users"
+        }
+    }
+}
+
+/**
+ * Delete a given invitation link. If [keepUsers] is set, make all members joined via it permanent. Otherwise revoke their membership.
+ */
+@Serializable
+data class DeleteInvite(
+    val id: String,
+    val keepUsers: Boolean,
+)
+
+/**
+ * Sum data type for an added room member with a given [role].
+ */
+@Serializable
+sealed class AddedMember {
+    abstract val role: RoomRole
+}
+
+/**
+ * Add a new member with a given [e-mail].
+ */
+@Serializable
+@SerialName("newMember")
+data class AddedNewMember(
+    val email: String,
+    @Serializable(with = RoomRoleRefSerializer::class)
+    override val role: RoomRole,
+) : AddedMember()
+
+/**
+ * Add already existing [user] as a member.
+ */
+@Serializable
+@SerialName("existingMember")
+data class AddedExistingMember(
+    val user: Ref<User>,
+    @Serializable(with = RoomRoleRefSerializer::class)
+    override val role: RoomRole,
+) : AddedMember()

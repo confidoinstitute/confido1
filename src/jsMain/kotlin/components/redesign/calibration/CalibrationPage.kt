@@ -9,8 +9,8 @@ import web.cssom.Color
 import web.cssom.px
 import web.cssom.rem
 import emotion.react.css
-import payloads.requests.CalibrationRequest
-import payloads.requests.Myself
+import tools.confido.payloads.requests.CalibrationRequest
+import tools.confido.payloads.requests.Myself
 import react.FC
 import react.Props
 import react.create

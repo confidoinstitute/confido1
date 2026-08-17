@@ -22,12 +22,12 @@ import emotion.react.css
 import hooks.useBreakpoints
 import hooks.useSubscription
 import js.objects.unsafeJso as jso
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import react.*
 import react.router.*
 import tools.confido.extensions.ClientExtension
 import tools.confido.state.*
-import users.UserType
+import tools.confido.users.UserType
 import web.dom.document
 import web.window.window
 import tools.confido.state.Topics

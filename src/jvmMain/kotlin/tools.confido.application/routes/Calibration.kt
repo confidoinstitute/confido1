@@ -4,14 +4,14 @@ import tools.confido.api.Api
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import payloads.requests.CalibrationRequest
-import payloads.requests.Everyone
-import payloads.requests.Myself
-import payloads.responses.BinaryCalibrationQuestion
-import payloads.responses.CalibrationQuestion
-import payloads.responses.NumericCalibrationQuestion
-import rooms.Room
-import rooms.RoomPermission
+import tools.confido.payloads.requests.CalibrationRequest
+import tools.confido.payloads.requests.Everyone
+import tools.confido.payloads.requests.Myself
+import tools.confido.payloads.responses.BinaryCalibrationQuestion
+import tools.confido.payloads.responses.CalibrationQuestion
+import tools.confido.payloads.responses.NumericCalibrationQuestion
+import tools.confido.rooms.Room
+import tools.confido.rooms.RoomPermission
 import tools.confido.application.calibration.getScoredPrediction
 import tools.confido.calibration.*
 import tools.confido.distributions.BinaryDistribution
@@ -25,7 +25,7 @@ import tools.confido.spaces.NumericSpace
 import tools.confido.spaces.NumericValue
 import tools.confido.state.serverState
 import tools.confido.utils.mapDeref
-import users.User
+import tools.confido.users.User
 import tools.confido.question.effectiveSchedule
 
 fun calibrationRoutes(routing: Routing) = routing.apply {

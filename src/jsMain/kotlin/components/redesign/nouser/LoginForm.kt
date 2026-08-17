@@ -13,7 +13,7 @@ import emotion.react.*
 import ext.helmet.Helmet
 import hooks.*
 import io.ktor.http.*
-import payloads.requests.*
+import tools.confido.payloads.requests.*
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.b

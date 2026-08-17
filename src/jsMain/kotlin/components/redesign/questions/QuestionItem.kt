@@ -13,7 +13,7 @@ import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.button
 import react.router.dom.*
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.distributions.*
 import tools.confido.question.*
 import tools.confido.refs.*

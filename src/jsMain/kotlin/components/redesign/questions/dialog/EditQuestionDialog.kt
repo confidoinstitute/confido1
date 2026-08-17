@@ -2,7 +2,7 @@ package components.redesign.questions.dialog
 
 import components.useDisconnected
 import hooks.useSubscription
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import tools.confido.state.Topics
 import Client
 import components.*
@@ -13,7 +13,7 @@ import web.cssom.*
 import emotion.react.*
 import hooks.*
 import kotlinx.datetime.Clock
-import payloads.requests.*
+import tools.confido.payloads.requests.*
 import react.*
 import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.div

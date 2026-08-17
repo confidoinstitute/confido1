@@ -2,18 +2,18 @@ package tools.confido.state
 
 import BinaryHistogram
 import kotlinx.serialization.serializer
-import payloads.responses.CommentExtraData
-import payloads.responses.CommentPresentation
-import payloads.responses.MembershipPayload
-import payloads.responses.QuestionCommentExtraData
-import rooms.Room
+import tools.confido.payloads.responses.CommentExtraData
+import tools.confido.payloads.responses.CommentPresentation
+import tools.confido.payloads.responses.MembershipPayload
+import tools.confido.payloads.responses.QuestionCommentExtraData
+import tools.confido.rooms.Room
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.utils.PathParam
 import tools.confido.utils.TopicSpec
 import tools.confido.utils.path
-import users.User
+import tools.confido.users.User
 
 /**
  * The topic tree of the multiplexed state websocket (PERSISTENCE_SYNC_REDESIGN.md

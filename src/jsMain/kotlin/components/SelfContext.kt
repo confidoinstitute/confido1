@@ -2,14 +2,14 @@ package components
 
 import react.createContext
 import react.use
-import rooms.Room
-import rooms.RoomPermission
+import tools.confido.rooms.Room
+import tools.confido.rooms.RoomPermission
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.state.SelfState
-import users.User
-import users.UserType
+import tools.confido.users.User
+import tools.confido.users.UserType
 
 /**
  * The viewer's own state (the self topic slice) as its own context, read through the

@@ -5,8 +5,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
-import payloads.requests.CalibrationRequest
-import rooms.Room
+import tools.confido.payloads.requests.CalibrationRequest
+import tools.confido.rooms.Room
 import tools.confido.extensions.Extension
 import tools.confido.question.Question
 import tools.confido.refs.Ref

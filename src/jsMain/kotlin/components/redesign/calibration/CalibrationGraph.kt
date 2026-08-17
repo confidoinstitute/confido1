@@ -6,7 +6,7 @@ import components.redesign.questions.predictions.binaryColors
 import web.cssom.*
 import emotion.react.css
 import emotion.css.ClassName
-import payloads.requests.CalibrationWho
+import tools.confido.payloads.requests.CalibrationWho
 import react.FC
 import react.PropsWithClassName
 import react.dom.html.ReactHTML.div

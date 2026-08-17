@@ -11,7 +11,7 @@ import emotion.react.*
 import io.ktor.client.call.*
 import js.array.component1
 import js.array.component2
-import payloads.requests.*
+import tools.confido.payloads.requests.*
 import react.*
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div

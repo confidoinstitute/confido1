@@ -2,7 +2,7 @@ package components.redesign.basic
 
 import web.cssom.*
 import react.*
-import rooms.RoomColor
+import tools.confido.rooms.RoomColor
 import tools.confido.question.QuestionState
 
 interface Palette {

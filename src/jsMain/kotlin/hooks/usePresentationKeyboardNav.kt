@@ -4,11 +4,11 @@ import tools.confido.api.Api
 import ApiError
 import Client
 import components.redesign.presenter.setPresenterView
-import payloads.requests.NavigateDirection
-import payloads.requests.NavigatePresentation
+import tools.confido.payloads.requests.NavigateDirection
+import tools.confido.payloads.requests.NavigatePresentation
 import react.useEffectOnceWithCleanup
 import react.useRef
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.refs.Ref
 import tools.confido.state.PresentationPV
 import web.dom.document
@@ -40,7 +40,7 @@ fun usePresentationKeyboardNav(roomId: String) {
     val submitLock = useCoroutineLock()
     val lastNavTime = useRef(0.0)
     val roomUrlPrefix = Room.urlPrefix(roomId)
-    val roomRef = Ref<rooms.Room>(roomId)
+    val roomRef = Ref<tools.confido.rooms.Room>(roomId)
 
     useEffectOnceWithCleanup {
         val handler = { e: Event ->

@@ -31,15 +31,15 @@ import emotion.react.css
 import hooks.useCoroutineLock
 import hooks.useEditDialog
 import hooks.useSubscription
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import js.objects.unsafeJso as jso
-import payloads.requests.DeleteQuestionMulti
-import payloads.requests.EditQuestion
-import payloads.requests.EditQuestionClearAnswers
-import payloads.requests.EditQuestionMulti
-import payloads.requests.EditQuestionState
-import payloads.requests.ReorderQuestions
-import payloads.responses.WSError
+import tools.confido.payloads.requests.DeleteQuestionMulti
+import tools.confido.payloads.requests.EditQuestion
+import tools.confido.payloads.requests.EditQuestionClearAnswers
+import tools.confido.payloads.requests.EditQuestionMulti
+import tools.confido.payloads.requests.EditQuestionState
+import tools.confido.payloads.requests.ReorderQuestions
+import tools.confido.payloads.responses.WSError
 import react.*
 import react.dom.aria.AriaRole
 import react.dom.html.ReactHTML
@@ -57,8 +57,8 @@ import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
 import react.dom.html.ReactHTML.ul
 import react.router.dom.Link
-import rooms.Room
-import rooms.RoomPermission
+import tools.confido.rooms.Room
+import tools.confido.rooms.RoomPermission
 import tools.confido.api.Api
 import tools.confido.extensions.ClientExtension
 import tools.confido.question.Prediction

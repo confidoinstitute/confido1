@@ -33,7 +33,7 @@ import react.router.dom.Link
 import react.useMemo
 import remix.run.router.RelativeRoutingType
 import remix.run.router.To
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.question.Question
 import tools.confido.utils.*
 import web.cssom.Border

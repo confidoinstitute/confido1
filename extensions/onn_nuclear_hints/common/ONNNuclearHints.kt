@@ -2,7 +2,7 @@ package extensions.onn_nuclear_hints
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.extensions.Extension
 import tools.confido.extensions.ExtensionDataKey
 import tools.confido.extensions.ExtensionDataKeyWithDefault

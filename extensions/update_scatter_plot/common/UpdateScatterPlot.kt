@@ -15,8 +15,8 @@ import tools.confido.refs.Ref
 import tools.confido.state.FlowAction
 import tools.confido.state.PresenterView
 import tools.confido.utils.List2
-import users.User
-import users.UserPresentation
+import tools.confido.users.User
+import tools.confido.users.UserPresentation
 
 // ============================================================
 //  Timepoint References

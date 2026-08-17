@@ -8,7 +8,7 @@ import tools.confido.refs.Ref
 import tools.confido.refs.ref
 import tools.confido.store.groupPredictionLog
 import tools.confido.store.userPredictionLog
-import users.User
+import tools.confido.users.User
 import tools.confido.question.effectiveSchedule
 
 suspend fun getScoredPrediction(q: Question, u: Ref<User>? = null): Prediction? {

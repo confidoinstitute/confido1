@@ -9,13 +9,13 @@ import components.redesign.forms.Button
 import emotion.react.css
 import hooks.useCoroutineLock
 import hooks.useSubscription
-import payloads.requests.NavigateDirection
-import payloads.requests.NavigatePresentation
-import payloads.responses.WSData
+import tools.confido.payloads.requests.NavigateDirection
+import tools.confido.payloads.requests.NavigatePresentation
+import tools.confido.payloads.responses.WSData
 import react.FC
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.state.*
 import utils.runCoroutine
 import web.cssom.*

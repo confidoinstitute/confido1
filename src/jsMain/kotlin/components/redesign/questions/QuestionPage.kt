@@ -27,14 +27,14 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.encodeToDynamic
-import payloads.responses.*
+import tools.confido.payloads.responses.*
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.main
 import react.router.dom.Link
 import react.router.useLocation
 import react.router.useNavigate
-import rooms.*
+import tools.confido.rooms.*
 import tools.confido.api.Api
 import tools.confido.distributions.*
 import tools.confido.extensions.ClientExtension

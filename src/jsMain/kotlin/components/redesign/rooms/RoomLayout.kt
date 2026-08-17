@@ -17,7 +17,7 @@ import web.html.*
 import emotion.css.ClassName
 import emotion.react.*
 import hooks.*
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import tools.confido.refs.ref
 import io.ktor.http.*
 import js.objects.unsafeJso as jso
@@ -27,9 +27,9 @@ import react.dom.html.ReactHTML.header
 import react.dom.html.ReactHTML.main
 import react.dom.html.ReactHTML.span
 import react.router.*
-import rooms.*
+import tools.confido.rooms.*
 import components.redesign.presentation.PresentationTab
-import payloads.requests.CreatePresentation
+import tools.confido.payloads.requests.CreatePresentation
 import tools.confido.api.Api
 import tools.confido.extensions.ClientExtension
 import tools.confido.refs.*
@@ -51,7 +51,7 @@ private val PresentationFollowBanner = FC<Props> {
     val room = use(RoomContext)!!
     val isFollowing = useFollowingPresentation()?.id == room.id
     val presentationRunning = room._presentationRunning == true
-    val isGuest = useMyUser()?.type == users.UserType.GUEST
+    val isGuest = useMyUser()?.type == tools.confido.users.UserType.GUEST
     // Don't show anything if no presentation is running
     if (!presentationRunning && !isFollowing) return@FC
     // Don't show to moderators who manage the presentation

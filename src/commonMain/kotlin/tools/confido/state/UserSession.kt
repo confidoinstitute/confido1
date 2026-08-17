@@ -3,10 +3,10 @@ package tools.confido.state
 import kotlinx.datetime.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.refs.*
 import tools.confido.serialization.CoercingNullSerializer
-import users.User
+import tools.confido.users.User
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours

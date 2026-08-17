@@ -2,7 +2,7 @@ package components.redesign.rooms.import
 
 import components.redesign.basic.*
 import components.redesign.forms.*
-import payloads.requests.ColumnMapping
+import tools.confido.payloads.requests.ColumnMapping
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.option

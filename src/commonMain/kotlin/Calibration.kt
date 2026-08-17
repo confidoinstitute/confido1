@@ -1,7 +1,7 @@
 package tools.confido.calibration
 
 import kotlinx.serialization.Serializable
-import payloads.responses.CalibrationQuestion
+import tools.confido.payloads.responses.CalibrationQuestion
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.distributions.ProbabilityDistribution

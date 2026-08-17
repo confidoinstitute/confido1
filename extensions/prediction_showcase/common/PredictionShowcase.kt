@@ -9,7 +9,7 @@ import tools.confido.extensions.*
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.state.PresenterView
-import rooms.Room
+import tools.confido.rooms.Room
 import extensions.shared.ValueWithUser
 import kotlinx.serialization.serializer
 import tools.confido.state.Topics

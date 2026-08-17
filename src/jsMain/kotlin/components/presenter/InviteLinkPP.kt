@@ -8,7 +8,7 @@ import emotion.react.css
 import hooks.useElementSize
 import hooks.useViewportSize
 import hooks.useSubscription
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import react.FC
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.i

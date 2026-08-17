@@ -9,7 +9,7 @@ import org.bson.Document
 import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.*
 import tools.confido.state.serverState
-import users.User
+import tools.confido.users.User
 
 object userStore : MongoStore<User>(
     serverState.database.getCollection("users"),

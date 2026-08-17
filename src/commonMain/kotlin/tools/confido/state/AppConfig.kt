@@ -1,7 +1,7 @@
 package tools.confido.state
 
 import kotlinx.serialization.Serializable
-import rooms.RoomRole
+import tools.confido.rooms.RoomRole
 
 enum class FeatureFlag {
     UPDATE_HISTORY,

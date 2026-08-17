@@ -1,10 +1,10 @@
 package tools.confido.state
 
 import kotlinx.serialization.Serializable
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.question.*
 import tools.confido.refs.*
-import users.User
+import tools.confido.users.User
 
 
 // The question collection topics ("questions", "room/<id>/questions") carry plain

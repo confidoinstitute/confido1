@@ -14,14 +14,14 @@ import emotion.react.Global
 import emotion.react.css
 import emotion.react.styles
 import hooks.useSubscription
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import react.*
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.extensions.ClientExtension
@@ -34,7 +34,7 @@ import tools.confido.refs.ref
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.BinaryValue
 
-import users.User
+import tools.confido.users.User
 import web.cssom.*
 import web.timers.clearInterval
 import web.timers.setInterval

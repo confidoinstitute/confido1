@@ -10,8 +10,8 @@ import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
-import payloads.responses.MembershipPayload
-import rooms.Room
+import tools.confido.payloads.responses.MembershipPayload
+import tools.confido.rooms.Room
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionData
 import tools.confido.extensions.get

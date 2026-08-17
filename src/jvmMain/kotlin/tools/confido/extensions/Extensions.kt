@@ -1,18 +1,18 @@
 package tools.confido.extensions
 
 import io.ktor.server.routing.*
-import rooms.EffectiveQuestion
-import rooms.Room
-import rooms.RoomMembership
-import rooms.RoomPermission
+import tools.confido.rooms.EffectiveQuestion
+import tools.confido.rooms.Room
+import tools.confido.rooms.RoomMembership
+import tools.confido.rooms.RoomPermission
 import tools.confido.application.PermClass
 import tools.confido.application.UserPresentationContext
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.state.FlowAction
 import tools.confido.state.FlowItem
-import users.User
-import users.UserPresentation
+import tools.confido.users.User
+import tools.confido.users.UserPresentation
 
 interface ServerExtension: Extension {
     suspend fun onPrediction(q: Question, p: Prediction) {

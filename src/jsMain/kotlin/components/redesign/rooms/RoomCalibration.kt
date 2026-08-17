@@ -13,17 +13,17 @@ import components.redesign.layout.LayoutModeContext
 import components.redesign.questions.QuestionEstimateTabButton
 import web.cssom.*
 import emotion.react.css
-import payloads.requests.CalibrationRequest
-import payloads.requests.CalibrationWho
-import payloads.requests.Everyone
-import payloads.requests.Myself
+import tools.confido.payloads.requests.CalibrationRequest
+import tools.confido.payloads.requests.CalibrationWho
+import tools.confido.payloads.requests.Everyone
+import tools.confido.payloads.requests.Myself
 import react.*
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.i
 import react.router.dom.Link
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.refs.ref
 
 external interface RoomCalibrationProps: Props {

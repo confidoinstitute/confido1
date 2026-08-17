@@ -3,8 +3,8 @@ package tools.confido.state
 import com.akuleshov7.ktoml.Toml
 import com.akuleshov7.ktoml.TomlInputConfig
 import kotlinx.serialization.Serializable
-import rooms.RoomPermission
-import rooms.RoomRole
+import tools.confido.rooms.RoomPermission
+import tools.confido.rooms.RoomRole
 import tools.confido.extensions.Extension
 import tools.confido.extensions.registeredExtensions
 import java.io.File

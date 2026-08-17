@@ -4,7 +4,7 @@ import com.mongodb.reactivestreams.client.ClientSession
 import kotlinx.serialization.Serializable
 import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.CoroutineCollection
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.question.Question
 import tools.confido.question.QuestionComment
 import tools.confido.question.RoomComment
@@ -13,7 +13,7 @@ import tools.confido.refs.eqid
 import tools.confido.refs.ref
 import tools.confido.state.serverState
 import tools.confido.utils.generateId
-import users.User
+import tools.confido.users.User
 import kotlin.reflect.KProperty1
 
 /**

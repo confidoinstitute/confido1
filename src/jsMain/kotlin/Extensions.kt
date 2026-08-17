@@ -13,8 +13,8 @@ import react.FC
 import react.Props
 import react.createContext
 import react.router.RouteObject
-import payloads.responses.MembershipPayload
-import rooms.Room
+import tools.confido.payloads.responses.MembershipPayload
+import tools.confido.rooms.Room
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.extensions.ExtensionData
 import tools.confido.question.Question

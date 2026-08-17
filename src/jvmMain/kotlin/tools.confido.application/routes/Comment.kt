@@ -1,11 +1,11 @@
 package tools.confido.application.routes
 
 import io.ktor.server.routing.*
-import payloads.responses.CommentExtraData
-import payloads.responses.CommentPresentation
-import payloads.responses.QuestionCommentExtraData
-import rooms.Room
-import rooms.RoomPermission
+import tools.confido.payloads.responses.CommentExtraData
+import tools.confido.payloads.responses.CommentPresentation
+import tools.confido.payloads.responses.QuestionCommentExtraData
+import tools.confido.rooms.Room
+import tools.confido.rooms.RoomPermission
 import tools.confido.api.Api
 import tools.confido.application.UserPresentationContext
 import tools.confido.application.getUserPresentation
@@ -16,7 +16,7 @@ import tools.confido.refs.*
 import tools.confido.state.serverState
 import tools.confido.store.*
 import tools.confido.utils.unixNow
-import users.User
+import tools.confido.users.User
 import tools.confido.state.Topics
 
 fun<T: CommentExtraData> makeCommentPresentation(comment: Comment, extraData: T?, observer: User, room: Room) =

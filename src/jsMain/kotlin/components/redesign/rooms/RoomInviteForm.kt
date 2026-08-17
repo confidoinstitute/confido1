@@ -12,8 +12,8 @@ import emotion.react.*
 import io.ktor.client.call.*
 import io.ktor.http.*
 import js.objects.unsafeJso as jso
-import payloads.requests.*
-import payloads.responses.*
+import tools.confido.payloads.requests.*
+import tools.confido.payloads.responses.*
 import react.*
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.code
@@ -22,12 +22,12 @@ import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
 import react.router.*
 import react.router.dom.*
-import rooms.InviteFieldPolicy
-import rooms.RoomColor
+import tools.confido.rooms.InviteFieldPolicy
+import tools.confido.rooms.RoomColor
 import tools.confido.refs.*
 import tools.confido.refs.Ref
 import tools.confido.utils.*
-import users.UserType
+import tools.confido.users.UserType
 import utils.*
 import web.location.*
 import web.url.URLSearchParams

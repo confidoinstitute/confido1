@@ -17,9 +17,9 @@ import web.cssom.*
 import emotion.css.ClassName
 import emotion.react.css
 import hooks.useEffectNotFirst
-import payloads.responses.BinaryCalibrationQuestion
-import payloads.responses.CalibrationQuestion
-import payloads.responses.NumericCalibrationQuestion
+import tools.confido.payloads.responses.BinaryCalibrationQuestion
+import tools.confido.payloads.responses.CalibrationQuestion
+import tools.confido.payloads.responses.NumericCalibrationQuestion
 import react.*
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.a

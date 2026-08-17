@@ -5,10 +5,10 @@ import components.redesign.questions.*
 import components.redesign.rooms.import.ImportWizard
 import hooks.useSubscription
 import js.objects.unsafeJso as jso
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import react.*
 import react.router.*
-import rooms.*
+import tools.confido.rooms.*
 import web.url.URLSearchParams
 import web.window.window
 import tools.confido.state.Topics

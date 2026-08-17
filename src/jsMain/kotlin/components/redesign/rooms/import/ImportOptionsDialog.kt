@@ -3,7 +3,7 @@ package components.redesign.rooms.import
 import components.redesign.basic.*
 import components.redesign.forms.*
 import components.redesign.rooms.RoomContext
-import payloads.requests.ImportQuestionOptions
+import tools.confido.payloads.requests.ImportQuestionOptions
 import react.*
 import tools.confido.question.CommentVisibility
 import tools.confido.question.GroupPredictionVisibility
@@ -11,7 +11,7 @@ import tools.confido.question.QuestionState
 import web.cssom.*
 import emotion.react.css
 import hooks.useSubscription
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import tools.confido.state.Topics
 import tools.confido.refs.ref
 

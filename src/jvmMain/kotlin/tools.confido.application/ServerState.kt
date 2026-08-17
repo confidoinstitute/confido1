@@ -27,7 +27,7 @@ import org.bson.Document
 import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.*
 import org.litote.kmongo.reactivestreams.KMongo
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.distributions.*
 import tools.confido.extensions.ServerExtension
 import tools.confido.question.*
@@ -43,10 +43,10 @@ import tools.confido.store.questionStore
 import tools.confido.store.roomStore
 import tools.confido.store.userStore
 import tools.confido.utils.*
-import users.EmailVerificationLink
-import users.LoginLink
-import users.PasswordResetLink
-import users.User
+import tools.confido.users.EmailVerificationLink
+import tools.confido.users.LoginLink
+import tools.confido.users.PasswordResetLink
+import tools.confido.users.User
 import java.lang.RuntimeException
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext

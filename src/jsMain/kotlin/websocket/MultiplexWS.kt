@@ -3,9 +3,9 @@ package websocket
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
-import payloads.responses.TopicCommand
-import payloads.responses.TopicFrame
-import payloads.responses.TopicUpdate
+import tools.confido.payloads.responses.TopicCommand
+import tools.confido.payloads.responses.TopicFrame
+import tools.confido.payloads.responses.TopicUpdate
 import tools.confido.serialization.confidoJSON
 import utils.webSocketUrl
 import web.events.EventHandler

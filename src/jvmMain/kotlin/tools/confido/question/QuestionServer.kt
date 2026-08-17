@@ -1,6 +1,6 @@
 package tools.confido.question
 
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.state.serverState

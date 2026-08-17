@@ -10,7 +10,7 @@ import react.*
 import react.dom.html.ReactHTML.div
 import react.router.*
 import react.router.dom.*
-import rooms.*
+import tools.confido.rooms.*
 import utils.ExtendableLinkProps
 import utils.except
 import tools.confido.extensions.ClientExtension

@@ -1,7 +1,7 @@
 import kotlinx.serialization.Serializable
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.question.Prediction
-import users.UserPresentation
+import tools.confido.users.UserPresentation
 
 @Serializable
 data class BinaryHistogram(

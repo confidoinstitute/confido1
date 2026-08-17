@@ -5,7 +5,7 @@ import web.cssom.*
 import emotion.react.*
 import react.*
 import react.dom.html.ReactHTML.div
-import rooms.RoomColor
+import tools.confido.rooms.RoomColor
 
 external interface RoomColorChooserProps : Props {
     var color: RoomColor?

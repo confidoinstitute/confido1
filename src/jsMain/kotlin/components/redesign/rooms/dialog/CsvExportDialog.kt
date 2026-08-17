@@ -17,8 +17,8 @@ import react.*
 import react.dom.html.ReactHTML.i
 import react.dom.html.ReactHTML.option
 import react.dom.html.ReactHTML.p
-import rooms.ExportHistory
-import rooms.RoomPermission
+import tools.confido.rooms.ExportHistory
+import tools.confido.rooms.RoomPermission
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.refs.ref
@@ -28,7 +28,7 @@ import web.html.InputType
 import web.html.number
 import web.html.submit
 import hooks.useSubscription
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import tools.confido.state.Topics
 
 external  interface  CsvExportDialogProps : Props {

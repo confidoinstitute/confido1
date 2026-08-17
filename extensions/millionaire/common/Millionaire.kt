@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.PolymorphicModuleBuilder
 import kotlinx.serialization.modules.subclass
 import normalizedBrier
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.extensions.Extension
 import tools.confido.question.Prediction
@@ -23,8 +23,8 @@ import kotlin.math.pow
 import kotlinx.serialization.serializer
 import tools.confido.state.Topics
 import tools.confido.utils.TopicSpec
-import users.User
-import users.UserPresentation
+import tools.confido.users.User
+import tools.confido.users.UserPresentation
 import tools.confido.state.EntityLookup
 
 // --- Mode & Configuration ---

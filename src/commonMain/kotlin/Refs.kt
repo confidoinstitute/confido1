@@ -11,15 +11,15 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.question.*
 import tools.confido.state.Presentation
 import tools.confido.state.UserSession
 import tools.confido.utils.generateId
-import users.EmailVerificationLink
-import users.LoginLink
-import users.PasswordResetLink
-import users.User
+import tools.confido.users.EmailVerificationLink
+import tools.confido.users.LoginLink
+import tools.confido.users.PasswordResetLink
+import tools.confido.users.User
 import kotlin.jvm.JvmInline
 
 

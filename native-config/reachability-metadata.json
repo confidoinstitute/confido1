@@ -913,7 +913,7 @@
       "type": "reactor.util.concurrent.SpscLinkedArrayQueue"
     },
     {
-      "type": "rooms.RoomPermission"
+      "type": "tools.confido.rooms.RoomPermission"
     },
     {
       "type": "sun.awt.SunHints",
@@ -1741,7 +1741,7 @@
       "type": "tools.confido.utils.HasUrlPrefix"
     },
     {
-      "type": "users.User[]"
+      "type": "tools.confido.users.User[]"
     },
     {
       "type": "io.ktor.network.selector.InterestSuspensionsMap",

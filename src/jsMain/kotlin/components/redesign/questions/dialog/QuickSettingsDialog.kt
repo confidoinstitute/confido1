@@ -8,7 +8,7 @@ import components.redesign.basic.*
 import components.redesign.rooms.RoomContext
 import hooks.*
 import io.ktor.http.*
-import payloads.requests.*
+import tools.confido.payloads.requests.*
 import react.*
 import react.router.*
 import tools.confido.api.Api

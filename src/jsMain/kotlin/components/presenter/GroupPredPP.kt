@@ -8,7 +8,7 @@ import components.redesign.questions.predictions.BinaryPrediction
 import web.cssom.*
 import emotion.react.css
 import hooks.useSubscription
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import react.FC
 import react.dom.html.ReactHTML.div
 import tools.confido.distributions.BinaryDistribution

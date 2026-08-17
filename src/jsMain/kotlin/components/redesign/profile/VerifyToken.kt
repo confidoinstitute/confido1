@@ -9,7 +9,7 @@ import emotion.react.css
 import js.array.component1
 import js.array.component2
 import web.cssom.*
-import payloads.requests.TokenVerification
+import tools.confido.payloads.requests.TokenVerification
 import tools.confido.utils.BoundApi
 import react.FC
 import react.Props

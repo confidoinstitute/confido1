@@ -2,7 +2,7 @@ package tools.confido.state
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.refs.Entity
 import tools.confido.refs.Ref
 import tools.confido.refs.ServerImmediateDerefEntity

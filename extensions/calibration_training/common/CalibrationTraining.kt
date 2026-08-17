@@ -4,13 +4,13 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.PolymorphicModuleBuilder
 import kotlinx.serialization.modules.subclass
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.calibration.CalibrationVector
 import tools.confido.extensions.Extension
 import tools.confido.refs.Ref
 import tools.confido.state.FlowAction
 import tools.confido.state.PresenterView
-import users.User
+import tools.confido.users.User
 import kotlinx.serialization.serializer
 import tools.confido.utils.TopicSpec
 import tools.confido.utils.path

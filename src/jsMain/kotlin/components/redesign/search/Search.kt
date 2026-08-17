@@ -1,6 +1,6 @@
 package components.redesign.search
 
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.question.Question
 
 /**

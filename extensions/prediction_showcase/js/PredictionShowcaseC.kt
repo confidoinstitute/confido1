@@ -10,7 +10,7 @@ import components.redesign.presenter.PresenterContext
 import web.cssom.*
 import emotion.react.css
 import hooks.useSubscription
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.h1
@@ -21,7 +21,7 @@ import react.dom.html.ReactHTML.td
 import react.dom.html.ReactHTML.th
 import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.distributions.*
 import components.redesign.forms.QuestionPicker
 import components.redesign.forms.Select

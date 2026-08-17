@@ -12,10 +12,10 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.encodeToByteArray
 import org.litote.kmongo.eq
-import payloads.requests.*
-import payloads.responses.*
-import rooms.Room
-import rooms.RoomPermission
+import tools.confido.payloads.requests.*
+import tools.confido.payloads.responses.*
+import tools.confido.rooms.Room
+import tools.confido.rooms.RoomPermission
 import tools.confido.api.Api
 import tools.confido.application.ClassCensor
 import tools.confido.application.PermClass
@@ -31,7 +31,7 @@ import tools.confido.spaces.BinarySpace
 import tools.confido.state.*
 import tools.confido.store.*
 import tools.confido.utils.unixNow
-import users.User
+import tools.confido.users.User
 import kotlin.math.min
 import tools.confido.state.Topics
 

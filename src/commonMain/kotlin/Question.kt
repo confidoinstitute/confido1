@@ -12,9 +12,9 @@ import tools.confido.refs.ImmediateDerefEntity
 import tools.confido.refs.Ref
 import tools.confido.refs.ref
 import tools.confido.spaces.*
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.utils.HasUrlPrefix
-import users.User
+import tools.confido.users.User
 
 @Serializable
 data class Prediction(

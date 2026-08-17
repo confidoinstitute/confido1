@@ -1,8 +1,8 @@
 package components
 
 import hooks.useSubscription
-import payloads.responses.WSData
-import rooms.Room
+import tools.confido.payloads.responses.WSData
+import tools.confido.rooms.Room
 import tools.confido.question.Question
 import tools.confido.refs.ref
 import tools.confido.state.Topics

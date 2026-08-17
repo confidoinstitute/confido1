@@ -16,8 +16,8 @@ import react.Props
 import react.dom.html.ReactHTML.div
 import react.use
 import react.useState
-import rooms.InviteLink
-import rooms.RoomPermission
+import tools.confido.rooms.InviteLink
+import tools.confido.rooms.RoomPermission
 import tools.confido.refs.ref
 import tools.confido.state.InviteLinkPV
 

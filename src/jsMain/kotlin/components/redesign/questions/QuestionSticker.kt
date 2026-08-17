@@ -6,7 +6,7 @@ import emotion.react.*
 import react.*
 import react.dom.html.ReactHTML.div
 import react.router.dom.*
-import rooms.*
+import tools.confido.rooms.*
 import tools.confido.question.*
 
 external interface QuestionStickerProps : Props {

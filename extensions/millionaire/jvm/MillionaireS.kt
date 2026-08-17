@@ -7,8 +7,8 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import rooms.Room
-import rooms.RoomPermission
+import tools.confido.rooms.Room
+import tools.confido.rooms.RoomPermission
 import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +26,7 @@ import tools.confido.refs.ref
 import tools.confido.state.*
 import tools.confido.utils.generateId
 import tools.confido.utils.mapDeref
-import users.User
+import tools.confido.users.User
 
 object MillionaireSE : ServerExtension, MillionaireExt() {
 

@@ -45,8 +45,8 @@ import react.dom.html.ReactHTML.th
 import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
 import react.router.useNavigate
-import rooms.Room
-import rooms.RoomPermission
+import tools.confido.rooms.Room
+import tools.confido.rooms.RoomPermission
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionContextPlace

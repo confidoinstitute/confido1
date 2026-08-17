@@ -7,7 +7,7 @@ import tools.confido.refs.ref
 import tools.confido.state.UserSession
 import tools.confido.state.UserSessionValidity
 import tools.confido.state.serverState
-import users.User
+import tools.confido.users.User
 
 internal val SessionTrackerKey = AttributeKey<SessionTracker>("SessionTrackerKey")
 

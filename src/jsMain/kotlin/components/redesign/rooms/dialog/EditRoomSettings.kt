@@ -7,7 +7,7 @@ import components.redesign.basic.showError
 import components.redesign.rooms.RoomContext
 import components.redesign.rooms.RoomSettings
 import hooks.EditEntityDialogProps
-import payloads.requests.BaseRoomInformation
+import tools.confido.payloads.requests.BaseRoomInformation
 import react.FC
 import react.use
 import react.useState

@@ -1,6 +1,6 @@
 package extensions.room_groups
 
-import rooms.*
+import tools.confido.rooms.*
 import tools.confido.application.routes.*
 import tools.confido.extensions.*
 import tools.confido.refs.ref

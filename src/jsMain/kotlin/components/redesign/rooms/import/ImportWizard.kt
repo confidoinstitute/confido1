@@ -2,9 +2,9 @@ package components.redesign.rooms.import
 
 import components.redesign.basic.*
 import components.redesign.rooms.RoomContext
-import payloads.requests.ColumnMapping
-import payloads.requests.CsvParseResponse
-import payloads.requests.ImportQuestionOptions
+import tools.confido.payloads.requests.ColumnMapping
+import tools.confido.payloads.requests.CsvParseResponse
+import tools.confido.payloads.requests.ImportQuestionOptions
 import react.*
 import react.dom.html.ReactHTML.div
 import web.cssom.*

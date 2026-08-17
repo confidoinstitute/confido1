@@ -1,7 +1,7 @@
 package hooks
 
 import kotlinx.serialization.json.JsonElement
-import payloads.responses.*
+import tools.confido.payloads.responses.*
 import react.useEffectWithCleanup
 import react.useState
 import tools.confido.serialization.confidoJSON

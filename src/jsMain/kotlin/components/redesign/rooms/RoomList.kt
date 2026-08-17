@@ -13,7 +13,7 @@ import react.dom.svg.*
 import react.dom.svg.ReactSVG.svg
 import react.router.*
 import react.router.dom.*
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.extensions.ClientExtension
 import utils.ExtendableLink
 import utils.ExtendableLinkProps

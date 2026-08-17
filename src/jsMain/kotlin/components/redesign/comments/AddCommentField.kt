@@ -9,7 +9,7 @@ import components.redesign.rooms.RoomContext
 import web.cssom.*
 import emotion.react.*
 import hooks.*
-import payloads.requests.*
+import tools.confido.payloads.requests.*
 import react.*
 import react.dom.html.*
 import react.dom.html.ReactHTML.div

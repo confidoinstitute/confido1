@@ -19,10 +19,10 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.KSerializer
-import payloads.responses.WSData
-import payloads.responses.WSError
-import payloads.responses.WSResponse
-import payloads.responses.WSResponseSerializer
+import tools.confido.payloads.responses.WSData
+import tools.confido.payloads.responses.WSError
+import tools.confido.payloads.responses.WSResponse
+import tools.confido.payloads.responses.WSResponseSerializer
 import tools.confido.application.PermClass
 import tools.confido.application.index
 import tools.confido.application.permClassOf

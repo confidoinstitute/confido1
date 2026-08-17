@@ -1,13 +1,13 @@
 package extensions.pseudonyms
 
-import rooms.Room
-import rooms.RoomPermission
+import tools.confido.rooms.Room
+import tools.confido.rooms.RoomPermission
 import tools.confido.application.UserPresentationContext
 import tools.confido.extensions.*
 import tools.confido.state.serverState
 import tools.confido.utils.stringToColor
-import users.User
-import users.UserPresentation
+import tools.confido.users.User
+import tools.confido.users.UserPresentation
 import kotlin.random.Random
 
 object PseudonymsSE : ServerExtension, PseudonymsExtension() {

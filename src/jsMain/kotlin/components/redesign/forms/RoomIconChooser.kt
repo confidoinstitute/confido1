@@ -7,7 +7,7 @@ import io.ktor.client.call.*
 import io.ktor.http.*
 import react.*
 import react.dom.html.ReactHTML.div
-import rooms.RoomColor
+import tools.confido.rooms.RoomColor
 import tools.confido.api.Api
 import utils.runCoroutine
 

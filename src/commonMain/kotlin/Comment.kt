@@ -3,11 +3,11 @@ package tools.confido.question
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import rooms.Room
+import tools.confido.rooms.Room
 import tools.confido.refs.Entity
 import tools.confido.refs.Ref
 import tools.confido.utils.unixNow
-import users.User
+import tools.confido.users.User
 
 /**
  * Where a comment lives (question or room discussion), as typed refs. Travels in

@@ -8,7 +8,7 @@ import web.cssom.*
 import emotion.react.css
 import hooks.useSubscription
 import js.objects.unsafeJso as jso
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import react.FC
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span

@@ -12,9 +12,9 @@ import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.rendering.PDFRenderer
 import org.apache.pdfbox.text.PDFTextStripper
 import org.apache.pdfbox.text.TextPosition
-import payloads.requests.*
-import rooms.Room
-import rooms.RoomPermission
+import tools.confido.payloads.requests.*
+import tools.confido.rooms.Room
+import tools.confido.rooms.RoomPermission
 import java.security.MessageDigest
 import tools.confido.application.generateToken
 import tools.confido.application.sessions.TransientData
@@ -35,7 +35,7 @@ import tools.confido.state.ServerEntityLookup
 val presentationDir = File(System.getenv("CONFIDO_PRESENTATION_PATH") ?: "presentations").canonicalFile
 
 /** Resolve a room's presentation from the in-memory manager. */
-private suspend fun getPresentation(room: rooms.Room): Presentation? {
+private suspend fun getPresentation(room: tools.confido.rooms.Room): Presentation? {
     val ref = room.presentation ?: return null
     return presentationStore.get(ref.id)
 }
@@ -340,7 +340,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
  * Expand presentation items by asking extensions to expand any expandable
  * (meta) actions. Non-expandable items pass through unchanged.
  */
-private fun expandPresentationItems(items: List<FlowItem>, room: rooms.Room): List<FlowItem> =
+private fun expandPresentationItems(items: List<FlowItem>, room: tools.confido.rooms.Room): List<FlowItem> =
     buildList {
         for (item in items) {
             if (item is ActionItem) {
@@ -363,7 +363,7 @@ private fun expandPresentationItems(items: List<FlowItem>, room: rooms.Room): Li
 private suspend fun processCurrentItem(
     pres: Presentation,
     state: PresentationRunState,
-    room: rooms.Room,
+    room: tools.confido.rooms.Room,
 ): PresentationRunState {
     val item = state.expandedItems.getOrNull(state.currentIndex) ?: return state
     // Reset lastExecutedId - will be set if an action is executed this step
@@ -409,7 +409,7 @@ private suspend fun processCurrentItem(
 /**
  * Execute a flow action server-side.
  */
-private suspend fun executeFlowAction(action: FlowAction, room: rooms.Room) {
+private suspend fun executeFlowAction(action: FlowAction, room: tools.confido.rooms.Room) {
     when (action) {
         is SetQuestionStateAction -> {
             tools.confido.store.questionStore.modify(action.question.id) {

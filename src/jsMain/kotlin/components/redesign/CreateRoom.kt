@@ -12,7 +12,7 @@ import web.cssom.px
 import emotion.react.css
 import hooks.useCoroutineLock
 import io.ktor.client.call.*
-import payloads.requests.BaseRoomInformation
+import tools.confido.payloads.requests.BaseRoomInformation
 import react.FC
 import react.Props
 import react.router.useNavigate

@@ -1,9 +1,9 @@
 package tools.confido.api
 
 import kotlinx.serialization.serializer
-import payloads.requests.*
-import payloads.responses.*
-import rooms.InviteLink
+import tools.confido.payloads.requests.*
+import tools.confido.payloads.responses.*
+import tools.confido.rooms.InviteLink
 import tools.confido.calibration.CalibrationVector
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.CommentScope
@@ -22,8 +22,8 @@ import tools.confido.utils.ApiSpec
 import tools.confido.utils.BoundApi
 import tools.confido.utils.PathParam
 import tools.confido.utils.path
-import users.DeleteUserOptions
-import users.User
+import tools.confido.users.DeleteUserOptions
+import tools.confido.users.User
 
 val userRefParam = PathParam<Ref<User>>("user", { it.id }, { s -> s.ifEmpty { null }?.let { Ref(it) } })
 val tagParam = PathParam<String>("tag", { it }, { it.ifEmpty { null } })

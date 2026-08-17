@@ -5,7 +5,7 @@ import tools.confido.extensions.ServerExtension
 import extensions.reference_forecast.ReferenceForcastKey
 import extensions.shared.ValueWithUser
 import io.ktor.server.routing.*
-import rooms.RoomPermission
+import tools.confido.rooms.RoomPermission
 import tools.confido.application.routes.*
 import tools.confido.store.*
 import tools.confido.distributions.*

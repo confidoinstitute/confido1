@@ -9,10 +9,10 @@ import kotlinx.html.*
 import kotlinx.html.stream.appendHTML
 import org.simplejavamail.api.email.Email
 import org.simplejavamail.email.EmailBuilder
-import rooms.*
+import tools.confido.rooms.*
 import tools.confido.question.Question
 import tools.confido.state.appConfig
-import users.*
+import tools.confido.users.*
 import kotlin.time.*
 import tools.confido.question.effectiveSchedule
 import tools.confido.question.room

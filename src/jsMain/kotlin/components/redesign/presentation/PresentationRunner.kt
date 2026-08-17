@@ -9,8 +9,8 @@ import components.redesign.rooms.RoomContext
 import emotion.react.css
 import hooks.useCoroutineLock
 import hooks.usePresentationKeyboardNav
-import payloads.requests.NavigateDirection
-import payloads.requests.NavigatePresentation
+import tools.confido.payloads.requests.NavigateDirection
+import tools.confido.payloads.requests.NavigatePresentation
 import components.redesign.presenter.FlowActionDescription
 import components.redesign.presenter.PresenterViewDescription
 import react.*

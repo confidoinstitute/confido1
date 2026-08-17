@@ -1,6 +1,6 @@
 package components.redesign.rooms.import
 
-import payloads.requests.ColumnMapping
+import tools.confido.payloads.requests.ColumnMapping
 
 /** Display labels for column mapping options. */
 val ColumnMapping.displayLabel: String get() = when (this) {

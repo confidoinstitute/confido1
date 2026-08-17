@@ -10,8 +10,8 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import rooms.Room
-import rooms.RoomPermission
+import tools.confido.rooms.Room
+import tools.confido.rooms.RoomPermission
 import tools.confido.application.getUserPresentation
 import tools.confido.application.UserPresentationContext
 import tools.confido.application.routes.*

@@ -6,19 +6,19 @@ import components.redesign.rooms.RoomContext
 import web.cssom.*
 import emotion.react.css
 import hooks.useSubscription
-import payloads.requests.AddedExistingMember
-import payloads.requests.AddedNewMember
-import payloads.responses.WSData
+import tools.confido.payloads.requests.AddedExistingMember
+import tools.confido.payloads.requests.AddedNewMember
+import tools.confido.payloads.responses.WSData
 import react.*
 import tools.confido.refs.ref
 import tools.confido.state.Topics
 import react.dom.html.ReactHTML
-import rooms.RoomRole
+import tools.confido.rooms.RoomRole
 import tools.confido.api.Api
 import tools.confido.refs.ref
 import tools.confido.state.appConfig
 import tools.confido.utils.stringToColor
-import users.User
+import tools.confido.users.User
 import utils.runCoroutine
 
 internal external interface AddMemberItemProps : Props {

@@ -21,7 +21,7 @@ import hooks.EditEntityDialogProps
 import hooks.useCoroutineLock
 import hooks.useEditDialog
 import hooks.useSubscription
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import tools.confido.state.Topics
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -44,9 +44,9 @@ import react.dom.html.ReactHTML.tr
 import react.dom.html.ReactHTML.ul
 import tools.confido.refs.eqid
 import tools.confido.utils.capFirst
-import users.DeleteUserOptions
-import users.User
-import users.UserType
+import tools.confido.users.DeleteUserOptions
+import tools.confido.users.User
+import tools.confido.users.UserType
 import utils.isEmailValid
 import utils.runCoroutine
 import utils.toDateTime

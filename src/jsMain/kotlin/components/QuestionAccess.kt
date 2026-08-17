@@ -1,7 +1,7 @@
 package components
 
 import hooks.useSubscription
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import react.FC
 import react.Props
 import tools.confido.question.Question

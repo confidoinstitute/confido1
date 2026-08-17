@@ -6,8 +6,8 @@ import extensions.reference_forecast.ReferenceForcastKey
 import extensions.reference_forecast.UserScore
 import extensions.shared.ValueWithUser
 import io.ktor.server.routing.*
-import rooms.Room
-import rooms.RoomPermission
+import tools.confido.rooms.Room
+import tools.confido.rooms.RoomPermission
 import tools.confido.application.PermClass
 import tools.confido.application.routes.*
 import tools.confido.extensions.without
@@ -18,7 +18,7 @@ import tools.confido.extensions.get
 import tools.confido.refs.*
 import tools.confido.state.getenvBool
 import tools.confido.state.serverState
-import users.User
+import tools.confido.users.User
 import kotlin.math.pow
 
 object ReferenceForecastSE : ServerExtension, ReferenceForecastExtension() {

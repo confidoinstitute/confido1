@@ -13,9 +13,9 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import org.simplejavamail.MailException
-import payloads.requests.*
-import payloads.responses.*
-import rooms.*
+import tools.confido.payloads.requests.*
+import tools.confido.payloads.responses.*
+import tools.confido.rooms.*
 import tools.confido.api.Api
 import tools.confido.application.*
 import tools.confido.application.sessions.*
@@ -25,9 +25,9 @@ import tools.confido.serialization.confidoJSON
 import tools.confido.state.*
 import tools.confido.store.*
 import tools.confido.utils.randomString
-import users.LoginLink
-import users.User
-import users.UserType
+import tools.confido.users.LoginLink
+import tools.confido.users.User
+import tools.confido.users.UserType
 import kotlin.time.Duration.Companion.days
 import tools.confido.state.Topics
 

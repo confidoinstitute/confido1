@@ -6,11 +6,11 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import payloads.requests.CalibrationRequest
-import payloads.responses.*
-import rooms.Room
-import rooms.RoomPermission
-import rooms.effectiveQuestions
+import tools.confido.payloads.requests.CalibrationRequest
+import tools.confido.payloads.responses.*
+import tools.confido.rooms.Room
+import tools.confido.rooms.RoomPermission
+import tools.confido.rooms.effectiveQuestions
 import tools.confido.application.UserPresentationContext
 import tools.confido.application.calibration.getScoredPrediction
 import tools.confido.application.getUserPresentation
@@ -21,7 +21,7 @@ import tools.confido.question.QuestionState
 import tools.confido.refs.Ref
 import tools.confido.refs.eqid
 import tools.confido.refs.ref
-import rooms.effectiveMembers
+import tools.confido.rooms.effectiveMembers
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.BinaryValue
 import tools.confido.state.serverState
@@ -29,7 +29,7 @@ import tools.confido.utils.mapDeref
 
 import tools.confido.question.Prediction
 import tools.confido.question.Question
-import users.User
+import tools.confido.users.User
 import java.lang.System.getenv
 import tools.confido.question.effectiveSchedule
 

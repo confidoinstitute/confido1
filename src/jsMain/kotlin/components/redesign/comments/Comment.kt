@@ -13,18 +13,18 @@ import web.cssom.*
 import emotion.react.*
 import hooks.*
 import io.ktor.http.*
-import payloads.responses.*
+import tools.confido.payloads.responses.*
 import react.*
 import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
-import rooms.*
+import tools.confido.rooms.*
 import tools.confido.api.deleteApi
 import tools.confido.api.likeApi
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.*
 import tools.confido.refs.*
-import users.*
+import tools.confido.users.*
 import utils.*
 import web.cssom.LineStyle.Companion.solid
 

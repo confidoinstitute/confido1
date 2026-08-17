@@ -21,11 +21,11 @@ import io.ktor.client.call.*
 import io.ktor.http.*
 import js.array.tupleOf
 import kotlinx.datetime.Instant
-import payloads.requests.CalibrationRequest
-import payloads.requests.CalibrationWho
-import payloads.requests.Everyone
-import payloads.requests.Myself
-import payloads.responses.CalibrationQuestion
+import tools.confido.payloads.requests.CalibrationRequest
+import tools.confido.payloads.requests.CalibrationWho
+import tools.confido.payloads.requests.Everyone
+import tools.confido.payloads.requests.Myself
+import tools.confido.payloads.responses.CalibrationQuestion
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
@@ -36,8 +36,8 @@ import react.dom.html.ReactHTML.th
 import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
 import react.dom.html.TdHTMLAttributes
-import rooms.Room
-import rooms.RoomPermission
+import tools.confido.rooms.Room
+import tools.confido.rooms.RoomPermission
 import tools.confido.calibration.CalibrationBin
 import tools.confido.calibration.CalibrationVector
 import tools.confido.question.Question
@@ -47,7 +47,7 @@ import tools.confido.state.CalibrationReqPV
 import tools.confido.utils.capFirst
 import tools.confido.utils.formatPercent
 import tools.confido.utils.toFixed
-import users.UserType
+import tools.confido.users.UserType
 import utils.except
 import web.url.URLSearchParams
 import kotlin.math.abs

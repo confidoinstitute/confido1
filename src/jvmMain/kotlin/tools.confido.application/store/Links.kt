@@ -1,9 +1,9 @@
 package tools.confido.store
 
 import tools.confido.state.serverState
-import users.EmailVerificationLink
-import users.LoginLink
-import users.PasswordResetLink
+import tools.confido.users.EmailVerificationLink
+import tools.confido.users.LoginLink
+import tools.confido.users.PasswordResetLink
 
 /**
  * Token link stores: small resident stores with one unique secondary index each.

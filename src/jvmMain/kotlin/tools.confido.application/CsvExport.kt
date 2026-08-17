@@ -6,7 +6,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import normalizedBrier
-import rooms.ExportHistory
+import tools.confido.rooms.ExportHistory
 import tools.confido.application.calibration.getScoredPrediction
 import tools.confido.distributions.*
 import tools.confido.question.Prediction
@@ -25,7 +25,7 @@ import tools.confido.utils.fromUnix
 import tools.confido.utils.toFixed
 import tools.confido.utils.toInt
 import tools.confido.utils.utcFromUnix
-import users.User
+import tools.confido.users.User
 
 typealias CsvRecord = Map<String, String>
 

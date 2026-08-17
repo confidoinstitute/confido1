@@ -15,13 +15,13 @@ import web.cssom.*
 import hooks.useCoroutineLock
 import io.ktor.client.call.*
 import io.ktor.http.*
-import payloads.requests.EditProfile
-import payloads.responses.EditProfileResult
+import tools.confido.payloads.requests.EditProfile
+import tools.confido.payloads.responses.EditProfileResult
 import react.FC
 import react.Props
 import react.use
 import react.useState
-import users.*
+import tools.confido.users.*
 import utils.isEmailValid
 import utils.runCoroutine
 import web.html.ButtonType

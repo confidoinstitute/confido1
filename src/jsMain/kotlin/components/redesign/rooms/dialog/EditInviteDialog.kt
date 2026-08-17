@@ -12,12 +12,12 @@ import web.cssom.*
 import emotion.react.css
 import hooks.EditEntityDialogProps
 import hooks.useCoroutineLock
-import payloads.requests.CreateNewInvite
+import tools.confido.payloads.requests.CreateNewInvite
 import react.*
 import react.dom.html.ReactHTML.option
-import rooms.*
+import tools.confido.rooms.*
 import tools.confido.state.appConfig
-import users.UserType
+import tools.confido.users.UserType
 import web.html.ButtonType
 import web.html.submit
 

@@ -9,8 +9,8 @@ import components.redesign.forms.*
 import hooks.useCoroutineLock
 import kotlinx.datetime.*
 import js.objects.unsafeJso as jso
-import payloads.requests.EditQuestion
-import payloads.requests.EditQuestionComplete
+import tools.confido.payloads.requests.EditQuestion
+import tools.confido.payloads.requests.EditQuestionComplete
 import react.FC
 import react.useState
 import tools.confido.api.Api

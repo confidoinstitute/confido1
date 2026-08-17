@@ -19,7 +19,7 @@ import io.ktor.client.request.forms.*
 import io.ktor.http.*
 import js.objects.unsafeJso as jso
 import kotlinx.coroutines.await
-import payloads.requests.EditPresentation
+import tools.confido.payloads.requests.EditPresentation
 import components.redesign.presenter.FlowActionDescription
 import components.redesign.presenter.PresenterViewDescription
 import react.*

@@ -14,7 +14,7 @@ import hooks.useSuspendResult
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import normalizedBrier
-import payloads.responses.ScoreboardEntry
+import tools.confido.payloads.responses.ScoreboardEntry
 import react.FC
 import react.Props
 import react.dom.html.ReactHTML
@@ -34,7 +34,7 @@ import react.dom.html.ReactHTML.tr
 import react.dom.html.ReactHTML.ul
 import react.use
 import react.useState
-import rooms.RoomPermission
+import tools.confido.rooms.RoomPermission
 import tools.confido.utils.toFixed
 import web.cssom.*
 import web.window.WindowTarget

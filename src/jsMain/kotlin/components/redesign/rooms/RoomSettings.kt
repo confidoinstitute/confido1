@@ -8,7 +8,7 @@ import components.redesign.questions.dialog.EditQuestionDialogSchedule
 import web.cssom.*
 import web.html.ButtonType
 import emotion.react.css
-import payloads.requests.BaseRoomInformation
+import tools.confido.payloads.requests.BaseRoomInformation
 import react.*
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.a
@@ -16,13 +16,13 @@ import react.dom.html.ReactHTML.abbr
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.p
-import rooms.*
+import tools.confido.rooms.*
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionData
 import tools.confido.question.QuestionSchedule
 import web.html.submit
 import hooks.useSubscription
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import tools.confido.state.Topics
 import tools.confido.refs.ref
 

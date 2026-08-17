@@ -13,11 +13,11 @@ import emotion.react.*
 import hooks.*
 import react.*
 import react.router.dom.Link
-import rooms.*
+import tools.confido.rooms.*
 import tools.confido.question.*
 import tools.confido.refs.ref
 import tools.confido.state.Topics
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 
 external interface QuestionListProps : Props {
     var questions: List<Question>

@@ -23,7 +23,7 @@ import tools.confido.state.*
 import tools.confido.utils.capFirst
 import web.cssom.*
 import hooks.useSubscription
-import payloads.responses.WSData
+import tools.confido.payloads.responses.WSData
 import tools.confido.state.Topics
 
 // ============================================================
