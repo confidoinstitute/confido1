@@ -354,7 +354,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
  * Expand presentation items by asking extensions to expand any expandable
  * (meta) actions. Non-expandable items pass through unchanged.
  */
-private suspend fun expandPresentationItems(items: List<FlowItem>, room: rooms.Room): List<FlowItem> =
+private fun expandPresentationItems(items: List<FlowItem>, room: rooms.Room): List<FlowItem> =
     buildList {
         for (item in items) {
             if (item is ActionItem) {

@@ -5,10 +5,8 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.withContext
 import tools.confido.application.sessions.modifyUserSession
 import tools.confido.state.PresenterInfo
 import tools.confido.state.Topics
@@ -28,9 +26,7 @@ fun presenterRoutes(routing: Routing) = routing.apply {
                     awaitCancellation()
                 } finally {
                     call.application.log.info("presenter closed")
-                    // NonCancellable: this runs during cancellation (unsubscribe), where
-                    // suspend calls would otherwise throw at their first suspension point.
-                    withContext(NonCancellable) { transientData.addPresenterWindows(-1) }
+                    transientData.addPresenterWindows(-1)
                 }
             }
         }

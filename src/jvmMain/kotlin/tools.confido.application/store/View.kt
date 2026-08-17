@@ -243,23 +243,21 @@ class TransientCell<T>(initial: T) {
     val state: StateFlow<T> get() = _state
     val value: T get() = _state.value
 
-    /** Transactional write: stages into the ambient transaction, or applies
-     *  immediately as its own tick when none is open. */
-    suspend fun update(f: (T) -> T) {
-        if (!stageIfInTransaction { setImmediate(f(value)) }) setImmediate(f(value))
+    /**
+     * Transactional write: stages into the ambient transaction when the executing code
+     * is inside a `transact` block (dispatch-accurate thread-local detection, so this
+     * works from non-suspending code too), or applies immediately as its own tick when
+     * none is open — which covers post-commit contexts (change listeners, synchronous
+     * fold dispatch, [ResidentPartitions]' cache maintenance) automatically: they run
+     * in the apply phase, where the ambient scope is already gone.
+     */
+    fun update(f: (T) -> T) {
+        if (!stageIfInTransaction { applyNow(f(value)) }) applyNow(f(value))
     }
 
-    suspend fun set(v: T) = update { v }
+    fun set(v: T) = update { v }
 
-    /**
-     * Immediate write for non-suspending post-commit contexts — change listeners and
-     * synchronous fold dispatch (e.g. [ResidentPartitions]' cache maintenance), which
-     * run during a transaction's apply phase and are naturally part of its tick. Only
-     * suspending code can see the ambient transaction (it lives in the coroutine
-     * context), so this must never be called from inside a `transact` block — writes
-     * there go through [set]/[update], which stage.
-     */
-    fun setImmediate(v: T) {
+    private fun applyNow(v: T) {
         if (v === _state.value) return
         TxClock.bump()
         _state.value = v

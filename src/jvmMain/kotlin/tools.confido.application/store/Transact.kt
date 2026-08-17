@@ -1,13 +1,11 @@
 package tools.confido.store
 
 import com.mongodb.reactivestreams.client.ClientSession
+import kotlinx.coroutines.asContextElement
 import kotlinx.coroutines.withContext
 import org.litote.kmongo.coroutine.commitTransactionAndAwait
 import org.slf4j.LoggerFactory
 import tools.confido.state.serverState
-import kotlin.coroutines.AbstractCoroutineContextElement
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.coroutineContext
 
 private val storeLog = LoggerFactory.getLogger("confido.store")!!
 
@@ -29,12 +27,30 @@ interface StagedWrite {
 
 class TxnScope internal constructor() {
     internal val staged = mutableListOf<StagedWrite>()
-    fun stage(op: StagedWrite) { staged.add(op) }
+    private var closed = false
+
+    fun stage(op: StagedWrite) {
+        // Coroutines launched inside a transact block inherit the ambient scope; a
+        // write staged after the transaction flushed would be silently lost (or worse,
+        // applied to RAM without its database write) — make that a loud bug instead.
+        check(!closed) { "Transaction already flushed — do not stage writes from coroutines outliving their transact block" }
+        staged.add(op)
+    }
+
+    internal fun close() { closed = true }
 }
 
-class TxnContextElement(val scope: TxnScope) : AbstractCoroutineContextElement(Key) {
-    companion object Key : CoroutineContext.Key<TxnContextElement>
-}
+/**
+ * The executing code's ambient transaction, readable from non-suspending code. There is
+ * only ever one open transaction (single writer), but "open" is not "ours": the
+ * transaction coroutine suspends (the commit await, in-block reads) and interleaved
+ * coroutines are NOT inside it. The [asContextElement] bridge keeps this accurate: the
+ * thread-local is set whenever the transaction coroutine is dispatched onto the thread
+ * and restored to null whenever it suspends — so it is non-null exactly while code
+ * (transitively) inside the transact block is executing, and null everywhere else,
+ * including the post-commit apply phase and its synchronous change dispatch.
+ */
+private val currentTxnScope = ThreadLocal<TxnScope?>()
 
 /**
  * Atomic multi-store read-modify-write. Serializes against all other writers (via the
@@ -53,13 +69,14 @@ class TxnContextElement(val scope: TxnScope) : AbstractCoroutineContextElement(K
  * is the only awaited I/O.
  */
 suspend fun <R> transact(block: suspend () -> R): R {
-    coroutineContext[TxnContextElement]?.let {
+    currentTxnScope.get()?.let {
         return block() // join the ambient transaction; outermost flushes and applies
     }
     val scope = TxnScope()
     val ret = serverState.withMutationLock {
-        withContext(TxnContextElement(scope)) {
+        withContext(currentTxnScope.asContextElement(scope)) {
             val r = block()
+            scope.close() // anything staged past this point is a leaked child coroutine
             // The abstract transaction (writer lock + staged scope) and the database
             // transaction are separate concerns: the Mongo session opens lazily, only
             // once something actually staged a database write. A transient-only
@@ -102,20 +119,22 @@ suspend fun <R> transact(block: suspend () -> R): R {
  * Callers that don't need the scope use [transact], which deliberately doesn't expose it.
  */
 suspend fun withTxnScope(body: suspend (TxnScope) -> Unit) {
-    val ambient = coroutineContext[TxnContextElement]?.scope
+    val ambient = currentTxnScope.get()
     if (ambient != null) body(ambient)
-    else transact { body(coroutineContext[TxnContextElement]!!.scope) }
+    else transact { body(currentTxnScope.get()!!) }
 }
 
 /**
- * Stage a memory-only [apply] into the ambient transaction, if one is open; returns
- * false (having done nothing) otherwise. The transactional half of [TransientCell]'s
- * write path: staged applies run strictly after commit, in stage order, so cell
- * updates observe the same emit-after-commit discipline as store writes and a
- * transaction that stages only these never opens a Mongo session.
+ * Stage a memory-only [apply] into the ambient transaction, if the executing code is
+ * inside one; returns false (having done nothing) otherwise. The transactional half of
+ * [TransientCell]'s write path: staged applies run strictly after commit, in stage
+ * order, so cell updates observe the same emit-after-commit discipline as store writes,
+ * and a transaction that stages only these never opens a Mongo session. Callable from
+ * non-suspending code — the thread-local ambient scope is dispatch-accurate (see
+ * [currentTxnScope]).
  */
-suspend fun stageIfInTransaction(apply: () -> Unit): Boolean {
-    val scope = coroutineContext[TxnContextElement]?.scope ?: return false
+fun stageIfInTransaction(apply: () -> Unit): Boolean {
+    val scope = currentTxnScope.get() ?: return false
     scope.stage(object : StagedWrite {
         override val needsDb get() = false
         override suspend fun flush(sess: ClientSession?) {}

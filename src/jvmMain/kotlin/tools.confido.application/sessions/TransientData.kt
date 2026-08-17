@@ -16,5 +16,5 @@ class TransientData {
     /** Snapshot flow of the presenter-window count; topic derivations subscribe here. */
     val activePresenterWindowsState: StateFlow<Int> get() = _activePresenterWindows.state
     val activePresenterWindows: Int get() = _activePresenterWindows.value
-    suspend fun addPresenterWindows(delta: Int) = _activePresenterWindows.update { it + delta }
+    fun addPresenterWindows(delta: Int) = _activePresenterWindows.update { it + delta }
 }

@@ -102,9 +102,10 @@ abstract class ResidentPartitions<E : HasId, P>(
     }
 
     private fun mutate(e: Entry, f: (PersistentMap<String, E>) -> PersistentMap<String, E>) {
-        // setImmediate: mutate runs from the archive's synchronous change dispatch —
-        // a transaction's post-commit apply phase, already part of that tick.
-        if (e.loaded) e.cell.setImmediate(f(e.cell.value))
+        // mutate runs from the archive's synchronous change dispatch — a transaction's
+        // post-commit apply phase, where the ambient scope is gone, so update applies
+        // immediately as part of that tick.
+        if (e.loaded) e.cell.update(f)
         else e.pendingDuringLoad += f
     }
 
@@ -136,7 +137,7 @@ abstract class ResidentPartitions<E : HasId, P>(
             fetched.forEach { map = map.put(it.id, it) }
             e.pendingDuringLoad.forEach { map = it(map) }
             e.pendingDuringLoad.clear()
-            e.cell.setImmediate(map)
+            e.cell.set(map)
             e.loaded = true
         }.also { e.loader = it }
         try {

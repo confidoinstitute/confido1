@@ -307,14 +307,20 @@ implemented.* `transact` now separates the abstract transaction (writer lock + s
 scope) from the database transaction: the Mongo session opens lazily at flush time,
 only when a staged op actually writes the database (`StagedWrite.needsDb`), so a
 transient-only transaction never touches Mongo and the legacy `withTransaction`
-wrapper is deleted. `TransientCell` writes are transactional: suspend `set`/`update`
-stage into the ambient transaction (apply+emit strictly after commit) or apply
-immediately as their own tick when none is open — only suspending code can see the
-ambient transaction (it lives in the coroutine context), which is why the write API is
-suspend and why RMW goes through `update` (the *function* is staged, so updates of one
-cell compose within a transaction instead of losing writes against committed-state
-reads; the bump-on-set surface is retained as `setImmediate` strictly for
-non-suspending post-commit contexts — change dispatch, `ResidentPartitions`). The
+wrapper is deleted. `TransientCell` writes are transactional: `set`/`update` stage
+into the ambient transaction (apply+emit strictly after commit) or apply immediately
+as their own tick when none is open. The ambient scope is exposed to *non-suspending*
+code through a `ThreadLocal` bridged with `asContextElement` (user-proposed, refining
+"only one transaction is globally open" with the fact that *open* is not *ours* during
+the transaction's suspensions): the thread-local is set exactly while the transaction
+coroutine executes and restored to null across its suspension points, so interleaved
+coroutines — timer callbacks, other handlers — correctly see no transaction, and the
+post-commit apply phase (change dispatch, `ResidentPartitions`) gets immediate
+semantics automatically, with no separate listener-context API and no discipline rule.
+RMW goes through `update` (the *function* is staged, so updates of one cell compose
+within a transaction instead of losing writes against committed-state reads), and
+`TxnScope` refuses staging after flush, so a coroutine leaked out of a transact block
+fails loudly instead of losing writes. The
 presentationStore run-state listener moved from `onChange` to `beforeEntityDelete`,
 realizing the bullet's cross-kind-atomicity example: the store delete and the cell
 clear are one transaction, so a failed commit no longer leaves the run state cleared

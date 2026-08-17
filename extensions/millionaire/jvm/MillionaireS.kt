@@ -44,7 +44,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
     private val timerTasks = mutableMapOf<String, java.util.TimerTask>()
     private val scheduler = java.util.Timer("millionaire-timer", true)
 
-    private suspend fun startTimer(room: Room, durationSeconds: Int) {
+    private fun startTimer(room: Room, durationSeconds: Int) {
         cancelTimer(room)
         val state = TimerState(
             startedAt = System.currentTimeMillis().toDouble(),
@@ -73,7 +73,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
         scheduler.schedule(task, durationSeconds * 1000L)
     }
 
-    private suspend fun cancelTimer(room: Room) {
+    private fun cancelTimer(room: Room) {
         timerTasks.remove(room.id)?.cancel()
         _timerStates.update { it.remove(room.id) }
     }
@@ -153,7 +153,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
 
     // --- Expandable flow item: produce the millionaire game sequence ---
 
-    override suspend fun expandFlowItem(action: FlowAction, room: Room): List<FlowItem>? {
+    override fun expandFlowItem(action: FlowAction, room: Room): List<FlowItem>? {
         val config = action as? MillionaireGameAction ?: return null
 
         // Store active config for this room (used by WS endpoints and timer)
@@ -241,7 +241,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
 
     // --- Cleanup on presentation stop ---
 
-    override suspend fun onPresentationStopped(room: Room) {
+    override fun onPresentationStopped(room: Room) {
         _activeConfigs.update { it.remove(room.id) }
         cancelTimer(room)
     }

@@ -148,7 +148,7 @@ object serverState {
      *  (committed) state. Stages into the ambient transaction if one is open —
      *  e.g. presentationStore's delete cascade clears the run state in the same
      *  tick that removes the presentation. */
-    suspend fun setPresentationRunState(room: Ref<Room>, state: PresentationRunState?): PresentationRunState? {
+    fun setPresentationRunState(room: Ref<Room>, state: PresentationRunState?): PresentationRunState? {
         val prev = presentationRunStates[room]
         _presentationRunStates.update {
             if (state == null) it.remove(room) else it.put(room, state)
