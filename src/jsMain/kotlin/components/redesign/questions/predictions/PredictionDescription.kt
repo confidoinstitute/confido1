@@ -1,6 +1,6 @@
 package components.redesign.questions.predictions
 
-import BinaryHistogram
+import tools.confido.question.BinaryHistogram
 import components.redesign.basic.MainPalette
 import components.redesign.basic.Stack
 import components.redesign.basic.sansSerif

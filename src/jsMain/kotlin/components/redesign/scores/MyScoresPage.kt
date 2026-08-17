@@ -17,7 +17,7 @@ import io.ktor.client.request.*
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import normalizedBrier
+import tools.confido.question.normalizedBrier
 import tools.confido.payloads.responses.MyRankResponse
 import tools.confido.payloads.responses.MyScoreItem
 import tools.confido.payloads.responses.MyScoresResponse

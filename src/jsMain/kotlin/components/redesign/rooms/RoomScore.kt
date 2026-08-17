@@ -13,7 +13,7 @@ import emotion.react.css
 import hooks.useSuspendResult
 import io.ktor.client.call.*
 import io.ktor.client.request.*
-import normalizedBrier
+import tools.confido.question.normalizedBrier
 import tools.confido.payloads.responses.ScoreboardEntry
 import react.FC
 import react.Props

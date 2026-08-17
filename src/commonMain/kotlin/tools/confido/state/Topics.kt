@@ -1,6 +1,6 @@
 package tools.confido.state
 
-import BinaryHistogram
+import tools.confido.question.BinaryHistogram
 import kotlinx.serialization.serializer
 import tools.confido.payloads.responses.CommentExtraData
 import tools.confido.payloads.responses.CommentPresentation

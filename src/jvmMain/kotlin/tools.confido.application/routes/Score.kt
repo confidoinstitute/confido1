@@ -1,7 +1,7 @@
 package tools.confido.application.routes
 
 import tools.confido.api.Api
-import getScore
+import tools.confido.question.getScore
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.*
 import io.ktor.server.response.*

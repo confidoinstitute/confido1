@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.PolymorphicModuleBuilder
 import kotlinx.serialization.modules.subclass
-import normalizedBrier
+import tools.confido.question.normalizedBrier
 import tools.confido.rooms.Room
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.extensions.Extension

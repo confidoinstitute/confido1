@@ -5,7 +5,7 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import normalizedBrier
+import tools.confido.question.normalizedBrier
 import tools.confido.rooms.ExportHistory
 import tools.confido.application.calibration.getScoredPrediction
 import tools.confido.distributions.*

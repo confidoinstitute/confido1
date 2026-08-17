@@ -1,6 +1,6 @@
 package components.redesign.questions.predictions
 
-import BinaryHistogram
+import tools.confido.question.BinaryHistogram
 import web.window.window
 import components.redesign.basic.*
 import components.redesign.layout.LayoutMode

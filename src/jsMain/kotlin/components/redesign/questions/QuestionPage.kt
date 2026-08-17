@@ -1,7 +1,7 @@
 package components.redesign.questions
 
 import ApiError
-import BinaryHistogram
+import tools.confido.question.BinaryHistogram
 import Client
 import web.window.window
 import components.*

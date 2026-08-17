@@ -1,7 +1,7 @@
 package components.presenter
 
-import BinaryHistogram
-import HistogramBin
+import tools.confido.question.BinaryHistogram
+import tools.confido.question.HistogramBin
 import components.redesign.basic.Stack
 import components.redesign.basic.sansSerif
 import web.cssom.*

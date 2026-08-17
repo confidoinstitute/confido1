@@ -1,6 +1,6 @@
 package tools.confido.application.routes
 
-import BinaryHistogramBinner
+import tools.confido.question.BinaryHistogramBinner
 import io.ktor.http.*
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.*

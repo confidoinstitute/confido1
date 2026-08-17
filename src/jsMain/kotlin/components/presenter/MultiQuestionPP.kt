@@ -1,6 +1,6 @@
 package components.presenter
 
-import BinaryHistogram
+import tools.confido.question.BinaryHistogram
 import components.DistributionPlot
 import components.redesign.basic.Stack
 import components.redesign.basic.sansSerif

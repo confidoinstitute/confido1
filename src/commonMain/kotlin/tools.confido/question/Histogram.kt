@@ -1,3 +1,5 @@
+package tools.confido.question
+
 import kotlinx.serialization.Serializable
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.question.Prediction
