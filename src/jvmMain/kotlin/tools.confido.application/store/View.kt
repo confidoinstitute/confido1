@@ -1,5 +1,6 @@
 package tools.confido.store
 
+import com.mongodb.reactivestreams.client.ClientSession
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 
@@ -244,22 +245,35 @@ class TransientCell<T>(initial: T) {
     val value: T get() = _state.value
 
     /**
-     * Transactional write: stages into the ambient transaction when the executing code
-     * is inside a `transact` block (dispatch-accurate thread-local detection, so this
-     * works from non-suspending code too), or applies immediately as its own tick when
-     * none is open — which covers post-commit contexts (change listeners, synchronous
-     * fold dispatch, [ResidentPartitions]' cache maintenance) automatically: they run
-     * in the apply phase, where the ambient scope is already gone.
+     * Transactional read-modify-write: [f] runs eagerly, exactly once, against the
+     * cell's *effective* value — the transaction's pending value if the executing code
+     * is inside a `transact` block that already wrote this cell, the committed value
+     * otherwise — and the result lands in the cell's per-transaction slot (applied and
+     * emitted strictly after commit, one net change per transaction). Updates of one
+     * cell therefore compose; plain [value] reads keep the committed-snapshot contract.
+     * Outside a transaction (incl. post-commit contexts: change listeners, synchronous
+     * fold dispatch, [ResidentPartitions]' cache maintenance — the ambient scope is
+     * dispatch-accurate and already gone there) the write applies immediately as its
+     * own tick. Returns the new effective value.
      */
-    fun update(f: (T) -> T) {
-        if (!stageIfInTransaction { applyNow(f(value)) }) applyNow(f(value))
+    fun update(f: (T) -> T): T {
+        val scope = ambientTxnScope()
+        if (scope == null) return f(value).also { applyNow(it) }
+        val op = scope.slot(this) { CellWrite(value) }
+        return f(op.pending).also { op.pending = it }
     }
 
-    fun set(v: T) = update { v }
+    fun set(v: T) { update { v } }
 
     private fun applyNow(v: T) {
         if (v === _state.value) return
         TxClock.bump()
         _state.value = v
+    }
+
+    private inner class CellWrite(var pending: T) : StagedWrite {
+        override val needsDb get() = false
+        override suspend fun flush(sess: ClientSession?) {}
+        override fun apply() = applyNow(pending)
     }
 }

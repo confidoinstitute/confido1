@@ -317,10 +317,25 @@ coroutine executes and restored to null across its suspension points, so interle
 coroutines — timer callbacks, other handlers — correctly see no transaction, and the
 post-commit apply phase (change dispatch, `ResidentPartitions`) gets immediate
 semantics automatically, with no separate listener-context API and no discipline rule.
-RMW goes through `update` (the *function* is staged, so updates of one cell compose
-within a transaction instead of losing writes against committed-state reads), and
 `TxnScope` refuses staging after flush, so a coroutine leaked out of a transact block
-fails loudly instead of losing writes. The
+fails loudly instead of losing writes.
+*Amendment (same day): the keyed write set.* Write combinators now compose through a
+per-key net-effect slot in the transaction (`TxnScope.slot`): store writes key on
+(store, id), a cell is its own key. `modify`/`update` bodies run eagerly, exactly
+once, at the call site, against the entity's/cell's *effective* value —
+pending-else-committed — so consecutive RMWs of one target compose and return exact
+values, `insert`-then-`modify` works, and the lost-update class becomes
+unrepresentable (no deferred-lambda contract needed: eager evaluation against a keyed
+write set subsumes function staging). Plain reads (`get`/`asMap`/`state`/`value`)
+deliberately keep the committed-snapshot contract — the write-set read stays private
+to the write combinators, so it can never be paired with a stale derived read
+(a public `getStaged` opt-in remains possible if a site ever demands it; the exact
+`modify` return value covers cross-entity RMW through ordinary dataflow meanwhile).
+Flush and change emission are the transaction's NET effect per key — one `Updated`
+spanning committed-old to final-new, an insert cancelled by a delete emits nothing —
+i.e. the §3.5 keyed last-writer delta algebra, one level down; `/questions/multidelete`
+reverted to its naive per-question loop as the living proof (its suite test now
+exercises composition end-to-end). The
 presentationStore run-state listener moved from `onChange` to `beforeEntityDelete`,
 realizing the bullet's cross-kind-atomicity example: the store delete and the cell
 clear are one transaction, so a failed commit no longer leaves the run state cleared

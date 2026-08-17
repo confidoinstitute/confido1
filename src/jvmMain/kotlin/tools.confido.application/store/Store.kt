@@ -123,30 +123,66 @@ open class MongoStore<E : Entity>(
     // The read (duplicate check / current value) and the staging must both happen under
     // the writer lock — withTxnScope guarantees both (it opens a transaction when there
     // is no ambient one), so callers can freely compose these inside transact {}.
+    //
+    // Writes go through a per-(store, id) net-effect slot in the transaction's write
+    // set (TxnScope.slot): write combinators see each other's staged results — a
+    // second modify of one entity composes with the first, insert-then-modify works —
+    // while plain reads (get/asMap/state) keep the committed-snapshot contract. The
+    // slot flushes and emits the transaction's NET effect per entity: one Updated
+    // spanning committed-old to final-new, an insert cancelled by a delete emits
+    // nothing. (Delete hooks still run eagerly at the delete() call.)
 
-    private fun stagePut(scope: TxnScope, old: E?, new: E) {
-        scope.stage(object : StagedWrite {
-            override suspend fun flush(sess: ClientSession?) {
-                if (old == null) {
-                    if (sess == null) coll.insertOne(new) else coll.insertOne(sess, new)
-                } else {
-                    if (sess == null) coll.replaceOneById(new.id, new) else coll.replaceOneById(sess, new.id, new)
+    private inner class EntitySlot(val committedOld: E?) : StagedWrite {
+        /** The entity's effective value within this transaction; null = deleted. */
+        var current: E? = committedOld
+
+        // Evaluated after the block: a net-nothing slot needs no database write.
+        override val needsDb get() = !(committedOld == null && current == null)
+
+        override suspend fun flush(sess: ClientSession?) {
+            val cur = current
+            when {
+                committedOld == null && cur != null ->
+                    if (sess == null) coll.insertOne(cur) else coll.insertOne(sess, cur)
+                committedOld != null && cur != null ->
+                    if (sess == null) coll.replaceOneById(cur.id, cur) else coll.replaceOneById(sess, cur.id, cur)
+                committedOld != null && cur == null ->
+                    if (sess == null) coll.deleteOneById(committedOld.id) else coll.deleteOneById(sess, committedOld.id)
+                else -> {} // inserted and deleted within one transaction: net nothing
+            }
+        }
+
+        override fun apply() {
+            val cur = current
+            when {
+                committedOld == null && cur != null -> {
+                    _state.value = _state.value.put(cur.id, cur)
+                    emitChange(Change.Added(cur))
                 }
+                committedOld != null && cur != null -> {
+                    _state.value = _state.value.put(cur.id, cur)
+                    emitChange(Change.Updated(committedOld, cur))
+                }
+                committedOld != null && cur == null -> {
+                    _state.value = _state.value.remove(committedOld.id)
+                    emitChange(Change.Removed(committedOld))
+                }
+                else -> {}
             }
-            override fun apply() {
-                _state.value = _state.value.put(new.id, new)
-                emitChange(if (old == null) Change.Added(new) else Change.Updated(old, new))
-            }
-        })
+        }
     }
+
+    private fun slotFor(scope: TxnScope, id: String): EntitySlot =
+        scope.slot(this to id) { EntitySlot(get(id)) }
 
     /** Insert a new entity; assigns an id if empty. Throws [DuplicateIdException]. */
     suspend fun insert(entity: E): E {
         var stored = if (entity.id.isEmpty()) withId(entity, generateId()) else entity
         withTxnScope { scope ->
-            if (get(stored.id) != null) throw DuplicateIdException()
+            val slot = slotFor(scope, stored.id)
+            if (slot.current != null) throw DuplicateIdException()
             stored = applyBeforeSave(null, stored)
-            stagePut(scope, null, stored)
+            slot.current = stored
         }
         return stored
     }
@@ -155,9 +191,9 @@ open class MongoStore<E : Entity>(
     suspend fun put(entity: E): E {
         var stored = if (entity.id.isEmpty()) withId(entity, generateId()) else entity
         withTxnScope { scope ->
-            val old = get(stored.id)
-            stored = applyBeforeSave(old, stored)
-            stagePut(scope, old, stored)
+            val slot = slotFor(scope, stored.id)
+            stored = applyBeforeSave(slot.current, stored)
+            slot.current = stored
         }
         return stored
     }
@@ -165,19 +201,12 @@ open class MongoStore<E : Entity>(
     suspend fun delete(ref: Ref<E>, ignoreNonexistent: Boolean = false): E? {
         var old: E? = null
         withTxnScope { scope ->
-            val removed = get(ref.id)
+            val slot = slotFor(scope, ref.id)
+            val removed = slot.current
                 ?: if (ignoreNonexistent) return@withTxnScope else throw NoSuchElementException()
             old = removed
             beforeDeleteHooks.forEach { it(removed) }
-            scope.stage(object : StagedWrite {
-                override suspend fun flush(sess: ClientSession?) {
-                    if (sess == null) coll.deleteOneById(removed.id) else coll.deleteOneById(sess, removed.id)
-                }
-                override fun apply() {
-                    _state.value = _state.value.remove(removed.id)
-                    emitChange(Change.Removed(removed))
-                }
-            })
+            slot.current = null
         }
         return old
     }
@@ -185,14 +214,17 @@ open class MongoStore<E : Entity>(
     suspend fun delete(id: String, ignoreNonexistent: Boolean = false): E? =
         delete(Ref(id), ignoreNonexistent)
 
-    /** Atomic read-modify-write of one entity, in the ambient transaction. */
+    /** Atomic read-modify-write of one entity, in the ambient transaction. [f] runs
+     *  eagerly, once, against the entity's effective (write-set) value, and the return
+     *  value is exact — so consecutive modifies of one entity compose. */
     suspend fun modify(ref: Ref<E>, f: (E) -> E): E {
         lateinit var new: E
         withTxnScope { scope ->
-            val old = get(ref.id) ?: throw NoSuchElementException()
+            val slot = slotFor(scope, ref.id)
+            val old = slot.current ?: throw NoSuchElementException()
             new = applyBeforeSave(old, f(old))
             check(new.id == old.id)
-            stagePut(scope, old, new)
+            slot.current = new
         }
         return new
     }

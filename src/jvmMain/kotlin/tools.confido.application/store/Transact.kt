@@ -27,6 +27,7 @@ interface StagedWrite {
 
 class TxnScope internal constructor() {
     internal val staged = mutableListOf<StagedWrite>()
+    private val slots = mutableMapOf<Any, StagedWrite>()
     private var closed = false
 
     fun stage(op: StagedWrite) {
@@ -37,8 +38,28 @@ class TxnScope internal constructor() {
         staged.add(op)
     }
 
+    /**
+     * Keyed net-effect slot (the per-transaction write set): the first touch of [key]
+     * creates the op via [create] and stages it at the current list position; later
+     * touches return the same op for in-place composition. This is what makes write
+     * combinators (store modify/insert/delete, cell update) see each other's staged
+     * results — eager evaluation against the write set — while plain reads keep the
+     * committed-snapshot contract. One flush and one net change event per touched key.
+     */
+    fun <T : StagedWrite> slot(key: Any, create: () -> T): T {
+        check(!closed) { "Transaction already flushed — do not stage writes from coroutines outliving their transact block" }
+        slots[key]?.let {
+            @Suppress("UNCHECKED_CAST")
+            return it as T
+        }
+        return create().also { slots[key] = it; staged.add(it) }
+    }
+
     internal fun close() { closed = true }
 }
+
+/** The executing code's ambient transaction scope, or null (see [currentTxnScope]). */
+internal fun ambientTxnScope(): TxnScope? = currentTxnScope.get()
 
 /**
  * The executing code's ambient transaction, readable from non-suspending code. There is
@@ -122,23 +143,4 @@ suspend fun withTxnScope(body: suspend (TxnScope) -> Unit) {
     val ambient = currentTxnScope.get()
     if (ambient != null) body(ambient)
     else transact { body(currentTxnScope.get()!!) }
-}
-
-/**
- * Stage a memory-only [apply] into the ambient transaction, if the executing code is
- * inside one; returns false (having done nothing) otherwise. The transactional half of
- * [TransientCell]'s write path: staged applies run strictly after commit, in stage
- * order, so cell updates observe the same emit-after-commit discipline as store writes,
- * and a transaction that stages only these never opens a Mongo session. Callable from
- * non-suspending code — the thread-local ambient scope is dispatch-accurate (see
- * [currentTxnScope]).
- */
-fun stageIfInTransaction(apply: () -> Unit): Boolean {
-    val scope = currentTxnScope.get() ?: return false
-    scope.stage(object : StagedWrite {
-        override val needsDb get() = false
-        override suspend fun flush(sess: ClientSession?) {}
-        override fun apply() = apply()
-    })
-    return true
 }
