@@ -902,7 +902,7 @@ working untouched mid-transition.
     and `.ws` suffix (`room/<id>/ext/millionaire/timer`,
     `ext/calibration_training/leaderboard`). The websocket *URL* stays `/state` —
     connection endpoint and topic namespace are separate concerns.
-  - **Typed path templates** (`tools/confido/utils/PathTemplate.kt` + the `Topics`
+  - **Typed path templates** (`tools.confido/utils/PathTemplate.kt` + the `Topics`
     tree in commonMain): one object per topic serves construction (typed refs in,
     string out — `Topics.groupPred(question.ref)`) and matching (server registration;
     handlers receive decoded `Ref`s as typed lambda arguments) from the same

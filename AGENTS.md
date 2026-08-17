@@ -24,13 +24,29 @@ Confido is a **Kotlin Multiplatform** collaborative forecasting/prediction web a
 
 ## Directory Structure
 
+Everything lives under the root package `tools.confido`. Source trees use a
+"dotted root" convention: a flat directory named after the common package prefix
+absorbs it, and subdirectories below match the remaining package segments
+(so `tools.confido/payloads/requests/` holds `tools.confido.payloads.requests`).
+
 ```
 src/
-├── commonMain/kotlin/          # Shared models, utils, serialization
-├── jvmMain/kotlin/             # Backend: routes/, sessions/, actions/
-└── jsMain/kotlin/              # Frontend: components/, hooks/, utils/
-extensions/<name>/              # Plugins with common/, js/, jvm/ subdirs
+├── commonMain/kotlin/tools.confido/       # Shared models: question/, rooms/, users/,
+│                                          #   payloads/, state/, spaces/, utils/, ...
+├── jvmMain/kotlin/
+│   ├── tools.confido.application/         # Backend: routes/, sessions/, actions/, migrations/
+│   ├── tools.confido.store/               # Persistence stores
+│   └── tools.confido/                     # jvm actuals for shared packages
+└── jsMain/kotlin/
+    ├── tools.confido.web/                 # Frontend: components/, hooks/, utils/, ext/
+    └── tools.confido/                     # js actuals for shared packages
+extensions/<name>/                         # Plugins with common/, js/, jvm/ subdirs
+                                           #   (package tools.confido.extensions.<name>)
 ```
+
+Polymorphic `@Serializable` classes must carry an explicit class-level
+`@SerialName` — without one the discriminator defaults to the FQN, which breaks
+stored data when a class moves packages.
 
 ## Code Style Guidelines
 
