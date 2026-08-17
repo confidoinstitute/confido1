@@ -21,7 +21,15 @@ object RoomGroupsSE : ServerExtension, RoomGroupsExtension() {
         val directUserIds = room.members.map { it.user.id }.toSet()
         val impliedMembers = parent.members
             .filter { it.user.id !in directUserIds }
-            .map { it.copy(implied = true, impliedFrom = parent.name) }
+            // The invite-link accessibility check (DISABLED_FULL revocation) must
+            // happen HERE, against the parent — the link id resolves only in the
+            // room that owns the membership; checked in the child it would silently
+            // fail open. The copy drops invitedVia for the same reason: on the
+            // implied membership it would be a dangling id no child surface can
+            // resolve, and `findLink(...)?.canAccess ?: true` is only sound if
+            // invitedVia, when set, refers to a link of the carrying room.
+            .filter { parent.findLink(it.invitedVia)?.canAccess ?: true }
+            .map { it.copy(implied = true, impliedFrom = parent.name, invitedVia = null) }
 
         return room.members + impliedMembers
     }

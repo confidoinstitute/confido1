@@ -40,6 +40,7 @@ They assume a devmode server (`CONFIDO_DEVMODE=1`) whose `GET /init/` seeds
 | `ws_test.py` | batched subscriptions → one consistent initial frame, retired `/state` monolith topic, comment-archive delivery, no-change dedup, unknown-topic errors |
 | `gate_test.py` | permission-gated topics: WSError frames on a live subscription, error-state cutoff, gate unlock on the same subscription |
 | `permission_test.py` | invite-link DISABLED_FULL revocation (live revoke + restore), hidden questions in the group-pred family, error recovery to a value-equal payload, multidelete dangling refs, member-only presentation follow, owner not deposable |
+| `group_revoke_test.py` | DISABLED_FULL on a group-room link revokes implied child-room access (skips unless `room_groups` is enabled) |
 | `browser_test.py` | real bundle end-to-end (admin): slices apply, live room/self updates, members tab + admin directory render from their topics, console-error sweep |
 | `member_browser_test.py` | ordinary-member view: no Members tab, no foreign identity data, no errors on presentation-only codepaths |
 | `connection_browser_test.py` | disconnect UX: kills the scratch server under a live session (banner + immediate-commit controls disable after the debounce), restarts it (recovery + live updates) |
