@@ -3,6 +3,9 @@
 #
 #   tests/state/run_all.sh            # protocol tests only
 #   tests/state/run_all.sh --browser  # + headless-chromium browser tests
+#   tests/state/run_all.sh --native   # run the GraalVM native-image server
+#                                     # (build/native/nativeCompile/confido-server;
+#                                     #  combinable with --browser)
 #
 # Environment overrides (defaults in parentheses):
 #   CONFIDO_TEST_PORT   (8099)   scratch server port — never your dev instance's
@@ -22,7 +25,20 @@ DB="${CONFIDO_TEST_DB:-confido_statetest}"
 STATIC="${CONFIDO_TEST_STATIC:-$REPO_ROOT/build/kotlin-webpack/js/productionExecutable}"
 CDP="${CONFIDO_TEST_CDP:-9222}"
 BROWSER=0
-[ "${1:-}" = "--browser" ] && BROWSER=1
+NATIVE=0
+for arg in "$@"; do
+    case "$arg" in
+        --browser) BROWSER=1 ;;
+        --native) NATIVE=1 ;;
+        *) echo "ERROR: unknown argument $arg" >&2; exit 1 ;;
+    esac
+done
+
+NATIVE_BIN="$REPO_ROOT/build/native/nativeCompile/confido-server"
+if [ "$NATIVE" = 1 ] && [ ! -x "$NATIVE_BIN" ]; then
+    echo "ERROR: no native binary at $NATIVE_BIN (run: gradle nativeCompile)" >&2
+    exit 1
+fi
 
 port_pid() { ss -tlnp 2>/dev/null | grep ":$1 " | grep -o 'pid=[0-9]*' | head -1 | cut -d= -f2; }
 
@@ -50,9 +66,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "== starting scratch server on :$PORT"
+echo "== starting scratch server on :$PORT$([ "$NATIVE" = 1 ] && echo ' (native image)')"
 export CONFIDO_DB_NAME="$DB" CONFIDO_DEVMODE=1 CONFIDO_HTTP_PORT="$PORT" CONFIDO_STATIC_PATH="$STATIC"
-(cd "$REPO_ROOT" && gradle run -x kotlinStoreYarnLock >"${TMPDIR:-/tmp}/confido_test_server.log" 2>&1) &
+if [ "$NATIVE" = 1 ]; then
+    "$NATIVE_BIN" >"${TMPDIR:-/tmp}/confido_test_server.log" 2>&1 &
+else
+    (cd "$REPO_ROOT" && gradle run -x kotlinStoreYarnLock >"${TMPDIR:-/tmp}/confido_test_server.log" 2>&1) &
+fi
 for _ in $(seq 1 120); do [ -n "$(port_pid "$PORT")" ] && break; sleep 2; done
 if [ -z "$(port_pid "$PORT")" ]; then
     echo "ERROR: server did not come up (see ${TMPDIR:-/tmp}/confido_test_server.log)" >&2
@@ -60,6 +80,8 @@ if [ -z "$(port_pid "$PORT")" ]; then
 fi
 
 export CONFIDO_TEST_BASE="http://localhost:$PORT" CONFIDO_TEST_CDP="$CDP"
+# Lets connection_browser_test.py restart the same kind of server it killed.
+[ "$NATIVE" = 1 ] && export CONFIDO_TEST_SERVER_CMD="$NATIVE_BIN"
 
 if [ "$BROWSER" = 1 ] && ! curl -s --max-time 3 "localhost:$CDP/json/version" >/dev/null; then
     echo "== starting headless chromium (CDP :$CDP)"

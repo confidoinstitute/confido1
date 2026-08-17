@@ -10,6 +10,8 @@ alongside Phase 2/3 of the redesign and encode its behavioral contracts.
 ```bash
 tests/state/run_all.sh            # protocol tests (backend only)
 tests/state/run_all.sh --browser  # + headless-chromium end-to-end tests
+tests/state/run_all.sh --native   # scratch server = GraalVM native image
+                                  # (gradle nativeCompile first; combinable with --browser)
 ```
 
 The runner starts its own **scratch server** (default port 8099, scratch Mongo DB

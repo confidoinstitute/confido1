@@ -9,6 +9,7 @@ with — see SERVER_ENV_KEYS); run_all.sh's cleanup kills whatever holds the por
 import asyncio
 import os
 import pathlib
+import shlex
 import subprocess
 import sys
 import time
@@ -80,7 +81,10 @@ async def main():
         missing = [k for k in ("CONFIDO_DB_NAME", "CONFIDO_STATIC_PATH") if k not in env]
         if missing:
             print("FAIL: cannot restart server, env not set:", missing); sys.exit(1)
-        subprocess.Popen(["gradle", "run", "-x", "kotlinStoreYarnLock"],
+        # CONFIDO_TEST_SERVER_CMD (set by run_all.sh --native) overrides the default
+        # gradle launch, so the restarted server matches the one under test.
+        cmd = os.environ.get("CONFIDO_TEST_SERVER_CMD")
+        subprocess.Popen(shlex.split(cmd) if cmd else ["gradle", "run", "-x", "kotlinStoreYarnLock"],
                          cwd=REPO_ROOT, env=env,
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if not wait_port(True):
