@@ -75,21 +75,27 @@ data class Room(
         return effectiveMembers.find { user eqid it.user }?.role
     }
 
-    fun hasPermission(user: User?, permission: RoomPermission): Boolean {
-        if (user == null) {
-            // Public rooms can be added here.
-            return false
+    /**
+     * [user]'s effective memberships whose invite link (if any) still grants access —
+     * a DISABLED_FULL link revokes its invitees' access wholesale. Every viewer-access
+     * decision (permission checks, room visibility, permission-class construction)
+     * must be based on this set, never on raw [effectiveMembers] presence.
+     */
+    fun accessibleMemberships(user: User?): List<RoomMembership> {
+        if (user == null) return emptyList()
+        // Note that one user could have multiple memberships here.
+        return effectiveMembers.filter {
+            it.user eqid user && findLink(it.invitedVia)?.canAccess ?: true
         }
+    }
+
+    fun hasPermission(user: User?, permission: RoomPermission): Boolean {
+        // Public rooms can be added here (user == null yields no memberships).
 
         // Admins are injected as implied owners in effectiveMembers (server-side),
         // so no special case needed here. Their permissions are subject to
         // memberEffectivePermissions like everyone else.
-
-        // Note that one user could have multiple memberships here.
-        return effectiveMembers.any {
-            it.user eqid user && findLink(it.invitedVia)?.canAccess ?: true &&
-                    permission in memberEffectivePermissions(it)
-        }
+        return accessibleMemberships(user).any { permission in memberEffectivePermissions(it) }
     }
 
     override val urlPrefix get() = urlPrefix(id)

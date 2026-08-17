@@ -29,14 +29,16 @@ class StateCensor(val sess: UserSession) {
             inviteLink.copy(token = "")
 
     fun censorRoom(room: Room): Room? {
-        // Room is visible if the user is an effective member (with any permission).
+        // Room is visible if the user is an effective member (with any permission)
+        // whose invite link still grants access (DISABLED_FULL revokes wholesale).
         // Which tabs/content they see is controlled by their effective permissions.
-        if (user == null || room.effectiveMembers.none { it.user eqid user }) return null
+        val accessibleOwn = room.accessibleMemberships(user)
+        if (user == null || accessibleOwn.isEmpty()) return null
 
         // Only the viewer's own (effective) membership travels on Room — it is what
         // client-side permission checks read. Other members' data is granted per
         // context by the room/<id>/members topic (censorRoomMembers) as presentations.
-        val ownMembers = room.effectiveMembers.filter { it.user eqid user }.map { m ->
+        val ownMembers = accessibleOwn.map { m ->
             m.copy(effectivePermissions = room.memberEffectivePermissions(m))
         }
 
@@ -85,7 +87,7 @@ class StateCensor(val sess: UserSession) {
      * guests see just their own entry. Null = viewer cannot see the room at all.
      */
     fun censorRoomMembers(room: Room): List<MembershipPayload>? {
-        if (user == null || room.effectiveMembers.none { it.user eqid user }) return null
+        if (user == null || room.accessibleMemberships(user).isEmpty()) return null
         val canManage = room.hasPermission(user, RoomPermission.MANAGE_MEMBERS)
         val isProperViewer = user.type in setOf(UserType.ADMIN, UserType.MEMBER)
         return room.effectiveMembers.mapNotNull { m ->
@@ -156,7 +158,9 @@ fun roomQuestionsTopicScope(cls: PermClass, rRef: Ref<Room>): PermClass {
 fun permClassOf(user: User): PermClass = PermClass(
     user.type,
     serverState.rooms.values.mapNotNull { room ->
-        val memberships = room.effectiveMembers.filter { it.user eqid user }
+        // accessibleMemberships (not raw effectiveMembers): a DISABLED_FULL invite
+        // link revokes its invitees entirely, exactly as in Room.hasPermission.
+        val memberships = room.accessibleMemberships(user)
         if (memberships.isEmpty()) null
         // Union across memberships (direct + implied) — hasPermission accepts any.
         // An entry with an empty set still records membership (room visibility).
