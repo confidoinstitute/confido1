@@ -79,6 +79,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
 
     postST("$questionUrl/comments/add") {
         call.withQuestion {
+            assertVisible()
             assertPermission(RoomPermission.POST_QUESTION_COMMENT, "You cannot post a comment to this question.")
 
             if (!question.allowComments) unauthorized("Commenting is not allowed for this question.")
@@ -102,6 +103,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
 
     postST("$questionUrl$commentUrl/edit") {
         call.withQuestion {
+            assertVisible()
             val id = call.parameters["cID"] ?: ""
             val newContent: String = call.receive()
             if (newContent.isEmpty()) badRequest("No comment content.")
@@ -119,6 +121,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
 
     deleteST("$questionUrl$commentUrl") {
         call.withQuestion {
+            assertVisible()
             val id = call.parameters["cID"] ?: ""
             transact {
                 val comment = questionCommentArchive.get(question.ref, id) ?: notFound("No such comment.")
@@ -135,6 +138,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
             val id = call.parameters["cID"] ?: ""
             val state = call.receive<Boolean>()
 
+            assertVisible()
             assertPermission(RoomPermission.VIEW_QUESTION_COMMENTS, "You cannot like this comment.")
             transact {
                 val comment = questionCommentArchive.get(question.ref, id) ?: notFound("No such comment.")

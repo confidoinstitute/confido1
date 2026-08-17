@@ -45,6 +45,15 @@ data class QuestionContext(val inUser: User?, val question: Question) {
         if (!room.hasPermission(user, permission)) forbidden(message)
     }
 
+    /** A question the viewer cannot see reads as nonexistent — the write-side twin of
+     *  the topic gates' visibility rule (censorQuestion). Call first in any route that
+     *  acts on the question on behalf of a non-managing viewer, before permission
+     *  asserts, so a hidden question 404s instead of revealing its existence. */
+    fun assertVisible() {
+        if (!question.visible && !room.hasPermission(user, RoomPermission.VIEW_HIDDEN_QUESTIONS))
+            notFound("No such question.")
+    }
+
     fun assertGroupPredictionAccess(message: String) {
         val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
         val lastPrediction = serverState.userPred[ref]?.get(user.ref)
@@ -263,6 +272,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
         call.withQuestion {
             val dist: ProbabilityDistribution = confidoJSON.decodeFromString(call.receiveText()) // XXX WORKAROUND KTRO-8835
 
+            assertVisible()
             assertPermission(RoomPermission.SUBMIT_PREDICTION, "You cannot submit a prediction.")
             if (!question.open) badRequest("You cannot predict to closed questions.")
             if (question.answerSpace != dist.space) badRequest("The answer space is not compatible.")
@@ -277,6 +287,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
     // Get question updates
     getST("$questionUrl/updates") {
         val updates = call.withQuestion {
+            assertVisible()
             assertGroupPredictionAccess("You cannot view this group prediction.")
 
             val updates = groupPredictionLog.query(ref).map {

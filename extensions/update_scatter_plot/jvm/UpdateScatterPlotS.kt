@@ -51,6 +51,7 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
                     call.withQuestion {
                         val newId= generateId()
                         val snap = call.receive<Snapshot>().copy(owner = user.ref, id= newId)
+                        assertVisible()
                         assertPermission(RoomPermission.VIEW_QUESTIONS, "no room access")
                         if (snap.public) assertPermission(RoomPermission.MANAGE_QUESTIONS, "not enough permissions to create public snapshot")
                         tools.confido.store.questionStore.modify(question.id) { it.copy(extensionData = it.extensionData.with(
@@ -62,6 +63,7 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
             deleteST("/api$questionUrl/snapshots/{snapID}") {
                 call.withUser {
                     call.withQuestion {
+                        assertVisible()
                         val snap = question.extensionData[SnapshotsKey].firstOrNull {
                             it.id == call.parameters["snapID"]
                         } ?: notFound("snapshot not found")
@@ -102,6 +104,7 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
             // Update plot: POST with TimepointReference-based request
             postST("/api$questionUrl/update_plot") {
                 call.withQuestion {
+                    assertVisible()
                     assertPermission(
                         RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS,
                         "need permission to view individual predictions"

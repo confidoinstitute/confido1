@@ -135,6 +135,15 @@ async def main():
                           "room group_pred key gone",
                 json.dumps({k: (v.get("type"), v.get("errType")) for k, v in d2.items()}))
 
+        # Write-side parity: while hidden, the question reads as nonexistent to
+        # non-VIEW_HIDDEN members for writes too (predict, comment).
+        t.check(post_status(f"/questions/{qid}/predict",
+                            {"type": "binary", "yesProb": 0.5}, member) == 404,
+                "TEST-8b", "predicting on a hidden question 404s for members")
+        t.check(post_status(f"/questions/{qid}/comments/add",
+                            {"content": "sneaky", "attachPrediction": False}, member) == 404,
+                "TEST-8c", "commenting on a hidden question 404s for members")
+
         visible = dict(qdata, visible=True)
         post(f"/questions/{qid}/edit",
              {"type": "payloads.requests.EditQuestionComplete", "question": visible}, admin)
