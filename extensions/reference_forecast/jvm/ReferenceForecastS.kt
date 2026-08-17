@@ -6,8 +6,12 @@ import extensions.reference_forecast.ReferenceForcastKey
 import extensions.reference_forecast.UserScore
 import extensions.shared.ValueWithUser
 import io.ktor.server.routing.*
+import rooms.Room
 import rooms.RoomPermission
+import tools.confido.application.PermClass
 import tools.confido.application.routes.*
+import tools.confido.extensions.without
+import tools.confido.question.Question
 import tools.confido.store.*
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.extensions.get
@@ -19,6 +23,17 @@ import kotlin.math.pow
 
 object ReferenceForecastSE : ServerExtension, ReferenceForecastExtension() {
     val groupPredText = System.getenv("CONFIDO_GROUP_PRED_LABEL") ?: "Group prediction"
+
+    // The reference forecast is the scoring target; it is set and read only by
+    // moderator surfaces (edit-question dialog, presenter scoreboard offer), so
+    // strip it from the wire for non-MANAGE_QUESTIONS classes — participants could
+    // otherwise read the value they are scored against out of the question payload.
+    // Only strip when present: ExtensionData has reference equality, so an
+    // unconditional copy would defeat the memo equality cutoff for every question.
+    override fun censorQuestion(question: Question, room: Room, cls: PermClass): Question =
+        if (RoomPermission.MANAGE_QUESTIONS in (cls.roomPerms[room.ref] ?: emptySet())
+            || question.extensionData[ReferenceForcastKey] == null) question
+        else question.copy(extensionData = question.extensionData.without(ReferenceForcastKey))
     private fun calculateScore(prediction: Double, reference: Double): Double {
         // 10 points if exactly match prediction
         // 0 point for a 50% deviation

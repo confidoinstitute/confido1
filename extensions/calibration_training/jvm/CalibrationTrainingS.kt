@@ -388,6 +388,7 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
             postST("/api/training/reset") {
                 call.withUser {
                     responseCollection.deleteMany(TrainingResponse::user eq user.ref)
+                    responsesVersion.value += 1  // wake the leaderboard topic
                     call.respond(HttpStatusCode.OK)
                 }
             }

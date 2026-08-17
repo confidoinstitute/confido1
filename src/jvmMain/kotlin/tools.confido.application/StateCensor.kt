@@ -16,6 +16,14 @@ import users.UserPresentation
 import users.UserType
 
 /**
+ * Process-lifetime secret salting [StateCensor.memberRowKey]: without it the digest
+ * pre-image is fully known, so any viewer holding the users directory could brute-force
+ * rowKeys against user ids and de-anonymize member rows. The keys only serve client-side
+ * list reconciliation, so stability within one server run is all that is needed.
+ */
+private val rowKeySalt: String = generateToken()
+
+/**
  * @author Ministry of Truth
  */
 class StateCensor(val sess: UserSession) {
@@ -109,7 +117,7 @@ class StateCensor(val sess: UserSession) {
 
     private fun memberRowKey(room: Room, m: RoomMembership): String =
         MessageDigest.getInstance("SHA-256")
-            .digest("member:${room.id}:${m.user.id}:${m.impliedFrom ?: ""}".encodeToByteArray())
+            .digest("member:$rowKeySalt:${room.id}:${m.user.id}:${m.impliedFrom ?: ""}".encodeToByteArray())
             .joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
             .take(16)
 
