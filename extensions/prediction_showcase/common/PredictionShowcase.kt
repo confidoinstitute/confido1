@@ -13,7 +13,7 @@ import rooms.Room
 import extensions.shared.ValueWithUser
 import kotlinx.serialization.serializer
 import tools.confido.state.Topics
-import tools.confido.utils.TopicSpec1
+import tools.confido.utils.TopicSpec
 
 @Serializable
 @SerialName("prediction_showcase")
@@ -42,4 +42,4 @@ open class PredictionShowcaseExtension: Extension {
 }
 
 // Topic owned by this extension (see tools.confido.state.Topics for the scheme).
-val showcasePredictionsTopic = TopicSpec1(Topics.questionPath / "ext/prediction_showcase/predictions", serializer<List<ValueWithUser>>())
+val showcasePredictionsTopic = TopicSpec(Topics.questionPath / "ext/prediction_showcase/predictions", serializer<List<ValueWithUser>>())

@@ -11,9 +11,7 @@ import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.utils.PathParam
-import tools.confido.utils.TopicSpec0
-import tools.confido.utils.TopicSpec1
-import tools.confido.utils.TopicSpec2
+import tools.confido.utils.TopicSpec
 import tools.confido.utils.path
 import users.User
 
@@ -42,46 +40,46 @@ object Topics {
     val roomPath = path("room") / roomRefParam
     val questionPath = path("question") / questionRefParam
 
-    val questions = TopicSpec0(path("questions"), serializer<Map<String, Question>>())
-    val users = TopicSpec0(path("users"), serializer<Map<String, User>>())
-    val rooms = TopicSpec0(path("rooms"), serializer<Map<String, Room>>())
-    val self = TopicSpec0(path("self"), serializer<SelfState>())
-    val presenterTrack = TopicSpec0(path("presenter/track"), serializer<Unit>())
+    val questions = TopicSpec(path("questions"), serializer<Map<String, Question>>())
+    val users = TopicSpec(path("users"), serializer<Map<String, User>>())
+    val rooms = TopicSpec(path("rooms"), serializer<Map<String, Room>>())
+    val self = TopicSpec(path("self"), serializer<SelfState>())
+    val presenterTrack = TopicSpec(path("presenter/track"), serializer<Unit>())
 
     /** The per-room detail topic (full censored room incl. invite links; member lists
      *  travel on [roomMembers] — the detail room carries only the viewer's own membership). */
-    val room = TopicSpec1(roomPath, serializer<Room>())
+    val room = TopicSpec(roomPath, serializer<Room>())
     /** The member list as viewer-censored presentations (§5.3); subscribed by the members
      *  tab and the add-member dialog only, so membership churn stays off other surfaces. */
-    val roomMembers = TopicSpec1(roomPath / "members", serializer<List<MembershipPayload>>())
-    val roomComments = TopicSpec1(roomPath / "comments", serializer<List<CommentPresentation<CommentExtraData>>>())
-    val roomGroupPred = TopicSpec1(roomPath / "group_pred", serializer<Map<Ref<Question>, Prediction?>>())
-    val presentation = TopicSpec1(roomPath / "presentation", serializer<PresentationWSData>())
-    val presentationFollow = TopicSpec1(roomPath / "presentation/follow", serializer<String?>())
-    val inviteShortlink = TopicSpec2(roomPath / "invites" / idParam / "shortlink", serializer<String>())
+    val roomMembers = TopicSpec(roomPath / "members", serializer<List<MembershipPayload>>())
+    val roomComments = TopicSpec(roomPath / "comments", serializer<List<CommentPresentation<CommentExtraData>>>())
+    val roomGroupPred = TopicSpec(roomPath / "group_pred", serializer<Map<Ref<Question>, Prediction?>>())
+    val presentation = TopicSpec(roomPath / "presentation", serializer<PresentationWSData>())
+    val presentationFollow = TopicSpec(roomPath / "presentation/follow", serializer<String?>())
+    val inviteShortlink = TopicSpec(roomPath / "invites" / idParam / "shortlink", serializer<String>())
 
     /** Room-scoped questions (§4.2): the room page's slice, entities only.
      *  Includes extension-provided effective questions (e.g. group-room aggregation). */
-    val roomQuestions = TopicSpec1(roomPath / "questions", serializer<Map<String, Question>>())
+    val roomQuestions = TopicSpec(roomPath / "questions", serializer<Map<String, Question>>())
 
     /** The room slice's counts, split from [roomQuestions] so count churn (every
      *  prediction/comment) never re-sends the entity collection and entity edits
      *  never re-send counts — the [question]/[questionCounts] sibling cutoff at
      *  collection scale. Serves collection-shaped reads (management table columns);
      *  per-row display uses [questionCounts]. */
-    val roomQuestionCounts = TopicSpec1(roomPath / "questions/counts", serializer<Map<Ref<Question>, QuestionCounts>>())
+    val roomQuestionCounts = TopicSpec(roomPath / "questions/counts", serializer<Map<Ref<Question>, QuestionCounts>>())
 
     /** Single censored question — the by-id access behind `useQuestion` (client
      *  endgame): presenter surfaces and describers hold bare refs with no room
      *  context, so they subscribe here. Overlap with collection topics is deliberate
      *  (dedup + atomic frames make it consistent duplication). */
-    val question = TopicSpec1(questionPath, serializer<Question>())
+    val question = TopicSpec(questionPath, serializer<Question>())
 
     /** Per-question counts, split from [question] so count churn never frames the
      *  entity topic (and vice versa: entity edits don't re-send counts). */
-    val questionCounts = TopicSpec1(questionPath / "counts", serializer<QuestionCounts>())
+    val questionCounts = TopicSpec(questionPath / "counts", serializer<QuestionCounts>())
 
-    val questionComments = TopicSpec1(questionPath / "comments", serializer<List<CommentPresentation<QuestionCommentExtraData>>>())
-    val groupPred = TopicSpec1(questionPath / "group_pred", serializer<Prediction?>())
-    val histogram = TopicSpec1(questionPath / "histogram", serializer<BinaryHistogram>())
+    val questionComments = TopicSpec(questionPath / "comments", serializer<List<CommentPresentation<QuestionCommentExtraData>>>())
+    val groupPred = TopicSpec(questionPath / "group_pred", serializer<Prediction?>())
+    val histogram = TopicSpec(questionPath / "histogram", serializer<BinaryHistogram>())
 }

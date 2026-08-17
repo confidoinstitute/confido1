@@ -22,7 +22,7 @@ import tools.confido.utils.toInt
 import kotlin.math.pow
 import kotlinx.serialization.serializer
 import tools.confido.state.Topics
-import tools.confido.utils.TopicSpec1
+import tools.confido.utils.TopicSpec
 import users.User
 import users.UserPresentation
 import tools.confido.state.EntityLookup
@@ -242,7 +242,7 @@ data class MillionaireScoreEntry(
 )
 
 // Topics owned by this extension (see tools.confido.state.Topics for the scheme).
-val millionaireConfigTopic = TopicSpec1(Topics.roomPath / "ext/millionaire/config", serializer<MillionaireGameAction?>())
+val millionaireConfigTopic = TopicSpec(Topics.roomPath / "ext/millionaire/config", serializer<MillionaireGameAction?>())
 /** Scoreboard rows, sorted by descending score server-side. */
-val millionaireScoreboardTopic = TopicSpec1(Topics.roomPath / "ext/millionaire/scoreboard", serializer<List<MillionaireScoreEntry>>())
-val millionaireTimerTopic = TopicSpec1(Topics.roomPath / "ext/millionaire/timer", serializer<TimerState?>())
+val millionaireScoreboardTopic = TopicSpec(Topics.roomPath / "ext/millionaire/scoreboard", serializer<List<MillionaireScoreEntry>>())
+val millionaireTimerTopic = TopicSpec(Topics.roomPath / "ext/millionaire/timer", serializer<TimerState?>())

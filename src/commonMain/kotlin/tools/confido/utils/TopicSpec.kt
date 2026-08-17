@@ -25,3 +25,10 @@ class TopicSpec1<A : Any, P>(val path: PathTemplate1<A>, val serializer: KSerial
 class TopicSpec2<A : Any, B : Any, P>(val path: PathTemplate2<A, B>, val serializer: KSerializer<P>) {
     operator fun invoke(a: A, b: B) = BoundTopic(path(a, b), serializer)
 }
+
+// Arity-selecting factory (same sugar as ApiSpec): the path template's type picks
+// the spec class, so declarations never spell the digit.
+
+fun <P> TopicSpec(path: PathTemplate0, serializer: KSerializer<P>) = TopicSpec0(path, serializer)
+fun <A : Any, P> TopicSpec(path: PathTemplate1<A>, serializer: KSerializer<P>) = TopicSpec1(path, serializer)
+fun <A : Any, B : Any, P> TopicSpec(path: PathTemplate2<A, B>, serializer: KSerializer<P>) = TopicSpec2(path, serializer)

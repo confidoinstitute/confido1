@@ -11,7 +11,7 @@ import tools.confido.state.PresenterView
 import rooms.Room
 import kotlinx.serialization.serializer
 import tools.confido.state.Topics
-import tools.confido.utils.TopicSpec1
+import tools.confido.utils.TopicSpec
 
 val ReferenceForcastKey = ExtensionDataKeyWithDefault<Double?>("reference_forecast", null)
 
@@ -47,4 +47,4 @@ open class ReferenceForecastExtension: Extension {
 }
 
 // Topic owned by this extension (see tools.confido.state.Topics for the scheme).
-val referenceScoreboardTopic = TopicSpec1(Topics.roomPath / "ext/reference_forecast/scoreboard", serializer<List<UserScore>>())
+val referenceScoreboardTopic = TopicSpec(Topics.roomPath / "ext/reference_forecast/scoreboard", serializer<List<UserScore>>())

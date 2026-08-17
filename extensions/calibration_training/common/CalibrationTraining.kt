@@ -12,7 +12,7 @@ import tools.confido.state.FlowAction
 import tools.confido.state.PresenterView
 import users.User
 import kotlinx.serialization.serializer
-import tools.confido.utils.TopicSpec0
+import tools.confido.utils.TopicSpec
 import tools.confido.utils.path
 import tools.confido.state.EntityLookup
 
@@ -160,4 +160,4 @@ open class CalibrationTrainingExtension : Extension {
 }
 
 // Topic owned by this extension (see tools.confido.state.Topics for the scheme).
-val calibrationLeaderboardTopic = TopicSpec0(path("ext/calibration_training/leaderboard"), serializer<List<CalibrationLeaderboardEntry>>())
+val calibrationLeaderboardTopic = TopicSpec(path("ext/calibration_training/leaderboard"), serializer<List<CalibrationLeaderboardEntry>>())
