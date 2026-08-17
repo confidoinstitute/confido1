@@ -135,3 +135,14 @@ fun canChangeRole(myRole: RoomRole?, targetRole: RoomRole): Boolean {
     // Subset check: can only assign roles whose permissions you fully possess
     return targetRole.effectivePermissions.all { it in myRole.effectivePermissions }
 }
+
+/**
+ * Does assigning [targetRole] hand its holder power over [myRole]'s holder?
+ * True when the target role's permissions cover all of the assigner's own — the
+ * assignee becomes a peer (or better), so power turns symmetric: they can change
+ * or remove the assigner in turn. Deliberately not a server-side restriction
+ * (peers managing peers is the intended model, see [canChangeRole]); UIs use it
+ * to confirm peer promotions, the misclick with teeth.
+ */
+fun grantsPeerPowers(myRole: RoomRole?, targetRole: RoomRole): Boolean =
+    myRole != null && myRole.effectivePermissions.all { it in targetRole.effectivePermissions }

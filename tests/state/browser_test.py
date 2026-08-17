@@ -85,6 +85,38 @@ async def main():
             print("FAIL: admin does not see member email in members tab"); sys.exit(1)
         print("PASS: members tab renders from the members topic (name + email for admin)")
 
+        # Peer-promotion confirmation: selecting a role at the viewer's own tier
+        # (admin = implied owner; assigning "owner") must open the confirm dialog.
+        select_role = """
+            (role => { const sel = [...document.querySelectorAll('select')].find(s => s.value === '%s');
+                const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+                setter.call(sel, role); sel.dispatchEvent(new Event('change', {bubbles: true})); return true; })('%s')"""
+        member_role = ("(window.curTopics['room/testroom/members'].data"
+                       ".find(m => (m.user.displayName || '') === 'debugmember') || {}).role")
+
+        await evaluate(cdp, s, select_role % ("forecaster", "owner"))
+        await wait_for(cdp, s, "document.body.innerText.includes('will be able to change your role too')",
+                       desc="peer-promotion confirm dialog")
+        await evaluate(cdp, s, "[...document.querySelectorAll('button')].find(b => b.innerText.trim() === 'Cancel').click()")
+        await cdp.drain(1.0)
+        if await evaluate(cdp, s, member_role) != "forecaster":
+            print("FAIL: cancelled peer promotion still changed the role"); sys.exit(1)
+        print("PASS: peer-promotion dialog shown; cancel leaves the role unchanged")
+
+        await evaluate(cdp, s, select_role % ("forecaster", "owner"))
+        await wait_for(cdp, s, "document.body.innerText.includes('will be able to change your role too')",
+                       desc="confirm dialog (second open)")
+        await evaluate(cdp, s, "[...document.querySelectorAll('button')].find(b => b.innerText.trim() === 'Promote').click()")
+        await wait_for(cdp, s, f"{member_role} === 'owner'", desc="confirmed promotion applied")
+        print("PASS: confirming the dialog applies the promotion")
+        st = await evaluate(cdp, s, """
+            fetch('/rooms/testroom/members/add', {method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({type:'payloads.requests.AddedExistingMember',
+                                      user:'debugmember', role:'forecaster'})}).then(r => r.status)""",
+            await_promise=True)
+        if st != 200:
+            print("FAIL: role restore ->", st); sys.exit(1)
+
         # Admin user directory renders from the on-demand users subscription
         await evaluate(cdp, s, "window.history.pushState({},'','/admin/users'); window.dispatchEvent(new PopStateEvent('popstate'))")
         await wait_for(cdp, s, f"document.body.innerText.includes('{MEMBER_EMAIL}')",

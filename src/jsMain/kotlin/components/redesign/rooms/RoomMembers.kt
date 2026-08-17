@@ -5,6 +5,7 @@ import components.usePermission
 import components.useIsAdmin
 import components.useMyUser
 import components.useDisconnected
+import components.redesign.ConfirmDialog
 import components.redesign.InviteLinkIcon
 import components.redesign.NavMenuIcon
 import components.redesign.basic.Stack
@@ -185,6 +186,8 @@ val RoomMember = FC<RoomMemberProps> {props ->
     val userRef = member.user.userId
 
     var dialogOpen by useState(false)
+    var confirmRole by useState<RoomRole?>(null)
+    val myUser = useMyUser()  // captured for the role-change handler
 
     fun memberRoleChange(role: RoomRole) = runCoroutine {
         val ref = userRef ?: return@runCoroutine
@@ -205,6 +208,18 @@ val RoomMember = FC<RoomMemberProps> {props ->
         onClose = { dialogOpen = false }
         onMail = { window.open("mailto:${member.email}", WindowTarget._blank) }
         onDelete = ::memberDelete
+    }
+
+    confirmRole?.let { role ->
+        ConfirmDialog {
+            open = true
+            title = "Promote to ${role.name}?"
+            confirmText = "Promote"
+            onClose = { confirmRole = null }
+            onConfirm = { memberRoleChange(role); confirmRole = null }
+            +"${member.user.displayName ?: "Anonymous user"} will get the ${role.name} role, "
+            +"which includes all your permissions — they will be able to change your role too."
+        }
     }
 
     Stack {
@@ -255,7 +270,12 @@ val RoomMember = FC<RoomMemberProps> {props ->
             value = member.role
             isGuest = !member.isProperUser
             disabled = props.disabled || !canChangeSelf || userRef == null
-            onChange = ::memberRoleChange
+            onChange = { role ->
+                // Promoting someone to your own tier hands them symmetric power
+                // (they can change your role too) — confirm before committing.
+                if (grantsPeerPowers(room.userRole(myUser), role)) confirmRole = role
+                else memberRoleChange(role)
+            }
         }
         IconButton {
             this.palette = TextPalette.black
