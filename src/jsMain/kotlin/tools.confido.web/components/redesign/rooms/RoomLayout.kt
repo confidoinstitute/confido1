@@ -158,7 +158,7 @@ val RoomHeader = FC<RoomHeaderProps> { props ->
         Stack {
             direction = FlexDirection.row
             css(ClassName("room-header-inner"), override=props.innerClass) {
-                width = if (props.fullWidth ?: false) 100.pct else layoutMode.contentWidth
+                width = if (props.fullWidth ?: false) 100.pct else layoutMode.wideContentWidth
                 justifyContent = JustifyContent.spaceBetween
             }
             +props.children

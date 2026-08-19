@@ -12,6 +12,7 @@ import js.objects.unsafeJso as jso
 import emotion.react.*
 import tools.confido.web.hooks.*
 import react.*
+import react.dom.html.ReactHTML.div
 import react.router.dom.Link
 import tools.confido.rooms.*
 import tools.confido.question.*
@@ -99,7 +100,7 @@ val QuestionList = FC<QuestionListProps> { props ->
                 flexWrap = FlexWrap.wrap
                 gap = 6.px
                 padding = Padding(8.px, 16.px)
-                maxWidth = layoutMode.contentWidth
+                maxWidth = layoutMode.wideContentWidth
                 marginLeft = Auto.auto
                 marginRight = Auto.auto
                 width = 100.pct
@@ -150,15 +151,29 @@ val QuestionList = FC<QuestionListProps> { props ->
         }
     }
 
-    Stack {
+    div {
         css {
             flexGrow = number(1.0)
 
-            alignItems = AlignItems.stretch
+            if (layoutMode >= LayoutMode.TABLET) {
+                // Responsive tile grid: as many ~350px columns as fit into the wide
+                // content area. Grid (not flex) so tiles in a row get equal heights.
+                display = Display.grid
+                gridTemplateColumns = "repeat(auto-fill, minmax(330px, 1fr))".unsafeCast<GridTemplateColumns>()
+                // The container grows to fill the page; without this, grid's default
+                // align-content: stretch inflates the row tracks (and thus tiles) to
+                // fill the leftover height.
+                alignContent = AlignContent.start
+                padding = Padding(15.px, 0.px)
+            } else {
+                display = Display.flex
+                flexDirection = FlexDirection.column
+                alignItems = AlignItems.stretch
+                padding = 15.px
+            }
             width = 100.pct
-            padding = if (layoutMode >= LayoutMode.TABLET) Padding(15.px, 0.px) else 15.px
             gap = 15.px
-            maxWidth = layoutMode.contentWidth
+            maxWidth = layoutMode.wideContentWidth
             marginLeft = Auto.auto
             marginRight = Auto.auto
             position = Position.relative

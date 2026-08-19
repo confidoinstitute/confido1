@@ -91,7 +91,18 @@ val RootLayout = FC<Props> {
 enum class LayoutMode(val contentWidth: Length, val contentSidePad: Length) {
     PHONE(100.pct, 20.px),
     TABLET(640.px, 0.px),
-    DESKTOP(640.px, 0.px),
+    DESKTOP(640.px, 0.px);
+
+    /**
+     * Width for pages that can use the whole desktop viewport (tile grids, tables,
+     * the dashboard). [contentWidth] remains the narrow reading-column width used
+     * by linear content such as comment threads and prediction inputs.
+     */
+    val wideContentWidth: Length
+        get() = when (this) {
+            PHONE -> 100.pct
+            else -> "min(1140px, calc(100% - 30px))".unsafeCast<Length>()
+        }
 }
 
 val LayoutModeContext = createContext<LayoutMode>()
@@ -125,13 +136,15 @@ private val RootLayoutInner = FC<Props> {
     val routes = useMemo(myUser?.type) {
         buildList {
             add(jso<RouteObject> {
-                index = true
-                path = "/"
-                element = Dashboard.create()
-            })
-            add(jso<RouteObject> {
                 element = SidebarLayout.create()
                 children = buildList {
+                    // The dashboard lives inside the sidebar layout so that navigation
+                    // is uniform across pages; on phone (no sidebar) it renders its own
+                    // header and room list instead.
+                    add(jso<RouteObject> {
+                        index = true
+                        element = Dashboard.create()
+                    })
                     add(jso<RouteObject> {
                         path = "rooms/:roomID/*"
                         element = Room.create()

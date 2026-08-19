@@ -26,7 +26,6 @@ import react.*
 import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.header
-import react.dom.html.ReactHTML.img
 import react.dom.html.ReactHTML.main
 import react.dom.html.ReactHTML.span
 import react.router.dom.Link
@@ -34,7 +33,6 @@ import react.router.useNavigate
 import tools.confido.calibration.CalibrationVector
 import tools.confido.utils.toFixed
 import tools.confido.question.QuestionState
-import tools.confido.state.appConfig
 import tools.confido.utils.stringToColor
 import tools.confido.users.User
 import tools.confido.web.utils.runCoroutine
@@ -140,78 +138,6 @@ val DemoPill = FC<DemoPillProps> { props ->
     }
 }
 
-val DesktopHeader = FC<DashboardHeaderProps> { props ->
-    val layoutMode = use(LayoutModeContext)!!
-    header {
-        css {
-            display = Display.flex
-            justifyContent = JustifyContent.center
-            flexShrink = number(0.0)
-            height = 60.px
-            width = 100.pct
-            padding = Padding(20.px, 0.px, 60.px)
-            backgroundColor = Color("#F2F2F2")
-        }
-
-        div {
-            css {
-                height = 60.px
-                display = Display.flex
-                alignItems = AlignItems.center
-                justifyContent = JustifyContent.spaceBetween
-                padding = Padding(0.px, layoutMode.contentSidePad)
-                width = layoutMode.contentWidth
-            }
-
-            Stack {
-                direction = FlexDirection.row
-                img {
-                    css {
-                        height = 60.px
-                    }
-                    src = "/static/sidebar_logo.svg"
-                }
-                if (appConfig.demoMode) {
-                    DemoPill {}
-                }
-            }
-
-            useMyUser()?.let { user ->
-                ButtonBase {
-                    css {
-                        borderRadius = 30.px
-                        ".ripple" {
-                            backgroundColor = Color("#000000")
-                        }
-                    }
-                    Stack {
-                        direction = FlexDirection.row
-                        css {
-                            alignItems = AlignItems.center
-                            padding = Padding(4.px, 13.px, 4.px, 4.px)
-                            gap = 15.px
-                            hover {
-                                backgroundColor = Color("#FFFFFF")
-                            }
-                        }
-                        AccountFrame {
-                            css {
-                                flexGrow = number(1.0)
-                                flexShrink = number(1.0)
-                            }
-                            this.user = user
-                        }
-                        NavMenuIcon {}
-                    }
-                    onClick = {
-                        props.onAccountDialogOpen?.invoke()
-                    }
-                }
-            }
-        }
-    }
-}
-
 val PhoneHeader = FC<DashboardHeaderProps> { props ->
     val layoutMode = use(LayoutModeContext)!!
     header {
@@ -255,7 +181,9 @@ val Dashboard = FC<Props> {
     val rooms = useRooms()
     val questions = useWorkspaceQuestions()
     val layoutMode = use(LayoutModeContext)!!
+    val sidebarState = use(SidebarContext)!!
     val navigate = useNavigate()
+    val isAdmin = useIsAdmin()
 
     var dialogOpen by useState(false)
     UserMenu {
@@ -263,15 +191,16 @@ val Dashboard = FC<Props> {
         onClose = { dialogOpen = false }
     }
 
-    if (layoutMode >= LayoutMode.TABLET) {
-        DesktopHeader {
-            onAccountDialogOpen = { dialogOpen = true }
-        }
-    }
-
     if (layoutMode == LayoutMode.PHONE) {
         PhoneHeader {
             onAccountDialogOpen = { dialogOpen = true }
+        }
+    } else if (sidebarState.isOverlay) {
+        // Tablet: the sidebar is a closed overlay, so give the dashboard the same
+        // slim header with a sidebar toggle that other pages have.
+        PageHeader {
+            title = ""
+            allowSidebar = true
         }
     }
 
@@ -285,15 +214,18 @@ val Dashboard = FC<Props> {
 
     main {
         css {
-            marginTop = 60.px
+            // The phone header is fixed and needs to be compensated for.
+            marginTop = if (layoutMode == LayoutMode.PHONE) 60.px else 12.px
             flexGrow = number(1.0)
             display = Display.flex
             flexDirection = FlexDirection.column
             overflow = Auto.auto
             gap = 12.px
-            width = layoutMode.contentWidth
+            width = layoutMode.wideContentWidth
             overflow = Overflow.visible
             alignSelf = AlignSelf.center
+            marginLeft = Auto.auto
+            marginRight = Auto.auto
         }
 
         // Entry point to workspace-wide search. The first keystroke hands off to the search
@@ -469,15 +401,19 @@ val Dashboard = FC<Props> {
             }
         }
 
-        if ((!showCalibGraph && !showScores) || useIsAdmin()) {
-            title("Workspace", layoutMode.contentSidePad)
-            SidebarActions { hideCalib = showCalibGraph }
-        }
+        // With a sidebar present these sections would only duplicate it; they are
+        // needed on phone, which has no sidebar.
+        if (!sidebarState.isAvailable) {
+            if ((!showCalibGraph && !showScores) || isAdmin) {
+                title("Workspace", layoutMode.contentSidePad)
+                SidebarActions { hideCalib = showCalibGraph }
+            }
 
-        title("Rooms", layoutMode.contentSidePad)
+            title("Rooms", layoutMode.contentSidePad)
 
-        RoomList {
-            canCreate = useMyUser()?.type?.isProper() ?: false
+            RoomList {
+                canCreate = useMyUser()?.type?.isProper() ?: false
+            }
         }
     }
 }
