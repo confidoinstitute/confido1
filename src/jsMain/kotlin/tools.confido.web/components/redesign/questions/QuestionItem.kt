@@ -46,11 +46,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
     val palette = questionState.palette
 
-    val predictionTerm = when (props.question.predictionTerminology) {
-        PredictionTerminology.PREDICTION -> "prediction"
-        PredictionTerminology.ANSWER -> "answer"
-        PredictionTerminology.ESTIMATE -> "estimate"
-    }
+    val predictionTerm = props.question.predictionTerminology.term
+    val predictionVerb = props.question.predictionTerminology.verb
 
     val predictionAgoText = useTimeAgo(prediction?.ts)
 
@@ -299,16 +296,16 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                             }
                         } else if (questionState == QuestionState.OPEN) {
                             if (counts.predictions == 0) {
-                                +"be the first to answer!"
+                                +"be the first to $predictionVerb!"
                             } else {
                                 if (props.question.groupPredictionVisibility == GroupPredictionVisibility.ANSWERED) {
-                                    +"answer to see the group $predictionTerm"
+                                    +"$predictionVerb to see the group $predictionTerm"
                                 } else {
                                     +"add your $predictionTerm"
                                 }
                             }
                         } else if (questionState == QuestionState.CLOSED) {
-                            +"you did not answer"
+                            +"you did not $predictionVerb"
                         }
                     }
                 }

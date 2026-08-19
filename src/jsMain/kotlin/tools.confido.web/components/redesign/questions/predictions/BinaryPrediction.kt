@@ -608,6 +608,7 @@ val BinaryPredInput = FC<BinaryPredInputProps> { props->
             BinaryPredSlider {
                 this.space = props.space
                 this.dist = props.dist
+                this.question = props.question
                 this.onChange = { newDist, isCommit ->
                     previewDist = (newDist as BinaryDistribution)
                     props.onChange?.invoke(newDist, isCommit)

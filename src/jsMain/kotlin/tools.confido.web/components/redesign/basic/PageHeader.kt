@@ -42,7 +42,7 @@ val PageHeader = FC<PageHeaderProps> { props ->
                 flexGrow = number(1.0)
                 flexBasis = 0.px
             }
-            if (sidebar.isAvailable && props.allowSidebar) {
+            if (sidebar.isAvailable && sidebar.isOverlay && props.allowSidebar) {
                 IconButton {
                     onClick = { sidebar.toggle() }
                     SidebarIcon { }

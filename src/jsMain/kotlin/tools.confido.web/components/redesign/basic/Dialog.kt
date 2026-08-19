@@ -349,6 +349,9 @@ val DialogMenuSeparator = FC<DialogMenuItemProps> { props ->
             "& + &" {
                 display = None.none
             }
+            "&:last-child" {
+                display = None.none
+            }
         }
     }
 }
@@ -360,7 +363,7 @@ external interface DialogMenuHeaderProps: PropsWithClassName {
 val DialogMenuHeader = FC<DialogMenuHeaderProps> { props->
     div {
         css(override=props) {
-            color = Color("#BBBBBB")
+            color = Color("#666666")
             fontSize = 14.px
             lineHeight = 17.px
             fontWeight = integer(500)
@@ -545,6 +548,7 @@ external interface DialogMenuCommonActionsProps : Props {
 }
 
 val DialogMenuCommonActions = FC<DialogMenuCommonActionsProps> { props ->
+    val sidebar = use(SidebarContext)
     FeedbackMenuItem {
         pageName = props.pageName
         onClick = {
@@ -559,11 +563,14 @@ val DialogMenuCommonActions = FC<DialogMenuCommonActionsProps> { props ->
         disabled = true
     }
      */
+    // The sidebar already carries the About link; don't duplicate it in every menu
+    // when the sidebar is present.
+    if (sidebar?.isAvailable != true)
     DialogMenuItem {
         text = "About Confido"
         icon = AboutIcon
         onClick = {
-            // Warning: This is currently duplicated in DialogMenuCommonActions
+            // Warning: This is currently duplicated in the Sidebar
             window.open("https://confido.institute/confido-app.html", WindowTarget._blank)
         }
     }

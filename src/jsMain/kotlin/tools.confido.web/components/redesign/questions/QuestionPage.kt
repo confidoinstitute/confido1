@@ -881,7 +881,7 @@ private val QuestionStatusLine = FC<QuestionStatusProps> { props ->
             fontWeight = integer(700)
             fontSize = 12.px
             lineHeight = 15.px
-            color = Color("rgba(0, 0, 0, 0.3)")
+            color = Color("rgba(0, 0, 0, 0.55)")
 
             padding = Padding(2.px, 0.px)
             textTransform = TextTransform.uppercase
@@ -890,7 +890,7 @@ private val QuestionStatusLine = FC<QuestionStatusProps> { props ->
         props.time?.let {
             val localTime = it.toLocalDateTime(TimeZone.currentSystemDefault())
             val day = localTime.dayOfMonth
-            val month = localTime.month.name.substring(0, 4);
+            val month = localTime.month.name.substring(0, 3);
             val year = localTime.year
             val hour = localTime.hour
             val minute = localTime.minute.toString().padStart(2, '0')

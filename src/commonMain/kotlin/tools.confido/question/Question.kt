@@ -44,6 +44,14 @@ enum class PredictionTerminology : Terminology {
             PredictionTerminology.ANSWER, PredictionTerminology.ESTIMATE -> "an $term"
             else -> "a $term"
         }
+
+    /** Verb form for prompts like "be the first to predict". */
+    val verb
+        get() = when (this) {
+            PREDICTION -> "predict"
+            ANSWER -> "answer"
+            ESTIMATE -> "estimate"
+        }
 }
 
 enum class GroupTerminology : Terminology {

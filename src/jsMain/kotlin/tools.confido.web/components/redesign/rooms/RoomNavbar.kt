@@ -38,7 +38,7 @@ val RoomNavbar = FC<RoomNavbarProps> { props ->
                 justifyContent = JustifyContent.flexStart
                 alignItems = AlignItems.center
             }
-            if (sidebar.isAvailable) {
+            if (sidebar.isAvailable && sidebar.isOverlay) {
                 IconButton {
                     this.palette = palette.text
                     onClick = { sidebar.toggle() }

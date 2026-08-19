@@ -46,7 +46,8 @@ internal fun ChildrenBuilder.title(text: String, sidePad: Length) = div {
         fontSize = 14.px
         lineHeight = 17.px
         fontWeight = integer(500)
-        color = Color("#999999")
+        // Keep captions visually secondary but WCAG AA readable on the #F2F2F2 background.
+        color = Color("#666666")
     }
     +text
 }
@@ -100,7 +101,7 @@ val AccountFrame = FC<WorkspaceFrameProps> { props ->
                         fontSize = 10.px
                         lineHeight = 12.px
                     }
-                    color = Color("#777777")
+                    color = Color("#666666")
                 }
                 +(props.user.email ?: "")
             }
@@ -484,11 +485,19 @@ val Dashboard = FC<Props> {
 external interface UserMenuProps : Props {
     var open: Boolean
     var onClose: (() -> Unit)?
+
+    /**
+     * Skip items that duplicate navigation already visible next to the menu trigger.
+     * Used when the menu is opened from the sidebar, which lists Calibration, Your
+     * scores and Users itself.
+     */
+    var hideSidebarDuplicates: Boolean?
 }
 
 val UserMenu = FC<UserMenuProps> { props ->
     val loginState = use(LoginContext)!!
     val navigate = useNavigate()
+    val hideDuplicates = props.hideSidebarDuplicates ?: false
 
     DialogMenu {
         open = props.open
@@ -499,13 +508,15 @@ val UserMenu = FC<UserMenuProps> { props ->
             icon = SettingsIcon
             this.navigate = "/profile"
         }
-        DialogMenuNav {
-            text = "Calibration"
-            this.navigate = "/calibration"
-        }
-        DialogMenuNav {
-            text = "Your scores"
-            this.navigate = "/scores"
+        if (!hideDuplicates) {
+            DialogMenuNav {
+                text = "Calibration"
+                this.navigate = "/calibration"
+            }
+            DialogMenuNav {
+                text = "Your scores"
+                this.navigate = "/scores"
+            }
         }
 
         DialogMenuItem {
@@ -525,7 +536,7 @@ val UserMenu = FC<UserMenuProps> { props ->
             pageName = "Dashboard"
             onClose = props.onClose
         }
-        if (useIsAdmin()) {
+        if (useIsAdmin() && !hideDuplicates) {
             DialogMenuSeparator{}
             DialogMenuHeader { this.text = "Administration" }
             DialogMenuNav {

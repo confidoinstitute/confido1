@@ -5,6 +5,7 @@ import tools.confido.web.components.useIsAdmin
 import tools.confido.web.components.useMyUser
 import tools.confido.web.components.redesign.basic.*
 import tools.confido.web.components.redesign.feedback.FeedbackContext
+import tools.confido.web.components.redesign.forms.ButtonBase
 import tools.confido.web.components.redesign.layout.LayoutMode
 import tools.confido.web.components.redesign.layout.LayoutModeContext
 import tools.confido.web.components.redesign.rooms.RoomLink
@@ -52,6 +53,12 @@ class SidebarState internal constructor(
     }
 
     val isAvailable get() = isAvailableInPage && isAvailableInLayout
+
+    /**
+     * In tablet layout the sidebar is a closable overlay and needs a toggle button in
+     * page headers; in desktop layout it is permanently docked and needs none.
+     */
+    val isOverlay get() = layoutMode == LayoutMode.TABLET
 
     val marginOffset
         get(): Length = if (isOpen && isAvailable) {
@@ -238,6 +245,13 @@ val SidebarActions = FC<SidebarActionsProps> {props->
 
 val Sidebar = FC<SidebarProps> { props ->
     val layoutMode = use(LayoutModeContext)!!
+    var accountMenuOpen by useState(false)
+
+    UserMenu {
+        open = accountMenuOpen
+        onClose = { accountMenuOpen = false }
+        hideSidebarDuplicates = true
+    }
 
     Stack {
         component = aside
@@ -273,8 +287,36 @@ val Sidebar = FC<SidebarProps> { props ->
         }
         SidebarHeader {}
         useMyUser()?.let { user ->
-            AccountFrame {
-                this.user = user
+            ButtonBase {
+                css {
+                    // withRipple() sets overflow:hidden, which zeroes the automatic minimum
+                    // size — without this the button collapses when the sidebar overflows.
+                    flexShrink = number(0.0)
+                    borderRadius = 12.px
+                    ".ripple" {
+                        backgroundColor = Color("#000000")
+                    }
+                }
+                Stack {
+                    direction = FlexDirection.row
+                    css {
+                        alignItems = AlignItems.center
+                        gap = 10.px
+                        padding = Padding(4.px, 8.px)
+                        hover {
+                            backgroundColor = Color("#F2F2F2")
+                        }
+                    }
+                    AccountFrame {
+                        css {
+                            flexGrow = number(1.0)
+                            flexShrink = number(1.0)
+                        }
+                        this.user = user
+                    }
+                    NavMenuIcon {}
+                }
+                onClick = { accountMenuOpen = true }
             }
         }
         Stack {
