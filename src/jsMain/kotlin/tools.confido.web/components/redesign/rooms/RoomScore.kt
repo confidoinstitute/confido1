@@ -134,7 +134,7 @@ val RoomScore = FC<Props> {
         }
     }
 
-    LayoutWidthWrapper {
+    WideLayoutWidthWrapper {
         // Show toggle only when the user can view the scoreboard;
         // otherwise just show "My scores" directly.
         if (canViewScoreboard) {
