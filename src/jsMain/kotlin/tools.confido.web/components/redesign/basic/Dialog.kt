@@ -27,6 +27,11 @@ import tools.confido.utils.generateId
 import web.location.*
 import web.storage.*
 import web.dom.document
+import web.events.EventType
+import web.events.addEventListener
+import web.events.removeEventListener
+import web.keyboard.KeyboardEvent
+import web.mouse.MouseEvent
 import web.window.WindowTarget
 import web.window._blank
 import web.window.window
@@ -76,47 +81,167 @@ external interface DialogMenuProps : PropsWithChildren, PropsWithRef<HTMLElement
 }
 
 val DialogMenu = FC<DialogMenuProps> { props->
-    DialogCore {
-        this.ref = props.ref
-        this.open = props.open
-        this.onClose = props.onClose
-        Stack {
-            div { className = ClassName("dialogmenu-start") }
-            +props.children
+    val layoutMode = use(LayoutModeContext)!!
+    useEffect { installMenuAnchorTracking() }
+
+    if (layoutMode == LayoutMode.PHONE) {
+        DialogCore {
+            this.ref = props.ref
+            this.open = props.open
+            this.onClose = props.onClose
+            Stack {
+                div { className = ClassName("dialogmenu-start") }
+                +props.children
 
 
 
-            if (props.hasCloseButton != false) {
-                ButtonBase {
-                    css {
-                        border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))
-                        margin = 15.px
-                        padding = 10.px
-                        alignSelf = AlignSelf.stretch
+                if (props.hasCloseButton != false) {
+                    ButtonBase {
+                        css {
+                            border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))
+                            margin = 15.px
+                            padding = 10.px
+                            alignSelf = AlignSelf.stretch
 
-                        fontFamily = sansSerif
-                        fontStyle = FontStyle.normal
-                        fontWeight = integer(400)
-                        fontSize = 17.px
-                        lineHeight = 20.px
-                        color = Color("#999999")
-                        backgroundColor = Color("#FFFFFF")
-                        textAlign = TextAlign.center
+                            fontFamily = sansSerif
+                            fontStyle = FontStyle.normal
+                            fontWeight = integer(400)
+                            fontSize = 17.px
+                            lineHeight = 20.px
+                            color = Color("#999999")
+                            backgroundColor = Color("#FFFFFF")
+                            textAlign = TextAlign.center
 
-                        hover {
-                            backgroundColor = Color("#FBFBFB")
+                            hover {
+                                backgroundColor = Color("#FBFBFB")
+                            }
+
+                            ".ripple" {
+                                backgroundColor = Color("#999999")
+                            }
                         }
-
-                        ".ripple" {
-                            backgroundColor = Color("#999999")
-                        }
+                        +"Close"
+                        onClick = { props.onClose?.invoke() }
                     }
-                    +"Close"
-                    onClick = { props.onClose?.invoke() }
                 }
             }
         }
+    } else {
+        MenuPopover { +props }
     }
+}
+
+/** Geometry of the element a menu was opened from, in viewport coordinates. */
+private class MenuAnchor(val left: Double, val top: Double, val right: Double, val bottom: Double)
+
+private var lastTriggerAnchor: MenuAnchor? = null
+private var menuAnchorTrackingInstalled = false
+
+private fun web.dom.Element.toMenuAnchor(): MenuAnchor {
+    val r = getBoundingClientRect()
+    return MenuAnchor(r.left, r.top, r.right, r.bottom)
+}
+
+/**
+ * Remember the geometry of the last activated button/link so that a [DialogMenu]
+ * opened by it can anchor its desktop popover to the trigger. The trigger's
+ * pointerdown/keydown always precedes the state change that opens the menu, so the
+ * anchor is fresh at mount time and call sites need not thread refs through.
+ */
+private fun installMenuAnchorTracking() {
+    if (menuAnchorTrackingInstalled) return
+    menuAnchorTrackingInstalled = true
+    document.addEventListener(EventType<MouseEvent>("pointerdown"), { e ->
+        lastTriggerAnchor = (e.target as? web.dom.Element)?.closest("button, a, [role=\"button\"]")?.toMenuAnchor()
+            ?: MenuAnchor(e.clientX.toDouble(), e.clientY.toDouble(), e.clientX.toDouble(), e.clientY.toDouble())
+    })
+    document.addEventListener(EventType<KeyboardEvent>("keydown"), { e ->
+        if (e.key == "Enter" || e.key == " ") {
+            val el = document.activeElement ?: return@addEventListener
+            if (el.matches("button, a, [role=\"button\"]")) lastTriggerAnchor = el.toMenuAnchor()
+        }
+    })
+}
+
+/** Desktop/tablet rendering of [DialogMenu]: a popover anchored to its trigger. */
+private val MenuPopover = FC<DialogMenuProps> { props ->
+    // Captured once per opening; the menu should not move if the page scrolls or
+    // some other button is pressed while it is open.
+    val anchor = useMemo(props.open) { if (props.open) lastTriggerAnchor else null }
+
+    useEffectWithCleanup(props.open) {
+        if (props.open) {
+            val handler: (KeyboardEvent) -> Unit = { e ->
+                if (e.key == "Escape") props.onClose?.invoke()
+            }
+            document.addEventListener(EventType<KeyboardEvent>("keydown"), handler)
+            onCleanup { document.removeEventListener(EventType<KeyboardEvent>("keydown"), handler) }
+        }
+    }
+
+    if (props.open) +createPortal(
+        Fragment.create {
+            div {
+                // Click-away catcher with a slight tint: enough to separate the white
+                // panel from white surroundings (e.g. the sidebar), well short of the
+                // phone sheet's full dim.
+                css {
+                    position = Position.fixed
+                    top = 0.px
+                    left = 0.px
+                    right = 0.px
+                    bottom = 0.px
+                    zIndex = integer(2100)
+                    backgroundColor = rgb(0, 0, 0, 0.1)
+                }
+                onClick = { props.onClose?.invoke() }
+            }
+            div {
+                css {
+                    position = Position.fixed
+                    zIndex = integer(2101)
+                    backgroundColor = Color("#FFFFFF")
+                    borderRadius = 10.px
+                    border = Border(1.px, LineStyle.solid, Color("#EEEEEE"))
+                    boxShadow = BoxShadow(0.px, 4.px, 24.px, rgb(0, 0, 0, 0.2))
+                    padding = Padding(6.px, 0.px)
+                    minWidth = 240.px
+                    overflowY = Auto.auto
+
+                    if (anchor != null) {
+                        val vw = window.innerWidth.toDouble()
+                        val vh = window.innerHeight.toDouble()
+                        // Grow from the trigger towards the viewport center, and open
+                        // downwards unless there is clearly more room above.
+                        if ((anchor.left + anchor.right) / 2 < vw / 2) {
+                            left = anchor.left.px
+                            maxWidth = minOf(340.0, vw - anchor.left - 8).px
+                        } else {
+                            right = (vw - anchor.right).px
+                            maxWidth = minOf(340.0, anchor.right - 8).px
+                        }
+                        val spaceBelow = vh - anchor.bottom
+                        if (spaceBelow >= 280 || spaceBelow >= anchor.top) {
+                            top = (anchor.bottom + 6).px
+                            maxHeight = (vh - anchor.bottom - 18).px
+                        } else {
+                            bottom = (vh - anchor.top + 6).px
+                            maxHeight = (anchor.top - 18).px
+                        }
+                    } else {
+                        // No known trigger (e.g. opened programmatically).
+                        top = 25.vh
+                        left = 50.pct
+                        transform = translate((-50).pct, 0.px)
+                        maxWidth = 340.px
+                        maxHeight = 50.vh
+                    }
+                }
+                div { className = ClassName("dialogmenu-start") }
+                +props.children
+            }
+        }, document.body
+    )
 }
 
 external interface BaseDialogProps : Props {
