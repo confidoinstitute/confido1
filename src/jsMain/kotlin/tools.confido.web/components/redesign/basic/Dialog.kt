@@ -23,6 +23,7 @@ import react.dom.svg.*
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.svg
 import react.router.dom.Link
+import react.router.useLocation
 import tools.confido.utils.generateId
 import web.location.*
 import web.storage.*
@@ -168,6 +169,14 @@ private val MenuPopover = FC<DialogMenuProps> { props ->
     // Captured once per opening; the menu should not move if the page scrolls or
     // some other button is pressed while it is open.
     val anchor = useMemo(props.open) { if (props.open) lastTriggerAnchor else null }
+
+    // Unlike the phone sheet, whose host component typically unmounts on navigation,
+    // a popover can outlive it (e.g. the sidebar account menu) — close it whenever
+    // the route changes.
+    val location = useLocation()
+    useEffectNotFirst(location.pathname) {
+        if (props.open) props.onClose?.invoke()
+    }
 
     useEffectWithCleanup(props.open) {
         if (props.open) {
@@ -657,6 +666,7 @@ val DialogMenuNav = FC<DialogMenuNavProps> { props ->
                 +props.text
             }
             to = props.navigate
+            onClick = { if (!disabled) props.onClick?.invoke() }
         }
     }
 }
