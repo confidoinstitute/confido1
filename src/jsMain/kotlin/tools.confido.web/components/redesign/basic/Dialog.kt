@@ -92,7 +92,10 @@ val DialogMenu = FC<DialogMenuProps> { props->
             this.onClose = props.onClose
             Stack {
                 div { className = ClassName("dialogmenu-start") }
-                +props.children
+                DialogMenuCloseContext.Provider {
+                    value = { props.onClose?.invoke() }
+                    +props.children
+                }
 
 
 
@@ -247,7 +250,10 @@ private val MenuPopover = FC<DialogMenuProps> { props ->
                     }
                 }
                 div { className = ClassName("dialogmenu-start") }
-                +props.children
+                DialogMenuCloseContext.Provider {
+                    value = { props.onClose?.invoke() }
+                    +props.children
+                }
             }
         }, document.body
     )
@@ -508,6 +514,12 @@ val DialogMenuHeader = FC<DialogMenuHeaderProps> { props->
     }
 }
 
+/**
+ * The enclosing [DialogMenu]'s close callback. Menu items close the menu
+ * automatically when selected; see [DialogMenuItemProps.keepOpen] to opt out.
+ */
+val DialogMenuCloseContext = createContext<() -> Unit>()
+
 external interface DialogMenuItemProps : Props {
     var text: String
 
@@ -520,6 +532,9 @@ external interface DialogMenuItemProps : Props {
     var variant: DialogMenuItemVariant?
     var onClick: (() -> Unit)?
     var icon: ComponentType<IconProps>?
+
+    /** Keep the menu open after this item is selected (menus close on selection by default). */
+    var keepOpen: Boolean?
 }
 
 external interface DialogMenuNavProps : DialogMenuItemProps {
@@ -528,6 +543,7 @@ external interface DialogMenuNavProps : DialogMenuItemProps {
 
 val DialogMenuItem = FC<DialogMenuItemProps> { props ->
     val variant = props.variant ?: DialogMenuItemVariant.normal
+    val menuClose = use(DialogMenuCloseContext)
     val color = when (variant) {
         DialogMenuItemVariant.normal -> Color("#000000")
         DialogMenuItemVariant.dangerous -> Color("#ff0000")
@@ -595,6 +611,7 @@ val DialogMenuItem = FC<DialogMenuItemProps> { props ->
                 if (!disabled) {
                     createRipple(it, Color("#999999"))
                     props.onClick?.invoke()
+                    if (props.keepOpen != true) menuClose?.invoke()
                 }
             }
         }
@@ -602,6 +619,7 @@ val DialogMenuItem = FC<DialogMenuItemProps> { props ->
 }
 
 val DialogMenuNav = FC<DialogMenuNavProps> { props ->
+    val menuClose = use(DialogMenuCloseContext)
     val color = when (props.variant ?: DialogMenuItemVariant.normal) {
         DialogMenuItemVariant.normal -> Color("#000000")
         DialogMenuItemVariant.dangerous -> Color("#ff0000")
@@ -666,7 +684,12 @@ val DialogMenuNav = FC<DialogMenuNavProps> { props ->
                 +props.text
             }
             to = props.navigate
-            onClick = { if (!disabled) props.onClick?.invoke() }
+            onClick = {
+                if (!disabled) {
+                    props.onClick?.invoke()
+                    if (props.keepOpen != true) menuClose?.invoke()
+                }
+            }
         }
     }
 }

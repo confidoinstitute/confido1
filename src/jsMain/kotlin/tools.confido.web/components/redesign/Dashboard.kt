@@ -443,18 +443,15 @@ val UserMenu = FC<UserMenuProps> { props ->
             text = "User settings"
             icon = SettingsIcon
             this.navigate = "/profile"
-            onClick = { props.onClose?.invoke() }
         }
         if (!hideDuplicates) {
             DialogMenuNav {
                 text = "Calibration"
                 this.navigate = "/calibration"
-                onClick = { props.onClose?.invoke() }
             }
             DialogMenuNav {
                 text = "Your scores"
                 this.navigate = "/scores"
-                onClick = { props.onClose?.invoke() }
             }
         }
 
@@ -481,7 +478,6 @@ val UserMenu = FC<UserMenuProps> { props ->
             DialogMenuNav {
                 text = "User management"
                 this.navigate = "/admin/users"
-                onClick = { props.onClose?.invoke() }
             }
         }
     }
