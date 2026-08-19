@@ -9,6 +9,7 @@ import tools.confido.web.components.useDisconnected
 import tools.confido.web.components.redesign.*
 import tools.confido.web.components.redesign.basic.*
 import tools.confido.web.components.redesign.forms.Button
+import tools.confido.web.components.redesign.layout.LayoutMode
 import tools.confido.web.components.redesign.layout.LayoutModeContext
 import tools.confido.web.components.redesign.rooms.dialog.CsvExportDialog
 import tools.confido.web.components.redesign.rooms.dialog.EditRoomSettingsDialog
@@ -180,6 +181,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
     val size = useElementSize<HTMLDivElement>()
     val tabRef = useRef<HTMLDivElement>()
     val palette = room.color.palette
+    val layoutMode = use(LayoutModeContext)!!
 
     var scrollY by useState(0.0)
     val cutoff = 60.0 + size.height - 15.0
@@ -324,54 +326,122 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                 transition = 0.5.s
             }
         }
-        div {
-            css {
-                mask = url("/static/icons/${room.icon}")
-                maskSize = MaskSize.contain
-                backgroundColor = palette.text.color
-                height = 64.px
-                width = 64.px
-                margin = Margin(0.px, Auto.auto)
-            }
-        }
-        div {
-            ref = size.ref
-            css {
-                marginTop = 16.px
-                width = 100.pct
-                fontSize = 32.px
-                lineHeight = 34.px
-                fontWeight = integer(800)
-                fontFamily = sansSerif
-                textAlign = TextAlign.center
-                padding = Padding(0.px, 10.px)
-            }
-            +room.name
-        }
-        div {
-            css {
-                paddingTop = 18.px
-                paddingBottom = 100.px
-                paddingLeft = 60.px
-                paddingRight = 60.px
-                textAlign = TextAlign.center
-                fontFamily = sansSerif
-                fontSize = 16.px
-                lineHeight = 19.px
-                whiteSpace = WhiteSpace.preLine
-            }
-            SeeMore {
-                maxLines = 5
-                lineHeight = 19.0
-                backgroundColor = palette.color
-                linkCss = ClassName {
-                    color = Color("inherit")
+        if (layoutMode >= LayoutMode.TABLET) {
+            // Compact header: keep the room color and icon as identity, but stop
+            // spending a third of the viewport on it. The description is clamped;
+            // SeeMore expands it in place for the rare occasions it is needed.
+            div {
+                ref = size.ref
+                css {
+                    display = Display.flex
+                    flexDirection = FlexDirection.row
+                    width = layoutMode.wideContentWidth
+                    margin = Margin(0.px, Auto.auto)
+                    alignItems = AlignItems.center
+                    gap = 14.px
+                    padding = Padding(14.px, 10.px, 8.px)
                 }
-                TextWithLinks {
-                    text = room.description
+                room.icon?.let { icon ->
+                    div {
+                        css {
+                            mask = url("/static/icons/$icon")
+                            maskSize = MaskSize.contain
+                            backgroundColor = palette.text.color
+                            height = 36.px
+                            width = 36.px
+                            flexShrink = number(0.0)
+                        }
+                    }
+                }
+                div {
+                    css {
+                        fontSize = 26.px
+                        lineHeight = 30.px
+                        fontWeight = integer(800)
+                        fontFamily = sansSerif
+                    }
+                    +room.name
                 }
             }
-            ClientExtension.forEach { it.roomInfoExtra(room, this) }
+            div {
+                css {
+                    width = layoutMode.wideContentWidth
+                    margin = Margin(0.px, Auto.auto)
+                    paddingTop = 0.px
+                    paddingRight = 10.px
+                    paddingBottom = 14.px
+                    // Align with the heading text, which sits right of the icon.
+                    paddingLeft = if (room.icon != null) 60.px else 10.px
+                    fontFamily = sansSerif
+                    fontSize = 14.px
+                    lineHeight = 18.px
+                    whiteSpace = WhiteSpace.preLine
+                }
+                if (room.description.isNotBlank()) {
+                    SeeMore {
+                        maxLines = 2
+                        lineHeight = 18.0
+                        backgroundColor = palette.color
+                        linkCss = ClassName {
+                            color = Color("inherit")
+                        }
+                        TextWithLinks {
+                            text = room.description
+                        }
+                    }
+                }
+                ClientExtension.forEach { it.roomInfoExtra(room, this) }
+            }
+        } else {
+            div {
+                css {
+                    mask = url("/static/icons/${room.icon}")
+                    maskSize = MaskSize.contain
+                    backgroundColor = palette.text.color
+                    height = 64.px
+                    width = 64.px
+                    margin = Margin(0.px, Auto.auto)
+                }
+            }
+            div {
+                ref = size.ref
+                css {
+                    marginTop = 16.px
+                    width = 100.pct
+                    fontSize = 32.px
+                    lineHeight = 34.px
+                    fontWeight = integer(800)
+                    fontFamily = sansSerif
+                    textAlign = TextAlign.center
+                    padding = Padding(0.px, 10.px)
+                }
+                +room.name
+            }
+            div {
+                css {
+                    paddingTop = 18.px
+                    paddingBottom = 100.px
+                    paddingLeft = 60.px
+                    paddingRight = 60.px
+                    textAlign = TextAlign.center
+                    fontFamily = sansSerif
+                    fontSize = 16.px
+                    lineHeight = 19.px
+                    whiteSpace = WhiteSpace.preLine
+                }
+                SeeMore {
+                    maxLines = 5
+                    lineHeight = 19.0
+                    backgroundColor = palette.color
+                    linkCss = ClassName {
+                        color = Color("inherit")
+                    }
+                    TextWithLinks {
+                        text = room.description
+                    }
+                }
+                ClientExtension.forEach { it.roomInfoExtra(room, this) }
+            }
         }
         div {
             css {
