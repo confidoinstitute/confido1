@@ -364,6 +364,7 @@ fun main() {
                 calibrationRoutes(this)
                 scoreRoutes(this)
                 dashboardRoutes(this)
+                searchRoutes(this)
 
                 // §4.2 "questions" (global by design — cross-room surfaces pay for the
                 // cross-room slice they display): all questions the viewer can see,

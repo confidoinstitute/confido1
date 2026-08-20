@@ -30,6 +30,10 @@ external interface QuestionItemProps : Props {
     var room: Room?
     /** Optional extra content shown under the question name, e.g. a matching description excerpt. */
     var subtitle: ReactNode?
+
+    /** Optional replacement for the plain question name, e.g. a match-highlighted
+     * version of it. Must render the same text — only the markup may differ. */
+    var titleContent: ReactNode?
 }
 
 external interface StatusChipProps : PropsWithClassName {
@@ -143,7 +147,7 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     lineHeight = 105.pct
                     color = Color("#000000")
                 }
-                +props.question.name
+                +(props.titleContent ?: ReactNode(props.question.name))
             }
         }
 

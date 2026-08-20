@@ -110,6 +110,7 @@ run ws_test.py
 run gate_test.py
 run permission_test.py
 run dashboard_test.py
+run search_test.py
 run group_revoke_test.py   # skips unless room_groups is enabled (CONFIDO_EXTENSIONS)
 
 if [ "$BROWSER" = 1 ]; then

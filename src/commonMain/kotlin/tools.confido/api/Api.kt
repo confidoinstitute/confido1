@@ -84,6 +84,9 @@ object Api {
     val loginUsers = ApiSpec(POST, path("login_users"), serializer<UsernameLogin>(), serializer<Unit>())
     val logout = ApiSpec(POST, path("logout"), serializer<Unit>(), serializer<Unit>())
 
+    /** Workspace-wide search over the viewer-censored rooms and questions. */
+    val search = ApiSpec(POST, path("search"), serializer<SearchRequest>(), serializer<SearchResponse>())
+
     val profileEmailStartVerification = ApiSpec(POST, path("profile/email/start_verification"), serializer<StartEmailVerification>(), serializer<Unit>())
     val profileEmailVerify = ApiSpec(POST, path("profile/email/verify"), serializer<TokenVerification>(), serializer<Unit>())
     val profilePassword = ApiSpec(POST, path("profile/password"), serializer<SetPassword>(), serializer<Unit>())

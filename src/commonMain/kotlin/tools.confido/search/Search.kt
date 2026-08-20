@@ -1,4 +1,6 @@
-package tools.confido.web.components.redesign.search
+package tools.confido.search
+
+import kotlinx.serialization.Serializable
 
 import tools.confido.rooms.Room
 import tools.confido.question.Question
@@ -6,9 +8,9 @@ import tools.confido.question.Question
 /**
  * Which parts of the workspace a query is matched against.
  *
- * Every scope here is served from the client's subscribed rooms directory and questions slice,
- * which already hold each room and question the user is allowed to see, so searching needs no
- * server round trip and can run on every keystroke.
+ * Matching runs server-side (routes/Search.kt) over the viewer-censored rooms directory and
+ * questions map — the same censors that back the corresponding topics, so results are exactly
+ * what the client would be allowed to subscribe to.
  *
  * TODO: comment search. Comment bodies are never part of the state snapshot (they are streamed
  * per room / per question, see routes/Comment.kt), so a COMMENTS scope needs a server endpoint
@@ -55,6 +57,7 @@ private const val SNIPPET_AFTER = 120
 data class MatchRange(val start: Int, val end: Int)
 
 /** An excerpt of a longer text, cut around the first match. */
+@Serializable
 data class Snippet(val text: String, val truncatedStart: Boolean, val truncatedEnd: Boolean)
 
 data class QuestionHit(
@@ -167,8 +170,7 @@ fun makeSnippet(text: String, terms: List<String>): Snippet? {
 }
 
 /**
- * Searches everything the client knows about — the subscribed rooms directory and questions
- * slice, which already hold each room and question the user is allowed to see. Rooms are
+ * Searches the given (viewer-censored) rooms directory and questions map. Rooms are
  * matched only into their own result section: a query hitting a room name deliberately does
  * *not* pull in all of that room's questions, which would swamp the question results.
  */

@@ -1,8 +1,18 @@
 package tools.confido.web.components.redesign.search
 
+import tools.confido.api.Api
+import tools.confido.payloads.requests.SearchRequest
+import tools.confido.payloads.responses.SearchResponse
+import tools.confido.search.SearchScope
+import tools.confido.search.Snippet
+import tools.confido.search.matchRanges
+import tools.confido.search.searchTerms
+import tools.confido.search.toParam
+import tools.confido.web.Client
 import tools.confido.web.components.useRooms
-import tools.confido.web.components.useWorkspaceQuestions
 import tools.confido.web.components.redesign.ZoomIcon
+import tools.confido.rooms.Room
+import tools.confido.web.utils.runCoroutine
 import tools.confido.web.components.redesign.basic.*
 import tools.confido.web.components.redesign.forms.TextInput
 import tools.confido.web.components.redesign.layout.LayoutMode
@@ -101,12 +111,12 @@ private val ScopeChip = FC<ScopeChipProps> { props ->
 }
 
 /**
- * Workspace-wide search. Everything shown here comes out of the subscribed workspace slices, so
- * results update as you type without hitting the server; see [searchWorkspace].
+ * Workspace-wide search. Matching runs server-side (Api.search) over the same
+ * viewer-censored state the topics serve; the query is debounced, and a stale
+ * response never overwrites a newer one (the request sequence guard below).
  */
 val SearchPage = FC<Props> {
     val rooms = useRooms()
-    val questions = useWorkspaceQuestions()
     val layoutMode = use(LayoutModeContext)!!
     val navigate = useNavigate()
     val (searchParams, _) = useSearchParams()
@@ -129,8 +139,17 @@ val SearchPage = FC<Props> {
             navigate(searchUrl(query, scope), jso<dynamic> { replace = true })
     }
 
-    val results = useMemo(rooms, questions, query, scope.toParam()) {
-        searchWorkspace(rooms, questions, query, scope)
+    var results by useState<SearchResponse?>(null)
+    val requestSeq = useRef(0)
+    useDebounce(150, query, scope.toParam()) {
+        val seq = (requestSeq.current ?: 0) + 1
+        requestSeq.current = seq
+        if (searchTerms(query).isEmpty()) {
+            results = null
+        } else runCoroutine {
+            val response = Client.call(Api.search(), SearchRequest(query, scope))
+            if (requestSeq.current == seq) results = response
+        }
     }
 
     PageHeader {
@@ -249,11 +268,16 @@ val SearchPage = FC<Props> {
             gap = 15.px
         }
 
-        if (results.terms.isEmpty()) {
+        val res = results
+        if (searchTerms(query).isEmpty()) {
             SearchMessage {
                 +"Search questions and rooms across your whole workspace."
             }
-        } else if (results.isEmpty) {
+        } else if (res == null) {
+            SearchMessage {
+                +"Searching…"
+            }
+        } else if (res.isEmpty) {
             SearchMessage {
                 +"Nothing found for “$query”."
                 if (scope != SearchScope.default) {
@@ -264,31 +288,40 @@ val SearchPage = FC<Props> {
                 }
             }
         } else {
-            if (results.questions.isNotEmpty()) {
-                title("Questions (${results.questions.size})", 0.px)
-                results.questions.forEach { hit ->
+            if (res.questions.isNotEmpty()) {
+                title("Questions (${res.questions.size})", 0.px)
+                res.questions.forEach { hit ->
+                    // The rooms directory is subscribed alongside; a hit whose room has
+                    // not arrived yet (or just vanished) is skipped rather than crashed on.
+                    val room = rooms[hit.room.id] ?: return@forEach
                     QuestionItem {
                         key = hit.question.id
                         question = hit.question
-                        room = hit.room
-                        href = hit.room.urlPrefix + hit.question.urlPrefix
+                        this.room = room
+                        href = room.urlPrefix + hit.question.urlPrefix
+                        titleContent = HighlightedText.create {
+                            text = hit.question.name
+                            terms = res.terms
+                        }
                         hit.descriptionSnippet?.let { snip ->
                             subtitle = SnippetView.create {
                                 snippet = snip
-                                terms = results.terms
+                                terms = res.terms
                             }
                         }
                     }
                 }
             }
 
-            if (results.rooms.isNotEmpty()) {
-                title("Rooms (${results.rooms.size})", 0.px)
-                results.rooms.forEach { hit ->
+            if (res.rooms.isNotEmpty()) {
+                title("Rooms (${res.rooms.size})", 0.px)
+                res.rooms.forEach { hit ->
+                    val room = rooms[hit.room.id] ?: return@forEach
                     RoomResult {
-                        key = hit.room.id
-                        this.hit = hit
-                        terms = results.terms
+                        key = room.id
+                        this.room = room
+                        snippet = hit.descriptionSnippet
+                        terms = res.terms
                     }
                 }
             }
@@ -310,12 +343,13 @@ private val SearchMessage = FC<PropsWithChildren> { props ->
 }
 
 private external interface RoomResultProps : Props {
-    var hit: RoomHit
+    var room: Room
+    var snippet: Snippet?
     var terms: List<String>
 }
 
 private val RoomResult = FC<RoomResultProps> { props ->
-    val room = props.hit.room
+    val room = props.room
     Link {
         to = room.urlPrefix
         css(LinkUnstyled) {
@@ -373,7 +407,7 @@ private val RoomResult = FC<RoomResultProps> { props ->
                     terms = props.terms
                 }
             }
-            props.hit.descriptionSnippet?.let { snip ->
+            props.snippet?.let { snip ->
                 div {
                     css {
                         fontFamily = sansSerif
