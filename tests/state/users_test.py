@@ -18,7 +18,7 @@ async def main():
 
     # --- Proper member: users directory; self shape ---
     async with await connect_ws(member) as ws:
-        await ws.send(json.dumps({"sub": ["users", "self", "questions"]}))
+        await ws.send(json.dumps({"sub": ["users", "self", "room/testroom/questions"]}))
         d = by_topic(await recv_updates(ws))
         users = (d.get("users", {}).get("data")) or {}
         t.check("debugadmin" in users and users["debugadmin"].get("password") is None
@@ -42,7 +42,7 @@ async def main():
         post("/rooms/testroom/questions/add",
              {"_id": "", "name": "users-test q", "answerSpace": {"type": "binary"}}, admin)
         ups0 = await recv_updates(ws, 2.0)
-        qstate = by_topic(ups0).get("questions", d.get("questions", {})).get("data", {})
+        qstate = by_topic(ups0).get("room/testroom/questions", d.get("room/testroom/questions", {})).get("data", {})
         qid = next(q for q, qq in qstate.items() if qq["name"] == "users-test q")
         post(f"/questions/{qid}/comments/add", {"content": "hello", "attachPrediction": False}, admin)
         topics = sorted(set(u["topic"] for u in await recv_updates(ws, 2.0)))

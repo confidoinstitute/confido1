@@ -34,6 +34,11 @@ async def main():
 
     post("/rooms/testroom/members/add",
          {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
+    # A hidden question: visible to the admin class (VIEW_HIDDEN_QUESTIONS), censored
+    # out of the member class's slice (TEST-4a).
+    post("/rooms/testroom/questions/add",
+         {"_id": "", "name": "Shared hidden q", "answerSpace": {"type": "binary"},
+          "visible": False}, admin)
     # An admin-only room whose question the member must not see until joining (TEST-5).
     roomc = post("/rooms/add", {"name": "Shared room C", "description": "", "color": "RED", "icon": None},
                  admin).strip('"')
@@ -42,79 +47,96 @@ async def main():
 
     async with await connect_ws(member1) as ws1, await connect_ws(member2) as ws2, \
                await connect_ws(admin) as ws3:
-        await ws1.send(json.dumps({"sub": ["questions", "room/testroom/questions"]}))
+        QT = "room/testroom/questions"
+        CT = "room/testroom/questions/counts"
+        await ws1.send(json.dumps({"sub": [QT, CT]}))
         d1 = by_topic(await recv_updates(ws1, 2.0))
-        cmid_q = computes("questions")
-        cmid_r = computes("room/{room}/questions")
+        cmid_q = computes("room/{room}/questions")
+        cmid_r = computes("room/{room}/questions/counts")
 
-        await ws2.send(json.dumps({"sub": ["questions", "room/testroom/questions"]}))
+        await ws2.send(json.dumps({"sub": [QT, CT]}))
         d2 = by_topic(await recv_updates(ws2, 2.0))
-        t.check(d1.get("questions", {}).get("type") == "ok" and d2.get("questions", {}).get("type") == "ok"
-                and computes("questions") == cmid_q and computes("room/{room}/questions") == cmid_r,
+        t.check(d1.get(QT, {}).get("type") == "ok" and d2.get(QT, {}).get("type") == "ok"
+                and computes("room/{room}/questions") == cmid_q
+                and computes("room/{room}/questions/counts") == cmid_r,
                 "TEST-1", "second same-class subscriber adds zero computes",
-                f"q {cmid_q}->{computes('questions')} r {cmid_r}->{computes('room/{room}/questions')}")
-        t.check(d1.get("questions", {}).get("data") == d2.get("questions", {}).get("data"),
+                f"q {cmid_q}->{computes('room/{room}/questions')} "
+                f"c {cmid_r}->{computes('room/{room}/questions/counts')}")
+        t.check(d1.get(QT, {}).get("data") == d2.get(QT, {}).get("data"),
                 "TEST-2", "same-class subscribers receive identical payloads")
 
         # One visibly payload-changing mutation -> exactly one compute per pattern for
         # the (single) subscribed class, frames on both subscribers.
-        c0q, c0r = computes("questions"), computes("room/{room}/questions")
+        c0q, c0r = computes("room/{room}/questions"), computes("room/{room}/questions/counts")
         post("/rooms/testroom/questions/add",
              {"_id": "", "name": "Shared test q", "answerSpace": {"type": "binary"}}, admin)
         u1 = by_topic(await recv_updates(ws1, 2.0))
         u2 = by_topic(await recv_updates(ws2, 2.0))
-        n1, n2 = qnames(u1, "questions"), qnames(u2, "questions")
+        n1, n2 = qnames(u1, QT), qnames(u2, QT)
         t.check("Shared test q" in n1 and "Shared test q" in n2
-                and computes("questions") == c0q + 1 and computes("room/{room}/questions") == c0r + 1,
+                and computes("room/{room}/questions") == c0q + 1
+                and computes("room/{room}/questions/counts") == c0r + 1,
                 "TEST-3", "mutation: one compute per topic for the class, frames on both subs",
-                f"q {c0q}->{computes('questions')} r {c0r}->{computes('room/{room}/questions')}")
+                f"q {c0q}->{computes('room/{room}/questions')} "
+                f"c {c0r}->{computes('room/{room}/questions/counts')}")
 
-        # A different class subscribes: sees its own censoring; a further mutation now
-        # costs one compute per subscribed class (2 for questions, 1 for the room
-        # slice the admin does not subscribe).
-        await ws3.send(json.dumps({"sub": ["questions"]}))
+        # A different class subscribes the same room slice: sees its own censoring
+        # (the hidden question); a further mutation now costs one compute per
+        # subscribed class (2 for the slice, 1 for the counts sibling the admin
+        # does not subscribe).
+        await ws3.send(json.dumps({"sub": [QT]}))
         d3 = by_topic(await recv_updates(ws3, 2.0))
-        admin_names = qnames(d3, "questions")
-        t.check("Shared secret q" in admin_names and "Shared secret q" not in n1,
-                "TEST-4a", "different class sees its own censoring",
+        admin_names = qnames(d3, QT)
+        t.check("Shared hidden q" in admin_names and "Shared hidden q" not in n1,
+                "TEST-4a", "different class sees its own censoring (hidden question)",
                 f"admin={admin_names[:6]}...")
-        c1q, c1r = computes("questions"), computes("room/{room}/questions")
+        c1q, c1r = computes("room/{room}/questions"), computes("room/{room}/questions/counts")
         post("/rooms/testroom/questions/add",
              {"_id": "", "name": "Shared test q 2", "answerSpace": {"type": "binary"}}, admin)
         m1 = by_topic(await recv_updates(ws1, 2.0))
         m3 = by_topic(await recv_updates(ws3, 2.0))
         await recv_updates(ws2, 1.0)  # drain
-        t.check("Shared test q 2" in qnames(m1, "questions") and "Shared test q 2" in qnames(m3, "questions")
-                and computes("questions") == c1q + 2 and computes("room/{room}/questions") == c1r + 1,
+        t.check("Shared test q 2" in qnames(m1, QT) and "Shared test q 2" in qnames(m3, QT)
+                and computes("room/{room}/questions") == c1q + 2
+                and computes("room/{room}/questions/counts") == c1r + 1,
                 "TEST-4b", "mutation: one compute per subscribed class",
-                f"q {c1q}->{computes('questions')} r {c1r}->{computes('room/{room}/questions')}")
+                f"q {c1q}->{computes('room/{room}/questions')} "
+                f"c {c1r}->{computes('room/{room}/questions/counts')}")
 
-        # A room-scoped topic for the projection test: subscribe a testroom question.
-        qid = next(k for k, v in (m1.get("questions", {}).get("data") or {}).items()
+        # A room-scoped topic for the projection test: subscribe a testroom question,
+        # and the admin-only room's slice (UNAUTHORIZED until the join below).
+        qid = next(k for k, v in (m1.get(QT, {}).get("data") or {}).items()
                    if v["name"] == "Shared test q")
-        await ws1.send(json.dumps({"sub": [f"question/{qid}"]}))
+        await ws1.send(json.dumps({"sub": [f"question/{qid}", f"room/{roomc}/questions"]}))
+        await ws2.send(json.dumps({"sub": [f"room/{roomc}/questions"]}))
         dq = by_topic(await recv_updates(ws1, 2.0))
-        t.check(dq.get(f"question/{qid}", {}).get("type") == "ok",
-                "TEST-5a", "question topic subscribed for projection test")
-        cq, cr = computes("question/{question}"), computes("room/{room}/questions")
+        await recv_updates(ws2, 1.0)  # drain
+        t.check(dq.get(f"question/{qid}", {}).get("type") == "ok"
+                and dq.get(f"room/{roomc}/questions", {}).get("errType") == "UNAUTHORIZED",
+                "TEST-5a", "question topic ok; foreign room slice gated", str(sorted(dq)))
+        cq = computes("question/{question}")
 
-        # Class change on live subscriptions: joining room C changes the member class,
-        # both member subs re-select the new registry entry and see the new question.
+        # Class change on live subscriptions: joining room C changes the member class;
+        # both members' gated subs recover to the room's data on the SAME subscription.
         post(f"/rooms/{roomc}/members/add",
              {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
         j1 = by_topic(await recv_updates(ws1, 2.0))
         j2 = by_topic(await recv_updates(ws2, 2.0))
-        t.check("Shared secret q" in qnames(j1, "questions") and "Shared secret q" in qnames(j2, "questions"),
-                "TEST-5b", "class change re-selects: both live subs now see the joined room's question",
-                f"j1={qnames(j1, 'questions')}")
+        t.check("Shared secret q" in qnames(j1, f"room/{roomc}/questions")
+                and "Shared secret q" in qnames(j2, f"room/{roomc}/questions"),
+                "TEST-5b", "class change re-selects: both gated subs recover the joined room's slice",
+                f"j1={sorted(j1)}")
 
         # Class-key projection: the join changed the member's *global* class, but the
-        # testroom-scoped keys (question/<id>, room/<id>/questions) project it onto
+        # testroom-scoped keys (question/<id>, room/testroom/questions) project it onto
         # rooms the join didn't touch — no re-selection, no recompute, no frames.
-        t.check(f"question/{qid}" not in j1 and "room/testroom/questions" not in j1
-                and computes("question/{question}") == cq and computes("room/{room}/questions") == cr,
-                "TEST-6", "unrelated-room join: room-scoped shared topics neither recompute nor frame",
-                f"framed={sorted(j1)} q {cq}->{computes('question/{question}')} r {cr}->{computes('room/{room}/questions')}")
+        # (The room/{room}/questions pattern counter is shared with room C's recovery,
+        # so the compute invariant is asserted on question/{question} and the
+        # no-frame invariant on the testroom topics.)
+        t.check(f"question/{qid}" not in j1 and QT not in j1 and CT not in j1
+                and computes("question/{question}") == cq,
+                "TEST-6", "unrelated-room join: testroom-scoped shared topics neither recompute nor frame",
+                f"framed={sorted(j1)} q {cq}->{computes('question/{question}')}")
 
         # --- Group-prediction topics: shared per (scoped class, answered flag) ---
         post("/rooms/testroom/questions/add",
@@ -122,7 +144,7 @@ async def main():
               "groupPredVisible": True}, admin)
         m = by_topic(await recv_updates(ws1, 2.0))
         await recv_updates(ws2, 1.0)  # drain
-        gq = next(k for k, v in (m.get("questions", {}).get("data") or {}).items()
+        gq = next(k for k, v in (m.get(QT, {}).get("data") or {}).items()
                   if v["name"] == "Shared gp q")
         gp, rgp = f"question/{gq}/group_pred", "room/testroom/group_pred"
         await ws1.send(json.dumps({"sub": [gp, rgp]}))

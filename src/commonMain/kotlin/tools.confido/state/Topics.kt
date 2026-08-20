@@ -41,7 +41,6 @@ object Topics {
     val roomPath = path("room") / roomRefParam
     val questionPath = path("question") / questionRefParam
 
-    val questions = TopicSpec(path("questions"), serializer<Map<String, Question>>())
     val users = TopicSpec(path("users"), serializer<Map<String, User>>())
     val rooms = TopicSpec(path("rooms"), serializer<Map<String, Room>>())
     val self = TopicSpec(path("self"), serializer<SelfState>())

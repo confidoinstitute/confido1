@@ -8,24 +8,20 @@ import tools.confido.refs.ref
 import tools.confido.state.Topics
 
 /**
- * Workspace-level data accessors for the cross-room surfaces (dashboard, search,
- * calibration, scores, room list): surface-local subscriptions of the `rooms`
- * directory and `questions` topics, following the users-topic precedent — after
- * the eviction these subscriptions are the only source of cross-room data, and
- * surfaces that display cross-room data pay for exactly that. MultiplexWS dedup
- * makes overlapping subscriptions (incl. the transitional root ones) free, and
- * the sender's atomic frames make the duplication consistent duplication.
+ * Workspace-level data accessors for the cross-room surfaces (dashboard, room
+ * list, question→room resolution): a surface-local subscription of the `rooms`
+ * directory. MultiplexWS dedup makes overlapping subscriptions free, and the
+ * sender's atomic frames make the duplication consistent duplication.
+ *
+ * The workspace-wide questions map is retired: cross-room question data travels
+ * on purpose-built payloads (dashboard sections, search results, calibration
+ * detail) and by-id access goes through `useQuestion` (question/<id>).
  *
  * Real hooks — call unconditionally at component top level, then join/look up
  * with the pure helpers below (safe in loops and nested render functions).
  */
 fun useRooms(): Map<String, Room> {
     val sub = useSubscription(Topics.rooms())
-    return (sub as? WSData)?.data ?: emptyMap()
-}
-
-fun useWorkspaceQuestions(): Map<String, Question> {
-    val sub = useSubscription(Topics.questions())
     return (sub as? WSData)?.data ?: emptyMap()
 }
 

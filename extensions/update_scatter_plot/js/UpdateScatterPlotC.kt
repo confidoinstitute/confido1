@@ -19,6 +19,7 @@ import tools.confido.web.components.redesign.basic.sansSerif
 import tools.confido.web.components.redesign.forms.*
 import tools.confido.web.components.redesign.presentation.FieldLabel
 import tools.confido.web.components.redesign.presenter.PresenterContext
+import tools.confido.web.components.redesign.questions.QuestionSelect
 import tools.confido.web.components.redesign.questions.dialog.QuestionQuickSettingsDialogProps
 import tools.confido.web.components.redesign.questions.dialog.EditQuestionDialogProps
 import tools.confido.web.components.redesign.rooms.RoomContext
@@ -33,7 +34,6 @@ import kotlinx.datetime.*
 import js.objects.unsafeJso as jso
 import react.*
 import react.dom.html.ReactHTML
-import react.dom.html.ReactHTML.datalist
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.h1
 import react.dom.html.ReactHTML.i
@@ -65,7 +65,6 @@ import tools.confido.utils.capFirst
 import tools.confido.utils.formatPercent
 import tools.confido.utils.unixNow
 import tools.confido.web.utils.questionUrl
-import web.autofill.AutoFill
 import web.html.InputType
 import web.html.text
 import tools.confido.web.utils.roomUrl
@@ -75,51 +74,7 @@ import web.prompts.confirm
 import tools.confido.web.components.useRooms
 import tools.confido.web.components.roomOf
 import tools.confido.web.components.useQuestion
-import tools.confido.web.components.useWorkspaceQuestions
-
-// ============================================================
-//  QuestionSelector (existing, for reference question config)
-// ============================================================
-
-external interface QuestionSelectorProps : Props {
-    var value: String?
-    var onChange: ((Ref<Question>?) -> Unit)?
-    var disabled: Boolean?
-}
-
-val QID_RE = Regex("\\[([a-zA-Z0-9_-]+)\\]\$")
-val QuestionSelector = FC<QuestionSelectorProps>("QuestionSelector") { props ->
-    val allQuestions = useWorkspaceQuestions()
-    val datalistId = useId()
-    fun fmtq(q: Question) = "${q.name} [${q.id}]"
-    var internalVal by useState(props.value?.let { allQuestions[it] }?.let {fmtq(it)} ?: "")
-
-    div {
-        css { width = 100.pct }
-        input {
-            css { width = 100.pct; padding = 8.px; fontSize = 16.px }
-            type = InputType.text
-            placeholder = "Search for a question..."
-            list = datalistId.toString()
-            value = internalVal
-            disabled = props.disabled == true
-            autoComplete = "off" as AutoFill
-            onChange = { event ->
-                val newVal = event.target.value
-                internalVal = newVal
-                val m = QID_RE.find(newVal)
-                if (m!=null) props.onChange?.invoke(Ref(m.groups[1]!!.value))
-                else props.onChange?.invoke(null)
-            }
-        }
-        datalist {
-            id = datalistId
-            allQuestions.values.filter{it.answerSpace == BinarySpace }.forEach { question ->
-                option { value = fmtq(question); +fmtq(question) }
-            }
-        }
-    }
-}
+import tools.confido.web.utils.runCoroutine
 
 // ============================================================
 //  TimepointSelector - unified timepoint picker
@@ -765,9 +720,10 @@ object UpdateScatterPlotCE: ClientExtension, UpdateScatterPlotExt {
                 FormField {
                     title = "Reference question for updates"
                     comment = "Select a question to compare updates against"
-                    QuestionSelector {
-                        value = referenceQuestionId?.id
+                    QuestionSelect {
+                        value = referenceQuestionId
                         onChange = { newId -> referenceQuestionId = newId }
+                        filter = { it.answerSpace == BinarySpace }
                         disabled = false
                     }
                 }

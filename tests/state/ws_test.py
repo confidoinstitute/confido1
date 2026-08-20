@@ -19,7 +19,7 @@ async def main():
     async with await connect_ws(member) as ws:
         # One batched command with the root slices + a page topic: the initial
         # payloads of the whole set must arrive in ONE frame (flush-time recompute).
-        subs = ["questions", "users", "rooms", "self", "room/testroom/presentation"]
+        subs = ["room/testroom/questions", "users", "rooms", "self", "room/testroom/presentation"]
         await ws.send(json.dumps({"sub": subs}))
         frames = await recv_frames(ws)
         frame_topics = [[u["topic"] for u in f] for f in frames]
@@ -42,7 +42,7 @@ async def main():
         post("/rooms/testroom/edit",
              {"id": "testroom", "name": "WS renamed", "description": "x", "icon": None, "color": "GRAY"}, admin)
         topics = sorted(set(u["topic"] for u in await recv_updates(ws, 2.0)))
-        t.check("rooms" in topics and not any(x in topics for x in ("questions", "users", "self")),
+        t.check("rooms" in topics and not any(x in topics for x in ("room/testroom/questions", "users", "self")),
                 "TEST-3", "rename isolated to rooms topics", str(topics))
 
         # A no-change mutation (re-adding a member with the same role) must be fully

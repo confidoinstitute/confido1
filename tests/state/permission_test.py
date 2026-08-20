@@ -107,8 +107,8 @@ async def main():
          {"_id": "", "name": "Hide test q", "answerSpace": {"type": "binary"},
           "groupPredVisible": True}, admin)
     async with await connect_ws(member) as ws:
-        await ws.send(json.dumps({"sub": ["questions"]}))
-        qstate = next(u["data"]["data"] for u in await recv_updates(ws) if u["topic"] == "questions")
+        await ws.send(json.dumps({"sub": ["room/testroom/questions"]}))
+        qstate = next(u["data"]["data"] for u in await recv_updates(ws) if u["topic"] == "room/testroom/questions")
         qid = next(q for q, qq in qstate.items() if qq["name"] == "Hide test q")
         post(f"/questions/{qid}/predict", {"type": "binary", "yesProb": 0.6}, admin)
 

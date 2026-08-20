@@ -16,12 +16,12 @@ async def main():
          {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
 
     async with await connect_ws(member) as ws:
-        await ws.send(json.dumps({"sub": ["questions", "rooms", "self"]}))
+        await ws.send(json.dumps({"sub": ["room/testroom/questions", "rooms", "self"]}))
         d = by_topic(await recv_updates(ws))
 
-        t.check(d.get("questions", {}).get("type") == "ok",
-                "TEST-1", "questions slice delivered (monolith fully decomposed)",
-                str(d.get("questions"))[:200])
+        t.check(d.get("room/testroom/questions", {}).get("type") == "ok",
+                "TEST-1", "room questions slice delivered (monolith fully decomposed)",
+                str(d.get("room/testroom/questions"))[:200])
 
         dirroom = d["rooms"]["data"]["testroom"]
         members = dirroom.get("members", [])
@@ -62,7 +62,7 @@ async def main():
              {"id": "testroom", "name": "Peeled room", "description": "x", "icon": None, "color": "GRAY"}, admin)
         topics = sorted(set(u["topic"] for u in await recv_updates(ws, 2.0)))
         t.check("rooms" in topics and "room/testroom" in topics
-                and not any(x in topics for x in ("questions", "self", "users")),
+                and not any(x in topics for x in ("room/testroom/questions", "self", "users")),
                 "TEST-6", "rename only touches the rooms topics", str(topics))
 
     t.finish()

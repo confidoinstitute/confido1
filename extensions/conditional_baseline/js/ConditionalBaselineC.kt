@@ -33,35 +33,28 @@ import tools.confido.web.utils.panzoom1d.PZState
 import web.window.WindowTarget
 import web.window._blank
 import tools.confido.web.components.useRooms
-import tools.confido.web.components.useWorkspaceQuestions
+import tools.confido.web.components.useQuestion
 import tools.confido.web.components.roomOf
 
 object ConditionalBaselineCE: ClientExtension, ConditionalBaselineExtension() {
     val qidRE = Regex("/questions/([a-zA-Z0-9]+)(?:$|/.*)")
     val baselineColor = NamedColor.darkcyan
-    /** [knownQuestions] = the viewer-visible questions to validate against (render
-     *  callers pass the workspace slice); null skips the existence check — the
-     *  submit path has no subscription in scope, and the dialog UI already
-     *  surfaces "question not found" from its own render-time validation. */
-    fun extractBaseline(rawID: String?, knownQuestions: Map<String, Question>? = null) = rawID?.ifBlank { null }
+    /** Parses a pasted question ID or URL into a ref. Syntactic only — where the UI
+     *  needs an existence check, it subscribes the question/<id> topic (useQuestion)
+     *  and surfaces "question not found" itself. */
+    fun extractBaseline(rawID: String?) = rawID?.ifBlank { null }
         ?.let {
             qidRE.find(it)?.let { m ->
                 m.groups[1]?.value
             } ?: it
-        }?.let {
-            if (knownQuestions == null || it in knownQuestions) {
-                Ref<Question>(it)
-            } else {
-                println("Baseline question '$it' not found, resetting.")
-                null
-            }
-        }
+        }?.let { Ref<Question>(it) }
     override fun editQuestionDialogExtra(props: EditQuestionDialogProps, cb: ChildrenBuilder) {
-        val questions = useWorkspaceQuestions()
         var rawID by useContextState(ExtensionContextPlace.EDIT_QUESTION_DIALOG, "baseline_question", props.entity?.extensionData?.get(
             BaselineQuestionKey)?.id?:"")
-        val baselineRef = extractBaseline(rawID, questions)
-        val baselineText = baselineRef?.let { questions[it.id] }?.name
+        // Syntactic parse; existence is validated by the question/<id> subscription
+        // (null while missing or not yet loaded → "question not found").
+        val baselineRef = extractBaseline(rawID)
+        val baselineText = useQuestion(baselineRef)?.name
         val comment = when {
                 rawID == "" -> "paste question ID or URL"
                 baselineText == null -> "question not found"
@@ -88,14 +81,17 @@ object ConditionalBaselineCE: ClientExtension, ConditionalBaselineExtension() {
     }
 
     override fun myPredictionDescriptionExtra(props: MyPredictionDescriptionProps, cb: ChildrenBuilder) {
-        // Real hooks — called before the early returns so the hook order stays stable.
+        // Real hooks — called unconditionally before the early returns so the hook
+        // order stays stable (useQuestion takes a nullable ref for exactly this).
         val rooms = useRooms()
-        val questions = useWorkspaceQuestions()
+        val myPredictions = useMyPredictions()
+        val baselineRefOrNull = props.question?.extensionData?.get(BaselineQuestionKey)
+        val baselineQOrNull = useQuestion(baselineRefOrNull)
         val q = props.question ?: return
-        val myPred = (useMyPredictions()[q.ref]?.dist as? BinaryDistribution)?.yesProb
-        val baselineRef = q.extensionData.get(BaselineQuestionKey) ?: return
-        val baselineQ = questions[baselineRef.id] ?: return
-        val baselinePred =  (useMyPredictions()[baselineRef]?.dist as? BinaryDistribution)?.yesProb ?: return
+        val myPred = (myPredictions[q.ref]?.dist as? BinaryDistribution)?.yesProb
+        val baselineRef = baselineRefOrNull ?: return
+        val baselineQ = baselineQOrNull ?: return
+        val baselinePred =  (myPredictions[baselineRef]?.dist as? BinaryDistribution)?.yesProb ?: return
         val rr = myPred ?.let {myPred / baselinePred}
         cb.apply  {
             div {
@@ -147,13 +143,15 @@ object ConditionalBaselineCE: ClientExtension, ConditionalBaselineExtension() {
     }
 
     override fun binarySliderExtra(props: BinaryPredInputProps, zoom: PZState?, cb: ChildrenBuilder) {
-        // Real hook before the early returns (stable hook order).
-        val questions = useWorkspaceQuestions()
-        val q = props.question ?: return
+        // Real hooks before the early returns (stable hook order).
+        val myPredictions = useMyPredictions()
+        val baselineRefOrNull = props.question?.extensionData?.get(BaselineQuestionKey)
+        val baselineQ = useQuestion(baselineRefOrNull)
+        props.question ?: return
         zoom ?: return
-        val baselineRef = q.extensionData.get(BaselineQuestionKey) ?: return
-        val baselineQ = questions[baselineRef.id] ?: return
-        val baselinePred =  (useMyPredictions()[baselineRef]?.dist as? BinaryDistribution)?.yesProb ?: return
+        val baselineRef = baselineRefOrNull ?: return
+        baselineQ ?: return
+        val baselinePred =  (myPredictions[baselineRef]?.dist as? BinaryDistribution)?.yesProb ?: return
         cb.apply {
             div {
                 style = jso {

@@ -1,8 +1,7 @@
 package tools.confido.web.components.redesign.calibration
 
 import tools.confido.web.components.roomOf
-import tools.confido.web.components.useRooms
-import tools.confido.web.components.useWorkspaceQuestions
+import tools.confido.rooms.Room
 import tools.confido.web.components.redesign.basic.BaseDialogProps
 import tools.confido.web.components.redesign.basic.Dialog
 import tools.confido.web.components.redesign.basic.Stack
@@ -248,9 +247,7 @@ external interface CalibrationDetailProps: Props {
 }
 
 val CalibrationDetail = FC<CalibrationDetailProps> { props ->
-    val rooms = useRooms()
-    val questions = useWorkspaceQuestions()
-    val data = props.data.sortedWith(compareBy({ !it.isCorrect }, { questions[it.question.id]?.name ?: "" }))
+    val data = props.data.sortedWith(compareBy({ !it.isCorrect }, { it.questionName }))
     val binData = data.mapNotNull { it as? BinaryCalibrationQuestion }
     val numData = data.mapNotNull { it as? NumericCalibrationQuestion }
     val numConfidences = numData.map { it.confidence }.toSet()
@@ -264,7 +261,7 @@ val CalibrationDetail = FC<CalibrationDetailProps> { props ->
         }
     }
 
-    fun ChildrenBuilder.questionLink(q: Question) {
+    fun ChildrenBuilder.questionLink(item: CalibrationQuestion) {
 
         a {
             css {
@@ -277,9 +274,9 @@ val CalibrationDetail = FC<CalibrationDetailProps> { props ->
                     display = Display.block; flexBasis = Auto.auto; width = Auto.auto; maxWidth = None.none;
                 }
             }
-            title = q.name
+            title = item.questionName
             target = WindowTarget._blank
-            href = rooms.roomOf(q)?.urlPrefix?.let { it + q.urlPrefix } ?: ""
+            href = item.room?.let { Room.urlPrefix(it.id) + Question.urlPrefix(item.question.id) } ?: ""
             div {
                 css {
                     whiteSpace = WhiteSpace.nowrap
@@ -289,7 +286,7 @@ val CalibrationDetail = FC<CalibrationDetailProps> { props ->
                     flexGrow = number(0.0)
                     textDecoration = TextDecoration.underline
                 }
-                +q.name
+                +item.questionName
             }
             div {
                 +"⧉"
@@ -379,10 +376,9 @@ val CalibrationDetail = FC<CalibrationDetailProps> { props ->
                 }
                 tbody {
                     binData.forEach {
-                        val q = questions[it.question.id] ?: return@forEach
                         tr {
                             td {
-                                questionLink(q)
+                                questionLink(it)
                             }
                             td {
                                 fmtBool(it.expectedOutcome)
@@ -449,11 +445,10 @@ val CalibrationDetail = FC<CalibrationDetailProps> { props ->
                 }
                 tbody {
                     numData.forEach {
-                        val q = questions[it.question.id] ?: return@forEach
-                        val space = q.answerSpace as? NumericSpace ?: return@forEach
+                        val space = it.space ?: return@forEach
                         tr {
                             td {
-                                questionLink(q)
+                                questionLink(it)
                             }
                             if (numConfidence == null) {
                                 td {

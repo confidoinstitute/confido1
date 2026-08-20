@@ -366,20 +366,10 @@ fun main() {
                 dashboardRoutes(this)
                 searchRoutes(this)
 
-                // §4.2 "questions" (global by design — cross-room surfaces pay for the
-                // cross-room slice they display): all questions the viewer can see,
-                // entities only. Counts live on the sibling counts topics, so this one
-                // never wakes on prediction/comment churn — its wake set is entity
-                // stores alone. (latestPredictions was dropped from the wake set along
-                // with the counts: it existed "for extension censor hooks that read the
-                // viewer's predictions", and no extension overrides censorQuestion.)
-                sharedViewWS(Topics.questions) { cls ->
-                    combineViews(
-                        questionStore.state.asView(),
-                        roomStore.state.asView(),
-                        userStore.state.asView(),
-                    ).map { ClassCensor(cls).censorQuestions() }
-                }
+                // The workspace-wide "questions" topic is retired (2026-08-20): the
+                // dashboard reads the dashboard/<section> topics, search moved
+                // server-side (POST /search), calibration detail carries display data
+                // on its payload, and by-id consumers use question/<id> (useQuestion).
 
                 // §4.2 users: the user directory, proper (admin/member) users only —
                 // guests' identity needs are covered by presentations embedded in

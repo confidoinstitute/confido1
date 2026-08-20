@@ -103,6 +103,8 @@ fun calibrationRoutes(routing: Routing) = routing.apply {
                         listOf(
                             BinaryCalibrationQuestion(
                             question = q.ref,
+                            questionName = q.name,
+                            room = serverState.questionRoom[q.ref],
                             scoredPrediction =  pred,
                             scoreTime = scoreTime,
                             confidence = confidence,
@@ -119,6 +121,9 @@ fun calibrationRoutes(routing: Routing) = routing.apply {
                             val (bin,_) = CalibrationBin.find(confidence) ?: return@flatMap emptyList()
                             NumericCalibrationQuestion(
                                 question = q.ref,
+                                questionName = q.name,
+                                room = serverState.questionRoom[q.ref],
+                                space = q.answerSpace,
                                 scoredPrediction =  pred,
                                 scoreTime = scoreTime,
                                 confidence = confidence,

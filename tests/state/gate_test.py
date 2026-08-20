@@ -22,9 +22,9 @@ async def main():
           "groupPredVisible": True, "groupPredRequirePrediction": True}, admin)
 
     async with await connect_ws(member) as ws:
-        await ws.send(json.dumps({"sub": ["questions"]}))
+        await ws.send(json.dumps({"sub": ["room/testroom/questions"]}))
         ups = await recv_updates(ws)
-        qstate = next(u["data"]["data"] for u in ups if u["topic"] == "questions")
+        qstate = next(u["data"]["data"] for u in ups if u["topic"] == "room/testroom/questions")
         # Select our own question by name — other suites seed questions too.
         qid = next(q for q, qq in qstate.items() if qq["name"] == "Gate test q")
 
