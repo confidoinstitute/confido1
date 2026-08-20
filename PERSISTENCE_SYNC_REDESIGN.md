@@ -1355,3 +1355,41 @@ working untouched mid-transition.
 - Rollout of the fail-closed default for extension data keys (§5.4): audit which keys client
   code currently reads before flipping the default; decide whether the canned visibility tier
   needs role granularity finer than permission classes.
+- **"Worth revisiting" activity triggers** (dashboard/revisit; sketch of 2026-08-20, deferred
+  in part). Beyond prediction age, three candidate triggers, in ascending plumbing cost:
+  1. *New discussion since your prediction* — needs a `lastCommentAt: Map<Ref<Question>, Instant>`
+     fold maintained by the same change dispatch as `commentCount` (tiny, resident). The trigger
+     `lastCommentAt > myPred.ts` is state-vs-state, so the view stays clock-free. Ship a
+     **boolean** on DashboardItem, not the instant: the boolean changes only on crossings, so
+     comment churn wakes the view but the equality cutoff keeps the wire quiet ("N new
+     comments" would need per-comment timestamps — non-resident, not worth it for a footer).
+  2. *Group disagrees with you* (divergence, not movement) — compare the resident current
+     group prediction against the viewer's own latest one (binary: |Δ yesProb|; numeric:
+     normalized mean distance). Fully resident and pure. Ship the divergence **bucketed**
+     (e.g. rounded to 0.05) so frames occur on bucket crossings only; the display threshold
+     stays a client constant (candidate-list principle). Semantically often *better* than
+     movement: "the group sees this differently than you" is directly a reason to revisit.
+     **Dismissal semantics** (raised 2026-08-20: a knowing disagreer would have the notice
+     stuck forever): gate the trigger on the group having *changed since the viewer's last
+     update* — `divergence ≥ threshold AND lastGroupPredChangeAt > myPred.ts`, with
+     `lastGroupPredChangeAt: Map<Ref<Question>, Instant>` a second tiny fold like
+     `lastCommentAt`. This makes all revisit triggers share one rule — *your prediction
+     update acknowledges everything before it* — so re-committing an unchanged prediction
+     is the "yes, I know, I still disagree" gesture, and the item returns only when the
+     group actually moves again (bucket crossings only, so noise-level drift stays silent).
+     Held in reserve if section fatigue appears anyway: generic per-user snooze state
+     ("dismiss this question") — not divergence-specific (the waiting section shares the
+     need: "I will never answer this one"), so build it once, generically, or not at all.
+  3. *Group moved since your prediction* (true movement) — the baseline is the group
+     prediction at the viewer's prediction time: an archive point-read
+     (`groupPredictionLog.at`), suspend + non-resident, so a pure view cannot compute it.
+     Options: (a) a resident coarse group-pred history fold (ring buffer per question) —
+     real change-stream-fold plumbing; (b) subscribe-time enrichment (the view *build* phase
+     may do suspend work, cf. the comments topic's partition pin): compute baselines for the
+     ≤SECTION_CAP candidates once per subscription — cost is a handful of point-reads per
+     dashboard visit, caveat that the baseline goes stale if the viewer re-predicts without
+     resubscribing; (c) defer until the deltas / tier-2 residency work provides the fold
+     machinery anyway. **Verdict: do 1+2 (cheap, clean, and 2 mostly subsumes 3's intent);
+     defer 3 to (c), reconsidering (b) if movement-specifically is ever wanted sooner.**
+     UX stays one section: footer states the strongest reason
+     (divergence > new discussion > age), items ordered by reason strength.
