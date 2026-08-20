@@ -32,16 +32,14 @@ import react.router.dom.Link
 import react.router.useNavigate
 import web.html.HTMLDivElement
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import tools.confido.calibration.CalibrationVector
-import tools.confido.refs.eqid
-import tools.confido.refs.ref
-import tools.confido.rooms.Room
-import tools.confido.rooms.RoomPermission
+import tools.confido.payloads.responses.DashboardItem
+import tools.confido.payloads.responses.DashboardModerationKind
+import tools.confido.payloads.responses.WSData
+import tools.confido.state.Topics
 import tools.confido.utils.toFixed
-import tools.confido.question.Question
-import tools.confido.question.QuestionState
 import tools.confido.utils.stringToColor
+import tools.confido.web.hooks.useSubscription
 import tools.confido.users.User
 import tools.confido.web.utils.runCoroutine
 
@@ -197,8 +195,7 @@ private const val RESOLVED_SHOWN_DAYS = 60
 private enum class DashboardTab { ROOMS, OVERVIEW }
 
 private class AttentionEntry(
-    val room: Room,
-    val question: Question,
+    val item: DashboardItem,
     val footer: String? = null,
     val footerColor: Color? = null,
 )
@@ -244,9 +241,11 @@ private val StickerRow = FC<StickerRowProps> { props ->
             onScroll = { updateFades() }
             props.items.forEach { e ->
                 QuestionSticker {
-                    key = e.question.id
-                    this.room = e.room
-                    this.question = e.question
+                    key = e.item.question.id
+                    this.to = e.item.url
+                    this.roomName = e.item.roomName
+                    this.roomPalette = e.item.roomColor.palette
+                    this.questionName = e.item.questionName
                     this.footer = e.footer
                     this.footerColor = e.footerColor
                 }
@@ -280,7 +279,6 @@ private val StickerRow = FC<StickerRowProps> { props ->
 
 val Dashboard = FC<Props> {
     val rooms = useRooms()
-    val questions = useWorkspaceQuestions()
     val layoutMode = use(LayoutModeContext)!!
     val sidebarState = use(SidebarContext)!!
     val navigate = useNavigate()
@@ -306,8 +304,6 @@ val Dashboard = FC<Props> {
         }
     }
 
-    val myPredictions = useMyPredictions()
-    val myUser = useMyUser()
     val myCalib = useSuspendResult {
         Client.call(Api.calibration(), CalibrationRequest())
     }
@@ -315,79 +311,65 @@ val Dashboard = FC<Props> {
         Client.call(Api.myScores())
     }
 
-    val now = Clock.System.now()
-    val entries = useMemo(rooms, questions) {
-        rooms.values.flatMap { room ->
-            room.questions.mapNotNull { questions[it.id] }.map { room to it }
-        }
-    }
+    // The section topics deliver server-computed candidate lists (see DashboardItem);
+    // all "now" comparisons happen here so the backing views stay clock-free.
+    val waitingRaw = (useSubscription(Topics.dashboardWaiting()) as? WSData)?.data ?: emptyList()
+    val revisitRaw = (useSubscription(Topics.dashboardRevisit()) as? WSData)?.data ?: emptyList()
+    val resolvedRaw = (useSubscription(Topics.dashboardResolved()) as? WSData)?.data ?: emptyList()
+    val moderationRaw = (useSubscription(Topics.dashboardModeration()) as? WSData)?.data ?: emptyList()
 
-    fun openedAt(q: Question) =
-        q.stateHistory.filter { it.newState == QuestionState.OPEN }.maxOfOrNull { it.at }
-    fun resolvedAt(q: Question) =
-        q.stateHistory.filter { it.newState == QuestionState.RESOLVED }.maxOfOrNull { it.at }
+    val now = Clock.System.now()
 
     // Open questions the user has not answered yet, newest first. Subsumes the old
     // "recently opened" list, which ignored whether the user had already answered.
-    val waiting = entries
-        .filter { (_, q) -> q.state == QuestionState.OPEN && myPredictions[q.ref] == null }
-        .sortedByDescending { (_, q) -> openedAt(q) ?: Instant.DISTANT_PAST }
-        .map { (room, q) ->
-            val close = q.effectiveScheduleIn(room).close
+    val waiting = waitingRaw
+        .take(16)
+        .map { item ->
             // Ceiling in days: 2.5 days left reads as "closes in 3 days".
-            val closesIn = close?.takeIf { it > now }?.let { ((it - now).inWholeMinutes + 1439) / 1440 }
+            val closesIn = item.closeTime?.takeIf { it > now }?.let { ((it - now).inWholeMinutes + 1439) / 1440 }
             val footer = when {
                 closesIn == null || closesIn > CLOSING_SOON_DAYS -> null
                 closesIn == 0L -> "closes today"
                 closesIn == 1L -> "closes tomorrow"
                 else -> "closes in $closesIn days"
             }
-            AttentionEntry(room, q, footer, footer?.let { Color("#E65100") })
+            AttentionEntry(item, footer, footer?.let { Color("#E65100") })
         }
 
     // Open questions whose last prediction by the user is old enough that new
     // information may have accumulated since.
-    val stale = entries
-        .mapNotNull { (room, q) ->
-            if (q.state != QuestionState.OPEN) return@mapNotNull null
-            val pred = myPredictions[q.ref] ?: return@mapNotNull null
-            val days = (now.epochSeconds - pred.ts) / 86400
+    val stale = revisitRaw
+        .mapNotNull { item ->
+            val ts = item.predictionTs ?: return@mapNotNull null
+            val days = (now.epochSeconds - ts) / 86400
             if (days < STALE_AFTER_DAYS) return@mapNotNull null
-            Triple(room, q, days)
+            AttentionEntry(item, "updated $days days ago")
         }
-        .sortedByDescending { (_, _, days) -> days }
-        .map { (room, q, days) -> AttentionEntry(room, q, "updated $days days ago") }
+        .take(16)
 
-    val resolvedRecently = entries
-        .mapNotNull { (room, q) ->
-            if (q.state != QuestionState.RESOLVED || q.resolution == null) return@mapNotNull null
-            val at = resolvedAt(q) ?: return@mapNotNull null
-            if ((now - at).inWholeDays > RESOLVED_SHOWN_DAYS) return@mapNotNull null
-            Triple(room, q, at)
-        }
-        .sortedByDescending { (_, _, at) -> at }
+    val resolvedRecently = resolvedRaw
+        .filter { it.resolvedAt != null && (now - it.resolvedAt!!).inWholeDays <= RESOLVED_SHOWN_DAYS }
         .take(12)
-        .map { (room, q, _) ->
-            val score = myScores?.items?.firstOrNull { it.questionRef eqid q }?.score
-            val footer = q.resolution!!.format() + (score?.let { " · score ${it.toFixed(1)}" } ?: "")
-            AttentionEntry(room, q, footer, Color("#2E7D32"))
+        .map { item ->
+            val score = myScores?.items?.firstOrNull { it.questionRef.id == item.question.id }?.score
+            val footer = (item.resolution ?: "") + (score?.let { " · score ${it.toFixed(1)}" } ?: "")
+            AttentionEntry(item, footer, Color("#2E7D32"))
         }
 
     // Moderator queue: drafts not yet opened and questions past their scheduled
     // resolution, in rooms the user moderates.
-    val moderation = entries
-        .filter { (room, _) -> room.hasPermission(myUser, RoomPermission.MANAGE_QUESTIONS) }
-        .mapNotNull { (room, q) ->
-            val resolveDue = q.effectiveScheduleIn(room).resolve
-            when {
-                q.state == QuestionState.DRAFT -> AttentionEntry(room, q, "draft — not opened")
-                (q.state == QuestionState.OPEN || q.state == QuestionState.CLOSED)
-                        && resolveDue != null && resolveDue < now -> {
-                    val days = (now - resolveDue).inWholeDays
+    val moderation = moderationRaw
+        .mapNotNull { item ->
+            when (item.moderation) {
+                DashboardModerationKind.DRAFT -> AttentionEntry(item, "draft — not opened")
+                DashboardModerationKind.RESOLUTION_DUE -> {
+                    val due = item.resolveDue ?: return@mapNotNull null
+                    if (due >= now) return@mapNotNull null
+                    val days = (now - due).inWholeDays
                     val footer = if (days == 0L) "resolution overdue" else "overdue by $days days"
-                    AttentionEntry(room, q, footer, Color("#E65100"))
+                    AttentionEntry(item, footer, Color("#E65100"))
                 }
-                else -> null
+                null -> null
             }
         }
         .take(12)
@@ -487,7 +469,7 @@ val Dashboard = FC<Props> {
                 StickerRow { items = moderation }
             }
             if (waiting.isEmpty() && stale.isEmpty() && resolvedRecently.isEmpty() && moderation.isEmpty()
-                    && entries.isNotEmpty()) {
+                    && rooms.isNotEmpty()) {
                 div {
                     css {
                         padding = Padding(24.px, layoutMode.contentSidePad, 0.px)

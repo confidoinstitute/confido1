@@ -4,6 +4,7 @@ import tools.confido.question.BinaryHistogram
 import kotlinx.serialization.serializer
 import tools.confido.payloads.responses.CommentExtraData
 import tools.confido.payloads.responses.CommentPresentation
+import tools.confido.payloads.responses.DashboardItem
 import tools.confido.payloads.responses.MembershipPayload
 import tools.confido.payloads.responses.QuestionCommentExtraData
 import tools.confido.rooms.Room
@@ -82,4 +83,15 @@ object Topics {
     val questionComments = TopicSpec(questionPath / "comments", serializer<List<CommentPresentation<QuestionCommentExtraData>>>())
     val groupPred = TopicSpec(questionPath / "group_pred", serializer<Prediction?>())
     val histogram = TopicSpec(questionPath / "histogram", serializer<BinaryHistogram>())
+
+    /** Dashboard attention-feed sections ("dashboard/<section>"): per-user server-computed
+     *  candidate lists carrying their own display data, one topic per section so
+     *  each frames (and dedups) independently under the multiplexed socket. Time
+     *  cutoffs are applied client-side against the instants in [DashboardItem] —
+     *  the backing views stay pure functions of state (no clock input). These
+     *  replace the dashboard's dependency on the workspace-wide [questions] topic. */
+    val dashboardWaiting = TopicSpec(path("dashboard/waiting"), serializer<List<DashboardItem>>())
+    val dashboardRevisit = TopicSpec(path("dashboard/revisit"), serializer<List<DashboardItem>>())
+    val dashboardResolved = TopicSpec(path("dashboard/resolved"), serializer<List<DashboardItem>>())
+    val dashboardModeration = TopicSpec(path("dashboard/moderation"), serializer<List<DashboardItem>>())
 }

@@ -10,8 +10,11 @@ import tools.confido.rooms.*
 import tools.confido.question.*
 
 external interface QuestionStickerProps : Props {
-    var room: Room
-    var question: Question
+    /** Link target (the question page URL). */
+    var to: String
+    var roomName: String
+    var roomPalette: RoomPalette
+    var questionName: String
 
     /** Optional status line pinned to the sticker's bottom edge. */
     var footer: String?
@@ -20,9 +23,9 @@ external interface QuestionStickerProps : Props {
 }
 
 val QuestionSticker = FC<QuestionStickerProps> {props ->
-    val palette = props.room.color.palette
+    val palette = props.roomPalette
     Link {
-        to = props.room.urlPrefix + props.question.urlPrefix
+        to = props.to
         css {
             width = 144.px
             height = 144.px
@@ -51,7 +54,7 @@ val QuestionSticker = FC<QuestionStickerProps> {props ->
                 backgroundColor = palette.color
                 color = palette.text.color
             }
-            +props.room.name
+            +props.roomName
         }
         div {
             css {
@@ -64,7 +67,7 @@ val QuestionSticker = FC<QuestionStickerProps> {props ->
                 color = Color("#000000")
                 flexGrow = number(1.0)
             }
-            +props.question.name
+            +props.questionName
         }
         props.footer?.let { footer ->
             div {
