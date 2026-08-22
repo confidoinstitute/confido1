@@ -7,6 +7,7 @@ import emotion.react.*
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
+import react.router.dom.Link
 
 enum class QuestionPreset(val title: String, val subtitle: String, val emoji: String) {
     FORECASTING("Forecasting question", "Correct answer will be known in the future", "\uD83D\uDD2E"),
@@ -26,6 +27,58 @@ external interface AddQuestionPresetDialogProps : Props {
     var open: Boolean
     var onClose: (() -> Unit)?
     var onPreset: ((QuestionPreset) -> Unit)?
+    /** When set, offer a CSV import option navigating to this (router-relative) path. */
+    var importHref: String?
+}
+
+private val PresetButton = Button.withStyle {
+    padding = 18.px
+    borderRadius = 10.px
+    margin = 0.px
+    alignItems = AlignItems.center
+}
+
+private external interface PresetRowContentProps : Props {
+    var emoji: String
+    var title: String
+    var subtitle: String
+}
+
+private val PresetRowContent = FC<PresetRowContentProps> { props ->
+    Stack {
+        direction = FlexDirection.row
+        css {
+            alignItems = AlignItems.center
+            justifyContent = JustifyContent.center
+            gap = 17.px
+        }
+        span {
+            css {
+                fontSize = 30.px
+                lineHeight = 36.px
+            }
+            +props.emoji
+        }
+
+        Stack {
+            div {
+                css {
+                    fontWeight = integer(600)
+                    fontSize = 24.px
+                    lineHeight = 29.px
+                }
+                +props.title
+            }
+            div {
+                css {
+                    fontWeight = integer(400)
+                    fontSize = 12.px
+                    lineHeight = 15.px
+                }
+                +props.subtitle
+            }
+        }
+    }
 }
 
 val AddQuestionPresetDialog = FC<AddQuestionPresetDialogProps> { props ->
@@ -51,47 +104,31 @@ val AddQuestionPresetDialog = FC<AddQuestionPresetDialogProps> { props ->
                 +"What kind of question are you planning to ask?"
             }
             QuestionPreset.values().filter { it.isAvailable() }.map { preset ->
-                Button {
-                    css {
-                        padding = 18.px
-                        borderRadius = 10.px
-                        margin = 0.px
-                        alignItems = AlignItems.center
-                    }
+                PresetButton {
                     palette = MainPalette.default
                     onClick = { props.onPreset?.invoke(preset) }
-                    Stack {
-                        direction = FlexDirection.row
-                        css {
-                            alignItems = AlignItems.center
-                            justifyContent = JustifyContent.center
-                            gap = 17.px
-                        }
-                        span {
-                            css {
-                                fontSize = 30.px
-                                lineHeight = 36.px
-                            }
-                            +preset.emoji
-                        }
-
-                        Stack {
-                            div {
-                                css {
-                                    fontWeight = integer(600)
-                                    fontSize = 24.px
-                                    lineHeight = 29.px
-                                }
-                                +preset.title
-                            }
-                            div {
-                                css {
-                                    fontWeight = integer(400)
-                                    fontSize = 12.px
-                                    lineHeight = 15.px
-                                }
-                                +preset.subtitle
-                            }
+                    PresetRowContent {
+                        emoji = preset.emoji
+                        title = preset.title
+                        subtitle = preset.subtitle
+                    }
+                }
+            }
+            props.importHref?.let { href ->
+                Link {
+                    to = href
+                    css(LinkUnstyled) {
+                        display = Display.flex
+                        flexDirection = FlexDirection.column
+                        alignItems = AlignItems.stretch
+                    }
+                    PresetButton {
+                        palette = MainPalette.default
+                        onClick = { props.onClose?.invoke() }
+                        PresetRowContent {
+                            emoji = "\uD83D\uDCC4"
+                            title = "Import from CSV"
+                            subtitle = "Bulk-create questions from a spreadsheet"
                         }
                     }
                 }

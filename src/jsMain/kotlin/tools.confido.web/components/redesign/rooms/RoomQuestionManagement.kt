@@ -194,6 +194,7 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
         open = presetOpen
         onClose = {presetOpen = false}
         onPreset = {preset = it; presetOpen = false; editQuestionOpen(null)}
+        importHref = "../import"
     }
 
     QMHelpDialog {
@@ -238,17 +239,6 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
 
             if (usePermission(room, RoomPermission.ADD_QUESTION)) {
                 div { css {flexGrow = number(1.0)} }
-                Link {
-                    to = "../import"
-                    css(LinkUnstyled) {}
-                    RoomHeaderButton {
-                        css {
-                            backgroundColor = Color("#E8E0F5")
-                            color = Color("#6319FF")
-                        }
-                        +"Import from CSV"
-                    }
-                }
                 RoomHeaderButton {
                     +"Create a question"
                     onClick = { addQuestion() }

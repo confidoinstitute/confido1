@@ -13,11 +13,11 @@ import emotion.react.*
 import tools.confido.web.hooks.*
 import react.*
 import react.dom.html.ReactHTML.div
-import react.router.dom.Link
 import tools.confido.rooms.*
 import tools.confido.question.*
 import tools.confido.refs.ref
 import tools.confido.state.Topics
+import tools.confido.utils.pluralize
 import tools.confido.payloads.responses.WSData
 
 external interface QuestionListProps : Props {
@@ -32,13 +32,7 @@ val QuestionList = FC<QuestionListProps> { props ->
     val groupPreds = groupPredsWS.data ?: emptyMap()
     val layoutMode = use(LayoutModeContext)!!
 
-    var sortType by useState(SortType.SET_BY_MODERATOR)
-
-    val questions = when (sortType) {
-        SortType.SET_BY_MODERATOR -> props.questions.reversed()
-        SortType.NEWEST -> emptyList() // TODO: backend support
-        SortType.OLDEST -> emptyList() // TODO: backend support
-    }
+    val questions = props.questions.reversed()
     val allVisibleQuestions = if (props.showHiddenQuestions) questions else questions.filter { it.visible }
 
     // Tag filtering
@@ -64,27 +58,29 @@ val QuestionList = FC<QuestionListProps> { props ->
         open = presetOpen
         onClose = {presetOpen = false}
         onPreset = {preset = it; presetOpen = false; editQuestionDialog(null)}
+        importHref = "import"
     }
 
+    // Toolbar layout convention: view controls (sort, filter, view mode) on the
+    // left, content actions on the right. The bar also serves as the visual cap
+    // of the tab strip, so it is always rendered; the count label guarantees it
+    // is never empty.
     RoomHeader {
-        SortButton {
-            options = listOf(SortType.SET_BY_MODERATOR)
-            this.sortType = sortType
-            onChange = { sort -> sortType = sort }
-        }
-
-        if (usePermission(room, RoomPermission.ADD_QUESTION)) {
-            Link {
-                to = "import"
-                css(LinkUnstyled) {}
-                RoomHeaderButton {
-                    css {
-                        backgroundColor = Color("#E8E0F5")
-                        color = Color("#6319FF")
-                    }
-                    +"Import from CSV"
-                }
+        div {
+            css {
+                fontFamily = sansSerif
+                fontSize = 13.px
+                lineHeight = 16.px
+                fontWeight = integer(600)
+                color = Color("#888888")
+                alignSelf = AlignSelf.center
             }
+            +if (selectedTags.isEmpty())
+                pluralize("question", allVisibleQuestions.size, includeCount = true)
+            else
+                "${visibleQuestions.size} of ${pluralize("question", allVisibleQuestions.size, includeCount = true)}"
+        }
+        if (usePermission(room, RoomPermission.ADD_QUESTION)) {
             RoomHeaderButton {
                 +"Create a question"
                 onClick = { addQuestion() }
