@@ -24,8 +24,11 @@ external interface TimelineMarkDialogProps : Props {
     var question: Question
 }
 
-private fun markDate(ts: Int): LocalDate =
-    Instant.fromEpochSeconds(ts.toLong()).toLocalDateTime(TimeZone.currentSystemDefault()).date
+private fun markDateTime(ts: Int): String {
+    val dt = Instant.fromEpochSeconds(ts.toLong()).toLocalDateTime(TimeZone.currentSystemDefault())
+    val hm = "${dt.hour.toString().padStart(2, '0')}:${dt.minute.toString().padStart(2, '0')}"
+    return "${dt.date} $hm"
+}
 
 /**
  * Moderator dialog for managing timeline markers: lists the question's and the
@@ -34,18 +37,21 @@ private fun markDate(ts: Int): LocalDate =
  */
 val TimelineMarkDialog = FC<TimelineMarkDialogProps> { props ->
     var name by useState("")
-    var date by useState<LocalDate?>(null)
+    // null = "now": the common case is marking the current moment (e.g. right
+    // before/after an in-person discussion), so an empty time input means now.
+    var time by useState<Instant?>(null)
     var roomWide by useState(false)
+    val tz = TimeZone.currentSystemDefault()
 
     fun submit() {
-        val d = date ?: return
         val markName = name.trim().ifEmpty { return }
-        val mark = TimelineMark(id = "", ts = d.atTime(12, 0).toInstant(TimeZone.UTC).epochSeconds.toInt(), name = markName)
+        val ts = time?.epochSeconds?.toInt() ?: unixNow()
+        val mark = TimelineMark(id = "", ts = ts, name = markName)
         runCoroutine {
             if (roomWide) Client.call(Api.roomTimelineMarkAdd(props.room.ref), mark)
             else Client.call(Api.questionTimelineMarkAdd(props.question.ref), mark)
             name = ""
-            date = null
+            time = null
         }
     }
 
@@ -75,7 +81,7 @@ val TimelineMarkDialog = FC<TimelineMarkDialogProps> { props ->
                     css { gap = 8.px; alignItems = AlignItems.center }
                     span {
                         css { color = Color("#999999"); fontSize = 12.px; whiteSpace = WhiteSpace.nowrap }
-                        +markDate(mark.ts).toString()
+                        +markDateTime(mark.ts)
                     }
                     span { css { flexGrow = number(1.0) }; +mark.name }
                     if (isRoomWide) {
@@ -105,14 +111,14 @@ val TimelineMarkDialog = FC<TimelineMarkDialogProps> { props ->
                     value = name
                     onChange = { ev -> name = ev.target.value }
                 }
-                DateInput {
-                    value = date
-                    max = markDate(unixNow())
-                    onChange = { newVal, err -> date = if (err == null) newVal else null }
+                DateTimeInput {
+                    value = time?.toLocalDateTime(tz)
+                    placeholder = "(now)"
+                    onChange = { newVal, _ -> time = newVal?.toInstant(tz) }
                 }
                 Button {
                     css { margin = 0.px; padding = Padding(7.px, 12.px); fontSize = 13.px }
-                    disabled = name.isBlank() || date == null
+                    disabled = name.isBlank()
                     onClick = { submit() }
                     +"Add marker"
                 }

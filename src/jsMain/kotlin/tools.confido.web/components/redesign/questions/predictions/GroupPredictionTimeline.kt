@@ -152,11 +152,21 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             }
             div { +"${history!!.updates} updates" }
             if (canManageMarks && room != null) {
+                // Styled as a small button so it reads as actionable, not as a label.
                 ButtonUnstyled {
                     css {
                         fontSize = 11.px
-                        color = Color("rgba(0,0,0,40%)")
+                        lineHeight = 12.px
+                        color = Color("#6319FF")
                         fontFamily = sansSerif
+                        fontWeight = integer(600)
+                        border = Border(1.px, LineStyle.solid, Color("#D5C8F3"))
+                        borderRadius = 4.px
+                        padding = Padding(1.px, 7.px)
+                        backgroundColor = Color("#F6F2FD")
+                        hover {
+                            backgroundColor = Color("#E8E0F5")
+                        }
                     }
                     +"+ marker"
                     onClick = { it.stopPropagation(); markDialogOpen = true }
