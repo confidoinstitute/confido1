@@ -22,6 +22,9 @@ external interface TimelineMarkDialogProps : Props {
     var onClose: (() -> Unit)?
     var room: Room
     var question: Question
+    /** Prefill for the time input on open (e.g. the pinned timeline moment);
+     *  null leaves it empty = "now". */
+    var defaultTime: Instant?
 }
 
 private fun markDateTime(ts: Int): String {
@@ -42,6 +45,8 @@ val TimelineMarkDialog = FC<TimelineMarkDialogProps> { props ->
     var time by useState<Instant?>(null)
     var roomWide by useState(false)
     val tz = TimeZone.currentSystemDefault()
+    // Each open starts from the caller's default (pinned moment or "now").
+    useEffect(props.open) { if (props.open) time = props.defaultTime }
 
     fun submit() {
         val markName = name.trim().ifEmpty { return }

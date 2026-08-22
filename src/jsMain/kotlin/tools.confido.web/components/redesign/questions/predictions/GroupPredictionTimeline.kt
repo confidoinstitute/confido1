@@ -27,18 +27,30 @@ import tools.confido.state.Topics
 import tools.confido.utils.formatPercent
 import tools.confido.utils.unixNow
 import tools.confido.web.hooks.useSubscription
+import web.dom.document
+import web.events.EventType
+import web.events.addEventListener
+import web.events.removeEventListener
 import web.html.HTMLDivElement
+import web.keyboard.KeyboardEvent
 import kotlin.math.max
+
+/**
+ * A moment on the timeline: the raw instant [ts] the user points at, plus the
+ * update whose belief was held then ([point], the newest update at or before
+ * [ts]). Display uses the instant; ghost fetching/caching uses the update.
+ */
+class TimelineMoment(val ts: Int, val point: GroupPredHistoryPoint)
 
 external interface GroupPredictionTimelineProps : PropsWithElementSize {
     var question: Question
     var resolution: Value?
-    /** Called with the update the cursor is over (step semantics: the newest update
-     *  at or before the hovered time), null on leave. Drives the scrub ghost. */
-    var onHoverPoint: ((GroupPredHistoryPoint?) -> Unit)?
-    /** Click handler for pinning the hovered update; parent owns the toggle state. */
-    var onTogglePin: ((GroupPredHistoryPoint) -> Unit)?
-    /** Timestamp of the pinned update, marked with a dashed line. */
+    /** Called with the hovered moment, null on leave. Drives the scrub ghost. */
+    var onHover: ((TimelineMoment?) -> Unit)?
+    /** Pin request: a moment to pin, or null to unpin (click on/near the pin line).
+     *  Parent owns the pin state. */
+    var onPin: ((TimelineMoment?) -> Unit)?
+    /** Instant of the pinned moment, marked with a dashed line where clicked. */
     var pinnedTs: Int?
 }
 
@@ -84,6 +96,19 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
     val canManageMarks = room?.hasPermission(myUser, RoomPermission.MANAGE_QUESTIONS) ?: false
     var markDialogOpen by useState(false)
 
+    // Escape: close the marker dialog if open, else release the pin. Lives here
+    // (not in QuestionPage) so an open dialog can't lose the pin underneath it.
+    useEffectWithCleanup {
+        val onKey: (KeyboardEvent) -> Unit = { e ->
+            if (e.key == "Escape") {
+                if (markDialogOpen) markDialogOpen = false
+                else props.onPin?.invoke(null)
+            }
+        }
+        document.addEventListener(EventType<KeyboardEvent>("keydown"), onKey)
+        onCleanup { document.removeEventListener(EventType<KeyboardEvent>("keydown"), onKey) }
+    }
+
     val points = history?.points ?: emptyList()
     if (points.size < 2) return@FC
 
@@ -119,23 +144,27 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             position = Position.relative
             fontFamily = sansSerif
         }
+        fun momentAt(offsetX: Double): TimelineMoment? {
+            val frac = ((offsetX - SIDE_PAD) / (width - 2 * SIDE_PAD)).coerceIn(0.0, 1.0)
+            val ts = t0 + (frac * (tEnd - t0)).toInt()
+            return points.lastOrNull { it.ts <= ts }?.let { TimelineMoment(ts, it) }
+        }
         onMouseMove = { ev ->
             val rect = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
-            val x = ev.clientX - rect.left
-            val frac = ((x - SIDE_PAD) / (width - 2 * SIDE_PAD)).coerceIn(0.0, 1.0)
-            val ts = t0 + (frac * (tEnd - t0)).toInt()
-            hoverTs = ts
-            props.onHoverPoint?.invoke(points.lastOrNull { it.ts <= ts })
+            val moment = momentAt(ev.clientX - rect.left)
+            hoverTs = moment?.ts
+            props.onHover?.invoke(moment)
         }
-        onMouseLeave = { hoverTs = null; props.onHoverPoint?.invoke(null) }
-        props.onTogglePin?.let { togglePin ->
+        onMouseLeave = { hoverTs = null; props.onHover?.invoke(null) }
+        props.onPin?.let { pin ->
             // Recomputed from the event coordinates rather than read from hover
             // state — the click may land before the hover re-render commits.
             onClick = { ev ->
                 val rect = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
-                val frac = ((ev.clientX - rect.left - SIDE_PAD) / (width - 2 * SIDE_PAD)).coerceIn(0.0, 1.0)
-                val ts = t0 + (frac * (tEnd - t0)).toInt()
-                points.lastOrNull { it.ts <= ts }?.let(togglePin)
+                val offsetX = ev.clientX - rect.left
+                val nearPin = props.pinnedTs?.let { kotlin.math.abs(offsetX - tx(it)) < 6.0 } ?: false
+                if (nearPin) pin(null)
+                else momentAt(offsetX)?.let(pin)
             }
         }
 
@@ -356,6 +385,8 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             onClose = { markDialogOpen = false }
             this.room = room
             this.question = props.question
+            // A pinned moment is the natural default for a new marker.
+            defaultTime = props.pinnedTs?.let { Instant.fromEpochSeconds(it.toLong()) }
         }
     }
 })

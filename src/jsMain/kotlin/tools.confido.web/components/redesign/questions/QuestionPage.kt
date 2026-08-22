@@ -4,11 +4,6 @@ import tools.confido.web.ApiError
 import tools.confido.question.BinaryHistogram
 import tools.confido.web.Client
 import web.window.window
-import web.dom.document
-import web.events.EventType
-import web.events.addEventListener
-import web.events.removeEventListener
-import web.keyboard.KeyboardEvent
 import tools.confido.web.components.*
 import tools.confido.web.components.redesign.*
 import tools.confido.web.components.redesign.basic.*
@@ -319,18 +314,19 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
     var groupHistogramOpen by useState(false)
 
     // Timeline scrub ghost (numeric questions): hovering the history timeline
-    // overlays the historical PDF on the group graph; clicking pins it (re-click
-    // or Escape unpins). Distributions are fetched on demand and cached per
-    // update timestamp — the crosshair snaps to discrete updates, so a scrub
-    // across the whole timeline fetches each historical dist at most once.
-    var scrubPoint by useState<GroupPredHistoryPoint?>(null)
-    var pinnedPoint by useState<GroupPredHistoryPoint?>(null)
+    // overlays the historical PDF on the group graph; clicking pins the *moment*
+    // (the cursor stays where clicked; re-click near the pin or Escape unpins).
+    // The displayed time is the raw instant, but distributions are fetched and
+    // cached per resolved update — belief is a step function, so a scrub across
+    // a whole segment costs one fetch, not one per pixel.
+    var scrubMoment by useState<TimelineMoment?>(null)
+    var pinnedMoment by useState<TimelineMoment?>(null)
     var ghost by useState<ProbabilityDistribution?>(null)
     val ghostCache = useRef<MutableMap<Int, ProbabilityDistribution?>>(mutableMapOf())
     val ghostReq = useRef<Int>(0)
-    val activeGhostPoint = scrubPoint ?: pinnedPoint
-    useEffect(activeGhostPoint?.ts) {
-        val ts = activeGhostPoint?.ts
+    val activeGhostMoment = scrubMoment ?: pinnedMoment
+    useEffect(activeGhostMoment?.point?.ts) {
+        val ts = activeGhostMoment?.point?.ts
         if (ts == null) { ghost = null; return@useEffect }
         ghostReq.current = ts
         val cache = ghostCache.current!!
@@ -342,11 +338,6 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
             cache[ts] = dist
             if (ghostReq.current == ts) ghost = dist
         }
-    }
-    useEffectWithCleanup {
-        val onKey: (KeyboardEvent) -> Unit = { e -> if (e.key == "Escape") pinnedPoint = null }
-        document.addEventListener(EventType<KeyboardEvent>("keydown"), onKey)
-        onCleanup { document.removeEventListener(EventType<KeyboardEvent>("keydown"), onKey) }
     }
 
     var pendingPrediction: ProbabilityDistribution? by useState(null) // to be submitted
@@ -522,7 +513,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     this.question = props.question
                     onHistogramButtonClick = { groupHistogramOpen = !groupHistogramOpen }
                     ghostDist = ghost
-                    ghostLabel = activeGhostPoint?.let { "as of " + formatUpdateDate(it.ts) }
+                    ghostLabel = activeGhostMoment?.let { "as of " + formatUpdateDate(it.ts) }
                 }
                 // History timeline; renders only once there are enough updates. Lives
                 // inside the prediction box so the visibility overlays below cover it
@@ -532,9 +523,9 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     this.question = props.question
                     resolution = props.resolution
                     if (props.question.answerSpace is NumericSpace) {
-                        onHoverPoint = { scrubPoint = it }
-                        onTogglePin = { p -> pinnedPoint = if (pinnedPoint?.ts == p.ts) null else p }
-                        pinnedTs = pinnedPoint?.ts
+                        onHover = { scrubMoment = it }
+                        onPin = { m -> pinnedMoment = m }
+                        pinnedTs = pinnedMoment?.ts
                     }
                 }
                 val canViewAll = usePermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
