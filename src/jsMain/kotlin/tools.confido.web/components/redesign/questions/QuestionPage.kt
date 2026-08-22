@@ -486,6 +486,14 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     this.question = props.question
                     onHistogramButtonClick = { groupHistogramOpen = !groupHistogramOpen }
                 }
+                // History timeline; renders only once there are enough updates. Lives
+                // inside the prediction box so the visibility overlays below cover it
+                // (the topic is server-gated by the same rule regardless).
+                GroupPredictionTimeline {
+                    key = "groupPredictionTimeline"
+                    this.question = props.question
+                    resolution = props.resolution
+                }
                 val canViewAll = usePermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
                 if (question.groupPredictionVisibility == GroupPredictionVisibility.ANSWERED && props.myPrediction == null && !canViewAll) {
                     PredictionOverlay {

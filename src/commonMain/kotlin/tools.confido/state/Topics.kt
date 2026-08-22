@@ -5,6 +5,7 @@ import kotlinx.serialization.serializer
 import tools.confido.payloads.responses.CommentExtraData
 import tools.confido.payloads.responses.CommentPresentation
 import tools.confido.payloads.responses.DashboardItem
+import tools.confido.payloads.responses.GroupPredHistory
 import tools.confido.payloads.responses.MembershipPayload
 import tools.confido.payloads.responses.QuestionCommentExtraData
 import tools.confido.rooms.Room
@@ -81,6 +82,11 @@ object Topics {
 
     val questionComments = TopicSpec(questionPath / "comments", serializer<List<CommentPresentation<QuestionCommentExtraData>>>())
     val groupPred = TopicSpec(questionPath / "group_pred", serializer<Prediction?>())
+
+    /** The group prediction history timeline (quantile points over time). Backed by
+     *  the `groupPredHist` log; subscribed lazily by the timeline graph only, so the
+     *  DB query cost exists only while someone is looking at it. */
+    val groupPredHistory = TopicSpec(questionPath / "group_pred/history", serializer<GroupPredHistory>())
     val histogram = TopicSpec(questionPath / "histogram", serializer<BinaryHistogram>())
 
     /** Dashboard attention-feed sections ("dashboard/<section>"): per-user server-computed

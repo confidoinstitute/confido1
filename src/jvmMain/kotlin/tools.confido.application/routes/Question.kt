@@ -9,8 +9,6 @@ import io.ktor.server.routing.*
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import kotlinx.datetime.Clock
-import kotlinx.serialization.cbor.Cbor
-import kotlinx.serialization.encodeToByteArray
 import org.litote.kmongo.eq
 import tools.confido.payloads.requests.*
 import tools.confido.payloads.responses.*
@@ -32,7 +30,6 @@ import tools.confido.state.*
 import tools.confido.store.*
 import tools.confido.utils.unixNow
 import tools.confido.users.User
-import kotlin.math.min
 import tools.confido.state.Topics
 
 val questionUrl = Question.urlPrefix("{qID}")
@@ -267,37 +264,49 @@ fun questionRoutes(routing: Routing) = routing.apply {
         }
     }
 
-    // Get question updates
-    getST("$questionUrl/updates") {
-        val updates = call.withQuestion {
-            assertVisible()
-            assertGroupPredictionAccess("You cannot view this group prediction.")
-
-            val updates = groupPredictionLog.query(ref).map {
-                when (val dist = it.dist) {
-                    is BinaryDistribution -> DistributionUpdate(
-                        it.ts,
-                        null,
-                        listOf(dist.yesProb)
-                    )
-                    is ContinuousProbabilityDistribution -> DistributionUpdate(
-                        it.ts,
-                        dist.mean,
-                        dist.discretize(min(dist.space.bins, 50)).binProbs
-                    )
-                    else -> DistributionUpdate(
-                        it.ts,
-                        null,
-                        emptyList(),
-                    )
-                }
-            }.toList().toMutableList()
-            if (updates.isNotEmpty())
-            // add a fake point for the current timestamp so that the graph does not abruptly end at last update time
-                updates += listOf(updates[updates.size - 1].copy(ts = unixNow()))
-            updates
+    // Group prediction history timeline: gate/fetch topic — the gate is the same
+    // visibility rule as group_pred (including its content version, the group-pred
+    // head, so each new group prediction re-runs the fetch), the fetch queries the
+    // groupPredHist log outside the consistency window.
+    viewWS(Topics.groupPredHistory, gate = { qRef ->
+        val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
+        val roomView = roomStore.questionRoomState.asView().at(qRef)
+            .flatMap { rRef -> rRef?.let { roomStore.state.asView().at(it.id) } ?: viewOf(null) }
+        combineViews(
+            questionStore.state.asView().at(qRef.id),
+            roomView,
+            userStore.state.asView(),
+            latestPredictions.state.asView().at(qRef),
+            predictionData.groupPredState.asView().at(qRef),
+        ) { question, room, users, preds, head ->
+            val viewer = users[viewerRef.id] ?: unauthorized("Not logged in.")
+            if (question == null || room == null) notFound("No such question.")
+            if (!room.hasPermission(viewer, RoomPermission.VIEW_QUESTIONS))
+                forbidden("You cannot view this group prediction.")
+            if (!question.visible && !room.hasPermission(viewer, RoomPermission.VIEW_HIDDEN_QUESTIONS))
+                notFound("No such question.")
+            val canViewAll = room.hasPermission(viewer, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+            if (!(canViewAll || canViewGroupPred(question, preds?.get(viewerRef))))
+                unauthorized("You cannot view this group prediction.")
+            head
         }
-        call.respond(HttpStatusCode.OK, Cbor.encodeToByteArray(updates))
+    }) { qRef, _ ->
+        val all = groupPredictionLog.query(qRef).toList().mapNotNull { pred ->
+            when (val dist = pred.dist) {
+                is BinaryDistribution -> GroupPredHistoryPoint(pred.ts, dist.yesProb)
+                is ContinuousProbabilityDistribution -> {
+                    val ci = dist.confidenceInterval(0.8)
+                    GroupPredHistoryPoint(pred.ts, dist.median, ci.start, ci.endInclusive)
+                }
+                else -> null
+            }
+        }
+        // Cap the payload; even thinning keeps the first and last update. At small-team
+        // scale this never triggers, but a bot-driven room shouldn't frame megabytes.
+        val maxPoints = 500
+        val points = if (all.size <= maxPoints) all
+            else List(maxPoints) { i -> all[i * (all.size - 1) / (maxPoints - 1)] }
+        GroupPredHistory(points, all.size)
     }
 
     // View group predictions: shared per gate *outcome* — the workshop hot path
