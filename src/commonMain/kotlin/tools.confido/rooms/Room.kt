@@ -49,6 +49,8 @@ data class Room(
     @Serializable(with = RoomEDTSerializer::class)
     val extensionData: ExtensionData = ExtensionData(RoomEDT),
     val commentTemplate: String = "",
+    /** Room-wide timeline markers, shown on every question's timeline. */
+    val timelineMarks: List<TimelineMark> = emptyList(),
     /** Reference to the room's presentation (if any). */
     val presentation: Ref<Presentation>? = null,
     // Computed fields: populated by StateCensor before sending to clients, never persisted to DB.

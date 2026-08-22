@@ -4,6 +4,7 @@ import kotlinx.serialization.serializer
 import tools.confido.payloads.requests.*
 import tools.confido.payloads.responses.*
 import tools.confido.rooms.InviteLink
+import tools.confido.rooms.TimelineMark
 import tools.confido.calibration.CalibrationVector
 import tools.confido.distributions.ProbabilityDistribution
 import tools.confido.question.CommentScope
@@ -65,6 +66,12 @@ object Api {
     /** The group prediction as of a historical unix timestamp (newest log entry <= ts).
      *  Backs the timeline's scrub-ghost overlay; gated like the group_pred topic. */
     val questionGroupPredAt = ApiSpec(GET, questionPrefix / "group_pred_at" / tsParam, serializer<Unit>(), serializer<Prediction?>())
+
+    // Timeline markers (id and owner in the sent mark are server-assigned).
+    val questionTimelineMarkAdd = ApiSpec(POST, questionPrefix / "timeline_marks/add", serializer<TimelineMark>(), serializer<Unit>())
+    val questionTimelineMarkDelete = ApiSpec(DELETE, questionPrefix / "timeline_marks" / idParam, serializer<Unit>(), serializer<Unit>())
+    val roomTimelineMarkAdd = ApiSpec(POST, roomPrefix / "timeline_marks/add", serializer<TimelineMark>(), serializer<Unit>())
+    val roomTimelineMarkDelete = ApiSpec(DELETE, roomPrefix / "timeline_marks" / idParam, serializer<Unit>(), serializer<Unit>())
     val questionMultiedit = ApiSpec(POST, path("questions/multiedit"), serializer<EditQuestionMulti>(), serializer<Unit>())
     val questionMultidelete = ApiSpec(POST, path("questions/multidelete"), serializer<DeleteQuestionMulti>(), serializer<Unit>())
     val questionTagSetState = ApiSpec(POST, roomPrefix / "tags" / tagParam / "set_state", serializer<QuestionState>(), serializer<Unit>())

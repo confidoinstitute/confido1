@@ -17,7 +17,12 @@ import tools.confido.payloads.responses.GroupPredHistoryPoint
 import tools.confido.payloads.responses.WSData
 import tools.confido.question.Question
 import tools.confido.refs.ref
+import tools.confido.rooms.*
 import tools.confido.spaces.*
+import tools.confido.web.components.useMyUser
+import tools.confido.web.components.redesign.forms.ButtonUnstyled
+import tools.confido.web.components.redesign.rooms.RoomContext
+import tools.confido.web.components.redesign.questions.dialog.TimelineMarkDialog
 import tools.confido.state.Topics
 import tools.confido.utils.formatPercent
 import tools.confido.utils.unixNow
@@ -73,6 +78,11 @@ private fun pathD(vertices: List<Pair<Double, Double>>, close: Boolean = false) 
 val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps>("GroupPredictionTimeline") { props ->
     val history = (useSubscription(Topics.groupPredHistory(props.question.ref)) as? WSData)?.data
     var hoverTs by useState<Int?>(null)
+    val room = use(RoomContext)
+    // Unconditional hook call (hook order must not depend on the nullable context).
+    val myUser = useMyUser()
+    val canManageMarks = room?.hasPermission(myUser, RoomPermission.MANAGE_QUESTIONS) ?: false
+    var markDialogOpen by useState(false)
 
     val points = history?.points ?: emptyList()
     if (points.size < 2) return@FC
@@ -137,8 +147,21 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                 lineHeight = 16.px
                 padding = Padding(0.px, SIDE_PAD.px)
                 color = Color("rgba(0,0,0,30%)")
+                display = Display.flex
+                justifyContent = JustifyContent.spaceBetween
             }
-            +"${history!!.updates} updates"
+            div { +"${history!!.updates} updates" }
+            if (canManageMarks && room != null) {
+                ButtonUnstyled {
+                    css {
+                        fontSize = 11.px
+                        color = Color("rgba(0,0,0,40%)")
+                        fontFamily = sansSerif
+                    }
+                    +"+ marker"
+                    onClick = { it.stopPropagation(); markDialogOpen = true }
+                }
+            }
         }
 
         svg {
@@ -192,6 +215,29 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                         strokeWidth = 1.5
                         strokeDasharray = "4 3"
                     }
+                }
+            }
+
+            // Timeline markers: named moments, question-scoped and room-wide merged.
+            val marks = ((room?.timelineMarks ?: emptyList()) + props.question.timelineMarks)
+                .filter { it.ts in t0..tEnd }
+            marks.forEach { mark ->
+                val x = tx(mark.ts)
+                val flip = x > width - 90
+                line {
+                    x1 = x; x2 = x
+                    y1 = TOP_PAD; y2 = TOP_PAD + GRAPH_HEIGHT
+                    stroke = "rgba(0,0,0,25%)"
+                    strokeWidth = 1.0
+                    strokeDasharray = "2 3"
+                }
+                text {
+                    this.x = if (flip) x - 4 else x + 4
+                    y = TOP_PAD + 8.0
+                    textAnchor = if (flip) TextAnchor.end else TextAnchor.start
+                    fontSize = 9.0
+                    fill = "rgba(0,0,0,45%)"
+                    +mark.name
                 }
             }
 
@@ -280,6 +326,16 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             }
             div { +formatUpdateDate(t0) }
             div { +formatUpdateDate(tEnd) }
+        }
+    }
+
+    // Sibling of the handler div, so dialog clicks cannot bubble into pin toggling.
+    if (room != null) {
+        TimelineMarkDialog {
+            open = markDialogOpen
+            onClose = { markDialogOpen = false }
+            this.room = room
+            this.question = props.question
         }
     }
 })

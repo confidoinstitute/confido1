@@ -13,6 +13,7 @@ import tools.confido.refs.Ref
 import tools.confido.refs.ref
 import tools.confido.spaces.*
 import tools.confido.rooms.Room
+import tools.confido.rooms.TimelineMark
 import tools.confido.utils.HasUrlPrefix
 import tools.confido.users.User
 
@@ -207,6 +208,8 @@ data class Question(
     val sensitive: Boolean = false,
     val author: Ref<User>? = null,
     val stateHistory: List<QuestionStateChange> = emptyList(),
+    /** Question-scoped timeline markers; room-wide ones live on [tools.confido.rooms.Room.timelineMarks]. */
+    val timelineMarks: List<TimelineMark> = emptyList(),
 
     // null = inherit default schedule from room
     // The default value is purposefully NOT null because we do not want existing questions

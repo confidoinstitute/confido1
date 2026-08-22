@@ -30,6 +30,7 @@ import tools.confido.spaces.BinarySpace
 import tools.confido.state.*
 import tools.confido.store.*
 import tools.confido.utils.unixNow
+import tools.confido.utils.generateId
 import tools.confido.users.User
 import tools.confido.state.Topics
 
@@ -262,6 +263,29 @@ fun questionRoutes(routing: Routing) = routing.apply {
 
             val pred = Prediction(ts=unixNow(), dist = dist, question = question.ref, user = user.ref)
             addPrediction(pred)
+        }
+    }
+
+    // Question-scoped timeline markers. Room-wide ones live in roomRoutes.
+    apiST(Api.questionTimelineMarkAdd) { qRef, mark ->
+        call.withQuestion(qRef) {
+            assertVisible()
+            assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot manage timeline markers.")
+            if (mark.name.isBlank()) badRequest("Marker name cannot be empty.")
+            val newMark = mark.copy(id = generateId(), owner = user.ref)
+            questionStore.modify(ref) {
+                it.copy(timelineMarks = (it.timelineMarks + newMark).sortedBy { m -> m.ts })
+            }
+        }
+    }
+    apiST(Api.questionTimelineMarkDelete) { qRef, markId, _ ->
+        call.withQuestion(qRef) {
+            assertVisible()
+            assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot manage timeline markers.")
+            if (question.timelineMarks.none { it.id == markId }) notFound("No such timeline marker.")
+            questionStore.modify(ref) {
+                it.copy(timelineMarks = it.timelineMarks.filter { m -> m.id != markId })
+            }
         }
     }
 

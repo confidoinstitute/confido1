@@ -25,6 +25,7 @@ import tools.confido.serialization.confidoJSON
 import tools.confido.state.*
 import tools.confido.store.*
 import tools.confido.utils.randomString
+import tools.confido.utils.generateId
 import tools.confido.users.LoginLink
 import tools.confido.users.User
 import tools.confido.users.UserType
@@ -100,6 +101,28 @@ fun roomRoutes(routing: Routing) = routing.apply {
             }
         }
     }
+    // Room-wide timeline markers, shown on every question's timeline. Question-scoped
+    // ones live in questionRoutes.
+    apiST(Api.roomTimelineMarkAdd) { rRef, mark ->
+        call.withRoom(rRef) {
+            assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot manage timeline markers.")
+            if (mark.name.isBlank()) badRequest("Marker name cannot be empty.")
+            val newMark = mark.copy(id = generateId(), owner = user.ref)
+            roomStore.modify(room.ref) {
+                it.copy(timelineMarks = (it.timelineMarks + newMark).sortedBy { m -> m.ts })
+            }
+        }
+    }
+    apiST(Api.roomTimelineMarkDelete) { rRef, markId, _ ->
+        call.withRoom(rRef) {
+            assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot manage timeline markers.")
+            if (room.timelineMarks.none { it.id == markId }) notFound("No such timeline marker.")
+            roomStore.modify(room.ref) {
+                it.copy(timelineMarks = it.timelineMarks.filter { m -> m.id != markId })
+            }
+        }
+    }
+
     // Add a new member, either an existing user directly or a new user by e-mail
     apiST(Api.roomMemberAdd) { rRef, member ->
         call.withRoom(rRef) {
