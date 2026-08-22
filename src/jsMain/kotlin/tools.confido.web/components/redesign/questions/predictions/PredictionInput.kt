@@ -51,6 +51,9 @@ external interface BasePredictionGraphProps : PropsWithRef<HTMLElement>, PropsWi
      *  numeric graph renders it. */
     var ghostDist: ProbabilityDistribution?
     var ghostLabel: String?
+    /** When set, the ghost chip shows a dismiss button (pinned ghosts only —
+     *  transient hover ghosts dismiss themselves). */
+    var onGhostDismiss: (() -> Unit)?
 }
 
 external interface PredictionGraphProps : Props, BasePredictionGraphProps {

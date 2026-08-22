@@ -325,8 +325,10 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
     val ghostCache = useRef<MutableMap<Int, ProbabilityDistribution?>>(mutableMapOf())
     val ghostReq = useRef<Int>(0)
     val activeGhostMoment = scrubMoment ?: pinnedMoment
+    // Binary questions pin too (as the marker-creation anchor), but have no ghost.
+    val hasGhost = question.answerSpace is NumericSpace
     useEffect(activeGhostMoment?.point?.ts) {
-        val ts = activeGhostMoment?.point?.ts
+        val ts = activeGhostMoment?.point?.ts?.takeIf { hasGhost }
         if (ts == null) { ghost = null; return@useEffect }
         ghostReq.current = ts
         val cache = ghostCache.current!!
@@ -514,6 +516,8 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     onHistogramButtonClick = { groupHistogramOpen = !groupHistogramOpen }
                     ghostDist = ghost
                     ghostLabel = activeGhostMoment?.let { "as of " + formatUpdateDate(it.ts) }
+                    if (scrubMoment == null && pinnedMoment != null)
+                        onGhostDismiss = { pinnedMoment = null }
                 }
                 // History timeline; renders only once there are enough updates. Lives
                 // inside the prediction box so the visibility overlays below cover it
@@ -522,10 +526,12 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     key = "groupPredictionTimeline"
                     this.question = props.question
                     resolution = props.resolution
-                    if (props.question.answerSpace is NumericSpace) {
+                    // Pinning works for every question type (it anchors marker
+                    // creation); the hover scrub only feeds the numeric ghost.
+                    onPin = { m -> pinnedMoment = m }
+                    pinnedTs = pinnedMoment?.ts
+                    if (hasGhost) {
                         onHover = { scrubMoment = it }
-                        onPin = { m -> pinnedMoment = m }
-                        pinnedTs = pinnedMoment?.ts
                     }
                 }
                 val canViewAll = usePermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)

@@ -168,7 +168,10 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
                     top = 8.px
                     left = 10.px
                     zIndex = integer(5)
-                    pointerEvents = None.none
+                    if (props.onGhostDismiss == null) pointerEvents = None.none
+                    display = Display.flex
+                    alignItems = AlignItems.center
+                    gap = 6.px
                     backgroundColor = Color("rgba(255,255,255,0.92)")
                     border = Border(0.5.px, LineStyle.solid, Color("#CCCCCC"))
                     borderRadius = 5.px
@@ -180,6 +183,17 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
                     color = Color("#555555")
                 }
                 +props.ghostLabel!!
+                props.onGhostDismiss?.let { dismiss ->
+                    div {
+                        css {
+                            cursor = Cursor.pointer
+                            color = Color("#999999")
+                            hover { color = Color("#555555") }
+                        }
+                        +"✕"
+                        onClick = { dismiss() }
+                    }
+                }
             }
         }
         ReactHTML.canvas {
@@ -232,6 +246,9 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
                 css {
                     position = Position.absolute
                     top = ABOVE_GRAPH_PAD.px
+                    // Display-only flags on the group graph; without this the
+                    // overlay eats clicks aimed at the ghost chip's dismiss button.
+                    pointerEvents = None.none
                 }
                 PredictionFlags {
                     this.flags = flags
