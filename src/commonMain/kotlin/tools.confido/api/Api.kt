@@ -28,6 +28,7 @@ import tools.confido.users.User
 val userRefParam = PathParam<Ref<User>>("user", { it.id }, { s -> s.ifEmpty { null }?.let { Ref(it) } })
 val tagParam = PathParam<String>("tag", { it }, { it.ifEmpty { null } })
 val tokenParam = PathParam<String>("token", { it }, { it.ifEmpty { null } })
+val tsParam = PathParam<Int>("ts", { it.toString() }, { it.toIntOrNull() })
 
 /**
  * The typed HTTP API surface, as [tools.confido.utils.ApiSpec]s — the request/response
@@ -61,6 +62,9 @@ object Api {
     val questionSetState = ApiSpec(POST, questionPrefix / "state", serializer<QuestionState>(), serializer<Unit>())
     val questionDelete = ApiSpec(DELETE, questionPrefix, serializer<Unit>(), serializer<Unit>())
     val questionPredict = ApiSpec(POST, questionPrefix / "predict", serializer<ProbabilityDistribution>(), serializer<Unit>())
+    /** The group prediction as of a historical unix timestamp (newest log entry <= ts).
+     *  Backs the timeline's scrub-ghost overlay; gated like the group_pred topic. */
+    val questionGroupPredAt = ApiSpec(GET, questionPrefix / "group_pred_at" / tsParam, serializer<Unit>(), serializer<Prediction?>())
     val questionMultiedit = ApiSpec(POST, path("questions/multiedit"), serializer<EditQuestionMulti>(), serializer<Unit>())
     val questionMultidelete = ApiSpec(POST, path("questions/multidelete"), serializer<DeleteQuestionMulti>(), serializer<Unit>())
     val questionTagSetState = ApiSpec(POST, roomPrefix / "tags" / tagParam / "set_state", serializer<QuestionState>(), serializer<Unit>())

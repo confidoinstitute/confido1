@@ -94,8 +94,14 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
     val discretizedProbs = useMemo(props.dist, bins, zoomState.visibleContentRange.start, zoomState.visibleContentRange.endInclusive) {
         binner.binRanges.map { props.dist?.densityBetween(it) ?: 0.0 }
     }
+    val ghost = props.ghostDist as? ContinuousProbabilityDistribution
+    val ghostProbs = useMemo(ghost, bins, zoomState.visibleContentRange.start, zoomState.visibleContentRange.endInclusive) {
+        ghost?.let { g -> binner.binRanges.map { g.densityBetween(it) } }
+    }
     //val maxDensity = (discretizedProbs.maxOrNull() ?: 1.0)
-    val maxDensity = dist?.maxDensity ?: 1.0
+    // The ghost shares the density scale, so both curves stay comparable even when
+    // the historical peak is the taller one.
+    val maxDensity = maxOf(dist?.maxDensity ?: 1.0, ghost?.maxDensity ?: 0.0)
 
     val confidenceIntervals = if (dist == null) emptyList()
         else confidences.map {
@@ -109,7 +115,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
 
     val yScale = graphHeight / maxDensity
 
-    useLayoutEffect(yTicks, yScale, physicalWidth, physicalHeight) {
+    useLayoutEffect(yTicks, yScale, physicalWidth, physicalHeight, ghostProbs) {
         val context = canvas.current?.getContext(CanvasRenderingContext2D.ID)
         context?.apply {
             clearRect(0.0, 0.0, physicalWidth.toDouble(), physicalHeight.toDouble())
@@ -130,6 +136,19 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
                 strokeStyle = "rgba(0,0,0,${if (props.dimLines?:false) 15 else 30}%)"
                 stroke()
             }
+            // Scrub ghost: the historical density as an outline curve over the fill.
+            ghostProbs?.let { probs ->
+                beginPath()
+                probs.forEachIndexed { index, p ->
+                    val x = (left + index).toDouble() + 0.5
+                    val y = (GRAPH_TOP_PAD + graphHeight - p * yScale) * dpr
+                    if (index == 0) moveTo(x, y) else lineTo(x, y)
+                }
+                strokeStyle = "rgba(60,60,60,0.8)"
+                lineWidth = 1.5 * dpr
+                stroke()
+                lineWidth = 1.0
+            }
         }
     }
     Stack {
@@ -141,6 +160,27 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
         if (props.interactive?:true)
         GraphButtons {
             +props
+        }
+        if (ghost != null && props.ghostLabel != null) {
+            div {
+                css {
+                    position = Position.absolute
+                    top = 8.px
+                    left = 10.px
+                    zIndex = integer(5)
+                    pointerEvents = None.none
+                    backgroundColor = Color("rgba(255,255,255,0.92)")
+                    border = Border(0.5.px, LineStyle.solid, Color("#CCCCCC"))
+                    borderRadius = 5.px
+                    padding = Padding(3.px, 7.px)
+                    fontFamily = sansSerif
+                    fontSize = 11.px
+                    lineHeight = 14.px
+                    fontWeight = integer(600)
+                    color = Color("#555555")
+                }
+                +props.ghostLabel!!
+            }
         }
         ReactHTML.canvas {
             style = jso {

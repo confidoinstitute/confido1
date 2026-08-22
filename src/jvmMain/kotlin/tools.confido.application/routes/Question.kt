@@ -9,6 +9,7 @@ import io.ktor.server.routing.*
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import org.litote.kmongo.eq
 import tools.confido.payloads.requests.*
 import tools.confido.payloads.responses.*
@@ -261,6 +262,15 @@ fun questionRoutes(routing: Routing) = routing.apply {
 
             val pred = Prediction(ts=unixNow(), dist = dist, question = question.ref, user = user.ref)
             addPrediction(pred)
+        }
+    }
+
+    // The group prediction as of a historical instant, for the timeline's scrub ghost.
+    apiST(Api.questionGroupPredAt) { qRef, ts, _ ->
+        call.withQuestion(qRef) {
+            assertVisible()
+            assertGroupPredictionAccess("You cannot view this group prediction.")
+            groupPredictionLog.at(ref, Instant.fromEpochSeconds(ts.toLong()))
         }
     }
 

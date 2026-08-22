@@ -28,6 +28,13 @@ import kotlin.math.max
 external interface GroupPredictionTimelineProps : PropsWithElementSize {
     var question: Question
     var resolution: Value?
+    /** Called with the update the cursor is over (step semantics: the newest update
+     *  at or before the hovered time), null on leave. Drives the scrub ghost. */
+    var onHoverPoint: ((GroupPredHistoryPoint?) -> Unit)?
+    /** Click handler for pinning the hovered update; parent owns the toggle state. */
+    var onTogglePin: ((GroupPredHistoryPoint) -> Unit)?
+    /** Timestamp of the pinned update, marked with a dashed line. */
+    var pinnedTs: Int?
 }
 
 private const val GRAPH_HEIGHT = 110.0
@@ -35,7 +42,7 @@ private const val TOP_PAD = 8.0
 private const val RUG_HEIGHT = 8.0
 private const val DATE_LABELS_HEIGHT = 20.0
 
-private fun formatDate(ts: Int): String {
+fun formatUpdateDate(ts: Int): String {
     val d = Instant.fromEpochSeconds(ts.toLong()).toLocalDateTime(TimeZone.currentSystemDefault()).date
     val month = d.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }
     return "$month ${d.dayOfMonth}, ${d.year}"
@@ -106,9 +113,21 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             val rect = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
             val x = ev.clientX - rect.left
             val frac = ((x - SIDE_PAD) / (width - 2 * SIDE_PAD)).coerceIn(0.0, 1.0)
-            hoverTs = t0 + (frac * (tEnd - t0)).toInt()
+            val ts = t0 + (frac * (tEnd - t0)).toInt()
+            hoverTs = ts
+            props.onHoverPoint?.invoke(points.lastOrNull { it.ts <= ts })
         }
-        onMouseLeave = { hoverTs = null }
+        onMouseLeave = { hoverTs = null; props.onHoverPoint?.invoke(null) }
+        props.onTogglePin?.let { togglePin ->
+            // Recomputed from the event coordinates rather than read from hover
+            // state — the click may land before the hover re-render commits.
+            onClick = { ev ->
+                val rect = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
+                val frac = ((ev.clientX - rect.left - SIDE_PAD) / (width - 2 * SIDE_PAD)).coerceIn(0.0, 1.0)
+                val ts = t0 + (frac * (tEnd - t0)).toInt()
+                points.lastOrNull { it.ts <= ts }?.let(togglePin)
+            }
+        }
 
         // Idle summary row; hover details ride on the crosshair tooltip below.
         div {
@@ -196,6 +215,17 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                 }
             }
 
+            // Pinned-update marker.
+            props.pinnedTs?.let { ts ->
+                line {
+                    x1 = tx(ts); x2 = tx(ts)
+                    y1 = TOP_PAD; y2 = TOP_PAD + GRAPH_HEIGHT
+                    stroke = "rgba(0,0,0,45%)"
+                    strokeWidth = 1.0
+                    strokeDasharray = "3 3"
+                }
+            }
+
             // Hover crosshair.
             hoverTs?.let { ts ->
                 line {
@@ -227,7 +257,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                     lineHeight = 14.px
                     whiteSpace = WhiteSpace.nowrap
                 }
-                div { css { color = Color("rgba(0,0,0,45%)") }; +formatDate(ts) }
+                div { css { color = Color("rgba(0,0,0,45%)") }; +formatUpdateDate(ts) }
                 hoverPoint?.let { p ->
                     div {
                         css { fontWeight = integer(600); color = Color("#555555") }
@@ -248,8 +278,8 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                 fontSize = 12.px
                 color = Color("rgba(0,0,0,30%)")
             }
-            div { +formatDate(t0) }
-            div { +formatDate(tEnd) }
+            div { +formatUpdateDate(t0) }
+            div { +formatUpdateDate(tEnd) }
         }
     }
 })

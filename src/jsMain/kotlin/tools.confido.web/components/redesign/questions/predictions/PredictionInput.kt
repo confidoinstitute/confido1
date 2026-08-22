@@ -46,6 +46,11 @@ external interface BasePredictionGraphProps : PropsWithRef<HTMLElement>, PropsWi
     var question: Question?
     var interactive: Boolean? // =true
     var onHistogramButtonClick: (() -> Unit)?
+    /** A historical distribution drawn as an outline over the current one (the
+     *  timeline's scrub ghost), labeled by [ghostLabel] ("as of <date>"). Only the
+     *  numeric graph renders it. */
+    var ghostDist: ProbabilityDistribution?
+    var ghostLabel: String?
 }
 
 external interface PredictionGraphProps : Props, BasePredictionGraphProps {
