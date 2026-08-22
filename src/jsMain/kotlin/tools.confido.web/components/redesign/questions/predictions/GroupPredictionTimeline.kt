@@ -5,6 +5,7 @@ import web.cssom.*
 import emotion.react.*
 import react.*
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.span
 import react.dom.svg.ReactSVG.line
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.svg
@@ -143,6 +144,10 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
         css {
             position = Position.relative
             fontFamily = sansSerif
+            // Quiet separation from the distribution graph above.
+            marginTop = 6.px
+            borderTop = Border(0.5.px, LineStyle.solid, Color("#E5E5E5"))
+            paddingTop = 8.px
         }
         fun momentAt(offsetX: Double): TimelineMoment? {
             val frac = ((offsetX - SIDE_PAD) / (width - 2 * SIDE_PAD)).coerceIn(0.0, 1.0)
@@ -179,7 +184,20 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                 display = Display.flex
                 justifyContent = JustifyContent.spaceBetween
             }
-            div { +"${history!!.updates} updates" }
+            div {
+                css { display = Display.flex; gap = 8.px; alignItems = AlignItems.baseline }
+                span {
+                    css {
+                        textTransform = TextTransform.uppercase
+                        fontSize = 10.px
+                        letterSpacing = 0.8.px
+                        fontWeight = integer(600)
+                        color = Color("rgba(0,0,0,45%)")
+                    }
+                    +"History"
+                }
+                span { +"${history!!.updates} updates" }
+            }
             if (canManageMarks && room != null) {
                 // Styled as a small button so it reads as actionable, not as a label.
                 ButtonUnstyled {
