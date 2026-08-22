@@ -242,9 +242,10 @@ val UpdatePlotConfigDialog = dialogStateWrapper(FC<UpdatePlotConfigDialogProps> 
     val q = props.question
     val room = useRooms().roomOf(q)
 
-    // Get available snapshots
-    val questionSnapshots = q.extensionData[SnapshotsKey] ?: emptyList()
-    val roomSnapshots = room?.extensionData?.get(SnapshotsKey) ?: emptyList()
+    // Get available snapshots: core timeline marks (public) + extension-private ones.
+    val questionSnapshots = q.timelineMarks.map { it.asSnapshot() } + (q.extensionData[SnapshotsKey] ?: emptyList())
+    val roomSnapshots = (room?.timelineMarks ?: emptyList()).map { it.asSnapshot() } +
+            (room?.extensionData?.get(SnapshotsKey) ?: emptyList())
     val allSnapshots = (questionSnapshots.map { it to SnapshotScope.QUESTION } +
                         roomSnapshots.map { it to SnapshotScope.ROOM }).sortedBy { it.first.ts }
 
@@ -335,8 +336,10 @@ val SnapshotManagerDialog = FC<SnapshotManagerDialogProps> { props->
     val rooms = useRooms()
     val question = props.question
     val room = props.room ?: props.question?.let { rooms.roomOf(it) }
-    val questionSnapshots = question?.extensionData[SnapshotsKey] ?: emptyList()
-    val roomSnapshots = room?.extensionData[SnapshotsKey] ?: emptyList()
+    val questionSnapshots = (question?.timelineMarks ?: emptyList()).map { it.asSnapshot() } +
+            (question?.extensionData[SnapshotsKey] ?: emptyList())
+    val roomSnapshots = (room?.timelineMarks ?: emptyList()).map { it.asSnapshot() } +
+            (room?.extensionData[SnapshotsKey] ?: emptyList())
     val snapshots = (questionSnapshots.map { it to SnapshotScope.QUESTION } +
                      roomSnapshots.map { it to SnapshotScope.ROOM }).sortedBy { it.first.ts }
     val managerScope = if (question == null) SnapshotScope.ROOM else SnapshotScope.QUESTION

@@ -12,6 +12,7 @@ import tools.confido.extensions.add
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.refs.Ref
+import tools.confido.rooms.TimelineMark
 import tools.confido.state.FlowAction
 import tools.confido.state.PresenterView
 import tools.confido.utils.List2
@@ -45,12 +46,13 @@ data class TimestampTimepoint(val time: Instant) : TimepointReference() {
     override fun describe() = "fixed time"
 }
 
-/** Resolved by looking up a named snapshot's timestamp at runtime. */
+/** Resolved by looking up a named snapshot's timestamp at runtime — core timeline
+ *  marks first, then the extension's private snapshots. */
 @Serializable
 @SerialName("snapshot")
 data class SnapshotTimepoint(
     val name: String,
-    /** If set, look up the snapshot on this question's extension data. If null, look up room-wide. */
+    /** If set, look up on this question (marks + extension data). If null, look up room-wide. */
     val question: Ref<Question>? = null,
 ) : TimepointReference() {
     override fun describe() = "snapshot \"$name\""
@@ -128,7 +130,12 @@ data class Snapshot(
 )
 
 enum class SnapshotScope { ROOM, QUESTION }
+/** The extension's *private* snapshots; public ones were promoted to core
+ *  [TimelineMark]s (Room/Question.timelineMarks, migration 005). */
 val SnapshotsKey = ExtensionDataKeyWithDefault<List<Snapshot>>("snapshots", emptyList())
+
+/** Present a core timeline mark in snapshot UIs (pickers, manager list). */
+fun TimelineMark.asSnapshot() = Snapshot(ts = ts, title = name, owner = owner, public = true, id = id)
 
 // ============================================================
 //  Extension interface

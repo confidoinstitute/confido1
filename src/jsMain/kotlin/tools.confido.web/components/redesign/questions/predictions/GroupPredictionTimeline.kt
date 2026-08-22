@@ -219,11 +219,21 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             }
 
             // Timeline markers: named moments, question-scoped and room-wide merged.
+            // Labels stack greedily into rows so clustered marks stay readable.
             val marks = ((room?.timelineMarks ?: emptyList()) + props.question.timelineMarks)
                 .filter { it.ts in t0..tEnd }
-            marks.forEach { mark ->
+            val labelRowEnds = mutableListOf<Double>()
+            marks.map { mark ->
                 val x = tx(mark.ts)
                 val flip = x > width - 90
+                val estWidth = 4.0 + mark.name.length * 5.0
+                val startX = if (flip) x - 4 - estWidth else x + 4
+                Triple(mark, x, flip) to startX
+            }.sortedBy { it.second }.forEach { (info, startX) ->
+                val (mark, x, flip) = info
+                var row = labelRowEnds.indexOfFirst { it <= startX }
+                if (row == -1) { labelRowEnds.add(0.0); row = labelRowEnds.size - 1 }
+                labelRowEnds[row] = startX + 4.0 + mark.name.length * 5.0 + 6.0
                 line {
                     x1 = x; x2 = x
                     y1 = TOP_PAD; y2 = TOP_PAD + GRAPH_HEIGHT
@@ -233,7 +243,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                 }
                 text {
                     this.x = if (flip) x - 4 else x + 4
-                    y = TOP_PAD + 8.0
+                    y = TOP_PAD + 8.0 + row * 11.0
                     textAnchor = if (flip) TextAnchor.end else TextAnchor.start
                     fontSize = 9.0
                     fill = "rgba(0,0,0,45%)"

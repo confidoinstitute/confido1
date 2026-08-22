@@ -12,6 +12,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import tools.confido.rooms.Room
 import tools.confido.rooms.RoomPermission
+import tools.confido.rooms.TimelineMark
 import tools.confido.application.getUserPresentation
 import tools.confido.application.UserPresentationContext
 import tools.confido.application.routes.*
@@ -35,12 +36,17 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
         is NowTimepoint -> null
         is TimestampTimepoint -> tp.time
         is SnapshotTimepoint -> {
+            // Core timeline marks first (public snapshots migrated there), then the
+            // extension's remaining private snapshots.
+            val question = tp.question?.let { serverState.questions[it.id] }
+            val marks = if (tp.question != null) question?.timelineMarks ?: emptyList() else room.timelineMarks
             val snapshots = if (tp.question != null) {
-                serverState.questions[tp.question.id]?.extensionData?.get(SnapshotsKey) ?: emptyList()
+                question?.extensionData?.get(SnapshotsKey) ?: emptyList()
             } else {
                 room.extensionData[SnapshotsKey]
             }
-            snapshots.find { it.title == tp.name }?.let { Instant.fromEpochSeconds(it.ts.toLong()) }
+            (marks.find { it.name == tp.name }?.ts ?: snapshots.find { it.title == tp.name }?.ts)
+                ?.let { Instant.fromEpochSeconds(it.toLong()) }
         }
     }
 
@@ -53,9 +59,16 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
                         val snap = call.receive<Snapshot>().copy(owner = user.ref, id= newId)
                         assertVisible()
                         assertPermission(RoomPermission.VIEW_QUESTIONS, "no room access")
-                        if (snap.public) assertPermission(RoomPermission.MANAGE_QUESTIONS, "not enough permissions to create public snapshot")
-                        tools.confido.store.questionStore.modify(question.id) { it.copy(extensionData = it.extensionData.with(
-                            SnapshotsKey, (it.extensionData[SnapshotsKey] + listOf(snap)).sortedBy { it.ts })) }
+                        if (snap.public) {
+                            // Public snapshots are core timeline marks now.
+                            assertPermission(RoomPermission.MANAGE_QUESTIONS, "not enough permissions to create public snapshot")
+                            val mark = TimelineMark(id = newId, ts = snap.ts, name = snap.title, owner = user.ref)
+                            tools.confido.store.questionStore.modify(question.id) {
+                                it.copy(timelineMarks = (it.timelineMarks + mark).sortedBy { m -> m.ts }) }
+                        } else {
+                            tools.confido.store.questionStore.modify(question.id) { it.copy(extensionData = it.extensionData.with(
+                                SnapshotsKey, (it.extensionData[SnapshotsKey] + listOf(snap)).sortedBy { it.ts })) }
+                        }
                         call.respond(newId)
                     }
                 }
@@ -64,8 +77,19 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
                 call.withUser {
                     call.withQuestion {
                         assertVisible()
+                        val snapId = call.parameters["snapID"]
+                        val mark = question.timelineMarks.firstOrNull { it.id == snapId }
+                        if (mark != null) {
+                            // Core timeline mark (public snapshot).
+                            if (!room.hasPermission(user, RoomPermission.MANAGE_QUESTIONS))
+                                forbidden("Only moderators can delete public snapshots")
+                            tools.confido.store.questionStore.modify(question.id) {
+                                it.copy(timelineMarks = it.timelineMarks.filter { m -> m.id != snapId }) }
+                            call.respond(HttpStatusCode.OK)
+                            return@withQuestion
+                        }
                         val snap = question.extensionData[SnapshotsKey].firstOrNull {
-                            it.id == call.parameters["snapID"]
+                            it.id == snapId
                         } ?: notFound("snapshot not found")
                         if (!(snap.owner == user.ref || snap.public && room.hasPermission(user, RoomPermission.MANAGE_QUESTIONS))) {
                             forbidden("You can only delete your own snapshots and moderators can delete public snapshots")
@@ -80,9 +104,16 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
                     call.withRoom {
                         val snap = call.receive<Snapshot>().copy(owner = user.ref)
                         assertPermission(RoomPermission.VIEW_QUESTIONS, "no room access")
-                        if (snap.public) assertPermission(RoomPermission.MANAGE_QUESTIONS, "not enough permissions to create public snapshot")
-                        tools.confido.store.roomStore.modify(room.id) { it.copy(extensionData = it.extensionData.with(
-                            SnapshotsKey, (it.extensionData[SnapshotsKey] + listOf(snap)).sortedBy { it.ts })) }
+                        if (snap.public) {
+                            // Public snapshots are core timeline marks now.
+                            assertPermission(RoomPermission.MANAGE_QUESTIONS, "not enough permissions to create public snapshot")
+                            val mark = TimelineMark(id = generateId(), ts = snap.ts, name = snap.title, owner = user.ref)
+                            tools.confido.store.roomStore.modify(room.id) {
+                                it.copy(timelineMarks = (it.timelineMarks + mark).sortedBy { m -> m.ts }) }
+                        } else {
+                            tools.confido.store.roomStore.modify(room.id) { it.copy(extensionData = it.extensionData.with(
+                                SnapshotsKey, (it.extensionData[SnapshotsKey] + listOf(snap)).sortedBy { it.ts })) }
+                        }
                         call.respond(HttpStatusCode.OK)
                     }
                 }
@@ -90,8 +121,19 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
             deleteST("/api$roomUrl/snapshots/{snapID}") {
                 call.withUser {
                     call.withRoom {
+                        val snapId = call.parameters["snapID"]
+                        val mark = room.timelineMarks.firstOrNull { it.id == snapId }
+                        if (mark != null) {
+                            // Core timeline mark (public snapshot).
+                            if (!room.hasPermission(user, RoomPermission.MANAGE_QUESTIONS))
+                                forbidden("Only moderators can delete public snapshots")
+                            tools.confido.store.roomStore.modify(room.id) {
+                                it.copy(timelineMarks = it.timelineMarks.filter { m -> m.id != snapId }) }
+                            call.respond(HttpStatusCode.OK)
+                            return@withRoom
+                        }
                         val snap = room.extensionData[SnapshotsKey].firstOrNull {
-                            it.id == call.parameters["snapID"]
+                            it.id == snapId
                         } ?: notFound("snapshot not found")
                         if (!(snap.owner == user.ref || snap.public && room.hasPermission(user, RoomPermission.MANAGE_QUESTIONS))) {
                             forbidden("You can only delete your own snapshots and moderators can delete public snapshots")
@@ -132,27 +174,17 @@ object UpdateScatterPlotSE: ServerExtension, UpdateScatterPlotExt {
         if (action !is CreateSnapshotAction) return false
         if (action.name.isBlank()) return true // silently skip empty-named snapshots
 
-        val snapshot = Snapshot(
-            ts = unixNow(),
-            title = action.name,
-            owner = null,
-            public = true,
-            id = generateId(),
-        )
+        // Snapshots created from presenter flows are public, i.e. core timeline
+        // marks; overwrite-by-name semantics kept from the extension days.
+        val mark = TimelineMark(id = generateId(), ts = unixNow(), name = action.name, owner = null)
 
         if (action.question != null) {
-            // Question-scoped snapshot: overwrite by name
             tools.confido.store.questionStore.modify(action.question.id) { q ->
-                val existing = q.extensionData[SnapshotsKey]
-                val updated = (existing.filter { it.title != action.name } + snapshot).sortedBy { it.ts }
-                q.copy(extensionData = q.extensionData.with(SnapshotsKey, updated))
+                q.copy(timelineMarks = (q.timelineMarks.filter { it.name != action.name } + mark).sortedBy { it.ts })
             }
         } else {
-            // Room-wide snapshot: overwrite by name
             tools.confido.store.roomStore.modify(room.id) { r ->
-                val existing = r.extensionData[SnapshotsKey]
-                val updated = (existing.filter { it.title != action.name } + snapshot).sortedBy { it.ts }
-                r.copy(extensionData = r.extensionData.with(SnapshotsKey, updated))
+                r.copy(timelineMarks = (r.timelineMarks.filter { it.name != action.name } + mark).sortedBy { it.ts })
             }
         }
         return true

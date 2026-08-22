@@ -85,6 +85,7 @@ object MigrationRunner {
         QuestionGroupsToTagsMigration,
         FoldCommentLikesMigration,
         ShortSerialNamesMigration,
+        PublicSnapshotsToTimelineMarksMigration,
     )
 
     /**
