@@ -92,7 +92,18 @@ data class PZState(
     val visibleContentWidth by lazy { params.viewportWidth - leftPadVisible - rightPadVisible }
 }
 
+/** What a mouse drag means on a pan/zoom surface. Touch drags always pan
+ *  (pinch zooms); this only routes the mouse gesture. */
+enum class PZDragMode { PAN, SELECT }
+
 open class PZController(var params: PZParams, initialState: PZState = PZState(params), var onChange: ((PZState) -> Unit)?) {
+    /** Mouse-drag policy, queried at gesture start. Default: pan (value axes).
+     *  Time axes set SELECT for Grafana-style select-range-to-zoom. */
+    var dragMode: (PZState) -> PZDragMode = { PZDragMode.PAN }
+    /** Live drag-selection (viewport px), null when none; the consumer renders
+     *  the highlight. Fires with null when the selection commits or cancels. */
+    var onSelectionChange: ((ClosedFloatingPointRange<Double>?) -> Unit)? = null
+
     fun onPinchStart(startPinch: PinchState): PinchUpdateHandler {
         val startState = state
         val startFingerContentX = startPinch.touchCoords.map { state.viewportToContent(it.e1) }
@@ -105,7 +116,9 @@ open class PZController(var params: PZParams, initialState: PZState = PZState(pa
         }
     }
 
-    fun onPanStart(startPos: List2<Double>): PanUpdateHandler {
+    fun onPanStart(startPos: List2<Double>, pointerType: String): PanUpdateHandler {
+        if (pointerType == "mouse" && dragMode(state) == PZDragMode.SELECT)
+            return onSelectStart()
         val startState = state
         return { _, newPos, commit ->
             val newPan = (startState.pan + (startPos[0] - newPos[0])).coerceIn(state.panRange)
@@ -115,12 +128,32 @@ open class PZController(var params: PZParams, initialState: PZState = PZState(pa
         }
     }
 
+    private fun onSelectStart(): PanUpdateHandler = { start, cur, commit ->
+        val a = minOf(start.e1, cur.e1)
+        val b = maxOf(start.e1, cur.e1)
+        if (!commit) {
+            // Below the threshold the gesture is still a potential click.
+            if (b - a > 4.0) onSelectionChange?.invoke(a..b)
+        } else {
+            onSelectionChange?.invoke(null)
+            if (b - a > 8.0) {
+                state = params.solveMapMap(
+                    List2(state.viewportToContent(a), state.viewportToContent(b)),
+                    List2(params.sidePad, params.viewportWidth - params.sidePad))
+            }
+        }
+    }
+
     fun onWheel(ev: WheelEvent) {
-        val mouseContent = state.viewportToContent(ev.offsetX)
-        val zoomDelta = kotlin.math.exp(ev.deltaY * -0.005)
-        val newZoom = (state.zoom * zoomDelta).coerceIn(1.0..params.maxZoom)
-        val newState = params.solveZoomMap(newZoom, mouseContent, ev.offsetX)
-        state = newState
+        if (abs(ev.deltaX) > abs(ev.deltaY)) {
+            // Horizontal scroll (touchpad swipe, shift+wheel) pans; a no-op unzoomed.
+            state = state.copy(pan = (state.pan + ev.deltaX).coerceIn(state.panRange))
+        } else {
+            val mouseContent = state.viewportToContent(ev.offsetX)
+            val zoomDelta = kotlin.math.exp(ev.deltaY * -0.005)
+            val newZoom = (state.zoom * zoomDelta).coerceIn(1.0..params.maxZoom)
+            state = params.solveZoomMap(newZoom, mouseContent, ev.offsetX)
+        }
     }
 
     fun updateParams(newParams: PZParams) {

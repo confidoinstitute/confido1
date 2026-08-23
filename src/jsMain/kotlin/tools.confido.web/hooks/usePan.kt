@@ -21,10 +21,12 @@ class PanController(var startHandler: PanStartHandler) {
     var panOrigin: List2<Double>? = null
     var panLast: List2<Double>? = null
     var updateHandler: PanUpdateHandler? = null
+    var pointerType: String = "mouse"
     fun onPointerChange(ev: PointerEvent) {
         val down = ev.type == PointerEvent.POINTER_DOWN
         if (down)  {
             activePointers[ev.pointerId] = ev.offsetPos
+            pointerType = ev.asDynamic().pointerType as? String ?: "mouse"
             (ev.target as? HTMLElement)?.setPointerCapture(ev.pointerId)
         }
         else activePointers.remove(ev.pointerId)
@@ -38,7 +40,7 @@ class PanController(var startHandler: PanStartHandler) {
         if (panOrigin != null) return
         panOrigin = pos
         panLast = pos
-        updateHandler = startHandler?.invoke(pos)
+        updateHandler = startHandler?.invoke(pos, pointerType)
     }
     fun endPan() {
         multiletNotNull(panOrigin, panLast) { po, pl ->
@@ -60,7 +62,8 @@ class PanController(var startHandler: PanStartHandler) {
 }
 
 typealias PanUpdateHandler = (start: List2<Double>, current: List2<Double>, commit: Boolean) -> Unit
-typealias PanStartHandler = (List2<Double>) -> PanUpdateHandler
+/** Called on gesture start with the position and the pointer type ("mouse"/"touch"/"pen"). */
+typealias PanStartHandler = (List2<Double>, String) -> PanUpdateHandler
 
 
 fun <T: HTMLElement> usePan(handler: PanStartHandler): RefObject<T> {

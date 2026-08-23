@@ -30,20 +30,16 @@ import tools.confido.state.Topics
 import tools.confido.utils.formatPercent
 import tools.confido.utils.unixNow
 import tools.confido.web.hooks.useSubscription
-import tools.confido.web.hooks.useEventListener
-import tools.confido.web.hooks.usePinch
-import tools.confido.web.hooks.combineRefs
-import tools.confido.web.utils.panzoom1d.PZController
+import tools.confido.web.utils.panzoom1d.PZDragMode
 import tools.confido.web.utils.panzoom1d.PZParams
 import tools.confido.web.utils.panzoom1d.PZState
+import tools.confido.web.utils.panzoom1d.usePanZoom
 import web.dom.document
 import web.events.EventType
 import web.events.addEventListener
 import web.events.removeEventListener
 import web.html.HTMLDivElement
 import web.keyboard.KeyboardEvent
-import web.mouse.WHEEL
-import web.mouse.WheelEvent
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -121,27 +117,19 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
     val t0 = points.firstOrNull()?.ts ?: 0
     val tEnd = max(points.lastOrNull()?.ts ?: 1, unixNow()).let { if (it == t0) t0 + 1 else it }
 
-    // Time-axis pan/zoom state. Allows zooming down to a ~1 hour window.
+    // Time-axis pan/zoom (time axes get range-select for mouse drags; touch pans,
+    // pinch and wheel zoom, horizontal scroll pans). Allows zooming to ~1 hour.
     val zoomParams = PZParams(contentDomain = t0.toDouble()..tEnd.toDouble(), viewportWidth = width,
         sidePad = SIDE_PAD, maxZoom = ((tEnd - t0) / 3600.0).coerceAtLeast(1.0))
-    var zoomState by useState(PZState(zoomParams))
-    val ctl = useMemo { PZController(zoomParams, PZState(zoomParams), onChange = null) }
-    ctl.onChange = { zoomState = it }
-    useEffect(zoomParams.key()) { ctl.updateParams(zoomParams) }
-    val pinchRef = usePinch<HTMLDivElement>(ctl::onPinchStart)
-    val wheelRef = useEventListener<HTMLDivElement, WheelEvent>(
-        WheelEvent.WHEEL, passive = false, preventDefault = true, callback = ctl::onWheel)
-    // combineRefs is a hook (useMemo inside) — must run before the early return.
-    val containerRef = combineRefs<HTMLDivElement>(pinchRef, wheelRef)
-
-    // Mouse drag = select-range-to-zoom; state shared with the click handler so
-    // a drag never doubles as a pin click.
-    val selAnchor = useRef<Double>()
+    val (chartRef, zoomState, ctl) = usePanZoom<HTMLDivElement>(zoomParams)
+    var selRange by useState<ClosedFloatingPointRange<Double>?>(null)
     val didDrag = useRef(false)
-    var selRange by useState<Pair<Double, Double>?>(null)
-    // Single-finger touch pan (two-finger pinch is handled by usePinch).
-    val touchCount = useRef(0)
-    val touchPanStart = useRef<List2<Double>>()
+    ctl.dragMode = { PZDragMode.SELECT }
+    ctl.onSelectionChange = { sel ->
+        selRange = sel
+        // Marks the gesture as a drag so the trailing click never pins.
+        if (sel != null) didDrag.current = true
+    }
 
     // Escape: close the marker dialog if open, else release the pin. Lives here
     // (not in QuestionPage) so an open dialog can't lose the pin underneath it.
@@ -205,7 +193,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
     }
 
     div {
-        ref = containerRef
+        ref = chartRef
         css {
             position = Position.relative
             fontFamily = sansSerif
@@ -232,6 +220,10 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             }
         }
         onMouseLeave = { hoverTs = null; props.onHover?.invoke(null) }
+        // A new press starts a fresh gesture: the drag flag must not leak from the
+        // previous one (no click event follows a captured drag, so the click
+        // handler alone cannot be trusted to clear it).
+        onPointerDown = { didDrag.current = false }
         props.onPin?.let { pin ->
             // Recomputed from the event coordinates rather than read from hover
             // state — the click may land before the hover re-render commits.
@@ -338,64 +330,6 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             this.width = width
             this.height = svgHeight
             viewBox = "0 0 $width $svgHeight"
-
-            // Range-select (mouse) and single-finger pan (touch). Pointer capture
-            // keeps a selection alive when the cursor briefly leaves the chart.
-            onPointerDown = { ev ->
-                if (ev.asDynamic().pointerType == "mouse") {
-                    if (ev.asDynamic().button == 0) {
-                        val rectBox = ev.currentTarget.asDynamic().getBoundingClientRect()
-                        selAnchor.current = (ev.clientX - (rectBox.left as Double))
-                        didDrag.current = false
-                        ev.currentTarget.asDynamic().setPointerCapture(ev.asDynamic().pointerId)
-                    }
-                } else {
-                    touchCount.current = (touchCount.current ?: 0) + 1
-                    if (touchCount.current == 1) {
-                        val rectBox = ev.currentTarget.asDynamic().getBoundingClientRect()
-                        touchPanStart.current = List2(ev.clientX - (rectBox.left as Double), 0.0)
-                    } else touchPanStart.current = null
-                }
-            }
-            onPointerMove = { ev ->
-                if (ev.asDynamic().pointerType == "mouse") {
-                    selAnchor.current?.let { anchor ->
-                        val rectBox = ev.currentTarget.asDynamic().getBoundingClientRect()
-                        val x = ev.clientX - (rectBox.left as Double)
-                        if (didDrag.current == true || abs(x - anchor) > 4.0) {
-                            didDrag.current = true
-                            selRange = minOf(anchor, x) to maxOf(anchor, x)
-                        }
-                    }
-                } else {
-                    touchPanStart.current?.let { start ->
-                        val rectBox = ev.currentTarget.asDynamic().getBoundingClientRect()
-                        val x = ev.clientX - (rectBox.left as Double)
-                        ctl.state = ctl.state.copy(
-                            pan = (ctl.state.pan + (start.e1 - x)).coerceIn(ctl.state.panRange))
-                        touchPanStart.current = List2(x, 0.0)
-                    }
-                }
-            }
-            val endPointer = { ev: react.dom.events.PointerEvent<*> ->
-                if (ev.asDynamic().pointerType == "mouse") {
-                    selAnchor.current = null
-                    val sel = selRange
-                    selRange = null
-                    if (didDrag.current == true && sel != null && sel.second - sel.first > 8.0) {
-                        val p = ctl.params
-                        ctl.state = p.solveMapMap(
-                            List2(zoomState.viewportToContent(sel.first), zoomState.viewportToContent(sel.second)),
-                            List2(p.sidePad, p.viewportWidth - p.sidePad))
-                    }
-                    // didDrag is cleared by the click handler, which fires after us.
-                } else {
-                    touchCount.current = ((touchCount.current ?: 1) - 1).coerceAtLeast(0)
-                    touchPanStart.current = null
-                }
-            }
-            onPointerUp = endPointer
-            onPointerCancel = endPointer
 
             // Gridlines with value labels, recessive.
             gridValues.forEach { v ->
@@ -522,12 +456,12 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                 }
             }
 
-            // Live range-selection highlight.
-            selRange?.let { (a, b) ->
+            // Live range-selection highlight (selection itself lives in PZController).
+            selRange?.let { sel ->
                 rect {
-                    x = a
+                    x = sel.start
                     y = TOP_PAD
-                    this.width = b - a
+                    this.width = sel.endInclusive - sel.start
                     this.height = GRAPH_HEIGHT
                     fill = "rgba(0,194,255,0.10)"
                     stroke = "rgba(0,194,255,0.5)"
