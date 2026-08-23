@@ -126,6 +126,8 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
     val canManageMarks = room?.hasPermission(myUser, RoomPermission.MANAGE_QUESTIONS) ?: false
     var markDialogOpen by useState(false)
     var compareMenuOpen by useState(false)
+    // Click-into pages of the compare menu: "main", "marks-now", "marks-pin".
+    var compareMenuPage by useState("main")
 
     val points = history?.points ?: emptyList()
     val width = props.elementWidth
@@ -329,32 +331,77 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                             hover { backgroundColor = Color("#EFEFEF") }
                         }
                         +"Compare"
-                        onClick = { it.stopPropagation(); compareMenuOpen = true }
+                        onClick = { it.stopPropagation(); compareMenuPage = "main"; compareMenuOpen = true }
                     }
                     DialogMenu {
                         open = compareMenuOpen
-                        onClose = { compareMenuOpen = false }
+                        onClose = { compareMenuOpen = false; compareMenuPage = "main" }
                         val compare = { a: Int, b: Int? ->
                             compareMenuOpen = false
+                            compareMenuPage = "main"
                             props.onCompare?.invoke(a, b)
                         }
-                        props.pinnedTs?.let { pts ->
-                            DialogMenuItem {
-                                text = "Pinned (${formatUpdateDateTime(pts)}) vs now"
-                                onClick = { compare(pts, null) }
+                        // The selected moment goes by its time, not by "pinned" (which
+                        // would suggest something longer-lived than a click).
+                        val pinLabel = props.pinnedTs?.let { formatUpdateDateTime(it) }
+                        // Few marks fit inline; more go behind click-into pages.
+                        val inlineMarks = allMarks.size <= 2
+                        when (compareMenuPage) {
+                            "marks-now" -> {
+                                DialogMenuItem { text = "‹ Back"; keepOpen = true; onClick = { compareMenuPage = "main" } }
+                                allMarks.forEach { mark ->
+                                    DialogMenuItem {
+                                        text = "${mark.name} vs now"
+                                        onClick = { compare(mark.ts, null) }
+                                    }
+                                }
                             }
-                        }
-                        allMarks.forEach { mark ->
-                            DialogMenuItem {
-                                text = "${mark.name} vs now"
-                                onClick = { compare(mark.ts, null) }
+                            "marks-pin" -> {
+                                DialogMenuItem { text = "‹ Back"; keepOpen = true; onClick = { compareMenuPage = "main" } }
+                                props.pinnedTs?.let { pts ->
+                                    allMarks.filter { it.ts != pts }.forEach { mark ->
+                                        DialogMenuItem {
+                                            text = "$pinLabel vs ${mark.name}"
+                                            onClick = { compare(minOf(pts, mark.ts), maxOf(pts, mark.ts)) }
+                                        }
+                                    }
+                                }
                             }
-                        }
-                        props.pinnedTs?.let { pts ->
-                            allMarks.filter { it.ts != pts }.forEach { mark ->
-                                DialogMenuItem {
-                                    text = "Pinned vs ${mark.name}"
-                                    onClick = { compare(minOf(pts, mark.ts), maxOf(pts, mark.ts)) }
+                            else -> {
+                                props.pinnedTs?.let { pts ->
+                                    DialogMenuItem {
+                                        text = "$pinLabel vs now"
+                                        onClick = { compare(pts, null) }
+                                    }
+                                }
+                                if (inlineMarks) {
+                                    allMarks.forEach { mark ->
+                                        DialogMenuItem {
+                                            text = "${mark.name} vs now"
+                                            onClick = { compare(mark.ts, null) }
+                                        }
+                                    }
+                                    props.pinnedTs?.let { pts ->
+                                        allMarks.filter { it.ts != pts }.forEach { mark ->
+                                            DialogMenuItem {
+                                                text = "$pinLabel vs ${mark.name}"
+                                                onClick = { compare(minOf(pts, mark.ts), maxOf(pts, mark.ts)) }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    DialogMenuItem {
+                                        text = "Marker vs now…"
+                                        keepOpen = true
+                                        onClick = { compareMenuPage = "marks-now" }
+                                    }
+                                    if (props.pinnedTs != null) {
+                                        DialogMenuItem {
+                                            text = "$pinLabel vs marker…"
+                                            keepOpen = true
+                                            onClick = { compareMenuPage = "marks-pin" }
+                                        }
+                                    }
                                 }
                             }
                         }
