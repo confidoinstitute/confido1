@@ -8,6 +8,7 @@ import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 import react.dom.svg.ReactSVG.line
 import react.dom.svg.ReactSVG.path
+import react.dom.svg.ReactSVG.rect
 import react.dom.svg.ReactSVG.svg
 import react.dom.svg.ReactSVG.text
 import react.dom.svg.TextAnchor
@@ -20,6 +21,7 @@ import tools.confido.question.Question
 import tools.confido.refs.ref
 import tools.confido.rooms.*
 import tools.confido.spaces.*
+import tools.confido.utils.List2
 import tools.confido.web.components.useMyUser
 import tools.confido.web.components.redesign.forms.ButtonUnstyled
 import tools.confido.web.components.redesign.rooms.RoomContext
@@ -28,12 +30,21 @@ import tools.confido.state.Topics
 import tools.confido.utils.formatPercent
 import tools.confido.utils.unixNow
 import tools.confido.web.hooks.useSubscription
+import tools.confido.web.hooks.useEventListener
+import tools.confido.web.hooks.usePinch
+import tools.confido.web.hooks.combineRefs
+import tools.confido.web.utils.panzoom1d.PZController
+import tools.confido.web.utils.panzoom1d.PZParams
+import tools.confido.web.utils.panzoom1d.PZState
 import web.dom.document
 import web.events.EventType
 import web.events.addEventListener
 import web.events.removeEventListener
 import web.html.HTMLDivElement
 import web.keyboard.KeyboardEvent
+import web.mouse.WHEEL
+import web.mouse.WheelEvent
+import kotlin.math.abs
 import kotlin.math.max
 
 /**
@@ -81,12 +92,20 @@ private fun pathD(vertices: List<Pair<Double, Double>>, close: Boolean = false) 
     vertices.mapIndexed { i, (x, y) -> "${if (i == 0) "M" else "L"} $x $y" }
         .joinToString(" ") + if (close) " Z" else ""
 
+private val ZOOM_PRESETS = listOf("3m" to 90 * 86400, "1m" to 30 * 86400, "1w" to 7 * 86400, "1d" to 86400)
+
 /**
  * The group prediction history timeline: a step chart of the group aggregate over
  * time (beliefs are held until updated, so segments extend to the next update).
  * Binary questions plot the yes-probability; numeric questions plot the median
  * with the 80% confidence band in the app-wide band colour. Renders nothing until
  * the history has at least two updates.
+ *
+ * Zoom model (time axes get range semantics, value axes keep pan/zoom):
+ * mouse drag selects a range to zoom to (Grafana-style), wheel and pinch zoom
+ * around the cursor, single-finger touch pans, and quick-range chips jump to
+ * the last day/week/month ("All" resets). Click still pins; a drag past the
+ * small movement threshold never pins.
  */
 val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps>("GroupPredictionTimeline") { props ->
     val history = (useSubscription(Topics.groupPredHistory(props.question.ref)) as? WSData)?.data
@@ -96,6 +115,33 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
     val myUser = useMyUser()
     val canManageMarks = room?.hasPermission(myUser, RoomPermission.MANAGE_QUESTIONS) ?: false
     var markDialogOpen by useState(false)
+
+    val points = history?.points ?: emptyList()
+    val width = props.elementWidth
+    val t0 = points.firstOrNull()?.ts ?: 0
+    val tEnd = max(points.lastOrNull()?.ts ?: 1, unixNow()).let { if (it == t0) t0 + 1 else it }
+
+    // Time-axis pan/zoom state. Allows zooming down to a ~1 hour window.
+    val zoomParams = PZParams(contentDomain = t0.toDouble()..tEnd.toDouble(), viewportWidth = width,
+        sidePad = SIDE_PAD, maxZoom = ((tEnd - t0) / 3600.0).coerceAtLeast(1.0))
+    var zoomState by useState(PZState(zoomParams))
+    val ctl = useMemo { PZController(zoomParams, PZState(zoomParams), onChange = null) }
+    ctl.onChange = { zoomState = it }
+    useEffect(zoomParams.key()) { ctl.updateParams(zoomParams) }
+    val pinchRef = usePinch<HTMLDivElement>(ctl::onPinchStart)
+    val wheelRef = useEventListener<HTMLDivElement, WheelEvent>(
+        WheelEvent.WHEEL, passive = false, preventDefault = true, callback = ctl::onWheel)
+    // combineRefs is a hook (useMemo inside) — must run before the early return.
+    val containerRef = combineRefs<HTMLDivElement>(pinchRef, wheelRef)
+
+    // Mouse drag = select-range-to-zoom; state shared with the click handler so
+    // a drag never doubles as a pin click.
+    val selAnchor = useRef<Double>()
+    val didDrag = useRef(false)
+    var selRange by useState<Pair<Double, Double>?>(null)
+    // Single-finger touch pan (two-finger pinch is handled by usePinch).
+    val touchCount = useRef(0)
+    val touchPanStart = useRef<List2<Double>>()
 
     // Escape: close the marker dialog if open, else release the pin. Lives here
     // (not in QuestionPage) so an open dialog can't lose the pin underneath it.
@@ -110,16 +156,18 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
         onCleanup { document.removeEventListener(EventType<KeyboardEvent>("keydown"), onKey) }
     }
 
-    val points = history?.points ?: emptyList()
     if (points.size < 2) return@FC
 
     val space = props.question.answerSpace
-    val width = props.elementWidth
     val svgHeight = TOP_PAD + GRAPH_HEIGHT + RUG_HEIGHT
 
-    val t0 = points.first().ts
-    val tEnd = max(points.last().ts, unixNow()).let { if (it == t0) t0 + 1 else it }
-    fun tx(ts: Int) = SIDE_PAD + (ts - t0).toDouble() / (tEnd - t0) * (width - 2 * SIDE_PAD)
+    fun tx(ts: Int) = zoomState.contentToViewport(ts.toDouble())
+    val visRange = zoomState.visibleContentRange
+    val visSpan = visRange.endInclusive - visRange.start
+    // The step series needs the last point before the window (its belief enters
+    // from the left edge); contentToViewport clamps it to the edge.
+    val visPoints = listOfNotNull(points.lastOrNull { it.ts < visRange.start }) +
+            points.filter { it.ts.toDouble() in visRange }
 
     val (yMin, yMax) = when (space) {
         is NumericSpace -> space.min to space.max
@@ -131,6 +179,14 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
         is NumericSpace -> space.formatValue(v, false, true)
         else -> v.toString()
     }
+    fun formatEdge(tsD: Double): String {
+        val ts = tsD.toInt()
+        return if (visSpan < 3 * 86400) {
+            val dt = Instant.fromEpochSeconds(ts.toLong()).toLocalDateTime(TimeZone.currentSystemDefault())
+            formatUpdateDate(ts) +
+                " ${dt.hour.toString().padStart(2, '0')}:${dt.minute.toString().padStart(2, '0')}"
+        } else formatUpdateDate(ts)
+    }
 
     val hasBand = space is NumericSpace && points.all { it.lo != null && it.hi != null }
     val hoverPoint = hoverTs?.let { ts -> points.lastOrNull { it.ts <= ts } }
@@ -140,7 +196,16 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
         else -> listOf(0.0, 0.5, 1.0)
     }
 
+    fun zoomToLast(secs: Int) {
+        val p = ctl.params
+        val end = p.contentDomain.endInclusive
+        ctl.state = p.solveMapMap(
+            List2(maxOf(p.contentDomain.start, end - secs), end),
+            List2(p.sidePad, p.viewportWidth - p.sidePad))
+    }
+
     div {
+        ref = containerRef
         css {
             position = Position.relative
             fontFamily = sansSerif
@@ -148,28 +213,38 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             marginTop = 6.px
             borderTop = Border(0.5.px, LineStyle.solid, Color("#E5E5E5"))
             paddingTop = 8.px
+            touchAction = None.none
         }
         fun momentAt(offsetX: Double): TimelineMoment? {
-            val frac = ((offsetX - SIDE_PAD) / (width - 2 * SIDE_PAD)).coerceIn(0.0, 1.0)
-            val ts = t0 + (frac * (tEnd - t0)).toInt()
+            val ts = zoomState.viewportToContent(offsetX).toInt()
             return points.lastOrNull { it.ts <= ts }?.let { TimelineMoment(ts, it) }
         }
         onMouseMove = { ev ->
-            val rect = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
-            val moment = momentAt(ev.clientX - rect.left)
-            hoverTs = moment?.ts
-            props.onHover?.invoke(moment)
+            if (didDrag.current == true) {
+                // Selecting a range; the crosshair/tooltip would just be noise.
+                hoverTs = null
+                props.onHover?.invoke(null)
+            } else {
+                val rectBox = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
+                val moment = momentAt(ev.clientX - rectBox.left)
+                hoverTs = moment?.ts
+                props.onHover?.invoke(moment)
+            }
         }
         onMouseLeave = { hoverTs = null; props.onHover?.invoke(null) }
         props.onPin?.let { pin ->
             // Recomputed from the event coordinates rather than read from hover
             // state — the click may land before the hover re-render commits.
             onClick = { ev ->
-                val rect = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
-                val offsetX = ev.clientX - rect.left
-                val nearPin = props.pinnedTs?.let { kotlin.math.abs(offsetX - tx(it)) < 6.0 } ?: false
-                if (nearPin) pin(null)
-                else momentAt(offsetX)?.let(pin)
+                if (didDrag.current == true) {
+                    didDrag.current = false
+                } else {
+                    val rectBox = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
+                    val offsetX = ev.clientX - rectBox.left
+                    val nearPin = props.pinnedTs?.let { abs(offsetX - tx(it)) < 6.0 } ?: false
+                    if (nearPin) pin(null)
+                    else momentAt(offsetX)?.let(pin)
+                }
             }
         }
 
@@ -198,25 +273,63 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                 }
                 span { +"${history!!.updates} updates" }
             }
-            if (canManageMarks && room != null) {
-                // Styled as a small button so it reads as actionable, not as a label.
-                ButtonUnstyled {
-                    css {
-                        fontSize = 11.px
-                        lineHeight = 12.px
-                        color = Color("#6319FF")
-                        fontFamily = sansSerif
-                        fontWeight = integer(600)
-                        border = Border(1.px, LineStyle.solid, Color("#D5C8F3"))
-                        borderRadius = 4.px
-                        padding = Padding(1.px, 7.px)
-                        backgroundColor = Color("#F6F2FD")
-                        hover {
-                            backgroundColor = Color("#E8E0F5")
+            div {
+                css { display = Display.flex; gap = 10.px; alignItems = AlignItems.center }
+                // Quick ranges, anchored to "now"; "All" doubles as zoom reset.
+                val fullSpan = tEnd - t0
+                val presets = ZOOM_PRESETS.filter { it.second < fullSpan }
+                if (presets.isNotEmpty()) {
+                    div {
+                        css { display = Display.flex; gap = 2.px; alignItems = AlignItems.center }
+                        (listOf("All" to null) + presets).forEach { (label, secs) ->
+                            val active = if (secs == null) zoomState.zoom < 1.001
+                                else abs(visSpan - secs) < secs * 0.05 &&
+                                    abs(visRange.endInclusive - tEnd) < secs * 0.05
+                            ButtonUnstyled {
+                                css {
+                                    fontSize = 10.px
+                                    lineHeight = 12.px
+                                    fontFamily = sansSerif
+                                    padding = Padding(1.px, 5.px)
+                                    borderRadius = 3.px
+                                    if (active) {
+                                        color = Color("#6319FF")
+                                        fontWeight = integer(700)
+                                        backgroundColor = Color("#F6F2FD")
+                                    } else {
+                                        color = Color("rgba(0,0,0,40%)")
+                                        hover { backgroundColor = Color("#00000010") }
+                                    }
+                                }
+                                +label
+                                onClick = { ev ->
+                                    ev.stopPropagation()
+                                    if (secs == null) ctl.state = PZState(ctl.params) else zoomToLast(secs)
+                                }
+                            }
                         }
                     }
-                    +"+ marker"
-                    onClick = { it.stopPropagation(); markDialogOpen = true }
+                }
+                if (canManageMarks && room != null) {
+                    // Styled as a small button so it reads as actionable, not as a label.
+                    ButtonUnstyled {
+                        css {
+                            fontSize = 11.px
+                            lineHeight = 12.px
+                            color = Color("#6319FF")
+                            fontFamily = sansSerif
+                            fontWeight = integer(600)
+                            border = Border(1.px, LineStyle.solid, Color("#D5C8F3"))
+                            borderRadius = 4.px
+                            padding = Padding(1.px, 7.px)
+                            backgroundColor = Color("#F6F2FD")
+                            hover {
+                                backgroundColor = Color("#E8E0F5")
+                            }
+                        }
+                        +"+ marker"
+                        onClick = { it.stopPropagation(); markDialogOpen = true }
+                    }
                 }
             }
         }
@@ -225,6 +338,64 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             this.width = width
             this.height = svgHeight
             viewBox = "0 0 $width $svgHeight"
+
+            // Range-select (mouse) and single-finger pan (touch). Pointer capture
+            // keeps a selection alive when the cursor briefly leaves the chart.
+            onPointerDown = { ev ->
+                if (ev.asDynamic().pointerType == "mouse") {
+                    if (ev.asDynamic().button == 0) {
+                        val rectBox = ev.currentTarget.asDynamic().getBoundingClientRect()
+                        selAnchor.current = (ev.clientX - (rectBox.left as Double))
+                        didDrag.current = false
+                        ev.currentTarget.asDynamic().setPointerCapture(ev.asDynamic().pointerId)
+                    }
+                } else {
+                    touchCount.current = (touchCount.current ?: 0) + 1
+                    if (touchCount.current == 1) {
+                        val rectBox = ev.currentTarget.asDynamic().getBoundingClientRect()
+                        touchPanStart.current = List2(ev.clientX - (rectBox.left as Double), 0.0)
+                    } else touchPanStart.current = null
+                }
+            }
+            onPointerMove = { ev ->
+                if (ev.asDynamic().pointerType == "mouse") {
+                    selAnchor.current?.let { anchor ->
+                        val rectBox = ev.currentTarget.asDynamic().getBoundingClientRect()
+                        val x = ev.clientX - (rectBox.left as Double)
+                        if (didDrag.current == true || abs(x - anchor) > 4.0) {
+                            didDrag.current = true
+                            selRange = minOf(anchor, x) to maxOf(anchor, x)
+                        }
+                    }
+                } else {
+                    touchPanStart.current?.let { start ->
+                        val rectBox = ev.currentTarget.asDynamic().getBoundingClientRect()
+                        val x = ev.clientX - (rectBox.left as Double)
+                        ctl.state = ctl.state.copy(
+                            pan = (ctl.state.pan + (start.e1 - x)).coerceIn(ctl.state.panRange))
+                        touchPanStart.current = List2(x, 0.0)
+                    }
+                }
+            }
+            val endPointer = { ev: react.dom.events.PointerEvent<*> ->
+                if (ev.asDynamic().pointerType == "mouse") {
+                    selAnchor.current = null
+                    val sel = selRange
+                    selRange = null
+                    if (didDrag.current == true && sel != null && sel.second - sel.first > 8.0) {
+                        val p = ctl.params
+                        ctl.state = p.solveMapMap(
+                            List2(zoomState.viewportToContent(sel.first), zoomState.viewportToContent(sel.second)),
+                            List2(p.sidePad, p.viewportWidth - p.sidePad))
+                    }
+                    // didDrag is cleared by the click handler, which fires after us.
+                } else {
+                    touchCount.current = ((touchCount.current ?: 1) - 1).coerceAtLeast(0)
+                    touchPanStart.current = null
+                }
+            }
+            onPointerUp = endPointer
+            onPointerCancel = endPointer
 
             // Gridlines with value labels, recessive.
             gridValues.forEach { v ->
@@ -246,9 +417,9 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             }
 
             // 80% confidence band (numeric questions).
-            if (hasBand) {
-                val hiV = stepVertices(points.map { tx(it.ts) to ty(it.hi!!) }, tx(tEnd))
-                val loV = stepVertices(points.map { tx(it.ts) to ty(it.lo!!) }, tx(tEnd))
+            if (hasBand && visPoints.isNotEmpty()) {
+                val hiV = stepVertices(visPoints.map { tx(it.ts) to ty(it.hi!!) }, tx(tEnd))
+                val loV = stepVertices(visPoints.map { tx(it.ts) to ty(it.lo!!) }, tx(tEnd))
                 path {
                     d = pathD(hiV + loV.reversed(), close = true)
                     fill = "#7ff7ff"
@@ -278,7 +449,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             // Timeline markers: named moments, question-scoped and room-wide merged.
             // Labels stack greedily into rows so clustered marks stay readable.
             val marks = ((room?.timelineMarks ?: emptyList()) + props.question.timelineMarks)
-                .filter { it.ts in t0..tEnd }
+                .filter { it.ts.toDouble() in visRange }
             val labelRowEnds = mutableListOf<Double>()
             marks.map { mark ->
                 val x = tx(mark.ts)
@@ -310,16 +481,18 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
 
             // The group aggregate as a step line: a belief holds until it is updated.
             // Center-orange to match the "group estimate" flag and slider center.
-            path {
-                d = pathD(stepVertices(points.map { tx(it.ts) to ty(it.mid) }, tx(tEnd)))
-                fill = "none"
-                stroke = "#FF8A00"
-                strokeWidth = 2.0
+            if (visPoints.isNotEmpty()) {
+                path {
+                    d = pathD(stepVertices(visPoints.map { tx(it.ts) to ty(it.mid) }, tx(tEnd)))
+                    fill = "none"
+                    stroke = "#FF8A00"
+                    strokeWidth = 2.0
+                }
             }
 
             // Event rug: one tick per update, so burstiness stays visible even
             // where the line is flat.
-            points.forEach { p ->
+            points.filter { it.ts.toDouble() in visRange }.forEach { p ->
                 line {
                     x1 = tx(p.ts); x2 = tx(p.ts)
                     y1 = TOP_PAD + GRAPH_HEIGHT + 2.0; y2 = TOP_PAD + GRAPH_HEIGHT + RUG_HEIGHT
@@ -328,8 +501,8 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                 }
             }
 
-            // Pinned-update marker.
-            props.pinnedTs?.let { ts ->
+            // Pinned-moment marker (hidden when panned/zoomed out of view).
+            props.pinnedTs?.takeIf { it.toDouble() in visRange }?.let { ts ->
                 line {
                     x1 = tx(ts); x2 = tx(ts)
                     y1 = TOP_PAD; y2 = TOP_PAD + GRAPH_HEIGHT
@@ -345,6 +518,19 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                     x1 = tx(ts); x2 = tx(ts)
                     y1 = TOP_PAD; y2 = TOP_PAD + GRAPH_HEIGHT
                     stroke = "rgba(0,0,0,20%)"
+                    strokeWidth = 1.0
+                }
+            }
+
+            // Live range-selection highlight.
+            selRange?.let { (a, b) ->
+                rect {
+                    x = a
+                    y = TOP_PAD
+                    this.width = b - a
+                    this.height = GRAPH_HEIGHT
+                    fill = "rgba(0,194,255,0.10)"
+                    stroke = "rgba(0,194,255,0.5)"
                     strokeWidth = 1.0
                 }
             }
@@ -370,7 +556,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                     lineHeight = 14.px
                     whiteSpace = WhiteSpace.nowrap
                 }
-                div { css { color = Color("rgba(0,0,0,45%)") }; +formatUpdateDate(ts) }
+                div { css { color = Color("rgba(0,0,0,45%)") }; +formatEdge(ts.toDouble()) }
                 hoverPoint?.let { p ->
                     div {
                         css { fontWeight = integer(600); color = Color("#555555") }
@@ -381,7 +567,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             }
         }
 
-        // Date labels for the x range (the rug carries the in-between structure).
+        // Date labels for the visible range (the rug carries the in-between structure).
         div {
             css {
                 height = DATE_LABELS_HEIGHT.px
@@ -391,8 +577,8 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                 fontSize = 12.px
                 color = Color("rgba(0,0,0,30%)")
             }
-            div { +formatUpdateDate(t0) }
-            div { +formatUpdateDate(tEnd) }
+            div { +formatEdge(visRange.start) }
+            div { +formatEdge(visRange.endInclusive) }
         }
     }
 
