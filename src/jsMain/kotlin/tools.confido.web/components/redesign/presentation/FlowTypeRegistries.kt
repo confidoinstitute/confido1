@@ -65,6 +65,14 @@ val flowItemTypes: List<FlowItemTypeEntry> by kotlin.lazy {
             editor = NavigateViewersEditor,
             matches = { it is NavigateViewersAction },
         ))
+        add(FlowItemTypeEntry(
+            key = "createMark",
+            label = "Create timeline marker",
+            category = FlowItemCategory.SIDE_EFFECT,
+            createDefault = { CreateMarkAction("") },
+            editor = CreateMarkActionEditor,
+            matches = { it is CreateMarkAction },
+        ))
 
         // --- Presenter view actions ---
         add(FlowItemTypeEntry(
@@ -106,6 +114,22 @@ val flowItemTypes: List<FlowItemTypeEntry> by kotlin.lazy {
             createDefault = { SetPresenterViewAction(InviteLinkPV(Ref(""), "FIRST")) },
             editor = InviteLinkPVEditor,
             matches = { it is SetPresenterViewAction && it.view is InviteLinkPV },
+        ))
+        add(FlowItemTypeEntry(
+            key = "timeline",
+            label = "Prediction timeline",
+            category = FlowItemCategory.VIEW,
+            createDefault = { SetPresenterViewAction(TimelinePV(Ref(""))) },
+            editor = TimelinePVEditor,
+            matches = { it is SetPresenterViewAction && it.view is TimelinePV },
+        ))
+        add(FlowItemTypeEntry(
+            key = "compare",
+            label = "Compare two moments",
+            category = FlowItemCategory.VIEW,
+            createDefault = { SetPresenterViewAction(ComparePV(Ref(""), MarkTP(""), NowTP)) },
+            editor = ComparePVEditor,
+            matches = { it is SetPresenterViewAction && it.view is ComparePV },
         ))
 
         // --- Extension-registered types ---
@@ -434,5 +458,98 @@ val NavigateViewersEditor = FC<FlowItemEditorProps> { props ->
     div {
         css { fontFamily = sansSerif; fontSize = 12.px; color = Color("#999"); marginTop = 2.px }
         +"All presentation followers will be navigated to this URL."
+    }
+}
+
+/** Editor for [CreateMarkAction]: name + scope (room-wide or one question). */
+val CreateMarkActionEditor = FC<FlowItemEditorProps> { props ->
+    val questions = useRoomQuestions()
+    val action = props.action as? CreateMarkAction ?: return@FC
+
+    FieldLabel { +"Marker name" }
+    TextInput {
+        value = action.name
+        placeholder = "e.g. Before discussion"
+        onChange = { e -> props.onChange(action.copy(name = e.target.value)) }
+    }
+    FieldLabel { +"Scope" }
+    Select {
+        value = if (action.question != null) "question" else "room"
+        onChange = { e ->
+            when (e.target.value) {
+                "room" -> props.onChange(action.copy(question = null))
+                "question" -> props.onChange(action.copy(question = Ref(questions.firstOrNull()?.id ?: "")))
+            }
+        }
+        css { width = 100.pct }
+        option { value = "room"; +"Room-wide" }
+        option { value = "question"; +"Specific question" }
+    }
+    if (action.question != null) {
+        FieldLabel { +"Question" }
+        QuestionPicker {
+            this.questions = questions
+            selectedId = action.question!!.id
+            onChange = { props.onChange(action.copy(question = Ref(it))) }
+        }
+    }
+}
+
+/** Editor for [TimelinePV]: question picker (shows the full history). */
+val TimelinePVEditor = FC<FlowItemEditorProps> { props ->
+    val questions = useRoomQuestions()
+    val view = props.action.innerView() as? TimelinePV ?: return@FC
+    val onViewChange = wrapViewChange(props.onChange)
+
+    FieldLabel { +"Question" }
+    QuestionPicker {
+        this.questions = questions
+        selectedId = view.question.id
+        onChange = { onViewChange(view.copy(question = Ref(it))) }
+    }
+}
+
+/** Editor for [ComparePV] in the flow's shape: a named marker (typically created
+ *  by an earlier "Create timeline marker" step) against now. */
+val ComparePVEditor = FC<FlowItemEditorProps> { props ->
+    val questions = useRoomQuestions()
+    val view = props.action.innerView() as? ComparePV ?: return@FC
+    val onViewChange = wrapViewChange(props.onChange)
+
+    FieldLabel { +"Question" }
+    QuestionPicker {
+        this.questions = questions
+        selectedId = view.question.id
+        onChange = { onViewChange(view.copy(question = Ref(it))) }
+    }
+    FieldLabel { +"Marker to compare against now" }
+    TextInput {
+        value = (view.tp1 as? MarkTP)?.name ?: ""
+        placeholder = "e.g. Before discussion"
+        onChange = { e -> onViewChange(view.copy(tp1 = MarkTP(e.target.value), tp2 = NowTP)) }
+    }
+    FieldLabel { +"View" }
+    Select {
+        value = view.mode.name
+        onChange = { e ->
+            CompareViewMode.entries.find { it.name == e.target.value }
+                ?.let { onViewChange(view.copy(mode = it)) }
+        }
+        css { width = 100.pct }
+        option { value = CompareViewMode.DISTRIBUTIONS.name; +"Distributions" }
+        option { value = CompareViewMode.CHANGES.name; +"Individual changes (binary)" }
+        option { value = CompareViewMode.SCATTER.name; +"Scatter (binary)" }
+    }
+    Stack {
+        direction = FlexDirection.row
+        css { alignItems = AlignItems.center; gap = 8.px; marginTop = 4.px }
+        Checkbox {
+            checked = view.showNames
+            onChange = { e -> onViewChange(view.copy(showNames = e.target.checked)) }
+        }
+        span {
+            css { fontFamily = sansSerif; fontSize = 14.px }
+            +"Show predictor names (individual views)"
+        }
     }
 }

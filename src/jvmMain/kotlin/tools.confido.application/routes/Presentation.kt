@@ -450,6 +450,23 @@ private suspend fun executeFlowAction(action: FlowAction, room: tools.confido.ro
         is CompositeAction -> {
             action.actions.forEach { executeFlowAction(it, room) }
         }
+        is CreateMarkAction -> {
+            // Mark "now"; overwrite-by-name so a re-run flow moves the mark.
+            if (action.name.isNotBlank()) {
+                val mark = tools.confido.rooms.TimelineMark(
+                    id = tools.confido.utils.generateId(), ts = tools.confido.utils.unixNow(),
+                    name = action.name, owner = null)
+                if (action.question != null) {
+                    tools.confido.store.questionStore.modify(action.question.id) { q ->
+                        q.copy(timelineMarks = (q.timelineMarks.filter { it.name != action.name } + mark).sortedBy { it.ts })
+                    }
+                } else {
+                    tools.confido.store.roomStore.modify(room.id) { r ->
+                        r.copy(timelineMarks = (r.timelineMarks.filter { it.name != action.name } + mark).sortedBy { it.ts })
+                    }
+                }
+            }
+        }
         else -> {
             // Dispatch to extensions
             ServerExtension.enabled.any { it.executeFlowAction(action, room) }

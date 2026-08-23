@@ -136,6 +136,24 @@ data class CompositeAction(
     override fun describe() = "${actions.size} actions"
 }
 
+/**
+ * Create a timeline marker named [name] at the moment of execution — the
+ * in-meeting "mark this moment" tool (question-scoped, or room-wide when
+ * [question] is null). Overwrites a same-named marker, so a re-run flow moves
+ * the mark instead of piling up duplicates; [MarkTP]-based compare slides
+ * reference it by that name.
+ */
+@Serializable
+@SerialName("createMark")
+data class CreateMarkAction(
+    val name: String = "",
+    val question: Ref<Question>? = null,
+) : FlowAction() {
+    override fun describe() =
+        if (question != null) "Create timeline marker \"$name\""
+        else "Create room-wide timeline marker \"$name\""
+}
+
 /** Describe the group prediction visibility suffix for action descriptions. */
 internal fun describeGroupPredVisibility(vis: GroupPredictionVisibility?): String = when (vis) {
     null -> ""
@@ -152,6 +170,7 @@ val flowActionSM by lazy { SerializersModule {
         subclass(NavigateViewersAction::class)
         subclass(SetPresenterViewAction::class)
         subclass(CompositeAction::class)
+        subclass(CreateMarkAction::class)
         Extension.forEach { it.registerFlowActions(this) }
     }
 } }
