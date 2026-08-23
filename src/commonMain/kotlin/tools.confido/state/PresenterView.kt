@@ -117,6 +117,70 @@ data class PresentationPV(
     override fun describe() = "live presentation"
 }
 
+/**
+ * A reference to a moment in time, resolved when the view renders. [MarkTP] is
+ * name-based on purpose: presentation flows create marks mid-run (with generated
+ * ids), so a pre-authored "compare vs ‹Discussion start›" slide can only refer
+ * to the mark it will create by name.
+ */
+@Serializable
+sealed class TimepointRef {
+    abstract fun describe(): String
+}
+
+/** The current state (live). */
+@Serializable
+@SerialName("now")
+data object NowTP : TimepointRef() {
+    override fun describe() = "now"
+}
+
+/** A fixed unix timestamp. */
+@Serializable
+@SerialName("at")
+data class AtTP(val ts: Int) : TimepointRef() {
+    override fun describe() = "a fixed time"
+}
+
+/** A timeline marker looked up by name — question-scoped when [question] is set,
+ *  else on the room's marks. */
+@Serializable
+@SerialName("mark")
+data class MarkTP(val name: String, val question: Ref<Question>? = null) : TimepointRef() {
+    override fun describe() = "marker \"$name\""
+}
+
+/** The group prediction history timeline, optionally windowed to a fixed range. */
+@Serializable
+@SerialName("timeline")
+data class TimelinePV(
+    val question: Ref<Question>,
+    val windowStart: Int? = null,
+    val windowEnd: Int? = null,
+) : PresenterView() {
+    override fun isValid(lookup: EntityLookup) = lookup.question(question) != null
+    override fun describe() = "prediction timeline"
+}
+
+enum class CompareViewMode { DISTRIBUTIONS, CHANGES, SCATTER }
+
+/** Two moments of a question's predictions side by side: the group distributions
+ *  diff, or per-predictor movements (changes slope / scatter). */
+@Serializable
+@SerialName("compare")
+data class ComparePV(
+    val question: Ref<Question>,
+    val tp1: TimepointRef,
+    val tp2: TimepointRef = NowTP,
+    val mode: CompareViewMode = CompareViewMode.DISTRIBUTIONS,
+    /** Label individual movements with predictor names (only meaningful for the
+     *  individual modes, and only when the viewing session may see them). */
+    val showNames: Boolean = false,
+) : PresenterView() {
+    override fun isValid(lookup: EntityLookup) = lookup.question(question) != null
+    override fun describe() = "comparison of two moments"
+}
+
 /** Displays multiple questions side by side in an adaptive grid. */
 @Serializable
 @SerialName("multiQuestion")
@@ -155,6 +219,8 @@ val presenterSM by lazy { SerializersModule {
         subclass(SlidePV::class)
         subclass(PresentationPV::class)
         subclass(MultiQuestionPV::class)
+        subclass(TimelinePV::class)
+        subclass(ComparePV::class)
         Extension.forEach { it.registerPresenterViews(this) }
     }
 } }

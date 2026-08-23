@@ -30,6 +30,9 @@ external interface NumericPredGraphProps : PropsWithElementSize, BasePredictionG
     var dimLines: Boolean?
     var maxZoom: Double?
     var onGraphClick: ((xSpace: Double, yRel: Double) -> Unit)?
+    /** Scale factor for text (mark labels, flag values) and mark density —
+     *  presenter screens pass >1 together with a taller [graphHeight]. */
+    var fontScale: Double?
 }
 
 
@@ -67,8 +70,11 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
     val visibleSubspace = useMemo(space.min, space.max, zoomState.visibleContentRange.start, zoomState.visibleContentRange.endInclusive) {
         space.subspace(zoomState.visibleContentRange.start, zoomState.visibleContentRange.endInclusive)
     }
-    val marks = useMemo(zoomState.paperWidth, space.min, space.max, space.unit) {
-        markSpacing(zoomState.paperWidth, space.min, space.max, { space.formatValue(it, false, true) })
+    val fontScale = props.fontScale ?: 1.0
+    // markSpacing assumes ~8px glyphs; scaled-up labels claim proportionally
+    // more room, which dividing the available width models exactly.
+    val marks = useMemo(zoomState.paperWidth, space.min, space.max, space.unit, fontScale) {
+        markSpacing(zoomState.paperWidth / fontScale, space.min, space.max, { space.formatValue(it, false, true) })
     }
     val filteredMarks = useMemo(marks, zoomState.pan) {
         marks.filter{ it in zoomState.visibleContentRange }
@@ -221,6 +227,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
                     color = MainPalette.center.text.color
                     value = NumericValue(it.space, it.median)
                     title = "group estimate"
+                    this.fontScale = fontScale
                 })
             }, props.resolution?.let {
                 PredictionFlag(
@@ -230,6 +237,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
                     color = Color("#FFFFFF")
                     value = it
                     title = "correct answer"
+                    this.fontScale = fontScale
                 })
             })
             val flagPositions = listOfNotNull(props.dist?.let {
@@ -258,12 +266,12 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
         }
         div {
             css {
-                height = LABELS_HEIGHT.px
+                height = (LABELS_HEIGHT * fontScale).px
                 flexGrow = number(0.0)
                 flexShrink = number(0.0)
-                fontSize = 12.px
+                fontSize = (12 * fontScale).px
                 color = Color("rgba(0,0,0,30%)")
-                lineHeight = 14.52.px
+                lineHeight = (14.52 * fontScale).px
                 position = Position.relative
                 fontFamily = sansSerif
             }
@@ -293,9 +301,11 @@ external interface FlagContentValueProps : Props {
     var color: Color
     var value: Value
     var title: String
+    var fontScale: Double?
 }
 
 val FlagContentValue = memo(FC<FlagContentValueProps> {props ->
+    val s = props.fontScale ?: 1.0
     Stack {
         css {
             alignItems = AlignItems.center
@@ -304,16 +314,16 @@ val FlagContentValue = memo(FC<FlagContentValueProps> {props ->
         }
         div {
             css {
-                fontSize = 20.px
-                lineHeight = 24.px
+                fontSize = (20 * s).px
+                lineHeight = (24 * s).px
                 fontWeight = integer(700)
             }
             +props.value.format()
         }
         div {
             css {
-                fontSize = 8.px
-                lineHeight = 8.px
+                fontSize = (8 * s).px
+                lineHeight = (8 * s).px
                 fontWeight = integer(600)
             }
             +props.title

@@ -23,7 +23,10 @@ import tools.confido.rooms.*
 import tools.confido.spaces.*
 import tools.confido.utils.List2
 import tools.confido.web.components.useMyUser
+import tools.confido.web.components.redesign.PresenterIcon
 import tools.confido.web.components.redesign.forms.ButtonUnstyled
+import tools.confido.web.components.redesign.presenter.PresenterContext
+import tools.confido.state.TimelinePV
 import tools.confido.web.components.redesign.layout.LayoutMode
 import tools.confido.web.components.redesign.layout.LayoutModeContext
 import tools.confido.web.components.redesign.rooms.RoomContext
@@ -74,6 +77,12 @@ external interface GroupPredictionTimelineProps : PropsWithElementSize {
     var onPickMoment: ((TimelineMoment) -> Unit)?
     /** Escape pressed while armed: cancel the capture without picking. */
     var onPickCancel: (() -> Unit)?
+    /** Non-interactive presenter rendering: no header controls, gestures, hover
+     *  or pin; the window is fixed to [windowStart]/[windowEnd] (null = full).
+     *  The presenter page scales the whole chart via CSS zoom. */
+    var presenter: Boolean?
+    var windowStart: Int?
+    var windowEnd: Int?
 }
 
 private const val GRAPH_HEIGHT = 110.0
@@ -110,6 +119,8 @@ private fun pathD(vertices: List<Pair<Double, Double>>, close: Boolean = false) 
 
 private val ZOOM_PRESETS = listOf("3m" to 90 * 86400, "1m" to 30 * 86400, "1w" to 7 * 86400, "1d" to 86400)
 
+private val presenterIconSize = emotion.css.ClassName { width = 14.px; height = 14.px }
+
 /**
  * The group prediction history timeline: a step chart of the group aggregate over
  * time (beliefs are held until updated, so segments extend to the next update).
@@ -127,6 +138,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
     val history = (useSubscription(Topics.groupPredHistory(props.question.ref)) as? WSData)?.data
     var hoverTs by useState<Int?>(null)
     val room = use(RoomContext)
+    val presenterCtl = use(PresenterContext)
     // Unconditional hook call (hook order must not depend on the nullable context).
     val myUser = useMyUser()
     val layoutMode = use(LayoutModeContext)!!
@@ -141,9 +153,20 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
 
     // Time-axis pan/zoom (time axes get range-select for mouse drags; touch pans,
     // pinch and wheel zoom, horizontal scroll pans). Allows zooming to ~1 hour.
+    val presenter = props.presenter == true
     val zoomParams = PZParams(contentDomain = t0.toDouble()..tEnd.toDouble(), viewportWidth = width,
         sidePad = SIDE_PAD, maxZoom = ((tEnd - t0) / 3600.0).coerceAtLeast(1.0))
-    val (chartRef, zoomState, ctl) = usePanZoom<HTMLDivElement>(zoomParams)
+    val (chartRef, liveZoomState, ctl) = usePanZoom<HTMLDivElement>(zoomParams)
+    // Presenter windows show a fixed window instead of the interactive zoom state.
+    val zoomState = if (presenter) {
+        val ws = (props.windowStart?.toDouble() ?: zoomParams.contentDomain.start)
+            .coerceIn(zoomParams.contentDomain)
+        val we = (props.windowEnd?.toDouble() ?: zoomParams.contentDomain.endInclusive)
+            .coerceIn(zoomParams.contentDomain)
+        if (we > ws && (ws > zoomParams.contentDomain.start || we < zoomParams.contentDomain.endInclusive))
+            zoomParams.solveMapMap(List2(ws, we), List2(SIDE_PAD, width - SIDE_PAD))
+        else PZState(zoomParams)
+    } else liveZoomState
     var selRange by useState<ClosedFloatingPointRange<Double>?>(null)
     ctl.dragMode = { PZDragMode.SELECT }
     ctl.onSelectionChange = { selRange = it }
@@ -253,7 +276,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
         }
 
         // Idle summary row; hover details ride on the crosshair tooltip below.
-        div {
+        if (!presenter) div {
             css {
                 height = 16.px
                 fontSize = 12.px
@@ -311,6 +334,27 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                                     if (secs == null) ctl.state = PZState(ctl.params) else zoomToLast(secs)
                                 }
                             }
+                        }
+                    }
+                }
+                // Send this timeline (with its current window, if zoomed) to the
+                // presenter screen.
+                if (presenterCtl != null && layoutMode >= LayoutMode.TABLET) {
+                    ButtonUnstyled {
+                        css {
+                            color = Color("rgba(0,0,0,40%)")
+                            display = Display.flex
+                            alignItems = AlignItems.center
+                            padding = Padding(0.px, 2.px)
+                            hover { color = Color("#6319FF") }
+                        }
+                        PresenterIcon { className = presenterIconSize }
+                        onClick = { ev ->
+                            ev.stopPropagation()
+                            val zoomed = zoomState.zoom > 1.001
+                            presenterCtl.offer(TimelinePV(props.question.ref,
+                                windowStart = if (zoomed) visRange.start.toInt() else null,
+                                windowEnd = if (zoomed) visRange.endInclusive.toInt() else null))
                         }
                     }
                 }
@@ -401,7 +445,22 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
         // header buttons never double as chart clicks (native listeners on an
         // ancestor are not stopped by React's stopPropagation).
         div {
-        ref = containerRef
+        if (!presenter) {
+            ref = containerRef
+            onMouseMove = { ev ->
+                if (selRange != null) {
+                    // Selecting a range; the crosshair/tooltip would just be noise.
+                    hoverTs = null
+                    props.onHover?.invoke(null)
+                } else {
+                    val rectBox = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
+                    val moment = momentAt(ev.clientX - rectBox.left)
+                    hoverTs = moment?.ts
+                    props.onHover?.invoke(moment)
+                }
+            }
+            onMouseLeave = { hoverTs = null; props.onHover?.invoke(null) }
+        }
         css {
             position = Position.relative
             touchAction = None.none
@@ -409,19 +468,6 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             userSelect = None.none
             if (props.pickArmed == true) cursor = Cursor.crosshair
         }
-        onMouseMove = { ev ->
-            if (selRange != null) {
-                // Selecting a range; the crosshair/tooltip would just be noise.
-                hoverTs = null
-                props.onHover?.invoke(null)
-            } else {
-                val rectBox = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
-                val moment = momentAt(ev.clientX - rectBox.left)
-                hoverTs = moment?.ts
-                props.onHover?.invoke(moment)
-            }
-        }
-        onMouseLeave = { hoverTs = null; props.onHover?.invoke(null) }
 
         svg {
             this.width = width
@@ -631,7 +677,9 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
     }
 
     // Sibling of the handler div, so dialog clicks cannot bubble into pin toggling.
-    if (room != null) {
+    // Not mounted in presenter windows: Dialog asserts contexts (SidebarContext)
+    // that only the main app layout provides.
+    if (room != null && !presenter) {
         TimelineMarkDialog {
             open = markDialogOpen
             onClose = { markDialogOpen = false }

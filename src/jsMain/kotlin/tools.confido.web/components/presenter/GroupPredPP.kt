@@ -1,7 +1,7 @@
 package tools.confido.web.components.presenter
 
-import tools.confido.web.components.DistributionPlot
 import tools.confido.web.components.redesign.basic.Stack
+import tools.confido.web.components.redesign.questions.predictions.NumericPredGraph
 import tools.confido.web.components.redesign.basic.sansSerif
 import tools.confido.web.components.redesign.basic.serif
 import tools.confido.web.components.redesign.questions.predictions.BinaryPrediction
@@ -12,8 +12,11 @@ import tools.confido.payloads.responses.WSData
 import react.FC
 import react.dom.html.ReactHTML.div
 import tools.confido.distributions.BinaryDistribution
+import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.question.Prediction
 import tools.confido.spaces.BinaryValue
+import tools.confido.spaces.NumericValue
+import web.window.window
 import tools.confido.state.GroupPredPV
 import tools.confido.state.Topics
 import tools.confido.refs.ref
@@ -64,12 +67,19 @@ val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
                             if (props.view.showResolution && question.resolution != null)
                                 resolution = question.resolution as? BinaryValue?
                         }
-                    } else {
-                    DistributionPlot {
-                        distribution = it
-                        fontSize = 32.0
-                        resolutionLine = if (props.view.showResolution) question.resolution?.value as? Double else null
-                    }
+                    } else if (it is ContinuousProbabilityDistribution) {
+                        // The same graph the question page uses, scaled up for the
+                        // big screen (fonts and mark density follow fontScale).
+                        NumericPredGraph {
+                            space = it.space
+                            dist = it
+                            isGroup = true
+                            interactive = false
+                            graphHeight = window.innerHeight * 0.4
+                            fontScale = 2.0
+                            if (props.view.showResolution)
+                                resolution = question.resolution as? NumericValue
+                        }
                   }
                 } ?: div {
                     css { fontSize = 6.vh }

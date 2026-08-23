@@ -31,6 +31,8 @@ val PresenterViewDescription = FC<PresenterViewDescriptionProps> { props ->
             is QuestionPV -> view.question
             is GroupPredPV -> view.question
             is BinaryHistogramPV -> view.question
+            is TimelinePV -> view.question
+            is ComparePV -> view.question
             else -> null
         }
     )
@@ -38,6 +40,8 @@ val PresenterViewDescription = FC<PresenterViewDescriptionProps> { props ->
         is QuestionPV -> "question ${question.quotedName()}"
         is GroupPredPV -> "group predictions for ${question.quotedName()}"
         is BinaryHistogramPV -> "prediction histogram for ${question.quotedName()}"
+        is TimelinePV -> "prediction timeline for ${question.quotedName()}"
+        is ComparePV -> "comparison of ${view.tp1.describe()} vs ${view.tp2.describe()} for ${question.quotedName()}"
         else -> view.describe()
     }
 }

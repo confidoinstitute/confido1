@@ -29,6 +29,8 @@ val view2page by lazy { mapOf(
     presenterPageMap(SlidePP),
     presenterPageMap(PresentationPP),
     presenterPageMap(MultiQuestionPP),
+    presenterPageMap(TimelinePP),
+    presenterPageMap(ComparePP),
 ) + ClientExtension.enabled.map { it.registerPresenterPages() }.fold(emptyMap()) { a, b -> a+b } }
 
 /** Look up the presenter page component for a given view type. */

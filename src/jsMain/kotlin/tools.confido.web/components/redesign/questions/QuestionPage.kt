@@ -46,6 +46,11 @@ import tools.confido.serialization.*
 import tools.confido.spaces.*
 import tools.confido.web.components.redesign.presenter.PresenterContext
 import tools.confido.state.BinaryHistogramPV
+import tools.confido.state.ComparePV
+import tools.confido.state.CompareViewMode
+import tools.confido.state.TimepointRef
+import tools.confido.state.NowTP
+import tools.confido.state.AtTP
 import tools.confido.state.appConfig
 import tools.confido.utils.*
 import tools.confido.web.utils.*
@@ -306,6 +311,7 @@ val PredictionOverlay = FC<PredictionOverlayProps> { props ->
 private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props ->
     val layoutMode = use(LayoutModeContext)!!
     val room = use(RoomContext)!!
+    val presenterCtl = use(PresenterContext)
     val hasPredictPermission = usePermission(room, RoomPermission.SUBMIT_PREDICTION)
 
     val question = props.question
@@ -583,6 +589,24 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                         tsB = resolveEnd(ends[slots.e2])
                         individualTabs = canViewIndividual
                         onChipClick = { side -> pickerSlot = slots[side] }
+                        presenterCtl?.let { ctl ->
+                            onPresent = { tab ->
+                                // Offer a frozen copy: a live Selection becomes the
+                                // fixed pin instant ("now" stays live).
+                                fun toTP(e: CompareEndpoint): TimepointRef = when (e) {
+                                    CompareEndpoint.Now -> NowTP
+                                    CompareEndpoint.Selection -> pinnedMoment?.ts?.let { AtTP(it) } ?: NowTP
+                                    is CompareEndpoint.At -> AtTP(e.ts)
+                                }
+                                val mode = when (tab) {
+                                    "changes" -> CompareViewMode.CHANGES
+                                    "scatter" -> CompareViewMode.SCATTER
+                                    else -> CompareViewMode.DISTRIBUTIONS
+                                }
+                                ctl.offer(ComparePV(question.ref,
+                                    toTP(ends[slots.e1]), toTP(ends[slots.e2]), mode))
+                            }
+                        }
                         onClose = { closeCompare() }
                     }
                     // Endpoint picker for the chip's side of the comparison.

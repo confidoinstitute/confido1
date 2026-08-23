@@ -4,12 +4,6 @@ import emotion.react.*
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
-import react.dom.html.ReactHTML.table
-import react.dom.html.ReactHTML.tbody
-import react.dom.html.ReactHTML.td
-import react.dom.html.ReactHTML.th
-import react.dom.html.ReactHTML.thead
-import react.dom.html.ReactHTML.tr
 import react.dom.svg.ReactSVG.circle
 import react.dom.svg.ReactSVG.line
 import react.dom.svg.ReactSVG.svg
@@ -38,6 +32,9 @@ external interface CompareUsersProps : PropsWithElementSize {
     var rows: List<UserPredCompareRow>
     /** Column labels for the two compared moments. */
     var labels: List2<String>
+    /** Statically label each predictor's newest point with their name (presenter
+     *  opt-in; the question page uses hover tooltips instead). */
+    var showNames: Boolean?
 }
 
 /** Green for upward updates, red for downward, gray near zero (nonlinear ramp). */
@@ -53,19 +50,6 @@ private fun UserPredCompareRow.probs(): List2<Double?> =
 /** Deterministic small offset so coinciding predictors stay distinguishable. */
 private fun jitter(rowIndex: Int, col: Int): Double =
     (((rowIndex * 31 + col * 17) % 100) - 50) / 50.0 * 8.0
-
-// Update-size buckets shared by the table (and its row colours).
-private data class UpdateSize(val range: ClosedFloatingPointRange<Double>, val name: String, val colors: List2<String>) {
-    operator fun contains(diff: Double) =
-        abs(diff) in range && abs(diff) != range.endInclusive && diff != 0.0
-}
-
-private val updateSizes = listOf(
-    UpdateSize(0.0..0.05, "Small (0–5%)", List2("#aed581", "#ff8a65")),
-    UpdateSize(0.05..0.15, "Medium (5–15%)", List2("#9ccc65", "#ff7043")),
-    UpdateSize(0.15..0.3, "Large (15–30%)", List2("#8bc34a", "#ff5722")),
-    UpdateSize(0.3..1.0, "XL (>30%)", List2("#7cb342", "#f4511e")),
-)
 
 private data class CompareHover(val rowIndices: List<Int>, val x: Double, val y: Double)
 
@@ -233,6 +217,22 @@ val CompareChangesChart = elementSizeWrapper(FC<CompareUsersProps>("CompareChang
                     }
                 }
             }
+            if (props.showNames == true) {
+                props.rows.forEachIndexed { i, row ->
+                    val name = row.user?.displayName ?: return@forEachIndexed
+                    val probs = row.probs()
+                    val col = if (probs.e2 != null) 1 else 0
+                    val v = probs[col] ?: return@forEachIndexed
+                    text {
+                        x = cx(col) + jitter(i, col) + 8.0
+                        y = py(v) + 3.0
+                        textAnchor = TextAnchor.start
+                        fontSize = 9.0
+                        fill = "rgba(0,0,0,60%)"
+                        +name
+                    }
+                }
+            }
         }
 
         hover?.let { hoverTooltip(it, props.rows, width, height) }
@@ -337,73 +337,22 @@ val CompareScatterChart = elementSizeWrapper(FC<CompareUsersProps>("CompareScatt
                     strokeWidth = 1.0
                 }
             }
+            if (props.showNames == true) {
+                dots.forEach { dot ->
+                    props.rows[dot.row].user?.displayName?.let { name ->
+                        text {
+                            x = dot.x + 8.0
+                            y = dot.y + 3.0
+                            textAnchor = TextAnchor.start
+                            fontSize = 9.0
+                            fill = "rgba(0,0,0,60%)"
+                            +name
+                        }
+                    }
+                }
+            }
         }
 
         hover?.let { hoverTooltip(it, props.rows, width, height) }
     }
 })
-
-/** Update-size breakdown table (counts of predictors by movement size and direction). */
-val CompareUsersTable = FC<CompareUsersProps>("CompareUsersTable") { props ->
-    val diffs = props.rows.mapNotNull { row ->
-        val (p1, p2) = row.probs()
-        if (p1 == null || p2 == null) null else p2 - p1
-    }
-    div {
-        css {
-            display = Display.flex
-            justifyContent = JustifyContent.center
-            padding = Padding(10.px, 0.px)
-        }
-        table {
-            css {
-                fontSize = 12.px
-                borderCollapse = BorderCollapse.collapse
-                "td, th" {
-                    border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))
-                    padding = Padding(3.px, 8.px)
-                }
-                "tbody td" { textAlign = TextAlign.right }
-                "tbody th" { textAlign = TextAlign.left; fontWeight = integer(500) }
-                "thead th" { fontWeight = integer(600); color = Color("#555555") }
-            }
-            thead {
-                tr {
-                    th { rowSpan = 2; +"Update size" }
-                    th { colSpan = 3; +"Direction" }
-                }
-                tr {
-                    th { +"Up" }; th { +"Down" }; th { +"Total" }
-                }
-            }
-            tbody {
-                tr {
-                    th { +"No change" }
-                    td {}; td {}
-                    td { +diffs.count { it == 0.0 }.toString() }
-                }
-                updateSizes.forEach { sz ->
-                    val group = diffs.filter { it in sz }
-                    tr {
-                        th { +sz.name }
-                        td {
-                            css { backgroundColor = Color(sz.colors.e1 + "55") }
-                            +group.count { it > 0 }.toString()
-                        }
-                        td {
-                            css { backgroundColor = Color(sz.colors.e2 + "55") }
-                            +group.count { it < 0 }.toString()
-                        }
-                        td { +group.size.toString() }
-                    }
-                }
-                tr {
-                    th { +"Total" }
-                    td { +diffs.count { it > 0 }.toString() }
-                    td { +diffs.count { it < 0 }.toString() }
-                    td { +diffs.size.toString() }
-                }
-            }
-        }
-    }
-}

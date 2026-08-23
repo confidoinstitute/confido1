@@ -22,6 +22,7 @@ import tools.confido.utils.List2
 import tools.confido.utils.formatPercent
 import tools.confido.web.ApiError
 import tools.confido.web.Client
+import tools.confido.web.components.redesign.PresenterIcon
 import tools.confido.web.components.redesign.basic.*
 import tools.confido.web.components.redesign.forms.ButtonUnstyled
 import tools.confido.web.utils.runCoroutine
@@ -62,6 +63,9 @@ external interface CompareDistributionsProps : PropsWithElementSize {
     var individualTabs: Boolean?
     /** Chip click opens the endpoint picker for that side (0 = older, 1 = newer). */
     var onChipClick: ((Int) -> Unit)?
+    /** Offer this view to the presenter screen; called with the active tab id
+     *  ("dist" / "changes" / "scatter"). */
+    var onPresent: ((String) -> Unit)?
     var onClose: (() -> Unit)?
 }
 
@@ -76,6 +80,8 @@ private const val DECREASE_FILL = "#b08bff"
 private const val OVERLAP_FILL = "#DDDDDD"
 private const val OLD_STROKE = "#9d7bdd"
 private const val NEW_STROKE = "#00C2FF"
+
+private val presenterIconSize = ClassName { width = 14.px; height = 14.px }
 
 private fun legendChip(bg: String, borderColor: String, clickable: Boolean = false) = ClassName {
     fontSize = 11.px
@@ -155,11 +161,24 @@ val CompareDistributions = elementSizeWrapper(FC<CompareDistributionsProps>("Com
             span { css { color = Color("rgba(0,0,0,40%)"); fontSize = 12.px }; +"→" }
             chip(1, "#E9FBFF", NEW_STROKE, props.labelB)
             div { css { flexGrow = number(1.0) } }
+            props.onPresent?.let { present ->
+                ButtonUnstyled {
+                    css {
+                        color = Color("#999999")
+                        display = Display.flex
+                        alignItems = AlignItems.center
+                        marginRight = 6.px
+                        hover { color = Color("#6319FF") }
+                    }
+                    PresenterIcon { className = presenterIconSize }
+                    onClick = { it.stopPropagation(); present(activeTab) }
+                }
+            }
             if (tabsAvailable) {
                 div {
                     css { display = Display.flex; gap = 2.px; alignItems = AlignItems.center; marginRight = 8.px }
                     listOf("dist" to "Distributions", "changes" to "Changes",
-                           "scatter" to "Scatter", "table" to "Table").forEach { (id, label) ->
+                           "scatter" to "Scatter").forEach { (id, label) ->
                         ButtonUnstyled {
                             css {
                                 fontSize = 10.px
@@ -212,7 +231,6 @@ val CompareDistributions = elementSizeWrapper(FC<CompareDistributionsProps>("Com
                     when (activeTab) {
                         "changes" -> CompareChangesChart { this.rows = r; this.labels = labels }
                         "scatter" -> CompareScatterChart { this.rows = r; this.labels = labels }
-                        "table" -> CompareUsersTable { this.rows = r; this.labels = labels }
                     }
                 }
             }
