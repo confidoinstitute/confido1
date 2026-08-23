@@ -286,46 +286,46 @@ val CompareDistributions = elementSizeWrapper(FC<CompareDistributionsProps>("Com
             }
             da is BinaryDistribution && db is BinaryDistribution -> {
                 // Two probability bars; the delta is the whole story for binary.
+                // A shared grid label track keeps both bars starting at the same x
+                // (equal probabilities must render as equal, aligned bars even when
+                // one label is much longer than the other).
                 div {
                     css {
                         padding = Padding(10.px, SIDE_PAD.px)
-                        display = Display.flex
-                        flexDirection = FlexDirection.column
-                        gap = 8.px
+                        display = Display.grid
+                        gridTemplateColumns = "fit-content(45%) 1fr max-content".unsafeCast<GridTemplateColumns>()
+                        alignItems = AlignItems.center
+                        columnGap = 10.px
+                        rowGap = 8.px
                     }
                     listOf(Triple(props.labelA, da.yesProb, DECREASE_FILL), Triple(props.labelB, db.yesProb, INCREASE_FILL))
                         .forEach { (rowLabel, p, barFill) ->
+                            span {
+                                css { fontSize = 12.px; color = Color("#666666") }
+                                +rowLabel
+                            }
                             div {
-                                css { display = Display.flex; alignItems = AlignItems.center; gap = 10.px }
-                                span {
-                                    css { fontSize = 12.px; color = Color("#666666"); minWidth = 120.px }
-                                    +rowLabel
+                                css {
+                                    height = 16.px
+                                    backgroundColor = Color("#F0F0F0")
+                                    borderRadius = 4.px
                                 }
                                 div {
                                     css {
-                                        flexGrow = number(1.0)
-                                        height = 16.px
-                                        backgroundColor = Color("#F0F0F0")
+                                        this.width = (p * 100).pct
+                                        height = 100.pct
+                                        backgroundColor = Color(barFill)
                                         borderRadius = 4.px
-                                        position = Position.relative
-                                    }
-                                    div {
-                                        css {
-                                            this.width = (p * 100).pct
-                                            height = 100.pct
-                                            backgroundColor = Color(barFill)
-                                            borderRadius = 4.px
-                                        }
                                     }
                                 }
-                                span {
-                                    css { fontSize = 13.px; fontWeight = integer(600); color = Color("#555555"); minWidth = 44.px }
-                                    +formatPercent(p)
-                                }
+                            }
+                            span {
+                                css { fontSize = 13.px; fontWeight = integer(600); color = Color("#555555") }
+                                +formatPercent(p)
                             }
                         }
                     div {
-                        css { fontSize = 12.px; color = Color("#666666") }
+                        css { fontSize = 12.px; color = Color("#666666"); gridColumn = "1 / -1".unsafeCast<GridColumn>() }
                         val d = (db.yesProb - da.yesProb) * 100
                         +"change: ${if (d >= 0) "+" else ""}${kotlin.math.round(d * 10) / 10} pp"
                     }
