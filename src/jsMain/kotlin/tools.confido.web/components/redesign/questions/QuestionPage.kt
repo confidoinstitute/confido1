@@ -327,6 +327,24 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
     val activeGhostMoment = scrubMoment ?: pinnedMoment
     // Binary questions pin too (as the marker-creation anchor), but have no ghost.
     val hasGhost = question.answerSpace is NumericSpace
+
+    // Compare view (aggregate distributions at two moments; desktop only, the
+    // timeline hides its entry point on phones).
+    var compareRange by useState<Pair<Int, Int?>?>(null)  // older ts, newer ts (null = now)
+    var compareDists by useState<Pair<ProbabilityDistribution?, ProbabilityDistribution?>?>(null)
+    val compareReq = useRef("")
+    useEffect(compareRange?.let { "${it.first}:${it.second}" } ?: "") {
+        val cr = compareRange ?: run { compareDists = null; return@useEffect }
+        val key = "${cr.first}:${cr.second}"
+        compareReq.current = key
+        runCoroutine {
+            val a = try { Client.call(Api.questionGroupPredAt(question.ref, cr.first))?.dist } catch (e: ApiError) { null }
+            val b = cr.second?.let {
+                try { Client.call(Api.questionGroupPredAt(question.ref, it))?.dist } catch (e: ApiError) { null }
+            } ?: props.groupPrediction?.dist
+            if (compareReq.current == key) compareDists = a to b
+        }
+    }
     useEffect(activeGhostMoment?.point?.ts) {
         val ts = activeGhostMoment?.point?.ts?.takeIf { hasGhost }
         if (ts == null) { ghost = null; return@useEffect }
@@ -506,7 +524,17 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     flexShrink = number(0.0)
                     position = Position.relative
                 }
-                PredictionGraph {
+                if (compareRange != null) {
+                    CompareDistributions {
+                        key = "groupPredictionCompare"
+                        space = props.question.answerSpace
+                        distA = compareDists?.first
+                        labelA = formatUpdateDateTime(compareRange!!.first)
+                        distB = compareDists?.second
+                        labelB = compareRange!!.second?.let { formatUpdateDateTime(it) } ?: "now"
+                        onClose = { compareRange = null }
+                    }
+                } else PredictionGraph {
                     key = "groupPredictionBox"
                     space = props.question.answerSpace
                     dist = props.groupPrediction?.dist
@@ -530,6 +558,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     // creation); the hover scrub only feeds the numeric ghost.
                     onPin = { m -> pinnedMoment = m }
                     pinnedTs = pinnedMoment?.ts
+                    onCompare = { a, b -> compareRange = a to b }
                     if (hasGhost) {
                         onHover = { scrubMoment = it }
                     }

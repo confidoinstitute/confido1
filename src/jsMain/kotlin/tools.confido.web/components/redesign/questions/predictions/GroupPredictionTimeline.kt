@@ -24,6 +24,8 @@ import tools.confido.spaces.*
 import tools.confido.utils.List2
 import tools.confido.web.components.useMyUser
 import tools.confido.web.components.redesign.forms.ButtonUnstyled
+import tools.confido.web.components.redesign.layout.LayoutMode
+import tools.confido.web.components.redesign.layout.LayoutModeContext
 import tools.confido.web.components.redesign.rooms.RoomContext
 import tools.confido.web.components.redesign.questions.dialog.TimelineMarkDialog
 import tools.confido.state.Topics
@@ -63,6 +65,8 @@ external interface GroupPredictionTimelineProps : PropsWithElementSize {
     var onPin: ((TimelineMoment?) -> Unit)?
     /** Instant of the pinned moment, marked with a dashed line where clicked. */
     var pinnedTs: Int?
+    /** Open the compare view for (olderTs, newerTs); null newer = now. Desktop only. */
+    var onCompare: ((Int, Int?) -> Unit)?
 }
 
 private const val GRAPH_HEIGHT = 110.0
@@ -74,6 +78,12 @@ fun formatUpdateDate(ts: Int): String {
     val d = Instant.fromEpochSeconds(ts.toLong()).toLocalDateTime(TimeZone.currentSystemDefault()).date
     val month = d.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }
     return "$month ${d.dayOfMonth}, ${d.year}"
+}
+
+fun formatUpdateDateTime(ts: Int): String {
+    val dt = Instant.fromEpochSeconds(ts.toLong()).toLocalDateTime(TimeZone.currentSystemDefault())
+    return formatUpdateDate(ts) +
+        " ${dt.hour.toString().padStart(2, '0')}:${dt.minute.toString().padStart(2, '0')}"
 }
 
 /** Vertices of a step-after polyline through [pts], extended horizontally to [endX]. */
@@ -112,8 +122,10 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
     val room = use(RoomContext)
     // Unconditional hook call (hook order must not depend on the nullable context).
     val myUser = useMyUser()
+    val layoutMode = use(LayoutModeContext)!!
     val canManageMarks = room?.hasPermission(myUser, RoomPermission.MANAGE_QUESTIONS) ?: false
     var markDialogOpen by useState(false)
+    var compareMenuOpen by useState(false)
 
     val points = history?.points ?: emptyList()
     val width = props.elementWidth
@@ -194,6 +206,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
 
     val hasBand = space is NumericSpace && points.all { it.lo != null && it.hi != null }
     val hoverPoint = hoverTs?.let { ts -> points.lastOrNull { it.ts <= ts } }
+    val allMarks = ((room?.timelineMarks ?: emptyList()) + props.question.timelineMarks).sortedBy { it.ts }
 
     val gridValues = when (space) {
         is NumericSpace -> markSpacing(GRAPH_HEIGHT * 1.6, space.min, space.max) { space.formatValue(it, false, true) }
@@ -297,6 +310,56 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                         }
                     }
                 }
+                // Compare entry: lean adaptive menu of high-value moment pairs (a
+                // "Custom…" long tail can join later). Desktop-only — the compare
+                // view is not offered in the phone layout.
+                if (props.onCompare != null && layoutMode >= LayoutMode.TABLET &&
+                    (props.pinnedTs != null || allMarks.isNotEmpty())) {
+                    ButtonUnstyled {
+                        css {
+                            fontSize = 11.px
+                            lineHeight = 12.px
+                            color = Color("#555555")
+                            fontFamily = sansSerif
+                            fontWeight = integer(600)
+                            border = Border(1.px, LineStyle.solid, Color("#CCCCCC"))
+                            borderRadius = 4.px
+                            padding = Padding(1.px, 7.px)
+                            backgroundColor = Color("#FAFAFA")
+                            hover { backgroundColor = Color("#EFEFEF") }
+                        }
+                        +"Compare"
+                        onClick = { it.stopPropagation(); compareMenuOpen = true }
+                    }
+                    DialogMenu {
+                        open = compareMenuOpen
+                        onClose = { compareMenuOpen = false }
+                        val compare = { a: Int, b: Int? ->
+                            compareMenuOpen = false
+                            props.onCompare?.invoke(a, b)
+                        }
+                        props.pinnedTs?.let { pts ->
+                            DialogMenuItem {
+                                text = "Pinned (${formatUpdateDateTime(pts)}) vs now"
+                                onClick = { compare(pts, null) }
+                            }
+                        }
+                        allMarks.forEach { mark ->
+                            DialogMenuItem {
+                                text = "${mark.name} vs now"
+                                onClick = { compare(mark.ts, null) }
+                            }
+                        }
+                        props.pinnedTs?.let { pts ->
+                            allMarks.filter { it.ts != pts }.forEach { mark ->
+                                DialogMenuItem {
+                                    text = "Pinned vs ${mark.name}"
+                                    onClick = { compare(minOf(pts, mark.ts), maxOf(pts, mark.ts)) }
+                                }
+                            }
+                        }
+                    }
+                }
                 if (canManageMarks && room != null) {
                     // Styled as a small button so it reads as actionable, not as a label.
                     ButtonUnstyled {
@@ -381,8 +444,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
 
             // Timeline markers: named moments, question-scoped and room-wide merged.
             // Labels stack greedily into rows so clustered marks stay readable.
-            val marks = ((room?.timelineMarks ?: emptyList()) + props.question.timelineMarks)
-                .filter { it.ts.toDouble() in visRange }
+            val marks = allMarks.filter { it.ts.toDouble() in visRange }
             val labelRowEnds = mutableListOf<Double>()
             marks.map { mark ->
                 val x = tx(mark.ts)
