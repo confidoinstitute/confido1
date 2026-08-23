@@ -324,9 +324,13 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
     var ghost by useState<ProbabilityDistribution?>(null)
     val ghostCache = useRef<MutableMap<Int, ProbabilityDistribution?>>(mutableMapOf())
     val ghostReq = useRef<Int>(0)
-    val activeGhostMoment = scrubMoment ?: pinnedMoment
-    // Binary questions pin too (as the marker-creation anchor), but have no ghost.
+    // Binary questions pin too (as the marker-creation anchor); their inspect
+    // view needs no fetch (a binary history point is its own distribution).
     val hasGhost = question.answerSpace is NumericSpace
+    val compareCapable = layoutMode >= LayoutMode.TABLET
+    // Inspect = transient hover; on mobile (no compare) the pin inspects too.
+    val inspectMoment = scrubMoment ?: pinnedMoment?.takeIf { !compareCapable }
+    var compareTracksPin by useState(false)
 
     // Compare view (aggregate distributions at two moments; desktop only, the
     // timeline hides its entry point on phones).
@@ -345,8 +349,8 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
             if (compareReq.current == key) compareDists = a to b
         }
     }
-    useEffect(activeGhostMoment?.point?.ts) {
-        val ts = activeGhostMoment?.point?.ts?.takeIf { hasGhost }
+    useEffect(inspectMoment?.point?.ts, compareRange != null) {
+        val ts = inspectMoment?.point?.ts?.takeIf { hasGhost && compareRange == null }
         if (ts == null) { ghost = null; return@useEffect }
         ghostReq.current = ts
         val cache = ghostCache.current!!
@@ -540,20 +544,39 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                         labelA = momentLabel(compareRange!!.first)
                         distB = compareDists?.second
                         labelB = compareRange!!.second?.let { momentLabel(it) } ?: "now"
-                        onClose = { compareRange = null }
+                        onClose = {
+                            compareRange = null
+                            // A pin-born compare releases its pin on close.
+                            if (compareTracksPin) { pinnedMoment = null; compareTracksPin = false }
+                        }
                     }
-                } else PredictionGraph {
-                    key = "groupPredictionBox"
-                    space = props.question.answerSpace
-                    dist = props.groupPrediction?.dist
-                    resolution = props.resolution
-                    isGroup = true
-                    this.question = props.question
-                    onHistogramButtonClick = { groupHistogramOpen = !groupHistogramOpen }
-                    ghostDist = ghost
-                    ghostLabel = activeGhostMoment?.let { "as of " + formatUpdateDate(it.ts) }
-                    if (scrubMoment == null && pinnedMoment != null)
-                        onGhostDismiss = { pinnedMoment = null }
+                } else {
+                    // Inspect mode: the past state is the *subject* — numeric shows
+                    // it filled with the current distribution as the outline (a
+                    // plain argument swap of the ghost machinery); binary shows the
+                    // past probabilities directly in the yes/no display.
+                    val inspecting = inspectMoment != null
+                    val inspectLabel = inspectMoment?.let { "as of " + formatUpdateDate(it.ts) }
+                    PredictionGraph {
+                        key = "groupPredictionBox"
+                        space = props.question.answerSpace
+                        if (inspecting && hasGhost && ghost != null) {
+                            dist = ghost
+                            ghostDist = props.groupPrediction?.dist
+                            ghostLabel = inspectLabel
+                        } else if (inspecting && !hasGhost) {
+                            dist = inspectMoment?.let { BinaryDistribution(it.point.mid) }
+                            ghostLabel = inspectLabel
+                        } else {
+                            dist = props.groupPrediction?.dist
+                        }
+                        resolution = props.resolution
+                        isGroup = true
+                        this.question = props.question
+                        onHistogramButtonClick = { groupHistogramOpen = !groupHistogramOpen }
+                        if (inspecting && scrubMoment == null && pinnedMoment != null)
+                            onGhostDismiss = { pinnedMoment = null }
+                    }
                 }
                 // History timeline; renders only once there are enough updates. Lives
                 // inside the prediction box so the visibility overlays below cover it
@@ -562,13 +585,21 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     key = "groupPredictionTimeline"
                     this.question = props.question
                     resolution = props.resolution
-                    // Pinning works for every question type (it anchors marker
-                    // creation); the hover scrub only feeds the numeric ghost.
-                    onPin = { m -> pinnedMoment = m }
+                    // Hover inspects (all question types); pinning opens the live
+                    // "Selection vs now" compare on compare-capable layouts, and is
+                    // the persistent inspect state on mobile.
+                    onHover = { scrubMoment = it }
+                    onPin = { m ->
+                        pinnedMoment = m
+                        if (compareCapable) {
+                            if (m != null) { compareRange = m.ts to null; compareTracksPin = true }
+                            else if (compareTracksPin) { compareRange = null; compareTracksPin = false }
+                        }
+                    }
                     pinnedTs = pinnedMoment?.ts
-                    onCompare = { a, b -> compareRange = a to b }
-                    if (hasGhost) {
-                        onHover = { scrubMoment = it }
+                    onCompare = { a, b ->
+                        compareRange = a to b
+                        compareTracksPin = (b == null && a == pinnedMoment?.ts)
                     }
                 }
                 val canViewAll = usePermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)

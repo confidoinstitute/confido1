@@ -248,6 +248,42 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
             alignItems = AlignItems.center
             position = Position.relative
         }
+        // Inspect-mode chip: the display shows a past moment's values.
+        if (props.ghostLabel != null) {
+            div {
+                css {
+                    position = Position.absolute
+                    top = 8.px
+                    left = 10.px
+                    zIndex = integer(5)
+                    if (props.onGhostDismiss == null) pointerEvents = None.none
+                    display = Display.flex
+                    alignItems = AlignItems.center
+                    gap = 6.px
+                    backgroundColor = Color("rgba(255,255,255,0.92)")
+                    border = Border(0.5.px, LineStyle.solid, Color("#CCCCCC"))
+                    borderRadius = 5.px
+                    padding = Padding(3.px, 7.px)
+                    fontFamily = sansSerif
+                    fontSize = 11.px
+                    lineHeight = 14.px
+                    fontWeight = integer(600)
+                    color = Color("#555555")
+                }
+                +props.ghostLabel!!
+                props.onGhostDismiss?.let { dismiss ->
+                    div {
+                        css {
+                            cursor = Cursor.pointer
+                            color = Color("#999999")
+                            hover { color = Color("#555555") }
+                        }
+                        +"✕"
+                        onClick = { dismiss() }
+                    }
+                }
+            }
+        }
         val noColor = if (props.resolution?.value == true) {
             Color("#BBBBBB")
         } else {
