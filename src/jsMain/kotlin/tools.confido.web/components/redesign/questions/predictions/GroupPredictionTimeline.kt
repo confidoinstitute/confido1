@@ -30,6 +30,8 @@ import tools.confido.state.Topics
 import tools.confido.utils.formatPercent
 import tools.confido.utils.unixNow
 import tools.confido.web.hooks.useSubscription
+import tools.confido.web.hooks.usePureClick
+import tools.confido.web.hooks.combineRefs
 import tools.confido.web.utils.panzoom1d.PZDragMode
 import tools.confido.web.utils.panzoom1d.PZParams
 import tools.confido.web.utils.panzoom1d.PZState
@@ -39,6 +41,7 @@ import web.events.EventType
 import web.events.addEventListener
 import web.events.removeEventListener
 import web.html.HTMLDivElement
+import web.html.HTMLElement
 import web.keyboard.KeyboardEvent
 import kotlin.math.abs
 import kotlin.math.max
@@ -123,13 +126,26 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
         sidePad = SIDE_PAD, maxZoom = ((tEnd - t0) / 3600.0).coerceAtLeast(1.0))
     val (chartRef, zoomState, ctl) = usePanZoom<HTMLDivElement>(zoomParams)
     var selRange by useState<ClosedFloatingPointRange<Double>?>(null)
-    val didDrag = useRef(false)
     ctl.dragMode = { PZDragMode.SELECT }
-    ctl.onSelectionChange = { sel ->
-        selRange = sel
-        // Marks the gesture as a drag so the trailing click never pins.
-        if (sel != null) didDrag.current = true
+    ctl.onSelectionChange = { selRange = it }
+
+    fun momentAt(offsetX: Double): TimelineMoment? {
+        val ts = zoomState.viewportToContent(offsetX).toInt()
+        return points.lastOrNull { it.ts <= ts }?.let { TimelineMoment(ts, it) }
     }
+    // Pin on a "pure" click (no drag, no hold) — drags are selections and never
+    // pin; usePureClick's movement threshold is the disambiguation.
+    val pinClickRef = usePureClick<HTMLDivElement> { ev ->
+        props.onPin?.let { pin ->
+            val el = ev.currentTarget as HTMLElement
+            val offsetX = ev.clientX - el.getBoundingClientRect().left
+            val nearPin = props.pinnedTs?.let {
+                abs(offsetX - zoomState.contentToViewport(it.toDouble())) < 6.0 } ?: false
+            if (nearPin) pin(null)
+            else momentAt(offsetX)?.let(pin)
+        }
+    }
+    val containerRef = combineRefs<HTMLDivElement>(chartRef, pinClickRef)
 
     // Escape: close the marker dialog if open, else release the pin. Lives here
     // (not in QuestionPage) so an open dialog can't lose the pin underneath it.
@@ -193,7 +209,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
     }
 
     div {
-        ref = chartRef
+        ref = containerRef
         css {
             position = Position.relative
             fontFamily = sansSerif
@@ -203,12 +219,8 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             paddingTop = 8.px
             touchAction = None.none
         }
-        fun momentAt(offsetX: Double): TimelineMoment? {
-            val ts = zoomState.viewportToContent(offsetX).toInt()
-            return points.lastOrNull { it.ts <= ts }?.let { TimelineMoment(ts, it) }
-        }
         onMouseMove = { ev ->
-            if (didDrag.current == true) {
+            if (selRange != null) {
                 // Selecting a range; the crosshair/tooltip would just be noise.
                 hoverTs = null
                 props.onHover?.invoke(null)
@@ -220,25 +232,6 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             }
         }
         onMouseLeave = { hoverTs = null; props.onHover?.invoke(null) }
-        // A new press starts a fresh gesture: the drag flag must not leak from the
-        // previous one (no click event follows a captured drag, so the click
-        // handler alone cannot be trusted to clear it).
-        onPointerDown = { didDrag.current = false }
-        props.onPin?.let { pin ->
-            // Recomputed from the event coordinates rather than read from hover
-            // state — the click may land before the hover re-render commits.
-            onClick = { ev ->
-                if (didDrag.current == true) {
-                    didDrag.current = false
-                } else {
-                    val rectBox = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
-                    val offsetX = ev.clientX - rectBox.left
-                    val nearPin = props.pinnedTs?.let { abs(offsetX - tx(it)) < 6.0 } ?: false
-                    if (nearPin) pin(null)
-                    else momentAt(offsetX)?.let(pin)
-                }
-            }
-        }
 
         // Idle summary row; hover details ride on the crosshair tooltip below.
         div {
@@ -330,6 +323,10 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             this.width = width
             this.height = svgHeight
             viewBox = "0 0 $width $svgHeight"
+            // Purely presentational: keep the container the single pointer target,
+            // so gestures (usePan capture, usePureClick's pointer-out abort) never
+            // depend on which thin line or path happens to sit under the cursor.
+            css { pointerEvents = None.none }
 
             // Gridlines with value labels, recessive.
             gridValues.forEach { v ->
