@@ -218,6 +218,8 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             borderTop = Border(0.5.px, LineStyle.solid, Color("#E5E5E5"))
             paddingTop = 8.px
             touchAction = None.none
+            // A range-select drag must not double as native text selection.
+            userSelect = None.none
         }
         onMouseMove = { ev ->
             if (selRange != null) {
