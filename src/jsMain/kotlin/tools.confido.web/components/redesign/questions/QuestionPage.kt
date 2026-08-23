@@ -525,13 +525,21 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     position = Position.relative
                 }
                 if (compareRange != null) {
+                    // A compared moment that coincides with a marker goes by the
+                    // marker's name (plus its time), not the bare timestamp.
+                    fun momentLabel(ts: Int): String {
+                        val name = (room.timelineMarks + question.timelineMarks)
+                            .firstOrNull { it.ts == ts }?.name
+                        val dt = formatUpdateDateTime(ts)
+                        return if (name != null) "$name · $dt" else dt
+                    }
                     CompareDistributions {
                         key = "groupPredictionCompare"
                         space = props.question.answerSpace
                         distA = compareDists?.first
-                        labelA = formatUpdateDateTime(compareRange!!.first)
+                        labelA = momentLabel(compareRange!!.first)
                         distB = compareDists?.second
-                        labelB = compareRange!!.second?.let { formatUpdateDateTime(it) } ?: "now"
+                        labelB = compareRange!!.second?.let { momentLabel(it) } ?: "now"
                         onClose = { compareRange = null }
                     }
                 } else PredictionGraph {
