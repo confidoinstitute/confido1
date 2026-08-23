@@ -28,9 +28,12 @@ import tools.confido.web.components.redesign.layout.LayoutMode
 import tools.confido.web.components.redesign.layout.LayoutModeContext
 import tools.confido.web.components.redesign.rooms.RoomContext
 import tools.confido.web.components.redesign.questions.dialog.TimelineMarkDialog
+import tools.confido.api.Api
 import tools.confido.state.Topics
 import tools.confido.utils.formatPercent
 import tools.confido.utils.unixNow
+import tools.confido.web.Client
+import tools.confido.web.utils.runCoroutine
 import tools.confido.web.hooks.useSubscription
 import tools.confido.web.hooks.usePureClick
 import tools.confido.web.hooks.combineRefs
@@ -65,8 +68,12 @@ external interface GroupPredictionTimelineProps : PropsWithElementSize {
     var onPin: ((TimelineMoment?) -> Unit)?
     /** Instant of the pinned moment, marked with a dashed line where clicked. */
     var pinnedTs: Int?
-    /** Open the compare view for (olderTs, newerTs); null newer = now. Desktop only. */
-    var onCompare: ((Int, Int?) -> Unit)?
+    /** Armed one-shot capture: the next click reports via [onPickMoment] instead
+     *  of pinning (the compare view's "pick on the timeline…" eyedropper). */
+    var pickArmed: Boolean?
+    var onPickMoment: ((TimelineMoment) -> Unit)?
+    /** Escape pressed while armed: cancel the capture without picking. */
+    var onPickCancel: (() -> Unit)?
 }
 
 private const val GRAPH_HEIGHT = 110.0
@@ -125,9 +132,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
     val layoutMode = use(LayoutModeContext)!!
     val canManageMarks = room?.hasPermission(myUser, RoomPermission.MANAGE_QUESTIONS) ?: false
     var markDialogOpen by useState(false)
-    var compareMenuOpen by useState(false)
-    // Click-into pages of the compare menu: "main", "marks-now", "marks-pin".
-    var compareMenuPage by useState("main")
+    var markersMenuOpen by useState(false)
 
     val points = history?.points ?: emptyList()
     val width = props.elementWidth
@@ -148,11 +153,14 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
         return points.lastOrNull { it.ts <= ts }?.let { TimelineMoment(ts, it) }
     }
     // Pin on a "pure" click (no drag, no hold) — drags are selections and never
-    // pin; usePureClick's movement threshold is the disambiguation.
+    // pin; usePureClick's movement threshold is the disambiguation. An armed
+    // eyedropper captures the moment instead and leaves the pin alone.
     val pinClickRef = usePureClick<HTMLDivElement> { ev ->
-        props.onPin?.let { pin ->
-            val el = ev.currentTarget as HTMLElement
-            val offsetX = ev.clientX - el.getBoundingClientRect().left
+        val el = ev.currentTarget as HTMLElement
+        val offsetX = ev.clientX - el.getBoundingClientRect().left
+        if (props.pickArmed == true) {
+            momentAt(offsetX)?.let { props.onPickMoment?.invoke(it) }
+        } else props.onPin?.let { pin ->
             val nearPin = props.pinnedTs?.let {
                 abs(offsetX - zoomState.contentToViewport(it.toDouble())) < 6.0 } ?: false
             if (nearPin) pin(null)
@@ -166,8 +174,12 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
     useEffectWithCleanup {
         val onKey: (KeyboardEvent) -> Unit = { e ->
             if (e.key == "Escape") {
-                if (markDialogOpen) markDialogOpen = false
-                else props.onPin?.invoke(null)
+                when {
+                    markDialogOpen -> markDialogOpen = false
+                    markersMenuOpen -> markersMenuOpen = false
+                    props.pickArmed == true -> props.onPickCancel?.invoke()
+                    else -> props.onPin?.invoke(null)
+                }
             }
         }
         document.addEventListener(EventType<KeyboardEvent>("keydown"), onKey)
@@ -221,6 +233,14 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
         ctl.state = p.solveMapMap(
             List2(maxOf(p.contentDomain.start, end - secs), end),
             List2(p.sidePad, p.viewportWidth - p.sidePad))
+    }
+
+    // Selecting a marker in the menu: bring it into view (zoomed-out reset when
+    // it is outside the window) and pin its moment — on desktop the pin opens
+    // the compare-vs-now view with the marker's named chip.
+    fun jumpToMark(mark: TimelineMark) {
+        if (mark.ts.toDouble() !in visRange) ctl.state = PZState(ctl.params)
+        points.lastOrNull { it.ts <= mark.ts }?.let { props.onPin?.invoke(TimelineMoment(mark.ts, it)) }
     }
 
     div {
@@ -294,103 +314,12 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                         }
                     }
                 }
-                // Compare entry: lean adaptive menu of high-value moment pairs (a
-                // "Custom…" long tail can join later). Desktop-only — the compare
-                // view is not offered in the phone layout.
-                if (props.onCompare != null && layoutMode >= LayoutMode.TABLET &&
-                    (props.pinnedTs != null || allMarks.isNotEmpty())) {
-                    ButtonUnstyled {
-                        css {
-                            fontSize = 11.px
-                            lineHeight = 12.px
-                            color = Color("#555555")
-                            fontFamily = sansSerif
-                            fontWeight = integer(600)
-                            border = Border(1.px, LineStyle.solid, Color("#CCCCCC"))
-                            borderRadius = 4.px
-                            padding = Padding(1.px, 7.px)
-                            backgroundColor = Color("#FAFAFA")
-                            hover { backgroundColor = Color("#EFEFEF") }
-                        }
-                        +"Compare"
-                        onClick = { it.stopPropagation(); compareMenuPage = "main"; compareMenuOpen = true }
-                    }
-                    DialogMenu {
-                        open = compareMenuOpen
-                        onClose = { compareMenuOpen = false; compareMenuPage = "main" }
-                        val compare = { a: Int, b: Int? ->
-                            compareMenuOpen = false
-                            compareMenuPage = "main"
-                            props.onCompare?.invoke(a, b)
-                        }
-                        // The selected moment goes by its time, not by "pinned" (which
-                        // would suggest something longer-lived than a click).
-                        val pinLabel = props.pinnedTs?.let { formatUpdateDateTime(it) }
-                        // Few marks fit inline; more go behind click-into pages.
-                        val inlineMarks = allMarks.size <= 2
-                        when (compareMenuPage) {
-                            "marks-now" -> {
-                                DialogMenuItem { text = "‹ Back"; keepOpen = true; onClick = { compareMenuPage = "main" } }
-                                allMarks.forEach { mark ->
-                                    DialogMenuItem {
-                                        text = "${mark.name} vs now"
-                                        onClick = { compare(mark.ts, null) }
-                                    }
-                                }
-                            }
-                            "marks-pin" -> {
-                                DialogMenuItem { text = "‹ Back"; keepOpen = true; onClick = { compareMenuPage = "main" } }
-                                props.pinnedTs?.let { pts ->
-                                    allMarks.filter { it.ts != pts }.forEach { mark ->
-                                        DialogMenuItem {
-                                            text = "$pinLabel vs ${mark.name}"
-                                            onClick = { compare(minOf(pts, mark.ts), maxOf(pts, mark.ts)) }
-                                        }
-                                    }
-                                }
-                            }
-                            else -> {
-                                props.pinnedTs?.let { pts ->
-                                    DialogMenuItem {
-                                        text = "$pinLabel vs now"
-                                        onClick = { compare(pts, null) }
-                                    }
-                                }
-                                if (inlineMarks) {
-                                    allMarks.forEach { mark ->
-                                        DialogMenuItem {
-                                            text = "${mark.name} vs now"
-                                            onClick = { compare(mark.ts, null) }
-                                        }
-                                    }
-                                    props.pinnedTs?.let { pts ->
-                                        allMarks.filter { it.ts != pts }.forEach { mark ->
-                                            DialogMenuItem {
-                                                text = "$pinLabel vs ${mark.name}"
-                                                onClick = { compare(minOf(pts, mark.ts), maxOf(pts, mark.ts)) }
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    DialogMenuItem {
-                                        text = "Marker vs now…"
-                                        keepOpen = true
-                                        onClick = { compareMenuPage = "marks-now" }
-                                    }
-                                    if (props.pinnedTs != null) {
-                                        DialogMenuItem {
-                                            text = "$pinLabel vs marker…"
-                                            keepOpen = true
-                                            onClick = { compareMenuPage = "marks-pin" }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                if (canManageMarks && room != null) {
-                    // Styled as a small button so it reads as actionable, not as a label.
+                // Markers: one affordance for both navigation and management. With
+                // markers present, everyone gets the "Markers…" menu — selecting a
+                // marker jumps it into view and pins it (⇒ compare-vs-now on
+                // desktop); managers also get inline delete and the add dialog.
+                // With none, managers see the direct "+ marker" entry.
+                if (room != null && (allMarks.isNotEmpty() || canManageMarks)) {
                     ButtonUnstyled {
                         css {
                             fontSize = 11.px
@@ -406,8 +335,63 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                                 backgroundColor = Color("#E8E0F5")
                             }
                         }
-                        +"+ marker"
-                        onClick = { it.stopPropagation(); markDialogOpen = true }
+                        +if (allMarks.isEmpty()) "+ marker" else "Markers…"
+                        onClick = { it.stopPropagation()
+                            if (allMarks.isEmpty()) markDialogOpen = true else markersMenuOpen = true }
+                    }
+                    DialogMenu {
+                        open = markersMenuOpen
+                        onClose = { markersMenuOpen = false }
+                        DialogMenuHeader { text = "Timeline markers" }
+                        allMarks.forEach { mark ->
+                            val isRoomWide = room.timelineMarks.any { it.id == mark.id }
+                            Stack {
+                                direction = FlexDirection.row
+                                css {
+                                    alignItems = AlignItems.center
+                                    padding = Padding(0.px, 15.px)
+                                    hover { backgroundColor = rgb(0, 0, 0, 0.05) }
+                                }
+                                ButtonUnstyled {
+                                    css {
+                                        flexGrow = number(1.0)
+                                        textAlign = TextAlign.left
+                                        padding = Padding(6.px, 0.px)
+                                        fontFamily = sansSerif
+                                    }
+                                    div { css { fontSize = 15.px; lineHeight = 19.px }; +mark.name }
+                                    div {
+                                        css { fontSize = 11.px; lineHeight = 14.px; color = Color("#999999") }
+                                        +(formatUpdateDateTime(mark.ts) + if (isRoomWide) " · whole room" else "")
+                                    }
+                                    onClick = { markersMenuOpen = false; jumpToMark(mark) }
+                                }
+                                if (canManageMarks) {
+                                    ButtonUnstyled {
+                                        css {
+                                            color = Color("#999999")
+                                            fontSize = 14.px
+                                            padding = Padding(4.px, 0.px, 4.px, 10.px)
+                                            hover { color = Color("#555555") }
+                                        }
+                                        +"✕"
+                                        onClick = {
+                                            runCoroutine {
+                                                if (isRoomWide) Client.call(Api.roomTimelineMarkDelete(room.ref, mark.id))
+                                                else Client.call(Api.questionTimelineMarkDelete(props.question.ref, mark.id))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (canManageMarks) {
+                            DialogMenuSeparator {}
+                            DialogMenuItem {
+                                text = "Add marker…"
+                                onClick = { markDialogOpen = true }
+                            }
+                        }
                     }
                 }
             }
@@ -423,6 +407,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             touchAction = None.none
             // A range-select drag must not double as native text selection.
             userSelect = None.none
+            if (props.pickArmed == true) cursor = Cursor.crosshair
         }
         onMouseMove = { ev ->
             if (selRange != null) {
@@ -611,6 +596,19 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                         css { fontWeight = integer(600); color = Color("#555555") }
                         +if (hasBand) "${formatY(p.mid)} (${formatY(p.lo!!)} – ${formatY(p.hi!!)})"
                          else formatY(p.mid)
+                    }
+                }
+                // Contextual teaching in place of a dedicated Compare button.
+                val hint = when {
+                    props.pickArmed == true -> "click to set the compare point"
+                    props.pinnedTs == null && props.onPin != null &&
+                        layoutMode >= LayoutMode.TABLET -> "click to compare with now"
+                    else -> null
+                }
+                hint?.let {
+                    div {
+                        css { color = Color("rgba(0,0,0,30%)"); fontSize = 10.px; fontStyle = FontStyle.italic }
+                        +it
                     }
                 }
             }

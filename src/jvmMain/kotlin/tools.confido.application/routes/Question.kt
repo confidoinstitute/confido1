@@ -31,6 +31,7 @@ import tools.confido.state.*
 import tools.confido.store.*
 import tools.confido.utils.unixNow
 import tools.confido.utils.generateId
+import tools.confido.utils.List2
 import tools.confido.users.User
 import tools.confido.state.Topics
 
@@ -295,6 +296,24 @@ fun questionRoutes(routing: Routing) = routing.apply {
             assertVisible()
             assertGroupPredictionAccess("You cannot view this group prediction.")
             groupPredictionLog.at(ref, Instant.fromEpochSeconds(ts.toLong()))
+        }
+    }
+
+    // Per-predictor predictions at two historical instants (null = latest), for the
+    // compare view's individual tabs (changes/scatter/table).
+    apiST(Api.questionUserPredCompare) { qRef, req ->
+        call.withQuestion(qRef) {
+            assertVisible()
+            assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS,
+                "You cannot view individual predictions.")
+            val times = listOf(req.ts1, req.ts2).map { it?.let { ts -> Instant.fromEpochSeconds(ts.toLong()) } }
+            val predictors = serverState.userPred[ref]?.keys ?: emptySet()
+            predictors.mapNotNull { u ->
+                val preds = times.map { t -> userPredictionLog.at(ref, u, t) }
+                if (preds.all { it == null }) null
+                else UserPredCompareRow(List2(preds[0], preds[1]), getUserPresentation(
+                    u.deref(), user, UserPresentationContext.INDIVIDUAL_PREDICTION, room))
+            }
         }
     }
 

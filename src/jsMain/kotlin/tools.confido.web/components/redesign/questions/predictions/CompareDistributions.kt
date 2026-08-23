@@ -9,25 +9,59 @@ import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.svg
 import react.dom.svg.ReactSVG.text
 import react.dom.svg.TextAnchor
+import tools.confido.api.Api
 import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ProbabilityDistribution
+import tools.confido.payloads.responses.UserPredCompareRequest
+import tools.confido.payloads.responses.UserPredCompareRow
+import tools.confido.question.Question
+import tools.confido.refs.ref
 import tools.confido.spaces.*
+import tools.confido.utils.List2
 import tools.confido.utils.formatPercent
+import tools.confido.web.ApiError
+import tools.confido.web.Client
 import tools.confido.web.components.redesign.basic.*
 import tools.confido.web.components.redesign.forms.ButtonUnstyled
+import tools.confido.web.utils.runCoroutine
 import web.cssom.*
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * One side of a comparison. VALUE endpoints ([Now], [At]) name a fixed state;
+ * [Selection] is a live *reference* to the timeline pin — it follows re-pins
+ * and is exclusive to one side (there is one pin). Releasing a referenced pin
+ * freezes the endpoint into [At] at its last value.
+ */
+sealed interface CompareEndpoint {
+    /** The current group prediction (live). */
+    object Now : CompareEndpoint
+    /** Live-bound to the pinned timeline moment. */
+    object Selection : CompareEndpoint
+    /** A fixed instant. */
+    data class At(val ts: Int) : CompareEndpoint
+}
+
 external interface CompareDistributionsProps : PropsWithElementSize {
     var space: Space
+    var question: Question
     /** The older state. */
     var distA: ProbabilityDistribution?
     var labelA: String
+    /** Resolved timestamp of the older state (null = now). */
+    var tsA: Int?
     /** The newer state. */
     var distB: ProbabilityDistribution?
     var labelB: String
+    /** Resolved timestamp of the newer state (null = now). */
+    var tsB: Int?
+    /** Offer the per-predictor tabs (changes/scatter/table). Binary questions
+     *  only; the caller gates on VIEW_INDIVIDUAL_PREDICTIONS. */
+    var individualTabs: Boolean?
+    /** Chip click opens the endpoint picker for that side (0 = older, 1 = newer). */
+    var onChipClick: ((Int) -> Unit)?
     var onClose: (() -> Unit)?
 }
 
@@ -43,16 +77,21 @@ private const val OVERLAP_FILL = "#DDDDDD"
 private const val OLD_STROKE = "#9d7bdd"
 private const val NEW_STROKE = "#00C2FF"
 
-private fun legendChip(bg: String, borderColor: String) = ClassName {
+private fun legendChip(bg: String, borderColor: String, clickable: Boolean = false) = ClassName {
     fontSize = 11.px
     lineHeight = 14.px
     fontWeight = integer(600)
+    fontFamily = sansSerif
     color = Color("#555555")
     backgroundColor = Color(bg)
     border = Border(1.px, LineStyle.solid, Color(borderColor))
     borderRadius = 4.px
     padding = Padding(1.px, 7.px)
     whiteSpace = WhiteSpace.nowrap
+    if (clickable) {
+        cursor = Cursor.pointer
+        hover { opacity = number(0.8) }
+    }
 }
 
 /**
@@ -67,6 +106,28 @@ val CompareDistributions = elementSizeWrapper(FC<CompareDistributionsProps>("Com
     val width = props.elementWidth
     val space = props.space
 
+    // Individual-movement tabs (binary + VIEW_INDIVIDUAL_PREDICTIONS only).
+    val tabsAvailable = props.individualTabs == true && space is BinarySpace
+    var tab by useState("dist")
+    val activeTab = if (tabsAvailable) tab else "dist"
+    var rows by useState<List<UserPredCompareRow>?>(null)
+    val rowsReq = useRef("")
+    // Per-predictor rows are fetched lazily, first time an individual tab opens;
+    // distB doubles as the live-refresh trigger for a "now" endpoint (it changes
+    // whenever a new group prediction lands).
+    useEffect(props.tsA, props.tsB, activeTab == "dist", props.distB) {
+        if (activeTab == "dist") return@useEffect
+        val key = "${props.tsA}:${props.tsB}"
+        rowsReq.current = key
+        runCoroutine {
+            val r = try {
+                Client.call(Api.questionUserPredCompare(props.question.ref),
+                    UserPredCompareRequest(props.tsA, props.tsB))
+            } catch (e: ApiError) { null }
+            if (rowsReq.current == key) rows = r
+        }
+    }
+
     div {
         css {
             fontFamily = sansSerif
@@ -80,10 +141,47 @@ val CompareDistributions = elementSizeWrapper(FC<CompareDistributionsProps>("Com
                 gap = 8.px
                 padding = Padding(0.px, SIDE_PAD.px)
             }
-            span { className = legendChip("#F3EDFC", DECREASE_FILL); +props.labelA }
+            // Chips double as endpoint pickers when the parent provides a handler.
+            fun ChildrenBuilder.chip(side: Int, bg: String, borderColor: String, label: String) {
+                props.onChipClick?.let { pick ->
+                    ButtonUnstyled {
+                        className = legendChip(bg, borderColor, clickable = true)
+                        +"$label ▾"
+                        onClick = { it.stopPropagation(); pick(side) }
+                    }
+                } ?: span { className = legendChip(bg, borderColor); +label }
+            }
+            chip(0, "#F3EDFC", DECREASE_FILL, props.labelA)
             span { css { color = Color("rgba(0,0,0,40%)"); fontSize = 12.px }; +"→" }
-            span { className = legendChip("#E9FBFF", NEW_STROKE); +props.labelB }
+            chip(1, "#E9FBFF", NEW_STROKE, props.labelB)
             div { css { flexGrow = number(1.0) } }
+            if (tabsAvailable) {
+                div {
+                    css { display = Display.flex; gap = 2.px; alignItems = AlignItems.center; marginRight = 8.px }
+                    listOf("dist" to "Distributions", "changes" to "Changes",
+                           "scatter" to "Scatter", "table" to "Table").forEach { (id, label) ->
+                        ButtonUnstyled {
+                            css {
+                                fontSize = 10.px
+                                lineHeight = 12.px
+                                fontFamily = sansSerif
+                                padding = Padding(1.px, 5.px)
+                                borderRadius = 3.px
+                                if (activeTab == id) {
+                                    color = Color("#6319FF")
+                                    fontWeight = integer(700)
+                                    backgroundColor = Color("#F6F2FD")
+                                } else {
+                                    color = Color("rgba(0,0,0,40%)")
+                                    hover { backgroundColor = Color("#00000010") }
+                                }
+                            }
+                            +label
+                            onClick = { it.stopPropagation(); tab = id }
+                        }
+                    }
+                }
+            }
             props.onClose?.let { close ->
                 ButtonUnstyled {
                     css {
@@ -97,6 +195,28 @@ val CompareDistributions = elementSizeWrapper(FC<CompareDistributionsProps>("Com
             }
         }
 
+        if (activeTab != "dist") {
+            // Individual movements between the two moments.
+            val r = rows
+            when {
+                r == null -> div {
+                    css { padding = Padding(20.px, SIDE_PAD.px); color = Color("#999999"); fontSize = 13.px }
+                    +"Loading…"
+                }
+                r.isEmpty() -> div {
+                    css { padding = Padding(20.px, SIDE_PAD.px); color = Color("#999999"); fontSize = 13.px }
+                    +"No individual ${props.question.predictionTerminology.plural} to show."
+                }
+                else -> {
+                    val labels = List2(props.labelA, props.labelB)
+                    when (activeTab) {
+                        "changes" -> CompareChangesChart { this.rows = r; this.labels = labels }
+                        "scatter" -> CompareScatterChart { this.rows = r; this.labels = labels }
+                        "table" -> CompareUsersTable { this.rows = r; this.labels = labels }
+                    }
+                }
+            }
+        } else {
         val da = props.distA
         val db = props.distB
         when {
@@ -215,6 +335,7 @@ val CompareDistributions = elementSizeWrapper(FC<CompareDistributionsProps>("Com
                 css { padding = Padding(20.px, SIDE_PAD.px); color = Color("#999999"); fontSize = 13.px }
                 +"No group prediction is available for one of the compared moments."
             }
+        }
         }
     }
 })

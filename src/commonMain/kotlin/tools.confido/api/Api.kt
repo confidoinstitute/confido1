@@ -66,6 +66,9 @@ object Api {
     /** The group prediction as of a historical unix timestamp (newest log entry <= ts).
      *  Backs the timeline's scrub-ghost overlay; gated like the group_pred topic. */
     val questionGroupPredAt = ApiSpec(GET, questionPrefix / "group_pred_at" / tsParam, serializer<Unit>(), serializer<Prediction?>())
+    /** Every predictor's prediction at two historical timestamps (null = latest).
+     *  Backs the compare view's individual tabs; needs VIEW_INDIVIDUAL_PREDICTIONS. */
+    val questionUserPredCompare = ApiSpec(POST, questionPrefix / "user_preds_at", serializer<UserPredCompareRequest>(), serializer<List<UserPredCompareRow>>())
 
     // Timeline markers (id and owner in the sent mark are server-assigned).
     val questionTimelineMarkAdd = ApiSpec(POST, questionPrefix / "timeline_marks/add", serializer<TimelineMark>(), serializer<Unit>())

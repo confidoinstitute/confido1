@@ -25,6 +25,7 @@ import tools.confido.web.hooks.*
 import js.objects.unsafeJso as jso
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.encodeToDynamic
 import tools.confido.payloads.responses.*
@@ -328,29 +329,53 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
     // view needs no fetch (a binary history point is its own distribution).
     val hasGhost = question.answerSpace is NumericSpace
     val compareCapable = layoutMode >= LayoutMode.TABLET
+    val canViewIndividual = usePermission(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
     // Inspect = transient hover; on mobile (no compare) the pin inspects too.
     val inspectMoment = scrubMoment ?: pinnedMoment?.takeIf { !compareCapable }
-    var compareTracksPin by useState(false)
 
-    // Compare view (aggregate distributions at two moments; desktop only, the
-    // timeline hides its entry point on phones).
-    var compareRange by useState<Pair<Int, Int?>?>(null)  // older ts, newer ts (null = now)
+    // Compare view (two moments side by side; desktop only, the timeline offers
+    // no entry point on phones). Endpoints are typed: fixed values (now / an
+    // instant) or the live "Selection" reference that follows the pin.
+    var compareEnds by useState<List2<CompareEndpoint>?>(null)
+    var pickerSlot by useState<Int?>(null)     // endpoint slot an open picker menu edits
+    var pickSlot by useState<Int?>(null)       // slot armed for pick-on-timeline capture
+    var pickedTime by useState<Instant?>(null) // the picker menu's free-form date/time row
     var compareDists by useState<Pair<ProbabilityDistribution?, ProbabilityDistribution?>?>(null)
     val compareReq = useRef("")
-    useEffect(compareRange?.let { "${it.first}:${it.second}" } ?: "") {
-        val cr = compareRange ?: run { compareDists = null; return@useEffect }
-        val key = "${cr.first}:${cr.second}"
-        compareReq.current = key
+    fun resolveEnd(e: CompareEndpoint): Int? = when (e) {
+        is CompareEndpoint.At -> e.ts
+        CompareEndpoint.Selection -> pinnedMoment?.ts
+        CompareEndpoint.Now -> null
+    }
+    // Display order: older side left; "now" (and an unresolved Selection) sort last.
+    val orderedSlots = compareEnds?.let { ends ->
+        fun rank(i: Int) = resolveEnd(ends[i])?.toLong()
+            ?: (Long.MAX_VALUE - if (ends[i] == CompareEndpoint.Selection) 1 else 0)
+        if (rank(0) <= rank(1)) List2(0, 1) else List2(1, 0)
+    }
+    val resolvedKey = compareEnds?.map { "${resolveEnd(it)}" }?.joinToString(":") ?: ""
+    useEffect(resolvedKey, props.groupPrediction) {
+        val ends = compareEnds ?: run { compareDists = null; return@useEffect }
+        compareReq.current = resolvedKey
         runCoroutine {
-            val a = try { Client.call(Api.questionGroupPredAt(question.ref, cr.first))?.dist } catch (e: ApiError) { null }
-            val b = cr.second?.let {
-                try { Client.call(Api.questionGroupPredAt(question.ref, it))?.dist } catch (e: ApiError) { null }
-            } ?: props.groupPrediction?.dist
-            if (compareReq.current == key) compareDists = a to b
+            suspend fun distFor(e: CompareEndpoint): ProbabilityDistribution? = when (e) {
+                CompareEndpoint.Now -> props.groupPrediction?.dist
+                else -> resolveEnd(e)?.let { ts ->
+                    try { Client.call(Api.questionGroupPredAt(question.ref, ts))?.dist }
+                    catch (ex: ApiError) { null }
+                }
+            }
+            val d = ends.map { distFor(it) }
+            if (compareReq.current == resolvedKey) compareDists = d.e1 to d.e2
         }
     }
-    useEffect(inspectMoment?.point?.ts, compareRange != null) {
-        val ts = inspectMoment?.point?.ts?.takeIf { hasGhost && compareRange == null }
+    fun closeCompare() {
+        // A compare that references the pin releases it on close.
+        if (compareEnds?.any { it == CompareEndpoint.Selection } == true) pinnedMoment = null
+        compareEnds = null; pickerSlot = null; pickSlot = null
+    }
+    useEffect(inspectMoment?.point?.ts, compareEnds != null) {
+        val ts = inspectMoment?.point?.ts?.takeIf { hasGhost && compareEnds == null }
         if (ts == null) { ghost = null; return@useEffect }
         ghostReq.current = ts
         val cache = ghostCache.current!!
@@ -528,7 +553,9 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     flexShrink = number(0.0)
                     position = Position.relative
                 }
-                if (compareRange != null) {
+                if (compareEnds != null) {
+                    val ends = compareEnds!!
+                    val slots = orderedSlots!!
                     // A compared moment that coincides with a marker goes by the
                     // marker's name (plus its time), not the bare timestamp.
                     fun momentLabel(ts: Int): String {
@@ -537,17 +564,86 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                         val dt = formatUpdateDateTime(ts)
                         return if (name != null) "$name · $dt" else dt
                     }
+                    fun chipLabel(e: CompareEndpoint): String = when (e) {
+                        CompareEndpoint.Now -> "now"
+                        CompareEndpoint.Selection -> resolveEnd(e)?.let { momentLabel(it) }
+                            ?: "click the timeline…"
+                        is CompareEndpoint.At -> momentLabel(e.ts)
+                    }
+                    fun distOf(slot: Int) = if (slot == 0) compareDists?.first else compareDists?.second
                     CompareDistributions {
                         key = "groupPredictionCompare"
                         space = props.question.answerSpace
-                        distA = compareDists?.first
-                        labelA = momentLabel(compareRange!!.first)
-                        distB = compareDists?.second
-                        labelB = compareRange!!.second?.let { momentLabel(it) } ?: "now"
-                        onClose = {
-                            compareRange = null
-                            // A pin-born compare releases its pin on close.
-                            if (compareTracksPin) { pinnedMoment = null; compareTracksPin = false }
+                        this.question = props.question
+                        distA = distOf(slots.e1)
+                        labelA = chipLabel(ends[slots.e1])
+                        tsA = resolveEnd(ends[slots.e1])
+                        distB = distOf(slots.e2)
+                        labelB = chipLabel(ends[slots.e2])
+                        tsB = resolveEnd(ends[slots.e2])
+                        individualTabs = canViewIndividual
+                        onChipClick = { side -> pickerSlot = slots[side] }
+                        onClose = { closeCompare() }
+                    }
+                    // Endpoint picker for the chip's side of the comparison.
+                    pickerSlot?.let { slot ->
+                        val current = ends[slot]
+                        val other = ends[1 - slot]
+                        val allMarks = (room.timelineMarks + question.timelineMarks).sortedBy { it.ts }
+                        DialogMenu {
+                            open = true
+                            onClose = { pickerSlot = null }
+                            DialogMenuHeader { text = "Compare against" }
+                            if (other != CompareEndpoint.Now && current != CompareEndpoint.Now) DialogMenuItem {
+                                text = "Now"
+                                onClick = { compareEnds = ends.replace(slot, CompareEndpoint.Now) }
+                            }
+                            if (other != CompareEndpoint.Selection && current != CompareEndpoint.Selection) DialogMenuItem {
+                                text = if (pinnedMoment != null) "Selection (follows the pin)"
+                                       else "Selection (then click the timeline)"
+                                onClick = { compareEnds = ends.replace(slot, CompareEndpoint.Selection) }
+                            }
+                            if (current == CompareEndpoint.Selection) pinnedMoment?.let { pm ->
+                                DialogMenuItem {
+                                    // Converts the live reference into a fixed moment, freeing
+                                    // the pin to select the other side.
+                                    text = "Freeze at ${formatUpdateDateTime(pm.ts)}"
+                                    onClick = { compareEnds = ends.replace(slot, CompareEndpoint.At(pm.ts)) }
+                                }
+                            }
+                            allMarks.forEach { mark ->
+                                DialogMenuItem {
+                                    text = "${mark.name} · ${formatUpdateDateTime(mark.ts)}"
+                                    onClick = { compareEnds = ends.replace(slot, CompareEndpoint.At(mark.ts)) }
+                                }
+                            }
+                            DialogMenuItem {
+                                text = "Pick on the timeline…"
+                                onClick = { pickSlot = slot }
+                            }
+                            // Free-form instant, for moments no marker names.
+                            DialogMenuSeparator {}
+                            val tz = TimeZone.currentSystemDefault()
+                            Stack {
+                                direction = FlexDirection.row
+                                css { gap = 8.px; alignItems = AlignItems.center; padding = Padding(2.px, 15.px, 8.px) }
+                                DateTimeInput {
+                                    value = pickedTime?.toLocalDateTime(tz)
+                                    placeholder = "date/time"
+                                    onChange = { newVal, _ -> pickedTime = newVal?.toInstant(tz) }
+                                }
+                                Button {
+                                    css { margin = 0.px; padding = Padding(6.px, 12.px); fontSize = 13.px }
+                                    disabled = pickedTime == null
+                                    onClick = {
+                                        pickedTime?.let {
+                                            compareEnds = ends.replace(slot, CompareEndpoint.At(it.epochSeconds.toInt()))
+                                        }
+                                        pickerSlot = null
+                                    }
+                                    +"Set"
+                                }
+                            }
                         }
                     }
                 } else {
@@ -590,17 +686,30 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                     // the persistent inspect state on mobile.
                     onHover = { scrubMoment = it }
                     onPin = { m ->
-                        pinnedMoment = m
-                        if (compareCapable) {
-                            if (m != null) { compareRange = m.ts to null; compareTracksPin = true }
-                            else if (compareTracksPin) { compareRange = null; compareTracksPin = false }
+                        if (m != null) {
+                            pinnedMoment = m
+                            if (compareCapable && compareEnds == null)
+                                compareEnds = List2(CompareEndpoint.Selection, CompareEndpoint.Now)
+                        } else {
+                            // Releasing a referenced pin freezes its endpoint at the
+                            // last value — an open compare never tears down under you.
+                            pinnedMoment?.ts?.let { pts ->
+                                compareEnds = compareEnds?.map {
+                                    if (it == CompareEndpoint.Selection) CompareEndpoint.At(pts) else it
+                                }
+                            }
+                            pinnedMoment = null
                         }
                     }
                     pinnedTs = pinnedMoment?.ts
-                    onCompare = { a, b ->
-                        compareRange = a to b
-                        compareTracksPin = (b == null && a == pinnedMoment?.ts)
+                    // One-shot eyedropper: an armed endpoint captures the clicked
+                    // moment as a fixed value; the pin does not move.
+                    pickArmed = pickSlot != null
+                    onPickMoment = { m ->
+                        pickSlot?.let { compareEnds = compareEnds?.replace(it, CompareEndpoint.At(m.ts)) }
+                        pickSlot = null
                     }
+                    onPickCancel = { pickSlot = null }
                 }
                 val canViewAll = usePermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
                 if (question.groupPredictionVisibility == GroupPredictionVisibility.ANSWERED && props.myPrediction == null && !canViewAll) {
