@@ -224,31 +224,13 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
     }
 
     div {
-        ref = containerRef
         css {
-            position = Position.relative
             fontFamily = sansSerif
             // Quiet separation from the distribution graph above.
             marginTop = 6.px
             borderTop = Border(0.5.px, LineStyle.solid, Color("#E5E5E5"))
             paddingTop = 8.px
-            touchAction = None.none
-            // A range-select drag must not double as native text selection.
-            userSelect = None.none
         }
-        onMouseMove = { ev ->
-            if (selRange != null) {
-                // Selecting a range; the crosshair/tooltip would just be noise.
-                hoverTs = null
-                props.onHover?.invoke(null)
-            } else {
-                val rectBox = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
-                val moment = momentAt(ev.clientX - rectBox.left)
-                hoverTs = moment?.ts
-                props.onHover?.invoke(moment)
-            }
-        }
-        onMouseLeave = { hoverTs = null; props.onHover?.invoke(null) }
 
         // Idle summary row; hover details ride on the crosshair tooltip below.
         div {
@@ -431,6 +413,31 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             }
         }
 
+        // Gesture surface: only the chart area carries pin/select/zoom/hover, so
+        // header buttons never double as chart clicks (native listeners on an
+        // ancestor are not stopped by React's stopPropagation).
+        div {
+        ref = containerRef
+        css {
+            position = Position.relative
+            touchAction = None.none
+            // A range-select drag must not double as native text selection.
+            userSelect = None.none
+        }
+        onMouseMove = { ev ->
+            if (selRange != null) {
+                // Selecting a range; the crosshair/tooltip would just be noise.
+                hoverTs = null
+                props.onHover?.invoke(null)
+            } else {
+                val rectBox = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
+                val moment = momentAt(ev.clientX - rectBox.left)
+                hoverTs = moment?.ts
+                props.onHover?.invoke(moment)
+            }
+        }
+        onMouseLeave = { hoverTs = null; props.onHover?.invoke(null) }
+
         svg {
             this.width = width
             this.height = svgHeight
@@ -586,7 +593,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             div {
                 css {
                     position = Position.absolute
-                    top = (16 + TOP_PAD + 2).px
+                    top = (TOP_PAD + 2).px
                     left = if (onLeftHalf) (hx + 8).px else (hx - 8).px
                     if (!onLeftHalf) transform = translatex((-100).pct)
                     pointerEvents = None.none
@@ -622,6 +629,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
             div { +formatEdge(visRange.start) }
             div { +formatEdge(visRange.endInclusive) }
         }
+        } // gesture surface
     }
 
     // Sibling of the handler div, so dialog clicks cannot bubble into pin toggling.
