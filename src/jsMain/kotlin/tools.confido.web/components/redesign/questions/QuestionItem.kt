@@ -12,12 +12,19 @@ import react.dom.html.ReactHTML.br
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.button
+import react.dom.svg.ReactSVG
+import react.dom.svg.ReactSVG.path
+import react.dom.svg.ReactSVG.svg
 import react.router.dom.*
+import tools.confido.payloads.responses.WSData
 import tools.confido.rooms.Room
 import tools.confido.distributions.*
 import tools.confido.question.*
 import tools.confido.refs.*
+import tools.confido.spaces.*
+import tools.confido.state.Topics
 import tools.confido.utils.*
+import tools.confido.web.components.redesign.rooms.RoomContext
 
 external interface QuestionItemProps : Props {
     var question: Question
@@ -45,6 +52,11 @@ external interface StatusChipProps : PropsWithClassName {
 val QuestionItem = FC<QuestionItemProps> { props ->
     val counts = useQuestionCounts(props.question.ref)
     val prediction = useMyPredictions()[props.question.ref]
+    // Trend-background data (room grids only — no RoomContext in cross-room
+    // listings, so no subscription there). MultiplexWS dedups the per-tile
+    // subscriptions of one room topic.
+    val roomCtx = use(RoomContext)
+    val thumbnails = (useSubscription(roomCtx?.let { Topics.roomPredThumbnails(it.ref) }) as? WSData)?.data
 
     val questionState = props.question.state
 
@@ -78,6 +90,11 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
             background = Color("#FFFFFF")
             borderRadius = 10.px
+            // The trend background sits in a negative-z layer of the tile's own
+            // stacking context, below the in-flow text but above the tile fill.
+            position = Position.relative
+            overflow = Overflow.hidden
+            zIndex = integer(0)
 
             hover {
                 boxShadow = BoxShadow(0.px, 0.px, 5.px, Color("#CCCCCC"))
@@ -86,6 +103,60 @@ val QuestionItem = FC<QuestionItemProps> { props ->
 
         props.href?.let {
             to = it
+        }
+
+        // Trend background: the group estimate over time (yes-probability /
+        // median) as a light filled area — shape only, one border crossing the
+        // text. Fixed value scale (0–1 / the space range, never autoscaled) and
+        // a window shared by all tiles of the room (the room's activity span),
+        // so the tiles stay comparable at a glance. Shown under the same rule
+        // as the group value on the tile: never on an open question the viewer
+        // has not answered (anchoring).
+        run {
+            val series = thumbnails?.get(props.question.ref) ?: return@run
+            if (series.size < 2) return@run
+            if (props.groupPred == null) return@run
+            if (questionState == QuestionState.OPEN && prediction == null) return@run
+            val t0 = thumbnails.values.mapNotNull { it.firstOrNull()?.ts }.minOrNull() ?: return@run
+            val tEnd = unixNow()
+            if (tEnd <= t0) return@run
+            val (yMin, yMax) = when (val space = props.question.answerSpace) {
+                is NumericSpace -> space.min to space.max
+                else -> 0.0 to 1.0
+            }
+            fun x(ts: Int) = (ts - t0).toDouble() / (tEnd - t0) * 100
+            fun y(v: Double) = 100 - (v.coerceIn(yMin, yMax) - yMin) / (yMax - yMin) * 100
+            // Step-after fill under the mid line, extended to now, closed to the bottom.
+            val d = buildString {
+                append("M ${x(series[0].ts)} 100 V ${y(series[0].mid)} ")
+                series.drop(1).forEach { p -> append("H ${x(p.ts)} V ${y(p.mid)} ") }
+                append("H 100 V 100 Z")
+            }
+            svg {
+                css {
+                    position = Position.absolute
+                    inset = 0.px
+                    width = 100.pct
+                    height = 100.pct
+                    zIndex = integer(-1)
+                    pointerEvents = None.none
+                }
+                viewBox = "0 0 100 100"
+                preserveAspectRatio = "none"
+                ReactSVG.defs {
+                    ReactSVG.linearGradient {
+                        id = web.dom.ElementId("tileTrend-${props.question.id}")
+                        x1 = 0.0; y1 = 0.0; x2 = 0.0; y2 = 1.0
+                        ReactSVG.stop { offset = "0"; stopColor = "#7ff7ff"; stopOpacity = 0.06 }
+                        ReactSVG.stop { offset = "1"; stopColor = "#7ff7ff"; stopOpacity = 0.30 }
+                    }
+                }
+                path {
+                    this.d = d
+                    fill = "url(#tileTrend-${props.question.id})"
+                    stroke = "none"
+                }
+            }
         }
 
         // Question Status Frame

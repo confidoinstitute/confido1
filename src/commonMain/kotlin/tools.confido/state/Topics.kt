@@ -6,6 +6,7 @@ import tools.confido.payloads.responses.CommentExtraData
 import tools.confido.payloads.responses.CommentPresentation
 import tools.confido.payloads.responses.DashboardItem
 import tools.confido.payloads.responses.GroupPredHistory
+import tools.confido.payloads.responses.GroupPredHistoryPoint
 import tools.confido.payloads.responses.MembershipPayload
 import tools.confido.payloads.responses.QuestionCommentExtraData
 import tools.confido.rooms.Room
@@ -55,6 +56,11 @@ object Topics {
     val roomMembers = TopicSpec(roomPath / "members", serializer<List<MembershipPayload>>())
     val roomComments = TopicSpec(roomPath / "comments", serializer<List<CommentPresentation<CommentExtraData>>>())
     val roomGroupPred = TopicSpec(roomPath / "group_pred", serializer<Map<Ref<Question>, Prediction?>>())
+    /** Downsampled group-prediction trend per question (≤32 mid-only points: the
+     *  yes-probability / median), for the tile-background sparklines. Censored by
+     *  the same per-question visibility rule as [roomGroupPred]. */
+    val roomPredThumbnails = TopicSpec(roomPath / "group_pred/thumbnails",
+        serializer<Map<Ref<Question>, List<GroupPredHistoryPoint>>>())
     val presentation = TopicSpec(roomPath / "presentation", serializer<PresentationWSData>())
     val presentationFollow = TopicSpec(roomPath / "presentation/follow", serializer<String?>())
     val inviteShortlink = TopicSpec(roomPath / "invites" / idParam / "shortlink", serializer<String>())
