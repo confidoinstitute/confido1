@@ -1,5 +1,6 @@
 package tools.confido.store
 
+import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.reactivestreams.client.ClientSession
 import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.persistentMapOf
@@ -142,11 +143,19 @@ open class MongoStore<E : Entity>(
         override suspend fun flush(sess: ClientSession?) {
             val cur = current
             when {
-                committedOld == null && cur != null ->
-                    if (sess == null) coll.insertOne(cur) else coll.insertOne(sess, cur)
-                committedOld != null && cur != null ->
-                    if (sess == null) coll.replaceOneById(cur.id, cur) else coll.replaceOneById(sess, cur.id, cur)
-                committedOld != null && cur == null ->
+                // Always an upsert, never an insert/replace split on committedOld:
+                // memory is the authority, and committedOld describes MEMORY, not the
+                // database. Under a memory/database divergence — a doc surviving a
+                // hard kill, or a concurrent transaction's post-commit apply window
+                // (the mutation lock releases before apply()) — insertOne turns into
+                // a duplicate-key 500 (seen with expired-but-persisted sessions) and
+                // a bare replace into a silently lost write; upsert self-heals both.
+                cur != null -> {
+                    val opts = ReplaceOptions().upsert(true)
+                    if (sess == null) coll.replaceOneById(cur.id, cur, opts)
+                    else coll.replaceOneById(sess, cur.id, cur, opts)
+                }
+                committedOld != null ->
                     if (sess == null) coll.deleteOneById(committedOld.id) else coll.deleteOneById(sess, committedOld.id)
                 else -> {} // inserted and deleted within one transaction: net nothing
             }
