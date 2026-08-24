@@ -32,8 +32,11 @@ external interface CompareUsersProps : PropsWithElementSize {
     var rows: List<UserPredCompareRow>
     /** Column labels for the two compared moments. */
     var labels: List2<String>
-    /** Statically label each predictor's newest point with their name (presenter
-     *  opt-in; the question page uses hover tooltips instead). */
+    /** Predictor-name display. `true` (presenter opt-in): static labels at the
+     *  newest points, plus names in tooltips. `false` (presenter, toggle off):
+     *  no names anywhere — hovering to point at the shared screen must not leak
+     *  them. Unset (the question page, which has no toggle): names in hover
+     *  tooltips only. */
     var showNames: Boolean?
 }
 
@@ -73,7 +76,8 @@ private fun logicalMouse(ev: react.dom.events.MouseEvent<HTMLElement, *>, w: Dou
 }
 
 /** Shared hover tooltip: one line per hit predictor with its movement. */
-private fun ChildrenBuilder.hoverTooltip(hover: CompareHover, rows: List<UserPredCompareRow>, chartW: Double, chartH: Double) {
+private fun ChildrenBuilder.hoverTooltip(hover: CompareHover, rows: List<UserPredCompareRow>,
+                                         chartW: Double, chartH: Double, withNames: Boolean) {
     val shown = if (hover.rowIndices.size > 6) hover.rowIndices.take(5) else hover.rowIndices
     div {
         css {
@@ -104,7 +108,7 @@ private fun ChildrenBuilder.hoverTooltip(hover: CompareHover, rows: List<UserPre
                         flexShrink = number(0.0)
                     }
                 }
-                rows[i].user?.displayName?.let { name ->
+                if (withNames) rows[i].user?.displayName?.let { name ->
                     span { css { fontWeight = integer(600); color = Color("#555555") }; +name }
                 }
                 span {
@@ -242,7 +246,7 @@ val CompareChangesChart = elementSizeWrapper(FC<CompareUsersProps>("CompareChang
             }
         }
 
-        hover?.let { hoverTooltip(it, props.rows, width, height) }
+        hover?.let { hoverTooltip(it, props.rows, width, height, withNames = props.showNames != false) }
     }
 })
 
@@ -357,6 +361,6 @@ val CompareScatterChart = elementSizeWrapper(FC<CompareUsersProps>("CompareScatt
             }
         }
 
-        hover?.let { hoverTooltip(it, props.rows, width, height) }
+        hover?.let { hoverTooltip(it, props.rows, width, height, withNames = props.showNames != false) }
     }
 })
