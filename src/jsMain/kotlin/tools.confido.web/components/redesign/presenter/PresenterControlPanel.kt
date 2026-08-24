@@ -10,6 +10,7 @@ import tools.confido.web.components.redesign.basic.*
 import tools.confido.web.components.redesign.forms.Button
 import tools.confido.web.components.redesign.forms.ButtonBase
 import tools.confido.web.components.redesign.forms.ButtonBaseProps
+import tools.confido.web.components.redesign.forms.CompactFormStyling
 import web.cssom.*
 import emotion.react.css
 import react.*
@@ -133,12 +134,15 @@ val PresenterControlPanel = FC<Props> {
                         CloseIcon {}
                     }
                 }
-                // View-specific controls, if this view type has any
+                // View-specific controls, if this view type has any. Compact:
+                // full form-scale components read oversized in a corner panel.
                 controlsComp?.let { comp ->
-                    comp {
-                        this.view = view
-                        this.disabled = useDisconnected()
-                        this.onChange = { newView -> ctl.set(newView) }
+                    CompactFormStyling {
+                        comp {
+                            this.view = view
+                            this.disabled = useDisconnected()
+                            this.onChange = { newView -> ctl.set(newView) }
+                        }
                     }
                 }
                 Stack {

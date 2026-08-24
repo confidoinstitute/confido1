@@ -62,6 +62,16 @@ private fun segmentDistance(px: Double, py: Double, x1: Double, y1: Double, x2: 
     return sqrt((px - nx) * (px - nx) + (py - ny) * (py - ny))
 }
 
+/** Cursor position in the chart's logical coordinate space. The presenter page
+ *  scales these charts with CSS zoom, so client coordinates are visual pixels —
+ *  normalize by the rendered/logical size ratio (1 on the question page). */
+private fun logicalMouse(ev: react.dom.events.MouseEvent<HTMLElement, *>, w: Double, h: Double): Pair<Double, Double> {
+    val rect = ev.currentTarget.getBoundingClientRect()
+    val sx = (rect.width / w).takeIf { it > 0 } ?: 1.0
+    val sy = (rect.height / h).takeIf { it > 0 } ?: 1.0
+    return (ev.clientX - rect.left) / sx to (ev.clientY - rect.top) / sy
+}
+
 /** Shared hover tooltip: one line per hit predictor with its movement. */
 private fun ChildrenBuilder.hoverTooltip(hover: CompareHover, rows: List<UserPredCompareRow>, chartW: Double, chartH: Double) {
     val shown = if (hover.rowIndices.size > 6) hover.rowIndices.take(5) else hover.rowIndices
@@ -139,10 +149,7 @@ val CompareChangesChart = elementSizeWrapper(FC<CompareUsersProps>("CompareChang
     div {
         css { position = Position.relative }
         onMouseMove = { ev ->
-            val el = ev.currentTarget as HTMLElement
-            val rect = el.getBoundingClientRect()
-            val mx = ev.clientX - rect.left
-            val my = ev.clientY - rect.top
+            val (mx, my) = logicalMouse(ev, width, height)
             val hits = segs.filter { segmentDistance(mx, my, it.x1, it.y1, it.x2, it.y2) <= 10.0 }.map { it.row }
             hover = if (hits.isEmpty()) null else CompareHover(hits, mx, my)
         }
@@ -265,10 +272,7 @@ val CompareScatterChart = elementSizeWrapper(FC<CompareUsersProps>("CompareScatt
     div {
         css { position = Position.relative }
         onMouseMove = { ev ->
-            val el = ev.currentTarget as HTMLElement
-            val rect = el.getBoundingClientRect()
-            val mx = ev.clientX - rect.left
-            val my = ev.clientY - rect.top
+            val (mx, my) = logicalMouse(ev, width, height)
             val hits = dots.filter { sqrt((it.x - mx) * (it.x - mx) + (it.y - my) * (it.y - my)) <= 10.0 }.map { it.row }
             hover = if (hits.isEmpty()) null else CompareHover(hits, mx, my)
         }

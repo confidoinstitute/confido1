@@ -7,6 +7,7 @@ import react.Props
 import react.dom.html.ReactHTML.option
 import tools.confido.extensions.ClientExtension
 import tools.confido.payloads.responses.WSData
+import tools.confido.rooms.RoomPermission
 import tools.confido.rooms.TimelineMark
 import tools.confido.spaces.BinarySpace
 import tools.confido.state.*
@@ -16,6 +17,7 @@ import tools.confido.web.components.redesign.forms.FormSwitch
 import tools.confido.web.components.redesign.forms.OptionGroup
 import tools.confido.web.components.redesign.forms.Select
 import tools.confido.web.components.redesign.questions.predictions.formatUpdateDateTime
+import tools.confido.web.components.useMyUser
 import tools.confido.web.components.useQuestion
 import tools.confido.web.hooks.useSubscription
 import web.cssom.pct
@@ -47,14 +49,22 @@ val GroupPredPC = FC<PresenterControlsProps<GroupPredPV>> { props ->
     }
 }
 
-/** Controls for the binary histogram view: toggle showing predictor nicknames. */
+/** Controls for the binary histogram view: toggle showing predictor nicknames
+ *  (offered only when the controlling user may view individual predictions —
+ *  the presenter window normally shares this session, and flow-driven
+ *  presentations are moderator-launched anyway). */
 val BinaryHistogramPC = FC<PresenterControlsProps<BinaryHistogramPV>> { props ->
-    FormSwitch {
-        label = "Show nicknames"
-        disabled = props.disabled
-        checked = props.view.showNames
-        onChange = { e -> props.onChange(props.view.copy(showNames = e.target.checked)) }
-        comment = "Shows who predicted what. Available only if you may view individual predictions."
+    val myUser = useMyUser()
+    val rooms = (useSubscription(Topics.rooms()) as? WSData)?.data
+    val room = rooms?.values?.firstOrNull { props.view.question in it.questions }
+    if (room?.hasPermission(myUser, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS) == true) {
+        FormSwitch {
+            label = "Show nicknames"
+            disabled = props.disabled
+            checked = props.view.showNames
+            onChange = { e -> props.onChange(props.view.copy(showNames = e.target.checked)) }
+            comment = "Shows who predicted what."
+        }
     }
 }
 
@@ -123,12 +133,17 @@ private fun ChildrenBuilder.compareEndpointField(
  *  and marker/now selectors for both compared moments. */
 val ComparePC = FC<PresenterControlsProps<ComparePV>> { props ->
     val question = useQuestion(props.view.question)
+    val myUser = useMyUser()
     val rooms = (useSubscription(Topics.rooms()) as? WSData)?.data
     val room = rooms?.values?.firstOrNull { props.view.question in it.questions }
     val marks = ((room?.timelineMarks ?: emptyList()) + (question?.timelineMarks ?: emptyList()))
         .sortedBy { it.ts }.distinctBy { it.name }
+    // The individual modes need VIEW_INDIVIDUAL_PREDICTIONS; the presenter window
+    // normally shares this session, so gate on the controlling user's permission
+    // instead of hedging in a caveat.
+    val canViewIndividual = room?.hasPermission(myUser, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS) == true
 
-    if (question?.answerSpace is BinarySpace) {
+    if (question?.answerSpace is BinarySpace && canViewIndividual) {
         FormField {
             title = "View"
             OptionGroup<CompareViewMode>()() {
@@ -147,8 +162,7 @@ val ComparePC = FC<PresenterControlsProps<ComparePV>> { props ->
             disabled = props.disabled || props.view.mode == CompareViewMode.DISTRIBUTIONS
             checked = props.view.showNames && props.view.mode != CompareViewMode.DISTRIBUTIONS
             onChange = { e -> props.onChange(props.view.copy(showNames = e.target.checked)) }
-            comment = "Labels each predictor's movement in the individual views. " +
-                "Available only if the presenting window may view individual predictions."
+            comment = "Labels each predictor's movement in the individual views."
         }
     }
     compareEndpointField("Compare from", props.view.tp1, marks, props.disabled) {
