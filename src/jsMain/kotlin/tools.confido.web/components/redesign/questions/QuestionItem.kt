@@ -103,12 +103,11 @@ val QuestionItem = FC<QuestionItemProps> { props ->
         // time-trend fill proved not to be; binary questions get no background
         // (a probability has no shape to show). Fixed x-scale = the full answer
         // space; one hue, one border crossing the text, lightest at the top.
-        // Shown under the same rule as the group value on the tile: never on an
-        // open question the viewer has not answered (anchoring).
+        // Shown exactly when the tile shows the group value: the caller's
+        // display policy decides when groupPred arrives.
         run {
             val dist = props.groupPred?.dist as? ContinuousProbabilityDistribution ?: return@run
             val space = dist.space
-            if (questionState == QuestionState.OPEN && prediction == null) return@run
             val bins = 64
             val densities = Binner(space, bins).binRanges.map { dist.densityBetween(it) }
             val maxDensity = densities.max().takeIf { it > 0.0 } ?: return@run
@@ -326,17 +325,12 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                             br {}
                         }
                     } else {
-                        if (prediction != null) {
-                            // We show the group prediction if available,
-                            // otherwise we show the latest prediction made by us.
-                            props.groupPred?.let {
-                                renderDistribution(it.dist)
-                            } ?: run {
-                                renderDistribution(prediction.dist)
-                            }
-                        } else {
-                            br {}
-                        }
+                        // The display policy lives in the caller: groupPred only
+                        // arrives when it should be shown (normally after the
+                        // viewer answered; also unanswered in the lens's scan
+                        // mode). Fall back to the viewer's own prediction.
+                        val shown = props.groupPred?.dist ?: prediction?.dist
+                        if (shown != null) renderDistribution(shown) else br {}
                     }
                 }
 
@@ -357,12 +351,10 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     if (questionState == QuestionState.RESOLVED) {
                         +"correct answer"
                     } else {
-                        if (prediction != null) {
-                            if (props.groupPred != null) {
-                                +"group $predictionTerm"
-                            } else {
-                                +"your $predictionTerm from $predictionAgoText"
-                            }
+                        if (props.groupPred != null) {
+                            +"group $predictionTerm"
+                        } else if (prediction != null) {
+                            +"your $predictionTerm from $predictionAgoText"
                         } else if (questionState == QuestionState.OPEN) {
                             if (counts.predictions == 0) {
                                 +"be the first to $predictionVerb!"

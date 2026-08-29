@@ -48,26 +48,17 @@ val QuestionList = FC<QuestionListProps> { props ->
     val visibleQuestions = if (selectedTags.isEmpty()) allVisibleQuestions
         else allVisibleQuestions.filter { q -> q.tags.any { it in selectedTags } }
 
-    // Spoiler toggle (the forecaster lens, v1): users who both predict and hold
-    // VIEW_ALL_GROUP_PREDICTIONS can hide the group's answers on this ambient
-    // surface — value text and PDF background alike — so scanning the room does
-    // not anchor their own updates. Focused surfaces (the question page's group
-    // tab) stay self-opting: clicking through is the deliberate peek. Per-room,
-    // defaults to the forecaster view (anchoring is prospective); pointless in
-    // rooms where the viewer is the only predictor.
-    // The lens is for anyone who predicts and can see at least one group answer
-    // on this surface — not just moderators: with EVERYONE-visible questions a
-    // plain forecaster gets the same ambient spoilers while updating. Relevance
-    // is data-driven: roomGroupPred arrives viewer-censored, so a non-null entry
-    // means there is something to hide (moderator-only questions never reach a
-    // forecaster's map, and fresh rooms have nothing to hide yet).
-    val spoilersExist = usePermission(room, RoomPermission.SUBMIT_PREDICTION) &&
-        groupPreds.values.any { it != null }
-    // Member roles travel on their own topic (Room.members is censored down to
-    // the viewer's own membership), subscribed only for toggle candidates.
-    val members = (useSubscriptionIf(spoilersExist, Topics.roomMembers(room.ref)) as? WSData)?.data
-    val canToggleSpoilers = spoilersExist &&
-        (members?.count { it.role.hasPermission(RoomPermission.SUBMIT_PREDICTION) } ?: 0) >= 2
+    // Spoiler toggle (the lens's scan mode): the baseline is reveal-after-predict
+    // — a tile shows the group's answer only once the viewer has given their own
+    // (the app's ANSWERED-visibility philosophy; anchoring matters at the start).
+    // The toggle adds the moderator gestalt scan on top: also show every group
+    // answer the server lets this viewer see on questions they have NOT answered.
+    // Offered exactly when it would change something — some visible group answer
+    // on an unanswered question (roomGroupPred arrives viewer-censored, so with
+    // the default ANSWERED visibility ordinary forecasters never see the toggle;
+    // non-participating moderators with VIEW_ALL are its prime audience).
+    val myPredictions = useMyPredictions()
+    val canToggleSpoilers = groupPreds.any { (ref, gp) -> gp != null && myPredictions[ref] == null }
     // Persisted per (user × room) on the user record (User.uiSettings, synced
     // back via the self slice); absence = the default, the forecaster view.
     val spoilerKey = "roomSpoilers:${room.id}"
@@ -76,7 +67,7 @@ val QuestionList = FC<QuestionListProps> { props ->
     var optimisticShown by useState<Boolean?>(null)
     useEffect(serverShown) { optimisticShown = null }
     val spoilersShown = optimisticShown ?: serverShown
-    val maskGroupPreds = canToggleSpoilers && !spoilersShown
+    val scanMode = canToggleSpoilers && spoilersShown
 
     // Sort: "room" = the room's own order (as arranged by moderators, newest
     // first), "activity" = by the latest group-prediction update (available
@@ -121,9 +112,11 @@ val QuestionList = FC<QuestionListProps> { props ->
             if (canToggleSpoilers) {
                 react.dom.html.ReactHTML.span {
                     title = if (spoilersShown)
-                        "The tiles show the group's answers. Switch off to hide them while you form your own view."
+                        "Showing all group answers you may see, including questions you have not answered. " +
+                        "Switch off to reveal them only after you answer."
                     else
-                        "The group's answers are hidden on the tiles so they cannot anchor you. Switch on to show them."
+                        "Group answers show only where you have answered. " +
+                        "Switch on to also see them where you have not (scan the room without answering)."
                     css { display = Display.flex; alignItems = AlignItems.center; margin = Margin(0.px, 4.px) }
                     Switch {
                         switchHeight = 26.0
@@ -258,10 +251,12 @@ val QuestionList = FC<QuestionListProps> { props ->
             QuestionItem {
                 this.key = question.id
                 this.question = question
-                // When I am the only one prediction, show it as "your prediction" instead of "group prediction",
-                // which is confusing.
-                if (!maskGroupPreds &&
-                    !(useMyPredictions()[question.ref] != null && roomCounts[question.ref]?.predictors == 1)) {
+                // Baseline: the group's answer only after the viewer gave their
+                // own; scan mode also passes it for unanswered questions. When I
+                // am the only one predicting, show it as "your prediction"
+                // instead of "group prediction", which is confusing.
+                if ((myPredictions[question.ref] != null || scanMode) &&
+                    !(myPredictions[question.ref] != null && roomCounts[question.ref]?.predictors == 1)) {
                     this.groupPred = groupPreds[question.ref]
                 }
                 this.href = room.urlPrefix+question.urlPrefix
