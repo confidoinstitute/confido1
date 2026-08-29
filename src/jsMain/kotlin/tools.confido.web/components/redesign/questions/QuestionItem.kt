@@ -237,6 +237,9 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                 padding = 0.px
                 gap = 10.px
                 flexWrap = FlexWrap.wrap
+                // When the grid row is stretched by a taller sibling tile, the
+                // footer pins to the bottom instead of hanging mid-height.
+                marginTop = Auto.auto
             }
 
             // Answers Frame
