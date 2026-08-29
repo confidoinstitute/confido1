@@ -234,6 +234,25 @@ val CirclesIcon = FC<IconProps> { props ->
     }
 }
 
+/** The traditional funnel-of-lines filter glyph, in currentColor. */
+val FilterIcon = FC<IconProps> { props ->
+    svg {
+        className = props.className
+        width = 15.0
+        height = 15.0
+        viewBox = "0 0 15 15"
+        fill = "none"
+        listOf(Triple(1.5, 13.5, 3.0), Triple(4.0, 11.0, 7.5), Triple(6.0, 9.0, 12.0)).forEach { (a, b, y) ->
+            line {
+                x1 = a; x2 = b; y1 = y; y2 = y
+                stroke = "currentColor"
+                strokeWidth = 2.0
+                strokeLinecap = StrokeLinecap.round
+            }
+        }
+    }
+}
+
 /** Small open-eye glyph in currentColor (switch-embeddable; cf. [HideIcon],
  *  which is a fixed-color 30px action icon). */
 val EyeIcon = FC<IconProps> { props ->

@@ -6,7 +6,6 @@ import tools.confido.web.components.redesign.basic.*
 import tools.confido.api.Api
 import tools.confido.payloads.requests.SetUiSetting
 import tools.confido.web.Client
-import tools.confido.web.components.redesign.forms.Select
 import tools.confido.web.components.redesign.forms.Switch
 import tools.confido.web.components.redesign.layout.LayoutMode
 import tools.confido.web.components.redesign.layout.LayoutModeContext
@@ -103,59 +102,31 @@ val QuestionList = FC<QuestionListProps> { props ->
     // of the tab strip, so it is always rendered; the count label guarantees it
     // is never empty.
     RoomHeader {
-        // View controls (left): count, sort, tag filter.
+        innerClass = emotion.css.ClassName { position = Position.relative }
+        // View controls (left), grounded by the edge: sort, filter and the
+        // spoiler lens — controls feel heavier than text, so they sit closest
+        // to the border.
         Stack {
             direction = FlexDirection.row
             css {
-                gap = 10.px
+                gap = 6.px
                 alignItems = AlignItems.center
                 alignSelf = AlignSelf.center
             }
-            div {
-                css {
-                    fontFamily = sansSerif
-                    fontSize = 13.px
-                    lineHeight = 16.px
-                    fontWeight = integer(600)
-                    color = Color("#888888")
-                }
-                +if (selectedTags.isEmpty())
-                    pluralize("question", allVisibleQuestions.size, includeCount = true)
-                else
-                    "${visibleQuestions.size} of ${pluralize("question", allVisibleQuestions.size, includeCount = true)}"
-            }
             if (allVisibleQuestions.size > 1) {
-                Select {
-                    css {
-                        fontSize = 13.px
-                        lineHeight = 15.px
-                        fontWeight = integer(600)
-                        color = Color("#666666")
-                        padding = Padding(5.px, 8.px)
-                        paddingLeft = 22.px
-                        backgroundPositionX = 8.px
-                        backgroundPositionY = 11.px
-                    }
-                    value = sortMode
-                    onChange = { e -> sortMode = e.target.value }
-                    react.dom.html.ReactHTML.option { value = "room"; +"Default order" }
-                    react.dom.html.ReactHTML.option { value = "activity"; +"Recently active" }
+                // The original sort-button design (icon + current mode, click
+                // cycles); a menu can replace the cycle when a third mode lands.
+                HeaderGrayButton {
+                    SortIcon {}
+                    +if (sortMode == "activity") "Recently active" else "Default order"
+                    onClick = { sortMode = if (sortMode == "room") "activity" else "room" }
                 }
             }
             if (allTags.isNotEmpty()) {
-                react.dom.html.ReactHTML.button {
-                    css(ChipCSS) {
-                        cursor = Cursor.pointer
-                        if (selectedTags.isNotEmpty()) {
-                            backgroundColor = MainPalette.primary.color
-                            color = NamedColor.white
-                        } else {
-                            backgroundColor = Color("#F0F0F0")
-                            color = Color("#666666")
-                            border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))
-                        }
-                    }
-                    +if (selectedTags.isEmpty()) "Filter ▾" else "Filter: ${selectedTags.size} ▾"
+                HeaderGrayButton {
+                    if (selectedTags.isNotEmpty()) css { color = Color("#6319FF") }
+                    FilterIcon {}
+                    +if (selectedTags.isEmpty()) "Filter" else "Filter: ${selectedTags.size}"
                     onClick = { filterMenuOpen = true }
                 }
                 DialogMenu {
@@ -181,21 +152,13 @@ val QuestionList = FC<QuestionListProps> { props ->
                     }
                 }
             }
-        }
-        // Actions and the spoiler lens (right corner).
-        Stack {
-            direction = FlexDirection.row
-            css {
-                gap = 12.px
-                alignItems = AlignItems.center
-            }
             if (canToggleSpoilers) {
                 react.dom.html.ReactHTML.span {
                     title = if (spoilersShown)
                         "The tiles show the group's answers. Switch off to hide them while you form your own view."
                     else
                         "The group's answers are hidden on the tiles so they cannot anchor you. Switch on to show them."
-                    css { display = Display.flex; alignItems = AlignItems.center }
+                    css { display = Display.flex; alignItems = AlignItems.center; margin = Margin(0.px, 4.px) }
                     Switch {
                         switchHeight = 26.0
                         switchWidth = 50.0
@@ -214,11 +177,34 @@ val QuestionList = FC<QuestionListProps> { props ->
                     }
                 }
             }
-            if (usePermission(room, RoomPermission.ADD_QUESTION)) {
-                RoomHeaderButton {
-                    +"Create a question"
-                    onClick = { addQuestion() }
+        }
+        // The count floats dead-center between the edge-grounded control groups
+        // (inline after the controls on phones, where centering could collide).
+        div {
+            css {
+                fontFamily = sansSerif
+                fontSize = 13.px
+                lineHeight = 16.px
+                fontWeight = integer(600)
+                color = Color("#888888")
+                if (layoutMode >= LayoutMode.TABLET) {
+                    position = Position.absolute
+                    left = 50.pct
+                    top = 50.pct
+                    transform = translate((-50).pct, (-50).pct)
+                } else {
+                    alignSelf = AlignSelf.center
                 }
+            }
+            +if (selectedTags.isEmpty())
+                pluralize("question", allVisibleQuestions.size, includeCount = true)
+            else
+                "${visibleQuestions.size} of ${pluralize("question", allVisibleQuestions.size, includeCount = true)}"
+        }
+        if (usePermission(room, RoomPermission.ADD_QUESTION)) {
+            RoomHeaderButton {
+                +"Create a question"
+                onClick = { addQuestion() }
             }
         }
     }
