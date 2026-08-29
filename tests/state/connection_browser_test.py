@@ -21,7 +21,7 @@ from confido_test import ADMIN_EMAIL, BASE
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 PORT = urllib.parse.urlparse(BASE).port or 80
 SERVER_ENV_KEYS = ["CONFIDO_DB_NAME", "CONFIDO_DEVMODE", "CONFIDO_HTTP_PORT",
-                   "CONFIDO_STATIC_PATH", "CONFIDO_EXTENSIONS", "CONFIDO_ROLES_FILE"]
+                   "CONFIDO_BUNDLE_PATH", "CONFIDO_STATIC_PATH", "CONFIDO_EXTENSIONS", "CONFIDO_ROLES_FILE"]
 
 
 def server_pid():
@@ -78,7 +78,7 @@ async def main():
         # --- Restart the server: reconnect must clear the banner and re-enable ---
         env = dict(os.environ)
         env.setdefault("CONFIDO_HTTP_PORT", str(PORT))
-        missing = [k for k in ("CONFIDO_DB_NAME", "CONFIDO_STATIC_PATH") if k not in env]
+        missing = [k for k in ("CONFIDO_DB_NAME", "CONFIDO_BUNDLE_PATH") if k not in env]
         if missing:
             print("FAIL: cannot restart server, env not set:", missing); sys.exit(1)
         # CONFIDO_TEST_SERVER_CMD (set by run_all.sh --native) overrides the default

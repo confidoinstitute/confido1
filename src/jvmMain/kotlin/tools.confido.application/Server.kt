@@ -66,9 +66,12 @@ import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "build/dist/js/productionExecutable").canonicalFile
+/** Directory with the compiled JS bundle (a build output, not checked in). */
+val bundleDir = File(System.getenv("CONFIDO_BUNDLE_PATH") ?: "build/dist/js/productionExecutable").canonicalFile
+/** Directory with checked-in static assets (icons, fonts, manifest), served under /static. */
+val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "static").canonicalFile
 val iconDir = System.getenv("CONFIDO_ICONS_PATH")?.let { File(it).canonicalFile }
-val jsBundle = staticDir.resolve("confido1.js")
+val jsBundle = bundleDir.resolve("confido1.js")
 val jsHash = DigestUtils(SHA_224).digestAsHex(jsBundle)
 val appConfigHash = DigestUtils(SHA_224).digestAsHex(Json.encodeToString(appConfig))
 val devMode = System.getenv("CONFIDO_DEVMODE") == "1"
@@ -755,12 +758,14 @@ fun main() {
                         subs.values.forEach { it.job?.cancel(); it.resources?.closeAll() }
                     }
                 }
+                application.log.info("bundle dir: $bundleDir")
                 application.log.info("static dir: $staticDir")
+                if (!staticDir.isDirectory)
+                    application.log.warn("static dir $staticDir does not exist; static assets will 404")
                 static("/static") {
-                    staticRootFolder = staticDir
                     preCompressed(CompressedFileType.BROTLI, CompressedFileType.GZIP) {
-                        files(".")
-                        resources()
+                        files(bundleDir)
+                        files(staticDir)
                     }
                     static("/icons") {
                         iconDir?.let {

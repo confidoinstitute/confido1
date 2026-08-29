@@ -10,7 +10,7 @@
 # Environment overrides (defaults in parentheses):
 #   CONFIDO_TEST_PORT   (8099)   scratch server port — never your dev instance's
 #   CONFIDO_TEST_DB     (confido_statetest)  scratch Mongo DB, DROPPED on start
-#   CONFIDO_TEST_STATIC (build/kotlin-webpack/js/productionExecutable)
+#   CONFIDO_TEST_STATIC (build/kotlin-webpack/js/productionExecutable)  JS bundle dir
 #   CONFIDO_TEST_CDP    (9222)   chromium remote-debugging port (--browser only)
 #   CONFIDO_EXTENSIONS  (unset)  forwarded to the server if set
 #
@@ -67,7 +67,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "== starting scratch server on :$PORT$([ "$NATIVE" = 1 ] && echo ' (native image)')"
-export CONFIDO_DB_NAME="$DB" CONFIDO_DEVMODE=1 CONFIDO_HTTP_PORT="$PORT" CONFIDO_STATIC_PATH="$STATIC"
+export CONFIDO_DB_NAME="$DB" CONFIDO_DEVMODE=1 CONFIDO_HTTP_PORT="$PORT" CONFIDO_BUNDLE_PATH="$STATIC" CONFIDO_STATIC_PATH="$REPO_ROOT/static"
 if [ "$NATIVE" = 1 ]; then
     "$NATIVE_BIN" >"${TMPDIR:-/tmp}/confido_test_server.log" 2>&1 &
 else

@@ -18,8 +18,9 @@ into git, because, well, that's ugly. And it makes merges more painful.
 
 To run use the gradle `run` task (either via IDE Run button or `./gradlew run`). This
 runs the backend, which serves compiled frontend from `build/distributions/confido1.js`
-(built during the build step.) This can be overriden by setting `CONFIDO_STATIC_PATH`
-to a different directory.
+(built during the build step.) This can be overriden by setting `CONFIDO_BUNDLE_PATH`
+to a different directory. Static assets (icons, fonts, manifest) are served from the
+repo's `static/` directory, overridable with `CONFIDO_STATIC_PATH`.
 
 After running, the app listens on `http://localhost:8080/`
 
