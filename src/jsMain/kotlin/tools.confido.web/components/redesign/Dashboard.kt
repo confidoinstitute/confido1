@@ -33,8 +33,12 @@ import react.router.useNavigate
 import web.html.HTMLDivElement
 import kotlinx.datetime.Clock
 import tools.confido.calibration.CalibrationVector
+import tools.confido.payloads.requests.SetUiSetting
 import tools.confido.payloads.responses.DashboardItem
 import tools.confido.payloads.responses.DashboardModerationKind
+import tools.confido.question.Prediction
+import tools.confido.web.components.redesign.EyeIcon
+import tools.confido.web.components.redesign.EyeOffIcon
 import tools.confido.payloads.responses.WSData
 import tools.confido.state.Topics
 import tools.confido.utils.toFixed
@@ -198,6 +202,8 @@ private class AttentionEntry(
     val item: DashboardItem,
     val footer: String? = null,
     val footerColor: Color? = null,
+    /** Group prediction to display on the sticker (display policy pre-applied). */
+    val groupPred: Prediction? = null,
 )
 
 private external interface StickerRowProps : Props {
@@ -248,6 +254,8 @@ private val StickerRow = FC<StickerRowProps> { props ->
                     this.questionName = e.item.questionName
                     this.footer = e.footer
                     this.footerColor = e.footerColor
+                    this.groupPred = e.groupPred
+                    this.stickerKey = e.item.question.id
                 }
             }
         }
@@ -318,6 +326,22 @@ val Dashboard = FC<Props> {
     val resolvedRaw = (useSubscription(Topics.dashboardResolved()) as? WSData)?.data ?: emptyList()
     val moderationRaw = (useSubscription(Topics.dashboardModeration()) as? WSData)?.data ?: emptyList()
 
+    // Group answers on stickers, same semantics as the room grid: answered items
+    // always show them (baseline), the eye switch adds scan mode — group answers
+    // on questions the viewer has NOT answered. One page-global toggle rather
+    // than inheriting each room's lens: what you see here is controlled here.
+    val myPredictions = useMyPredictions()
+    val dashServerShown = useMyUser()?.uiSettings?.get("dashboardSpoilers") == "shown"
+    var dashOptimistic by useState<Boolean?>(null)
+    useEffect(dashServerShown) { dashOptimistic = null }
+    val dashSpoilersShown = dashOptimistic ?: dashServerShown
+    val canToggleDashSpoilers = (waitingRaw + moderationRaw).any {
+        it.groupPred != null && myPredictions[it.question] == null
+    }
+    fun shownGp(item: DashboardItem): Prediction? = item.groupPred?.takeIf {
+        myPredictions[item.question] != null || dashSpoilersShown
+    }
+
     val now = Clock.System.now()
 
     // Open questions the user has not answered yet, newest first. Subsumes the old
@@ -333,7 +357,7 @@ val Dashboard = FC<Props> {
                 closesIn == 1L -> "closes tomorrow"
                 else -> "closes in $closesIn days"
             }
-            AttentionEntry(item, footer, footer?.let { Color("#E65100") })
+            AttentionEntry(item, footer, footer?.let { Color("#E65100") }, groupPred = shownGp(item))
         }
 
     // Open questions whose last prediction by the user is old enough that new
@@ -343,7 +367,7 @@ val Dashboard = FC<Props> {
             val ts = item.predictionTs ?: return@mapNotNull null
             val days = (now.epochSeconds - ts) / 86400
             if (days < STALE_AFTER_DAYS) return@mapNotNull null
-            AttentionEntry(item, "updated $days days ago")
+            AttentionEntry(item, "updated $days days ago", groupPred = shownGp(item))
         }
         .take(16)
 
@@ -367,7 +391,7 @@ val Dashboard = FC<Props> {
                     if (due >= now) return@mapNotNull null
                     val days = (now - due).inWholeDays
                     val footer = if (days == 0L) "resolution overdue" else "overdue by $days days"
-                    AttentionEntry(item, footer, Color("#E65100"))
+                    AttentionEntry(item, footer, Color("#E65100"), groupPred = shownGp(item))
                 }
                 null -> null
             }
@@ -423,6 +447,38 @@ val Dashboard = FC<Props> {
                 onChange = { ev ->
                     val typed = ev.target.value
                     if (typed.isNotEmpty()) navigate(searchUrl(typed))
+                }
+            }
+            if (canToggleDashSpoilers) {
+                span {
+                    title = if (dashSpoilersShown)
+                        "Showing all group answers you may see, including questions you have not answered. " +
+                        "Switch off to reveal them only after you answer."
+                    else
+                        "Group answers show only where you have answered. " +
+                        "Switch on to also see them where you have not."
+                    css {
+                        display = Display.flex
+                        alignItems = AlignItems.center
+                        flexShrink = number(0.0)
+                        marginLeft = Auto.auto
+                    }
+                    Switch {
+                        switchHeight = 26.0
+                        switchWidth = 50.0
+                        noColor = true
+                        onIcon = EyeIcon.create()
+                        offIcon = EyeOffIcon.create()
+                        checked = dashSpoilersShown
+                        onChange = { e ->
+                            val newShown = e.target.checked
+                            dashOptimistic = newShown
+                            runCoroutine {
+                                Client.call(Api.profileUiSetting(),
+                                    SetUiSetting("dashboardSpoilers", if (newShown) "shown" else null))
+                            }
+                        }
+                    }
                 }
             }
         }

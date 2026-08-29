@@ -6,8 +6,10 @@ import emotion.react.*
 import react.*
 import react.dom.html.ReactHTML.div
 import react.router.dom.*
+import tools.confido.distributions.*
 import tools.confido.rooms.*
 import tools.confido.question.*
+import tools.confido.utils.formatPercent
 
 external interface QuestionStickerProps : Props {
     /** Link target (the question page URL). */
@@ -20,6 +22,12 @@ external interface QuestionStickerProps : Props {
     var footer: String?
     /** Color of the [footer] text; defaults to gray. */
     var footerColor: Color?
+
+    /** Show this group prediction (value line + PDF background for numeric).
+     *  The caller applies the display policy (answered / the room's scan mode). */
+    var groupPred: Prediction?
+    /** Unique per rendered sticker, for the background's SVG gradient id. */
+    var stickerKey: String?
 }
 
 val QuestionSticker = FC<QuestionStickerProps> {props ->
@@ -36,10 +44,16 @@ val QuestionSticker = FC<QuestionStickerProps> {props ->
             backgroundColor = Color("#FFFFFF")
             display = Display.flex
             flexDirection = FlexDirection.column
+            // Stacking context for the PDF background's negative-z layer.
+            position = Position.relative
+            zIndex = integer(0)
 
             hover {
                 boxShadow = BoxShadow(0.px, 0.px, 5.px, Color("#CCCCCC"))
             }
+        }
+        (props.groupPred?.dist as? ContinuousProbabilityDistribution)?.let {
+            TileDistBackground { dist = it; idSuffix = "st-${props.stickerKey ?: props.to}" }
         }
         div {
             css {
@@ -68,6 +82,32 @@ val QuestionSticker = FC<QuestionStickerProps> {props ->
                 flexGrow = number(1.0)
             }
             +props.questionName
+        }
+        props.groupPred?.let { gp ->
+            div {
+                css {
+                    fontFamily = sansSerif
+                    fontWeight = integer(700)
+                    fontSize = 13.px
+                    lineHeight = 15.px
+                    padding = Padding(0.px, 10.px, 4.px)
+                    overflow = Overflow.hidden
+                    textOverflow = TextOverflow.ellipsis
+                    whiteSpace = WhiteSpace.nowrap
+                    textAlign = TextAlign.right
+                    color = Color("#6319FF")
+                    flexShrink = number(0.0)
+                }
+                title = "group prediction"
+                when (val dist = gp.dist) {
+                    is BinaryDistribution -> +formatPercent(dist.yesProb, decimals = 0)
+                    is ContinuousProbabilityDistribution -> {
+                        val ci = dist.confidenceInterval(0.8, preferredCenter = dist.median)
+                        +"${dist.space.formatValue(ci.start, showUnit = false)} to ${dist.space.formatValue(ci.endInclusive)}"
+                    }
+                    else -> {}
+                }
+            }
         }
         props.footer?.let { footer ->
             div {

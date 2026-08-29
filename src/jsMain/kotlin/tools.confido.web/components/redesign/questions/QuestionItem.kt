@@ -46,6 +46,62 @@ external interface StatusChipProps : PropsWithClassName {
     var onClick: (()->Unit)?
 }
 
+external interface TileDistBackgroundProps : Props {
+    var dist: ContinuousProbabilityDistribution
+    /** Unique per rendered tile (SVG gradient ids are document-global). */
+    var idSuffix: String
+}
+
+/**
+ * The light PDF-silhouette background of question tiles and stickers: the
+ * distribution's shape as a filled area behind the content. The silhouette
+ * rhymes with the group graph on the question page, so it is self-explanatory
+ * in a way a time-trend fill proved not to be. Fixed x-scale = the full answer
+ * space; one hue, one border crossing the text, lightest at the top (the
+ * near-flat gradient maps onto the path's own bbox, so the top stop is always
+ * the curve's peak). The container needs position:relative + overflow:hidden
+ * and its own stacking context (z-index: 0).
+ */
+val TileDistBackground = FC<TileDistBackgroundProps> { props ->
+    val dist = props.dist
+    val bins = 64
+    val densities = Binner(dist.space, bins).binRanges.map { dist.densityBetween(it) }
+    val maxDensity = densities.max().takeIf { it > 0.0 } ?: return@FC
+    fun x(i: Int) = (i + 0.5) / bins * 100
+    // The peak stops short of the tile's top edge (touching it looks odd).
+    fun y(v: Double) = 100 - v / maxDensity * 85
+    val d = buildString {
+        append("M 0 100 L 0 ${y(densities[0])} ")
+        densities.forEachIndexed { i, v -> append("L ${x(i)} ${y(v)} ") }
+        append("L 100 ${y(densities[bins - 1])} L 100 100 Z")
+    }
+    svg {
+        css {
+            position = Position.absolute
+            inset = 0.px
+            width = 100.pct
+            height = 100.pct
+            zIndex = integer(-1)
+            pointerEvents = None.none
+        }
+        viewBox = "0 0 100 100"
+        preserveAspectRatio = "none"
+        ReactSVG.defs {
+            ReactSVG.linearGradient {
+                id = web.dom.ElementId("tileTrend-${props.idSuffix}")
+                x1 = 0.0; y1 = 0.0; x2 = 0.0; y2 = 1.0
+                ReactSVG.stop { offset = "0"; stopColor = "#7ff7ff"; stopOpacity = 0.18 }
+                ReactSVG.stop { offset = "1"; stopColor = "#7ff7ff"; stopOpacity = 0.30 }
+            }
+        }
+        path {
+            this.d = d
+            fill = "url(#tileTrend-${props.idSuffix})"
+            stroke = "none"
+        }
+    }
+}
+
 val QuestionItem = FC<QuestionItemProps> { props ->
     val counts = useQuestionCounts(props.question.ref)
     val prediction = useMyPredictions()[props.question.ref]
@@ -97,56 +153,12 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             to = it
         }
 
-        // Background: the current group distribution's PDF as a light filled
-        // shape (numeric questions only). The silhouette rhymes with the group
-        // graph on the question page, so it is self-explanatory in a way a
-        // time-trend fill proved not to be; binary questions get no background
-        // (a probability has no shape to show). Fixed x-scale = the full answer
-        // space; one hue, one border crossing the text, lightest at the top.
-        // Shown exactly when the tile shows the group value: the caller's
-        // display policy decides when groupPred arrives.
-        run {
-            val dist = props.groupPred?.dist as? ContinuousProbabilityDistribution ?: return@run
-            val space = dist.space
-            val bins = 64
-            val densities = Binner(space, bins).binRanges.map { dist.densityBetween(it) }
-            val maxDensity = densities.max().takeIf { it > 0.0 } ?: return@run
-            fun x(i: Int) = (i + 0.5) / bins * 100
-            // The peak stops short of the tile's top edge (touching it looks odd).
-            fun y(v: Double) = 100 - v / maxDensity * 85
-            val d = buildString {
-                append("M 0 100 L 0 ${y(densities[0])} ")
-                densities.forEachIndexed { i, v -> append("L ${x(i)} ${y(v)} ") }
-                append("L 100 ${y(densities[bins - 1])} L 100 100 Z")
-            }
-            svg {
-                css {
-                    position = Position.absolute
-                    inset = 0.px
-                    width = 100.pct
-                    height = 100.pct
-                    zIndex = integer(-1)
-                    pointerEvents = None.none
-                }
-                viewBox = "0 0 100 100"
-                preserveAspectRatio = "none"
-                ReactSVG.defs {
-                    ReactSVG.linearGradient {
-                        id = web.dom.ElementId("tileTrend-${props.question.id}")
-                        x1 = 0.0; y1 = 0.0; x2 = 0.0; y2 = 1.0
-                        // Nearly flat: the gradient maps onto the path's own bbox,
-                        // so the top stop is always the curve's peak — too faint
-                        // there and the most informative part of the shape is lost.
-                        ReactSVG.stop { offset = "0"; stopColor = "#7ff7ff"; stopOpacity = 0.18 }
-                        ReactSVG.stop { offset = "1"; stopColor = "#7ff7ff"; stopOpacity = 0.30 }
-                    }
-                }
-                path {
-                    this.d = d
-                    fill = "url(#tileTrend-${props.question.id})"
-                    stroke = "none"
-                }
-            }
+        // Background: the current group distribution's PDF (numeric questions
+        // only; a probability has no shape to show). Shown exactly when the
+        // tile shows the group value: the caller's display policy decides when
+        // groupPred arrives.
+        (props.groupPred?.dist as? ContinuousProbabilityDistribution)?.let {
+            TileDistBackground { dist = it; idSuffix = props.question.id }
         }
 
         // Question Status Frame

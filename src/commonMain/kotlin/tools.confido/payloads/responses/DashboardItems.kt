@@ -2,6 +2,7 @@ package tools.confido.payloads.responses
 
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
+import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.rooms.Room
@@ -35,6 +36,10 @@ data class DashboardItem(
     val resolution: String? = null,
     val resolvedAt: Instant? = null,
     val moderation: DashboardModerationKind? = null,
+    /** The group prediction, when the viewer may see it (the group-pred
+     *  visibility rule; null otherwise). The client applies the display policy
+     *  on top — shown when answered, or in the room's scan mode. */
+    val groupPred: Prediction? = null,
     /** Scheduled resolution time (moderation candidates; overdue decided client-side). */
     val resolveDue: Instant? = null,
 ) {

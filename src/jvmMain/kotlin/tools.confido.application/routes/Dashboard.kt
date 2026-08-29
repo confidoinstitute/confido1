@@ -31,6 +31,15 @@ private fun baseItem(room: Room, q: Question) = DashboardItem(
     roomColor = room.color,
 )
 
+/** The group prediction iff the viewer may see it (same rule as the group_pred
+ *  topics); the client layers the answered/scan-mode display policy on top. */
+private fun gpFor(user: User, room: Room, q: Question): tools.confido.question.Prediction? {
+    val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+    val myPred = serverState.userPred[q.ref]?.get(user.ref)
+    if (!(canViewAll || canViewGroupPred(q, myPred))) return null
+    return serverState.groupPred[q.ref]
+}
+
 private fun openedAt(q: Question): Instant? =
     q.stateHistory.filter { it.newState == QuestionState.OPEN }.maxOfOrNull { it.at }
 
@@ -55,7 +64,8 @@ private fun waitingSection(user: User): List<DashboardItem> =
         .filter { (_, q) -> q.state == QuestionState.OPEN && serverState.userPred[q.ref]?.get(user.ref) == null }
         .sortedByDescending { (_, q) -> openedAt(q) ?: Instant.DISTANT_PAST }
         .take(SECTION_CAP)
-        .map { (room, q) -> baseItem(room, q).copy(closeTime = q.effectiveScheduleIn(room).close) }
+        .map { (room, q) -> baseItem(room, q).copy(
+            closeTime = q.effectiveScheduleIn(room).close, groupPred = gpFor(user, room, q)) }
 
 private fun revisitSection(user: User): List<DashboardItem> =
     visibleEntries(user)
@@ -66,7 +76,8 @@ private fun revisitSection(user: User): List<DashboardItem> =
         }
         .sortedBy { (_, _, ts) -> ts }
         .take(SECTION_CAP)
-        .map { (room, q, ts) -> baseItem(room, q).copy(predictionTs = ts) }
+        .map { (room, q, ts) -> baseItem(room, q).copy(
+            predictionTs = ts, groupPred = gpFor(user, room, q)) }
 
 private fun resolvedSection(user: User): List<DashboardItem> =
     visibleEntries(user)
@@ -91,7 +102,8 @@ private fun moderationSection(user: User): List<DashboardItem> {
         .mapNotNull { (room, q) ->
             if (q.state != QuestionState.OPEN && q.state != QuestionState.CLOSED) return@mapNotNull null
             val resolveDue = q.effectiveScheduleIn(room).resolve ?: return@mapNotNull null
-            baseItem(room, q).copy(moderation = DashboardModerationKind.RESOLUTION_DUE, resolveDue = resolveDue)
+            baseItem(room, q).copy(moderation = DashboardModerationKind.RESOLUTION_DUE,
+                resolveDue = resolveDue, groupPred = gpFor(user, room, q))
         }
         .sortedBy { it.resolveDue }
     val drafts = entries
@@ -114,6 +126,9 @@ fun dashboardRoutes(routing: Routing) = routing.apply {
                 questionStore.state.asView(),
                 userStore.state.asView(),
                 latestPredictions.state.asView(),
+                // Wakes on group-prediction changes so the items' groupPred stays
+                // live (in practice paired with latestPredictions changes anyway).
+                predictionData.groupPredState.asView(),
             ).map {
                 val user = call.userSession?.user ?: unauthorized("Not logged in.")
                 compute(user)
