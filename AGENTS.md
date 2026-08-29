@@ -31,18 +31,22 @@ absorbs it, and subdirectories below match the remaining package segments
 
 ```
 src/
-├── commonMain/kotlin/tools.confido/       # Shared models: question/, rooms/, users/,
+├── commonMain/tools.confido/              # Shared models: question/, rooms/, users/,
 │                                          #   payloads/, state/, spaces/, utils/, ...
-├── jvmMain/kotlin/
+├── jvmMain/
 │   ├── tools.confido.application/         # Backend: routes/, sessions/, actions/, migrations/
 │   ├── tools.confido.store/               # Persistence stores
 │   └── tools.confido/                     # jvm actuals for shared packages
-└── jsMain/kotlin/
+└── jsMain/
     ├── tools.confido.web/                 # Frontend: components/, hooks/, utils/, ext/
     └── tools.confido/                     # js actuals for shared packages
 extensions/<name>/                         # Plugins with common/, js/, jvm/ subdirs
                                            #   (package tools.confido.extensions.<name>)
+static/                                    # Checked-in web assets, served under /static
 ```
+
+Source roots are configured as `src/<sourceSet>/` directly (no `kotlin/` level) —
+see `kotlin.setSrcDirs` in build.gradle.kts.
 
 Polymorphic `@Serializable` classes must carry an explicit class-level
 `@SerialName` — without one the discriminator defaults to the FQN, which breaks

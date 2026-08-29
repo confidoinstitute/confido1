@@ -118,6 +118,8 @@ kotlin {
     }
     sourceSets {
         val commonMain by getting {
+            // Sources live directly under src/<sourceSet>/ (no kotlin/ level)
+            kotlin.setSrcDirs(listOf("src/commonMain"))
             // Add extension common sources
             kotlin.srcDirs(extensionDirs.mapNotNull { ext ->
                 file("extensions/${ext.name}/common").takeIf { it.isDirectory }
@@ -130,6 +132,7 @@ kotlin {
             }
         }
         val jvmMain by getting {
+            kotlin.setSrcDirs(listOf("src/jvmMain"))
             // Add extension JVM sources and generated registry
             kotlin.srcDirs(extensionDirs.mapNotNull { ext ->
                 file("extensions/${ext.name}/jvm").takeIf { it.isDirectory }
@@ -165,6 +168,7 @@ kotlin {
             }
         }
         val jsMain by getting {
+            kotlin.setSrcDirs(listOf("src/jsMain"))
             // Add extension JS sources and generated registry
             kotlin.srcDirs(extensionDirs.mapNotNull { ext ->
                 file("extensions/${ext.name}/js").takeIf { it.isDirectory }
