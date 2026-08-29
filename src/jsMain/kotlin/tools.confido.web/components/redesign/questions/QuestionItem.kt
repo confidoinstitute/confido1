@@ -134,7 +134,10 @@ val QuestionItem = FC<QuestionItemProps> { props ->
                     ReactSVG.linearGradient {
                         id = web.dom.ElementId("tileTrend-${props.question.id}")
                         x1 = 0.0; y1 = 0.0; x2 = 0.0; y2 = 1.0
-                        ReactSVG.stop { offset = "0"; stopColor = "#7ff7ff"; stopOpacity = 0.06 }
+                        // Nearly flat: the gradient maps onto the path's own bbox,
+                        // so the top stop is always the curve's peak — too faint
+                        // there and the most informative part of the shape is lost.
+                        ReactSVG.stop { offset = "0"; stopColor = "#7ff7ff"; stopOpacity = 0.18 }
                         ReactSVG.stop { offset = "1"; stopColor = "#7ff7ff"; stopOpacity = 0.30 }
                     }
                 }
