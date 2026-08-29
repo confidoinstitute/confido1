@@ -15,6 +15,8 @@ Confido is a **Kotlin Multiplatform** collaborative forecasting/prediction web a
 ./gradlew run                                # Run backend at http://localhost:8080/
 ./gradlew jsBrowserDevelopmentRun --continuous  # Frontend hot reload at :8081
 ./gradlew clean                              # Clean build artifacts
+./gradlew releaseJvm                         # Self-contained tree: build/release/jvm
+./gradlew releaseNative                      # Self-contained tree: build/release/native
 ```
 
 - **JVM target**: Java 17, main class `tools.confido.application.ServerKt`

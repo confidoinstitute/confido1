@@ -66,8 +66,12 @@ import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-/** Directory with the compiled JS bundle (a build output, not checked in). */
-val bundleDir = File(System.getenv("CONFIDO_BUNDLE_PATH") ?: "build/dist/js/productionExecutable").canonicalFile
+/** Directory with the compiled JS bundle (a build output, not checked in).
+ *  Resolution: CONFIDO_BUNDLE_PATH, else a sibling bundle/ dir (unpacked release
+ *  tree), else the dev build output. */
+val bundleDir = (System.getenv("CONFIDO_BUNDLE_PATH")?.let { File(it) }
+    ?: File("bundle").takeIf { it.resolve("confido1.js").isFile }
+    ?: File("build/dist/js/productionExecutable")).canonicalFile
 /** Directory with checked-in static assets (icons, fonts, manifest), served under /static. */
 val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "static").canonicalFile
 val iconDir = System.getenv("CONFIDO_ICONS_PATH")?.let { File(it).canonicalFile }

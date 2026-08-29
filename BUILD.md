@@ -24,6 +24,24 @@ repo's `static/` directory, overridable with `CONFIDO_STATIC_PATH`.
 
 After running, the app listens on `http://localhost:8080/`
 
+# Releases
+
+`gradle releaseJvm` / `gradle releaseNative` assemble self-contained deployment
+trees under `build/release/{jvm,native}`:
+
+```
+confido-server.jar   (or confido-server native binary)
+bundle/              compiled JS bundle
+static/              static web assets
+config.example
+```
+
+Deploy by copying the tree and running the server from inside it —
+`java -jar confido-server.jar` (or `./confido-server`); `bundle/` and `static/`
+are found automatically next to the working directory, so only database/SMTP
+environment needs configuring. Tar.gz packaging tasks exist commented-out in
+build.gradle.kts if packed distribution is ever needed.
+
 ## Database
 
 The backend needs MongoDB to run. It should suffice to run a local MongoDB daemon,

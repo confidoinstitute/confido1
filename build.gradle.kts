@@ -1,3 +1,4 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import kotlin.text.set
@@ -20,6 +21,7 @@ plugins {
     kotlin("multiplatform") version "2.2.20"
     kotlin("plugin.serialization") version "2.2.20"
     id("org.graalvm.buildtools.native") version "1.1.3"
+    id("com.gradleup.shadow") version "9.2.2"
 }
 
 group = "tools.confido"
@@ -349,4 +351,60 @@ jsBrowserProductionRun.dependsOn(jsProductionExecutableCompileSync)
 tasks.matching { it.name.startsWith("compileKotlin") }.configureEach {
     dependsOn(generateExtensionRegistries)
 }
+
+// ---------------------------------------------------------------------------
+// Release targets: self-contained deployment trees under build/release/.
+// Each tree holds the server (fat jar or native binary) next to bundle/ and
+// static/, so an unpacked release runs with no path configuration — the server
+// resolves ./bundle and ./static relative to its working directory.
+
+/** Runnable fat jar of the JVM server (KMP has no java-style main source set,
+ *  so the jvm compilation output + runtime classpath are wired explicitly). */
+val serverShadowJar by tasks.registering(ShadowJar::class) {
+    archiveBaseName.set("confido-server")
+    archiveClassifier.set("")
+    archiveVersion.set("")
+    from(kotlin.targets.getByName("jvm").compilations.getByName("main").output.allOutputs)
+    configurations.set(listOf(project.configurations.getByName("jvmRuntimeClasspath")))
+    mergeServiceFiles()
+    manifest { attributes["Main-Class"] = "tools.confido.application.ServerKt" }
+    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
+    isZip64 = true
+}
+
+fun Sync.releaseCommon() {
+    group = "distribution"
+    from(tasks.named("jsBrowserDistribution")) { into("bundle") }
+    from("static") { into("static") }
+    from("config.example")
+}
+
+val releaseJvm by tasks.registering(Sync::class) {
+    description = "Assemble a self-contained JVM release tree in build/release/jvm"
+    releaseCommon()
+    destinationDir = file("build/release/jvm")
+    from(serverShadowJar) { rename { "confido-server.jar" } }
+}
+
+val releaseNative by tasks.registering(Sync::class) {
+    description = "Assemble a self-contained native release tree in build/release/native"
+    releaseCommon()
+    destinationDir = file("build/release/native")
+    from(tasks.named("nativeCompile")) { include("confido-server") }
+}
+
+// Packed releases — currently unused (internal deployments run unpacked,
+// public distribution is source-only). Uncomment when needed.
+//val releaseJvmTar by tasks.registering(Tar::class) {
+//    from(releaseJvm) { into("confido-${project.version}-jvm") }
+//    archiveFileName.set("confido-${project.version}-jvm.tar.gz")
+//    destinationDirectory.set(file("build/release"))
+//    compression = Compression.GZIP
+//}
+//val releaseNativeTar by tasks.registering(Tar::class) {
+//    from(releaseNative) { into("confido-${project.version}-native") }
+//    archiveFileName.set("confido-${project.version}-native.tar.gz")
+//    destinationDirectory.set(file("build/release"))
+//    compression = Compression.GZIP
+//}
 
