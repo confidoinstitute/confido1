@@ -135,7 +135,10 @@ val QuestionList = FC<QuestionListProps> { props ->
                     DialogMenuHeader { text = "Filter by tag" }
                     for (tag in allTags) {
                         DialogMenuItem {
-                            text = (if (tag in selectedTags) "✓ " else "") + tag
+                            text = tag
+                            // Selection state lives in the reserved icon slot, so
+                            // the labels stay aligned.
+                            if (tag in selectedTags) icon = CheckmarkIcon
                             keepOpen = true
                             onClick = {
                                 selectedTags =
@@ -147,6 +150,8 @@ val QuestionList = FC<QuestionListProps> { props ->
                     if (selectedTags.isNotEmpty()) {
                         DialogMenuItem {
                             text = "Clear filter"
+                            icon = BinIcon
+                            variant = DialogMenuItemVariant.dangerous
                             onClick = { selectedTags = emptySet() }
                         }
                     }

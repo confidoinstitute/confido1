@@ -234,6 +234,24 @@ val CirclesIcon = FC<IconProps> { props ->
     }
 }
 
+/** Selection checkmark for menu items, in currentColor. */
+val CheckmarkIcon = FC<IconProps> { props ->
+    svg {
+        className = props.className
+        width = 14.0
+        height = 11.0
+        viewBox = "0 0 14 11"
+        fill = "none"
+        path {
+            d = "M1.5 5.5L5 9L12.5 1.5"
+            stroke = "currentColor"
+            strokeWidth = 2.0
+            strokeLinecap = StrokeLinecap.round
+            strokeLinejoin = StrokeLinejoin.round
+        }
+    }
+}
+
 /** The traditional funnel-of-lines filter glyph, in currentColor. */
 val FilterIcon = FC<IconProps> { props ->
     svg {
