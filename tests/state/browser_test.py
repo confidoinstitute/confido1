@@ -53,9 +53,12 @@ async def main():
               .then(r => r.status)""", await_promise=True)
         if st != 200:
             print("FAIL: questions/add ->", st); sys.exit(1)
+        # The workspace-wide "questions" topic is retired; the room page's
+        # questions slice is where question entities live now.
+        await evaluate(cdp, s, "window.history.pushState({},'','/room/testroom'); window.dispatchEvent(new PopStateEvent('popstate'))")
         qid = await wait_for(cdp, s,
-            "(Object.entries(((window.curTopics||{}).questions||{}).data||{}).filter(([k,v])=>v.name==='Presented q').map(([k])=>k)[0]) || false",
-            desc="new question in questions slice")
+            "(Object.entries(((window.curTopics||{})['room/testroom/questions']||{}).data||{}).filter(([k,v])=>v.name==='Presented q').map(([k])=>k)[0]) || false",
+            desc="new question in room questions slice")
         st = await evaluate(cdp, s, f"""
             fetch('/presenter/set', {{method:'POST', headers:{{'Content-Type':'application/json'}},
                 body: JSON.stringify({{type:'question', question:'{qid}'}})}}).then(r => r.status)""",
