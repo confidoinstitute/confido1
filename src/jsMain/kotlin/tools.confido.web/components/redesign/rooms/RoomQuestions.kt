@@ -3,6 +3,7 @@ package tools.confido.web.components.redesign.rooms
 import tools.confido.web.components.*
 import tools.confido.web.components.redesign.*
 import tools.confido.web.components.redesign.basic.*
+import tools.confido.web.components.redesign.forms.ButtonUnstyled
 import tools.confido.web.components.redesign.layout.LayoutMode
 import tools.confido.web.components.redesign.layout.LayoutModeContext
 import tools.confido.web.components.redesign.questions.*
@@ -43,6 +44,25 @@ val QuestionList = FC<QuestionListProps> { props ->
     val visibleQuestions = if (selectedTags.isEmpty()) allVisibleQuestions
         else allVisibleQuestions.filter { q -> q.tags.any { it in selectedTags } }
 
+    // Spoiler toggle (the forecaster lens, v1): users who both predict and hold
+    // VIEW_ALL_GROUP_PREDICTIONS can hide the group's answers on this ambient
+    // surface — value text and PDF background alike — so scanning the room does
+    // not anchor their own updates. Focused surfaces (the question page's group
+    // tab) stay self-opting: clicking through is the deliberate peek. Per-room,
+    // defaults to the forecaster view (anchoring is prospective); pointless in
+    // rooms where the viewer is the only predictor.
+    val isModcaster = usePermission(room, RoomPermission.SUBMIT_PREDICTION) &&
+        usePermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+    // Member roles travel on their own topic (Room.members is censored down to
+    // the viewer's own membership), subscribed only for modcaster candidates.
+    val members = (useSubscription(
+        if (isModcaster) Topics.roomMembers(room.ref) else null) as? WSData)?.data
+    val canToggleSpoilers = isModcaster &&
+        (members?.count { it.role.hasPermission(RoomPermission.SUBMIT_PREDICTION) } ?: 0) >= 2
+    var spoilersShown by useState(
+        web.storage.localStorage.getItem("groupPredSpoilers:${room.id}") == "shown")
+    val maskGroupPreds = canToggleSpoilers && !spoilersShown
+
     var preset by useState(QuestionPreset.NONE)
     var presetOpen by useState(false)
 
@@ -66,19 +86,58 @@ val QuestionList = FC<QuestionListProps> { props ->
     // of the tab strip, so it is always rendered; the count label guarantees it
     // is never empty.
     RoomHeader {
-        div {
+        Stack {
+            direction = FlexDirection.row
             css {
-                fontFamily = sansSerif
-                fontSize = 13.px
-                lineHeight = 16.px
-                fontWeight = integer(600)
-                color = Color("#888888")
+                gap = 12.px
+                alignItems = AlignItems.center
                 alignSelf = AlignSelf.center
             }
-            +if (selectedTags.isEmpty())
-                pluralize("question", allVisibleQuestions.size, includeCount = true)
-            else
-                "${visibleQuestions.size} of ${pluralize("question", allVisibleQuestions.size, includeCount = true)}"
+            div {
+                css {
+                    fontFamily = sansSerif
+                    fontSize = 13.px
+                    lineHeight = 16.px
+                    fontWeight = integer(600)
+                    color = Color("#888888")
+                }
+                +if (selectedTags.isEmpty())
+                    pluralize("question", allVisibleQuestions.size, includeCount = true)
+                else
+                    "${visibleQuestions.size} of ${pluralize("question", allVisibleQuestions.size, includeCount = true)}"
+            }
+            if (canToggleSpoilers) {
+                ButtonUnstyled {
+                    css {
+                        fontFamily = sansSerif
+                        fontSize = 11.px
+                        lineHeight = 13.px
+                        fontWeight = integer(600)
+                        padding = Padding(3.px, 9.px)
+                        borderRadius = 4.px
+                        if (spoilersShown) {
+                            color = Color("#6319FF")
+                            backgroundColor = Color("#F6F2FD")
+                            border = Border(1.px, LineStyle.solid, Color("#D5C8F3"))
+                        } else {
+                            color = Color("#888888")
+                            backgroundColor = Color("#FAFAFA")
+                            border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))
+                        }
+                    }
+                    title = if (spoilersShown)
+                        "The tiles show the group's answers. Click to hide them while you form your own view."
+                    else
+                        "The group's answers are hidden on the tiles so they cannot anchor you. Click to show them."
+                    +if (spoilersShown) "Group answers shown" else "Group answers hidden"
+                    onClick = {
+                        val newShown = !spoilersShown
+                        spoilersShown = newShown
+                        web.storage.localStorage.setItem(
+                            "groupPredSpoilers:${room.id}", if (newShown) "shown" else "hidden")
+                    }
+                }
+            }
         }
         if (usePermission(room, RoomPermission.ADD_QUESTION)) {
             RoomHeaderButton {
@@ -182,7 +241,8 @@ val QuestionList = FC<QuestionListProps> { props ->
                 this.question = question
                 // When I am the only one prediction, show it as "your prediction" instead of "group prediction",
                 // which is confusing.
-                if (!(useMyPredictions()[question.ref] != null && roomCounts[question.ref]?.predictors == 1)) {
+                if (!maskGroupPreds &&
+                    !(useMyPredictions()[question.ref] != null && roomCounts[question.ref]?.predictors == 1)) {
                     this.groupPred = groupPreds[question.ref]
                 }
                 this.href = room.urlPrefix+question.urlPrefix
