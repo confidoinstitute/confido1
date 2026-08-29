@@ -16,15 +16,12 @@ import react.dom.svg.ReactSVG
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.svg
 import react.router.dom.*
-import tools.confido.payloads.responses.WSData
 import tools.confido.rooms.Room
 import tools.confido.distributions.*
 import tools.confido.question.*
 import tools.confido.refs.*
 import tools.confido.spaces.*
-import tools.confido.state.Topics
 import tools.confido.utils.*
-import tools.confido.web.components.redesign.rooms.RoomContext
 
 external interface QuestionItemProps : Props {
     var question: Question
@@ -52,11 +49,6 @@ external interface StatusChipProps : PropsWithClassName {
 val QuestionItem = FC<QuestionItemProps> { props ->
     val counts = useQuestionCounts(props.question.ref)
     val prediction = useMyPredictions()[props.question.ref]
-    // Trend-background data (room grids only — no RoomContext in cross-room
-    // listings, so no subscription there). MultiplexWS dedups the per-tile
-    // subscriptions of one room topic.
-    val roomCtx = use(RoomContext)
-    val thumbnails = (useSubscription(roomCtx?.let { Topics.roomPredThumbnails(it.ref) }) as? WSData)?.data
 
     val questionState = props.question.state
 
@@ -105,32 +97,27 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             to = it
         }
 
-        // Trend background: the group estimate over time (yes-probability /
-        // median) as a light filled area — shape only, one border crossing the
-        // text. Fixed value scale (0–1 / the space range, never autoscaled) and
-        // a window shared by all tiles of the room (the room's activity span),
-        // so the tiles stay comparable at a glance. Shown under the same rule
-        // as the group value on the tile: never on an open question the viewer
-        // has not answered (anchoring).
+        // Background: the current group distribution's PDF as a light filled
+        // shape (numeric questions only). The silhouette rhymes with the group
+        // graph on the question page, so it is self-explanatory in a way a
+        // time-trend fill proved not to be; binary questions get no background
+        // (a probability has no shape to show). Fixed x-scale = the full answer
+        // space; one hue, one border crossing the text, lightest at the top.
+        // Shown under the same rule as the group value on the tile: never on an
+        // open question the viewer has not answered (anchoring).
         run {
-            val series = thumbnails?.get(props.question.ref) ?: return@run
-            if (series.size < 2) return@run
-            if (props.groupPred == null) return@run
+            val dist = props.groupPred?.dist as? ContinuousProbabilityDistribution ?: return@run
+            val space = dist.space
             if (questionState == QuestionState.OPEN && prediction == null) return@run
-            val t0 = thumbnails.values.mapNotNull { it.firstOrNull()?.ts }.minOrNull() ?: return@run
-            val tEnd = unixNow()
-            if (tEnd <= t0) return@run
-            val (yMin, yMax) = when (val space = props.question.answerSpace) {
-                is NumericSpace -> space.min to space.max
-                else -> 0.0 to 1.0
-            }
-            fun x(ts: Int) = (ts - t0).toDouble() / (tEnd - t0) * 100
-            fun y(v: Double) = 100 - (v.coerceIn(yMin, yMax) - yMin) / (yMax - yMin) * 100
-            // Step-after fill under the mid line, extended to now, closed to the bottom.
+            val bins = 64
+            val densities = Binner(space, bins).binRanges.map { dist.densityBetween(it) }
+            val maxDensity = densities.max().takeIf { it > 0.0 } ?: return@run
+            fun x(i: Int) = (i + 0.5) / bins * 100
+            fun y(v: Double) = 100 - v / maxDensity * 100
             val d = buildString {
-                append("M ${x(series[0].ts)} 100 V ${y(series[0].mid)} ")
-                series.drop(1).forEach { p -> append("H ${x(p.ts)} V ${y(p.mid)} ") }
-                append("H 100 V 100 Z")
+                append("M 0 100 L 0 ${y(densities[0])} ")
+                densities.forEachIndexed { i, v -> append("L ${x(i)} ${y(v)} ") }
+                append("L 100 ${y(densities[bins - 1])} L 100 100 Z")
             }
             svg {
                 css {

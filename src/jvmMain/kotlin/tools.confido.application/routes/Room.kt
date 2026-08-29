@@ -10,9 +10,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.toList
-import tools.confido.distributions.BinaryDistribution
-import tools.confido.distributions.ContinuousProbabilityDistribution
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import org.simplejavamail.MailException
@@ -306,49 +303,6 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
             room.questions.filter { it.id in visible }.associateWith { groupPreds[it] }
         }
     }
-
-    // Tile-background trend thumbnails: gate/fetch — the gate carries the viewer's
-    // visible-question set (the roomGroupPred censoring rule) with each question's
-    // group-pred head as the content version, so any new group prediction in the
-    // room re-runs the fetch; the fetch downsamples the groupPredHist log to a
-    // mid-only series (yes-probability / median) per question.
-    viewWS(Topics.roomPredThumbnails, gate = { rRef ->
-        val viewerRef = call.userSession?.userRef ?: unauthorized("Not logged in.")
-        combineViews(
-            roomStore.state.asView().at(rRef.id),
-            questionStore.state.asView(),
-            userStore.state.asView(),
-            latestPredictions.state.asView(),
-            predictionData.groupPredState.asView(),
-        ) { room, questions, users, preds, heads ->
-            val viewer = users[viewerRef.id] ?: unauthorized("Not logged in.")
-            if (room == null) notFound("No such room.")
-            if (!room.hasPermission(viewer, RoomPermission.VIEW_QUESTIONS))
-                unauthorized("You cannot view this room.")
-            val canViewAll = room.hasPermission(viewer, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
-            val canViewHidden = room.hasPermission(viewer, RoomPermission.VIEW_HIDDEN_QUESTIONS)
-            room.questions.mapNotNull { ref ->
-                val q = questions[ref.id] ?: return@mapNotNull null
-                if (!(q.visible || canViewHidden)) return@mapNotNull null
-                if (!(canViewAll || canViewGroupPred(q, preds[ref]?.get(viewerRef)))) return@mapNotNull null
-                ref to heads[ref]
-            }.toMap()
-        }
-    }) { _, gate ->
-        gate.keys.associateWith { qRef ->
-            val all = groupPredictionLog.query(qRef).toList().mapNotNull { pred ->
-                when (val dist = pred.dist) {
-                    is BinaryDistribution -> GroupPredHistoryPoint(pred.ts, dist.yesProb)
-                    is ContinuousProbabilityDistribution -> GroupPredHistoryPoint(pred.ts, dist.median)
-                    else -> null
-                }
-            }
-            val maxPoints = 32
-            if (all.size <= maxPoints) all
-            else List(maxPoints) { i -> all[i * (all.size - 1) / (maxPoints - 1)] }
-        }
-    }
-
 
     // Flow topic: rotates a short invite code for the subscription's lifetime.
     flowWS(Topics.inviteShortlink) { rRef, linkId ->
