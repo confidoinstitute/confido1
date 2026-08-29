@@ -66,16 +66,18 @@ import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-/** Directory with the compiled JS bundle (a build output, not checked in).
- *  Resolution: CONFIDO_BUNDLE_PATH, else a sibling bundle/ dir (unpacked release
- *  tree), else the dev build output. */
-val bundleDir = (System.getenv("CONFIDO_BUNDLE_PATH")?.let { File(it) }
-    ?: File("bundle").takeIf { it.resolve("confido1.js").isFile }
-    ?: File("build/dist/js/productionExecutable")).canonicalFile
-/** Directory with checked-in static assets (icons, fonts, manifest), served under /static. */
-val staticDir = File(System.getenv("CONFIDO_STATIC_PATH") ?: "static").canonicalFile
+/** Colon-delimited list of directories served under /static; first match wins
+ *  (PATH-style, so overlay dirs — e.g. an org's custom pages — go first). One of
+ *  the entries must hold the compiled JS bundle (confido1.js). Usually a single
+ *  merged dir in production (release trees); the default covers dev, where the
+ *  webpack output and the checked-in static/ are necessarily separate. */
+val staticPathEnv: String? = System.getenv("CONFIDO_STATIC_PATH")
+val staticDirs = (staticPathEnv ?: "build/dist/js/productionExecutable:static")
+    .split(':').filter { it.isNotBlank() }.map { File(it).canonicalFile }
 val iconDir = System.getenv("CONFIDO_ICONS_PATH")?.let { File(it).canonicalFile }
-val jsBundle = bundleDir.resolve("confido1.js")
+val jsBundle = staticDirs.map { it.resolve("confido1.js") }.firstOrNull { it.isFile }
+    ?: error("confido1.js not found in any static dir (${staticDirs.joinToString(":")}) — " +
+             "build the frontend or set CONFIDO_STATIC_PATH")
 val jsHash = DigestUtils(SHA_224).digestAsHex(jsBundle)
 val appConfigHash = DigestUtils(SHA_224).digestAsHex(Json.encodeToString(appConfig))
 val devMode = System.getenv("CONFIDO_DEVMODE") == "1"
@@ -762,14 +764,13 @@ fun main() {
                         subs.values.forEach { it.job?.cancel(); it.resources?.closeAll() }
                     }
                 }
-                application.log.info("bundle dir: $bundleDir")
-                application.log.info("static dir: $staticDir")
-                if (!staticDir.isDirectory)
-                    application.log.warn("static dir $staticDir does not exist; static assets will 404")
+                application.log.info("static dirs: ${staticDirs.joinToString(":")}")
+                if (staticPathEnv != null)  // a missing entry in the dev/release default list is expected
+                    staticDirs.filterNot { it.isDirectory }
+                        .forEach { application.log.warn("static dir $it does not exist") }
                 static("/static") {
                     preCompressed(CompressedFileType.BROTLI, CompressedFileType.GZIP) {
-                        files(bundleDir)
-                        files(staticDir)
+                        staticDirs.forEach { files(it) }
                     }
                     static("/icons") {
                         iconDir?.let {

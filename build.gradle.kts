@@ -374,7 +374,12 @@ val serverShadowJar by tasks.registering(ShadowJar::class) {
 
 fun Sync.releaseCommon() {
     group = "distribution"
-    from(tasks.named("jsBrowserDistribution")) { into("bundle") }
+    // Bundle and assets merge into one static/ dir — the server serves whatever
+    // CONFIDO_STATIC_PATH lists, defaulting to ./static in a release tree.
+    // FAIL on duplicates so a webpack output name colliding with a checked-in
+    // asset is caught at build time instead of shadowing one of them.
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+    from(tasks.named("jsBrowserDistribution")) { into("static") }
     from("static") { into("static") }
     from("config.example")
 }

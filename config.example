@@ -6,14 +6,13 @@
 # Host settings
 # -------------
 #
-# Location of the directory with the compiled JS bundle (a build output).
-# Also used to detect the Confido version (bundle hash).
-#CONFIDO_BUNDLE_PATH=/srv/confido/bundle
-
-# Location of the directory with checked-in static assets (icons, fonts,
-# manifest), served under /static. Defaults to ./static in the working
-# directory (the repo's static/ dir when running from a checkout).
-#CONFIDO_STATIC_PATH=/srv/confido/static
+# Colon-delimited list of directories served under /static; first match wins.
+# One entry must contain the compiled JS bundle (confido1.js) — also used to
+# detect the Confido version (bundle hash). Usually a single directory in
+# production (a release tree's static/); prepend extra entries to overlay
+# custom content (e.g. an organization's privacy policy page). Defaults to
+# the dev build output plus the repo's static/ dir.
+#CONFIDO_STATIC_PATH=/srv/confido/custom:/srv/confido/static
 
 # Location of the directory with svg room icons.
 # Files from this directory will be selectable in the room dialog.
