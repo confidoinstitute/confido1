@@ -107,6 +107,8 @@ object Api {
     val profilePasswordReset = ApiSpec(POST, path("profile/password/reset"), serializer<Unit>(), serializer<Unit>())
     val profilePasswordResetFinish = ApiSpec(POST, path("profile/password/reset/finish"), serializer<TokenVerification>(), serializer<Unit>())
     val profileNick = ApiSpec(POST, path("profile/nick"), serializer<SetNick>(), serializer<Unit>())
+    /** Set/clear one personal UI preference (User.uiSettings); syncs back via the self slice. */
+    val profileUiSetting = ApiSpec(POST, path("profile/ui_setting"), serializer<SetUiSetting>(), serializer<Unit>())
     val profileEdit = ApiSpec(POST, path("profile/edit"), serializer<EditProfile>(), serializer<EditProfileResult>())
 
     val joinCheck = ApiSpec(GET, path("join") / tokenParam / "check", serializer<Unit>(), serializer<InviteStatus>())

@@ -10,6 +10,7 @@ import react.dom.svg.ReactSVG.circle
 import react.dom.svg.ReactSVG.clipPath
 import react.dom.svg.ReactSVG.defs
 import react.dom.svg.ReactSVG.g
+import react.dom.svg.ReactSVG.line
 import react.dom.svg.ReactSVG.path
 import react.dom.svg.ReactSVG.rect
 import react.dom.svg.ReactSVG.svg
@@ -229,6 +230,54 @@ val CirclesIcon = FC<IconProps> { props ->
             cy = 4.5
             r = 4.5
             fill = "currentcolor"
+        }
+    }
+}
+
+/** Small open-eye glyph in currentColor (switch-embeddable; cf. [HideIcon],
+ *  which is a fixed-color 30px action icon). */
+val EyeIcon = FC<IconProps> { props ->
+    svg {
+        className = props.className
+        width = 16.0
+        height = 12.0
+        viewBox = "0 0 16 12"
+        fill = "none"
+        path {
+            d = "M8 1.5C4.8 1.5 2.2 3.5 1 6C2.2 8.5 4.8 10.5 8 10.5C11.2 10.5 13.8 8.5 15 6C13.8 3.5 11.2 1.5 8 1.5Z"
+            stroke = "currentColor"
+            strokeWidth = 1.4
+            strokeLinejoin = StrokeLinejoin.round
+        }
+        circle {
+            cx = 8.0
+            cy = 6.0
+            r = 2.1
+            stroke = "currentColor"
+            strokeWidth = 1.4
+        }
+    }
+}
+
+/** [EyeIcon] with a slash: the hidden state. */
+val EyeOffIcon = FC<IconProps> { props ->
+    svg {
+        className = props.className
+        width = 16.0
+        height = 12.0
+        viewBox = "0 0 16 12"
+        fill = "none"
+        path {
+            d = "M8 1.5C4.8 1.5 2.2 3.5 1 6C2.2 8.5 4.8 10.5 8 10.5C11.2 10.5 13.8 8.5 15 6C13.8 3.5 11.2 1.5 8 1.5Z"
+            stroke = "currentColor"
+            strokeWidth = 1.4
+            strokeLinejoin = StrokeLinejoin.round
+        }
+        line {
+            x1 = 3.0; y1 = 11.0; x2 = 13.0; y2 = 1.0
+            stroke = "currentColor"
+            strokeWidth = 1.4
+            strokeLinecap = StrokeLinecap.round
         }
     }
 }

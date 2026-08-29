@@ -217,13 +217,16 @@ class ClassCensor(val cls: PermClass) {
     // data, createdAt/emailVerified/active administrative metadata; no member surface
     // consumes any of them).
     fun censorUser(u: User): User? = when (cls.userType) {
-        UserType.ADMIN -> u.copy(password = null)
+        // uiSettings are owner-only (they ride the self slice); no surface reads
+        // other users' preferences, admins included.
+        UserType.ADMIN -> u.copy(password = null, uiSettings = emptyMap())
         UserType.MEMBER -> u.copy(
             password = null,
             emailVerified = false,
             createdAt = Instant.fromEpochSeconds(0),
             lastLoginAt = null,
             active = true,
+            uiSettings = emptyMap(),
         )
         else -> null
     }

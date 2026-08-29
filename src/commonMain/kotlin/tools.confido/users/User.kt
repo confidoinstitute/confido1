@@ -22,7 +22,11 @@ data class User(
     val password: String? = null,
     val createdAt: Instant = Clock.System.now(),
     val lastLoginAt: Instant? = null,
-    val active: Boolean = true
+    val active: Boolean = true,
+    /** Small personal UI preferences keyed by a namespaced string (e.g. the
+     *  per-room spoiler lens, "roomSpoilers:<roomId>" → "shown"). Owner-only:
+     *  it travels on the self slice and is censored out everywhere else. */
+    val uiSettings: Map<String, String> = emptyMap(),
     // Server-only deref: clients hold no user collection (§5.3) — the viewer's own
     // user travels on the self slice, all other identities as UserPresentations.
 ) : ServerImmediateDerefEntity {

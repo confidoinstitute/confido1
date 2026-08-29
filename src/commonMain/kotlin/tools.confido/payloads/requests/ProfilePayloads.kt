@@ -21,6 +21,13 @@ data class SetPassword(
     val newPassword: String,
 )
 
+/** Set (or clear, with a null [value]) one [tools.confido.users.User.uiSettings] entry. */
+@Serializable
+data class SetUiSetting(
+    val key: String,
+    val value: String?,
+)
+
 /**
  * Initiate [e-mail][email] verification process.
  */

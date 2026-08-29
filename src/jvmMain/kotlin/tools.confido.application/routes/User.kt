@@ -303,6 +303,20 @@ fun profileRoutes(routing: Routing) = routing.apply {
         }
     }
 
+    // Set/clear one personal UI preference (bounded: these are tiny display prefs).
+    apiST(Api.profileUiSetting) { req ->
+        call.withUser {
+            if (req.key.length > 64 || (req.value?.length ?: 0) > 64) badRequest("Setting too long.")
+            tools.confido.store.userStore.modify(user.ref) {
+                val newSettings =
+                    if (req.value == null) it.uiSettings - req.key
+                    else it.uiSettings + (req.key to req.value)
+                if (newSettings.size > 200) badRequest("Too many UI settings.")
+                it.copy(uiSettings = newSettings)
+            }
+        }
+    }
+
     // Edit profile (everything, redesign)
     apiST(Api.profileEdit) { profileData ->
         call.withUser {

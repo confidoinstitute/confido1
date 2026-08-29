@@ -3,9 +3,13 @@ package tools.confido.web.components.redesign.rooms
 import tools.confido.web.components.*
 import tools.confido.web.components.redesign.*
 import tools.confido.web.components.redesign.basic.*
-import tools.confido.web.components.redesign.forms.ButtonUnstyled
+import tools.confido.api.Api
+import tools.confido.payloads.requests.SetUiSetting
+import tools.confido.web.Client
+import tools.confido.web.components.redesign.forms.Switch
 import tools.confido.web.components.redesign.layout.LayoutMode
 import tools.confido.web.components.redesign.layout.LayoutModeContext
+import tools.confido.web.utils.runCoroutine
 import tools.confido.web.components.redesign.questions.*
 import tools.confido.web.components.redesign.questions.dialog.*
 import web.cssom.*
@@ -59,8 +63,14 @@ val QuestionList = FC<QuestionListProps> { props ->
         if (isModcaster) Topics.roomMembers(room.ref) else null) as? WSData)?.data
     val canToggleSpoilers = isModcaster &&
         (members?.count { it.role.hasPermission(RoomPermission.SUBMIT_PREDICTION) } ?: 0) >= 2
-    var spoilersShown by useState(
-        web.storage.localStorage.getItem("groupPredSpoilers:${room.id}") == "shown")
+    // Persisted per (user × room) on the user record (User.uiSettings, synced
+    // back via the self slice); absence = the default, the forecaster view.
+    val spoilerKey = "roomSpoilers:${room.id}"
+    val serverShown = useMyUser()?.uiSettings?.get(spoilerKey) == "shown"
+    // The switch flips immediately; the overlay clears when the server confirms.
+    var optimisticShown by useState<Boolean?>(null)
+    useEffect(serverShown) { optimisticShown = null }
+    val spoilersShown = optimisticShown ?: serverShown
     val maskGroupPreds = canToggleSpoilers && !spoilersShown
 
     var preset by useState(QuestionPreset.NONE)
@@ -107,34 +117,27 @@ val QuestionList = FC<QuestionListProps> { props ->
                     "${visibleQuestions.size} of ${pluralize("question", allVisibleQuestions.size, includeCount = true)}"
             }
             if (canToggleSpoilers) {
-                ButtonUnstyled {
-                    css {
-                        fontFamily = sansSerif
-                        fontSize = 11.px
-                        lineHeight = 13.px
-                        fontWeight = integer(600)
-                        padding = Padding(3.px, 9.px)
-                        borderRadius = 4.px
-                        if (spoilersShown) {
-                            color = Color("#6319FF")
-                            backgroundColor = Color("#F6F2FD")
-                            border = Border(1.px, LineStyle.solid, Color("#D5C8F3"))
-                        } else {
-                            color = Color("#888888")
-                            backgroundColor = Color("#FAFAFA")
-                            border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))
-                        }
-                    }
+                react.dom.html.ReactHTML.span {
                     title = if (spoilersShown)
-                        "The tiles show the group's answers. Click to hide them while you form your own view."
+                        "The tiles show the group's answers. Switch off to hide them while you form your own view."
                     else
-                        "The group's answers are hidden on the tiles so they cannot anchor you. Click to show them."
-                    +if (spoilersShown) "Group answers shown" else "Group answers hidden"
-                    onClick = {
-                        val newShown = !spoilersShown
-                        spoilersShown = newShown
-                        web.storage.localStorage.setItem(
-                            "groupPredSpoilers:${room.id}", if (newShown) "shown" else "hidden")
+                        "The group's answers are hidden on the tiles so they cannot anchor you. Switch on to show them."
+                    css { display = Display.flex; alignItems = AlignItems.center }
+                    Switch {
+                        switchHeight = 26.0
+                        switchWidth = 50.0
+                        noColor = true
+                        onIcon = EyeIcon.create()
+                        offIcon = EyeOffIcon.create()
+                        checked = spoilersShown
+                        onChange = { e ->
+                            val newShown = e.target.checked
+                            optimisticShown = newShown
+                            runCoroutine {
+                                Client.call(Api.profileUiSetting(),
+                                    SetUiSetting(spoilerKey, if (newShown) "shown" else null))
+                            }
+                        }
                     }
                 }
             }
