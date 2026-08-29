@@ -6,6 +6,7 @@ import tools.confido.web.components.redesign.basic.*
 import tools.confido.api.Api
 import tools.confido.payloads.requests.SetUiSetting
 import tools.confido.web.Client
+import tools.confido.web.components.redesign.forms.Select
 import tools.confido.web.components.redesign.forms.Switch
 import tools.confido.web.components.redesign.layout.LayoutMode
 import tools.confido.web.components.redesign.layout.LayoutModeContext
@@ -73,6 +74,12 @@ val QuestionList = FC<QuestionListProps> { props ->
     val spoilersShown = optimisticShown ?: serverShown
     val maskGroupPreds = canToggleSpoilers && !spoilersShown
 
+    // Sort: "room" = the room's own order (as arranged by moderators, newest
+    // first), "activity" = by the latest group-prediction update (available
+    // from the already-subscribed roomGroupPred topic; no backend involved).
+    var sortMode by useState("room")
+    var filterMenuOpen by useState(false)
+
     var preset by useState(QuestionPreset.NONE)
     var presetOpen by useState(false)
 
@@ -96,10 +103,11 @@ val QuestionList = FC<QuestionListProps> { props ->
     // of the tab strip, so it is always rendered; the count label guarantees it
     // is never empty.
     RoomHeader {
+        // View controls (left): count, sort, tag filter.
         Stack {
             direction = FlexDirection.row
             css {
-                gap = 12.px
+                gap = 10.px
                 alignItems = AlignItems.center
                 alignSelf = AlignSelf.center
             }
@@ -115,6 +123,71 @@ val QuestionList = FC<QuestionListProps> { props ->
                     pluralize("question", allVisibleQuestions.size, includeCount = true)
                 else
                     "${visibleQuestions.size} of ${pluralize("question", allVisibleQuestions.size, includeCount = true)}"
+            }
+            if (allVisibleQuestions.size > 1) {
+                Select {
+                    css {
+                        fontSize = 13.px
+                        lineHeight = 15.px
+                        fontWeight = integer(600)
+                        color = Color("#666666")
+                        padding = Padding(5.px, 8.px)
+                        paddingLeft = 22.px
+                        backgroundPositionX = 8.px
+                        backgroundPositionY = 11.px
+                    }
+                    value = sortMode
+                    onChange = { e -> sortMode = e.target.value }
+                    react.dom.html.ReactHTML.option { value = "room"; +"Default order" }
+                    react.dom.html.ReactHTML.option { value = "activity"; +"Recently active" }
+                }
+            }
+            if (allTags.isNotEmpty()) {
+                react.dom.html.ReactHTML.button {
+                    css(ChipCSS) {
+                        cursor = Cursor.pointer
+                        if (selectedTags.isNotEmpty()) {
+                            backgroundColor = MainPalette.primary.color
+                            color = NamedColor.white
+                        } else {
+                            backgroundColor = Color("#F0F0F0")
+                            color = Color("#666666")
+                            border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))
+                        }
+                    }
+                    +if (selectedTags.isEmpty()) "Filter ▾" else "Filter: ${selectedTags.size} ▾"
+                    onClick = { filterMenuOpen = true }
+                }
+                DialogMenu {
+                    open = filterMenuOpen
+                    onClose = { filterMenuOpen = false }
+                    DialogMenuHeader { text = "Filter by tag" }
+                    for (tag in allTags) {
+                        DialogMenuItem {
+                            text = (if (tag in selectedTags) "✓ " else "") + tag
+                            keepOpen = true
+                            onClick = {
+                                selectedTags =
+                                    if (tag in selectedTags) selectedTags - setOf(tag)
+                                    else selectedTags + setOf(tag)
+                            }
+                        }
+                    }
+                    if (selectedTags.isNotEmpty()) {
+                        DialogMenuItem {
+                            text = "Clear filter"
+                            onClick = { selectedTags = emptySet() }
+                        }
+                    }
+                }
+            }
+        }
+        // Actions and the spoiler lens (right corner).
+        Stack {
+            direction = FlexDirection.row
+            css {
+                gap = 12.px
+                alignItems = AlignItems.center
             }
             if (canToggleSpoilers) {
                 react.dom.html.ReactHTML.span {
@@ -141,69 +214,10 @@ val QuestionList = FC<QuestionListProps> { props ->
                     }
                 }
             }
-        }
-        if (usePermission(room, RoomPermission.ADD_QUESTION)) {
-            RoomHeaderButton {
-                +"Create a question"
-                onClick = { addQuestion() }
-            }
-        }
-    }
-
-    // Tag filter bar
-    if (allTags.isNotEmpty()) {
-        Stack {
-            direction = FlexDirection.row
-            css {
-                flexWrap = FlexWrap.wrap
-                gap = 6.px
-                padding = Padding(8.px, 16.px)
-                maxWidth = layoutMode.wideContentWidth
-                marginLeft = Auto.auto
-                marginRight = Auto.auto
-                width = 100.pct
-                alignItems = AlignItems.center
-            }
-            react.dom.html.ReactHTML.span {
-                css {
-                    fontFamily = sansSerif
-                    fontSize = 12.px
-                    fontWeight = integer(600)
-                    color = Color("#999999")
-                    marginRight = 2.px
-                }
-                +"Filter:"
-            }
-            for (tag in allTags) {
-                val isSelected = tag in selectedTags
-                react.dom.html.ReactHTML.button {
-                    css(ChipCSS) {
-                        cursor = Cursor.pointer
-                        if (isSelected) {
-                            backgroundColor = MainPalette.primary.color
-                            color = NamedColor.white
-                        } else {
-                            backgroundColor = Color("#F0F0F0")
-                            color = Color("#666666")
-                            border = Border(1.px, LineStyle.solid, Color("#DDDDDD"))
-                        }
-                    }
-                    +tag
-                    onClick = {
-                        selectedTags = if (isSelected) selectedTags - setOf(tag) else selectedTags + setOf(tag)
-                    }
-                }
-            }
-            if (selectedTags.isNotEmpty()) {
-                react.dom.html.ReactHTML.button {
-                    css(ChipCSS) {
-                        cursor = Cursor.pointer
-                        backgroundColor = NamedColor.transparent
-                        color = Color("#999999")
-                        textDecoration = TextDecoration.underline
-                    }
-                    +"Clear"
-                    onClick = { selectedTags = emptySet() }
+            if (usePermission(room, RoomPermission.ADD_QUESTION)) {
+                RoomHeaderButton {
+                    +"Create a question"
+                    onClick = { addQuestion() }
                 }
             }
         }
@@ -238,7 +252,13 @@ val QuestionList = FC<QuestionListProps> { props ->
             backgroundColor = Color("#f2f2f2")
         }
 
-        visibleQuestions.map { question ->
+        val sortedQuestions = when (sortMode) {
+            // Latest group-prediction update first; untouched (or GP-invisible)
+            // questions sink to the end.
+            "activity" -> visibleQuestions.sortedByDescending { groupPreds[it.ref]?.ts ?: 0 }
+            else -> visibleQuestions
+        }
+        sortedQuestions.map { question ->
             QuestionItem {
                 this.key = question.id
                 this.question = question
