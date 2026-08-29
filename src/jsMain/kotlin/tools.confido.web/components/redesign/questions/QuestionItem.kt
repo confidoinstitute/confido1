@@ -113,7 +113,8 @@ val QuestionItem = FC<QuestionItemProps> { props ->
             val densities = Binner(space, bins).binRanges.map { dist.densityBetween(it) }
             val maxDensity = densities.max().takeIf { it > 0.0 } ?: return@run
             fun x(i: Int) = (i + 0.5) / bins * 100
-            fun y(v: Double) = 100 - v / maxDensity * 100
+            // The peak stops short of the tile's top edge (touching it looks odd).
+            fun y(v: Double) = 100 - v / maxDensity * 85
             val d = buildString {
                 append("M 0 100 L 0 ${y(densities[0])} ")
                 densities.forEachIndexed { i, v -> append("L ${x(i)} ${y(v)} ") }
