@@ -37,6 +37,12 @@ fun <P> decodeTopicPayload(topic: BoundTopic<P>): (JsonElement) -> WSResponse<P>
  * the server sends. Subscriptions to the same topic share one server subscription
  * and one decoded payload cache.
  */
+/** [useSubscription] gated by a condition: subscribes only while [cond] holds
+ *  (WSLoading otherwise), keeping the hook call unconditional — for topics that
+ *  are only worth the wire when some cheap local predicate is true. */
+fun <P> useSubscriptionIf(cond: Boolean, topic: BoundTopic<P>, clearOnStale: Boolean = false): WSResponse<P> =
+    useSubscription(if (cond) topic else null, clearOnStale)
+
 fun <P> useSubscription(topic: BoundTopic<P>?, clearOnStale: Boolean = false): WSResponse<P> {
     var value by useState<WSResponse<P>>(WSLoading())
 

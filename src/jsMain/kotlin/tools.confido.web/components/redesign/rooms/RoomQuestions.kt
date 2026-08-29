@@ -55,13 +55,18 @@ val QuestionList = FC<QuestionListProps> { props ->
     // tab) stay self-opting: clicking through is the deliberate peek. Per-room,
     // defaults to the forecaster view (anchoring is prospective); pointless in
     // rooms where the viewer is the only predictor.
-    val isModcaster = usePermission(room, RoomPermission.SUBMIT_PREDICTION) &&
-        usePermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+    // The lens is for anyone who predicts and can see at least one group answer
+    // on this surface — not just moderators: with EVERYONE-visible questions a
+    // plain forecaster gets the same ambient spoilers while updating. Relevance
+    // is data-driven: roomGroupPred arrives viewer-censored, so a non-null entry
+    // means there is something to hide (moderator-only questions never reach a
+    // forecaster's map, and fresh rooms have nothing to hide yet).
+    val spoilersExist = usePermission(room, RoomPermission.SUBMIT_PREDICTION) &&
+        groupPreds.values.any { it != null }
     // Member roles travel on their own topic (Room.members is censored down to
-    // the viewer's own membership), subscribed only for modcaster candidates.
-    val members = (useSubscription(
-        if (isModcaster) Topics.roomMembers(room.ref) else null) as? WSData)?.data
-    val canToggleSpoilers = isModcaster &&
+    // the viewer's own membership), subscribed only for toggle candidates.
+    val members = (useSubscriptionIf(spoilersExist, Topics.roomMembers(room.ref)) as? WSData)?.data
+    val canToggleSpoilers = spoilersExist &&
         (members?.count { it.role.hasPermission(RoomPermission.SUBMIT_PREDICTION) } ?: 0) >= 2
     // Persisted per (user × room) on the user record (User.uiSettings, synced
     // back via the self slice); absence = the default, the forecaster view.
