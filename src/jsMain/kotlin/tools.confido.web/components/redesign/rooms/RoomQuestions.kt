@@ -113,6 +113,31 @@ val QuestionList = FC<QuestionListProps> { props ->
                 alignItems = AlignItems.center
                 alignSelf = AlignSelf.center
             }
+            if (canToggleSpoilers) {
+                react.dom.html.ReactHTML.span {
+                    title = if (spoilersShown)
+                        "The tiles show the group's answers. Switch off to hide them while you form your own view."
+                    else
+                        "The group's answers are hidden on the tiles so they cannot anchor you. Switch on to show them."
+                    css { display = Display.flex; alignItems = AlignItems.center; margin = Margin(0.px, 4.px) }
+                    Switch {
+                        switchHeight = 26.0
+                        switchWidth = 50.0
+                        noColor = true
+                        onIcon = EyeIcon.create()
+                        offIcon = EyeOffIcon.create()
+                        checked = spoilersShown
+                        onChange = { e ->
+                            val newShown = e.target.checked
+                            optimisticShown = newShown
+                            runCoroutine {
+                                Client.call(Api.profileUiSetting(),
+                                    SetUiSetting(spoilerKey, if (newShown) "shown" else null))
+                            }
+                        }
+                    }
+                }
+            }
             if (allVisibleQuestions.size > 1) {
                 // The original sort-button design (icon + current mode, click
                 // cycles); a menu can replace the cycle when a third mode lands.
@@ -153,31 +178,6 @@ val QuestionList = FC<QuestionListProps> { props ->
                             icon = BinIcon
                             variant = DialogMenuItemVariant.dangerous
                             onClick = { selectedTags = emptySet() }
-                        }
-                    }
-                }
-            }
-            if (canToggleSpoilers) {
-                react.dom.html.ReactHTML.span {
-                    title = if (spoilersShown)
-                        "The tiles show the group's answers. Switch off to hide them while you form your own view."
-                    else
-                        "The group's answers are hidden on the tiles so they cannot anchor you. Switch on to show them."
-                    css { display = Display.flex; alignItems = AlignItems.center; margin = Margin(0.px, 4.px) }
-                    Switch {
-                        switchHeight = 26.0
-                        switchWidth = 50.0
-                        noColor = true
-                        onIcon = EyeIcon.create()
-                        offIcon = EyeOffIcon.create()
-                        checked = spoilersShown
-                        onChange = { e ->
-                            val newShown = e.target.checked
-                            optimisticShown = newShown
-                            runCoroutine {
-                                Client.call(Api.profileUiSetting(),
-                                    SetUiSetting(spoilerKey, if (newShown) "shown" else null))
-                            }
                         }
                     }
                 }
