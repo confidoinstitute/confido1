@@ -172,6 +172,8 @@ private val MenuPopover = FC<DialogMenuProps> { props ->
     // Captured once per opening; the menu should not move if the page scrolls or
     // some other button is pressed while it is open.
     val anchor = useMemo(props.open) { if (props.open) lastTriggerAnchor else null }
+    // Above every open dialog, so a menu opened from within one stacks on top.
+    val popoverZIndex = useAboveModalsZIndex()
 
     // Unlike the phone sheet, whose host component typically unmounts on navigation,
     // a popover can outlive it (e.g. the sidebar account menu) — close it whenever
@@ -203,7 +205,7 @@ private val MenuPopover = FC<DialogMenuProps> { props ->
                     left = 0.px
                     right = 0.px
                     bottom = 0.px
-                    zIndex = integer(2100)
+                    zIndex = integer(popoverZIndex)
                     backgroundColor = rgb(0, 0, 0, 0.1)
                 }
                 onClick = { props.onClose?.invoke() }
@@ -211,7 +213,7 @@ private val MenuPopover = FC<DialogMenuProps> { props ->
             div {
                 css {
                     position = Position.fixed
-                    zIndex = integer(2101)
+                    zIndex = integer(popoverZIndex + 1)
                     backgroundColor = Color("#FFFFFF")
                     borderRadius = 10.px
                     border = Border(1.px, LineStyle.solid, Color("#EEEEEE"))
@@ -304,7 +306,7 @@ val DialogCore = FC<DialogCoreProps> { props ->
     }
 
     val theme = tools.confido.web.hooks.useTheme()
-    useBackdrop(props.open) {
+    val dialogZIndex = useBackdrop(props.open) {
         props.onClose?.invoke()
     }
     Slide {
@@ -321,7 +323,7 @@ val DialogCore = FC<DialogCoreProps> { props ->
                 css {
                     height = 100.pct
                     width = 100.pct
-                    zIndex = integer(2100)
+                    zIndex = integer(dialogZIndex)
                     position = Position.fixed
                     bottom = 0.px
                     if (layoutMode >= LayoutMode.TABLET) {

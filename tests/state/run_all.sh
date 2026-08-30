@@ -117,6 +117,7 @@ run group_revoke_test.py   # skips unless room_groups is enabled (CONFIDO_EXTENS
 if [ "$BROWSER" = 1 ]; then
     run browser_test.py
     run member_browser_test.py
+    run dialog_stack_browser_test.py
     run connection_browser_test.py   # kills + restarts the scratch server itself
 fi
 

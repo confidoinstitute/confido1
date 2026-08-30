@@ -297,7 +297,9 @@ val UserAdmin = FC<Props> {
 
     val activate = useCoroutineLock()
     var typeHelpOpen by useDialog(UserTypeHelpDialog)
-    val editUserOpen = useEditDialog(EditUserDialog, jso { onTypeHelp = {typeHelpOpen = true} }, temporaryHide=typeHelpOpen)
+    // The help dialog stacks above the edit dialog (dialogs dim the layers below
+    // them), so the edit dialog no longer needs to temporarily hide itself.
+    val editUserOpen = useEditDialog(EditUserDialog, jso { onTypeHelp = {typeHelpOpen = true} })
     val deleteUserOpen = useEditDialog(DeleteUserDialog)
     val layoutMode = use(LayoutModeContext)!!
 

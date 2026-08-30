@@ -257,7 +257,6 @@ external interface CalibrationViewBaseProps: PropsWithClassName {
     var showTable: Boolean?
     var graphContentOnly: Boolean?
     var externalHelpOpen: RefObject<(CalibrationHelpSection)->Unit>?
-    var onHelpChange: ((Boolean)->Unit)?
 }
 external interface CalibrationViewProps : CalibrationViewBaseProps {
     var data : CalibrationVector?
@@ -272,9 +271,6 @@ val CalibrationView = FC<CalibrationViewProps> { props->
         open = helpSectionOpen != null
         initialSection = helpSectionOpen
         onClose = { helpSectionOpen = null }
-    }
-    useEffect(helpSectionOpen != null) {
-        props.onHelpChange?.invoke(helpSectionOpen != null)
     }
     useEffectWithCleanup {
         props.externalHelpOpen?.current = { helpSectionOpen = it }
@@ -334,7 +330,6 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
     var detailBin by useState<CalibrationBin>()
     val calibrationHelpOpen = useRef<(CalibrationHelpSection)->Unit>()
     var detail by useState<List<CalibrationQuestion>>()
-    var helpOpen by useState(false)
     val presenterCtl = use(PresenterContext )!!
     val layoutMode = use(LayoutModeContext)!!
     val canDetail = (
@@ -347,7 +342,9 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
         )
     if (canDetail && detail != null) {
         CalibrationDetailDialog {
-            open = detailBin != null && !helpOpen
+            // The help dialog stacks above this one when opened from it (dialogs
+            // dim the layers below them) — no need to hide while help is open.
+            open = detailBin != null
             this.data = detail!!
             bin = detailBin
             onClose = { detailBin = null }
@@ -375,7 +372,6 @@ val CalibrationReqView = FC<CalibrationReqViewProps> { props->
             this.who = props.req.who
             +props.except("req", "externalHelpOpen")
             this.externalHelpOpen = combineRefs(calibrationHelpOpen, props.externalHelpOpen)
-            onHelpChange = { helpOpen = it }
         }
         if (useMyUser()?.type != UserType.GUEST && layoutMode >= LayoutMode.TABLET && req.who != Myself)
         div {
