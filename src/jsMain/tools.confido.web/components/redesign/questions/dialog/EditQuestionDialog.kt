@@ -362,20 +362,26 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                             onChange = { visibility -> commentVisibility = visibility }
                         }
                     }
-                // TODO: Re-enable once sensitivity is implemented fully.
-                /*
-                if (props.preset != QuestionPreset.SENSITIVE)
+                if (props.preset != QuestionPreset.SENSITIVE) {
+                    // Turning sensitivity off after answers exist would expose
+                    // predictions made under the anonymity promise — the server
+                    // rejects that edit, so the switch locks.
+                    val sensitivityLocked = props.entity?.sensitive == true && entityCounts.predictions != 0
                     FormSwitch {
                         label = "Sensitive"
-                        comment = if (isSensitive) {
-                            "Moderators will not be able to see individual answers."
+                        comment = if (sensitivityLocked) {
+                            "Cannot be turned off: answers were already made under the anonymity promise."
+                        } else if (isSensitive) {
+                            "Nobody (including moderators) can see individual answers; the group answer " +
+                                "appears once at least $SENSITIVE_MIN_PREDICTORS people have answered."
                         } else {
                             "Moderators will be able to see individual answers."
                         }
                         checked = isSensitive
+                        disabled = sensitivityLocked
                         onChange = { e -> isSensitive = e.target.checked }
                     }
-                */
+                }
             }
             FormSection {
                 title = "Tags"

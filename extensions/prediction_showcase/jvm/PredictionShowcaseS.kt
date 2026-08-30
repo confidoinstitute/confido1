@@ -30,7 +30,7 @@ object PredictionShowcaseSE : ServerExtension, PredictionShowcaseExtension() {
             )
         }) { qRef, _ ->
             call.withQuestion(qRef) {
-                assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, "You cannot view individual predictions.")
+                assertIndividualPredictionAccess("You cannot view individual predictions.")
                 val predictions = mutableListOf<ValueWithUser>()
 
                 // Add reference forecast for binary questions

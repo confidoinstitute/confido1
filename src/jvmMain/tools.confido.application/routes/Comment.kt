@@ -68,7 +68,13 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
             val canSeeOthers = canViewAll || canView
             comments.values.sortedBy { it.timestamp }
                 .filter { it.user == viewer.ref || canSeeOthers }
-                .map { makeCommentPresentation(it, QuestionCommentExtraData(it.prediction?.dist), viewer, room) }
+                .map { comment ->
+                    // On a sensitive question, others' attached predictions stay hidden
+                    // (attachment is blocked there; this covers pre-flag comments).
+                    val dist = comment.prediction?.dist
+                        ?.takeIf { !question.sensitive || comment.user == viewer.ref }
+                    makeCommentPresentation(comment, QuestionCommentExtraData(dist), viewer, room)
+                }
         }
     }
 
@@ -83,6 +89,8 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
             if (room.commentTemplate.isNotBlank() && createdComment.content.trim() == room.commentTemplate.trim())
                 badRequest("Please modify the comment template before posting.")
 
+            if (createdComment.attachPrediction && question.sensitive)
+                badRequest("Predictions cannot be attached to comments on a sensitive question.")
             val prediction = if (createdComment.attachPrediction) {
                 serverState.userPred[question.ref]?.get(user.ref)
             } else { null }

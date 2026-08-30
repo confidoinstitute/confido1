@@ -55,6 +55,11 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
         selectedQuestions.all { roomQuestions[it.id]?.effectiveScheduleIn(room)?.score != null }
     }
 
+    // Sensitive questions have no individual export (server-enforced for everyone,
+    // moderators included); a mixed selection exports the non-sensitive ones only.
+    val canIndividual = usePermission(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
+    val sensitiveCount = selectedQuestions.count { roomQuestions[it.id]?.sensitive == true }
+
     val params = parametersOf(
         "questions" to listOf(selectedQuestions.map { it.id }.joinToString(",")),
         "what" to listOf(exportWhat),
@@ -118,7 +123,7 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
                             title = "Export predictions as..."
                             options = buildList {
                                 add(false to "Group aggregate")
-                                if (usePermission(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS))
+                                if (canIndividual && sensitiveCount < selectedQuestions.size)
                                     add(true to "Individual predictions")
                             }
                             value = individual
@@ -135,6 +140,11 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
                             }
                             value = exportHistory
                             onChange = { value -> exportHistory = value }
+                        }
+                    }
+                    if (individual && sensitiveCount > 0) {
+                        p {
+                            +"Sensitive questions are excluded from individual exports."
                         }
                     }
                     if (selectedNumeric && !individual) {

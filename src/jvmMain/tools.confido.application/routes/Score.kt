@@ -41,7 +41,11 @@ private suspend fun computeScoreboard(room: Room, observer: User): List<Scoreboa
         ?: room.questions
     val questions = questionRefs.mapDeref().filter { q ->
         q.answerSpace is BinarySpace && q.state == QuestionState.RESOLVED && q.resolution != null &&
-                q.effectiveSchedule.score != null
+                q.effectiveSchedule.score != null &&
+                // Sensitive questions never enter the scoreboard: a per-user score
+                // contribution over a resolved binary question is invertible back to
+                // the prediction (differencing two scoreboard snapshots isolates it).
+                !q.sensitive
     }
     val minQ = getenv("CONFIDO_SCORE_MIN_QUESTIONS")?.toIntOrNull() ?: 1
     val entries = serverState.users.mapNotNull { (_, u) ->

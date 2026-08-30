@@ -214,7 +214,10 @@ class CommentExport  (
             "comment" to c.content,
             "num_likes" to c.likes.size.toString(),
         )
-        c.prediction?.let {pred->
+        // An attached prediction is an individual prediction; sensitive questions
+        // never export those (attachment is blocked there anyway — this covers
+        // comments predating the flag).
+        if (!q.sensitive) c.prediction?.let {pred->
             ret += exportDist(pred.dist)
         }
         return ret

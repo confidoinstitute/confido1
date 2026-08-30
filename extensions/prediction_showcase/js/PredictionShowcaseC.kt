@@ -186,7 +186,9 @@ val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> 
 }
 
 private val PredictionShowcasePVEditorComponent = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
+    // Sensitive questions cannot be showcased (individual predictions, server-enforced).
     val questions = tools.confido.web.components.redesign.presentation.useRoomQuestions()
+        .filter { !it.sensitive }
     val view = (props.action as? tools.confido.state.SetPresenterViewAction)?.view as? PredictionShowcasePV ?: return@FC
     val onViewChange: (tools.confido.state.PresenterView) -> Unit = { v -> props.onChange(tools.confido.state.SetPresenterViewAction(v)) }
     tools.confido.web.components.redesign.presentation.FieldLabel { +"Question" }
@@ -238,6 +240,8 @@ object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
                 tbody {
                     room.questions.reversed().forEach { qRef ->
                         val q = qmap[qRef.id] ?: return@forEach
+                        // No showcase for sensitive questions (individual predictions).
+                        if (q.sensitive) return@forEach
                         tr {
                             td { +q.name }
                             td { QuestionPredictors { this.question = q.ref } }

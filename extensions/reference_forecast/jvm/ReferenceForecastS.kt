@@ -57,9 +57,11 @@ object ReferenceForecastSE : ServerExtension, ReferenceForecastExtension() {
             call.withRoom(rRef) {
                 assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, "You cannot view individual predictions.")
 
-                // Find all questions with reference forecasts
+                // Find all questions with reference forecasts. Sensitive questions stay
+                // out: a per-user score against a single reference is a monotone
+                // function of that user's prediction.
                 val questionsWithRef = room.questions.mapNotNull { qRef ->
-                    qRef.deref()?.let { q ->
+                    qRef.deref()?.takeIf { !it.sensitive }?.let { q ->
                         q.extensionData[ReferenceForcastKey]?.let { ref ->
                             q to ref
                         }

@@ -15,12 +15,6 @@ enum class QuestionPreset(val title: String, val subtitle: String, val emoji: St
     BELIEF("Implicit belief question", "Not intended to be resolved", "\uD83D\uDCAD"),
     SENSITIVE("Sensitive question", "Answers are anonymous", "\uD83D\uDD12"),
     NONE("No template", "Create question from scratch", "");
-
-    fun isAvailable(): Boolean {
-        // Currently, Sensitive is not fully implemented.
-        // We can remove this function once it is finished.
-        return this != SENSITIVE
-    }
 }
 
 external interface AddQuestionPresetDialogProps : Props {
@@ -103,7 +97,7 @@ val AddQuestionPresetDialog = FC<AddQuestionPresetDialogProps> { props ->
                 }
                 +"What kind of question are you planning to ask?"
             }
-            QuestionPreset.values().filter { it.isAvailable() }.map { preset ->
+            QuestionPreset.values().map { preset ->
                 PresetButton {
                     palette = MainPalette.default
                     onClick = { props.onPreset?.invoke(preset) }

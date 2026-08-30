@@ -289,7 +289,8 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
                     // Questions the viewer cannot see stay out entirely — the payload
                     // keys used to enumerate hidden/draft question ids to all members.
                     q != null && (q.visible || canViewHidden) &&
-                        (canViewAll || canViewGroupPred(q, preds[ref]?.get(viewerRef)))
+                        (canViewAll || canViewGroupPred(q, preds[ref]?.get(viewerRef))) &&
+                        q.aggregatesVisible(preds[ref]?.size ?: 0)
                 }
             }.toSet()
         }

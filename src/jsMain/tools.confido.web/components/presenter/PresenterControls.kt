@@ -55,9 +55,12 @@ val GroupPredPC = FC<PresenterControlsProps<GroupPredPV>> { props ->
  *  presentations are moderator-launched anyway). */
 val BinaryHistogramPC = FC<PresenterControlsProps<BinaryHistogramPV>> { props ->
     val myUser = useMyUser()
+    val question = useQuestion(props.view.question)
     val rooms = (useSubscription(Topics.rooms()) as? WSData)?.data
     val room = rooms?.values?.firstOrNull { props.view.question in it.questions }
-    if (room?.hasPermission(myUser, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS) == true) {
+    // Sensitive questions never show names (server sends nameless bins to everyone).
+    if (question?.sensitive != true &&
+        room?.hasPermission(myUser, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS) == true) {
         FormSwitch {
             label = "Show nicknames"
             disabled = props.disabled
@@ -140,8 +143,10 @@ val ComparePC = FC<PresenterControlsProps<ComparePV>> { props ->
         .sortedBy { it.ts }.distinctBy { it.name }
     // The individual modes need VIEW_INDIVIDUAL_PREDICTIONS; the presenter window
     // normally shares this session, so gate on the controlling user's permission
-    // instead of hedging in a caveat.
-    val canViewIndividual = room?.hasPermission(myUser, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS) == true
+    // instead of hedging in a caveat. Sensitive questions have no individual modes
+    // for anyone (server-enforced).
+    val canViewIndividual = room?.hasPermission(myUser, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS) == true &&
+        question?.sensitive != true
 
     if (question?.answerSpace is BinarySpace && canViewIndividual) {
         FormField {

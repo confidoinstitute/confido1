@@ -81,7 +81,10 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
     // --- Scoring ---
 
     fun userScore(room: Room, user: Ref<User>, config: MillionaireGameAction): Double? {
-        val qs = questions(room.questions.mapDeref(), config.tag)
+        // Sensitive questions never enter the per-user scoring — a score over a
+        // single resolved question is invertible back to the prediction. (Filtered
+        // here, not in questions(), so the game flow itself still runs them.)
+        val qs = questions(room.questions.mapDeref(), config.tag).filter { !it.sensitive }
         return when (config.mode) {
             MillionaireMode.MULTIPLICATIVE -> {
                 var score: Double? = null

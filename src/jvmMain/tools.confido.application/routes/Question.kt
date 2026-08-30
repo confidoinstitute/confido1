@@ -59,6 +59,16 @@ data class QuestionContext(val inUser: User?, val question: Question) {
         val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
         val lastPrediction = serverState.userPred[ref]?.get(user.ref)
         if (!(canViewAll || canViewGroupPred(ref.deref(), lastPrediction))) unauthorized(message)
+        if (!question.aggregatesVisible(serverState.userPred[ref]?.size ?: 0)) unauthorized(message)
+    }
+
+    /** Individual predictions of a sensitive question are off-limits to everyone —
+     *  the sensitivity check overrides VIEW_INDIVIDUAL_PREDICTIONS, moderators and
+     *  admins included. Every surface serving per-user prediction data (named or
+     *  anonymized) must gate through this, not a bare permission check. */
+    fun assertIndividualPredictionAccess(message: String) {
+        assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, message)
+        if (question.sensitive) forbidden(message)
     }
 }
 
@@ -135,6 +145,11 @@ fun questionRoutes(routing: Routing) = routing.apply {
                     tools.confido.store.questionStore.modify(ref) { orig->
                         if (question.numPredictions > 0 && question.answerSpace != edit.question.answerSpace) {
                             badRequest("Cannot change answer space of a question with predictions.")
+                        }
+                        // Sensitivity is a promise to the people who answered — flipping
+                        // it off later would expose predictions made under it.
+                        if (orig.sensitive && !edit.question.sensitive && question.numPredictions > 0) {
+                            badRequest("Cannot unmark a question as sensitive once it has predictions.")
                         }
 
                         // If withState wasn't used, this will fill in the history automatically.
@@ -304,8 +319,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
     apiST(Api.questionUserPredCompare) { qRef, req ->
         call.withQuestion(qRef) {
             assertVisible()
-            assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS,
-                "You cannot view individual predictions.")
+            assertIndividualPredictionAccess("You cannot view individual predictions.")
             val times = listOf(req.ts1, req.ts2).map { it?.let { ts -> Instant.fromEpochSeconds(ts.toLong()) } }
             val predictors = serverState.userPred[ref]?.keys ?: emptySet()
             predictors.mapNotNull { u ->
@@ -341,6 +355,8 @@ fun questionRoutes(routing: Routing) = routing.apply {
             val canViewAll = room.hasPermission(viewer, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
             if (!(canViewAll || canViewGroupPred(question, preds?.get(viewerRef))))
                 unauthorized("You cannot view this group prediction.")
+            if (!question.aggregatesVisible(preds?.size ?: 0))
+                unauthorized("You cannot view this group prediction.")
             head
         }
     }) { qRef, _ ->
@@ -373,8 +389,11 @@ fun questionRoutes(routing: Routing) = routing.apply {
             sharedClassView(),
             roomStore.state.asView(),
             questionStore.state.asView().at(qRef.id),
-            latestPredictions.state.asView().map { it[qRef]?.get(viewerRef) },
-        ) { cls, _, question, myPred ->
+            // The whole per-question map, not just the viewer's own prediction: the
+            // sensitive-question anonymity gate needs the predictor count. Outcome
+            // dedup keeps the subscription stable across unrelated prediction churn.
+            latestPredictions.state.asView().at(qRef),
+        ) { cls, _, question, preds ->
             val room = serverState.questionRoom[qRef]?.deref()
             val censor = ClassCensor(cls)
             when {
@@ -384,8 +403,10 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 // censorQuestion (hidden questions used to leak their aggregates here).
                 !question.visible
                     && !censor.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS) -> GroupPredAccess.NOT_FOUND
+                // The sensitive-question threshold binds everyone, VIEW_ALL included.
+                !question.aggregatesVisible(preds?.size ?: 0) -> GroupPredAccess.HIDDEN
                 censor.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
-                    || canViewGroupPred(question, myPred) -> GroupPredAccess.VISIBLE
+                    || canViewGroupPred(question, preds?.get(viewerRef)) -> GroupPredAccess.VISIBLE
                 else -> GroupPredAccess.HIDDEN
             }
         }
@@ -420,19 +441,26 @@ fun questionRoutes(routing: Routing) = routing.apply {
             val canViewAll = room.hasPermission(viewer, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
             if (!(canViewAll || canViewGroupPred(question, preds?.get(viewerRef))))
                 unauthorized("You cannot view this group prediction.")
+            if (!question.aggregatesVisible(preds?.size ?: 0))
+                unauthorized("You cannot view this group prediction.")
 
             if (question.answerSpace != BinarySpace) {
                 badRequest("Histograms are only supported for binary questions.")
             }
 
             // TODO: configurable (from query params?)
-            val binner = BinaryHistogramBinner()
+            // Sensitive questions get fixed coarse bins (see SensitiveHistogramBinning).
+            val binner = BinaryHistogramBinner(
+                if (question.sensitive) SensitiveHistogramBinning else DefaultHistogramBinning)
 
             val predictions = preds?.values ?: notFound("No user predictions found.")
 
             // Per-bin user lists are included whenever the viewer may see individual
-            // predictions; clients decide whether to actually display them.
-            val showNames = room.hasPermission(viewer, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
+            // predictions; clients decide whether to actually display them. On a
+            // sensitive question a per-bin user list IS an individual prediction,
+            // so the nameless branch binds everyone there.
+            val showNames = !question.sensitive &&
+                room.hasPermission(viewer, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
 
             if (showNames) {
                 val pairs = predictions.mapNotNull { pred ->

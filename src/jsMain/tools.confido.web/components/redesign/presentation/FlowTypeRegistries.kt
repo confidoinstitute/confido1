@@ -376,6 +376,8 @@ val BinaryHistogramPVEditor = FC<FlowItemEditorProps> { props ->
     val questions = useRoomQuestions().filter { it.answerSpace is tools.confido.spaces.BinarySpace }
     val view = props.action.innerView() as? BinaryHistogramPV ?: return@FC
     val onViewChange = wrapViewChange(props.onChange)
+    // Sensitive questions never show names (the server sends nameless bins to everyone).
+    val sensitive = questions.firstOrNull { it.id == view.question.id }?.sensitive == true
 
     FieldLabel { +"Question" }
     QuestionPicker {
@@ -383,7 +385,7 @@ val BinaryHistogramPVEditor = FC<FlowItemEditorProps> { props ->
         selectedId = view.question.id
         onChange = { onViewChange(view.copy(question = Ref(it))) }
     }
-    Stack {
+    if (!sensitive) Stack {
         direction = FlexDirection.row
         css { alignItems = AlignItems.center; gap = 8.px; marginTop = 4.px }
         Checkbox {
@@ -515,6 +517,9 @@ val ComparePVEditor = FC<FlowItemEditorProps> { props ->
     val questions = useRoomQuestions()
     val view = props.action.innerView() as? ComparePV ?: return@FC
     val onViewChange = wrapViewChange(props.onChange)
+    // Sensitive questions have no individual views at all (server-enforced) —
+    // only the aggregate distributions mode is offered.
+    val sensitive = questions.firstOrNull { it.id == view.question.id }?.sensitive == true
 
     FieldLabel { +"Question" }
     QuestionPicker {
@@ -528,28 +533,30 @@ val ComparePVEditor = FC<FlowItemEditorProps> { props ->
         placeholder = "e.g. Before discussion"
         onChange = { e -> onViewChange(view.copy(tp1 = MarkTP(e.target.value), tp2 = NowTP)) }
     }
-    FieldLabel { +"View" }
-    Select {
-        value = view.mode.name
-        onChange = { e ->
-            CompareViewMode.entries.find { it.name == e.target.value }
-                ?.let { onViewChange(view.copy(mode = it)) }
+    if (!sensitive) {
+        FieldLabel { +"View" }
+        Select {
+            value = view.mode.name
+            onChange = { e ->
+                CompareViewMode.entries.find { it.name == e.target.value }
+                    ?.let { onViewChange(view.copy(mode = it)) }
+            }
+            css { width = 100.pct }
+            option { value = CompareViewMode.DISTRIBUTIONS.name; +"Distributions" }
+            option { value = CompareViewMode.CHANGES.name; +"Individual changes (binary)" }
+            option { value = CompareViewMode.SCATTER.name; +"Scatter (binary)" }
         }
-        css { width = 100.pct }
-        option { value = CompareViewMode.DISTRIBUTIONS.name; +"Distributions" }
-        option { value = CompareViewMode.CHANGES.name; +"Individual changes (binary)" }
-        option { value = CompareViewMode.SCATTER.name; +"Scatter (binary)" }
-    }
-    Stack {
-        direction = FlexDirection.row
-        css { alignItems = AlignItems.center; gap = 8.px; marginTop = 4.px }
-        Checkbox {
-            checked = view.showNames
-            onChange = { e -> onViewChange(view.copy(showNames = e.target.checked)) }
-        }
-        span {
-            css { fontFamily = sansSerif; fontSize = 14.px }
-            +"Show predictor names (individual views)"
+        Stack {
+            direction = FlexDirection.row
+            css { alignItems = AlignItems.center; gap = 8.px; marginTop = 4.px }
+            Checkbox {
+                checked = view.showNames
+                onChange = { e -> onViewChange(view.copy(showNames = e.target.checked)) }
+            }
+            span {
+                css { fontFamily = sansSerif; fontSize = 14.px }
+                +"Show predictor names (individual views)"
+            }
         }
     }
 }

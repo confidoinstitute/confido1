@@ -285,12 +285,26 @@ fun main() {
                                 null -> badRequest("You must specify if you export group or individual predictions.")
                             }
 
+                            // Sensitive questions never leave individually (this binds
+                            // VIEW_INDIVIDUAL_PREDICTIONS holders too); their aggregates
+                            // leave only above the anonymity threshold.
+                            val exportable = when (group) {
+                                false -> questions.filter { !it.sensitive }
+                                else -> questions.filter {
+                                    it.aggregatesVisible(serverState.userPred[it.ref]?.size ?: 0)
+                                }
+                            }
+                            if (exportable.isEmpty())
+                                unauthorized("The selected questions are sensitive; their " +
+                                    if (group == false) "individual predictions cannot be exported."
+                                    else "aggregates are not available yet.")
+
                             val history =
                                 call.parameters["history"]?.let { ExportHistory.valueOf(it) } ?: ExportHistory.LAST
                             val buckets = call.parameters["buckets"]?.toIntOrNull() ?: 32
                             if (buckets < 0) badRequest("You cannot request negative amount of buckets.")
 
-                            PredictionExport(questions, group, history, buckets)
+                            PredictionExport(exportable, group, history, buckets)
                         }
                         "comments" -> {
                             if (!rooms.all { it.hasPermission(user, RoomPermission.VIEW_QUESTION_COMMENTS) })
