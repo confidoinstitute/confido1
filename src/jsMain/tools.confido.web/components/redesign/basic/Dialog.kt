@@ -79,6 +79,7 @@ external interface DialogMenuProps : PropsWithChildren, PropsWithRef<HTMLElement
 
     /** Defaults to true. */
     var hasCloseButton: Boolean?
+
 }
 
 val DialogMenu = FC<DialogMenuProps> { props->
@@ -225,14 +226,20 @@ private val MenuPopover = FC<DialogMenuProps> { props ->
                     if (anchor != null) {
                         val vw = window.innerWidth.toDouble()
                         val vh = window.innerHeight.toDouble()
+                        // Never narrower than the trigger: menus opened from wide,
+                        // select-like controls align with them (combo look); the
+                        // usual small-button triggers keep the 240..340 defaults.
+                        val anchorWidth = anchor.right - anchor.left
+                        val widthCap = maxOf(340.0, anchorWidth)
+                        minWidth = maxOf(240.0, anchorWidth).px
                         // Grow from the trigger towards the viewport center, and open
                         // downwards unless there is clearly more room above.
                         if ((anchor.left + anchor.right) / 2 < vw / 2) {
                             left = anchor.left.px
-                            maxWidth = minOf(340.0, vw - anchor.left - 8).px
+                            maxWidth = minOf(widthCap, vw - anchor.left - 8).px
                         } else {
                             right = (vw - anchor.right).px
-                            maxWidth = minOf(340.0, anchor.right - 8).px
+                            maxWidth = minOf(widthCap, anchor.right - 8).px
                         }
                         val spaceBelow = vh - anchor.bottom
                         if (spaceBelow >= 280 || spaceBelow >= anchor.top) {

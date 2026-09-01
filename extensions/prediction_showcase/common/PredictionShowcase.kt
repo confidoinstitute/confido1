@@ -21,6 +21,9 @@ data class PredictionShowcasePV(
     val question: Ref<Question>
 ): PresenterView() {
     override fun describe() = "Individual predictions with group prediction"
+    override fun questionRefs() = listOf(question)
+    override fun mapQuestionRefs(f: (Ref<Question>) -> Ref<Question>) = copy(question = f(question))
+    override fun configProblem() = if (question.id.isEmpty()) "No question selected" else null
 }
 
 @Serializable
@@ -30,6 +33,8 @@ data class GroupPredictionComparePV(
     val questionGroup: String? = null
 ): PresenterView() {
     override fun describe() = "Compare group predictions across questions"
+    // Backfilled by the flow editor's roomSubject; guards hand-crafted payloads.
+    override fun configProblem() = if (room.id.isEmpty()) "No room set" else null
 }
 
 open class PredictionShowcaseExtension: Extension {

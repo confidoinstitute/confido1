@@ -37,10 +37,6 @@ suspend fun stopPresenting() {
     try { Client.call(Api.presenterStop()) } catch (e: ApiError) {}
 }
 
-enum class  PresenterButtonState {
-    NORMAL, SNACKBAR_OPEN, DIALOG_OPEN
-}
-
 fun openPresenterWindow() {
     // this seems to force new window (not tab) in both Firefox and Chrome
     window.open("/presenter", WindowTarget._blank, "popup")

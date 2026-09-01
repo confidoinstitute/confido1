@@ -41,6 +41,25 @@ abstract class FlowAction {
      *  Called with room context when the action is processed during a presentation
      *  run (server-only; the [EntityLookup] is the server's resolver). */
     open fun getNavigateUrl(room: Room, lookup: EntityLookup): String? = null
+    /** All question refs this action targets or displays, recursively. Used to
+     *  validate that an authored flow stays within its room. Extensions must
+     *  override for actions carrying question refs. */
+    open fun questionRefs(): List<Ref<Question>> = emptyList()
+    /** All presenter views this action can set, recursively. Used for validity
+     *  checks when a flow is saved. */
+    open fun embeddedViews(): List<PresenterView> = listOfNotNull(presenterView)
+    /** Copy with every question ref (recursively, incl. views) transformed — the
+     *  write-side twin of [questionRefs], used to substitute the loop sentinel at
+     *  expansion. Extensions whose actions carry question refs must override. */
+    open fun mapQuestionRefs(f: (Ref<Question>) -> Ref<Question>): FlowAction = this
+    /** Amend the [ExpectedWorld] with this action's authoring-time-predictable
+     *  effects (question state changes, created marks); see [ExpectedWorld].
+     *  Runtime-dependent effects have no representation here on purpose. */
+    open fun simulate(world: ExpectedWorld): ExpectedWorld = world
+    /** Human-readable reason this action is not yet fully configured (unset
+     *  question, blank name, ...), or null when complete. A non-null value blocks
+     *  saving in the flow editor and is rejected server-side. */
+    open fun configProblem(): String? = null
 }
 
 /** Change a question's state (e.g. open, close, hide). */
@@ -66,6 +85,13 @@ data class SetQuestionStateAction(
         ViewerNavigateTarget.TO_ROOM -> room.urlPrefix
         else -> null
     }
+    override fun questionRefs() = listOf(question)
+    override fun mapQuestionRefs(f: (Ref<Question>) -> Ref<Question>) = copy(question = f(question))
+    override fun configProblem() = if (question.id.isEmpty()) "No question selected" else null
+    override fun simulate(world: ExpectedWorld): ExpectedWorld {
+        val q = world.question(question) ?: return world
+        return world.withQuestion((setGroupPredVisibility?.apply(q) ?: q).withState(newState))
+    }
 }
 
 /** Set a specific presenter view (e.g. show group predictions, invite link). */
@@ -76,6 +102,9 @@ data class SetPresenterViewAction(
 ) : FlowAction() {
     override fun describe() = "Show ${view.describe()} on presenter"
     override val presenterView get() = view
+    override fun questionRefs() = view.questionRefs()
+    override fun mapQuestionRefs(f: (Ref<Question>) -> Ref<Question>) = copy(view = view.mapQuestionRefs(f))
+    override fun configProblem() = view.configProblem()
 }
 
 /** Change state for all questions matching a given tag. */
@@ -104,6 +133,15 @@ data class SetTaggedQuestionsStateAction(
         ViewerNavigateTarget.TO_ROOM -> room.urlPrefix
         else -> null
     }
+    override fun configProblem() = if (tag.isBlank()) "No tag specified" else null
+    override fun simulate(world: ExpectedWorld): ExpectedWorld =
+        world.room.questions.mapNotNull { world.question(it) }.fold(world) { w, q ->
+            when {
+                tag in q.tags -> w.withQuestion((setGroupPredVisibility?.apply(q) ?: q).withState(newState))
+                hideOtherQuestions -> w.withQuestion(q.withState(QuestionState.DRAFT))
+                else -> w
+            }
+        }
 }
 
 /** Navigate presentation followers to a specific question. */
@@ -115,6 +153,9 @@ data class NavigateToQuestionAction(
     // Generic, deref-free — see SetQuestionStateAction.describe.
     override fun describe() = "Navigate viewers to a question"
     override fun getNavigateUrl(room: Room, lookup: EntityLookup) = room.urlPrefix + Question.urlPrefix(question.id)
+    override fun questionRefs() = listOf(question)
+    override fun mapQuestionRefs(f: (Ref<Question>) -> Ref<Question>) = copy(question = f(question))
+    override fun configProblem() = if (question.id.isEmpty()) "No question selected" else null
 }
 
 /** Navigate presentation followers to an arbitrary URL. */
@@ -125,6 +166,7 @@ data class NavigateViewersAction(
 ) : FlowAction() {
     override fun describe() = "Navigate viewers to $url"
     override fun getNavigateUrl(room: Room, lookup: EntityLookup) = url
+    override fun configProblem() = if (url.isBlank()) "No URL specified" else null
 }
 
 /** Execute multiple actions in sequence. */
@@ -134,6 +176,15 @@ data class CompositeAction(
     val actions: List<FlowAction>,
 ) : FlowAction() {
     override fun describe() = "${actions.size} actions"
+    /** The last nested view wins, matching sequential-execution semantics. */
+    override val presenterView: PresenterView?
+        get() = actions.asReversed().firstNotNullOfOrNull { it.presenterView }
+    override fun questionRefs() = actions.flatMap { it.questionRefs() }
+    override fun embeddedViews() = actions.flatMap { it.embeddedViews() }
+    override fun mapQuestionRefs(f: (Ref<Question>) -> Ref<Question>) =
+        copy(actions = actions.map { it.mapQuestionRefs(f) })
+    override fun simulate(world: ExpectedWorld) = actions.fold(world) { w, a -> a.simulate(w) }
+    override fun configProblem() = actions.firstNotNullOfOrNull { it.configProblem() }
 }
 
 /**
@@ -152,6 +203,11 @@ data class CreateMarkAction(
     override fun describe() =
         if (question != null) "Create timeline marker \"$name\""
         else "Create room-wide timeline marker \"$name\""
+    override fun questionRefs() = listOfNotNull(question)
+    override fun mapQuestionRefs(f: (Ref<Question>) -> Ref<Question>) = copy(question = question?.let(f))
+    override fun configProblem() = if (name.isBlank()) "No marker name" else null
+    override fun simulate(world: ExpectedWorld) =
+        if (name.isBlank()) world else world.withMark(name, question)
 }
 
 /** Describe the group prediction visibility suffix for action descriptions. */

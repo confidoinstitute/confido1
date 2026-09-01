@@ -1,11 +1,13 @@
 package tools.confido.web.components.redesign.forms
 
 import tools.confido.web.components.redesign.basic.sansSerif
+import tools.confido.web.components.redesign.basic.useAboveModalsZIndex
 import js.objects.unsafeJso as jso
 import react.*
 import react.select.*
 import react.select.Select as ReactSelectComponent
 import tools.confido.question.Question
+import tools.confido.state.CURRENT_QUESTION
 import web.cssom.*
 
 /**
@@ -49,13 +51,23 @@ external interface QuestionPickerProps : Props {
     var placeholder: String?
     /** Whether selection can be cleared. */
     var clearable: Boolean?
+    /** Offer the loop's "current question" sentinel (flow editors inside a repeat body). */
+    var currentQuestionOption: Boolean?
 }
 
+private const val CURRENT_LABEL = "↻ Current question"
+
 val QuestionPicker = FC<QuestionPickerProps> { props ->
-    val questionOptions = props.questions.map { questionOption(it) }.toTypedArray()
-    val selectedOption = props.questions.find { it.id == props.selectedId }?.let {
-        arrayOf(questionOption(it))
-    } ?: emptyArray()
+    val currentOpt = if (props.currentQuestionOption == true)
+        arrayOf(questionOption(CURRENT_LABEL, CURRENT_QUESTION.id)) else emptyArray()
+    val questionOptions = currentOpt + props.questions.map { questionOption(it) }.toTypedArray()
+    val selectedOption = when {
+        props.selectedId == CURRENT_QUESTION.id -> arrayOf(questionOption(CURRENT_LABEL, CURRENT_QUESTION.id))
+        else -> props.questions.find { it.id == props.selectedId }?.let { arrayOf(questionOption(it)) } ?: emptyArray()
+    }
+    // The suggestions menu escapes any clipping/scrolling ancestor (dialogs!)
+    // via a body-level portal layered above the current modal stack.
+    val menuZIndex = useAboveModalsZIndex()
 
     @Suppress("UNCHECKED_CAST_TO_EXTERNAL_INTERFACE")
     (ReactSelectComponent.unsafeCast<react.ComponentType<SelectProps<QuestionOption, GroupBase<QuestionOption>>>>()).invoke {
@@ -67,8 +79,16 @@ val QuestionPicker = FC<QuestionPickerProps> { props ->
             val opt = newValue.unsafeCast<QuestionOption?>()
             props.onChange?.invoke(opt?.value ?: "")
         }
+        menuPortalTarget = web.dom.document.body
+        // Fixed positioning: the default absolute mode places the portal in
+        // DOCUMENT coordinates, which lands scroll-offset pixels below the
+        // control when the picker sits in a fixed dialog over a scrolled page.
+        asDynamic().menuPosition = "fixed"
 
         val stylesObj: dynamic = js("{}")
+        stylesObj.menuPortal = Styles<MenuProps<QuestionOption, GroupBase<QuestionOption>>> { _ ->
+            zIndex = integer(menuZIndex)
+        }
         stylesObj.control = Styles<ControlProps<QuestionOption, GroupBase<QuestionOption>>> { _ ->
             fontFamily = sansSerif
             fontSize = 14.px

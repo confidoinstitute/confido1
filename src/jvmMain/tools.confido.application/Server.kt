@@ -166,6 +166,11 @@ suspend fun initData() {
 }
 
 fun main() {
+    // PDFBox's slide rendering goes through AWT; without this, a stray DISPLAY
+    // env var makes AWT try (and fail) to reach an X server instead of running
+    // headless, turning slide uploads into 500s. Must be set before any AWT
+    // class loads.
+    System.setProperty("java.awt.headless", "true")
     registerModule(confidoSM)
     // XXX kotlinx.serialization can serialize value classes out of the box. But KMongo uses
     // some low level magic and tries to manage its own serializer repository, and cannot

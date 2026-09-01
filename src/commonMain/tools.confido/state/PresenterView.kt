@@ -30,6 +30,15 @@ interface EntityLookup {
 abstract class PresenterView {
     open fun isValid(lookup: EntityLookup) = true
     abstract fun describe(): String
+    /** All question refs this view displays. Used to validate that an authored
+     *  flow stays within its room. */
+    open fun questionRefs(): List<Ref<Question>> = emptyList()
+    /** Copy with every question ref transformed (write-side twin of [questionRefs];
+     *  substitutes the loop sentinel at expansion). Override alongside it. */
+    open fun mapQuestionRefs(f: (Ref<Question>) -> Ref<Question>): PresenterView = this
+    /** Human-readable reason this view is not yet fully configured, or null when
+     *  complete (see [FlowAction.configProblem]). */
+    open fun configProblem(): String? = null
 }
 
 
@@ -46,6 +55,9 @@ data class QuestionPV(
 ) : PresenterView() {
     override fun isValid(lookup: EntityLookup) = lookup.question(question) != null
     override fun describe() = "question text"
+    override fun questionRefs() = listOf(question)
+    override fun mapQuestionRefs(f: (Ref<Question>) -> Ref<Question>) = copy(question = f(question))
+    override fun configProblem() = if (question.id.isEmpty()) "No question selected" else null
 }
 
 @Serializable
@@ -56,6 +68,9 @@ data class GroupPredPV(
 ) : PresenterView() {
     override fun isValid(lookup: EntityLookup) = lookup.question(question) != null
     override fun describe() = "group predictions for this question"
+    override fun questionRefs() = listOf(question)
+    override fun mapQuestionRefs(f: (Ref<Question>) -> Ref<Question>) = copy(question = f(question))
+    override fun configProblem() = if (question.id.isEmpty()) "No question selected" else null
 }
 
 @Serializable
@@ -68,6 +83,9 @@ data class BinaryHistogramPV(
 ) : PresenterView() {
     override fun isValid(lookup: EntityLookup) = lookup.question(question)?.answerSpace is BinarySpace
     override fun describe() = "prediction histogram"
+    override fun questionRefs() = listOf(question)
+    override fun mapQuestionRefs(f: (Ref<Question>) -> Ref<Question>) = copy(question = f(question))
+    override fun configProblem() = if (question.id.isEmpty()) "No question selected" else null
 }
 
 @Serializable
@@ -86,6 +104,9 @@ data class InviteLinkPV(
 ) : PresenterView() {
     override fun isValid(lookup: EntityLookup) = this.id == "FIRST" || lookup.room(room)?.inviteLinks?.any { it.id == this.id } ?: false
     override fun describe() = "invite link and QR code"
+    // The room ref is backfilled automatically by the flow editor; this only
+    // guards against hand-crafted payloads.
+    override fun configProblem() = if (room.id.isEmpty()) "No room set" else null
 }
 
 /** Displays a slide image from a presentation. */
@@ -96,11 +117,13 @@ data class SlidePV(
     val slideIndex: Int,
     /** File access token for the slide image URL. */
     val fileToken: String,
+    /** Mirrors [Presentation.slidesVersion] — cache-busts the image URL. */
+    val slidesVersion: Int = 0,
 ) : PresenterView() {
     override fun describe() = "presentation slide"
     fun slideUrl(): String {
         val num = (slideIndex + 1).toString().padStart(4, '0')
-        return "/presentations/$presentationId/$fileToken/slides/$num.png"
+        return "/presentations/$presentationId/$fileToken/slides/$num.png?v=$slidesVersion"
     }
 }
 
@@ -150,6 +173,9 @@ data class MarkTP(val name: String, val question: Ref<Question>? = null) : Timep
     override fun describe() = "marker \"$name\""
 }
 
+private fun TimepointRef.mapQuestionRefs(f: (Ref<Question>) -> Ref<Question>): TimepointRef =
+    if (this is MarkTP && question != null) copy(question = f(question)) else this
+
 /** The group prediction history timeline, optionally windowed to a fixed range. */
 @Serializable
 @SerialName("timeline")
@@ -160,6 +186,9 @@ data class TimelinePV(
 ) : PresenterView() {
     override fun isValid(lookup: EntityLookup) = lookup.question(question) != null
     override fun describe() = "prediction timeline"
+    override fun questionRefs() = listOf(question)
+    override fun mapQuestionRefs(f: (Ref<Question>) -> Ref<Question>) = copy(question = f(question))
+    override fun configProblem() = if (question.id.isEmpty()) "No question selected" else null
 }
 
 enum class CompareViewMode { DISTRIBUTIONS, CHANGES, SCATTER }
@@ -179,6 +208,16 @@ data class ComparePV(
 ) : PresenterView() {
     override fun isValid(lookup: EntityLookup) = lookup.question(question) != null
     override fun describe() = "comparison of two moments"
+    override fun questionRefs() = listOfNotNull(question,
+        (tp1 as? MarkTP)?.question, (tp2 as? MarkTP)?.question)
+    override fun mapQuestionRefs(f: (Ref<Question>) -> Ref<Question>) =
+        copy(question = f(question), tp1 = tp1.mapQuestionRefs(f), tp2 = tp2.mapQuestionRefs(f))
+    override fun configProblem() = when {
+        question.id.isEmpty() -> "No question selected"
+        (tp1 as? MarkTP)?.name?.isBlank() == true || (tp2 as? MarkTP)?.name?.isBlank() == true ->
+            "No marker selected"
+        else -> null
+    }
 }
 
 /** Displays multiple questions side by side in an adaptive grid. */
@@ -192,6 +231,10 @@ data class MultiQuestionPV(
 ) : PresenterView() {
     override fun isValid(lookup: EntityLookup) = questions.all { lookup.question(it) != null }
     override fun describe() = "${questions.size}-question overview"
+    override fun questionRefs() = questions
+    override fun mapQuestionRefs(f: (Ref<Question>) -> Ref<Question>) = copy(questions = questions.map(f))
+    override fun configProblem() =
+        if (questions.isEmpty() || questions.any { it.id.isEmpty() }) "No questions selected" else null
 }
 
 

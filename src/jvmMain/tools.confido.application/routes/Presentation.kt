@@ -17,6 +17,7 @@ import tools.confido.rooms.Room
 import tools.confido.rooms.RoomPermission
 import java.security.MessageDigest
 import tools.confido.application.generateToken
+import tools.confido.utils.generateId
 import tools.confido.application.sessions.TransientData
 import tools.confido.application.sessions.modifyUserSession
 import tools.confido.application.sessions.userSession
@@ -76,9 +77,13 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             val bytes = fileBytes ?: badRequest("No file uploaded.")
             if (bytes.isEmpty()) badRequest("Uploaded file is empty.")
 
-            // Create output directory
+            // Render into a staging directory and swap it in only when complete:
+            // overwriting the live slides in place would let a concurrently
+            // fetched thumbnail observe a half-written PNG (and cache it broken).
             val slideDir = File(presentationDir, "${pres.id}/slides")
-            slideDir.mkdirs()
+            val stagingDir = File(presentationDir, "${pres.id}/slides_staging")
+            stagingDir.deleteRecursively()
+            stagingDir.mkdirs()
 
             // Save original PDF
             File(presentationDir, "${pres.id}/orig.pdf").writeBytes(bytes)
@@ -94,7 +99,7 @@ fun presentationRoutes(routing: Routing) = routing.apply {
                     for (i in 0 until numSlides) {
                         val image = renderer.renderImageWithDPI(i, 150f)
                         val filename = (i + 1).toString().padStart(4, '0') + ".png"
-                        ImageIO.write(image, "PNG", File(slideDir, filename))
+                        ImageIO.write(image, "PNG", File(stagingDir, filename))
                     }
 
                     // Heuristically extract slide titles from PDF text
@@ -104,12 +109,20 @@ fun presentationRoutes(routing: Routing) = routing.apply {
                     }
                 }
             } catch (e: Exception) {
+                stagingDir.deleteRecursively()
                 badRequest("Failed to process PDF: ${e.message}")
             }
+            slideDir.deleteRecursively()
+            if (!stagingDir.renameTo(slideDir)) badRequest("Failed to store slide images.")
 
-            // Update presentation entity
+            // Update presentation entity. A re-upload may shrink the slide count;
+            // drop now-out-of-range slide items so stored flows stay valid. The
+            // version bump changes slide URLs, forcing browsers to refetch
+            // (file names are identical across a replace).
             presentationStore.modify(pres.id) { p ->
-                p.copy(numSlides = numSlides, slideLabels = slideLabels)
+                p.copy(numSlides = numSlides, slideLabels = slideLabels,
+                    slidesVersion = p.slidesVersion + 1,
+                    items = p.items.filter { it !is SlideItem || it.slideIndex < numSlides })
             }
 
             call.respond(HttpStatusCode.OK, numSlides.toString())
@@ -122,10 +135,11 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot manage presentations.")
             val pres = getPresentation(room) ?: notFound("No presentation for this room.")
 
+            val validatedItems = edit.items?.let { validateFlowItems(it, pres, room) }
             presentationStore.modify(pres.id) { p ->
                 var updated = p
                 edit.name?.let { updated = updated.copy(name = it) }
-                edit.items?.let { updated = updated.copy(items = it) }
+                validatedItems?.let { updated = updated.copy(items = it) }
                 edit.slideLabels?.let { updated = updated.copy(slideLabels = it) }
                 updated
             }
@@ -241,14 +255,36 @@ fun presentationRoutes(routing: Routing) = routing.apply {
 
     // Override the effective presenter view of a running presentation (e.g. tweak
     // options of the currently shown view without leaving the presentation).
-    // The override lasts until the next navigation step recomputes the view.
+    // Overrides are sticky per step: keyed by the current flow item's id, they are
+    // re-applied when navigating back to that step and die with the run.
     apiST(Api.presentationSetView) { rRef, view ->
         call.withRoom(rRef) {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot control presentation.")
             if (!view.isValid(ServerEntityLookup)) badRequest("View is not valid")
             val currentState = serverState.presentationRunStates[room.ref]
                 ?: badRequest("Presentation is not running.")
-            serverState.setPresentationRunState(room.ref, currentState.copy(currentView = view))
+            val itemId = currentState.expandedItems.getOrNull(currentState.currentIndex)?.id
+            serverState.setPresentationRunState(room.ref, currentState.copy(
+                currentView = view,
+                viewOverrides = if (itemId == null) currentState.viewOverrides
+                                else currentState.viewOverrides + (itemId to view),
+            ))
+        }
+    }
+
+    // Discard the current step's live view override and restore the scripted view.
+    apiST(Api.presentationRevertView) { rRef, _ ->
+        call.withRoom(rRef) {
+            assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot control presentation.")
+            val pres = getPresentation(room) ?: notFound("No presentation for this room.")
+            val currentState = serverState.presentationRunStates[room.ref]
+                ?: badRequest("Presentation is not running.")
+            val itemId = currentState.expandedItems.getOrNull(currentState.currentIndex)?.id
+            if (itemId != null && itemId in currentState.viewOverrides) {
+                var newState = currentState.copy(viewOverrides = currentState.viewOverrides - itemId)
+                newState = processCurrentItem(pres, newState, room)
+                serverState.setPresentationRunState(room.ref, newState)
+            }
         }
     }
 
@@ -337,12 +373,84 @@ fun presentationRoutes(routing: Routing) = routing.apply {
 }
 
 /**
+ * Validate an edited flow item list against its room and presentation and return
+ * it normalized (slide-order invariant applied — see [normalizeFlowItems]), or
+ * throw a 400. Guarantees: unique item ids, all question refs (recursively, incl.
+ * views) belong to the room, no under-configured actions, embedded views valid,
+ * slide indices in range.
+ */
+private fun validateFlowItems(items: List<FlowItem>, pres: Presentation, room: Room): List<FlowItem> {
+    val allIds = items.flatMap { listOf(it.id) + ((it as? ForEachItem)?.body?.map { b -> b.id } ?: emptyList()) }
+    if (allIds.size != allIds.toSet().size)
+        badRequest("Duplicate flow item ids.")
+    val roomQuestions = room.questions.map { it.id }.toSet()
+
+    fun validateAction(item: ActionItem, inLoop: Boolean) {
+        if (!inLoop && CURRENT_QUESTION in item.action.questionRefs())
+            badRequest("\"Current question\" can only be used inside a repeat loop.")
+        item.action.configProblem()?.let {
+            badRequest("Item \"${item.shortDescribe(pres)}\" is not fully configured: $it")
+        }
+        item.action.embeddedViews().forEach { view ->
+            // A view referencing the loop sentinel cannot be resolved yet; per-question
+            // validity is decided at expansion (inapplicable steps are skipped).
+            if (CURRENT_QUESTION !in view.questionRefs() && !view.isValid(ServerEntityLookup))
+                badRequest("Item \"${item.shortDescribe(pres)}\" contains an invalid presenter view.")
+            val viewRoom = when (view) {
+                is InviteLinkPV -> view.room
+                is PresentationPV -> view.room
+                else -> null
+            }
+            if (viewRoom != null && viewRoom.id != room.id)
+                badRequest("Item \"${item.shortDescribe(pres)}\" references another room.")
+        }
+    }
+
+    items.forEach { item ->
+        item.questionRefs().forEach { ref ->
+            if (ref.id !in roomQuestions)
+                badRequest("Item \"${item.shortDescribe(pres)}\" references a question outside this room.")
+        }
+        when (item) {
+            is ActionItem -> validateAction(item, inLoop = false)
+            is SlideItem ->
+                if (item.slideIndex !in 0 until pres.numSlides)
+                    badRequest("Slide number out of range.")
+            is ForEachItem -> item.body.forEach { b ->
+                when (b) {
+                    is SlideItem -> badRequest("Slides cannot be repeated in a loop.")
+                    is ForEachItem -> badRequest("Loops cannot be nested.")
+                    is ActionItem -> validateAction(b, inLoop = true)
+                    is NoteItem -> {}
+                }
+            }
+            else -> {}
+        }
+    }
+    return normalizeFlowItems(items)
+}
+
+/**
  * Expand presentation items by asking extensions to expand any expandable
  * (meta) actions. Non-expandable items pass through unchanged.
  */
 private fun expandPresentationItems(items: List<FlowItem>, room: tools.confido.rooms.Room): List<FlowItem> =
     buildList {
         for (item in items) {
+            if (item is ForEachItem) {
+                val candidates = room.questions.mapNotNull { serverState.questions[it.id] }
+                    .filter { item.selects(it) }
+                for (q in candidates) for (bodyItem in item.body) {
+                    val step = bodyItem.substituteQuestion(q.ref).withId(generateId())
+                    // Skip steps inapplicable to this question (e.g. a binary
+                    // histogram on a numeric one) — a shorter iteration beats a
+                    // blank projector mid-show.
+                    if (step is ActionItem && !step.action.embeddedViews().all { it.isValid(ServerEntityLookup) })
+                        continue
+                    add(step)
+                }
+                continue
+            }
             if (item is ActionItem) {
                 val expanded = ServerExtension.enabled.firstNotNullOfOrNull {
                     it.expandFlowItem(item.action, room)
@@ -358,7 +466,8 @@ private fun expandPresentationItems(items: List<FlowItem>, room: tools.confido.r
 
 /**
  * Process the current item in the presentation flow: compute the effective
- * presenter view and execute actions if needed.
+ * presenter view (the step's live override, if any, else its scripted view)
+ * and execute actions if needed.
  */
 private suspend fun processCurrentItem(
     pres: Presentation,
@@ -369,14 +478,12 @@ private suspend fun processCurrentItem(
     // Reset lastExecutedId - will be set if an action is executed this step
     var newState = state.copy(lastExecutedId = null)
 
+    // The view this step defines by script, if any (NoteItem defines none and
+    // keeps the previous view showing).
+    var scriptedView: PresenterView? = null
     when (item) {
         is SlideItem -> {
-            newState = newState.copy(
-                currentView = SlidePV(pres.id, item.slideIndex, pres.fileToken)
-            )
-        }
-        is PresenterViewItem -> {
-            newState = newState.copy(currentView = item.view)
+            scriptedView = SlidePV(pres.id, item.slideIndex, pres.fileToken, pres.slidesVersion)
         }
         is ActionItem -> {
             // Only execute side effects if not already executed in this run
@@ -387,24 +494,34 @@ private suspend fun processCurrentItem(
                     lastExecutedId = item.id,
                 )
             }
-            // Always update presenter view if the action declares one (idempotent)
-            val pv = item.action.presenterView
-            if (pv != null) {
-                newState = newState.copy(currentView = pv)
-            }
-            // Always update navigate URL if the action declares one (idempotent)
+            // The view (below) and navigate URL re-apply on every visit (idempotent),
+            // which is what makes stepping backwards safe.
+            scriptedView = item.action.presenterView
             val navUrl = item.action.getNavigateUrl(room, ServerEntityLookup)
             if (navUrl != null) {
                 newState = newState.copy(currentNavigateUrl = navUrl)
             }
         }
-        is NoteItem -> {
-            // Notes don't change currentView or execute anything
-        }
+        is NoteItem -> {}
+        // Loops never survive expansion; defensive no-op.
+        is ForEachItem -> {}
+    }
+
+    // Sticky per-step override wins over the scripted view (see presentationSetView).
+    (state.viewOverrides[item.id] ?: scriptedView)?.let {
+        newState = newState.copy(currentView = it)
     }
 
     return newState
 }
+
+private fun Room.ownsQuestion(ref: Ref<Question>) = questions.any { it.id == ref.id }
+
+/** Defense in depth against flows touching foreign rooms' questions: authored
+ *  flows are validated on save ([validateFlowItems]), but legacy or hand-crafted
+ *  data may still violate the invariant — skip rather than blow up mid-run. */
+private fun warnForeignQuestion(room: Room, ref: Ref<Question>) =
+    println("Presentation flow in room ${room.id} references foreign question ${ref.id}; skipping action.")
 
 /**
  * Execute a flow action server-side.
@@ -412,6 +529,7 @@ private suspend fun processCurrentItem(
 private suspend fun executeFlowAction(action: FlowAction, room: tools.confido.rooms.Room) {
     when (action) {
         is SetQuestionStateAction -> {
+            if (!room.ownsQuestion(action.question)) { warnForeignQuestion(room, action.question); return }
             tools.confido.store.questionStore.modify(action.question.id) {
                 var q = it.withState(action.newState)
                 action.setGroupPredVisibility?.let { vis -> q = vis.apply(q) }
@@ -439,9 +557,8 @@ private suspend fun executeFlowAction(action: FlowAction, room: tools.confido.ro
             }
         }
         is SetPresenterViewAction -> {
-            // When used in a PresenterViewItem, the view is set by processCurrentItem.
-            // When used inside a CompositeAction, this is a no-op at the action level;
-            // the view override would need to be handled at a higher level.
+            // No side effects: the view is applied by processCurrentItem via
+            // FlowAction.presenterView (which CompositeAction propagates too).
         }
         is NavigateToQuestionAction, is NavigateViewersAction -> {
             // Navigation is handled by processCurrentItem via getNavigateUrl().
@@ -451,6 +568,9 @@ private suspend fun executeFlowAction(action: FlowAction, room: tools.confido.ro
             action.actions.forEach { executeFlowAction(it, room) }
         }
         is CreateMarkAction -> {
+            if (action.question != null && !room.ownsQuestion(action.question)) {
+                warnForeignQuestion(room, action.question); return
+            }
             // Mark "now"; overwrite-by-name so a re-run flow moves the mark.
             if (action.name.isNotBlank()) {
                 val mark = tools.confido.rooms.TimelineMark(

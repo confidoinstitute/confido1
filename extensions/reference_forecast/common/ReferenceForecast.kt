@@ -21,6 +21,8 @@ data class ReferenceForcastScoreboardPV(
     val room: Ref<Room>,
 ): PresenterView() {
     override fun describe() = "Reference forecast scoreboard"
+    // Backfilled by the flow editor's roomSubject; guards hand-crafted payloads.
+    override fun configProblem() = if (room.id.isEmpty()) "No room set" else null
 }
 
 @Serializable

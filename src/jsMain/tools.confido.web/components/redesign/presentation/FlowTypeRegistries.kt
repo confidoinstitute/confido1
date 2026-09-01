@@ -25,6 +25,9 @@ import web.cssom.*
 import tools.confido.web.hooks.useSubscription
 import tools.confido.payloads.responses.WSData
 import tools.confido.state.Topics
+import tools.confido.web.components.presenter.ExpectedWorldContext
+import tools.confido.web.components.presenter.InviteLinkPC
+import tools.confido.web.components.presenter.PresenterControlsType
 
 // ============================================================
 //  Unified Registry (populated lazily on first access)
@@ -88,7 +91,8 @@ val flowItemTypes: List<FlowItemTypeEntry> by kotlin.lazy {
             label = "Question text",
             category = FlowItemCategory.VIEW,
             createDefault = { SetPresenterViewAction(QuestionPV(Ref(""))) },
-            editor = QuestionPVEditor,
+            editor = pvFlowEditor(questionSubject<QuestionPV>(
+                get = { it.question }, set = { v, q -> v.copy(question = q) })),
             matches = { it is SetPresenterViewAction && it.view is QuestionPV },
         ))
         add(FlowItemTypeEntry(
@@ -96,7 +100,8 @@ val flowItemTypes: List<FlowItemTypeEntry> by kotlin.lazy {
             label = "Group predictions",
             category = FlowItemCategory.VIEW,
             createDefault = { SetPresenterViewAction(GroupPredPV(Ref(""))) },
-            editor = GroupPredPVEditor,
+            editor = pvFlowEditor(questionSubject<GroupPredPV>(
+                get = { it.question }, set = { v, q -> v.copy(question = q) })),
             matches = { it is SetPresenterViewAction && it.view is GroupPredPV },
         ))
         add(FlowItemTypeEntry(
@@ -104,7 +109,9 @@ val flowItemTypes: List<FlowItemTypeEntry> by kotlin.lazy {
             label = "Prediction histogram",
             category = FlowItemCategory.VIEW,
             createDefault = { SetPresenterViewAction(BinaryHistogramPV(Ref(""))) },
-            editor = BinaryHistogramPVEditor,
+            editor = pvFlowEditor(questionSubject<BinaryHistogramPV>(
+                filter = { it.answerSpace is tools.confido.spaces.BinarySpace },
+                get = { it.question }, set = { v, q -> v.copy(question = q) })),
             matches = { it is SetPresenterViewAction && it.view is BinaryHistogramPV },
         ))
         add(FlowItemTypeEntry(
@@ -112,7 +119,12 @@ val flowItemTypes: List<FlowItemTypeEntry> by kotlin.lazy {
             label = "Invite link / QR code",
             category = FlowItemCategory.VIEW,
             createDefault = { SetPresenterViewAction(InviteLinkPV(Ref(""), "FIRST")) },
-            editor = InviteLinkPVEditor,
+            editor = pvFlowEditor(roomSubject<InviteLinkPV>(
+                hint = "Will show the room's invite link as a QR code on the presenter screen.",
+                get = { it.room }, set = { v, r -> v.copy(room = r.ref, id = "FIRST") }),
+                // Authoring-only: joiners-follow is a property of the flow step,
+                // not a live knob (see InviteLinkPC).
+                extraControls = InviteLinkPC.unsafeCast<PresenterControlsType>()),
             matches = { it is SetPresenterViewAction && it.view is InviteLinkPV },
         ))
         add(FlowItemTypeEntry(
@@ -120,7 +132,8 @@ val flowItemTypes: List<FlowItemTypeEntry> by kotlin.lazy {
             label = "Prediction timeline",
             category = FlowItemCategory.VIEW,
             createDefault = { SetPresenterViewAction(TimelinePV(Ref(""))) },
-            editor = TimelinePVEditor,
+            editor = pvFlowEditor(questionSubject<TimelinePV>(
+                get = { it.question }, set = { v, q -> v.copy(question = q) })),
             matches = { it is SetPresenterViewAction && it.view is TimelinePV },
         ))
         add(FlowItemTypeEntry(
@@ -128,7 +141,8 @@ val flowItemTypes: List<FlowItemTypeEntry> by kotlin.lazy {
             label = "Compare two moments",
             category = FlowItemCategory.VIEW,
             createDefault = { SetPresenterViewAction(ComparePV(Ref(""), MarkTP(""), NowTP)) },
-            editor = ComparePVEditor,
+            editor = pvFlowEditor(questionSubject<ComparePV>(
+                get = { it.question }, set = { v, q -> v.copy(question = q) })),
             matches = { it is SetPresenterViewAction && it.view is ComparePV },
         ))
 
@@ -204,35 +218,52 @@ private val GroupPredVisibilitySelect = FC<GroupPredVisibilitySelectProps> { pro
 }
 
 // ============================================================
-//  Helpers for presenter view editors (wrap/unwrap SetPresenterViewAction)
-// ============================================================
-
-/** Extract the inner [PresenterView] from a [SetPresenterViewAction], or null. */
-private fun FlowAction.innerView(): PresenterView? = (this as? SetPresenterViewAction)?.view
-
-/** Wrap a [PresenterView] change back into the [SetPresenterViewAction]. */
-private fun wrapViewChange(onChange: (FlowAction) -> Unit): (PresenterView) -> Unit =
-    { view -> onChange(SetPresenterViewAction(view)) }
-
-// ============================================================
 //  Core Side-Effect Action Editors
 // ============================================================
+
+/** Grey (or amber, when [warning]) reference line giving expected-at-this-step
+ *  context from the [ExpectedWorldContext] simulation. */
+private fun ChildrenBuilder.expectedStateLine(text: String, warning: Boolean = false) {
+    div {
+        css {
+            fontFamily = sansSerif; fontSize = 12.px; marginTop = 2.px
+            color = if (warning) Color("#b26a00") else Color("#888")
+        }
+        +text
+    }
+}
+
+private fun QuestionState.describeLower() = name.lowercase()
 
 /** Editor for [SetQuestionStateAction]. */
 val SetQuestionStateEditor = FC<FlowItemEditorProps> { props ->
     val questions = useRoomQuestions()
+    val world = use(ExpectedWorldContext)
     val action = props.action as? SetQuestionStateAction ?: return@FC
 
     FieldLabel { +"Question" }
     QuestionPicker {
         this.questions = questions
         selectedId = action.question.id
+        currentQuestionOption = world?.loopCandidates != null
         onChange = { props.onChange(action.copy(question = Ref(it))) }
     }
     FieldLabel { +"New state" }
     QuestionStateSelect {
         value = action.newState
         onChange = { props.onChange(action.copy(newState = it)) }
+    }
+    world?.question(action.question)?.let { expected ->
+        val noop = expected.state == action.newState
+        expectedStateLine(
+            "Currently ${expected.state.describeLower()} at this point in the flow" +
+                if (noop) " — this step changes nothing." else ".",
+            warning = noop)
+    }
+    if (action.question == CURRENT_QUESTION) world?.loopCandidates?.takeIf { it.isNotEmpty() }?.let { cand ->
+        val states = cand.groupingBy { it.state }.eachCount()
+            .entries.joinToString(", ") { (s, n) -> "$n ${s.describeLower()}" }
+        expectedStateLine("The loop's questions are currently $states at this point in the flow.")
     }
     // Context-sensitive navigation checkbox:
     // - Draft (hiding): offer "navigate back to room"
@@ -265,8 +296,10 @@ val SetQuestionStateEditor = FC<FlowItemEditorProps> { props ->
 
 /** Editor for [SetTaggedQuestionsStateAction]. */
 val SetTaggedQuestionsStateEditor = FC<FlowItemEditorProps> { props ->
+    val questions = useRoomQuestions()
+    val world = use(ExpectedWorldContext)
     val action = props.action as? SetTaggedQuestionsStateAction ?: return@FC
-    val allTags = useRoomTags()
+    val allTags = questions.flatMap { it.tags }.distinct().sorted()
 
     FieldLabel { +"Tag" }
     if (allTags.isNotEmpty()) {
@@ -285,6 +318,17 @@ val SetTaggedQuestionsStateEditor = FC<FlowItemEditorProps> { props ->
         div {
             css { fontFamily = sansSerif; fontSize = 13.px; color = Color("#999") }
             +"No tags defined on questions in this room."
+        }
+    }
+    if (world != null && action.tag.isNotBlank()) {
+        val matching = questions.filter { action.tag in it.tags }.map { world.question(it.ref) ?: it }
+        if (matching.isEmpty()) expectedStateLine("No questions carry this tag.", warning = true)
+        else {
+            val states = matching.groupingBy { it.state }.eachCount()
+                .entries.joinToString(", ") { (s, n) -> "$n ${s.describeLower()}" }
+            expectedStateLine("Affects ${matching.size} " +
+                (if (matching.size == 1) "question" else "questions") +
+                " — currently $states at this point in the flow.")
         }
     }
     FieldLabel { +"New state" }
@@ -328,122 +372,35 @@ val SetTaggedQuestionsStateEditor = FC<FlowItemEditorProps> { props ->
 }
 
 // ============================================================
-//  Core Presenter View Editors (wrapped as FlowItemEditorProps)
-// ============================================================
-
-/** Editor for [QuestionPV]: just a question picker. */
-val QuestionPVEditor = FC<FlowItemEditorProps> { props ->
-    val questions = useRoomQuestions()
-    val view = props.action.innerView() as? QuestionPV ?: return@FC
-    val onViewChange = wrapViewChange(props.onChange)
-
-    FieldLabel { +"Question" }
-    QuestionPicker {
-        this.questions = questions
-        selectedId = view.question.id
-        onChange = { onViewChange(QuestionPV(Ref(it))) }
-    }
-}
-
-/** Editor for [GroupPredPV]: question picker + showResolution toggle. */
-val GroupPredPVEditor = FC<FlowItemEditorProps> { props ->
-    val questions = useRoomQuestions()
-    val view = props.action.innerView() as? GroupPredPV ?: return@FC
-    val onViewChange = wrapViewChange(props.onChange)
-
-    FieldLabel { +"Question" }
-    QuestionPicker {
-        this.questions = questions
-        selectedId = view.question.id
-        onChange = { onViewChange(view.copy(question = Ref(it))) }
-    }
-    Stack {
-        direction = FlexDirection.row
-        css { alignItems = AlignItems.center; gap = 8.px; marginTop = 4.px }
-        Checkbox {
-            checked = view.showResolution
-            onChange = { e -> onViewChange(view.copy(showResolution = e.target.checked)) }
-        }
-        span {
-            css { fontFamily = sansSerif; fontSize = 14.px }
-            +"Show resolution"
-        }
-    }
-}
-
-/** Editor for [BinaryHistogramPV]: question picker (binary questions only) + showNames toggle. */
-val BinaryHistogramPVEditor = FC<FlowItemEditorProps> { props ->
-    val questions = useRoomQuestions().filter { it.answerSpace is tools.confido.spaces.BinarySpace }
-    val view = props.action.innerView() as? BinaryHistogramPV ?: return@FC
-    val onViewChange = wrapViewChange(props.onChange)
-    // Sensitive questions never show names (the server sends nameless bins to everyone).
-    val sensitive = questions.firstOrNull { it.id == view.question.id }?.sensitive == true
-
-    FieldLabel { +"Question" }
-    QuestionPicker {
-        this.questions = questions
-        selectedId = view.question.id
-        onChange = { onViewChange(view.copy(question = Ref(it))) }
-    }
-    if (!sensitive) Stack {
-        direction = FlexDirection.row
-        css { alignItems = AlignItems.center; gap = 8.px; marginTop = 4.px }
-        Checkbox {
-            checked = view.showNames
-            onChange = { e -> onViewChange(view.copy(showNames = e.target.checked)) }
-        }
-        span {
-            css { fontFamily = sansSerif; fontSize = 14.px }
-            +"Show nicknames"
-        }
-    }
-}
-
-/** Editor for [InviteLinkPV]: informational text, sets room ref from context on mount. */
-val InviteLinkPVEditor = FC<FlowItemEditorProps> { props ->
-    val room = use(RoomContext)!!
-    val view = props.action.innerView() as? InviteLinkPV
-    val onViewChange = wrapViewChange(props.onChange)
-    // Set the room ref once when mounted (createDefault uses a placeholder Ref("")).
-    // The effect hook stays above the early return (stable hook order).
-    useEffect(room.id) {
-        if (view != null && view.room.id != room.id) {
-            onViewChange(InviteLinkPV(room.ref, "FIRST", followPresentation = view.followPresentation))
-        }
-    }
-    if (view == null) return@FC
-    div {
-        css { fontFamily = sansSerif; fontSize = 13.px; color = Color("#888"); marginTop = 4.px }
-        +"Will show the room's invite link as a QR code on the presenter screen."
-    }
-    Stack {
-        direction = FlexDirection.row
-        css { alignItems = AlignItems.center; gap = 8.px; marginTop = 4.px }
-        Checkbox {
-            checked = view.followPresentation
-            onChange = { e -> onViewChange(view.copy(followPresentation = e.target.checked)) }
-        }
-        span {
-            css { fontFamily = sansSerif; fontSize = 14.px }
-            +"Users joining via this link will follow the presentation"
-        }
-    }
-}
-
-// ============================================================
 //  Navigation Action Editors
 // ============================================================
 
 /** Editor for [NavigateToQuestionAction]: question picker. */
 val NavigateToQuestionEditor = FC<FlowItemEditorProps> { props ->
     val questions = useRoomQuestions()
+    val world = use(ExpectedWorldContext)
     val action = props.action as? NavigateToQuestionAction ?: return@FC
 
     FieldLabel { +"Question" }
     QuestionPicker {
         this.questions = questions
         selectedId = action.question.id
+        currentQuestionOption = world?.loopCandidates != null
         onChange = { props.onChange(action.copy(question = Ref(it))) }
+    }
+    world?.question(action.question)?.let { expected ->
+        val hidden = expected.state == QuestionState.DRAFT
+        expectedStateLine(
+            "This question is ${expected.state.describeLower()} at this point in the flow" +
+                if (hidden) " — viewers will not be able to see it!" else ".",
+            warning = hidden)
+    }
+    if (action.question == CURRENT_QUESTION) world?.loopCandidates?.takeIf { it.isNotEmpty() }?.let { cand ->
+        val drafts = cand.count { it.state == QuestionState.DRAFT }
+        expectedStateLine(
+            "Navigates to each iteration's question." +
+                if (drafts > 0) " $drafts of the loop's questions are still drafts at this point!" else "",
+            warning = drafts > 0)
     }
 }
 
@@ -466,6 +423,8 @@ val NavigateViewersEditor = FC<FlowItemEditorProps> { props ->
 /** Editor for [CreateMarkAction]: name + scope (room-wide or one question). */
 val CreateMarkActionEditor = FC<FlowItemEditorProps> { props ->
     val questions = useRoomQuestions()
+    val room = use(RoomContext)!!
+    val world = use(ExpectedWorldContext)
     val action = props.action as? CreateMarkAction ?: return@FC
 
     FieldLabel { +"Marker name" }
@@ -474,13 +433,34 @@ val CreateMarkActionEditor = FC<FlowItemEditorProps> { props ->
         placeholder = "e.g. Before discussion"
         onChange = { e -> props.onChange(action.copy(name = e.target.value)) }
     }
+    // Non-blocking duplicate hints: overwrite-by-name is intended semantics
+    // (a re-run flow moves its mark), but surface it so accidental collisions
+    // with earlier steps or hand-made markers don't surprise anyone.
+    if (action.name.isNotBlank()) {
+        val flowDup = world?.marks?.firstOrNull { it.name == action.name }
+        val existing = (room.timelineMarks +
+            (action.question?.let { qr -> questions.firstOrNull { it.id == qr.id } }?.timelineMarks ?: emptyList()))
+            .firstOrNull { it.name == action.name }
+        when {
+            flowDup != null -> expectedStateLine(
+                "Also created at step ${flowDup.stepIndex + 1} of this flow — this step will move it.",
+                warning = true)
+            existing != null -> expectedStateLine(
+                "A marker with this name already exists — running this step will move it.",
+                warning = true)
+        }
+    }
     FieldLabel { +"Scope" }
     Select {
         value = if (action.question != null) "question" else "room"
         onChange = { e ->
             when (e.target.value) {
                 "room" -> props.onChange(action.copy(question = null))
-                "question" -> props.onChange(action.copy(question = Ref(questions.firstOrNull()?.id ?: "")))
+                // Inside a loop body, question scope defaults to the current question
+                // (a room-wide mark would be overwritten by every iteration).
+                "question" -> props.onChange(action.copy(question =
+                    if (world?.loopCandidates != null) CURRENT_QUESTION
+                    else Ref(questions.firstOrNull()?.id ?: "")))
             }
         }
         css { width = 100.pct }
@@ -492,71 +472,12 @@ val CreateMarkActionEditor = FC<FlowItemEditorProps> { props ->
         QuestionPicker {
             this.questions = questions
             selectedId = action.question!!.id
+            currentQuestionOption = world?.loopCandidates != null
             onChange = { props.onChange(action.copy(question = Ref(it))) }
         }
     }
+    if (world?.loopCandidates != null && action.question == null)
+        expectedStateLine("Room-wide markers are overwritten by each iteration — " +
+            "scope the marker to the current question inside a loop.", warning = true)
 }
 
-/** Editor for [TimelinePV]: question picker (shows the full history). */
-val TimelinePVEditor = FC<FlowItemEditorProps> { props ->
-    val questions = useRoomQuestions()
-    val view = props.action.innerView() as? TimelinePV ?: return@FC
-    val onViewChange = wrapViewChange(props.onChange)
-
-    FieldLabel { +"Question" }
-    QuestionPicker {
-        this.questions = questions
-        selectedId = view.question.id
-        onChange = { onViewChange(view.copy(question = Ref(it))) }
-    }
-}
-
-/** Editor for [ComparePV] in the flow's shape: a named marker (typically created
- *  by an earlier "Create timeline marker" step) against now. */
-val ComparePVEditor = FC<FlowItemEditorProps> { props ->
-    val questions = useRoomQuestions()
-    val view = props.action.innerView() as? ComparePV ?: return@FC
-    val onViewChange = wrapViewChange(props.onChange)
-    // Sensitive questions have no individual views at all (server-enforced) —
-    // only the aggregate distributions mode is offered.
-    val sensitive = questions.firstOrNull { it.id == view.question.id }?.sensitive == true
-
-    FieldLabel { +"Question" }
-    QuestionPicker {
-        this.questions = questions
-        selectedId = view.question.id
-        onChange = { onViewChange(view.copy(question = Ref(it))) }
-    }
-    FieldLabel { +"Marker to compare against now" }
-    TextInput {
-        value = (view.tp1 as? MarkTP)?.name ?: ""
-        placeholder = "e.g. Before discussion"
-        onChange = { e -> onViewChange(view.copy(tp1 = MarkTP(e.target.value), tp2 = NowTP)) }
-    }
-    if (!sensitive) {
-        FieldLabel { +"View" }
-        Select {
-            value = view.mode.name
-            onChange = { e ->
-                CompareViewMode.entries.find { it.name == e.target.value }
-                    ?.let { onViewChange(view.copy(mode = it)) }
-            }
-            css { width = 100.pct }
-            option { value = CompareViewMode.DISTRIBUTIONS.name; +"Distributions" }
-            option { value = CompareViewMode.CHANGES.name; +"Individual changes (binary)" }
-            option { value = CompareViewMode.SCATTER.name; +"Scatter (binary)" }
-        }
-        Stack {
-            direction = FlexDirection.row
-            css { alignItems = AlignItems.center; gap = 8.px; marginTop = 4.px }
-            Checkbox {
-                checked = view.showNames
-                onChange = { e -> onViewChange(view.copy(showNames = e.target.checked)) }
-            }
-            span {
-                css { fontFamily = sansSerif; fontSize = 14.px }
-                +"Show predictor names (individual views)"
-            }
-        }
-    }
-}

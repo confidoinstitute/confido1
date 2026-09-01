@@ -4,6 +4,7 @@ import tools.confido.api.Api
 import tools.confido.web.Client
 import tools.confido.web.components.redesign.basic.*
 import tools.confido.web.components.redesign.forms.Button
+import tools.confido.web.components.redesign.forms.ButtonUnstyled
 import tools.confido.web.components.redesign.presenter.setPresenterView
 import tools.confido.web.components.redesign.rooms.RoomContext
 import emotion.react.css
@@ -12,7 +13,6 @@ import tools.confido.web.hooks.usePresentationKeyboardNav
 import tools.confido.payloads.requests.NavigateDirection
 import tools.confido.payloads.requests.NavigatePresentation
 import tools.confido.web.components.redesign.presenter.FlowActionDescription
-import tools.confido.web.components.redesign.presenter.PresenterViewDescription
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.img
@@ -194,11 +194,34 @@ val PresentationRunner = FC<PresentationRunnerProps> { props ->
                             }
                         }
                     }
-                    is PresenterViewItem -> {
-                        div {
-                            css { fontSize = 14.px }
-                            +"Showing: "
-                            PresenterViewDescription { view = currentItem.view }
+                    // Loops never survive expansion; defensive no-op.
+                    is ForEachItem -> {}
+                }
+                // The step's view has been live-tweaked away from the script
+                // (sticky for this run); offer the way back.
+                if (currentItem.id in runState.viewOverrides) {
+                    Stack {
+                        direction = FlexDirection.row
+                        css { alignItems = AlignItems.center; gap = 6.px; marginTop = 8.px }
+                        span {
+                            css {
+                                fontSize = 11.px
+                                color = Color("#7b1fa2")
+                                backgroundColor = Color("#f3e5f5")
+                                padding = Padding(1.px, 6.px)
+                                borderRadius = 3.px
+                            }
+                            +"view modified from script"
+                        }
+                        ButtonUnstyled {
+                            css {
+                                fontSize = 11.px
+                                color = Color("#6319FF")
+                                cursor = Cursor.pointer
+                                textDecoration = TextDecoration.underline
+                            }
+                            +"Revert"
+                            onClick = { submitLock { Client.call(Api.presentationRevertView(room.ref)) } }
                         }
                     }
                 }
@@ -283,7 +306,7 @@ val PresentationRunner = FC<PresentationRunnerProps> { props ->
                             is SlideItem -> +pres.slideLabels.getOrElse(item.slideIndex) { "Slide ${item.slideIndex + 1}" }
                             is ActionItem -> FlowActionDescription { action = item.action }
                             is NoteItem -> +item.text.ifEmpty { "(empty note)" }
-                            is PresenterViewItem -> PresenterViewDescription { view = item.view }
+                            is ForEachItem -> +item.shortDescribe(pres)
                         }
                     }
                 }

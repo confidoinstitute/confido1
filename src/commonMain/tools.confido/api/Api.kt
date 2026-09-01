@@ -144,6 +144,8 @@ object Api {
     val presentationStop = ApiSpec(POST, roomPrefix / "presentation/stop", serializer<Unit>(), serializer<Unit>())
     val presentationNavigate = ApiSpec(POST, roomPrefix / "presentation/navigate", serializer<NavigatePresentation>(), serializer<Unit>())
     val presentationSetView = ApiSpec(POST, roomPrefix / "presentation/setview", serializer<PresenterView>(), serializer<Unit>())
+    /** Discard the current step's live view override and restore the scripted view. */
+    val presentationRevertView = ApiSpec(POST, roomPrefix / "presentation/revertview", serializer<Unit>(), serializer<Unit>())
     val presentationReexecute = ApiSpec(POST, roomPrefix / "presentation/reexecute", serializer<Unit>(), serializer<Unit>())
     val presentationFollow = ApiSpec(POST, roomPrefix / "presentation/follow", serializer<Unit>(), serializer<Unit>())
     val presentationUnfollow = ApiSpec(POST, roomPrefix / "presentation/unfollow", serializer<Unit>(), serializer<Unit>())

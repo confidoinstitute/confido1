@@ -1,7 +1,14 @@
 package tools.confido.extensions.prediction_showcase
 
+import tools.confido.web.components.presenter.PresenterControlsProps
 import tools.confido.web.components.presenter.PresenterPageProps
+import tools.confido.web.components.presenter.presenterControlsMap
 import tools.confido.web.components.presenter.presenterPageMap
+import tools.confido.web.components.redesign.forms.FormField
+import tools.confido.web.components.redesign.presentation.pvFlowEditor
+import tools.confido.web.components.redesign.presentation.questionSubject
+import tools.confido.web.components.redesign.presentation.roomSubject
+import react.dom.html.ReactHTML.option
 import tools.confido.web.components.redesign.PresenterIcon
 import tools.confido.web.components.redesign.basic.Stack
 import tools.confido.web.components.redesign.basic.rowStyleTableCSS
@@ -185,37 +192,26 @@ val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> 
     }
 }
 
-private val PredictionShowcasePVEditorComponent = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
-    // Sensitive questions cannot be showcased (individual predictions, server-enforced).
-    val questions = tools.confido.web.components.redesign.presentation.useRoomQuestions()
-        .filter { !it.sensitive }
-    val view = (props.action as? tools.confido.state.SetPresenterViewAction)?.view as? PredictionShowcasePV ?: return@FC
-    val onViewChange: (tools.confido.state.PresenterView) -> Unit = { v -> props.onChange(tools.confido.state.SetPresenterViewAction(v)) }
-    tools.confido.web.components.redesign.presentation.FieldLabel { +"Question" }
-    QuestionPicker {
-        this.questions = questions
-        selectedId = view.question.id
-        onChange = { onViewChange(PredictionShowcasePV(Ref(it))) }
-    }
-}
-
-private val GroupPredComparePVEditorComponent = FC<tools.confido.extensions.FlowItemEditorProps> { props ->
-    val allTags0 = tools.confido.web.components.redesign.presentation.useRoomQuestions()
-    val view = (props.action as? tools.confido.state.SetPresenterViewAction)?.view as? GroupPredictionComparePV ?: return@FC
-    val onViewChange: (tools.confido.state.PresenterView) -> Unit = { v -> props.onChange(tools.confido.state.SetPresenterViewAction(v)) }
-    val allTags = allTags0
-        .flatMap { it.tags }.distinct().sorted()
-    tools.confido.web.components.redesign.presentation.FieldLabel { +"Filter by tag (optional)" }
-    Select {
-        value = view.questionGroup ?: ""
-        onChange = { e ->
-            val tag = e.target.value
-            onViewChange(view.copy(questionGroup = tag.ifEmpty { null }))
-        }
-        css { width = 100.pct }
-        react.dom.html.ReactHTML.option { value = ""; +"All questions" }
-        allTags.forEach { tag ->
-            react.dom.html.ReactHTML.option { value = tag; +tag }
+/** Shared control for the group-prediction compare view: the tag filter. Serves
+ *  both the live control panel and the flow editor (which backfills the room ref
+ *  via roomSubject — the old flow-only editor never did, leaving Ref("")). */
+private val GroupPredictionComparePC = FC<PresenterControlsProps<GroupPredictionComparePV>> { props ->
+    val roomRef = props.view.room.takeIf { it.id.isNotBlank() }
+    val qmap = (useSubscription(roomRef?.let { Topics.roomQuestions(it) }) as? WSData)?.data ?: emptyMap()
+    val allTags = qmap.values.flatMap { it.tags }.distinct().sorted()
+    FormField {
+        title = "Filter by tag"
+        Select {
+            value = props.view.questionGroup ?: ""
+            disabled = props.disabled
+            onChange = { e ->
+                props.onChange(props.view.copy(questionGroup = e.target.value.ifEmpty { null }))
+            }
+            css { width = 100.pct }
+            option { value = ""; +"All questions" }
+            allTags.forEach { tag -> option { value = tag; +tag } }
+            // Keep an already-selected tag visible even when currently unknown.
+            props.view.questionGroup?.takeIf { it !in allTags }?.let { option { value = it; +it } }
         }
     }
 }
@@ -272,13 +268,20 @@ object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
             presenterPageMap(GroupPredictionComparePP)
         )
 
+    override fun registerPresenterControls() = mapOf(
+        presenterControlsMap(GroupPredictionComparePC),
+    )
+
     override fun registerFlowItemTypes() = listOf(
         tools.confido.extensions.FlowItemTypeEntry(
             key = "predictionShowcase",
             label = "Individual predictions showcase",
             category = tools.confido.extensions.FlowItemCategory.VIEW,
             createDefault = { tools.confido.state.SetPresenterViewAction(PredictionShowcasePV(Ref(""))) },
-            editor = PredictionShowcasePVEditorComponent,
+            // Sensitive questions cannot be showcased (individual predictions, server-enforced).
+            editor = pvFlowEditor(questionSubject<PredictionShowcasePV>(
+                filter = { !it.sensitive },
+                get = { it.question }, set = { v, q -> v.copy(question = q) })),
             matches = { it is tools.confido.state.SetPresenterViewAction && it.view is PredictionShowcasePV },
         ),
         tools.confido.extensions.FlowItemTypeEntry(
@@ -286,7 +289,8 @@ object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
             label = "Compare group predictions",
             category = tools.confido.extensions.FlowItemCategory.VIEW,
             createDefault = { tools.confido.state.SetPresenterViewAction(GroupPredictionComparePV(Ref(""))) },
-            editor = GroupPredComparePVEditorComponent,
+            editor = pvFlowEditor(roomSubject<GroupPredictionComparePV>(
+                get = { it.room }, set = { v, r -> v.copy(room = r.ref) })),
             matches = { it is tools.confido.state.SetPresenterViewAction && it.view is GroupPredictionComparePV },
         ),
     )

@@ -86,6 +86,7 @@ object MigrationRunner {
         FoldCommentLikesMigration,
         ShortSerialNamesMigration,
         RetireUpdateScatterPlotMigration,
+        PresenterViewItemMigration,
     )
 
     /**

@@ -9,6 +9,8 @@ import tools.confido.web.components.redesign.forms.*
 import tools.confido.web.components.redesign.presenter.PresenterContext
 import tools.confido.web.components.redesign.questions.dialog.EditQuestionDialogProps
 import tools.confido.web.components.redesign.forms.Button
+import tools.confido.web.components.redesign.presentation.pvFlowEditor
+import tools.confido.web.components.redesign.presentation.roomSubject
 import web.cssom.*
 import emotion.react.css
 import tools.confido.web.hooks.useSubscription
@@ -103,18 +105,6 @@ val ReferenceForcastScoreboardPP = FC<PresenterPageProps<ReferenceForcastScorebo
     }
 }
 
-private val RefForecastScoreboardPVEditorComponent = FC<tools.confido.extensions.FlowItemEditorProps> { _ ->
-    div {
-        css {
-            fontFamily = sansSerif
-            fontSize = 13.px
-            color = Color("#888")
-            marginTop = 4.px
-        }
-        +"Will show the reference forecast scoreboard for this room."
-    }
-}
-
 object ReferenceForecastCE : ClientExtension, ReferenceForecastExtension() {
     override fun questionManagementExtra(room: Room, cb: ChildrenBuilder) {
         val presenterCtl = use(PresenterContext)!!
@@ -183,7 +173,11 @@ object ReferenceForecastCE : ClientExtension, ReferenceForecastExtension() {
             label = "Reference forecast scoreboard",
             category = tools.confido.extensions.FlowItemCategory.VIEW,
             createDefault = { tools.confido.state.SetPresenterViewAction(ReferenceForcastScoreboardPV(tools.confido.refs.Ref(""))) },
-            editor = RefForecastScoreboardPVEditorComponent,
+            // roomSubject backfills the room ref from the edited room (the old
+            // info-only editor never did, leaving Ref("") → blank projector).
+            editor = pvFlowEditor(roomSubject<ReferenceForcastScoreboardPV>(
+                hint = "Will show the reference forecast scoreboard for this room.",
+                get = { it.room }, set = { v, r -> v.copy(room = r.ref) })),
             matches = { it is tools.confido.state.SetPresenterViewAction && it.view is ReferenceForcastScoreboardPV },
         )
     )

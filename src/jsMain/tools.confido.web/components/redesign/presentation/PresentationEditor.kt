@@ -1,8 +1,12 @@
 package tools.confido.web.components.redesign.presentation
 
 import tools.confido.api.Api
+import tools.confido.question.Question
+import tools.confido.refs.Ref
 import tools.confido.refs.ref
+import tools.confido.rooms.Room
 import tools.confido.web.Client
+import tools.confido.web.components.presenter.ExpectedWorldContext
 import tools.confido.web.components.redesign.*
 import tools.confido.web.components.redesign.basic.*
 import tools.confido.web.components.redesign.forms.*
@@ -21,20 +25,24 @@ import js.objects.unsafeJso as jso
 import kotlinx.coroutines.await
 import tools.confido.payloads.requests.EditPresentation
 import tools.confido.web.components.redesign.presenter.FlowActionDescription
-import tools.confido.web.components.redesign.presenter.PresenterViewDescription
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.img
 import react.dom.html.ReactHTML.input
+import react.dom.html.ReactHTML.option
 import react.dom.html.ReactHTML.span
+import react.router.useBlocker
+import web.events.Event
+import web.events.EventType
+import web.events.addEventListener
+import web.events.removeEventListener
+import web.window.window
 import tools.confido.extensions.FlowItemCategory
 import tools.confido.state.*
 import tools.confido.utils.generateId
 import web.cssom.*
 import web.html.InputType
 import web.html.file
-import web.html.number
-
 import web.html.text
 
 /**
@@ -56,7 +64,7 @@ internal fun flowItemBgColor(item: FlowItem): Color = when (item) {
         FlowItemCategory.SIDE_EFFECT -> Color("#fff3e0")
     }
     is NoteItem -> if (item.warning) Color("#ffebee") else Color("#e8f5e9")
-    is PresenterViewItem -> Color("#e3f2fd")
+    is ForEachItem -> Color("#f3e5f5")
 }
 
 /** Badge color for a flow item row. */
@@ -69,7 +77,7 @@ internal fun flowItemBadgeColor(item: FlowItem): Color = when (item) {
         FlowItemCategory.SIDE_EFFECT -> Color("#e65100")
     }
     is NoteItem -> if (item.warning) Color("#c62828") else Color("#2e7d32")
-    is PresenterViewItem -> Color("#1565c0")
+    is ForEachItem -> Color("#7b1fa2")
 }
 
 /** Badge text for a flow item row. */
@@ -82,7 +90,7 @@ internal fun flowItemBadgeText(item: FlowItem): String = when (item) {
         FlowItemCategory.SIDE_EFFECT -> "ACTION"
     }
     is NoteItem -> if (item.warning) "WARNING" else "NOTE"
-    is PresenterViewItem -> "VIEW"
+    is ForEachItem -> "REPEAT"
 }
 
 external interface PresentationEditorProps : Props {
@@ -108,18 +116,24 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
     val room = use(RoomContext)!!
     val submitLock = useCoroutineLock()
     val pres = props.data.presentation
+    val roomQuestions = useRoomQuestions()
 
-    // Local mutable copy of items for editing + DnD
+    // Local mutable copy of items for editing + DnD. All mutations funnel through
+    // setItems -> normalizeFlowItems, upholding the slide-order invariant (slides
+    // ascending, no duplicates) no matter how items were dragged or inserted.
     var items by useState(pres.items)
     var slideLabels by useState(pres.slideLabels)
     var dirty by useState(false)
     var uploading by useState(false)
+    // Drill-in: non-null while a loop's body is open in the sub-editor.
+    var editingLoopId by useState<String?>(null)
 
     // Unified config dialog state
     var dialogOpen by useState(false)
     var editingItemId by useState<String?>(null) // null = inserting new, non-null = editing existing
     var dialogInsertAfter by useState(-1) // insertion position for new items
     var dialogInitial by useState<FlowAction?>(null) // initial action for editing
+
 
     // Sync from server when presentation changes (e.g. after slide upload)
     useEffect(pres.items, pres.slideLabels) {
@@ -129,10 +143,45 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
         }
     }
 
-    val mouseSensor = useSensor<MouseSensorOptions>(MouseSensor)
-    val sensors = useSensors(mouseSensor)
+    fun setItems(newItems: List<FlowItem>) {
+        items = normalizeFlowItems(newItems)
+        dirty = true
+    }
 
-    val itemIds = items.map { it.id }.toTypedArray()
+    fun updateItem(id: String, updater: (FlowItem) -> FlowItem) {
+        setItems(items.map { if (it.id == id) updater(it) else it })
+    }
+
+    val editingLoop = editingLoopId?.let { id -> items.firstOrNull { it.id == id } as? ForEachItem }
+
+    // The list currently shown/edited: a loop's body while drilled in, else the flow.
+    fun currentItems(): List<FlowItem> = editingLoop?.body ?: items
+    fun setCurrentItems(newItems: List<FlowItem>) {
+        val loop = editingLoop
+        if (loop != null) updateItem(loop.id) { (it as ForEachItem).copy(body = normalizeFlowItems(newItems)) }
+        else setItems(newItems)
+    }
+    fun insertCurrent(item: FlowItem, afterIndex: Int) {
+        val l = currentItems().toMutableList()
+        l.add((afterIndex + 1).coerceIn(0, l.size), item)
+        setCurrentItems(l)
+    }
+
+    // Items that cannot run as configured (unset question, blank marker name, ...);
+    // a loop row surfaces its body's first problem. They block saving — the server
+    // rejects them anyway (validateFlowItems).
+    fun problemsOf(list: List<FlowItem>): Map<String, String> = buildMap {
+        list.forEach { item ->
+            when (item) {
+                is ActionItem -> item.action.configProblem()?.let { put(item.id, it) }
+                is ForEachItem -> item.body.firstNotNullOfOrNull { b ->
+                    (b as? ActionItem)?.action?.configProblem()
+                }?.let { put(item.id, it) }
+                else -> {}
+            }
+        }
+    }
+    val configProblems = problemsOf(items)
 
     fun save() {
         submitLock {
@@ -142,58 +191,102 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
         }
     }
 
+    fun missingSlideIndices() = (0 until pres.numSlides)
+        .filter { i -> items.none { it is SlideItem && it.slideIndex == i } }
+
     fun addSlideItems() {
-        val newItems = items.toMutableList()
-        for (i in 0 until pres.numSlides) {
-            // Don't add duplicates
-            if (newItems.none { it is SlideItem && it.slideIndex == i }) {
-                newItems.add(SlideItem(id = generateId(), slideIndex = i))
+        // Normalization sinks the appended slides into their proper slots.
+        setItems(items + missingSlideIndices().map { SlideItem(id = generateId(), slideIndex = it) })
+    }
+
+    // Unsaved-changes guards (save is explicit — mid-configuration items are
+    // legitimately invalid, so implicit saving is not an option): hard
+    // reload/close via beforeunload…
+    useEffectWithCleanup(dirty) {
+        if (dirty) {
+            val handler: (Event) -> Unit = { it.preventDefault() }
+            window.addEventListener(EventType<Event>("beforeunload"), handler)
+            onCleanup { window.removeEventListener(EventType<Event>("beforeunload"), handler) }
+        }
+    }
+    // …and in-app route changes via the router blocker (the app root is a data
+    // router, so this catches tab switches and sidebar navigation).
+    val blocker = useBlocker(dirty)
+    ConfirmDialog {
+        open = blocker.asDynamic().state == "blocked"
+        title = "Leave without saving?"
+        cancelText = "Stay"
+        confirmText = "Discard changes"
+        onClose = { blocker.asDynamic().reset() }
+        onConfirm = { blocker.asDynamic().proceed() }
+        +"The presentation flow has unsaved changes. If you leave now, they will be lost."
+    }
+
+    // The world as expected at the edited/inserted step: preceding steps simulated
+    // (question states, created marks) so pickers can offer flow-created marks and
+    // editors can show effective-at-this-step reference lines. Inside a loop body,
+    // the world is "before the loop" + the body prefix (sentinel left in place, so
+    // marks created on the current question stay pickable) + the candidate set.
+    val editIdx = editingItemId?.let { id -> currentItems().indexOfFirst { it.id == id } } ?: (dialogInsertAfter + 1)
+    val expectedWorld = useMemo(items, editIdx, roomQuestions, room, dialogOpen, editingLoopId) {
+        if (!dialogOpen) null
+        else {
+            val lookup = object : EntityLookup {
+                override fun question(ref: Ref<Question>) = roomQuestions.firstOrNull { it.id == ref.id }
+                override fun room(ref: Ref<Room>) = room.takeIf { it.id == ref.id }
+            }
+            val loop = editingLoop
+            if (loop == null) computeExpectedWorld(items, editIdx, room, lookup)
+            else {
+                val loopIdx = items.indexOfFirst { it.id == loop.id }
+                val base = computeExpectedWorld(items, loopIdx, room, lookup)
+                val w = loop.body.take(editIdx.coerceAtLeast(0)).foldIndexed(base) { i, acc, b ->
+                    (b as? ActionItem)?.action?.simulate(acc.copy(stepIndex = i)) ?: acc
+                }
+                w.copy(loopCandidates = base.candidatesFor(loop))
             }
         }
-        items = newItems
-        dirty = true
     }
 
-    fun insertItem(item: FlowItem, afterIndex: Int = items.lastIndex) {
-        val newItems = items.toMutableList()
-        newItems.add(afterIndex + 1, item)
-        items = newItems
-        dirty = true
-    }
-
-    fun removeItem(id: String) {
-        items = items.filter { it.id != id }
-        dirty = true
-    }
-
-    fun updateItem(id: String, updater: (FlowItem) -> FlowItem) {
-        items = items.map { if (it.id == id) updater(it) else it }
-        dirty = true
+    // A gap "+" (or the end-of-list add button) goes straight into the config
+    // dialog — the type chooser lives there (chips), no intermediate menu.
+    fun openInsertDialog(afterIndex: Int) {
+        dialogInsertAfter = afterIndex
+        editingItemId = null
+        dialogInitial = null
+        dialogOpen = true
     }
 
     // Unified flow item configuration dialog
-    FlowItemConfigDialog {
-        open = dialogOpen
-        action = dialogInitial
-        onClose = { dialogOpen = false; editingItemId = null }
-        onConfirm = { configuredAction ->
-            val existingId = editingItemId
-            if (existingId != null) {
-                // Editing existing action item
-                items = items.map { item ->
-                    if (item.id == existingId && item is ActionItem)
-                        item.copy(action = configuredAction)
-                    else item
+    ExpectedWorldContext.Provider {
+        value = expectedWorld
+        FlowItemConfigDialog {
+            open = dialogOpen
+            action = dialogInitial
+            inLoopBody = editingLoop != null
+            onClose = { dialogOpen = false; editingItemId = null }
+            onConfirm = { rawItem ->
+                // In a loop body, unset question refs default to the current question.
+                val newItem = if (editingLoop != null && rawItem is ActionItem)
+                    rawItem.copy(action = rawItem.action.mapQuestionRefs {
+                        if (it.id.isEmpty()) CURRENT_QUESTION else it
+                    })
+                else rawItem
+                val existingId = editingItemId
+                if (existingId != null) {
+                    // Editing an existing action item: keep the row, replace the action.
+                    setCurrentItems(currentItems().map { item ->
+                        if (item.id == existingId && item is ActionItem && newItem is ActionItem)
+                            item.copy(action = newItem.action)
+                        else item
+                    })
+                } else {
+                    insertCurrent(newItem, dialogInsertAfter)
+                    // A freshly created loop is empty — jump straight into its body.
+                    if (newItem is ForEachItem) editingLoopId = newItem.id
                 }
-            } else {
-                // Inserting new action item
-                val newItem = ActionItem(id = generateId(), action = configuredAction)
-                val newItems = items.toMutableList()
-                newItems.add(dialogInsertAfter + 1, newItem)
-                items = newItems
+                editingItemId = null
             }
-            dirty = true
-            editingItemId = null
         }
     }
 
@@ -274,6 +367,7 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
             }
 
             if (pres.numSlides > 0) {
+                val missing = missingSlideIndices().size
                 Button {
                     css {
                         margin = 0.px
@@ -282,8 +376,14 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
                         backgroundColor = Color("#E8E0F5")
                         color = Color("#6319FF")
                     }
+                    disabled = missing == 0
                     +"Auto-populate slides"
                     onClick = { addSlideItems() }
+                }
+                span {
+                    css { fontSize = 12.px; color = Color("#888"); fontFamily = sansSerif }
+                    +(if (missing == 0) "All slides are in the flow"
+                      else "$missing ${if (missing == 1) "slide" else "slides"} not in the flow")
                 }
             }
 
@@ -297,6 +397,7 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
                         fontSize = 13.px
                         backgroundColor = Color("#4caf50")
                     }
+                    disabled = configProblems.isNotEmpty()
                     +"Save"
                     onClick = { save() }
                 }
@@ -306,36 +407,302 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
                         color = Color("#e65100")
                         fontFamily = sansSerif
                     }
-                    +"Unsaved changes"
+                    +(if (configProblems.isEmpty()) "Unsaved changes"
+                      else "${configProblems.size} ${if (configProblems.size == 1) "item needs" else "items need"} configuration before saving")
                 }
             }
         }
 
-        // Insert item buttons (top)
-        InsertItemBar {
-            numSlides = pres.numSlides
-            onInsert = { item -> insertItem(item, -1) }
-            onInsertAction = {
-                dialogInsertAfter = -1
-                editingItemId = null
-                dialogInitial = null
+        FlowItemList {
+            this.items = items
+            this.presentation = pres
+            this.slideLabels = slideLabels
+            this.configProblems = configProblems
+            this.onItemsChange = { setItems(it) }
+            this.onEditAction = { actionItem ->
+                editingItemId = actionItem.id
+                dialogInitial = actionItem.action
                 dialogOpen = true
             }
+            this.onOpenLoop = { loop -> editingLoopId = loop.id }
+            this.onUpdateSlideLabel = { slideIdx, label ->
+                val newLabels = slideLabels.toMutableList()
+                while (newLabels.size <= slideIdx) newLabels.add("Slide ${newLabels.size + 1}")
+                newLabels[slideIdx] = label
+                slideLabels = newLabels
+                dirty = true
+            }
+            this.openInsertDialog = { idx -> openInsertDialog(idx) }
+            this.emptyText =
+                if (pres.numSlides > 0) "No items yet. Auto-populate your uploaded slides, or add items one by one."
+                else "No items yet. Upload a slide PDF, or add items one by one."
         }
+    }
 
-        // Sortable flow item list
+    // Loop body editor: a dialog rather than an in-place drill-down, so the main
+    // screen always shows a single context. The step-config dialog stacks on top
+    // (per-layer backdrops handle the layering). Edits write through to the flow;
+    // "Done" just closes.
+    ForEachDialog {
+        open = editingLoop != null
+        loop = editingLoop
+        presentation = pres
+        this.slideLabels = slideLabels
+        bodyProblems = editingLoop?.let { problemsOf(it.body) } ?: emptyMap()
+        tags = roomQuestions.flatMap { it.tags }.distinct().sorted()
+        this.roomQuestions = roomQuestions
+        onLoopUpdate = { f ->
+            editingLoop?.let { l -> updateItem(l.id) { f(it as ForEachItem) } }
+        }
+        onBodyChange = { setCurrentItems(it) }
+        onEditAction = { actionItem ->
+            editingItemId = actionItem.id
+            dialogInitial = actionItem.action
+            dialogOpen = true
+        }
+        this.openInsertDialog = { idx -> openInsertDialog(idx) }
+        onClose = { editingLoopId = null }
+    }
+}
+
+private external interface ForEachDialogProps : Props {
+    var open: Boolean
+    var loop: ForEachItem?
+    var presentation: Presentation
+    var slideLabels: List<String>
+    var bodyProblems: Map<String, String>
+    var tags: List<String>
+    var roomQuestions: List<Question>
+    var onLoopUpdate: (((ForEachItem) -> ForEachItem)) -> Unit
+    var onBodyChange: (List<FlowItem>) -> Unit
+    var onEditAction: (ActionItem) -> Unit
+    var openInsertDialog: (Int) -> Unit
+    var onClose: () -> Unit
+}
+
+private val ForEachDialog = FC<ForEachDialogProps> { props ->
+    val loop = props.loop
+    Dialog {
+        open = props.open
+        onClose = { props.onClose() }
+        title = "Repeat over questions"
+        action = "Done"
+        onAction = { props.onClose() }
+        if (loop != null) FormSection {
+            FormField {
+                title = "Repeat over"
+                comment = "Each step runs once per question, referencing it as the current question." +
+                    if (props.tags.isEmpty())
+                        " Tip: give questions tags in the question editor to select whole groups at once."
+                    else ""
+                LoopSelectionPicker {
+                    this.loop = loop
+                    this.roomQuestions = props.roomQuestions
+                    this.tags = props.tags
+                    this.onLoopUpdate = props.onLoopUpdate
+                }
+            }
+            FormField {
+                title = "Repeated steps"
+                Stack {
+                    css { minWidth = 560.px }
+                    FlowItemList {
+                    this.items = loop.body
+                    presentation = props.presentation
+                    this.slideLabels = props.slideLabels
+                    configProblems = props.bodyProblems
+                    onItemsChange = props.onBodyChange
+                    onEditAction = props.onEditAction
+                    onOpenLoop = null
+                    onUpdateSlideLabel = { _, _ -> }
+                        this.openInsertDialog = props.openInsertDialog
+                        emptyText = "No steps in this loop yet."
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The loop's question-selection control: a select-look button summarizing the
+ * selection, opening a checkbox popover. "All room questions" and per-tag rows
+ * are *dynamic* checks (they imply their members' checkmarks and keep including
+ * questions added later); question rows are static picks. Unchecking an implied
+ * question dissolves the covering dynamic checks into static picks (see
+ * [ForEachItem.toggleQuestion]). Plain checkboxes in a popover rather than a
+ * react-select: everything here is a toggle, so a combobox bought only fights
+ * (decoded clicks, suppressed value rendering, inconsistent selected styling).
+ */
+private external interface LoopSelectionPickerProps : Props {
+    var loop: ForEachItem
+    var roomQuestions: List<Question>
+    var tags: List<String>
+    var onLoopUpdate: (((ForEachItem) -> ForEachItem)) -> Unit
+}
+
+private val LoopSelectionPicker = FC<LoopSelectionPickerProps> { props ->
+    var open by useState(false)
+    var search by useState("")
+    val loop = props.loop
+    val qs = props.roomQuestions
+    val n = qs.count { loop.selects(it) }
+    val summary = when {
+        loop.all -> "All room questions ($n)"
+        loop.tags.isNotEmpty() && loop.questions.isEmpty() ->
+            "Questions tagged ${loop.tags.sorted().joinToString(", ") { "\"$it\"" }} ($n)"
+        loop.tags.isEmpty() && loop.questions.isEmpty() -> "No questions selected"
+        else -> "$n of ${qs.size} questions selected"
+    }
+
+    ButtonUnstyled {
+        css {
+            width = 100.pct
+            display = Display.flex
+            justifyContent = JustifyContent.spaceBetween
+            alignItems = AlignItems.center
+            gap = 8.px
+            padding = Padding(8.px, 10.px)
+            border = Border(1.px, LineStyle.solid, Color("#cccccc"))
+            borderRadius = 4.px
+            backgroundColor = NamedColor.white
+            fontFamily = sansSerif
+            fontSize = 14.px
+            textAlign = TextAlign.left
+            cursor = Cursor.pointer
+        }
+        span { +summary }
+        span { css { color = Color("#888888") }; +"▾" }
+        // The popover matches this control's width automatically: MenuPopover
+        // never renders narrower than its trigger.
+        onClick = { open = true }
+    }
+
+    // A row toggles via a single click anywhere on it; the checkbox itself is
+    // display-only (its click bubbles to the row) to avoid double toggling.
+    fun ChildrenBuilder.checkRow(rowKey: String, checked: Boolean, bold: Boolean,
+                                 label: String, onToggle: () -> Unit) {
+        Stack {
+            key = rowKey
+            direction = FlexDirection.row
+            css {
+                alignItems = AlignItems.center
+                gap = 8.px
+                padding = Padding(3.px, 15.px)
+                cursor = Cursor.pointer
+                "&:hover" { backgroundColor = Color("#f5f5f5") }
+            }
+            Checkbox {
+                this.checked = checked
+                onChange = {}
+                // No <label> wrapper: a label forwards clicks to its input, so the
+                // row's onClick would fire twice per checkbox click (= no-op toggle).
+                wrapLabel = false
+            }
+            span {
+                css {
+                    fontFamily = sansSerif
+                    fontSize = 14.px
+                    if (bold) fontWeight = integer(600)
+                    overflow = Overflow.hidden
+                    textOverflow = TextOverflow.ellipsis
+                    whiteSpace = WhiteSpace.nowrap
+                }
+                +label
+            }
+            onClick = { onToggle() }
+        }
+    }
+
+    DialogMenu {
+        this.open = open
+        onClose = { open = false; search = "" }
+        DialogMenuHeader { text = "Repeat over" }
+        div {
+            div {
+                css { padding = Padding(0.px, 15.px, 8.px) }
+                TextInput {
+                    value = search
+                    placeholder = "Search questions…"
+                    autoFocus = true
+                    onChange = { e -> search = e.target.value }
+                }
+            }
+            val filter = search.trim()
+            if (filter.isEmpty()) {
+                checkRow("//all", loop.all, true, "All room questions (${qs.size})") {
+                    props.onLoopUpdate { it.toggleAll() }
+                }
+                props.tags.forEach { t ->
+                    checkRow("//tag:$t", t in loop.tags, true,
+                        "Questions tagged \"$t\" (${qs.count { q -> t in q.tags }})") {
+                        props.onLoopUpdate { it.toggleTag(t) }
+                    }
+                }
+                div { css { borderTop = Border(1.px, LineStyle.solid, Color("#eeeeee")); margin = Margin(6.px, 0.px) } }
+            }
+            div {
+                css { maxHeight = 260.px; overflowY = Auto.auto }
+                qs.filter { filter.isEmpty() || it.name.contains(filter, ignoreCase = true) }.forEach { q ->
+                    checkRow(q.id, loop.selects(q), false, q.name) {
+                        props.onLoopUpdate { it.toggleQuestion(q, qs) }
+                    }
+                }
+            }
+            div {
+                css {
+                    padding = Padding(6.px, 15.px, 0.px)
+                    fontFamily = sansSerif
+                    fontSize = 11.px
+                    color = Color("#999999")
+                }
+                +"\"All\" and tag checks keep including questions added later; picked questions are fixed."
+            }
+        }
+    }
+}
+
+// The sortable flow list: rows, hover insert zones, end-of-list add affordance and
+// empty state. Serves both levels — the main flow and a loop body (drill-in); only
+// one instance is mounted at a time. Normalization is the owner's concern
+// (onItemsChange receives the raw reordered list).
+private external interface FlowItemListProps : Props {
+    var items: List<FlowItem>
+    var presentation: Presentation
+    var slideLabels: List<String>
+    var configProblems: Map<String, String>
+    var onItemsChange: (List<FlowItem>) -> Unit
+    var onEditAction: (ActionItem) -> Unit
+    var onOpenLoop: ((ForEachItem) -> Unit)?
+    var onUpdateSlideLabel: (Int, String) -> Unit
+    var openInsertDialog: (Int) -> Unit
+    var emptyText: String
+}
+
+private val FlowItemList = FC<FlowItemListProps> { props ->
+    val items = props.items
+    var dragging by useState(false)
+    val mouseSensor = useSensor<MouseSensorOptions>(MouseSensor)
+    val sensors = useSensors(mouseSensor)
+    val itemIds = items.map { it.id }.toTypedArray()
+
+    // Rows sit close together; the hover zones between them double as insertion
+    // points and provide the visual spacing.
+    div {
+        css { display = Display.flex; flexDirection = FlexDirection.column }
         DndContext {
             collisionDetection = closestCenter
             modifiers = arrayOf(restrictToVerticalAxis, restrictToWindowEdges)
             this.sensors = sensors
+            onDragStart = { dragging = true }
             onDragEnd = { event ->
+                dragging = false
                 val over = event.over
                 if (over != null && event.active.id != over.id) {
                     val oldIndex = items.indexOfFirst { it.id == event.active.id }
                     val newIndex = items.indexOfFirst { it.id == over.id }
                     if (oldIndex >= 0 && newIndex >= 0) {
-                        items = arrayMove(items.toTypedArray(), oldIndex, newIndex).toList()
-                        dirty = true
+                        props.onItemsChange(arrayMove(items.toTypedArray(), oldIndex, newIndex).toList())
                     }
                 }
             }
@@ -344,164 +711,152 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
                 this.items = itemIds
                 strategy = verticalListSortingStrategy
 
+                InsertHoverZone {
+                    visible = !dragging && items.isNotEmpty()
+                    onClick = { props.openInsertDialog(-1) }
+                }
                 items.forEachIndexed { index, item ->
                     FlowItemRow {
                         key = item.id
                         this.item = item
-                        this.presentation = pres
-                        this.slideLabels = slideLabels
-                        this.onRemove = { removeItem(item.id) }
-                        this.onUpdate = { updated -> updateItem(item.id) { updated } }
-                        this.onEditAction = { actionItem ->
-                            editingItemId = actionItem.id
-                            dialogInitial = actionItem.action
-                            dialogOpen = true
-                        }
-                        this.onUpdateSlideLabel = { slideIdx, label ->
-                            val newLabels = slideLabels.toMutableList()
-                            while (newLabels.size <= slideIdx) newLabels.add("Slide ${newLabels.size + 1}")
-                            newLabels[slideIdx] = label
-                            slideLabels = newLabels
-                            dirty = true
-                        }
+                        this.index = index
+                        this.presentation = props.presentation
+                        this.slideLabels = props.slideLabels
+                        this.configProblem = props.configProblems[item.id]
+                        this.onRemove = { props.onItemsChange(items.filter { it.id != item.id }) }
+                        this.onUpdate = { updated -> props.onItemsChange(items.map { if (it.id == item.id) updated else it }) }
+                        this.onEditAction = { props.onEditAction(it) }
+                        this.onOpenLoop = props.onOpenLoop
+                        this.onUpdateSlideLabel = props.onUpdateSlideLabel
                     }
 
-                    // Insert bar after each item
-                    InsertItemBar {
+                    InsertHoverZone {
                         key = "insert-after-${item.id}"
-                        numSlides = pres.numSlides
-                        onInsert = { newItem -> insertItem(newItem, index) }
-                        onInsertAction = {
-                            dialogInsertAfter = index
-                            editingItemId = null
-                            dialogInitial = null
-                            dialogOpen = true
-                        }
+                        visible = !dragging
+                        onClick = { props.openInsertDialog(index) }
                     }
                 }
             }
         }
     }
+
+    if (items.isEmpty()) {
+        Stack {
+            css {
+                alignItems = AlignItems.center
+                gap = 8.px
+                padding = Padding(30.px, 20.px)
+                border = Border(1.px, LineStyle.dashed, Color("#ccc"))
+                borderRadius = 8.px
+                fontFamily = sansSerif
+                color = Color("#888")
+                fontSize = 14.px
+            }
+            +props.emptyText
+            Button {
+                css { margin = 0.px; padding = Padding(6.px, 16.px); fontSize = 13.px }
+                +"+ Add first item"
+                onClick = { props.openInsertDialog(-1) }
+            }
+        }
+    } else {
+        // Always-visible add affordance at the end of the list
+        div {
+            ButtonUnstyled {
+                css {
+                    fontSize = 12.px
+                    color = Color("#888")
+                    fontFamily = sansSerif
+                    padding = Padding(3.px, 10.px)
+                    borderRadius = 4.px
+                    border = Border(1.px, LineStyle.dashed, Color("#ccc"))
+                    cursor = Cursor.pointer
+                    "&:hover" {
+                        borderColor = Color("#999")
+                        color = Color("#555")
+                    }
+                }
+                +"+ Add item"
+                onClick = { props.openInsertDialog(items.lastIndex) }
+            }
+        }
+    }
 }
 
-// A compact row for inserting new items via a "+" button with a dropdown menu
-external interface InsertItemBarProps : Props {
-    var numSlides: Int
-    var onInsert: (FlowItem) -> Unit
-    /** Called when user wants to insert a flow action item (opens config dialog). */
-    var onInsertAction: (() -> Unit)?
+/**
+ * A thin hover zone between two rows: invisible until hovered, then reveals a
+ * centered "+" pill and a guide line. Overlaps the row edges via negative
+ * margins so rows sit close together while the hit target stays comfortable
+ * (desktop-only interface — hover is fine).
+ */
+external interface InsertHoverZoneProps : Props {
+    /** Hidden while a drag is in progress (so it can't swallow drop targets). */
+    var visible: Boolean
+    var onClick: () -> Unit
 }
 
-val InsertItemBar = FC<InsertItemBarProps> { props ->
-    var menuOpen by useState(false)
-
-    Stack {
-        direction = FlexDirection.row
+val InsertHoverZone = FC<InsertHoverZoneProps> { props ->
+    div {
         css {
-            justifyContent = JustifyContent.center
-            padding = Padding(2.px, 0.px)
-            gap = 5.px
+            height = 12.px
+            margin = Margin((-5).px, 0.px)
+            position = Position.relative
+            zIndex = integer(2)
+            display = if (props.visible) Display.block else None.none
+            "&:hover .insert-line" { opacity = number(1.0) }
+            "&:hover .insert-pill" { opacity = number(1.0) }
+        }
+        div {
+            css(ClassName("insert-line")) {
+                position = Position.absolute
+                top = 50.pct
+                left = 0.px
+                right = 0.px
+                borderTop = Border(1.px, LineStyle.dashed, Color("#c9b8ee"))
+                opacity = number(0.0)
+                transition = "opacity 0.1s".unsafeCast<Transition>()
+                pointerEvents = None.none
+            }
         }
         ButtonUnstyled {
-            css {
+            css(ClassName("insert-pill")) {
+                position = Position.absolute
+                top = 50.pct
+                left = 50.pct
+                transform = translate((-50).pct, (-50).pct)
+                opacity = number(0.0)
+                transition = "opacity 0.1s".unsafeCast<Transition>()
                 fontSize = 11.px
-                color = Color("#aaa")
                 fontFamily = sansSerif
-                padding = Padding(2.px, 8.px)
-                borderRadius = 3.px
-                border = Border(1.px, LineStyle.dashed, Color("#ddd"))
+                whiteSpace = WhiteSpace.nowrap
+                padding = Padding(1.px, 10.px)
+                borderRadius = 8.px
+                backgroundColor = Color("#E8E0F5")
+                color = Color("#6319FF")
                 cursor = Cursor.pointer
-                "&:hover" {
-                    borderColor = Color("#999")
-                    color = Color("#666")
-                }
+                "&:hover" { backgroundColor = Color("#dccdf3") }
             }
-            +"+ Add item"
-            onClick = { menuOpen = !menuOpen }
-        }
-    }
-
-    if (menuOpen) {
-        Stack {
-            direction = FlexDirection.row
-            css {
-                justifyContent = JustifyContent.center
-                gap = 5.px
-                padding = Padding(4.px, 0.px)
-                flexWrap = FlexWrap.wrap
-            }
-            fun addButton(label: String, badgeColor: Color? = null, onClick: () -> Unit) {
-                ButtonUnstyled {
-                    css {
-                        fontSize = 12.px
-                        fontFamily = sansSerif
-                        padding = Padding(4.px, 10.px)
-                        borderRadius = 4.px
-                        backgroundColor = Color("#f0f0f0")
-                        cursor = Cursor.pointer
-                        "&:hover" { backgroundColor = Color("#e0e0e0") }
-                    }
-                    // Optional color dot for category hint
-                    if (badgeColor != null) {
-                        span {
-                            css {
-                                display = Display.inlineBlock
-                                width = 8.px
-                                height = 8.px
-                                borderRadius = 50.pct
-                                backgroundColor = badgeColor
-                                marginRight = 4.px
-                            }
-                        }
-                    }
-                    +label
-                    this.onClick = {
-                        onClick()
-                        menuOpen = false
-                    }
-                }
-            }
-            // Slide (only if slides uploaded)
-            if (props.numSlides > 0) {
-                addButton("Slide", Color("#757575")) {
-                    props.onInsert(SlideItem(id = generateId(), slideIndex = 0))
-                }
-            }
-            // Note
-            addButton("Note", Color("#2e7d32")) {
-                props.onInsert(NoteItem(id = generateId(), text = "", warning = false))
-            }
-            // Direct-insert types (no editor needed)
-            for (entry in flowItemTypes) {
-                if (entry.editor != null) continue
-                val badgeColor = when (entry.category) {
-                    FlowItemCategory.SIDE_EFFECT -> Color("#e65100")
-                    FlowItemCategory.VIEW -> Color("#1565c0")
-                    FlowItemCategory.BOTH -> Color("#512da8")
-                    FlowItemCategory.EXPANDABLE -> Color("#7b1fa2")
-                }
-                addButton(entry.label, badgeColor) {
-                    props.onInsert(ActionItem(id = generateId(), action = entry.createDefault()))
-                }
-            }
-            // Single "Action" button for types that need the config dialog
-            if (flowItemTypes.any { it.editor != null }) {
-                addButton("Action", Color("#e65100")) {
-                    props.onInsertAction?.invoke()
-                }
-            }
+            +"+ Add"
+            onClick = { props.onClick() }
         }
     }
 }
+
 
 // A single row in the flow item list (sortable)
 external interface FlowItemRowProps : Props {
     var item: FlowItem
+    /** Zero-based position in the flow (displayed as a 1-based step number). */
+    var index: Int
     var presentation: Presentation
     var slideLabels: List<String>
+    /** Non-null when the item is not runnable as configured (see FlowAction.configProblem). */
+    var configProblem: String?
     var onRemove: () -> Unit
     var onUpdate: (FlowItem) -> Unit
     var onEditAction: ((ActionItem) -> Unit)?
+    /** Open a loop's body in the drill-in sub-editor (null inside body lists). */
+    var onOpenLoop: ((ForEachItem) -> Unit)?
     var onUpdateSlideLabel: (Int, String) -> Unit
 }
 
@@ -516,25 +871,43 @@ val FlowItemRow = FC<FlowItemRowProps> { props ->
             flexDirection = FlexDirection.row
             alignItems = AlignItems.center
             gap = 8.px
-            padding = Padding(6.px, 10.px)
+            padding = Padding(4.px, 8.px)
             borderRadius = 4.px
             backgroundColor = flowItemBgColor(item)
             border = Border(1.px, LineStyle.solid, Color("#e0e0e0"))
             fontFamily = sansSerif
             fontSize = 13.px
-            sortable.transform?.let { transform ->
-                asDynamic().style = jso<dynamic> {
-                    this.transform = "translate3d(${transform.x}px, ${transform.y}px, 0)"
-                }
+            "&:hover .drag-handle" { opacity = number(1.0) }
+            // Live reorder preview: the sortable transform must be set as the CSS
+            // `transform` property (as in QuestionRow) — an `asDynamic().style`
+            // assignment inside the emotion builder is silently ignored.
+            sortable.transform?.let { t ->
+                transform = translate(t.x.px, t.y.px)
             }
         }
 
-        // Drag handle
-        DragIndicatorIcon {
+        // Step number (same column style as the runner's compact list)
+        span {
             css {
+                width = 30.px
+                textAlign = TextAlign.right
+                color = Color("#999")
+                fontSize = 12.px
+                flexShrink = number(0.0)
+            }
+            +"${props.index + 1}"
+        }
+
+        // Drag handle, revealed on row hover (width stays reserved so text doesn't shift).
+        // NB the marker class must go through the merging css(ClassName(...)) overload —
+        // a separate `className =` assignment and the css prop clobber each other.
+        DragIndicatorIcon {
+            css(ClassName("drag-handle")) {
                 cursor = Cursor.grab
                 color = Color("#999")
                 flexShrink = number(0.0)
+                opacity = number(0.0)
+                transition = "opacity 0.1s".unsafeCast<Transition>()
             }
             applyListeners(sortable.listeners)
         }
@@ -549,6 +922,8 @@ val FlowItemRow = FC<FlowItemRowProps> { props ->
                 padding = Padding(1.px, 6.px)
                 borderRadius = 3.px
                 flexShrink = number(0.0)
+                minWidth = 52.px
+                textAlign = TextAlign.center
             }
             +flowItemBadgeText(item)
         }
@@ -561,6 +936,13 @@ val FlowItemRow = FC<FlowItemRowProps> { props ->
                 overflow = Overflow.hidden
                 textOverflow = TextOverflow.ellipsis
                 whiteSpace = WhiteSpace.nowrap
+                if (item is SlideItem) {
+                    // The thumbnail makes slide rows taller; flex-center the
+                    // label against it (inline flow would baseline-align it
+                    // near the image bottom, unlike the vcentered type chip).
+                    display = Display.flex
+                    alignItems = AlignItems.center
+                }
             }
             when (item) {
                 is SlideItem -> {
@@ -659,35 +1041,68 @@ val FlowItemRow = FC<FlowItemRowProps> { props ->
                         }
                     }
                 }
-                is PresenterViewItem -> {
-                    // Legacy: kept for backward compat deserialization
-                    span { PresenterViewDescription { view = item.view } }
+                is ForEachItem -> {
+                    // Title + a short body preview; the whole block drills into the sub-editor.
+                    ButtonUnstyled {
+                        css {
+                            display = Display.block
+                            textAlign = TextAlign.left
+                            width = 100.pct
+                            cursor = Cursor.pointer
+                            "&:hover .foreach-title" { color = flowItemBadgeColor(item) }
+                        }
+                        div {
+                            css(ClassName("foreach-title")) {
+                                fontWeight = integer(600)
+                            }
+                            +"Repeat over ${item.describeSelection()}"
+                        }
+                        item.body.take(3).forEach { b ->
+                            div {
+                                css {
+                                    fontSize = 12.px
+                                    color = Color("#777777")
+                                    marginTop = 2.px
+                                    overflow = Overflow.hidden
+                                    textOverflow = TextOverflow.ellipsis
+                                    whiteSpace = WhiteSpace.nowrap
+                                }
+                                +"· ${b.shortDescribe(props.presentation)}"
+                            }
+                        }
+                        if (item.body.size > 3) div {
+                            css { fontSize = 12.px; color = Color("#999999"); marginTop = 2.px }
+                            +"+ ${item.body.size - 3} more steps"
+                        }
+                        if (item.body.isEmpty()) div {
+                            css { fontSize = 12.px; color = Color("#b26a00"); marginTop = 2.px }
+                            +"No steps yet — click to add"
+                        }
+                        onClick = { props.onOpenLoop?.invoke(item) }
+                    }
                 }
             }
         }
 
-        // Slide index selector for SlideItem
-        if (item is SlideItem && props.presentation.numSlides > 1) {
-            span {
-                css { fontSize = 11.px; color = Color("#888") }
-                +"#"
-            }
-            input {
-                type = InputType.number
-                value = (item.slideIndex + 1).toString()
-                min = 1.0
-                max = props.presentation.numSlides.toDouble()
+        // Item not runnable as configured: amber badge, click opens the config dialog
+        props.configProblem?.let { problem ->
+            ButtonUnstyled {
                 css {
-                    width = 45.px
-                    fontSize = 12.px
-                    padding = Padding(2.px, 4.px)
-                    border = Border(1.px, LineStyle.solid, Color("#ccc"))
+                    fontSize = 11.px
+                    fontFamily = sansSerif
+                    padding = Padding(2.px, 6.px)
                     borderRadius = 3.px
+                    backgroundColor = Color("#fff3cd")
+                    color = Color("#b26a00")
+                    cursor = Cursor.pointer
+                    flexShrink = number(0.0)
                 }
-                onChange = { e ->
-                    val newIdx = (e.target.value.toIntOrNull() ?: 1) - 1
-                    if (newIdx in 0 until props.presentation.numSlides) {
-                        props.onUpdate(item.copy(slideIndex = newIdx))
+                +"⚠ $problem"
+                onClick = {
+                    when (item) {
+                        is ActionItem -> props.onEditAction?.invoke(item)
+                        is ForEachItem -> props.onOpenLoop?.invoke(item)
+                        else -> {}
                     }
                 }
             }
