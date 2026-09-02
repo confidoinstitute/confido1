@@ -6,6 +6,7 @@ import tools.confido.extensions.reference_forecast.ReferenceForcastKey
 import tools.confido.extensions.reference_forecast.UserScore
 import tools.confido.extensions.shared.ValueWithUser
 import io.ktor.server.routing.*
+import tools.confido.rooms.AttributionLevel
 import tools.confido.rooms.Room
 import tools.confido.rooms.RoomPermission
 import tools.confido.application.PermClass
@@ -57,11 +58,11 @@ object ReferenceForecastSE : ServerExtension, ReferenceForecastExtension() {
             call.withRoom(rRef) {
                 assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, "You cannot view individual predictions.")
 
-                // Find all questions with reference forecasts. Sensitive questions stay
-                // out: a per-user score against a single reference is a monotone
-                // function of that user's prediction.
+                // Find all questions with reference forecasts. Unattributed (ANONYMOUS+)
+                // questions stay out: a per-user score against a single reference is a
+                // monotone function of that user's prediction.
                 val questionsWithRef = room.questions.mapNotNull { qRef ->
-                    qRef.deref()?.takeIf { !it.sensitive }?.let { q ->
+                    qRef.deref()?.takeIf { it.effectiveAttributionIn(room).level < AttributionLevel.ANONYMOUS }?.let { q ->
                         q.extensionData[ReferenceForcastKey]?.let { ref ->
                             q to ref
                         }

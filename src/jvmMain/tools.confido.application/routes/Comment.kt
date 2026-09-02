@@ -4,6 +4,7 @@ import io.ktor.server.routing.*
 import tools.confido.payloads.responses.CommentExtraData
 import tools.confido.payloads.responses.CommentPresentation
 import tools.confido.payloads.responses.QuestionCommentExtraData
+import tools.confido.rooms.AttributionLevel
 import tools.confido.rooms.Room
 import tools.confido.rooms.RoomPermission
 import tools.confido.api.Api
@@ -23,7 +24,10 @@ fun<T: CommentExtraData> makeCommentPresentation(comment: Comment, extraData: T?
     CommentPresentation(
         comment.ref,
         comment.scope,
-        getUserPresentation(comment.user.deref(), observer, UserPresentationContext.COMMENT_AUTHOR, room),
+        // Question comments mask under the question's effective policy; room
+        // comments (question == null) under the room default.
+        getUserPresentation(comment.user.deref(), observer, UserPresentationContext.COMMENT_AUTHOR, room,
+                            (comment as? QuestionComment)?.question?.deref()),
         comment.timestamp,
         comment.content,
         comment.modified,
@@ -69,10 +73,12 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
             comments.values.sortedBy { it.timestamp }
                 .filter { it.user == viewer.ref || canSeeOthers }
                 .map { comment ->
-                    // On a sensitive question, others' attached predictions stay hidden
-                    // (attachment is blocked there; this covers pre-flag comments).
+                    // On an unattributed (ANONYMOUS+) question, others' attached predictions
+                    // stay hidden (attachment is blocked there; this covers comments that
+                    // predate the policy).
                     val dist = comment.prediction?.dist
-                        ?.takeIf { !question.sensitive || comment.user == viewer.ref }
+                        ?.takeIf { question.effectiveAttributionIn(room).level < AttributionLevel.ANONYMOUS
+                                   || comment.user == viewer.ref }
                     makeCommentPresentation(comment, QuestionCommentExtraData(dist), viewer, room)
                 }
         }
@@ -89,8 +95,9 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
             if (room.commentTemplate.isNotBlank() && createdComment.content.trim() == room.commentTemplate.trim())
                 badRequest("Please modify the comment template before posting.")
 
-            if (createdComment.attachPrediction && question.sensitive)
-                badRequest("Predictions cannot be attached to comments on a sensitive question.")
+            if (createdComment.attachPrediction
+                && question.effectiveAttributionIn(room).level >= AttributionLevel.ANONYMOUS)
+                badRequest("Predictions cannot be attached to comments on this question.")
             val prediction = if (createdComment.attachPrediction) {
                 serverState.userPred[question.ref]?.get(user.ref)
             } else { null }

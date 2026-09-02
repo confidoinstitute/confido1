@@ -39,6 +39,7 @@ import org.litote.kmongo.serialization.registerSerializer
 import org.simplejavamail.api.mailer.config.TransportStrategy
 import org.simplejavamail.mailer.MailerBuilder
 import tools.confido.rooms.*
+import tools.confido.question.effectiveAttribution
 import tools.confido.application.routes.*
 import tools.confido.application.sessions.Sessions
 import tools.confido.application.sessions.renewUserSession
@@ -290,17 +291,19 @@ fun main() {
                                 null -> badRequest("You must specify if you export group or individual predictions.")
                             }
 
-                            // Sensitive questions never leave individually (this binds
-                            // VIEW_INDIVIDUAL_PREDICTIONS holders too); their aggregates
-                            // leave only above the anonymity threshold.
+                            // Unattributed (ANONYMOUS+) questions never leave individually
+                            // (this binds VIEW_INDIVIDUAL_PREDICTIONS holders too); their
+                            // aggregates leave only above the anonymity threshold.
                             val exportable = when (group) {
-                                false -> questions.filter { !it.sensitive }
+                                false -> questions.filter {
+                                    it.effectiveAttribution.level < AttributionLevel.ANONYMOUS
+                                }
                                 else -> questions.filter {
-                                    it.aggregatesVisible(serverState.userPred[it.ref]?.size ?: 0)
+                                    it.effectiveAttribution.aggregatesVisible(serverState.userPred[it.ref]?.size ?: 0)
                                 }
                             }
                             if (exportable.isEmpty())
-                                unauthorized("The selected questions are sensitive; their " +
+                                unauthorized("The selected questions are anonymized; their " +
                                     if (group == false) "individual predictions cannot be exported."
                                     else "aggregates are not available yet.")
 

@@ -6,6 +6,8 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import tools.confido.question.normalizedBrier
+import tools.confido.question.effectiveAttribution
+import tools.confido.rooms.AttributionLevel
 import tools.confido.rooms.ExportHistory
 import tools.confido.application.calibration.getScoredPrediction
 import tools.confido.distributions.*
@@ -18,6 +20,7 @@ import tools.confido.spaces.BinaryValue
 import tools.confido.spaces.NumericSpace
 import tools.confido.spaces.NumericValue
 import tools.confido.state.serverState
+import tools.confido.store.aggregateHistoryFloorTs
 import tools.confido.store.groupPredictionLog
 import tools.confido.store.questionCommentArchive
 import tools.confido.store.userPredictionLog
@@ -77,6 +80,12 @@ sealed class CsvExport {
                     ret["pseudo_mean"] = exportValue(dist.space, dist.pseudoMean)
                     ret["pseudo_stdev"] = exportDiff(dist.space, dist.pseudoStdev)
                 }
+            }
+            // AGGREGATE_ONLY group aggregates: quantiles are all there is.
+            is QuantileSummaryDistribution -> {
+                ret["median"] = exportValue(dist.space, dist.median)
+                ret["ci80_low"] = exportValue(dist.space, dist.ci80.start)
+                ret["ci80_high"] = exportValue(dist.space, dist.ci80.endInclusive)
             }
         }
         return ret
@@ -157,7 +166,10 @@ class PredictionExport  (
 
     private suspend fun getQuestionAllPredictions(question: Question, user: User?) =
         if (user == null) {
-            groupPredictionLog.query(question.ref)
+            // Group history export must not include the sub-threshold prefix of an
+            // unattributed question (see aggregateHistoryFloorTs).
+            val floorTs = question.aggregateHistoryFloorTs()
+            groupPredictionLog.query(question.ref).filter { it.ts >= floorTs }
         } else {
             userPredictionLog.query(question.ref, user.ref)
         }
@@ -214,10 +226,10 @@ class CommentExport  (
             "comment" to c.content,
             "num_likes" to c.likes.size.toString(),
         )
-        // An attached prediction is an individual prediction; sensitive questions
-        // never export those (attachment is blocked there anyway — this covers
-        // comments predating the flag).
-        if (!q.sensitive) c.prediction?.let {pred->
+        // An attached prediction is an individual prediction; unattributed (ANONYMOUS+)
+        // questions never export those (attachment is blocked there anyway — this
+        // covers comments predating the policy).
+        if (q.effectiveAttribution.level < AttributionLevel.ANONYMOUS) c.prediction?.let {pred->
             ret += exportDist(pred.dist)
         }
         return ret

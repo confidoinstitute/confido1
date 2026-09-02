@@ -32,6 +32,8 @@ import tools.confido.question.Question
 import tools.confido.users.User
 import java.lang.System.getenv
 import tools.confido.question.effectiveSchedule
+import tools.confido.question.effectiveAttribution
+import tools.confido.rooms.AttributionLevel
 
 /** Compute the room scoreboard: list of [ScoreboardEntry] sorted descending by score. */
 private suspend fun computeScoreboard(room: Room, observer: User): List<ScoreboardEntry> {
@@ -42,10 +44,12 @@ private suspend fun computeScoreboard(room: Room, observer: User): List<Scoreboa
     val questions = questionRefs.mapDeref().filter { q ->
         q.answerSpace is BinarySpace && q.state == QuestionState.RESOLVED && q.resolution != null &&
                 q.effectiveSchedule.score != null &&
-                // Sensitive questions never enter the scoreboard: a per-user score
-                // contribution over a resolved binary question is invertible back to
-                // the prediction (differencing two scoreboard snapshots isolates it).
-                !q.sensitive
+                // Unattributed (ANONYMOUS+) questions never enter the scoreboard: a
+                // per-user score contribution over a resolved binary question is
+                // invertible back to the prediction (differencing two scoreboard
+                // snapshots isolates it). PSEUDONYM questions do enter — the
+                // scoreboard shows aliases, which is a feature, not a leak.
+                q.effectiveAttribution.level < AttributionLevel.ANONYMOUS
     }
     val minQ = getenv("CONFIDO_SCORE_MIN_QUESTIONS")?.toIntOrNull() ?: 1
     val entries = serverState.users.mapNotNull { (_, u) ->

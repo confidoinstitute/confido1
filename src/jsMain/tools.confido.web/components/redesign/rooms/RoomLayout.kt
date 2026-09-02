@@ -390,6 +390,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                         }
                     }
                 }
+                RoomAttributionInfo { this.room = room }
                 ClientExtension.forEach { it.roomInfoExtra(room, this) }
             }
         } else {
@@ -440,6 +441,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                         text = room.description
                     }
                 }
+                RoomAttributionInfo { this.room = room }
                 ClientExtension.forEach { it.roomInfoExtra(room, this) }
             }
         }

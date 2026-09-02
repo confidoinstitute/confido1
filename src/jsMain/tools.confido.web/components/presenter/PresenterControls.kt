@@ -11,6 +11,7 @@ import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.extensions.ClientExtension
 import tools.confido.payloads.responses.WSData
+import tools.confido.rooms.AttributionLevel
 import tools.confido.rooms.RoomPermission
 import tools.confido.rooms.TimelineMark
 import tools.confido.spaces.BinarySpace
@@ -93,15 +94,16 @@ val BinaryHistogramPC = FC<PresenterControlsProps<BinaryHistogramPV>> { props ->
     val question = useExpectedQuestion(props.view.question)
     val rooms = (useSubscription(Topics.rooms()) as? WSData)?.data
     val room = rooms?.values?.firstOrNull { props.view.question in it.questions }
-    // Sensitive questions never show names (server sends nameless bins to everyone)
-    // — a knowable condition, gated in both modes. The permission gate concerns the
-    // live controlling user; the flow editor is only reachable by room moderators.
-    // A loop body gates three-valued against the candidate set: no candidate could
-    // show names → hide; only some → show with a hint.
+    // Unattributed (ANONYMOUS+) questions never show names (server sends nameless
+    // bins to everyone) — a knowable condition, gated in both modes. The permission
+    // gate concerns the live controlling user; the flow editor is only reachable by
+    // room moderators. A loop body gates three-valued against the candidate set: no
+    // candidate could show names → hide; only some → show with a hint.
+    fun showsIndividuals(q: Question) = q.effectiveAttributionIn(room).level < AttributionLevel.ANONYMOUS
     val cand = world?.loopCandidates?.takeIf { props.view.question == CURRENT_QUESTION }
-    val candSomeOk = cand == null || cand.any { it.answerSpace is BinarySpace && !it.sensitive }
-    val candAllOk = cand == null || cand.all { it.answerSpace is BinarySpace && !it.sensitive }
-    if (question?.sensitive != true && candSomeOk &&
+    val candSomeOk = cand == null || cand.any { it.answerSpace is BinarySpace && showsIndividuals(it) }
+    val candAllOk = cand == null || cand.all { it.answerSpace is BinarySpace && showsIndividuals(it) }
+    if ((question == null || showsIndividuals(question)) && candSomeOk &&
         (hypothetical || room?.hasPermission(myUser, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS) == true)) {
         FormSwitch {
             label = "Show nicknames"
@@ -203,12 +205,13 @@ val ComparePC = FC<PresenterControlsProps<ComparePV>> { props ->
     // The individual modes need VIEW_INDIVIDUAL_PREDICTIONS; the presenter window
     // normally shares this session, so gate on the controlling user's permission
     // instead of hedging in a caveat (in authoring: moderators only anyway).
-    // Sensitive questions have no individual modes for anyone (server-enforced).
-    // A loop body gates three-valued against the candidate set.
+    // Unattributed (ANONYMOUS+) questions have no individual modes for anyone
+    // (server-enforced). A loop body gates three-valued against the candidate set.
+    fun showsIndividuals(q: Question) = q.effectiveAttributionIn(room).level < AttributionLevel.ANONYMOUS
     val cand = world?.loopCandidates?.takeIf { props.view.question == CURRENT_QUESTION }
-    val candSomeOk = cand == null || cand.any { it.answerSpace is BinarySpace && !it.sensitive }
-    val candAllOk = cand == null || cand.all { it.answerSpace is BinarySpace && !it.sensitive }
-    val canViewIndividual = question?.sensitive != true && candSomeOk &&
+    val candSomeOk = cand == null || cand.any { it.answerSpace is BinarySpace && showsIndividuals(it) }
+    val candAllOk = cand == null || cand.all { it.answerSpace is BinarySpace && showsIndividuals(it) }
+    val canViewIndividual = (question == null || showsIndividuals(question)) && candSomeOk &&
         (hypothetical || room?.hasPermission(myUser, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS) == true)
     // Binary-ness is knowable — but with no question picked yet, keep the modes visible.
     val binary = question?.answerSpace is BinarySpace || (hypothetical && question == null)

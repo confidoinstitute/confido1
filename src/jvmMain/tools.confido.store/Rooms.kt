@@ -5,6 +5,7 @@ import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import tools.confido.rooms.Room
+import tools.confido.rooms.ensurePseudonymAssignments
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.refs.ref
@@ -34,6 +35,11 @@ object roomStore : MongoStore<Room>(
                 }
             )
         }
+        // Alias maintenance: every save of a room that needs pseudonyms tops up its
+        // stable assignments (member churn, pool edits and policy changes all pass
+        // through room saves; question-level policy changes trigger a room touch
+        // from the question routes).
+        beforeEntitySave { _, room -> ensurePseudonymAssignments(room) }
         onChange { change ->
             when (change) {
                 is Change.Added ->

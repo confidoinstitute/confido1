@@ -28,6 +28,7 @@ import react.dom.html.ReactHTML.td
 import react.dom.html.ReactHTML.th
 import react.dom.html.ReactHTML.thead
 import react.dom.html.ReactHTML.tr
+import tools.confido.rooms.AttributionLevel
 import tools.confido.rooms.Room
 import tools.confido.distributions.*
 import tools.confido.web.components.redesign.forms.QuestionPicker
@@ -167,10 +168,14 @@ val GroupPredictionComparePP = FC<PresenterPageProps<GroupPredictionComparePV>> 
             }
             val vals =  questions.mapNotNull { q->
                 val pred = data[q.ref]?.dist
+                // Safe casts: the space no longer implies the dist type (a quantile
+                // summary can ride a NumericSpace question) — skip what we can't read.
                 q to when {
                     pred == null -> return@mapNotNull null
-                    q.answerSpace is BinarySpace ->   (pred as BinaryDistribution).yesProb
-                    q.answerSpace is NumericSpace ->  (pred as ContinuousProbabilityDistribution).mean
+                    q.answerSpace is BinarySpace ->
+                        (pred as? BinaryDistribution)?.yesProb ?: return@mapNotNull null
+                    q.answerSpace is NumericSpace ->
+                        (pred as? ContinuousProbabilityDistribution)?.mean ?: return@mapNotNull null
                     else ->  return@mapNotNull null
                 }
             }.sortedByDescending { it.second }
@@ -236,8 +241,8 @@ object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
                 tbody {
                     room.questions.reversed().forEach { qRef ->
                         val q = qmap[qRef.id] ?: return@forEach
-                        // No showcase for sensitive questions (individual predictions).
-                        if (q.sensitive) return@forEach
+                        // No showcase for unattributed questions (individual predictions).
+                        if (q.effectiveAttributionIn(room).level >= AttributionLevel.ANONYMOUS) return@forEach
                         tr {
                             td { +q.name }
                             td { QuestionPredictors { this.question = q.ref } }
@@ -278,9 +283,9 @@ object PredictionShowcaseCE : ClientExtension, PredictionShowcaseExtension() {
             label = "Individual predictions showcase",
             category = tools.confido.extensions.FlowItemCategory.VIEW,
             createDefault = { tools.confido.state.SetPresenterViewAction(PredictionShowcasePV(Ref(""))) },
-            // Sensitive questions cannot be showcased (individual predictions, server-enforced).
+            // Unattributed questions cannot be showcased (individual predictions, server-enforced).
             editor = pvFlowEditor(questionSubject<PredictionShowcasePV>(
-                filter = { !it.sensitive },
+                filter = { q, room -> q.effectiveAttributionIn(room).level < AttributionLevel.ANONYMOUS },
                 get = { it.question }, set = { v, q -> v.copy(question = q) })),
             matches = { it is tools.confido.state.SetPresenterViewAction && it.view is PredictionShowcasePV },
         ),

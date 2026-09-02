@@ -65,7 +65,15 @@ external interface PredictionGraphProps : Props, BasePredictionGraphProps {
 val PredictionGraph = FC<PredictionGraphProps>("PredictionGraph") { props->
     val space = props.space
     when (space) {
-        is NumericSpace -> NumericPredGraph {
+        // AGGREGATE_ONLY aggregates arrive as quantile summaries (no density);
+        // they get the interval renderer instead of the density graph.
+        is NumericSpace -> (props.dist as? QuantileSummaryDistribution)?.let { qsd ->
+            QuantileSummaryGraph {
+                this.space = space
+                this.dist = qsd
+                this.resolution = props.resolution as? NumericValue
+            }
+        } ?: NumericPredGraph {
             +props
             this.preferredCICenter = this.dist?.median
         }

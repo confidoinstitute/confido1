@@ -5,7 +5,10 @@ import tools.confido.extensions.ServerExtension
 import tools.confido.extensions.reference_forecast.ReferenceForcastKey
 import tools.confido.extensions.shared.ValueWithUser
 import io.ktor.server.routing.*
+import tools.confido.rooms.AttributionLevel
 import tools.confido.rooms.RoomPermission
+import tools.confido.question.effectiveAttribution
+import tools.confido.question.room
 import tools.confido.application.routes.*
 import tools.confido.store.*
 import tools.confido.distributions.*
@@ -60,15 +63,24 @@ object PredictionShowcaseSE : ServerExtension, PredictionShowcaseExtension() {
                     }
                 }
 
-                // Add user predictions
-                serverState.userPred[question.ref]?.forEach { (userRef, pred) ->
-                    val user = userRef.deref() ?: return@forEach
-                    when (val dist = pred.dist) {
-                        is ContinuousProbabilityDistribution -> predictions.add(ValueWithUser(user.nick ?: "(Anonymous)", dist.mean, false))
-                        is BinaryDistribution -> predictions.add(ValueWithUser(user.nick ?: "(Anonymous)", dist.yesProb, false))
-                        else -> {} // Ignore other types for now
+                // Add user predictions. The showcase is a presenter (audience-facing)
+                // surface: masked attribution levels show the alias only, never a
+                // pierced real name; unattributed levels serve nothing (the client
+                // filters such questions out, this enforces it server-side).
+                val level = question.effectiveAttribution.level
+                val aliases = question.room?.pseudonymAssignments ?: emptyMap()
+                if (level < AttributionLevel.ANONYMOUS)
+                    serverState.userPred[question.ref]?.forEach { (userRef, pred) ->
+                        val user = userRef.deref() ?: return@forEach
+                        val name = if (level == AttributionLevel.PSEUDONYM)
+                            aliases[user.id] ?: "Anonymous participant"
+                        else user.nick ?: "(Anonymous)"
+                        when (val dist = pred.dist) {
+                            is ContinuousProbabilityDistribution -> predictions.add(ValueWithUser(name, dist.mean, false))
+                            is BinaryDistribution -> predictions.add(ValueWithUser(name, dist.yesProb, false))
+                            else -> {} // Ignore other types for now
+                        }
                     }
-                }
 
                 // Return predictions sorted by value
                 predictions.sortedByDescending { it.value }

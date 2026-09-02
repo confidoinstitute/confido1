@@ -56,9 +56,10 @@ fun calibrationRoutes(routing: Routing) = routing.apply {
                             || (req.includeHiddenResolutions && room.hasPermission(user, RoomPermission.VIEW_ALL_RESOLUTIONS)))
                     && (q.answerSpace is BinarySpace || req.includeNumeric)
                     // Group calibration reads (and calibrationDetail exposes) the scored
-                    // group prediction — an aggregate, so the sensitive-question
+                    // group prediction — an aggregate, so the unattributed-level
                     // anonymity threshold applies. Own calibration is unrestricted.
-                    && (req.who == Myself || q.aggregatesVisible(serverState.userPred[q.ref]?.size ?: 0))
+                    && (req.who == Myself
+                        || q.effectiveAttributionIn(room).aggregatesVisible(serverState.userPred[q.ref]?.size ?: 0))
                 ) q
                 else null
             }

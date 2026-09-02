@@ -17,13 +17,7 @@ import tools.confido.rooms.TimelineMark
 import tools.confido.utils.HasUrlPrefix
 import tools.confido.users.User
 
-/**
- * Minimum number of predictors before any aggregate (group prediction, its history,
- * the answer histogram) of a [Question.sensitive] question is shown. Below this an
- * "aggregate" is trivially invertible: any participant can subtract their own answer,
- * so with two predictors the group mean *is* the other person's prediction.
- */
-const val SENSITIVE_MIN_PREDICTORS = 5
+import tools.confido.rooms.AttributionPolicy
 
 @Serializable
 data class Prediction(
@@ -213,7 +207,9 @@ data class Question(
     val allowComments: Boolean = true,
     val commentVisibility: CommentVisibility = CommentVisibility.EVERYONE,
     val annulled: Boolean = false,
-    val sensitive: Boolean = false,
+    // null = inherit the room's default attribution policy (interpret via
+    // [effectiveAttributionIn], same pattern as [schedule]/[effectiveScheduleIn]).
+    val attribution: AttributionPolicy? = null,
     val author: Ref<User>? = null,
     val stateHistory: List<QuestionStateChange> = emptyList(),
     /** Question-scoped timeline markers; room-wide ones live on [tools.confido.rooms.Room.timelineMarks]. */
@@ -279,19 +275,13 @@ data class Question(
     val groupPredictionVisibility: GroupPredictionVisibility
         get() = GroupPredictionVisibility.fromBooleans(groupPredVisible, groupPredRequirePrediction)
 
-    /**
-     * Whether aggregate views (group prediction, its history, the histogram) may be
-     * shown, given how many users have predicted. Always true for non-sensitive
-     * questions; [sensitive] ones stay hidden until [SENSITIVE_MIN_PREDICTORS] is
-     * reached. Individual predictions of a sensitive question are never visible to
-     * anyone (this overrides RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS), including
-     * anonymized-but-linked forms like the compare scatter — this gate covers only
-     * the aggregate surfaces.
-     */
-    fun aggregatesVisible(predictorCount: Int): Boolean =
-        !sensitive || predictorCount >= SENSITIVE_MIN_PREDICTORS
-
     override val urlPrefix get() = urlPrefix(id)
+
+    /** The question's attribution policy with the room default filled in. Pure —
+     *  the caller supplies the room, exactly as [effectiveScheduleIn]. Disclosure
+     *  gates (e.g. [AttributionPolicy.aggregatesVisible]) live on the policy. */
+    fun effectiveAttributionIn(room: Room?): AttributionPolicy =
+        attribution ?: room?.defaultAttribution ?: AttributionPolicy()
 
     /** The question's schedule with the room default filled in. Pure — the caller
      *  supplies the room (client: RoomContext; server: the `Question.room` extension

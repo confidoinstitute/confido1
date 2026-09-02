@@ -13,6 +13,7 @@ import kotlinx.datetime.Instant
 import org.litote.kmongo.eq
 import tools.confido.payloads.requests.*
 import tools.confido.payloads.responses.*
+import tools.confido.rooms.AttributionLevel
 import tools.confido.rooms.Room
 import tools.confido.rooms.RoomPermission
 import tools.confido.api.Api
@@ -59,16 +60,17 @@ data class QuestionContext(val inUser: User?, val question: Question) {
         val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
         val lastPrediction = serverState.userPred[ref]?.get(user.ref)
         if (!(canViewAll || canViewGroupPred(ref.deref(), lastPrediction))) unauthorized(message)
-        if (!question.aggregatesVisible(serverState.userPred[ref]?.size ?: 0)) unauthorized(message)
+        if (!question.effectiveAttributionIn(room).aggregatesVisible(serverState.userPred[ref]?.size ?: 0))
+            unauthorized(message)
     }
 
-    /** Individual predictions of a sensitive question are off-limits to everyone —
-     *  the sensitivity check overrides VIEW_INDIVIDUAL_PREDICTIONS, moderators and
-     *  admins included. Every surface serving per-user prediction data (named or
-     *  anonymized) must gate through this, not a bare permission check. */
+    /** Per-user predictions of an ANONYMOUS or AGGREGATE_ONLY question are off-limits
+     *  to everyone — the attribution level overrides VIEW_INDIVIDUAL_PREDICTIONS,
+     *  moderators and admins included. Every surface serving per-user prediction data
+     *  (named or anonymized) must gate through this, not a bare permission check. */
     fun assertIndividualPredictionAccess(message: String) {
         assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, message)
-        if (question.sensitive) forbidden(message)
+        if (question.effectiveAttributionIn(room).level >= AttributionLevel.ANONYMOUS) forbidden(message)
     }
 }
 
@@ -146,10 +148,13 @@ fun questionRoutes(routing: Routing) = routing.apply {
                         if (question.numPredictions > 0 && question.answerSpace != edit.question.answerSpace) {
                             badRequest("Cannot change answer space of a question with predictions.")
                         }
-                        // Sensitivity is a promise to the people who answered — flipping
-                        // it off later would expose predictions made under it.
-                        if (orig.sensitive && !edit.question.sensitive && question.numPredictions > 0) {
-                            badRequest("Cannot unmark a question as sensitive once it has predictions.")
+                        // The attribution policy is a promise to the people who answered —
+                        // weakening it later would expose activity (predictions AND
+                        // comments: pierceable levels mask comment authors) made under it.
+                        if (edit.question.effectiveAttributionIn(question.room)
+                                .revealsMoreThan(orig.effectiveAttributionIn(question.room))
+                            && (question.numPredictions > 0 || (serverState.commentCount[ref] ?: 0) > 0)) {
+                            badRequest("Cannot weaken a question's attribution policy once it has activity.")
                         }
 
                         // If withState wasn't used, this will fill in the history automatically.
@@ -161,6 +166,15 @@ fun questionRoutes(routing: Routing) = routing.apply {
                         edit.question.copy(id = question.id, stateHistory = newHistory, author = orig.author)
                     }
                 }
+                // A changed attribution policy changes how the group aggregate is
+                // summarized (AGGREGATE_ONLY numeric → quantile summary), but the
+                // groupPred fold only refires on prediction changes — refresh it here.
+                if (question.effectiveAttributionIn(question.room) != edit.question.effectiveAttributionIn(question.room))
+                    predictionData.recomputeGroup(ref)
+                // A question turning PSEUDONYM needs alias assignments on its room;
+                // a no-op room save runs the maintenance hook (ensurePseudonymAssignments).
+                if (edit.question.attribution?.level == AttributionLevel.PSEUDONYM)
+                    question.room?.let { r -> tools.confido.store.roomStore.modify(r.ref) { it } }
             }
             is EditQuestionState -> {
                 tools.confido.store.transact {
@@ -310,7 +324,8 @@ fun questionRoutes(routing: Routing) = routing.apply {
         call.withQuestion(qRef) {
             assertVisible()
             assertGroupPredictionAccess("You cannot view this group prediction.")
-            groupPredictionLog.at(ref, Instant.fromEpochSeconds(ts.toLong()))
+            if (ts < question.aggregateHistoryFloorTs()) null
+            else groupPredictionLog.at(ref, Instant.fromEpochSeconds(ts.toLong()))
         }
     }
 
@@ -326,7 +341,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 val preds = times.map { t -> userPredictionLog.at(ref, u, t) }
                 if (preds.all { it == null }) null
                 else UserPredCompareRow(List2(preds[0], preds[1]), getUserPresentation(
-                    u.deref(), user, UserPresentationContext.INDIVIDUAL_PREDICTION, room))
+                    u.deref(), user, UserPresentationContext.INDIVIDUAL_PREDICTION, room, question))
             }
         }
     }
@@ -355,16 +370,19 @@ fun questionRoutes(routing: Routing) = routing.apply {
             val canViewAll = room.hasPermission(viewer, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
             if (!(canViewAll || canViewGroupPred(question, preds?.get(viewerRef))))
                 unauthorized("You cannot view this group prediction.")
-            if (!question.aggregatesVisible(preds?.size ?: 0))
+            if (!question.effectiveAttributionIn(room).aggregatesVisible(preds?.size ?: 0))
                 unauthorized("You cannot view this group prediction.")
             head
         }
     }) { qRef, _ ->
-        val all = groupPredictionLog.query(qRef).toList().mapNotNull { pred ->
+        val floorTs = qRef.deref()?.aggregateHistoryFloorTs() ?: Int.MAX_VALUE
+        val all = groupPredictionLog.query(qRef).toList().filter { it.ts >= floorTs }.mapNotNull { pred ->
             when (val dist = pred.dist) {
                 is BinaryDistribution -> GroupPredHistoryPoint(pred.ts, dist.yesProb)
-                is ContinuousProbabilityDistribution -> {
-                    val ci = dist.confidenceInterval(0.8)
+                // NumericProbabilityDistribution covers both full densities and the
+                // quantile summaries stored for AGGREGATE_ONLY questions.
+                is NumericProbabilityDistribution -> {
+                    val ci = dist.ci80
                     GroupPredHistoryPoint(pred.ts, dist.median, ci.start, ci.endInclusive)
                 }
                 else -> null
@@ -403,8 +421,8 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 // censorQuestion (hidden questions used to leak their aggregates here).
                 !question.visible
                     && !censor.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS) -> GroupPredAccess.NOT_FOUND
-                // The sensitive-question threshold binds everyone, VIEW_ALL included.
-                !question.aggregatesVisible(preds?.size ?: 0) -> GroupPredAccess.HIDDEN
+                // The unattributed-level threshold binds everyone, VIEW_ALL included.
+                !question.effectiveAttributionIn(room).aggregatesVisible(preds?.size ?: 0) -> GroupPredAccess.HIDDEN
                 censor.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
                     || canViewGroupPred(question, preds?.get(viewerRef)) -> GroupPredAccess.VISIBLE
                 else -> GroupPredAccess.HIDDEN
@@ -439,9 +457,10 @@ fun questionRoutes(routing: Routing) = routing.apply {
             if (!question.visible && !room.hasPermission(viewer, RoomPermission.VIEW_HIDDEN_QUESTIONS))
                 notFound("No such question.")
             val canViewAll = room.hasPermission(viewer, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
+            val attribution = question.effectiveAttributionIn(room)
             if (!(canViewAll || canViewGroupPred(question, preds?.get(viewerRef))))
                 unauthorized("You cannot view this group prediction.")
-            if (!question.aggregatesVisible(preds?.size ?: 0))
+            if (!attribution.aggregatesVisible(preds?.size ?: 0))
                 unauthorized("You cannot view this group prediction.")
 
             if (question.answerSpace != BinarySpace) {
@@ -449,17 +468,18 @@ fun questionRoutes(routing: Routing) = routing.apply {
             }
 
             // TODO: configurable (from query params?)
-            // Sensitive questions get fixed coarse bins (see SensitiveHistogramBinning).
+            // AGGREGATE_ONLY questions get fixed coarse bins (see CoarseHistogramBinning).
             val binner = BinaryHistogramBinner(
-                if (question.sensitive) SensitiveHistogramBinning else DefaultHistogramBinning)
+                if (attribution.level == AttributionLevel.AGGREGATE_ONLY) CoarseHistogramBinning
+                else DefaultHistogramBinning)
 
             val predictions = preds?.values ?: notFound("No user predictions found.")
 
             // Per-bin user lists are included whenever the viewer may see individual
-            // predictions; clients decide whether to actually display them. On a
-            // sensitive question a per-bin user list IS an individual prediction,
-            // so the nameless branch binds everyone there.
-            val showNames = !question.sensitive &&
+            // predictions; clients decide whether to actually display them. On an
+            // unattributed (ANONYMOUS+) question a per-bin user list IS an individual
+            // prediction, so the nameless branch binds everyone there.
+            val showNames = attribution.level < AttributionLevel.ANONYMOUS &&
                 room.hasPermission(viewer, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
 
             if (showNames) {
@@ -467,7 +487,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
                     val dist = pred.dist as? BinaryDistribution ?: return@mapNotNull null
                     val predUser = pred.user?.let { users[it.id] }
                     val presentation = getUserPresentation(
-                        predUser, viewer, UserPresentationContext.INDIVIDUAL_PREDICTION, room
+                        predUser, viewer, UserPresentationContext.INDIVIDUAL_PREDICTION, room, question
                     )
                     dist to presentation
                 }

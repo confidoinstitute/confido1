@@ -179,6 +179,9 @@ fun builtinDefaultRoles(): List<RoomRole> {
         RoomPermission.VIEW_ALL_GROUP_PREDICTIONS,
         RoomPermission.VIEW_ALL_RESOLUTIONS,
         RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS,
+        // Piercing pseudonyms/anonymity — still bound by each policy's moderatorAccess
+        // flag (a sealed policy binds everyone, this permission included).
+        RoomPermission.VIEW_REAL_IDENTITIES,
         RoomPermission.MANAGE_QUESTIONS,
         RoomPermission.MANAGE_MEMBERS,
         RoomPermission.CREATE_INVITE_LINK,

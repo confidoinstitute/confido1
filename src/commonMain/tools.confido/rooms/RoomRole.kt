@@ -44,6 +44,12 @@ class RoomPermission private constructor(val id: String, val description: String
         val VIEW_ALL_GROUP_PREDICTIONS = register("view_all_group_predictions", "View all group predictions regardless of question setting")
         val VIEW_ALL_RESOLUTIONS = register("view_all_resolutions", "View hidden resolutions")
         val VIEW_INDIVIDUAL_PREDICTIONS = register("view_individual_predictions", "View individual predictions")
+        /** See real identities behind pseudonymous/anonymous activity — only where the
+         *  question's [AttributionPolicy.moderatorAccess] allows it (sealed rooms bind
+         *  everyone, this permission included). Orthogonal to data-access permissions
+         *  like [VIEW_INDIVIDUAL_PREDICTIONS]: those decide whether the activity is
+         *  visible at all, this decides whose name is on it. */
+        val VIEW_REAL_IDENTITIES = register("view_real_identities", "See real identities behind pseudonymous/anonymous activity")
         val MANAGE_QUESTIONS = register("manage_questions", "Manage questions (edit, delete, reorder)")
         val MANAGE_MEMBERS = register("manage_members", "Manage room members")
         val MANAGE_COMMENTS = register("manage_comments", "Manage (edit/delete) other users' comments")

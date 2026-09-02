@@ -33,7 +33,8 @@ interface ServerExtension: Extension {
      *  presentation. Named so it does not shadow the core `getUserPresentation`
      *  function inside extension objects (that shadowing once made update_scatter_plot
      *  silently call this default and ship null presentations). */
-    fun overrideUserPresentation(user: User?, observer: User, context: UserPresentationContext, room: Room?): UserPresentation? = null
+    fun overrideUserPresentation(user: User?, observer: User, context: UserPresentationContext, room: Room?,
+                                 question: Question? = null): UserPresentation? = null
 
     /** Censor room data before sending to a client. Called after the built-in censoring. */
     fun censorRoom(room: Room, user: User?): Room = room

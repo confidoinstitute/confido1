@@ -6,6 +6,7 @@ uses coarse bins and never carries per-bin user lists, prediction-attached comme
 refused, and sensitivity cannot be revoked once answers exist."""
 import asyncio
 import json
+import time
 import urllib.error
 import urllib.request
 
@@ -51,10 +52,11 @@ async def main():
 
     post("/rooms/testroom/members/add",
          {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
-    # EVERYONE group-pred visibility so the only thing gating aggregates is sensitivity.
+    # EVERYONE group-pred visibility so the only thing gating aggregates is the
+    # AGGREGATE_ONLY attribution level (formerly the sensitive flag).
     post("/rooms/testroom/questions/add",
          {"_id": "", "name": "Sensitive test q", "answerSpace": {"type": "binary"},
-          "groupPredVisible": True, "sensitive": True}, admin)
+          "groupPredVisible": True, "attribution": {"level": "AGGREGATE_ONLY"}}, admin)
 
     async with await connect_ws(admin) as ws:
         await ws.send(json.dumps({"sub": ["room/testroom/questions"]}))
@@ -99,11 +101,12 @@ async def main():
                              "attachPrediction": True}, member) == 400,
                 "TEST-F", "attaching a prediction to a comment refused")
 
-        # Un-marking as sensitive after answers exist is refused (server-side guard).
-        unmarked = dict(qjson, sensitive=False)
+        # Weakening the attribution policy after answers exist is refused (the
+        # server-side ratchet; null = inherit the room default, which is OPEN).
+        unmarked = dict(qjson, attribution=None)
         t.check(post_status(f"/questions/{qid}/edit",
                             {"type": "complete", "question": unmarked}, admin) == 400,
-                "TEST-G", "cannot unmark sensitive once predictions exist")
+                "TEST-G", "cannot weaken attribution once predictions exist")
 
         # Cross the threshold with transient guests; aggregates must unlock on the
         # SAME live subscriptions.
@@ -130,6 +133,53 @@ async def main():
         t.check(post_status(f"/questions/{qid}/user_preds_at",
                             {"ts1": None, "ts2": None}, admin) == 403,
                 "TEST-K", "user_preds_at still refused above threshold")
+
+        # --- Numeric AGGREGATE_ONLY: the aggregate must be a quantile summary (a
+        # --- full mixture's peaks would BE the individual predictions), and history
+        # --- must not include entries from before the threshold was reached.
+        nspace = {"type": "numeric", "min": 0.0, "max": 100.0}
+        post("/rooms/testroom/questions/add",
+             {"_id": "", "name": "Sensitive numeric q", "answerSpace": nspace,
+              "groupPredVisible": True, "attribution": {"level": "AGGREGATE_ONLY"}}, admin)
+        ups = await recv_updates(ws)
+        qstate = next(u["data"]["data"] for u in ups if u["topic"] == "room/testroom/questions")
+        nqid = next(q for q, qq in qstate.items() if qq["name"] == "Sensitive numeric q")
+
+        def npredict(cookie, center):
+            post(f"/questions/{nqid}/predict",
+                 {"type": "truncSN", "space": nspace,
+                  "center": center, "s1": 5.0, "s2": 5.0}, cookie)
+
+        npredict(admin, 10.0)
+        npredict(member, 30.0)
+        ngp = f"question/{nqid}/group_pred"
+        nhist = f"question/{nqid}/group_pred/history"
+        await ws.send(json.dumps({"sub": [ngp, nhist]}))
+        d = by_topic(await recv_updates(ws))
+        t.check(d.get(ngp, {}).get("type") == "err",
+                "TEST-L", "numeric group_pred hidden below threshold", str(d.get(ngp))[:200])
+
+        nguests = [make_guest(link["token"], f"sens-nguest-{i}") for i in range(3)]
+        npredict(nguests[0], 50.0)
+        npredict(nguests[1], 70.0)
+        # The history floor has 1s granularity (unix-second ts); put the threshold
+        # crossing in a fresh second so the prefix drop is deterministic here.
+        time.sleep(1.1)
+        npredict(nguests[2], 90.0)
+
+        d = by_topic(await recv_updates(ws))
+        gpd = d.get(ngp, {})
+        dist = ((gpd.get("data") or {}).get("dist") or {})
+        t.check(gpd.get("type") == "ok" and dist.get("type") == "quantileSummary"
+                and "binProbs" not in dist and dist.get("intervals")
+                and 30.0 <= dist.get("median", -1) <= 70.0,
+                "TEST-M", "numeric aggregate is a quantile summary, not a density",
+                str(dist)[:200])
+        hp = d.get(nhist, {})
+        pts = (hp.get("data") or {}).get("points") or []
+        t.check(hp.get("type") == "ok" and len(pts) == 1,
+                "TEST-N", "history serves only points from the threshold on",
+                f"{hp.get('type')} points={len(pts)}")
 
     t.finish()
 

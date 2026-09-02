@@ -1,6 +1,7 @@
 package tools.confido.payloads.requests
 
 import kotlinx.serialization.Serializable
+import tools.confido.rooms.AttributionPolicy
 import tools.confido.rooms.RoomColor
 import tools.confido.rooms.RoomEDT
 import tools.confido.rooms.RoomEDTSerializer
@@ -23,4 +24,7 @@ data class BaseRoomInformation(
     val commentTemplate: String = "",
     @Serializable(with = RoomEDTSerializer::class)
     val extensionData: ExtensionData = ExtensionData(RoomEDT),
+    // Appended after extensionData: existing callers construct this positionally.
+    val defaultAttribution: AttributionPolicy = AttributionPolicy(),
+    val pseudonymPool: List<String>? = null,
 )

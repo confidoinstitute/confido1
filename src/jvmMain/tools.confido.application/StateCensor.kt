@@ -67,6 +67,12 @@ class StateCensor(val sess: UserSession) {
             _presentationRunning = presentationRunning,
             // Strip presentation ref for non-moderators
             presentation = if (canManageQuestions) room.presentation else null,
+            // Alias map: full only for piercing viewers in rooms with no sealed
+            // pierceable policy; everyone else sees just their own entry (the
+            // "you appear as" cue). See pseudonymMapVisibleTo.
+            pseudonymAssignments =
+                if (room.pseudonymMapVisibleTo(user)) room.pseudonymAssignments
+                else room.pseudonymAssignments.filterKeys { it == user.id },
             inviteLinks = if (user?.type in setOf(UserType.ADMIN, UserType.MEMBER)) room.inviteLinks.mapNotNull { censorInviteLink(room, it) } else emptyList(),
         )
         ServerExtension.forEach { censored = it.censorRoom(censored, user) }
@@ -295,9 +301,49 @@ enum class UserPresentationContext {
     MEMBER_LIST,
 }
 
-fun getUserPresentation(user: User?, observer: User, context: UserPresentationContext, room: Room?): UserPresentation {
-    ServerExtension.forEach { ext-> ext.overrideUserPresentation(user, observer, context, room)?.let { return it } }
+/**
+ * The single chokepoint for identity display. [question] selects the attribution
+ * policy (its effective policy; null = the room default, e.g. scoreboard or room
+ * comments); under a masked (pierceable) policy the *canonical* [UserPresentation.displayName]
+ * is always the masked form — piercing observers get the real identity only as the
+ * [UserPresentation.realIdentity] annotation, so audience-facing surfaces (presenter
+ * views) can never project a real name by construction.
+ *
+ * The member list is exempt: membership is never secret, only activity attribution
+ * is. Alias annotations there come from the (censored) [Room.pseudonymAssignments].
+ */
+fun getUserPresentation(user: User?, observer: User, context: UserPresentationContext, room: Room?,
+                        question: Question? = null): UserPresentation {
+    ServerExtension.forEach { ext-> ext.overrideUserPresentation(user, observer, context, room, question)?.let { return it } }
     if (user == null) return UserPresentation(false, "(Deleted user)")
+
+    val policy = question?.effectiveAttributionIn(room) ?: room?.defaultAttribution ?: AttributionPolicy()
+    if (room != null && policy.level.pierceable && context != UserPresentationContext.MEMBER_LIST) {
+        val realIdentity = if (policy.pierceableBy(observer, room))
+            user.nick ?: user.email ?: "(Anonymous)" else null
+        return when (policy.level) {
+            AttributionLevel.PSEUDONYM -> {
+                val alias = room.pseudonymAssignments[user.id]
+                UserPresentation(
+                    isMyself = user.id == observer.id,
+                    // Missing alias (assignment race) falls back to an unlinkable-looking
+                    // placeholder with a stable per-user color, never to the real name.
+                    displayName = alias ?: "Anonymous participant",
+                    color = stringToColor(alias ?: (room.id + user.id)),
+                    realIdentity = realIdentity,
+                )
+            }
+            AttributionLevel.ANONYMOUS -> UserPresentation(
+                isMyself = user.id == observer.id,
+                displayName = "Anonymous",
+                // No color: a stable color IS linkage.
+                color = null,
+                realIdentity = realIdentity,
+            )
+            else -> throw IllegalStateException("unreachable: non-pierceable level")
+        }
+    }
+
     val amIModerator = room?.hasPermission(observer, RoomPermission.MANAGE_MEMBERS) ?: false
     // Member list: email travels as its own MembershipPayload field, so the name slot
     // keeps the plain display name instead of the moderator email fallback.

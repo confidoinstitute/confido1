@@ -72,6 +72,8 @@ fun roomRoutes(routing: Routing) = routing.apply {
                     members = listOf(myMembership), inviteLinks = emptyList(),
                     color = information.color, icon = information.icon,
                     defaultSchedule = information.defaultSchedule,
+                    defaultAttribution = information.defaultAttribution,
+                    pseudonymPool = information.pseudonymPool,
                     scoring = information.scoring,
                     commentTemplate = information.commentTemplate,
                     extensionData = information.extensionData,
@@ -87,6 +89,16 @@ fun roomRoutes(routing: Routing) = routing.apply {
             assertPermission(RoomPermission.ROOM_OWNER, "You cannot edit room details.")
             val roomName = information.name.ifEmpty {room.name}
 
+            // Attribution ratchet, room level: the default policy is inherited by every
+            // question without an override — weakening it must not expose activity
+            // (predictions or comments) that already exists under the promise.
+            if (information.defaultAttribution.revealsMoreThan(room.defaultAttribution)) {
+                val affected = room.questions.mapNotNull { it.deref() }.filter { it.attribution == null }
+                if (affected.any { (serverState.predictionCount[it.ref] ?: 0) > 0
+                                   || (serverState.commentCount[it.ref] ?: 0) > 0 })
+                    badRequest("Cannot weaken the room's attribution policy: questions inheriting it already have activity.")
+            }
+
             tools.confido.store.roomStore.modify(room.ref) {
                 it.copy(
                     name = roomName,
@@ -94,6 +106,8 @@ fun roomRoutes(routing: Routing) = routing.apply {
                     color = information.color,
                     icon = information.icon,
                     defaultSchedule = information.defaultSchedule,
+                    defaultAttribution = information.defaultAttribution,
+                    pseudonymPool = information.pseudonymPool,
                     scoring = information.scoring,
                     commentTemplate = information.commentTemplate,
                     extensionData = information.extensionData,
@@ -290,7 +304,7 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
                     // keys used to enumerate hidden/draft question ids to all members.
                     q != null && (q.visible || canViewHidden) &&
                         (canViewAll || canViewGroupPred(q, preds[ref]?.get(viewerRef))) &&
-                        q.aggregatesVisible(preds[ref]?.size ?: 0)
+                        q.effectiveAttributionIn(room).aggregatesVisible(preds[ref]?.size ?: 0)
                 }
             }.toSet()
         }

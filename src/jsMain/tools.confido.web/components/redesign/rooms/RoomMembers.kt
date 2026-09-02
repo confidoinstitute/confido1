@@ -266,6 +266,22 @@ val RoomMember = FC<RoomMemberProps> {props ->
                 }
                 +(member.email ?: "")
             }
+            // Alias annotation: the member list keeps real names (membership is never
+            // secret); the censored assignment map yields the viewer's own alias, or
+            // all of them for piercing viewers in unsealed rooms.
+            (member.user.userId?.id ?: myUser?.id?.takeIf { member.user.isMyself })
+                ?.let { room.pseudonymAssignments[it] }?.let { alias ->
+                ReactHTML.div {
+                    css {
+                        fontFamily = sansSerif
+                        fontSize = 12.px
+                        lineHeight = 15.px
+                        color = Color("#888888")
+                    }
+                    +"as "
+                    ReactHTML.b { +alias }
+                }
+            }
             ClientExtension.forEach { it.roomMemberExtra(room, member, this) }
         }
         MemberRoleSelect {

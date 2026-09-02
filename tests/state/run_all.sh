@@ -110,6 +110,7 @@ run ws_test.py
 run gate_test.py
 run permission_test.py
 run sensitive_test.py
+run pseudonym_test.py
 run presentation_test.py
 run dashboard_test.py
 run search_test.py

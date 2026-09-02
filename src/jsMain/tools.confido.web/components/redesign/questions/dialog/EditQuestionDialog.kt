@@ -8,7 +8,9 @@ import tools.confido.web.Client
 import tools.confido.web.components.*
 import tools.confido.web.components.redesign.basic.*
 import tools.confido.web.components.redesign.forms.*
+import tools.confido.web.components.redesign.rooms.AttributionSection
 import tools.confido.web.components.redesign.rooms.RoomContext
+import tools.confido.web.components.redesign.rooms.label
 import web.cssom.*
 import emotion.react.*
 import tools.confido.web.hooks.*
@@ -21,6 +23,8 @@ import tools.confido.api.Api
 import tools.confido.extensions.ClientExtension
 import tools.confido.extensions.ExtensionContextPlace
 import tools.confido.question.*
+import tools.confido.rooms.AttributionLevel
+import tools.confido.rooms.AttributionPolicy
 import tools.confido.refs.ref
 import tools.confido.spaces.*
 import web.html.ButtonType
@@ -102,9 +106,13 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     var allowComments by useState {
         props.entity?.allowComments ?: true
     }
-    var isSensitive by useState {
-        props.entity?.sensitive ?: (props.preset == QuestionPreset.SENSITIVE)
+    // null = follow the room default; the SENSITIVE preset seeds an AGGREGATE_ONLY
+    // override (the preset's whole point is the strict promise, room default or not).
+    var customAttribution by useState<AttributionPolicy?> {
+        props.entity?.attribution
+            ?: if (props.preset == QuestionPreset.SENSITIVE) AttributionPolicy(AttributionLevel.AGGREGATE_ONLY) else null
     }
+    var attributionValid by useState(true)
 
     // TAGS
     var tags by useState { props.entity?.tags ?: emptySet() }
@@ -117,7 +125,15 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     }
 
     // Validity
-    val questionValid = questionTitle.isNotEmpty() && answerSpaceValid && resolutionValid && (scheduleValid || !customSchedule)
+    // Switching back to "follow the room setting" is itself a policy weakening when
+    // the room default is below what this question's activity was promised (derived,
+    // not state: the AttributionSection error path only covers explicit overrides).
+    val inheritViolation = customAttribution == null && props.entity?.let { e ->
+        (entityCounts.predictions != 0 || entityCounts.comments != 0) &&
+            room.defaultAttribution.revealsMoreThan(e.effectiveAttributionIn(room))
+    } ?: false
+    val questionValid = questionTitle.isNotEmpty() && answerSpaceValid && resolutionValid &&
+        (scheduleValid || !customSchedule) && attributionValid && !inheritViolation
 
     val submit = useCoroutineLock()
     fun assembleQuestion() = if (questionValid) Question(
@@ -139,7 +155,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
         groupTerminology = groupTerminology,
         // VISIBILITY
         allowComments = allowComments,
-        sensitive = isSensitive,
+        attribution = customAttribution,
         schedule = if (customSchedule) schedule else null,
         scheduleStatus = QuestionScheduleStatus(if (customSchedule) schedule else room.defaultSchedule),
         // TAGS
@@ -362,24 +378,45 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                             onChange = { visibility -> commentVisibility = visibility }
                         }
                     }
-                if (props.preset != QuestionPreset.SENSITIVE) {
-                    // Turning sensitivity off after answers exist would expose
-                    // predictions made under the anonymity promise — the server
-                    // rejects that edit, so the switch locks.
-                    val sensitivityLocked = props.entity?.sensitive == true && entityCounts.predictions != 0
+                run {
+                    // Weakening after activity exists would expose answers/comments
+                    // made under the promise — the server rejects that (attribution
+                    // ratchet); the section reports it as an error before submit.
+                    val hasActivity = entityCounts.predictions != 0 || entityCounts.comments != 0
+                    val ratchetFloor = props.entity?.takeIf { hasActivity }?.effectiveAttributionIn(room)
                     FormSwitch {
-                        label = "Sensitive"
-                        comment = if (sensitivityLocked) {
-                            "Cannot be turned off: answers were already made under the anonymity promise."
-                        } else if (isSensitive) {
-                            "Nobody (including moderators) can see individual answers; the group answer " +
-                                "appears once at least $SENSITIVE_MIN_PREDICTORS people have answered."
-                        } else {
-                            "Moderators will be able to see individual answers."
+                        label = "Custom attribution"
+                        comment =
+                            if (customAttribution == null)
+                                "Following the room setting: ${room.defaultAttribution.level.label.lowercase()}."
+                            else "This question overrides the room's attribution setting."
+                        checked = customAttribution != null
+                        onChange = { e ->
+                            customAttribution = if (e.target.checked) room.defaultAttribution else null
+                            attributionValid = true
                         }
-                        checked = isSensitive
-                        disabled = sensitivityLocked
-                        onChange = { e -> isSensitive = e.target.checked }
+                    }
+                    customAttribution?.let { policy ->
+                        AttributionSection {
+                            value = policy
+                            persisted = props.entity?.effectiveAttributionIn(room)
+                            this.ratchetFloor = ratchetFloor
+                            ratchetWhat = "this question already has activity"
+                            onChange = { new, isError ->
+                                customAttribution = new
+                                attributionValid = !isError
+                            }
+                        }
+                    } ?: run {
+                        // Inheriting is also a choice: if the room default is weaker
+                        // than what this question's activity was made under, say so.
+                        if (ratchetFloor != null && room.defaultAttribution.revealsMoreThan(ratchetFloor)) {
+                            div {
+                                css { fontSize = 12.px; color = Color("#F35454") }
+                                +("The room setting is weaker than the promise this question's " +
+                                    "existing activity was made under; it cannot switch back to it.")
+                            }
+                        }
                     }
                 }
             }

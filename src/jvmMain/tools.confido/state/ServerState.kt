@@ -27,6 +27,7 @@ import org.bson.Document
 import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.*
 import org.litote.kmongo.reactivestreams.KMongo
+import tools.confido.rooms.AttributionLevel
 import tools.confido.rooms.Room
 import tools.confido.distributions.*
 import tools.confido.extensions.ServerExtension
@@ -212,7 +213,27 @@ object serverState {
                 Prediction(user = null, ts = preds.map{it.ts}.max(), question = question.ref,
                             dist = calculateGroupDist(question.answerSpace, preds.map{it.dist}))
             }
-        }
+        }?.let { summarizeGroupPred(question, it) }
+
+    /**
+     * On an AGGREGATE_ONLY numeric question the full mixture must never leave
+     * [calculateGroupPred]: its peaks each carry mass 1/N and *are* the individual
+     * predictions whenever forecasters disagree. Summarizing here (rather than
+     * censoring at each egress) means the raw aggregate never reaches the group-pred
+     * head, the groupPredHist log, or any future consumer — a missed serving path
+     * fails closed. Covers the single-predictor short-circuit and extension-provided
+     * aggregates too. The quantile levels are fixed — never adapted to data or
+     * predictor count, so representations cannot be intersected across transitions.
+     */
+    private fun summarizeGroupPred(question: Question, gp: Prediction): Prediction {
+        if (question.effectiveAttribution.level != AttributionLevel.AGGREGATE_ONLY) return gp
+        val dist = gp.dist as? ContinuousProbabilityDistribution ?: return gp
+        val ci80 = dist.ci80
+        return gp.copy(dist = QuantileSummaryDistribution(
+            dist.space, dist.median,
+            listOf(ConfidenceInterval(0.8, ci80.start, ci80.endInclusive)),
+        ))
+    }
 
     suspend inline fun <R> withMutationLock(crossinline body: suspend ()->R): R =
         if (coroutineContext[MutationLockedContextElement.Key] != null) { // parent has already locked

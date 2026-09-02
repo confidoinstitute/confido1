@@ -31,7 +31,7 @@ sealed interface PVSubject {
     /** The view has no configurable subject (e.g. a blank screen). */
     data object None : PVSubject
     class OfQuestion(
-        val filter: (Question) -> Boolean = { true },
+        val filter: (Question, Room) -> Boolean = { _, _ -> true },
         val get: (PresenterView) -> Ref<Question>,
         val set: (PresenterView, Ref<Question>) -> PresenterView,
     ) : PVSubject
@@ -45,7 +45,7 @@ sealed interface PVSubject {
 }
 
 inline fun <reified V : PresenterView> questionSubject(
-    noinline filter: (Question) -> Boolean = { true },
+    noinline filter: (Question, Room) -> Boolean = { _, _ -> true },
     crossinline get: (V) -> Ref<Question>,
     crossinline set: (V, Ref<Question>) -> V,
 ): PVSubject = PVSubject.OfQuestion(filter, { get(it as V) }, { v, q -> set(v as V, q) })
@@ -97,7 +97,7 @@ fun pvFlowEditor(
         is PVSubject.OfQuestion -> {
             FieldLabel { +"Question" }
             QuestionPicker {
-                this.questions = questions.filter(subject.filter)
+                this.questions = questions.filter { subject.filter(it, room) }
                 selectedId = subject.get(view).id
                 currentQuestionOption = world?.loopCandidates != null
                 onChange = { onViewChange(subject.set(view, Ref(it))) }

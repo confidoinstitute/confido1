@@ -110,7 +110,7 @@ val flowItemTypes: List<FlowItemTypeEntry> by kotlin.lazy {
             category = FlowItemCategory.VIEW,
             createDefault = { SetPresenterViewAction(BinaryHistogramPV(Ref(""))) },
             editor = pvFlowEditor(questionSubject<BinaryHistogramPV>(
-                filter = { it.answerSpace is tools.confido.spaces.BinarySpace },
+                filter = { q, _ -> q.answerSpace is tools.confido.spaces.BinarySpace },
                 get = { it.question }, set = { v, q -> v.copy(question = q) })),
             matches = { it is SetPresenterViewAction && it.view is BinaryHistogramPV },
         ))

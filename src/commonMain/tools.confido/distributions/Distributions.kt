@@ -35,9 +35,28 @@ data class BinaryDistribution( // TODO: Make this a special case of a general Ch
     override fun identify() = "binary:$yesProb"
 }
 
-interface ContinuousProbabilityDistribution : ProbabilityDistribution {
+/**
+ * A distribution over a [NumericSpace] that can answer central-summary queries
+ * (median, fixed-level confidence intervals) — whether computed from a full
+ * density ([ContinuousProbabilityDistribution]) or carried as stored quantiles
+ * ([QuantileSummaryDistribution]). Every member is total for every implementation:
+ * the interface pins *fixed* quantile levels and never promises arbitrary-level
+ * queries that a stored summary could not honor.
+ */
+interface NumericProbabilityDistribution : ProbabilityDistribution {
     override val space: NumericSpace
+    val median: Double
+    /** The central 80% confidence interval — the codebase-wide summary convention
+     *  (fan chart bands, one-line descriptions). */
+    val ci80: ClosedFloatingPointRange<Double>
 
+    // a one-line user-visible stringification
+    override val description get() =
+        ci80.endpoints.joinToString(" to ") { space.formatValue(it, showUnit = false) } +
+        if (space.unit.isNotEmpty()) " ${space.unit}" else ""
+}
+
+interface ContinuousProbabilityDistribution : NumericProbabilityDistribution {
     fun pdf(x: Double): Double
     fun cdf(x: Double): Double
     fun icdf(p: Double): Double
@@ -52,7 +71,8 @@ interface ContinuousProbabilityDistribution : ProbabilityDistribution {
     val mean: Double
     val stdev: Double
     val maxDensity: Double // maximum value of pdf, useful for scaling graphs
-    val median get() = icdf(0.5)
+    override val median get() = icdf(0.5)
+    override val ci80 get() = confidenceInterval(0.8)
     val meanIsDiscretized get() = false
     val stdevIsDiscretized get() = false
     val preferredCICenter: Double
@@ -75,11 +95,45 @@ interface ContinuousProbabilityDistribution : ProbabilityDistribution {
             origStdev = if (stdevIsDiscretized) null else this.stdev)
     fun discretize(bins: Int) = discretize(Binner(space, bins))
     fun discretize() = discretize(space.binner)
+    // description: inherited from NumericProbabilityDistribution via ci80
+    // (which routes through confidenceInterval and thus preferredCICenter).
+}
 
-    // a one-line user-visible stringification
-    override val description get() =
-        confidenceInterval(0.8).endpoints.joinToString(" to ") { space.formatValue(it, showUnit = false) } +
-        if (space.unit.isNotEmpty()) " ${space.unit}" else ""
+/** A stored central confidence interval: the [p]-level range of a distribution. */
+@Serializable
+data class ConfidenceInterval(val p: Double, val start: Double, val end: Double) {
+    init {
+        require(p in 0.0..1.0)
+        require(start <= end)
+    }
+    val range get() = start..end
+}
+
+/**
+ * A privacy-preserving central summary of an aggregate distribution: quantiles
+ * only, no density. Serves AGGREGATE_ONLY numeric questions, where the full
+ * mixture would disclose the individual predictions as its peaks (each unimodal
+ * component carries mass 1/N). Deliberately NOT a [ContinuousProbabilityDistribution]:
+ * pdf/discretize consumers type-check against that interface and fail *closed* on
+ * this sibling — a missed call site renders nothing rather than leaking or crashing.
+ *
+ * [intervals] holds a small set of fixed levels (never adapted to data or predictor
+ * count, so representations cannot be intersected across transitions); an 0.8-level
+ * entry is mandatory so [ci80] stays total.
+ */
+@Serializable
+@SerialName("quantileSummary")
+data class QuantileSummaryDistribution(
+    override val space: NumericSpace,
+    override val median: Double,
+    val intervals: List<ConfidenceInterval>,
+) : NumericProbabilityDistribution {
+    init {
+        require(intervals.any { it.p == 0.8 }) { "An 0.8-level interval is required (ci80 must be total)." }
+    }
+    override val ci80 get() = intervals.first { it.p == 0.8 }.range
+    override fun identify() =
+        "qsummary:$median:" + intervals.joinToString(":") { "${it.p}=${it.start}..${it.end}" }
 }
 
 interface DiscretizedProbabilityDistribution : ProbabilityDistribution {
@@ -523,6 +577,7 @@ data class TruncatedNormalDistribution(
 val distributionsSM = SerializersModule {
     polymorphic(ProbabilityDistribution::class) {
         subclass(BinaryDistribution::class)
+        subclass(QuantileSummaryDistribution::class)
         subclass(DiscretizedContinuousDistribution::class)
         subclass(TruncatedNormalDistribution::class)
         subclass(TruncatedCanonicalNormalDistribution::class)

@@ -48,9 +48,17 @@ data class User(
 @Serializable
 data class UserPresentation(
     val isMyself: Boolean,
+    /** Under a masked attribution policy this is ALWAYS the masked form (alias or
+     *  anonymous placeholder) — piercing never substitutes it (see [realIdentity]). */
     val displayName: String? = null,
     val userId: Ref<User>? = null,
     val color: String? = null,
+    /** The real identity behind a masked [displayName], carried only to observers
+     *  holding [tools.confido.rooms.RoomPermission.VIEW_REAL_IDENTITIES] where the
+     *  policy's moderatorAccess allows. An *annotation*, never a substitution:
+     *  audience-facing surfaces (presenter views) render [displayName] only, so a
+     *  pierced presentation can never leak onto a projector by construction. */
+    val realIdentity: String? = null,
 )
 
 @Serializable

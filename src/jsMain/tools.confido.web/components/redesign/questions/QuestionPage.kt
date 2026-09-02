@@ -335,10 +335,10 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
     // view needs no fetch (a binary history point is its own distribution).
     val hasGhost = question.answerSpace is NumericSpace
     val compareCapable = layoutMode >= LayoutMode.TABLET
-    // Sensitive questions show individual predictions to no one, moderators included
-    // (server-enforced; this just hides the affordances).
+    // Unattributed (ANONYMOUS+) questions show individual predictions to no one,
+    // moderators included (server-enforced; this just hides the affordances).
     val canViewIndividual = usePermission(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS) &&
-        !question.sensitive
+        question.effectiveAttributionIn(room).level < AttributionLevel.ANONYMOUS
     // Inspect = transient hover; on mobile (no compare) the pin inspects too.
     val inspectMoment = scrubMoment ?: pinnedMoment?.takeIf { !compareCapable }
 
@@ -696,7 +696,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                         resolution = props.resolution
                         isGroup = true
                         this.question = props.question
-                        if (question.aggregatesVisible(props.numPredictors))
+                        if (question.effectiveAttributionIn(room).aggregatesVisible(props.numPredictors))
                             onHistogramButtonClick = { groupHistogramOpen = !groupHistogramOpen }
                         if (inspecting && scrubMoment == null && pinnedMoment != null)
                             onGhostDismiss = { pinnedMoment = null }
@@ -756,11 +756,11 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                             +"No $predictionTerms were made."
                         }
                     }
-                } else if (!question.aggregatesVisible(props.numPredictors)) {
+                } else if (!question.effectiveAttributionIn(room).aggregatesVisible(props.numPredictors)) {
                     PredictionOverlay {
-                        +("To protect anonymity on this sensitive question, the group " +
+                        +("To protect anonymity on this question, the group " +
                             "$predictionTerm will be shown once at least " +
-                            "$SENSITIVE_MIN_PREDICTORS people have answered.")
+                            "$ATTRIBUTION_MIN_PREDICTORS people have answered.")
                     }
                 }
             }

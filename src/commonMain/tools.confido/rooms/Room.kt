@@ -45,6 +45,16 @@ data class Room(
     val color: RoomColor = colorFromId(id),
     val icon: String? = null,
     val defaultSchedule: QuestionSchedule = QuestionSchedule(),
+    /** Default attribution promise for the room's questions; per-question override
+     *  in [Question.attribution] (same inheritance pattern as [defaultSchedule]). */
+    val defaultAttribution: AttributionPolicy = AttributionPolicy(),
+    /** Custom pseudonym pool; null = aliases come from the built-in generator.
+     *  A pool shorter than the member count is topped up from the generator. */
+    val pseudonymPool: List<String>? = null,
+    /** Stable alias assignments, user id → pseudonym. Maintained server-side on
+     *  save; censored down to the viewer's own entry unless the viewer may see
+     *  real identities (see StateCensor). */
+    val pseudonymAssignments: Map<String, String> = emptyMap(),
     val scoring: ScoringConfig? = null,
     @Serializable(with = RoomEDTSerializer::class)
     val extensionData: ExtensionData = ExtensionData(RoomEDT),

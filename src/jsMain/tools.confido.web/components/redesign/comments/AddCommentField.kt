@@ -5,6 +5,7 @@ import tools.confido.web.components.*
 import tools.confido.web.components.redesign.*
 import tools.confido.web.components.redesign.basic.*
 import tools.confido.web.components.redesign.forms.*
+import tools.confido.web.components.redesign.rooms.PostingAsCue
 import tools.confido.web.components.redesign.rooms.RoomContext
 import web.cssom.*
 import emotion.react.*
@@ -86,6 +87,7 @@ val AddCommentField = FC<AddCommentFieldProps> { props ->
                     gap = 10.px
                     flexGrow = number(1.0)
                 }
+                PostingAsCue {}
                 room?.let { r -> ClientExtension.forEach { it.commentFieldExtra(r, this) } }
                 props.prediction?.let { pred ->
                     if (!attachPrediction) {

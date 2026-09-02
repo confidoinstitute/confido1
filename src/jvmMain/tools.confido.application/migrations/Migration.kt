@@ -87,6 +87,8 @@ object MigrationRunner {
         ShortSerialNamesMigration,
         RetireUpdateScatterPlotMigration,
         PresenterViewItemMigration,
+        SensitiveToAttributionMigration,
+        PseudonymsEdtToCoreMigration,
     )
 
     /**

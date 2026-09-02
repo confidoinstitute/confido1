@@ -256,6 +256,15 @@ val CommentHeader = FC<CommentHeaderProps> { props ->
                 }
                 +props.author.displayName
             }
+            // Piercing annotation: the real identity behind a masked author, granted
+            // by the server only to VIEW_REAL_IDENTITIES holders where the policy
+            // allows. Never a substitution — presenter surfaces render displayName only.
+            props.author.realIdentity?.let { real ->
+                span {
+                    css { fontWeight = integer(400); opacity = number(0.6) }
+                    +"($real)"
+                }
+            }
             Circle {
                 color = nameColor
                 size = 3.px

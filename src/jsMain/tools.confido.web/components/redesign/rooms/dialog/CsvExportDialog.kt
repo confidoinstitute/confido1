@@ -17,6 +17,7 @@ import react.*
 import react.dom.html.ReactHTML.i
 import react.dom.html.ReactHTML.option
 import react.dom.html.ReactHTML.p
+import tools.confido.rooms.AttributionLevel
 import tools.confido.rooms.ExportHistory
 import tools.confido.rooms.RoomPermission
 import tools.confido.question.Question
@@ -55,10 +56,12 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
         selectedQuestions.all { roomQuestions[it.id]?.effectiveScheduleIn(room)?.score != null }
     }
 
-    // Sensitive questions have no individual export (server-enforced for everyone,
-    // moderators included); a mixed selection exports the non-sensitive ones only.
+    // Unattributed (ANONYMOUS+) questions have no individual export (server-enforced
+    // for everyone, moderators included); a mixed selection exports the rest only.
     val canIndividual = usePermission(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
-    val sensitiveCount = selectedQuestions.count { roomQuestions[it.id]?.sensitive == true }
+    val unattributedCount = selectedQuestions.count {
+        (roomQuestions[it.id]?.effectiveAttributionIn(room)?.level ?: AttributionLevel.OPEN) >= AttributionLevel.ANONYMOUS
+    }
 
     val params = parametersOf(
         "questions" to listOf(selectedQuestions.map { it.id }.joinToString(",")),
@@ -123,7 +126,7 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
                             title = "Export predictions as..."
                             options = buildList {
                                 add(false to "Group aggregate")
-                                if (canIndividual && sensitiveCount < selectedQuestions.size)
+                                if (canIndividual && unattributedCount < selectedQuestions.size)
                                     add(true to "Individual predictions")
                             }
                             value = individual
@@ -142,7 +145,7 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
                             onChange = { value -> exportHistory = value }
                         }
                     }
-                    if (individual && sensitiveCount > 0) {
+                    if (individual && unattributedCount > 0) {
                         p {
                             +"Sensitive questions are excluded from individual exports."
                         }

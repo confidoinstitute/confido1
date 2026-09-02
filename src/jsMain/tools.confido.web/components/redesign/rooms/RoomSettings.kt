@@ -35,6 +35,7 @@ external interface RoomSettingsProps : Props {
 
 val RoomSettings = FC<RoomSettingsProps> { props ->
     val roomQuestions = (useSubscription(props.room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data ?: emptyMap()
+    val questionCounts = (useSubscription(props.room?.let { Topics.roomQuestionCounts(it.ref) }) as? WSData)?.data ?: emptyMap()
 
     var name by useState(props.room?.name ?: "")
     var description by useState(props.room?.description ?: "")
@@ -46,15 +47,20 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
     var showScore by useState(scoringConfig != null)
     var scheduleValid by useState(true)
     var commentTemplate by useState(props.room?.commentTemplate ?: "")
+    var defaultAttribution by useState(props.room?.defaultAttribution ?: AttributionPolicy())
+    var pseudonymPool by useState(props.room?.pseudonymPool)
+    var attributionValid by useState(true)
     var extensionData by useState(props.room?.extensionData ?: ExtensionData(RoomEDT))
     val onExtensionDataChange: ((ExtensionData) -> ExtensionData) -> Unit = { transform ->
         extensionData = transform(extensionData)
     }
-    val valid = !name.isEmpty() && scheduleValid
+    val valid = !name.isEmpty() && scheduleValid && attributionValid
 
-    useEffect(name, description, color, icon, defaultSchedule.identify(), scoringConfig?.identify(), commentTemplate, extensionData) {
+    useEffect(name, description, color, icon, defaultSchedule.identify(), scoringConfig?.identify(), commentTemplate,
+              extensionData, defaultAttribution, pseudonymPool?.joinToString("\n"), attributionValid) {
         if (valid)
-            props.onChange?.invoke(BaseRoomInformation(name, description, color, icon, defaultSchedule, scoringConfig, commentTemplate, extensionData))
+            props.onChange?.invoke(BaseRoomInformation(name, description, color, icon, defaultSchedule, scoringConfig, commentTemplate, extensionData,
+                defaultAttribution = defaultAttribution, pseudonymPool = pseudonymPool))
         else
             props.onChange?.invoke(null)
     }
@@ -203,6 +209,34 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                         scoringConfig = ScoringConfig()
                         it.preventDefault()
                     }
+                }
+            }
+        }
+        FormSection {
+            title = "Anonymity"
+            // Ratchet floor: questions following the room default that already have
+            // activity mean the default may only be made stricter (server-enforced).
+            val inheritingWithActivity = props.room?.let { room ->
+                room.questions.mapNotNull { roomQuestions[it.id] }.filter { q ->
+                    q.attribution == null &&
+                        (questionCounts[q.ref]?.let { it.predictions > 0 || it.comments > 0 } ?: false)
+                }
+            } ?: emptyList()
+            AttributionSection {
+                value = defaultAttribution
+                persisted = props.room?.defaultAttribution
+                ratchetFloor = props.room?.defaultAttribution?.takeIf { inheritingWithActivity.isNotEmpty() }
+                ratchetWhat = "${inheritingWithActivity.size} question${if (inheritingWithActivity.size != 1) "s" else ""} follow this setting"
+                onChange = { policy, isError ->
+                    defaultAttribution = policy
+                    attributionValid = !isError
+                }
+            }
+            if (defaultAttribution.level == AttributionLevel.PSEUDONYM) {
+                PseudonymPoolSection {
+                    pool = pseudonymPool
+                    onChange = { pseudonymPool = it }
+                    memberCount = props.room?.members?.size ?: 0
                 }
             }
         }

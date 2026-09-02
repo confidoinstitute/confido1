@@ -36,14 +36,14 @@ val DefaultHistogramBinning = listOf(HistogramBin(0.0, 0.05)) +
                                 listOf(HistogramBin(0.95, 1.0))
 
 /**
- * Coarse binning for [Question.sensitive] questions: the default 5%-resolution bins
- * would disclose the (anonymous) multiset of predictions nearly exactly, enabling
- * value-fingerprinting ("the one who always says 97%"). Five fixed 20% bins cap that.
- * Fixed rather than adaptive-to-predictor-count on purpose — re-binning as the count
- * grows would let an observer intersect the two partitions across the transition and
- * localize values finer than either binning alone.
+ * Coarse binning for [tools.confido.rooms.AttributionLevel.AGGREGATE_ONLY] questions:
+ * the default 5%-resolution bins would disclose the (anonymous) multiset of predictions
+ * nearly exactly, enabling value-fingerprinting ("the one who always says 97%"). Five
+ * fixed 20% bins cap that. Fixed rather than adaptive-to-predictor-count on purpose —
+ * re-binning as the count grows would let an observer intersect the two partitions
+ * across the transition and localize values finer than either binning alone.
  */
-val SensitiveHistogramBinning = (0 until 5).map { HistogramBin(it / 5.0, (it + 1) / 5.0) }
+val CoarseHistogramBinning = (0 until 5).map { HistogramBin(it / 5.0, (it + 1) / 5.0) }
 
 class BinaryHistogramBinner(private val bins: HistogramBinningRule = DefaultHistogramBinning) {
     init {

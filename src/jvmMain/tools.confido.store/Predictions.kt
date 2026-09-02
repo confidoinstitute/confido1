@@ -21,6 +21,9 @@ import tools.confido.state.serverState
 import tools.confido.utils.generateId
 import tools.confido.users.User
 import tools.confido.question.effectiveSchedule
+import tools.confido.question.effectiveAttribution
+import tools.confido.rooms.ATTRIBUTION_MIN_PREDICTORS
+import tools.confido.rooms.AttributionLevel
 
 /**
  * Prediction storage, redesigned per PERSISTENCE_SYNC_REDESIGN.md §3.4:
@@ -118,7 +121,40 @@ object userPredictionLog {
         else coll.find(and(Prediction::question eq question, Prediction::user eq user,
                 Prediction::ts lte ts.epochSeconds.toInt()))
             .sort(descending(Prediction::ts)).first()
+
+    /** The ts at which the question first had [n] distinct predictors (the n-th
+     *  smallest per-user first-entry ts), or null if it never reached [n]. */
+    suspend fun nthDistinctPredictorTs(question: Ref<Question>, n: Int): Int? {
+        @Serializable
+        data class FirstTs(val ts: Int)
+        return coll.aggregate<FirstTs>(listOf(
+            match(Prediction::question eq question),
+            group(Prediction::user, FirstTs::ts.min(Prediction::ts)),
+            sort(ascending(FirstTs::ts)),
+            skip(n - 1),
+            limit(1),
+        )).first()?.ts
+    }
 }
+
+/**
+ * Earliest `ts` from which aggregate *history* of this question may be served:
+ * unattributed (ANONYMOUS+) questions only ever publish aggregates computed at or
+ * after the moment the anonymity threshold was first reached, but the group log
+ * accumulates from the very first prediction — its sub-threshold prefix (whose
+ * first entry IS the first predictor's own data) must never leave the server, even
+ * after the live gate unlocks. Every consumer of [groupPredictionLog] serving a
+ * viewer must apply this floor. Int.MIN_VALUE = unrestricted; Int.MAX_VALUE when
+ * the threshold was never reached (the live gate refuses such requests anyway).
+ *
+ * Granularity: `ts` is unix seconds, so sub-threshold entries from the same second
+ * as the threshold crossing pass the floor — at worst an (n-1)-predictor aggregate
+ * computed <1s before the n-th predictor arrived. Accepted residue.
+ */
+suspend fun Question.aggregateHistoryFloorTs(): Int =
+    if (effectiveAttribution.level >= AttributionLevel.ANONYMOUS)
+        userPredictionLog.nthDistinctPredictorTs(ref, ATTRIBUTION_MIN_PREDICTORS) ?: Int.MAX_VALUE
+    else Int.MIN_VALUE
 
 /** The group prediction event log (`groupPredHist`); entries always have `user == null`. */
 object groupPredictionLog {
