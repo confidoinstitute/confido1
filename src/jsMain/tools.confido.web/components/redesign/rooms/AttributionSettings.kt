@@ -28,8 +28,9 @@ private val AttributionLevel.explanation get() = when (this) {
         "Answers and comments carry no name and cannot be linked to each other. Individual answers " +
         "appear only once at least $ATTRIBUTION_MIN_PREDICTORS people have answered."
     AttributionLevel.AGGREGATE_ONLY ->
-        "Only a coarse group summary is shown, and only once at least $ATTRIBUTION_MIN_PREDICTORS " +
-        "people have answered. Nobody — moderators included — can see individual answers."
+        "Everything Anonymous does, plus: individual answers are never shown to anyone in any " +
+        "form — only a coarse group summary, once at least $ATTRIBUTION_MIN_PREDICTORS people " +
+        "have answered. Comments are anonymous."
 }
 
 external interface AttributionSectionProps : Props {

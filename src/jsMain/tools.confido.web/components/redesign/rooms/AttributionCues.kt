@@ -43,7 +43,7 @@ val PostingAsCue = FC<Props> {
                 +"Posting as "
                 b { +(alias ?: "a pseudonym") }
             }
-            AttributionLevel.ANONYMOUS -> +"Posting anonymously"
+            AttributionLevel.ANONYMOUS, AttributionLevel.AGGREGATE_ONLY -> +"Posting anonymously"
             else -> {}
         }
     }
@@ -78,6 +78,8 @@ val RoomAttributionInfo = FC<RoomAttributionInfoProps> { props ->
                 +" in this room."
             }
             AttributionLevel.ANONYMOUS -> +"Answers and comments in this room are anonymous."
+            AttributionLevel.AGGREGATE_ONLY ->
+                +"Comments in this room are anonymous; individual answers are never shown."
             else -> {}
         }
         div {

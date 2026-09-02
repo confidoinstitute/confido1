@@ -34,31 +34,22 @@ enum class AttributionLevel {
     ANONYMOUS,
 
     /**
-     * No individual data of any kind is disclosed to anyone; only coarse
-     * aggregates, gated at [ATTRIBUTION_MIN_PREDICTORS]. (Formerly the
-     * `sensitive` question flag.)
+     * Strictly stricter than [ANONYMOUS]: everything it masks (comments are
+     * anonymous here too) plus no individual prediction data of any kind is
+     * disclosed to anyone; only coarse aggregates, gated at
+     * [ATTRIBUTION_MIN_PREDICTORS]. (Formerly the `sensitive` question flag,
+     * which showed comment authors by name — tightened so the ladder is a
+     * strict total order.)
      */
     AGGREGATE_ONLY;
 
     /**
      * Whether identities are masked but the underlying activity still exists as
      * individual, potentially piercable data ([RoomPermission.VIEW_REAL_IDENTITIES]).
-     * False for [OPEN] (nothing masked) and [AGGREGATE_ONLY] (nothing individual).
+     * False only for [OPEN]: even [AGGREGATE_ONLY] has individual *comments*,
+     * masked like [ANONYMOUS] ones.
      */
-    val pierceable get() = this == PSEUDONYM || this == ANONYMOUS
-
-    /**
-     * How strongly the level masks *author identity* (on comments, which exist at
-     * every level). Distinct from the data-disclosure ordering (= declaration
-     * order): [AGGREGATE_ONLY] hides all prediction data yet shows comment authors
-     * by name, so the ladder is strict in data but NOT in identity — ratchet
-     * checks must compare both axes.
-     */
-    val identityMaskRank get() = when (this) {
-        OPEN, AGGREGATE_ONLY -> 0
-        PSEUDONYM -> 1
-        ANONYMOUS -> 2
-    }
+    val pierceable get() = this != OPEN
 }
 
 /**
@@ -79,15 +70,13 @@ data class AttributionPolicy(
      * refused — that is what makes the promise durable despite room owners
      * controlling settings.
      *
-     * Three clauses, because disclosure is not one axis: prediction-data
-     * disclosure (declaration order), author-identity masking
-     * ([AttributionLevel.identityMaskRank] — catches e.g. PSEUDONYM →
-     * AGGREGATE_ONLY, which hides all data yet would unmask comment authors),
-     * and moderator piercing.
+     * Two clauses: the level ladder (a strict total order — each level masks
+     * everything the previous one does, in data AND author identity) and
+     * moderator piercing. The ladder being total is load-bearing here: it is
+     * what lets e.g. ANONYMOUS → AGGREGATE_ONLY pass as a pure tightening.
      */
     fun revealsMoreThan(other: AttributionPolicy): Boolean =
         level < other.level ||
-        level.identityMaskRank < other.level.identityMaskRank ||
         (moderatorAccess && !other.moderatorAccess && other.level.pierceable)
 
     /**

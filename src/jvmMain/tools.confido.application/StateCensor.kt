@@ -333,7 +333,9 @@ fun getUserPresentation(user: User?, observer: User, context: UserPresentationCo
                     realIdentity = realIdentity,
                 )
             }
-            AttributionLevel.ANONYMOUS -> UserPresentation(
+            // AGGREGATE_ONLY is strictly stricter than ANONYMOUS: its comments
+            // (the only individual content it has) are masked the same way.
+            AttributionLevel.ANONYMOUS, AttributionLevel.AGGREGATE_ONLY -> UserPresentation(
                 isMyself = user.id == observer.id,
                 displayName = "Anonymous",
                 // No color: a stable color IS linkage.

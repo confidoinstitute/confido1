@@ -149,17 +149,32 @@ async def main():
          "defaultAttribution": {"level": "OPEN"}}, admin) == 400,
             "TEST-10", "cannot weaken room default attribution once activity exists")
 
-    # Identity axis of the ratchet: AGGREGATE_ONLY hides all prediction data but
-    # shows comment authors by name, so PSEUDONYM -> AGGREGATE_ONLY would unmask
-    # the aliases on existing comments and must be refused too.
+    # The ladder is a strict total order: AGGREGATE_ONLY masks everything ANONYMOUS
+    # does (comments become anonymous) plus all prediction data, so tightening
+    # PSEUDONYM -> AGGREGATE_ONLY is allowed even with existing activity...
     async with await connect_ws(admin) as ws:
         await ws.send(json.dumps({"sub": [qtopic]}))
         seen = by_topic(await recv_updates(ws))
         qjson = seen[qtopic]["data"][qid]
-    unmasking = dict(qjson, attribution={"level": "AGGREGATE_ONLY"})
+        tightened = dict(qjson, attribution={"level": "AGGREGATE_ONLY"})
+        t.check(post_status(f"/questions/{qid}/edit",
+                            {"type": "complete", "question": tightened}, admin) == 200,
+                "TEST-11", "pseudonymous question tightens to aggregate-only (pure restriction)")
+
+        # ...whereupon its comment authors read as Anonymous (realIdentity stays,
+        # moderatorAccess=true and the admin pierces)...
+        await ws.send(json.dumps({"sub": [f"question/{qid}/comments"]}))
+        seen.update(by_topic(await recv_updates(ws)))
+        comments = seen.get(f"question/{qid}/comments", {}).get("data") or []
+        mu = next((c for c in comments if c["content"] == "member speaking"), {}).get("user") or {}
+        t.check(mu.get("displayName") == "Anonymous" and bool(mu.get("realIdentity")),
+                "TEST-12", "aggregate-only comments are anonymous (pierced via annotation only)", str(mu))
+
+    # ...and the reverse direction is a weakening, refused by the ratchet.
     t.check(post_status(f"/questions/{qid}/edit",
-                        {"type": "complete", "question": unmasking}, admin) == 400,
-            "TEST-11", "pseudonymous question with comments cannot become aggregate-only (would unmask authors)")
+                        {"type": "complete", "question": dict(qjson, attribution={"level": "PSEUDONYM"})},
+                        admin) == 400,
+            "TEST-13", "aggregate-only cannot weaken back to pseudonymous once it has activity")
 
     t.finish()
 

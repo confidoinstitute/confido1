@@ -7,6 +7,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import tools.confido.question.normalizedBrier
 import tools.confido.question.effectiveAttribution
+import tools.confido.question.room
 import tools.confido.rooms.AttributionLevel
 import tools.confido.rooms.ExportHistory
 import tools.confido.application.calibration.getScoredPrediction
@@ -120,9 +121,25 @@ class PredictionExport  (
         }
 
         user?.let {
-            ret["user_id"] = it.id
-            ret["nick"] = it.nick ?: ""
-            ret["email"] = it.email?.lowercase() ?: ""
+            // Same rule as exportComment: the export is not per-viewer censored, so
+            // masked levels export the masked identity only. (ANONYMOUS+ questions
+            // never reach individual export at all — route-gated — this is defense
+            // in depth plus the PSEUDONYM alias case.)
+            when {
+                question.effectiveAttribution.level == AttributionLevel.PSEUDONYM -> {
+                    ret["user_id"] = ""
+                    ret["nick"] = question.room?.pseudonymAssignments?.get(it.id) ?: ""
+                    ret["email"] = ""
+                }
+                question.effectiveAttribution.level >= AttributionLevel.ANONYMOUS -> {
+                    ret["user_id"] = ""; ret["nick"] = ""; ret["email"] = ""
+                }
+                else -> {
+                    ret["user_id"] = it.id
+                    ret["nick"] = it.nick ?: ""
+                    ret["email"] = it.email?.lowercase() ?: ""
+                }
+            }
         }
 
         val dt = Instant.fromEpochSeconds(prediction.ts.toLong()).toLocalDateTime(TimeZone.UTC)
@@ -214,12 +231,29 @@ class CommentExport  (
     fun exportComment(q: Question, c: QuestionComment): CsvRecord {
         val dt = Instant.fromEpochSeconds(c.timestamp.toLong()).toLocalDateTime(TimeZone.UTC)
         val user = c.user.deref()
+        // The export is not per-viewer censored, so masked levels export the masked
+        // form only: the alias for PSEUDONYM (stable linkage is the point), nothing
+        // for ANONYMOUS/AGGREGATE_ONLY (a stable user_id IS linkage).
+        val level = q.effectiveAttribution.level
+        val identityCols = when {
+            level == AttributionLevel.PSEUDONYM -> {
+                val alias = c.user.id.let { q.room?.pseudonymAssignments?.get(it) }
+                mapOf("user_id" to "", "nick" to (alias ?: ""), "email" to "")
+            }
+            level >= AttributionLevel.ANONYMOUS ->
+                mapOf("user_id" to "", "nick" to "", "email" to "")
+            else -> mapOf(
+                "user_id" to c.user.id,
+                "nick" to (user?.nick ?: ""),
+                "email" to (user?.email?.lowercase() ?: ""),
+            )
+        }
         val ret =  mutableMapOf(
             "question_id" to q.id,
             "question" to q.name,
-            "user_id" to c.user.id,
-            "nick" to (user?.nick ?: ""),
-            "email" to (user?.email?.lowercase() ?: ""),
+        )
+        ret += identityCols
+        ret += mapOf(
             "timestamp" to c.timestamp.toString(),
             "date" to dt.date.toString(),
             "time" to dt.time.toString(),
