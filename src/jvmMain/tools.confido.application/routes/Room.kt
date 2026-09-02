@@ -20,6 +20,7 @@ import tools.confido.api.Api
 import tools.confido.application.*
 import tools.confido.application.sessions.*
 import tools.confido.question.GroupPredictionVisibility
+import tools.confido.question.resolvedAttributionIn
 import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
 import tools.confido.state.*
@@ -77,6 +78,14 @@ fun roomRoutes(routing: Routing) = routing.apply {
             if (information.isGroup && information.parentRoom != null)
                 badRequest("A group room cannot be assigned to another group.")
             information.parentRoom?.let { checkGroupAssignment(user, it) }
+            // Config floor: cannot author a policy looser than the group's
+            // (resolution clamps it anyway; this keeps the dialog honest).
+            information.defaultAttribution?.let { policy ->
+                information.parentRoom?.deref()?.resolvedDefaultAttribution?.let { parentEff ->
+                    if (policy.revealsMoreThan(parentEff))
+                        badRequest("The room's attribution policy cannot be looser than its group's.")
+                }
+            }
 
             val myMembership = RoomMembership(user.ref, appConfig.roleById("owner") ?: error("Role 'owner' not found"), null)
             tools.confido.store.roomStore.insert(
@@ -90,6 +99,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                     defaultSchedule = information.defaultSchedule,
                     defaultAttribution = information.defaultAttribution,
                     pseudonymPool = information.pseudonymPool,
+                    separatePseudonyms = information.separatePseudonyms,
                     scoring = information.scoring,
                     commentTemplate = information.commentTemplate,
                     extensionData = information.extensionData,
@@ -114,15 +124,41 @@ fun roomRoutes(routing: Routing) = routing.apply {
                 }
             }
 
-            // Promise-floor ratchet, room level: the default binds room comments (the
-            // room's own floor) and every question inheriting it (their floors). The
-            // meet of those floors is violated iff any component is.
-            val roomFloor = listOfNotNull(room.attributionFloor) +
-                room.questions.mapNotNull { q -> q.deref()?.takeIf { it.attribution == null }?.attributionFloor }
-            roomFloor.reduceOrNull(::strictestOf)?.let { floor ->
-                if (information.defaultAttribution.revealsMoreThan(floor))
-                    badRequest("Cannot weaken the room's attribution policy below the promise existing activity was made under.")
+            // Attribution, two checks. Config floor: an explicit policy may not be
+            // authored looser than the (possibly new) group's — resolution clamps it
+            // anyway, this keeps the dialog honest. Promise-floor ratchet: the
+            // proposed *effective* default may not reveal more than the recursive
+            // floor meet (own room comments, inheriting questions, and for groups
+            // the inheriting children's floors).
+            val newParentEff = information.parentRoom?.let { serverState.rooms[it.id] }
+                ?.resolvedDefaultAttribution ?: AttributionPolicy()
+            information.defaultAttribution?.let {
+                if (it.revealsMoreThan(newParentEff))
+                    badRequest("The room's attribution policy cannot be looser than its group's.")
             }
+            // Mirror the store's pin-on-unparent/reparent hook: an inheriting room
+            // whose link change would loosen its effective policy gets the old one
+            // pinned, so the floor check must evaluate the PINNED outcome.
+            val newEffRaw = information.defaultAttribution?.let { strictestOf(it, newParentEff) } ?: newParentEff
+            val newEff = if (information.parentRoom != room.parentRoom
+                    && information.defaultAttribution == null
+                    && newEffRaw.revealsMoreThan(room.resolvedDefaultAttribution))
+                room.resolvedDefaultAttribution else newEffRaw
+            room.attributionRatchetFloor?.let { floor ->
+                if (newEff.revealsMoreThan(floor))
+                    badRequest("Cannot weaken the room's attribution policy below the promise existing activity was made under.")
+                // Alias-scope toggle is ratchet-relevant asymmetrically: switching a
+                // per-child namespace back to shared would retroactively link this
+                // room's aliased content to the hierarchy-wide identity. (The other
+                // direction only increases unlinkability.)
+                if (room.separatePseudonyms && !information.separatePseudonyms
+                    && floor.level >= AttributionLevel.PSEUDONYM)
+                    badRequest("Cannot switch to shared aliases: this room's masked activity was made under its own alias namespace.")
+            }
+            // A custom pool belongs to the namespace owner only.
+            if (information.pseudonymPool != null
+                && information.parentRoom != null && !information.separatePseudonyms)
+                badRequest("A custom pseudonym list can only be set where the alias namespace is owned (no group, or separate pseudonyms).")
 
             tools.confido.store.roomStore.modify(room.ref) {
                 it.copy(
@@ -135,6 +171,7 @@ fun roomRoutes(routing: Routing) = routing.apply {
                     defaultSchedule = information.defaultSchedule,
                     defaultAttribution = information.defaultAttribution,
                     pseudonymPool = information.pseudonymPool,
+                    separatePseudonyms = information.separatePseudonyms,
                     scoring = information.scoring,
                     commentTemplate = information.commentTemplate,
                     extensionData = information.extensionData,
@@ -331,7 +368,7 @@ fun roomQuestionRoutes(routing: Routing) = routing.apply {
                     // keys used to enumerate hidden/draft question ids to all members.
                     q != null && (q.visible || canViewHidden) &&
                         (canViewAll || canViewGroupPred(q, preds[ref]?.get(viewerRef))) &&
-                        q.effectiveAttributionIn(room).aggregatesVisible(preds[ref]?.size ?: 0)
+                        q.resolvedAttributionIn(room).aggregatesVisible(preds[ref]?.size ?: 0)
                 }
             }.toSet()
         }

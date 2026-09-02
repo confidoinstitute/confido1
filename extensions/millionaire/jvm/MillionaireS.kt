@@ -21,6 +21,7 @@ import tools.confido.store.*
 import tools.confido.application.sessions.TransientData
 import tools.confido.application.singleThreadContext
 import tools.confido.question.QuestionState
+import tools.confido.question.resolvedAttributionIn
 import tools.confido.refs.Ref
 import tools.confido.refs.deref
 import tools.confido.refs.ref
@@ -86,7 +87,7 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
         // score over a single resolved question is invertible back to the prediction.
         // (Filtered here, not in questions(), so the game flow itself still runs them.)
         val qs = questions(room.questions.mapDeref(), config.tag)
-            .filter { it.effectiveAttributionIn(room).level < AttributionLevel.ANONYMOUS }
+            .filter { it.resolvedAttributionIn(room).level < AttributionLevel.ANONYMOUS }
         return when (config.mode) {
             MillionaireMode.MULTIPLICATIVE -> {
                 var score: Double? = null

@@ -53,12 +53,22 @@ data class Room(
      *  strict two-level hierarchy: a group can never itself have a parent. */
     val parentRoom: Ref<Room>? = null,
     val defaultSchedule: QuestionSchedule = QuestionSchedule(),
-    /** Default attribution promise for the room's questions; per-question override
-     *  in [Question.attribution] (same inheritance pattern as [defaultSchedule]). */
-    val defaultAttribution: AttributionPolicy = AttributionPolicy(),
+    /** Default attribution promise for the room's questions and comments; null =
+     *  inherit from [parentRoom] (OPEN when parentless). Interpret via
+     *  [effectiveDefaultAttribution] (client) / `resolvedDefaultAttribution`
+     *  (server) — an explicit policy is CLAMPED to be at least as strict as the
+     *  inherited one, so a stale looser value is inert, never a leak. */
+    val defaultAttribution: AttributionPolicy? = null,
     /** Custom pseudonym pool; null = aliases come from the built-in generator.
-     *  A pool shorter than the member count is topped up from the generator. */
+     *  A pool shorter than the member count is topped up from the generator.
+     *  Only meaningful where the alias namespace is owned (parentless rooms and
+     *  [separatePseudonyms] children); inert otherwise. */
     val pseudonymPool: List<String>? = null,
+    /** Child rooms share the parent's alias namespace by default (an inherited
+     *  policy means an inherited identity); true opts this child into its own
+     *  namespace (fresh aliases, unlinkable to siblings). Switching an active
+     *  per-child room back to shared is a linkage weakening and is refused. */
+    val separatePseudonyms: Boolean = false,
     /** Stable alias assignments, user id → pseudonym. Maintained server-side on
      *  save; censored down to the viewer's own entry unless the viewer may see
      *  real identities (see StateCensor). */
@@ -85,7 +95,38 @@ data class Room(
     val _effectiveQuestions: List<EffectiveQuestion>? = null,
     /** Whether the presentation is currently running (computed, never persisted). */
     val _presentationRunning: Boolean? = null,
+    /** Resolved default attribution (parent-aware clamp), populated by StateCensor —
+     *  the parent room may be invisible to the viewer, so the client cannot resolve
+     *  it itself. Read via [effectiveDefaultAttribution]. Never persisted. */
+    val _effectiveDefaultAttribution: AttributionPolicy? = null,
 ) : ImmediateDerefEntity, HasUrlPrefix {
+
+    /** The resolved default attribution policy. Correct on client (censor-populated);
+     *  on raw server entities use `resolvedDefaultAttribution` (parent-aware). */
+    val effectiveDefaultAttribution: AttributionPolicy
+        get() = _effectiveDefaultAttribution ?: defaultAttribution ?: AttributionPolicy()
+
+    /** Pure parent-aware resolution: an explicit policy is clamped to at least the
+     *  inherited strictness ([strictestOf]); null inherits outright. The two-level
+     *  hierarchy cap means the parent's own value needs no further recursion. */
+    fun effectiveDefaultAttributionIn(parent: Room?): AttributionPolicy {
+        val inherited = parent?.let { it.defaultAttribution ?: AttributionPolicy() } ?: AttributionPolicy()
+        return defaultAttribution?.let { strictestOf(it, inherited) } ?: inherited
+    }
+
+    /** Whether this room owns its alias namespace (assigns from its own pool) vs
+     *  reading through to the parent's. */
+    val ownsPseudonymNamespace: Boolean get() = parentRoom == null || separatePseudonyms
+
+    /** Alias resolution honoring namespace inheritance: inherit-mode children read
+     *  [parent]'s map first (shared identity dominates), then their own "extend"
+     *  entries. The caller supplies the parent (client: rooms directory; server:
+     *  the parameterless `aliasFor` overload resolves it). Everyone finds their
+     *  own alias in a map they can see: implied members are parent members. */
+    fun aliasFor(userId: String, parent: Room?): String? =
+        if (!ownsPseudonymNamespace)
+            parent?.pseudonymAssignments?.get(userId) ?: pseudonymAssignments[userId]
+        else pseudonymAssignments[userId]
     fun findLink(id: String?): InviteLink? {
         if (id == null || id == "") {
             return null

@@ -1,6 +1,7 @@
 package tools.confido.web.components.redesign.rooms
 
 import tools.confido.web.components.useMyUser
+import tools.confido.web.components.useRooms
 import tools.confido.web.components.redesign.basic.sansSerif
 import tools.confido.web.components.redesign.questions.QuestionContext
 import web.cssom.*
@@ -22,10 +23,12 @@ val PostingAsCue = FC<Props> {
     val room = use(RoomContext)
     val question = use(QuestionContext)
     val myUser = useMyUser()
+    val rooms = useRooms()
     room ?: return@FC
-    val policy = question?.effectiveAttributionIn(room) ?: room.defaultAttribution
+    val policy = question?.effectiveAttributionIn(room) ?: room.effectiveDefaultAttribution
     if (!policy.level.pierceable) return@FC
-    val alias = myUser?.id?.let { room.pseudonymAssignments[it] }
+    val parent = room.parentRoom?.let { rooms[it.id] }
+    val alias = myUser?.id?.let { room.aliasFor(it, parent) }
 
     span {
         css {
@@ -57,10 +60,12 @@ external interface RoomAttributionInfoProps : Props {
  *  through it. Shown whenever the room default masks identities. */
 val RoomAttributionInfo = FC<RoomAttributionInfoProps> { props ->
     val myUser = useMyUser()
+    val rooms = useRooms()
     val room = props.room
-    val policy = room.defaultAttribution
+    val policy = room.effectiveDefaultAttribution
     if (!policy.level.pierceable) return@FC
-    val alias = myUser?.id?.let { room.pseudonymAssignments[it] }
+    val parent = room.parentRoom?.let { rooms[it.id] }
+    val alias = myUser?.id?.let { room.aliasFor(it, parent) }
 
     div {
         css {

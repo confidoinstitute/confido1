@@ -27,8 +27,10 @@ data class BaseRoomInformation(
     @Serializable(with = RoomEDTSerializer::class)
     val extensionData: ExtensionData = ExtensionData(RoomEDT),
     // Appended after extensionData: existing callers construct this positionally.
-    val defaultAttribution: AttributionPolicy = AttributionPolicy(),
+    /** Null = inherit from the parent group (OPEN when parentless). */
+    val defaultAttribution: AttributionPolicy? = null,
     val pseudonymPool: List<String>? = null,
+    val separatePseudonyms: Boolean = false,
     /** Create the room as a group container. Immutable after creation — roomEdit
      *  ignores it (a room that has accumulated questions cannot become a group,
      *  nor vice versa). */

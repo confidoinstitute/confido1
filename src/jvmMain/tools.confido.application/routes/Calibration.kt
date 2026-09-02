@@ -17,6 +17,7 @@ import tools.confido.calibration.*
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.question.Question
+import tools.confido.question.resolvedAttributionIn
 import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.spaces.BinarySpace
@@ -59,7 +60,7 @@ fun calibrationRoutes(routing: Routing) = routing.apply {
                     // group prediction — an aggregate, so the unattributed-level
                     // anonymity threshold applies. Own calibration is unrestricted.
                     && (req.who == Myself
-                        || q.effectiveAttributionIn(room).aggregatesVisible(serverState.userPred[q.ref]?.size ?: 0))
+                        || q.resolvedAttributionIn(room).aggregatesVisible(serverState.userPred[q.ref]?.size ?: 0))
                 ) q
                 else null
             }

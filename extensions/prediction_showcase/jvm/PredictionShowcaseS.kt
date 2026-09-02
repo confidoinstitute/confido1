@@ -6,6 +6,7 @@ import tools.confido.extensions.reference_forecast.ReferenceForcastKey
 import tools.confido.extensions.shared.ValueWithUser
 import io.ktor.server.routing.*
 import tools.confido.rooms.AttributionLevel
+import tools.confido.rooms.aliasFor
 import tools.confido.rooms.RoomPermission
 import tools.confido.question.effectiveAttribution
 import tools.confido.question.room
@@ -68,12 +69,12 @@ object PredictionShowcaseSE : ServerExtension, PredictionShowcaseExtension() {
                 // pierced real name; unattributed levels serve nothing (the client
                 // filters such questions out, this enforces it server-side).
                 val level = question.effectiveAttribution.level
-                val aliases = question.room?.pseudonymAssignments ?: emptyMap()
+                val showcaseRoom = question.room
                 if (level < AttributionLevel.ANONYMOUS)
                     serverState.userPred[question.ref]?.forEach { (userRef, pred) ->
                         val user = userRef.deref() ?: return@forEach
                         val name = if (level == AttributionLevel.PSEUDONYM)
-                            aliases[user.id] ?: "Anonymous participant"
+                            showcaseRoom?.aliasFor(user.id) ?: "Anonymous participant"
                         else user.nick ?: "(Anonymous)"
                         when (val dist = pred.dist) {
                             is ContinuousProbabilityDistribution -> predictions.add(ValueWithUser(name, dist.mean, false))

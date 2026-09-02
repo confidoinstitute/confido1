@@ -8,6 +8,7 @@ import tools.confido.application.routes.badRequest
 import tools.confido.rooms.Room
 import tools.confido.rooms.childRooms
 import tools.confido.rooms.ensurePseudonymAssignments
+import tools.confido.rooms.resolvedDefaultAttribution
 import tools.confido.question.Question
 import tools.confido.refs.Ref
 import tools.confido.refs.ref
@@ -32,6 +33,7 @@ object roomStore : MongoStore<Room>(
                 _effectiveMembers = null,
                 _effectiveQuestions = null,
                 _presentationRunning = null,
+                _effectiveDefaultAttribution = null,
                 members = room.members.map {
                     it.copy(implied = false, impliedFrom = null, effectivePermissions = null)
                 }
@@ -53,6 +55,20 @@ object roomStore : MongoStore<Room>(
                 if (new.isGroup) badRequest("A group room cannot be assigned to another group.")
             }
             new
+        }
+        // Pin-on-unparent/reparent: severing or switching the parent link must never
+        // silently loosen an INHERITING room's effective attribution — the old
+        // inherited policy is materialized as the room's own first (observationally
+        // a no-op at pin time). Group deletion funnels through here too (children
+        // are unparented via modify below). Explicitly-set policies are left alone:
+        // the promise-floor ratchet in the edit route governs those.
+        beforeEntitySave { old, new ->
+            if (old == null || new.parentRoom == old.parentRoom || new.defaultAttribution != null) new
+            else {
+                val oldEff = old.resolvedDefaultAttribution
+                val newEff = new.effectiveDefaultAttributionIn(new.parentRoom?.let { serverState.rooms[it.id] })
+                if (newEff.revealsMoreThan(oldEff)) new.copy(defaultAttribution = oldEff) else new
+            }
         }
         // When a group room is deleted, unparent all its children
         beforeEntityDelete { room ->

@@ -284,11 +284,16 @@ data class Question(
 
     override val urlPrefix get() = urlPrefix(id)
 
-    /** The question's attribution policy with the room default filled in. Pure —
-     *  the caller supplies the room, exactly as [effectiveScheduleIn]. Disclosure
-     *  gates (e.g. [AttributionPolicy.aggregatesVisible]) live on the policy. */
-    fun effectiveAttributionIn(room: Room?): AttributionPolicy =
-        attribution ?: room?.defaultAttribution ?: AttributionPolicy()
+    /** The question's attribution policy resolved against the room's effective
+     *  default, CLAMPED to at least the inherited strictness (uniform config
+     *  floor: an override may never be looser than what it would inherit; stale
+     *  looser overrides are inert). Correct on the client (the censored room
+     *  carries the parent-aware default); on raw server entities use
+     *  `resolvedAttributionIn`/`effectiveAttribution` from QuestionServer.kt. */
+    fun effectiveAttributionIn(room: Room?): AttributionPolicy {
+        val inherited = room?.effectiveDefaultAttribution ?: AttributionPolicy()
+        return attribution?.let { tools.confido.rooms.strictestOf(it, inherited) } ?: inherited
+    }
 
     /** The question's schedule with the room default filled in. Pure — the caller
      *  supplies the room (client: RoomContext; server: the `Question.room` extension

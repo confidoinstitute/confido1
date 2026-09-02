@@ -77,7 +77,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
                     // stay hidden (attachment is blocked there; this covers comments that
                     // predate the policy).
                     val dist = comment.prediction?.dist
-                        ?.takeIf { question.effectiveAttributionIn(room).level < AttributionLevel.ANONYMOUS
+                        ?.takeIf { question.resolvedAttributionIn(room).level < AttributionLevel.ANONYMOUS
                                    || comment.user == viewer.ref }
                     makeCommentPresentation(comment, QuestionCommentExtraData(dist), viewer, room)
                 }
@@ -96,7 +96,7 @@ fun questionCommentsRoutes(routing: Routing) = routing.apply {
                 badRequest("Please modify the comment template before posting.")
 
             if (createdComment.attachPrediction
-                && question.effectiveAttributionIn(room).level >= AttributionLevel.ANONYMOUS)
+                && question.resolvedAttributionIn(room).level >= AttributionLevel.ANONYMOUS)
                 badRequest("Predictions cannot be attached to comments on this question.")
             val prediction = if (createdComment.attachPrediction) {
                 serverState.userPred[question.ref]?.get(user.ref)

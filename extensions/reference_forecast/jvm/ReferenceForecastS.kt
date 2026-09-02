@@ -13,6 +13,7 @@ import tools.confido.application.PermClass
 import tools.confido.application.routes.*
 import tools.confido.extensions.without
 import tools.confido.question.Question
+import tools.confido.question.resolvedAttributionIn
 import tools.confido.store.*
 import tools.confido.distributions.BinaryDistribution
 import tools.confido.extensions.get
@@ -62,7 +63,7 @@ object ReferenceForecastSE : ServerExtension, ReferenceForecastExtension() {
                 // questions stay out: a per-user score against a single reference is a
                 // monotone function of that user's prediction.
                 val questionsWithRef = room.questions.mapNotNull { qRef ->
-                    qRef.deref()?.takeIf { it.effectiveAttributionIn(room).level < AttributionLevel.ANONYMOUS }?.let { q ->
+                    qRef.deref()?.takeIf { it.resolvedAttributionIn(room).level < AttributionLevel.ANONYMOUS }?.let { q ->
                         q.extensionData[ReferenceForcastKey]?.let { ref ->
                             q to ref
                         }

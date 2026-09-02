@@ -9,6 +9,7 @@ import tools.confido.question.normalizedBrier
 import tools.confido.question.effectiveAttribution
 import tools.confido.question.room
 import tools.confido.rooms.AttributionLevel
+import tools.confido.rooms.aliasFor
 import tools.confido.rooms.ExportHistory
 import tools.confido.application.calibration.getScoredPrediction
 import tools.confido.distributions.*
@@ -108,7 +109,7 @@ sealed class CsvExport {
         val policy = q.effectiveAttribution
         val ret = mutableMapOf<String, String>()
         if (policy.level == AttributionLevel.PSEUDONYM)
-            ret["pseudonym"] = q.room?.pseudonymAssignments?.get(author.id) ?: ""
+            ret["pseudonym"] = q.room?.aliasFor(author.id) ?: ""
         if (policy.level == AttributionLevel.OPEN || policy.pierceableBy(exporter, q.room)) {
             val user = author.deref()
             ret["user_id"] = author.id

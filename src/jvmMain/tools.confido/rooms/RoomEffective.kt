@@ -4,11 +4,32 @@ import tools.confido.extensions.ServerExtension
 import tools.confido.refs.ref
 import tools.confido.state.appConfig
 import tools.confido.state.serverState
+import tools.confido.refs.deref
 import tools.confido.users.UserType
 
 /** Child rooms of a group room. */
 val Room.childRooms: List<Room> get() =
     serverState.rooms.values.filter { it.parentRoom?.id == id }
+
+/** Server-side parent-aware default attribution (raw store entities lack the
+ *  censor-populated `_effectiveDefaultAttribution`; this resolves live). */
+val Room.resolvedDefaultAttribution: AttributionPolicy
+    get() = effectiveDefaultAttributionIn(parentRoom?.let { serverState.rooms[it.id] })
+
+/**
+ * The meet of every promise floor bound by this room's default attribution: its
+ * own (room comments), its inheriting questions', and — for groups — the ratchet
+ * floors of children inheriting the default. A proposed default violates the
+ * ratchet iff it [AttributionPolicy.revealsMoreThan] this meet (iff it reveals
+ * more than at least one component).
+ */
+val Room.attributionRatchetFloor: AttributionPolicy? get() {
+    val components = listOfNotNull(attributionFloor) +
+        questions.mapNotNull { it.deref()?.takeIf { q -> q.attribution == null }?.attributionFloor } +
+        (if (isGroup) childRooms.filter { it.defaultAttribution == null }
+            .mapNotNull { it.attributionRatchetFloor } else emptyList())
+    return components.reduceOrNull(::strictestOf)
+}
 
 /** Core implied-membership rule for rooms in a group: parent-group members become
  *  implied members of the child. Null for rooms without a parent. Extensions can

@@ -64,20 +64,43 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
     var showScore by useState(scoringConfig != null)
     var scheduleValid by useState(true)
     var commentTemplate by useState(props.room?.commentTemplate ?: "")
-    var defaultAttribution by useState(props.room?.defaultAttribution ?: AttributionPolicy())
+    // null = follow the group setting (parented rooms) / plain OPEN (parentless).
+    var defaultAttribution by useState<AttributionPolicy?>(props.room?.defaultAttribution)
     var pseudonymPool by useState(props.room?.pseudonymPool)
+    var separatePseudonyms by useState(props.room?.separatePseudonyms ?: false)
     var attributionValid by useState(true)
     var extensionData by useState(props.room?.extensionData ?: ExtensionData(RoomEDT))
     val onExtensionDataChange: ((ExtensionData) -> ExtensionData) -> Unit = { transform ->
         extensionData = transform(extensionData)
     }
-    val valid = !name.isEmpty() && scheduleValid && attributionValid
+    // Attribution derived state (parent-aware). The config floor (may not be looser
+    // than the group) and the inherit-mode ratchet check are derived, not state —
+    // the AttributionSection error path only covers explicit selections.
+    val parentEntity = parentRoom?.let { allRooms[it.id] }
+    val inheritedEff = parentEntity?.let { it.defaultAttribution ?: AttributionPolicy() } ?: AttributionPolicy()
+    val attributionFloorComponents = props.room?.let { room ->
+        listOfNotNull(room.attributionFloor) +
+            room.questions.mapNotNull { roomQuestions[it.id] }
+                .filter { it.attribution == null }
+                .mapNotNull { it.attributionFloor } +
+            // Group rooms: children inheriting the default bind it too (their
+            // questions' floors are enforced server-side; room floors suffice here).
+            allRooms.values.filter { it.parentRoom?.id == room.id && it.defaultAttribution == null }
+                .mapNotNull { it.attributionFloor }
+    } ?: emptyList()
+    val attributionRatchetFloor = attributionFloorComponents.reduceOrNull(::strictestOf)
+    val configViolation = defaultAttribution?.let { parentEntity != null && it.revealsMoreThan(inheritedEff) } ?: false
+    val inheritViolation = defaultAttribution == null && attributionRatchetFloor != null &&
+        inheritedEff.revealsMoreThan(attributionRatchetFloor)
+
+    val valid = !name.isEmpty() && scheduleValid && attributionValid && !configViolation && !inheritViolation
 
     useEffect(name, description, color, icon, defaultSchedule.identify(), scoringConfig?.identify(), commentTemplate,
-              extensionData, defaultAttribution, pseudonymPool?.joinToString("\n"), attributionValid, parentRoom?.id) {
+              extensionData, defaultAttribution, pseudonymPool?.joinToString("\n"), separatePseudonyms, attributionValid, parentRoom?.id) {
         if (valid)
             props.onChange?.invoke(BaseRoomInformation(name, description, color, icon, defaultSchedule, scoringConfig, commentTemplate, extensionData,
                 defaultAttribution = defaultAttribution, pseudonymPool = pseudonymPool,
+                separatePseudonyms = separatePseudonyms,
                 isGroup = isGroup, parentRoom = parentRoom))
         else
             props.onChange?.invoke(null)
@@ -261,26 +284,61 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
         }
         FormSection {
             title = "Anonymity"
-            // Ratchet floor: the meet of the room's own promise floor (room comments)
-            // and the floors of questions inheriting the default (server-enforced;
-            // violated iff any component is).
-            val floorComponents = props.room?.let { room ->
-                listOfNotNull(room.attributionFloor) +
-                    room.questions.mapNotNull { roomQuestions[it.id] }
-                        .filter { it.attribution == null }
-                        .mapNotNull { it.attributionFloor }
-            } ?: emptyList()
-            AttributionSection {
-                value = defaultAttribution
-                persisted = props.room?.defaultAttribution
-                ratchetFloor = floorComponents.reduceOrNull(::strictestOf)
-                ratchetWhat = "activity following this setting was made under the current promise"
-                onChange = { policy, isError ->
-                    defaultAttribution = policy
-                    attributionValid = !isError
+            if (parentEntity != null) {
+                FormSwitch {
+                    label = "Custom attribution"
+                    comment = if (defaultAttribution == null)
+                        "Following the group setting: ${inheritedEff.level.label.lowercase()}."
+                    else "This room overrides the group's setting (it can only be stricter)."
+                    checked = defaultAttribution != null
+                    onChange = { e ->
+                        defaultAttribution = if (e.target.checked) inheritedEff else null
+                        attributionValid = true
+                    }
                 }
             }
-            if (defaultAttribution.level == AttributionLevel.PSEUDONYM) {
+            (defaultAttribution ?: (if (parentEntity == null) AttributionPolicy() else null))?.let { policy ->
+                AttributionSection {
+                    value = policy
+                    persisted = props.room?.defaultAttribution
+                    ratchetFloor = attributionRatchetFloor
+                    ratchetWhat = "activity following this setting was made under the current promise"
+                    onChange = { p, isError ->
+                        defaultAttribution = p
+                        attributionValid = !isError
+                    }
+                }
+                if (configViolation) {
+                    div {
+                        css { fontSize = 12.px; this.color = Color("#F35454") }
+                        +"This cannot be looser than the group's setting (${inheritedEff.level.label.lowercase()})."
+                    }
+                }
+            }
+            if (inheritViolation) {
+                div {
+                    css { fontSize = 12.px; this.color = Color("#F35454") }
+                    +("The group setting is weaker than the promise this room's existing " +
+                        "activity was made under; it cannot switch back to following it.")
+                }
+            }
+            val effLevel = (defaultAttribution ?: inheritedEff).level
+            if (effLevel == AttributionLevel.PSEUDONYM && !isGroup) {
+                if (parentEntity != null) {
+                    FormSwitch {
+                        label = "Separate pseudonyms for this room"
+                        comment = if (separatePseudonyms)
+                            "This room keeps its own aliases, unlinkable to the group's. " +
+                            "Switching back to shared aliases is not possible once there is activity."
+                        else
+                            "Aliases are shared with the group: everyone appears under the same " +
+                            "name here as in the other group rooms."
+                        checked = separatePseudonyms
+                        onChange = { e -> separatePseudonyms = e.target.checked }
+                    }
+                }
+            }
+            if (effLevel == AttributionLevel.PSEUDONYM && (parentEntity == null || separatePseudonyms || isGroup)) {
                 PseudonymPoolSection {
                     pool = pseudonymPool
                     onChange = { pseudonymPool = it }

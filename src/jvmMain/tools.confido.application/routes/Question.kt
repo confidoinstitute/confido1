@@ -14,6 +14,8 @@ import org.litote.kmongo.eq
 import tools.confido.payloads.requests.*
 import tools.confido.payloads.responses.*
 import tools.confido.rooms.AttributionLevel
+import tools.confido.rooms.AttributionPolicy
+import tools.confido.rooms.resolvedDefaultAttribution
 import tools.confido.rooms.Room
 import tools.confido.rooms.RoomPermission
 import tools.confido.api.Api
@@ -60,7 +62,7 @@ data class QuestionContext(val inUser: User?, val question: Question) {
         val canViewAll = room.hasPermission(user, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
         val lastPrediction = serverState.userPred[ref]?.get(user.ref)
         if (!(canViewAll || canViewGroupPred(ref.deref(), lastPrediction))) unauthorized(message)
-        if (!question.effectiveAttributionIn(room).aggregatesVisible(serverState.userPred[ref]?.size ?: 0))
+        if (!question.resolvedAttributionIn(room).aggregatesVisible(serverState.userPred[ref]?.size ?: 0))
             unauthorized(message)
     }
 
@@ -70,7 +72,7 @@ data class QuestionContext(val inUser: User?, val question: Question) {
      *  (named or anonymized) must gate through this, not a bare permission check. */
     fun assertIndividualPredictionAccess(message: String) {
         assertPermission(RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS, message)
-        if (question.effectiveAttributionIn(room).level >= AttributionLevel.ANONYMOUS) forbidden(message)
+        if (question.resolvedAttributionIn(room).level >= AttributionLevel.ANONYMOUS) forbidden(message)
     }
 }
 
@@ -116,6 +118,12 @@ fun questionRoutes(routing: Routing) = routing.apply {
             }
             // attributionFloor is server-maintained — never taken from the client.
             q = q.copy(author = user.ref, attributionFloor = null)
+            // Config floor: an override may not be authored looser than the room's
+            // effective default (resolution clamps it anyway; this keeps UIs honest).
+            q.attribution?.let {
+                if (it.revealsMoreThan(room.resolvedDefaultAttribution))
+                    badRequest("A question's attribution policy cannot be looser than the room's.")
+            }
 
             tools.confido.store.transact {
                 val question = tools.confido.store.questionStore.insert(q)
@@ -123,6 +131,10 @@ fun questionRoutes(routing: Routing) = routing.apply {
                     it.copy(questions = it.questions + listOf(question.ref))
                 }
             }
+            // A PSEUDONYM question in an inherit-mode child resolves aliases against
+            // the PARENT map — touch the parent so its maintenance hook assigns them.
+            if (q.attribution?.level == AttributionLevel.PSEUDONYM && !room.ownsPseudonymNamespace)
+                room.parentRoom?.let { p -> tools.confido.store.roomStore.modify(p) { it } }
         }
     }
 
@@ -149,12 +161,18 @@ fun questionRoutes(routing: Routing) = routing.apply {
                         if (question.numPredictions > 0 && question.answerSpace != edit.question.answerSpace) {
                             badRequest("Cannot change answer space of a question with predictions.")
                         }
+                        // Config floor: overrides may not be authored looser than the
+                        // room's effective default (clamped at resolution regardless).
+                        edit.question.attribution?.let {
+                            if (it.revealsMoreThan(question.room?.resolvedDefaultAttribution ?: AttributionPolicy()))
+                                badRequest("A question's attribution policy cannot be looser than the room's.")
+                        }
                         // Promise-floor ratchet: the new effective policy may not reveal
                         // more than the strictest policy existing activity was authored
                         // under. Tighten-then-loosen with no interim activity passes —
                         // the floor tracks promises made, not settings tried.
                         orig.attributionFloor?.let { floor ->
-                            if (edit.question.effectiveAttributionIn(question.room).revealsMoreThan(floor))
+                            if (edit.question.resolvedAttributionIn(question.room).revealsMoreThan(floor))
                                 badRequest("Cannot weaken the attribution policy below the promise this question's activity was made under.")
                         }
 
@@ -172,12 +190,17 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 // A changed attribution policy changes how the group aggregate is
                 // summarized (AGGREGATE_ONLY numeric → quantile summary), but the
                 // groupPred fold only refires on prediction changes — refresh it here.
-                if (question.effectiveAttributionIn(question.room) != edit.question.effectiveAttributionIn(question.room))
+                if (question.resolvedAttributionIn(question.room) != edit.question.resolvedAttributionIn(question.room))
                     predictionData.recomputeGroup(ref)
-                // A question turning PSEUDONYM needs alias assignments on its room;
-                // a no-op room save runs the maintenance hook (ensurePseudonymAssignments).
+                // A question turning PSEUDONYM needs alias assignments on its room —
+                // and on the PARENT for inherit-mode children (read-through resolves
+                // there); no-op saves run the maintenance hook.
                 if (edit.question.attribution?.level == AttributionLevel.PSEUDONYM)
-                    question.room?.let { r -> tools.confido.store.roomStore.modify(r.ref) { it } }
+                    question.room?.let { r ->
+                        tools.confido.store.roomStore.modify(r.ref) { it }
+                        if (!r.ownsPseudonymNamespace)
+                            r.parentRoom?.let { p -> tools.confido.store.roomStore.modify(p) { it } }
+                    }
             }
             is EditQuestionState -> {
                 tools.confido.store.transact {
@@ -373,7 +396,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
             val canViewAll = room.hasPermission(viewer, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
             if (!(canViewAll || canViewGroupPred(question, preds?.get(viewerRef))))
                 unauthorized("You cannot view this group prediction.")
-            if (!question.effectiveAttributionIn(room).aggregatesVisible(preds?.size ?: 0))
+            if (!question.resolvedAttributionIn(room).aggregatesVisible(preds?.size ?: 0))
                 unauthorized("You cannot view this group prediction.")
             head
         }
@@ -425,7 +448,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
                 !question.visible
                     && !censor.hasPermission(room, RoomPermission.VIEW_HIDDEN_QUESTIONS) -> GroupPredAccess.NOT_FOUND
                 // The unattributed-level threshold binds everyone, VIEW_ALL included.
-                !question.effectiveAttributionIn(room).aggregatesVisible(preds?.size ?: 0) -> GroupPredAccess.HIDDEN
+                !question.resolvedAttributionIn(room).aggregatesVisible(preds?.size ?: 0) -> GroupPredAccess.HIDDEN
                 censor.hasPermission(room, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
                     || canViewGroupPred(question, preds?.get(viewerRef)) -> GroupPredAccess.VISIBLE
                 else -> GroupPredAccess.HIDDEN
@@ -460,7 +483,7 @@ fun questionRoutes(routing: Routing) = routing.apply {
             if (!question.visible && !room.hasPermission(viewer, RoomPermission.VIEW_HIDDEN_QUESTIONS))
                 notFound("No such question.")
             val canViewAll = room.hasPermission(viewer, RoomPermission.VIEW_ALL_GROUP_PREDICTIONS)
-            val attribution = question.effectiveAttributionIn(room)
+            val attribution = question.resolvedAttributionIn(room)
             if (!(canViewAll || canViewGroupPred(question, preds?.get(viewerRef))))
                 unauthorized("You cannot view this group prediction.")
             if (!attribution.aggregatesVisible(preds?.size ?: 0))

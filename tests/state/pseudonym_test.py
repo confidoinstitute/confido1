@@ -154,6 +154,97 @@ async def main():
          "defaultAttribution": {"level": "OPEN"}}, admin) == 400,
             "TEST-10", "cannot weaken room default attribution once activity exists")
 
+    # --- Hierarchy: live inheritance, alias read-through, recursive ratchet,
+    # --- config floor, pin-on-unparent, separate namespaces.
+    gid = json.loads(post("/rooms/add",
+        {"name": "Pseudo group", "description": "", "color": "BLUE", "icon": None,
+         "isGroup": True, "defaultAttribution": {"level": "PSEUDONYM"}}, admin))
+    post(f"/rooms/{gid}/members/add",
+         {"type": "existingMember", "user": "debugmember", "role": "forecaster"}, admin)
+    cid = json.loads(post("/rooms/add",
+        {"name": "Child A", "description": "", "color": "RED", "icon": None,
+         "parentRoom": gid}, admin))
+    post(f"/rooms/{cid}/questions/add",
+         {"_id": "", "name": "Child q", "answerSpace": {"type": "binary"},
+          "groupPredVisible": True}, admin)
+
+    async with await connect_ws(admin) as ws:
+        seen = {}
+        async def drain():
+            seen.update({t: f for t, f in by_topic(await recv_updates(ws)).items()
+                         if isinstance(f, dict) and "data" in f})
+        await ws.send(json.dumps({"sub": [f"room/{gid}", f"room/{cid}/questions"]}))
+        await drain()
+        group_map = (seen[f"room/{gid}"]["data"] or {}).get("pseudonymAssignments") or {}
+        t.check("debugmember" in group_map,
+                "TEST-17", "group map covers members for inherit-mode children (no cascade)", str(group_map))
+        cqid = next(iter(seen[f"room/{cid}/questions"]["data"]))
+
+        # The implied member's comment in the child resolves to the GROUP alias.
+        post(f"/questions/{cqid}/comments/add",
+             {"content": "child speaking", "attachPrediction": False}, member)
+        await ws.send(json.dumps({"sub": [f"question/{cqid}/comments"]}))
+        await drain()
+        cu = next((c for c in (seen.get(f"question/{cqid}/comments", {}).get("data") or [])
+                   if c["content"] == "child speaking"), {}).get("user") or {}
+        t.check(cu.get("displayName") == group_map.get("debugmember"),
+                "TEST-18", "child comment shows the inherited (group) alias", str(cu))
+
+    # Recursive ratchet: the child's activity was authored under the inherited
+    # PSEUDONYM promise, so the GROUP default cannot weaken.
+    t.check(post_status(f"/rooms/{gid}/edit",
+        {"name": "Pseudo group", "description": "", "color": "BLUE", "icon": None,
+         "isGroup": True, "defaultAttribution": {"level": "OPEN"}}, admin) == 400,
+            "TEST-19", "group default cannot weaken below inheriting children's floors")
+
+    # Config floor: a child cannot author a policy looser than the group's.
+    t.check(post_status("/rooms/add",
+        {"name": "Loose child", "description": "", "color": "RED", "icon": None,
+         "parentRoom": gid, "defaultAttribution": {"level": "OPEN"}}, admin) == 400,
+            "TEST-20", "child cannot be created looser than its group")
+
+    # Pin-on-unparent: severing the link materializes the inherited policy.
+    t.check(post_status(f"/rooms/{cid}/edit",
+        {"name": "Child A", "description": "", "color": "RED", "icon": None,
+         "parentRoom": None}, admin) == 200,
+            "TEST-21", "unparenting an inheriting room with activity is allowed (pin)")
+    async with await connect_ws(admin) as ws:
+        await ws.send(json.dumps({"sub": [f"room/{cid}"]}))
+        seen = by_topic(await recv_updates(ws))
+        child = seen[f"room/{cid}"]["data"] or {}
+        t.check((child.get("defaultAttribution") or {}).get("level") == "PSEUDONYM"
+                and child.get("parentRoom") is None,
+                "TEST-22", "unparented room has the inherited policy pinned as its own",
+                str(child.get("defaultAttribution")))
+
+    # Separate namespace: a per-child room gets fresh aliases, distinct from every
+    # group alias (hierarchy-wide uniqueness prevents false linkage).
+    bid = json.loads(post("/rooms/add",
+        {"name": "Child B", "description": "", "color": "RED", "icon": None,
+         "parentRoom": gid, "separatePseudonyms": True}, admin))
+    post(f"/rooms/{bid}/questions/add",
+         {"_id": "", "name": "B q", "answerSpace": {"type": "binary"},
+          "groupPredVisible": True}, admin)
+    async with await connect_ws(admin) as ws:
+        seen = {}
+        async def drain():
+            seen.update({t: f for t, f in by_topic(await recv_updates(ws)).items()
+                         if isinstance(f, dict) and "data" in f})
+        await ws.send(json.dumps({"sub": [f"room/{bid}", f"room/{bid}/questions", f"room/{gid}"]}))
+        await drain()
+        bqid = next(iter(seen[f"room/{bid}/questions"]["data"]))
+        post(f"/questions/{bqid}/comments/add",
+             {"content": "b speaking", "attachPrediction": False}, member)
+        await ws.send(json.dumps({"sub": [f"question/{bqid}/comments"]}))
+        await drain()
+        bu = next((c for c in (seen.get(f"question/{bqid}/comments", {}).get("data") or [])
+                   if c["content"] == "b speaking"), {}).get("user") or {}
+        gvals = set(((seen[f"room/{gid}"]["data"] or {}).get("pseudonymAssignments") or {}).values())
+        t.check(bool(bu.get("displayName")) and bu["displayName"] not in gvals
+                and bu["displayName"] != "Anonymous participant",
+                "TEST-23", "separate-namespace child uses fresh aliases, disjoint from the group's",
+                f"{bu.get('displayName')} vs {gvals}")
+
     # The ladder is a strict total order: AGGREGATE_ONLY masks everything ANONYMOUS
     # does (comments become anonymous) plus all prediction data, so tightening
     # PSEUDONYM -> AGGREGATE_ONLY is allowed even with existing activity...

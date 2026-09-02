@@ -5,6 +5,7 @@ import web.window.window
 import tools.confido.web.components.usePermission
 import tools.confido.web.components.useIsAdmin
 import tools.confido.web.components.useMyUser
+import tools.confido.web.components.useRooms
 import tools.confido.web.components.useDisconnected
 import tools.confido.web.components.redesign.ConfirmDialog
 import tools.confido.web.components.redesign.InviteLinkIcon
@@ -190,6 +191,7 @@ val RoomMember = FC<RoomMemberProps> {props ->
     var dialogOpen by useState(false)
     var confirmRole by useState<RoomRole?>(null)
     val myUser = useMyUser()  // captured for the role-change handler
+    val allRooms = useRooms()  // for alias read-through to the parent's map
 
     fun memberRoleChange(role: RoomRole) = runCoroutine {
         val ref = userRef ?: return@runCoroutine
@@ -267,10 +269,12 @@ val RoomMember = FC<RoomMemberProps> {props ->
                 +(member.email ?: "")
             }
             // Alias annotation: the member list keeps real names (membership is never
-            // secret); the censored assignment map yields the viewer's own alias, or
-            // all of them for piercing viewers in unsealed rooms.
+            // secret); the censored assignment maps (read-through to the parent's for
+            // inherit-mode children) yield the viewer's own alias, or all of them for
+            // piercing viewers in unsealed rooms.
+            val aliasParent = room.parentRoom?.let { allRooms[it.id] }
             (member.user.userId?.id ?: myUser?.id?.takeIf { member.user.isMyself })
-                ?.let { room.pseudonymAssignments[it] }?.let { alias ->
+                ?.let { room.aliasFor(it, aliasParent) }?.let { alias ->
                 ReactHTML.div {
                     css {
                         fontFamily = sansSerif

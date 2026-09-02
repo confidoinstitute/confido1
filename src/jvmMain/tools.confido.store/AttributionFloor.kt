@@ -2,9 +2,11 @@ package tools.confido.store
 
 import tools.confido.question.Question
 import tools.confido.question.effectiveAttribution
+import tools.confido.question.resolvedAttributionIn
 import tools.confido.refs.Ref
 import tools.confido.refs.deref
 import tools.confido.rooms.AttributionPolicy
+import tools.confido.rooms.resolvedDefaultAttribution
 import tools.confido.rooms.Room
 import tools.confido.rooms.strictestOf
 
@@ -31,10 +33,11 @@ suspend fun stampQuestionAttributionFloor(qRef: Ref<Question>) {
     questionStore.modify(qRef) { it.copy(attributionFloor = newFloor) }
 }
 
-/** Raise [rRef]'s promise floor (room comments) to cover its current default policy. */
+/** Raise [rRef]'s promise floor (room comments) to cover its current (parent-aware)
+ *  default policy. */
 suspend fun stampRoomAttributionFloor(rRef: Ref<Room>) {
     val room = rRef.deref() ?: return
-    val newFloor = combineFloor(room.attributionFloor, room.defaultAttribution) ?: return
+    val newFloor = combineFloor(room.attributionFloor, room.resolvedDefaultAttribution) ?: return
     if (newFloor == room.attributionFloor) return
     roomStore.modify(rRef) { it.copy(attributionFloor = newFloor) }
 }

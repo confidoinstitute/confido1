@@ -8,6 +8,7 @@ import tools.confido.application.sessions.TransientData
 import tools.confido.application.sessions.user
 import tools.confido.extensions.ServerExtension
 import tools.confido.question.Question
+import tools.confido.question.resolvedAttributionIn
 import tools.confido.refs.*
 import tools.confido.state.*
 import tools.confido.utils.*
@@ -73,6 +74,9 @@ class StateCensor(val sess: UserSession) {
             pseudonymAssignments =
                 if (room.pseudonymMapVisibleTo(user)) room.pseudonymAssignments
                 else room.pseudonymAssignments.filterKeys { it == user.id },
+            // The parent room may be invisible to this viewer; ship the resolved
+            // default so client-side effectiveAttribution stays correct.
+            _effectiveDefaultAttribution = room.resolvedDefaultAttribution,
             inviteLinks = if (user?.type in setOf(UserType.ADMIN, UserType.MEMBER)) room.inviteLinks.mapNotNull { censorInviteLink(room, it) } else emptyList(),
         )
         ServerExtension.forEach { censored = it.censorRoom(censored, user) }
@@ -317,13 +321,13 @@ fun getUserPresentation(user: User?, observer: User, context: UserPresentationCo
     ServerExtension.forEach { ext-> ext.overrideUserPresentation(user, observer, context, room, question)?.let { return it } }
     if (user == null) return UserPresentation(false, "(Deleted user)")
 
-    val policy = question?.effectiveAttributionIn(room) ?: room?.defaultAttribution ?: AttributionPolicy()
+    val policy = question?.resolvedAttributionIn(room) ?: room?.resolvedDefaultAttribution ?: AttributionPolicy()
     if (room != null && policy.level.pierceable && context != UserPresentationContext.MEMBER_LIST) {
         val realIdentity = if (policy.pierceableBy(observer, room))
             user.nick ?: user.email ?: "(Anonymous)" else null
         return when (policy.level) {
             AttributionLevel.PSEUDONYM -> {
-                val alias = room.pseudonymAssignments[user.id]
+                val alias = room.aliasFor(user.id)
                 UserPresentation(
                     isMyself = user.id == observer.id,
                     // Missing alias (assignment race) falls back to an unlinkable-looking

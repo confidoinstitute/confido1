@@ -129,7 +129,7 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
     // the room default is below this question's promise floor (derived, not state:
     // the AttributionSection error path only covers explicit overrides).
     val inheritViolation = customAttribution == null &&
-        props.entity?.attributionFloor?.let { room.defaultAttribution.revealsMoreThan(it) } ?: false
+        props.entity?.attributionFloor?.let { room.effectiveDefaultAttribution.revealsMoreThan(it) } ?: false
     val questionValid = questionTitle.isNotEmpty() && answerSpaceValid && resolutionValid &&
         (scheduleValid || !customSchedule) && attributionValid && !inheritViolation
 
@@ -384,11 +384,11 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                         label = "Custom attribution"
                         comment =
                             if (customAttribution == null)
-                                "Following the room setting: ${room.defaultAttribution.level.label.lowercase()}."
+                                "Following the room setting: ${room.effectiveDefaultAttribution.level.label.lowercase()}."
                             else "This question overrides the room's attribution setting."
                         checked = customAttribution != null
                         onChange = { e ->
-                            customAttribution = if (e.target.checked) room.defaultAttribution else null
+                            customAttribution = if (e.target.checked) room.effectiveDefaultAttribution else null
                             attributionValid = true
                         }
                     }
