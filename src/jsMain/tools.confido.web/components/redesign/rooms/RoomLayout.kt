@@ -4,6 +4,7 @@ import tools.confido.web.Client
 import tools.confido.web.components.useFollowingPresentation
 import tools.confido.web.components.usePermission
 import tools.confido.web.components.useMyUser
+import tools.confido.web.components.useRooms
 import tools.confido.web.components.useSelf
 import tools.confido.web.components.useDisconnected
 import tools.confido.web.components.redesign.*
@@ -293,9 +294,14 @@ val RoomLayout = FC<RoomLayoutProps> { props->
         }
     }
 
+    // A child room's back button goes up to its group — but only when the viewer
+    // can actually see the group (an implied member of just the child cannot).
+    val visibleRooms = useRooms()
+    val backTarget = room.parentRoom?.id?.let { visibleRooms[it]?.urlPrefix } ?: "/"
+
     RoomNavbar {
         this.palette = palette
-        navigateBack = "/"
+        navigateBack = backTarget
         span {
             if (scrollY > cutoff)
                 +room.name
@@ -480,6 +486,15 @@ val RoomLayout = FC<RoomLayoutProps> { props->
             val questionMap = (roomQuestionsWS as? WSData)?.data ?: emptyMap()
             val routes = useMemo(room.id, myUser, questionMap) {
                 buildList {
+                    if (room.isGroup) {
+                        // Group rooms land on their child-room list (the Questions slot)
+                        add(jso<RouteObject> {
+                            index = true
+                            element = GroupChildRoomList.create {
+                                this.group = room
+                            }
+                        })
+                    }
                     if (room.hasPermission(myUser, RoomPermission.VIEW_QUESTIONS)) {
                         add(jso<RouteObject> {
                             index = true

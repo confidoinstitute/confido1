@@ -1,12 +1,8 @@
 #!/usr/bin/env python3
-"""room_groups × invite revocation: a DISABLED_FULL link in the GROUP room must
+"""room groups × invite revocation: a DISABLED_FULL link in the GROUP room must
 revoke the implied child-room memberships too — the link check happens at the
 implication site against the parent (checked in the child it would fail open,
-since the parent's link id resolves in no child room).
-
-SKIPS (exit 0) when the room_groups extension is not enabled — the probe checks
-whether the is_group extension-data key survived the round-trip onto the stored
-room (unregistered keys are silently dropped on decode)."""
+since the parent's link id resolves in no child room)."""
 import asyncio
 import json
 import sys
@@ -22,18 +18,11 @@ async def main():
 
     gid = post("/rooms/add",
                {"name": "Group revoke G", "description": "", "color": "RED", "icon": None,
-                "extensionData": {"room_group.is_group": True}}, admin).strip('"')
-
-    async with await connect_ws(admin) as ws:
-        await ws.send(json.dumps({"sub": ["rooms"]}))
-        rooms = next(u["data"]["data"] for u in await recv_updates(ws) if u["topic"] == "rooms")
-        if not (rooms.get(gid, {}).get("extensionData") or {}).get("room_group.is_group"):
-            print("SKIP: room_groups extension not enabled")
-            return
+                "isGroup": True}, admin).strip('"')
 
     cid = post("/rooms/add",
                {"name": "Group revoke child", "description": "", "color": "RED", "icon": None,
-                "extensionData": {"room_group.parent": gid}}, admin).strip('"')
+                "parentRoom": gid}, admin).strip('"')
 
     link = json.loads(post(f"/rooms/{gid}/invites/create",
                            {"description": "group invite", "role": "forecaster"}, admin))

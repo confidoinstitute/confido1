@@ -57,6 +57,25 @@ class RoomPermission private constructor(val id: String, val description: String
         val VIEW_GROUP_CALIBRATION = register("view_group_calibration", "View group calibration data")
         val VIEW_SCORES = register("view_scores", "View the scoreboard")
         val VIEW_ALL_SCORES = register("view_all_scores", "View the scoreboard even in private mode")
+
+        /** Permissions that only make sense in a room with questions of its own.
+         *  Group rooms strip these from every membership (see
+         *  `memberEffectivePermissions`) — when registering a new question-related
+         *  permission, add it here so it does not leak into group rooms. */
+        val QUESTION_PERMISSIONS: Set<RoomPermission> = setOf(
+            VIEW_QUESTIONS,
+            VIEW_HIDDEN_QUESTIONS,
+            VIEW_QUESTION_COMMENTS,
+            POST_QUESTION_COMMENT,
+            ADD_QUESTION,
+            SUGGEST_QUESTION,
+            SUBMIT_PREDICTION,
+            MANAGE_QUESTIONS,
+            VIEW_ALL_GROUP_PREDICTIONS,
+            VIEW_ALL_RESOLUTIONS,
+            VIEW_INDIVIDUAL_PREDICTIONS,
+            VIEW_GROUP_CALIBRATION,
+        )
     }
 
     override fun equals(other: Any?) = other is RoomPermission && id == other.id

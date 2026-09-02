@@ -532,6 +532,11 @@ val DialogMenuCloseContext = createContext<() -> Unit>()
 external interface DialogMenuItemProps : Props {
     var text: String
 
+    /** Optional second line under [text], smaller and gray. When set, [text]
+     *  renders as a bold heading — used for rich chooser menus (e.g. the
+     *  sidebar's create-new menu) rather than plain action lists. */
+    var description: String?
+
     /** Defaults to black. */
     var color: Color?
     /** Defaults to false. */
@@ -548,6 +553,33 @@ external interface DialogMenuItemProps : Props {
 
 external interface DialogMenuNavProps : DialogMenuItemProps {
     var navigate: String
+}
+
+/** The label part of a menu item: single line normally, heading + gray
+ *  description when [DialogMenuItemProps.description] is set. */
+private val DialogMenuItemLabel = FC<DialogMenuItemProps> { props ->
+    div {
+        css {
+            fontSize = 17.px
+            lineHeight = 20.px
+            fontFamily = sansSerif
+            flexGrow = number(1.0)
+            if (props.description != null) fontWeight = integer(600)
+        }
+        +props.text
+        props.description?.let { desc ->
+            div {
+                css {
+                    fontSize = 13.px
+                    lineHeight = 16.px
+                    fontWeight = integer(400)
+                    color = Color("#666666")
+                    marginTop = 2.px
+                }
+                +desc
+            }
+        }
+    }
 }
 
 val DialogMenuItem = FC<DialogMenuItemProps> { props ->
@@ -607,14 +639,9 @@ val DialogMenuItem = FC<DialogMenuItemProps> { props ->
                 }
             }
 
-            div {
-                css {
-                    fontSize = 17.px
-                    lineHeight = 20.px
-                    fontFamily = sansSerif
-                    flexGrow = number(1.0)
-                }
-                +props.text
+            DialogMenuItemLabel {
+                text = props.text
+                description = props.description
             }
             onClick = {
                 if (!disabled) {
@@ -683,14 +710,9 @@ val DialogMenuNav = FC<DialogMenuNavProps> { props ->
                 }
             }
 
-            div {
-                css {
-                    fontSize = 17.px
-                    lineHeight = 20.px
-                    fontFamily = sansSerif
-                    flexGrow = number(1.0)
-                }
-                +props.text
+            DialogMenuItemLabel {
+                text = props.text
+                description = props.description
             }
             to = props.navigate
             onClick = {

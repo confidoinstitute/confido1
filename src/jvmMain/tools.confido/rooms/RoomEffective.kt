@@ -6,12 +6,62 @@ import tools.confido.state.appConfig
 import tools.confido.state.serverState
 import tools.confido.users.UserType
 
+/** Child rooms of a group room. */
+val Room.childRooms: List<Room> get() =
+    serverState.rooms.values.filter { it.parentRoom?.id == id }
+
+/** Core implied-membership rule for rooms in a group: parent-group members become
+ *  implied members of the child. Null for rooms without a parent. Extensions can
+ *  preempt this via [ServerExtension.effectiveMembers]; an override that only wants
+ *  to tweak the result can call this and adjust. */
+fun defaultGroupEffectiveMembers(room: Room): List<RoomMembership>? {
+    val parent = room.parentRoom?.let { serverState.rooms[it.id] } ?: return null
+
+    val directUserIds = room.members.map { it.user.id }.toSet()
+    val impliedMembers = parent.members
+        .filter { it.user.id !in directUserIds }
+        // The invite-link accessibility check (DISABLED_FULL revocation) must
+        // happen HERE, against the parent — the link id resolves only in the
+        // room that owns the membership; checked in the child it would silently
+        // fail open. The copy drops invitedVia for the same reason: on the
+        // implied membership it would be a dangling id no child surface can
+        // resolve, and `findLink(...)?.canAccess ?: true` is only sound if
+        // invitedVia, when set, refers to a link of the carrying room.
+        .filter { parent.findLink(it.invitedVia)?.canAccess ?: true }
+        .map { it.copy(implied = true, impliedFrom = parent.name, invitedVia = null) }
+
+    return room.members + impliedMembers
+}
+
+/** Core rule for group rooms: they have no questions of their own, so all
+ *  question-related permissions are stripped. Null for non-group rooms. */
+fun defaultGroupEffectivePermissions(room: Room, membership: RoomMembership): Set<RoomPermission>? {
+    if (!room.isGroup) return null
+    return membership.role.effectivePermissions - RoomPermission.QUESTION_PERMISSIONS
+}
+
+/** Core rule for group rooms: aggregate child rooms' questions — hidden from the
+ *  group's question list but included in its scoreboard. Null for non-group rooms. */
+fun defaultGroupEffectiveQuestions(room: Room): List<EffectiveQuestion>? {
+    if (!room.isGroup) return null
+    return room.childRooms.flatMap { child ->
+        child.questions.map { qRef ->
+            EffectiveQuestion(
+                question = qRef,
+                sourceRoom = child.ref,
+                visibleInList = false,       // don't show child questions in group's question list
+                includedInScoring = true,    // include in aggregated group scoreboard
+            )
+        }
+    }
+}
+
 actual val Room.effectiveMembers: List<RoomMembership>
     get() {
-        // Start with extension-provided effective members, or raw members
+        // Extension hooks preempt the core group rule, which preempts raw members
         val base = ServerExtension.enabled.firstNotNullOfOrNull {
             it.effectiveMembers(this)
-        } ?: this.members
+        } ?: defaultGroupEffectiveMembers(this) ?: this.members
 
         // Inject admin users as implied owners so they are subject to
         // memberEffectivePermissions like everyone else (e.g. group rooms
@@ -28,14 +78,16 @@ actual val Room.effectiveMembers: List<RoomMembership>
 actual val Room.effectiveQuestions: List<EffectiveQuestion>?
     get() = ServerExtension.enabled.firstNotNullOfOrNull {
         it.effectiveQuestions(this)
-    }
+    } ?: defaultGroupEffectiveQuestions(this)
 
 actual fun Room.memberEffectivePermissions(membership: RoomMembership): Set<RoomPermission> {
-    // 1. Let extensions override (or start with role permissions)
+    // 1. Let extensions override, then the core group rule, then role permissions
     val hookResult = ServerExtension.enabled.firstNotNullOfOrNull {
         it.effectivePermissions(this, membership)
     }
-    val perms = hookResult ?: membership.role.effectivePermissions
+    val perms = hookResult
+        ?: defaultGroupEffectivePermissions(this, membership)
+        ?: membership.role.effectivePermissions
 
     // 2. Apply core dynamic rules based on room config
     return applyCorePermissionRules(this, perms)

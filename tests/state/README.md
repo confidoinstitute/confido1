@@ -42,7 +42,8 @@ They assume a devmode server (`CONFIDO_DEVMODE=1`) whose `GET /init/` seeds
 | `permission_test.py` | invite-link DISABLED_FULL revocation (live revoke + restore), hidden questions in the group-pred family and on write routes (predict/comment 404), error recovery to a value-equal payload, multidelete dangling refs, member-only presentation follow, owner not deposable |
 | `sensitive_test.py` | sensitive questions: individual predictions refused for everyone (compare API, individual CSV, comment attachment), aggregates gated by the predictor threshold (group_pred/histogram WSError below, unlock on the live subscription at 5), coarse nameless histogram bins, sensitivity not revocable once answered |
 | `presentation_test.py` | presentation flows: edit validation (cross-room/unset question refs incl. inside views, duplicate item ids, slide bounds), slide-order normalization (in-place re-sort + dedup), sticky per-step view overrides (setview survives away-and-back, revertview restores the script) |
-| `group_revoke_test.py` | DISABLED_FULL on a group-room link revokes implied child-room access (skips unless `room_groups` is enabled) |
+| `group_revoke_test.py` | DISABLED_FULL on a group-room link revokes implied child-room access |
+| `group_browser_test.py` | (browser) sidebar group hierarchy, hover-+, create-new menu, group Rooms tab, ?group= preselect |
 | `browser_test.py` | real bundle end-to-end (admin): slices apply, live room/self updates, members tab + admin directory render from their topics, console-error sweep |
 | `member_browser_test.py` | ordinary-member view: no Members tab, no foreign identity data, no errors on presentation-only codepaths |
 | `dialog_stack_browser_test.py` | nested dialogs: per-layer backdrops (0.5 page / 0.25 inter-dialog), open-order stacking beats portal DOM order, backdrop click closes only the topmost dialog |

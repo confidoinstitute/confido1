@@ -186,6 +186,10 @@ private val RootLayoutInner = FC<Props> {
                             path = "new_room"
                             element = CreateRoom.create()
                         })
+                        add(jso<RouteObject> {
+                            path = "new_group"
+                            element = CreateRoom.create { isGroup = true }
+                        })
                     }
                     add(jso<RouteObject> {
                         path = "search"

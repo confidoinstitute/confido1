@@ -1,6 +1,8 @@
 package tools.confido.web.components.redesign.rooms
 
 import tools.confido.web.components.useDisconnected
+import tools.confido.web.components.useMyUser
+import tools.confido.web.components.useRooms
 import tools.confido.web.components.redesign.basic.LinkUnstyled
 import tools.confido.web.components.redesign.basic.Stack
 import tools.confido.web.components.redesign.forms.*
@@ -15,6 +17,7 @@ import react.dom.html.ReactHTML.a
 import react.dom.html.ReactHTML.abbr
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.option
 import react.dom.html.ReactHTML.p
 import tools.confido.rooms.*
 import tools.confido.extensions.ClientExtension
@@ -24,10 +27,17 @@ import web.html.submit
 import tools.confido.web.hooks.useSubscription
 import tools.confido.payloads.responses.WSData
 import tools.confido.state.Topics
+import tools.confido.refs.Ref
 import tools.confido.refs.ref
 
 external interface RoomSettingsProps : Props {
     var room: Room?
+    /** When creating (room == null): create a group container instead of a room.
+     *  For an existing room the kind comes from the room itself (immutable). */
+    var isGroup: Boolean?
+    /** When creating: preselect this parent group (e.g. from a create-in-group
+     *  entry point). The user can still change or clear it. */
+    var initialParentRoom: Ref<Room>?
     var onChange: ((BaseRoomInformation?) -> Unit)?
     var onSubmit: (() -> Unit)?
     var openSchedule: Boolean?
@@ -35,11 +45,19 @@ external interface RoomSettingsProps : Props {
 
 val RoomSettings = FC<RoomSettingsProps> { props ->
     val roomQuestions = (useSubscription(props.room?.let { Topics.roomQuestions(it.ref) }) as? WSData)?.data ?: emptyMap()
+    val allRooms = useRooms()
+    val myUser = useMyUser()
+    val isGroup = props.room?.isGroup ?: props.isGroup ?: false
 
     var name by useState(props.room?.name ?: "")
     var description by useState(props.room?.description ?: "")
-    var color by useState(props.room?.color ?: RoomColor.values().random())
+    // A room created inside a group starts with the group's color, so the sidebar
+    // hierarchy reads visually without any user action.
+    var color by useState(props.room?.color
+        ?: props.initialParentRoom?.let { allRooms[it.id]?.color }
+        ?: RoomColor.values().random())
     var icon by useState(props.room?.icon)
+    var parentRoom by useState(props.room?.parentRoom ?: props.initialParentRoom)
     var defaultSchedule by useState(props.room?.defaultSchedule ?: QuestionSchedule())
     var showSchedule by useState(props.openSchedule ?: false)
     var scoringConfig by useState(props.room?.scoring)
@@ -56,10 +74,11 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
     val valid = !name.isEmpty() && scheduleValid && attributionValid
 
     useEffect(name, description, color, icon, defaultSchedule.identify(), scoringConfig?.identify(), commentTemplate,
-              extensionData, defaultAttribution, pseudonymPool?.joinToString("\n"), attributionValid) {
+              extensionData, defaultAttribution, pseudonymPool?.joinToString("\n"), attributionValid, parentRoom?.id) {
         if (valid)
             props.onChange?.invoke(BaseRoomInformation(name, description, color, icon, defaultSchedule, scoringConfig, commentTemplate, extensionData,
-                defaultAttribution = defaultAttribution, pseudonymPool = pseudonymPool))
+                defaultAttribution = defaultAttribution, pseudonymPool = pseudonymPool,
+                isGroup = isGroup, parentRoom = parentRoom))
         else
             props.onChange?.invoke(null)
     }
@@ -87,6 +106,35 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                     onChange = { description = it.target.value }
                 }
             }
+            // Groups the user can attach this room to. Attaching needs the group
+            // owner's consent (enforced server-side as ROOM_OWNER there); the current
+            // parent stays listed regardless so the selection is representable.
+            val availableGroups = if (isGroup) emptyList() else allRooms.values.filter {
+                it.isGroup && (it.hasPermission(myUser, RoomPermission.ROOM_OWNER) || it.id == parentRoom?.id)
+            }
+            if (availableGroups.isNotEmpty()) FormField {
+                title = "Group"
+                comment = "Rooms in a group share the group's members and appear in its combined scoreboard."
+                Select {
+                    css {
+                        width = 100.pct
+                    }
+                    value = parentRoom?.id ?: ""
+                    onChange = { event ->
+                        parentRoom = event.target.value.ifEmpty { null }?.let { Ref<Room>(it) }
+                    }
+                    option {
+                        value = ""
+                        +"(No group)"
+                    }
+                    availableGroups.sortedBy { it.name }.forEach { group ->
+                        option {
+                            value = group.id
+                            +group.name
+                        }
+                    }
+                }
+            }
             RoomColorChooser {
                 this.color = color
                 this.onChange = { color = it }
@@ -99,7 +147,7 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                 }
             }
         }
-        FormSection {
+        if (!isGroup) FormSection {
             if (defaultSchedule == QuestionSchedule() && !showSchedule) {
                a {
                    href = "#"
@@ -240,7 +288,7 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                 }
             }
         }
-        FormSection {
+        if (!isGroup) FormSection {
             title = "Comment"
             FormField {
 
@@ -264,6 +312,8 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                     }
                     if (props.room != null)
                         +"Save"
+                    else if (isGroup)
+                        +"Create group"
                     else
                         +"Create room"
                     disabled = useDisconnected() || !valid

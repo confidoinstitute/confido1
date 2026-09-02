@@ -4,7 +4,9 @@ import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import tools.confido.application.routes.badRequest
 import tools.confido.rooms.Room
+import tools.confido.rooms.childRooms
 import tools.confido.rooms.ensurePseudonymAssignments
 import tools.confido.question.Question
 import tools.confido.refs.Ref
@@ -40,6 +42,26 @@ object roomStore : MongoStore<Room>(
         // through room saves; question-level policy changes trigger a room touch
         // from the question routes).
         beforeEntitySave { _, room -> ensurePseudonymAssignments(room) }
+        // Room-group structural invariants (a strict two-level hierarchy). Routes
+        // additionally require the editor's consent standing in the target group;
+        // this hook is the defense-in-depth backstop for any other save path.
+        beforeEntitySave { old, new ->
+            if (new.parentRoom != null && new.parentRoom != old?.parentRoom) {
+                val group = serverState.rooms[new.parentRoom.id]
+                    ?: badRequest("Group room not found.")
+                if (!group.isGroup) badRequest("Target room is not a group.")
+                if (new.isGroup) badRequest("A group room cannot be assigned to another group.")
+            }
+            new
+        }
+        // When a group room is deleted, unparent all its children
+        beforeEntityDelete { room ->
+            if (room.isGroup) {
+                room.childRooms.forEach { child ->
+                    modify(child.id) { it.copy(parentRoom = null) }
+                }
+            }
+        }
         onChange { change ->
             when (change) {
                 is Change.Added ->

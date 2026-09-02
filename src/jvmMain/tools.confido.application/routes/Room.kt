@@ -54,6 +54,17 @@ suspend fun <T> ApplicationCall.withRoom(rRef: Ref<Room>, body: suspend RoomCont
     return body(RoomContext(user, room))
 }
 
+/** Validate an attempted group assignment. Attaching a room to a group grants the
+ *  group's members implied access to the room and feeds its questions into the
+ *  group's scoreboard — so beyond structural checks it needs the *group's* consent,
+ *  expressed as holding ROOM_OWNER there (admins qualify via implied ownership). */
+private fun checkGroupAssignment(user: User, parentRef: Ref<Room>) {
+    val group = parentRef.deref() ?: badRequest("Group room not found.")
+    if (!group.isGroup) badRequest("Target room is not a group.")
+    if (!group.hasPermission(user, RoomPermission.ROOM_OWNER))
+        unauthorized("You cannot add rooms to this group.")
+}
+
 fun roomRoutes(routing: Routing) = routing.apply {
     apiST(Api.roomIcons) { _ ->
         // Icon names are only loaded when the application is started.
@@ -63,6 +74,9 @@ fun roomRoutes(routing: Routing) = routing.apply {
     apiST(Api.roomAdd) { information ->
         val room = call.withUser {
             if (!user.type.isProper()) unauthorized("Guests cannot do this.")
+            if (information.isGroup && information.parentRoom != null)
+                badRequest("A group room cannot be assigned to another group.")
+            information.parentRoom?.let { checkGroupAssignment(user, it) }
 
             val myMembership = RoomMembership(user.ref, appConfig.roleById("owner") ?: error("Role 'owner' not found"), null)
             tools.confido.store.roomStore.insert(
@@ -71,6 +85,8 @@ fun roomRoutes(routing: Routing) = routing.apply {
                     createdAt = Clock.System.now(), questions = emptyList(),
                     members = listOf(myMembership), inviteLinks = emptyList(),
                     color = information.color, icon = information.icon,
+                    isGroup = information.isGroup,
+                    parentRoom = information.parentRoom,
                     defaultSchedule = information.defaultSchedule,
                     defaultAttribution = information.defaultAttribution,
                     pseudonymPool = information.pseudonymPool,
@@ -89,6 +105,15 @@ fun roomRoutes(routing: Routing) = routing.apply {
             assertPermission(RoomPermission.ROOM_OWNER, "You cannot edit room details.")
             val roomName = information.name.ifEmpty {room.name}
 
+            // Group assignment: only re-validated when it actually changes, so an
+            // ordinary settings save doesn't require standing in the current group.
+            if (information.parentRoom != room.parentRoom) {
+                information.parentRoom?.let {
+                    if (room.isGroup) badRequest("A group room cannot be assigned to another group.")
+                    checkGroupAssignment(user, it)
+                }
+            }
+
             // Promise-floor ratchet, room level: the default binds room comments (the
             // room's own floor) and every question inheriting it (their floors). The
             // meet of those floors is violated iff any component is.
@@ -105,6 +130,8 @@ fun roomRoutes(routing: Routing) = routing.apply {
                     description = information.description,
                     color = information.color,
                     icon = information.icon,
+                    // isGroup is deliberately not copied: immutable after creation
+                    parentRoom = information.parentRoom,
                     defaultSchedule = information.defaultSchedule,
                     defaultAttribution = information.defaultAttribution,
                     pseudonymPool = information.pseudonymPool,

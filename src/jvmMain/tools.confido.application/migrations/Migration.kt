@@ -90,6 +90,7 @@ object MigrationRunner {
         SensitiveToAttributionMigration,
         PseudonymsEdtToCoreMigration,
         AttributionFloorMigration,
+        RoomGroupsEdtToCoreMigration,
     )
 
     /**

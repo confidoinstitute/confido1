@@ -44,6 +44,14 @@ data class Room(
     val inviteLinks: List<InviteLink> = emptyList(),
     val color: RoomColor = colorFromId(id),
     val icon: String? = null,
+    /** Whether this room is a group container: it holds child rooms rather than
+     *  questions of its own (question-related permissions are stripped for group
+     *  rooms; see [memberEffectivePermissions]). */
+    val isGroup: Boolean = false,
+    /** Parent group room; set on child rooms to indicate group membership.
+     *  Members of the parent become implied members of this room. Groups form a
+     *  strict two-level hierarchy: a group can never itself have a parent. */
+    val parentRoom: Ref<Room>? = null,
     val defaultSchedule: QuestionSchedule = QuestionSchedule(),
     /** Default attribution promise for the room's questions; per-question override
      *  in [Question.attribution] (same inheritance pattern as [defaultSchedule]). */
@@ -70,7 +78,8 @@ data class Room(
     // Computed fields: populated by StateCensor before sending to clients, never persisted to DB.
     /** Effective member list including implied members (e.g. inherited from parent group).
      *  On the client, Room.effectiveMembers reads this field.
-     *  On the server, Room.effectiveMembers computes via extension hooks. */
+     *  On the server, Room.effectiveMembers computes it: extension hooks first,
+     *  then the core group rule (see defaultGroupEffectiveMembers). */
     val _effectiveMembers: List<RoomMembership>? = null,
     /** Effective question list (e.g. aggregated from child rooms) with per-question flags. */
     val _effectiveQuestions: List<EffectiveQuestion>? = null,

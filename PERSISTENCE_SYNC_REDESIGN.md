@@ -566,7 +566,9 @@ same pattern with registration at runtime instead of declaration in source. Unif
   component; extension-owned topics (`room/<id>/ext/<extId>/...`) replace the existing ad-hoc
   extension websockets in the Phase 1 multiplexing.
 - **Persistence**: the stored format — a flat name-keyed map
-  (`{"room_group.is_group": true}`) — is already right and stays unchanged; no migration.
+  (`{"point_estimate": true}`) — is already right and stays unchanged; no migration.
+  (Keys of extensions later absorbed into core do get lifted out, e.g. migrations
+  008 pseudonyms and 010 room_groups.)
   Two small hardenings: (1) **unknown-key tolerance** — the current serializer throws on
   unregistered keys when encoding (`Extensions.kt:62`) and its decode loop does not handle
   `UNKNOWN_NAME`, so data written by a later-disabled extension fails to round-trip; preserve
@@ -697,7 +699,8 @@ working untouched mid-transition.
     orphaning. The declarative `references()` graph of §3.2 becomes worthwhile once the
     owning entities convert.
   - **EntityManager hook roles map onto the store layer** (they are kept, not dropped —
-    `pseudonyms` and `room_groups` register them from `serverInit()`): after-commit
+    extensions can register them from `serverInit()`, as `pseudonyms` and `room_groups`
+    did before their absorption into core): after-commit
     notifications = `ChangeSource.onChange` (strictly better: legacy callbacks fired with
     RAM already mutated *inside* the transaction); before-delete cascade/veto =
     `MongoStore.beforeEntityDelete`, run inside the deleting `transact` so cascade writes

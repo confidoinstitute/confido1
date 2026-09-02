@@ -114,11 +114,12 @@ run pseudonym_test.py
 run presentation_test.py
 run dashboard_test.py
 run search_test.py
-run group_revoke_test.py   # skips unless room_groups is enabled (CONFIDO_EXTENSIONS)
+run group_revoke_test.py
 
 if [ "$BROWSER" = 1 ]; then
     run browser_test.py
     run member_browser_test.py
+    run group_browser_test.py
     run presentation_browser_test.py
     run dialog_stack_browser_test.py
     run connection_browser_test.py   # kills + restarts the scratch server itself

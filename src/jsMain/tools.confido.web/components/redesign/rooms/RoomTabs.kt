@@ -113,7 +113,12 @@ val RoomTabs = FC<RoomTabsProps> { props ->
             }
         }
 
-        if (usePermission(room, RoomPermission.VIEW_QUESTIONS))
+        // A group room's contents are rooms, not questions — the "Rooms" tab takes
+        // the Questions slot (VIEW_QUESTIONS is stripped for groups anyway).
+        val canViewQuestions = usePermission(room, RoomPermission.VIEW_QUESTIONS)
+        if (room.isGroup)
+            tab("", "Rooms")
+        else if (canViewQuestions)
             tab("", "Questions")
 
         if (usePermission(room, RoomPermission.VIEW_ROOM_COMMENTS))
