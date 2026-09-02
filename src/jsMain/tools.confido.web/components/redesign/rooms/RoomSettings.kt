@@ -329,10 +329,12 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                         label = "Separate pseudonyms for this room"
                         comment = if (separatePseudonyms)
                             "This room keeps its own aliases, unlinkable to the group's. " +
-                            "Switching back to shared aliases is not possible once there is activity."
+                            "Switching back to shared aliases is not possible once there is " +
+                            "activity. Switching modes changes who appears under which alias."
                         else
                             "Aliases are shared with the group: everyone appears under the same " +
-                            "name here as in the other group rooms."
+                            "name here as in the other group rooms. Turning this on gives " +
+                            "everyone new, room-local aliases."
                         checked = separatePseudonyms
                         onChange = { e -> separatePseudonyms = e.target.checked }
                     }
@@ -343,6 +345,7 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                     pool = pseudonymPool
                     onChange = { pseudonymPool = it }
                     memberCount = props.room?.members?.size ?: 0
+                    roomRef = props.room?.ref
                 }
             }
         }

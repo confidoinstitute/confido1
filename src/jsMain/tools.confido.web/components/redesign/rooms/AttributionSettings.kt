@@ -1,6 +1,12 @@
 package tools.confido.web.components.redesign.rooms
 
+import tools.confido.web.Client
+import tools.confido.web.components.redesign.ConfirmDialog
 import tools.confido.web.components.redesign.basic.sansSerif
+import tools.confido.web.utils.runCoroutine
+import tools.confido.api.Api
+import tools.confido.refs.Ref
+import tools.confido.rooms.Room
 import tools.confido.web.components.redesign.forms.*
 import web.cssom.*
 import emotion.react.css
@@ -136,6 +142,8 @@ external interface PseudonymPoolSectionProps : Props {
     var pool: List<String>?
     var onChange: ((List<String>?) -> Unit)?
     var memberCount: Int
+    /** When set (edit context), offers the immediate "re-draw all" action. */
+    var roomRef: Ref<Room>?
 }
 
 /** Default-hidden custom alias pool editor (room dialog only). null pool = the
@@ -143,6 +151,7 @@ external interface PseudonymPoolSectionProps : Props {
 val PseudonymPoolSection = FC<PseudonymPoolSectionProps> { props ->
     var show by useState(!props.pool.isNullOrEmpty())
     var rawText by useState(props.pool.orEmpty().joinToString("\n"))
+    var confirmRedraw by useState(false)
 
     if (!show) {
         a {
@@ -156,7 +165,9 @@ val PseudonymPoolSection = FC<PseudonymPoolSectionProps> { props ->
         title = "Custom pseudonym list"
         comment = "One per line; leave empty to use the built-in generated aliases. " +
             "A list shorter than the member count is topped up with generated aliases. " +
-            "Aliases already assigned to members never change."
+            "The list only affects members who don't have an alias yet — aliases " +
+            "already given out never change on their own; use “Re-draw all " +
+            "pseudonyms” below to apply the list to everyone."
         MultilineTextInput {
             placeholder = "e.g.\nAlpha\nBravo\nCharlie"
             value = rawText
@@ -191,6 +202,30 @@ val PseudonymPoolSection = FC<PseudonymPoolSectionProps> { props ->
                 show = false
                 props.onChange?.invoke(null)
                 it.preventDefault()
+            }
+        }
+    }
+    props.roomRef?.let { rRef ->
+        ConfirmDialog {
+            open = confirmRedraw
+            onClose = { confirmRedraw = false }
+            onConfirm = {
+                runCoroutine { Client.call(Api.roomPseudonymsReset(rRef), Unit) }
+                confirmRedraw = false
+            }
+            title = "Re-draw all pseudonyms?"
+            confirmText = "Re-draw"
+            +("Every member gets a new alias drawn from the current list, applied " +
+                "immediately (rooms sharing this room's aliases included). Existing " +
+                "answers and comments re-label to the new aliases consistently — " +
+                "nothing is revealed — but anything referring to the old names " +
+                "(comment text, exports, memory) will no longer match.")
+        }
+        div {
+            a {
+                href = "#"
+                +"Re-draw all pseudonyms…"
+                onClick = { confirmRedraw = true; it.preventDefault() }
             }
         }
     }

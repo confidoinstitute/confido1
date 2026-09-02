@@ -179,6 +179,16 @@ fun roomRoutes(routing: Routing) = routing.apply {
             }
         }
     }
+    // Re-draw all aliases from the current pool (see redrawPseudonymAssignments —
+    // privacy-neutral, owner-gated, namespace owners only).
+    apiST(Api.roomPseudonymsReset) { rRef, _ ->
+        call.withRoom(rRef) {
+            assertPermission(RoomPermission.ROOM_OWNER, "You cannot manage pseudonyms.")
+            if (!room.ownsPseudonymNamespace)
+                badRequest("Aliases are shared with the group; re-draw them on the group instead.")
+            tools.confido.store.roomStore.modify(room.ref) { redrawPseudonymAssignments(it) }
+        }
+    }
     // Room-wide timeline markers, shown on every question's timeline. Question-scoped
     // ones live in questionRoutes.
     apiST(Api.roomTimelineMarkAdd) { rRef, mark ->

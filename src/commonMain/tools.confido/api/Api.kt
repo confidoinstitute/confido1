@@ -84,6 +84,7 @@ object Api {
     /** Responds with the created room's id. */
     val roomAdd = ApiSpec(POST, path("rooms/add"), serializer<BaseRoomInformation>(), serializer<String>())
     val roomEdit = ApiSpec(POST, roomPrefix / "edit", serializer<BaseRoomInformation>(), serializer<Unit>())
+    val roomPseudonymsReset = ApiSpec(POST, roomPrefix / "pseudonyms/reset", serializer<Unit>(), serializer<Unit>())
     val roomDelete = ApiSpec(DELETE, roomPrefix, serializer<Unit>(), serializer<Unit>())
     val roomMemberAdd = ApiSpec(POST, roomPrefix / "members/add", serializer<AddedMember>(), serializer<Unit>())
     val roomMemberDelete = ApiSpec(DELETE, roomPrefix / "members" / userRefParam, serializer<Unit>(), serializer<Unit>())

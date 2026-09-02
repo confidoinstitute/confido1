@@ -98,6 +98,34 @@ fun ensurePseudonymAssignments(room: Room): Room {
 }
 
 /**
+ * Re-draw EVERY alias in this room's map from the current pool (custom names
+ * first, then generated). Privacy-neutral — a bijective relabeling: all content
+ * re-labels consistently and linkage is preserved — but disruptive (learned
+ * aliases, in-text mentions and old exports go stale), so it sits behind an
+ * explicit owner action. Covers all existing keys (departed members included, so
+ * their content stays labeled) plus current effective members; hierarchy-wide
+ * uniqueness holds against parent/sibling/child maps. Unseeded shuffle on
+ * purpose: a redraw must actually change the outcome.
+ */
+fun redrawPseudonymAssignments(room: Room): Room {
+    val keys = (room.pseudonymAssignments.keys + room.effectiveMembers.map { it.user.id })
+        .distinct().sorted()
+    val parent = room.parentEntity
+    val othersUsed = buildSet {
+        parent?.let { p ->
+            addAll(p.pseudonymAssignments.values)
+            p.childRooms.filter { it.id != room.id }.forEach { addAll(it.pseudonymAssignments.values) }
+        }
+        if (room.isGroup) room.childRooms.forEach { addAll(it.pseudonymAssignments.values) }
+    }
+    val customPool = room.pseudonymPool.orEmpty()
+        .map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+    val available = (customPool.shuffled() + generatedAliasPool.shuffled())
+        .distinct().filter { it !in othersUsed }
+    return room.copy(pseudonymAssignments = keys.zip(available).toMap())
+}
+
+/**
  * Whether the full alias map may travel to [user]. Requires
  * [RoomPermission.VIEW_REAL_IDENTITIES], and additionally no *sealed* pierceable
  * policy anywhere sharing this map's namespace (this room's default or question

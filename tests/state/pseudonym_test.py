@@ -321,6 +321,18 @@ async def main():
             and member_alias in csv_sealed_admin and "debugmember" not in csv_sealed_admin,
             "TEST-16", "sealed question exports alias only, even for the owner", h)
 
+    # Re-draw: privacy-neutral relabeling — same keys, (almost surely) new values;
+    # inherit-mode children resolve the new names via read-through automatically.
+    async with await connect_ws(admin) as ws:
+        await ws.send(json.dumps({"sub": [f"room/{gid}"]}))
+        before = (by_topic(await recv_updates(ws))[f"room/{gid}"]["data"] or {}).get("pseudonymAssignments") or {}
+        t.check(post_status(f"/rooms/{gid}/pseudonyms/reset", None, admin) == 200,
+                "TEST-25", "owner can re-draw the alias map")
+        after = (by_topic(await recv_updates(ws))[f"room/{gid}"]["data"] or {}).get("pseudonymAssignments") or {}
+        t.check(set(after.keys()) == set(before.keys()) and after != before,
+                "TEST-26", "re-draw keeps coverage but changes the aliases",
+                f"{before} -> {after}")
+
     t.finish()
 
 
