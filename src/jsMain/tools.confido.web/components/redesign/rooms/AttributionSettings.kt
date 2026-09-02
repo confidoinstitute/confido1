@@ -103,6 +103,17 @@ val AttributionSection = FC<AttributionSectionProps> { props ->
     // the user commits, not via a rejection after.
     val restricting = props.persisted?.revealsMoreThan(policy)
         ?: (policy != AttributionPolicy())
+    // The mirror of the one-way warning: a permitted *loosening* looks like a bug
+    // to anyone who knows about the ratchet, so say why it is allowed — the promise
+    // only locks once someone participates under it.
+    val loosening = props.persisted?.let { policy.revealsMoreThan(it) } ?: false
+    if (loosening && !violation) {
+        div {
+            css { fontFamily = sansSerif; fontSize = 12.px; color = Color("#888888"); marginTop = 4.px }
+            +"This weakens the current setting — still possible only because nothing has "
+            +"been posted or predicted under it yet. Any activity makes it permanent."
+        }
+    }
     if (restricting && !violation) {
         div {
             css {
