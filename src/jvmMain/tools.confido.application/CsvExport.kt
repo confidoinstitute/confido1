@@ -15,6 +15,7 @@ import tools.confido.distributions.*
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.question.QuestionComment
+import tools.confido.refs.Ref
 import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.spaces.BinaryValue
@@ -92,6 +93,30 @@ sealed class CsvExport {
         return ret
 
     }
+
+    /**
+     * Author-identity columns for a row about [author]'s activity on [q],
+     * honoring both the question's attribution policy and the *exporter's* own
+     * access (mirrors what they would see in the UI): masked levels always carry
+     * the alias column; the real user_id/nick/email columns are included only
+     * when [exporter] may see real identities there — OPEN, or piercing via
+     * VIEW_REAL_IDENTITIES where the policy's moderatorAccess allows. Omitted
+     * rather than blanked, so a sealed export has no identity columns at all.
+     */
+    protected fun authorIdentityCols(q: Question, author: Ref<User>?, exporter: User?): CsvRecord {
+        author ?: return emptyMap()
+        val policy = q.effectiveAttribution
+        val ret = mutableMapOf<String, String>()
+        if (policy.level == AttributionLevel.PSEUDONYM)
+            ret["pseudonym"] = q.room?.pseudonymAssignments?.get(author.id) ?: ""
+        if (policy.level == AttributionLevel.OPEN || policy.pierceableBy(exporter, q.room)) {
+            val user = author.deref()
+            ret["user_id"] = author.id
+            ret["nick"] = user?.nick ?: ""
+            ret["email"] = user?.email?.lowercase() ?: ""
+        }
+        return ret
+    }
 }
 
 class PredictionExport  (
@@ -99,6 +124,7 @@ class PredictionExport  (
     val group: Boolean,
     val history: ExportHistory,
     val buckets: Int,
+    val exporter: User?,
 ) : CsvExport() {
     private val addQuestionCols = questions.size > 1
 
@@ -120,27 +146,7 @@ class PredictionExport  (
             ret["question"] = question.name
         }
 
-        user?.let {
-            // Same rule as exportComment: the export is not per-viewer censored, so
-            // masked levels export the masked identity only. (ANONYMOUS+ questions
-            // never reach individual export at all — route-gated — this is defense
-            // in depth plus the PSEUDONYM alias case.)
-            when {
-                question.effectiveAttribution.level == AttributionLevel.PSEUDONYM -> {
-                    ret["user_id"] = ""
-                    ret["nick"] = question.room?.pseudonymAssignments?.get(it.id) ?: ""
-                    ret["email"] = ""
-                }
-                question.effectiveAttribution.level >= AttributionLevel.ANONYMOUS -> {
-                    ret["user_id"] = ""; ret["nick"] = ""; ret["email"] = ""
-                }
-                else -> {
-                    ret["user_id"] = it.id
-                    ret["nick"] = it.nick ?: ""
-                    ret["email"] = it.email?.lowercase() ?: ""
-                }
-            }
-        }
+        user?.let { ret += authorIdentityCols(question, it.ref, exporter) }
 
         val dt = Instant.fromEpochSeconds(prediction.ts.toLong()).toLocalDateTime(TimeZone.UTC)
         ret["timestamp"] = prediction.ts.toString()
@@ -226,33 +232,16 @@ class PredictionExport  (
 }
 class CommentExport  (
     val questions: List<Question>,
+    val exporter: User?,
 ) : CsvExport() {
 
     fun exportComment(q: Question, c: QuestionComment): CsvRecord {
         val dt = Instant.fromEpochSeconds(c.timestamp.toLong()).toLocalDateTime(TimeZone.UTC)
-        val user = c.user.deref()
-        // The export is not per-viewer censored, so masked levels export the masked
-        // form only: the alias for PSEUDONYM (stable linkage is the point), nothing
-        // for ANONYMOUS/AGGREGATE_ONLY (a stable user_id IS linkage).
-        val level = q.effectiveAttribution.level
-        val identityCols = when {
-            level == AttributionLevel.PSEUDONYM -> {
-                val alias = c.user.id.let { q.room?.pseudonymAssignments?.get(it) }
-                mapOf("user_id" to "", "nick" to (alias ?: ""), "email" to "")
-            }
-            level >= AttributionLevel.ANONYMOUS ->
-                mapOf("user_id" to "", "nick" to "", "email" to "")
-            else -> mapOf(
-                "user_id" to c.user.id,
-                "nick" to (user?.nick ?: ""),
-                "email" to (user?.email?.lowercase() ?: ""),
-            )
-        }
         val ret =  mutableMapOf(
             "question_id" to q.id,
             "question" to q.name,
         )
-        ret += identityCols
+        ret += authorIdentityCols(q, c.user, exporter)
         ret += mapOf(
             "timestamp" to c.timestamp.toString(),
             "date" to dt.date.toString(),

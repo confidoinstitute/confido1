@@ -312,12 +312,12 @@ fun main() {
                             val buckets = call.parameters["buckets"]?.toIntOrNull() ?: 32
                             if (buckets < 0) badRequest("You cannot request negative amount of buckets.")
 
-                            PredictionExport(exportable, group, history, buckets)
+                            PredictionExport(exportable, group, history, buckets, user)
                         }
                         "comments" -> {
                             if (!rooms.all { it.hasPermission(user, RoomPermission.VIEW_QUESTION_COMMENTS) })
                                 unauthorized("No permission to view comments")
-                            CommentExport(questions)
+                            CommentExport(questions, user)
                         }
                         else -> badRequest("Invalid export type $exportWhat")
                     }

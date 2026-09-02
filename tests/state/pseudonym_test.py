@@ -21,6 +21,11 @@ def post_status(path, body, cookie):
         return e.code
 
 
+def get_text(path, cookie):
+    req = urllib.request.Request(BASE + path, headers={"Cookie": cookie})
+    return urllib.request.urlopen(req).read().decode()
+
+
 def make_guest(rid, link_token, nick):
     cj, op = session_opener()
     op.open(BASE + "/")
@@ -175,6 +180,23 @@ async def main():
                         {"type": "complete", "question": dict(qjson, attribution={"level": "PSEUDONYM"})},
                         admin) == 400,
             "TEST-13", "aggregate-only cannot weaken back to pseudonymous once it has activity")
+
+    # CSV exports honor the exporter's access level, mirroring the UI: a piercing
+    # admin gets real identity columns where the policy allows, a non-piercing
+    # member does not, and a sealed policy strips them for everyone.
+    csv_qid_admin = get_text(f"/export.csv?questions={qid}&what=comments", admin)
+    h = csv_qid_admin.splitlines()[0]
+    t.check("email" in h and "debugmember" in csv_qid_admin,
+            "TEST-14", "piercing exporter gets real identities (moderatorAccess question)", h)
+    csv_qid_member = get_text(f"/export.csv?questions={qid}&what=comments", member)
+    h = csv_qid_member.splitlines()[0]
+    t.check("email" not in h and "user_id" not in h and "debugmember" not in csv_qid_member,
+            "TEST-15", "non-piercing exporter gets no identity columns", h)
+    csv_sealed_admin = get_text(f"/export.csv?questions={sqid}&what=comments", admin)
+    h = csv_sealed_admin.splitlines()[0]
+    t.check("pseudonym" in h and "email" not in h
+            and member_alias in csv_sealed_admin and "debugmember" not in csv_sealed_admin,
+            "TEST-16", "sealed question exports alias only, even for the owner", h)
 
     t.finish()
 
