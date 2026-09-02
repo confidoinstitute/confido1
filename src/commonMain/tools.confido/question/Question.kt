@@ -210,6 +210,13 @@ data class Question(
     // null = inherit the room's default attribution policy (interpret via
     // [effectiveAttributionIn], same pattern as [schedule]/[effectiveScheduleIn]).
     val attribution: AttributionPolicy? = null,
+    /** Promise floor: the strictest ([strictestOf]) effective policy any of this
+     *  question's activity (predictions, comments) was authored under. Maintained
+     *  server-side at the activity-insert choke points; the ratchet refuses any
+     *  edit whose effective policy would reveal more than this. Null = no promise
+     *  yet (or only OPEN activity — an OPEN floor never binds). Never lowers,
+     *  even if activity is later deleted. */
+    val attributionFloor: AttributionPolicy? = null,
     val author: Ref<User>? = null,
     val stateHistory: List<QuestionStateChange> = emptyList(),
     /** Question-scoped timeline markers; room-wide ones live on [tools.confido.rooms.Room.timelineMarks]. */

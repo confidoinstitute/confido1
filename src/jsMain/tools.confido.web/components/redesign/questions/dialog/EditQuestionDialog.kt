@@ -126,12 +126,10 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
 
     // Validity
     // Switching back to "follow the room setting" is itself a policy weakening when
-    // the room default is below what this question's activity was promised (derived,
-    // not state: the AttributionSection error path only covers explicit overrides).
-    val inheritViolation = customAttribution == null && props.entity?.let { e ->
-        (entityCounts.predictions != 0 || entityCounts.comments != 0) &&
-            room.defaultAttribution.revealsMoreThan(e.effectiveAttributionIn(room))
-    } ?: false
+    // the room default is below this question's promise floor (derived, not state:
+    // the AttributionSection error path only covers explicit overrides).
+    val inheritViolation = customAttribution == null &&
+        props.entity?.attributionFloor?.let { room.defaultAttribution.revealsMoreThan(it) } ?: false
     val questionValid = questionTitle.isNotEmpty() && answerSpaceValid && resolutionValid &&
         (scheduleValid || !customSchedule) && attributionValid && !inheritViolation
 
@@ -379,11 +377,9 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                         }
                     }
                 run {
-                    // Weakening after activity exists would expose answers/comments
-                    // made under the promise — the server rejects that (attribution
-                    // ratchet); the section reports it as an error before submit.
-                    val hasActivity = entityCounts.predictions != 0 || entityCounts.comments != 0
-                    val ratchetFloor = props.entity?.takeIf { hasActivity }?.effectiveAttributionIn(room)
+                    // The promise floor (server-maintained) is exactly what the ratchet
+                    // compares against; the section reports violations before submit.
+                    val ratchetFloor = props.entity?.attributionFloor
                     FormSwitch {
                         label = "Custom attribution"
                         comment =
@@ -409,8 +405,8 @@ val EditQuestionDialog = FC<EditQuestionDialogProps> { props ->
                         }
                     } ?: run {
                         // Inheriting is also a choice: if the room default is weaker
-                        // than what this question's activity was made under, say so.
-                        if (ratchetFloor != null && room.defaultAttribution.revealsMoreThan(ratchetFloor)) {
+                        // than this question's promise floor, say so.
+                        if (inheritViolation) {
                             div {
                                 css { fontSize = 12.px; color = Color("#F35454") }
                                 +("The room setting is weaker than the promise this question's " +

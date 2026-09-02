@@ -89,14 +89,14 @@ fun roomRoutes(routing: Routing) = routing.apply {
             assertPermission(RoomPermission.ROOM_OWNER, "You cannot edit room details.")
             val roomName = information.name.ifEmpty {room.name}
 
-            // Attribution ratchet, room level: the default policy is inherited by every
-            // question without an override — weakening it must not expose activity
-            // (predictions or comments) that already exists under the promise.
-            if (information.defaultAttribution.revealsMoreThan(room.defaultAttribution)) {
-                val affected = room.questions.mapNotNull { it.deref() }.filter { it.attribution == null }
-                if (affected.any { (serverState.predictionCount[it.ref] ?: 0) > 0
-                                   || (serverState.commentCount[it.ref] ?: 0) > 0 })
-                    badRequest("Cannot weaken the room's attribution policy: questions inheriting it already have activity.")
+            // Promise-floor ratchet, room level: the default binds room comments (the
+            // room's own floor) and every question inheriting it (their floors). The
+            // meet of those floors is violated iff any component is.
+            val roomFloor = listOfNotNull(room.attributionFloor) +
+                room.questions.mapNotNull { q -> q.deref()?.takeIf { it.attribution == null }?.attributionFloor }
+            roomFloor.reduceOrNull(::strictestOf)?.let { floor ->
+                if (information.defaultAttribution.revealsMoreThan(floor))
+                    badRequest("Cannot weaken the room's attribution policy below the promise existing activity was made under.")
             }
 
             tools.confido.store.roomStore.modify(room.ref) {

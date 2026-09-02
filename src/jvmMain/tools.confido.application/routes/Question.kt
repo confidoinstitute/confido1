@@ -114,7 +114,8 @@ fun questionRoutes(routing: Routing) = routing.apply {
             if (q.stateHistory.isEmpty()) {
                 q = q.copy(stateHistory = listOf(QuestionStateChange(q.state, Clock.System.now(), user.ref)))
             }
-            q = q.copy(author = user.ref)
+            // attributionFloor is server-maintained — never taken from the client.
+            q = q.copy(author = user.ref, attributionFloor = null)
 
             tools.confido.store.transact {
                 val question = tools.confido.store.questionStore.insert(q)
@@ -148,13 +149,13 @@ fun questionRoutes(routing: Routing) = routing.apply {
                         if (question.numPredictions > 0 && question.answerSpace != edit.question.answerSpace) {
                             badRequest("Cannot change answer space of a question with predictions.")
                         }
-                        // The attribution policy is a promise to the people who answered —
-                        // weakening it later would expose activity (predictions AND
-                        // comments: pierceable levels mask comment authors) made under it.
-                        if (edit.question.effectiveAttributionIn(question.room)
-                                .revealsMoreThan(orig.effectiveAttributionIn(question.room))
-                            && (question.numPredictions > 0 || (serverState.commentCount[ref] ?: 0) > 0)) {
-                            badRequest("Cannot weaken a question's attribution policy once it has activity.")
+                        // Promise-floor ratchet: the new effective policy may not reveal
+                        // more than the strictest policy existing activity was authored
+                        // under. Tighten-then-loosen with no interim activity passes —
+                        // the floor tracks promises made, not settings tried.
+                        orig.attributionFloor?.let { floor ->
+                            if (edit.question.effectiveAttributionIn(question.room).revealsMoreThan(floor))
+                                badRequest("Cannot weaken the attribution policy below the promise this question's activity was made under.")
                         }
 
                         // If withState wasn't used, this will fill in the history automatically.
@@ -163,7 +164,9 @@ fun questionRoutes(routing: Routing) = routing.apply {
                         } else {
                             orig.stateHistory
                         }
-                        edit.question.copy(id = question.id, stateHistory = newHistory, author = orig.author)
+                        // attributionFloor is server-maintained — never taken from the client.
+                        edit.question.copy(id = question.id, stateHistory = newHistory, author = orig.author,
+                                           attributionFloor = orig.attributionFloor)
                     }
                 }
                 // A changed attribution policy changes how the group aggregate is

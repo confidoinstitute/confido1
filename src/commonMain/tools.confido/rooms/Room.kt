@@ -55,6 +55,10 @@ data class Room(
      *  save; censored down to the viewer's own entry unless the viewer may see
      *  real identities (see StateCensor). */
     val pseudonymAssignments: Map<String, String> = emptyMap(),
+    /** Promise floor for ROOM-level comments (the activity governed directly by
+     *  [defaultAttribution]); questions carry their own floors. Server-maintained;
+     *  see [tools.confido.question.Question.attributionFloor]. */
+    val attributionFloor: AttributionPolicy? = null,
     val scoring: ScoringConfig? = null,
     @Serializable(with = RoomEDTSerializer::class)
     val extensionData: ExtensionData = ExtensionData(RoomEDT),

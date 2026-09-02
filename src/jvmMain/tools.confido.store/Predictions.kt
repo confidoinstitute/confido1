@@ -251,6 +251,9 @@ suspend fun addPrediction(pred: Prediction) {
         val gp = serverState.calculateGroupPred(q, newPreds.values)
         gp?.let { check(it.user == null) }
         scope.stage(AppendOp(pred, sched.score, gp))
+        // A prediction is masked activity: raise the attribution promise floor in
+        // the same transaction (see AttributionFloor.kt).
+        stampQuestionAttributionFloor(pred.question)
         serverState.extensions.forEach { it.onPrediction(q, pred) }
     }
 }

@@ -89,6 +89,7 @@ object MigrationRunner {
         PresenterViewItemMigration,
         SensitiveToAttributionMigration,
         PseudonymsEdtToCoreMigration,
+        AttributionFloorMigration,
     )
 
     /**

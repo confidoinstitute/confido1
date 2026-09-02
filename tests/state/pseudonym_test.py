@@ -175,11 +175,22 @@ async def main():
         t.check(mu.get("displayName") == "Anonymous" and bool(mu.get("realIdentity")),
                 "TEST-12", "aggregate-only comments are anonymous (pierced via annotation only)", str(mu))
 
-    # ...and the reverse direction is a weakening, refused by the ratchet.
+    # Promise floor: all activity so far was authored under PSEUDONYM, so rolling
+    # back from the (untouched-since) AGGREGATE_ONLY tightening is legal...
+    t.check(post_status(f"/questions/{qid}/edit",
+                        {"type": "complete", "question": dict(qjson, attribution={"level": "PSEUDONYM"})},
+                        admin) == 200,
+            "TEST-13", "tighten-then-loosen with no interim activity rolls back (promise floor)")
+
+    # ...but activity under the stricter policy raises the floor permanently.
+    post(f"/questions/{qid}/edit",
+         {"type": "complete", "question": dict(qjson, attribution={"level": "AGGREGATE_ONLY"})}, admin)
+    post(f"/questions/{qid}/comments/add",
+         {"content": "under the seal", "attachPrediction": False}, member)
     t.check(post_status(f"/questions/{qid}/edit",
                         {"type": "complete", "question": dict(qjson, attribution={"level": "PSEUDONYM"})},
                         admin) == 400,
-            "TEST-13", "aggregate-only cannot weaken back to pseudonymous once it has activity")
+            "TEST-13b", "activity under the stricter policy pins the floor there")
 
     # CSV exports honor the exporter's access level, mirroring the UI: a piercing
     # admin gets real identity columns where the policy allows, a non-piercing

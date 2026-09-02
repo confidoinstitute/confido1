@@ -54,11 +54,19 @@ open class MongoCommentArchive<E : tools.confido.question.Comment, P : Ref<*>>(
     /** Insert a new comment; assigns an id if empty. Returns the stored entity. */
     suspend fun insert(entity: E): E {
         val stored = if (entity.id.isEmpty()) withId(entity, generateId()) else entity
-        withTxnScope { it.stage(Op(stored) { sess ->
-            if (sess == null) coll.insertOne(stored) else coll.insertOne(sess, stored)
-        }.emitting { Change.Added(stored) }) }
+        withTxnScope {
+            it.stage(Op(stored) { sess ->
+                if (sess == null) coll.insertOne(stored) else coll.insertOne(sess, stored)
+            }.emitting { Change.Added(stored) })
+            // Same txn scope: a comment is masked activity, so it must raise the
+            // attribution promise floor atomically with its own insert.
+            onInserted(stored)
+        }
         return stored
     }
+
+    /** Called on genuine inserts only (never on loads); subclasses stamp promise floors. */
+    protected open suspend fun onInserted(entity: E) {}
 
     /** Replace an existing comment (same id). */
     suspend fun update(old: E, new: E) {
@@ -123,14 +131,20 @@ object questionCommentArchive : MongoCommentArchive<QuestionComment, Ref<Questio
     QuestionComment::question, QuestionComment::user,
     { e, id -> e.copy(id = id) },
     { e, likes -> e.copy(likes = likes) },
-)
+) {
+    override suspend fun onInserted(entity: QuestionComment) =
+        stampQuestionAttributionFloor(entity.question)
+}
 
 object roomCommentArchive : MongoCommentArchive<RoomComment, Ref<Room>>(
     serverState.database.getCollection("roomComments"),
     RoomComment::room, RoomComment::user,
     { e, id -> e.copy(id = id) },
     { e, likes -> e.copy(likes = likes) },
-)
+) {
+    override suspend fun onInserted(entity: RoomComment) =
+        stampRoomAttributionFloor(entity.room)
+}
 
 object commentData : ManagedStore {
     override val mongoCollections get() = listOf(questionCommentArchive.coll, roomCommentArchive.coll)

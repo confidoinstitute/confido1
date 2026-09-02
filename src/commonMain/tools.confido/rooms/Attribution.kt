@@ -99,3 +99,15 @@ data class AttributionPolicy(
         level.pierceable && moderatorAccess &&
         room?.hasPermission(observer, RoomPermission.VIEW_REAL_IDENTITIES) == true
 }
+
+/**
+ * The meet of two policies: the least policy at least as strict as both (max
+ * level; sealed if either is). Used to accumulate *promise floors*: the floor of
+ * a question/room is the meet of the effective policies in force each time
+ * activity was authored, and [AttributionPolicy.revealsMoreThan] the meet iff it
+ * reveals more than at least one component.
+ */
+fun strictestOf(a: AttributionPolicy, b: AttributionPolicy) = AttributionPolicy(
+    level = maxOf(a.level, b.level),
+    moderatorAccess = a.moderatorAccess && b.moderatorAccess,
+)
