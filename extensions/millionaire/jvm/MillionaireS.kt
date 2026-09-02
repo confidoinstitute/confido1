@@ -8,6 +8,7 @@ import io.ktor.server.routing.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import tools.confido.rooms.AttributionLevel
+import tools.confido.rooms.resolvedDefaultAttribution
 import tools.confido.rooms.Room
 import tools.confido.rooms.RoomPermission
 import kotlinx.collections.immutable.PersistentMap
@@ -85,9 +86,12 @@ object MillionaireSE : ServerExtension, MillionaireExt() {
     fun userScore(room: Room, user: Ref<User>, config: MillionaireGameAction): Double? {
         // Unattributed (ANONYMOUS+) questions never enter the per-user scoring — a
         // score over a single resolved question is invertible back to the prediction.
+        // The presentation floor binds too: the game ranking presents under the
+        // room's policy, so stricter questions stay out (score-differencing).
         // (Filtered here, not in questions(), so the game flow itself still runs them.)
         val qs = questions(room.questions.mapDeref(), config.tag)
-            .filter { it.resolvedAttributionIn(room).level < AttributionLevel.ANONYMOUS }
+            .filter { it.resolvedAttributionIn(room).level < AttributionLevel.ANONYMOUS
+                      && it.resolvedAttributionIn(room).level <= room.resolvedDefaultAttribution.level }
         return when (config.mode) {
             MillionaireMode.MULTIPLICATIVE -> {
                 var score: Double? = null

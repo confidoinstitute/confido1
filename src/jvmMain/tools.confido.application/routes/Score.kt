@@ -34,6 +34,7 @@ import java.lang.System.getenv
 import tools.confido.question.effectiveSchedule
 import tools.confido.question.effectiveAttribution
 import tools.confido.rooms.AttributionLevel
+import tools.confido.rooms.resolvedDefaultAttribution
 
 /** Compute the room scoreboard: list of [ScoreboardEntry] sorted descending by score. */
 private suspend fun computeScoreboard(room: Room, observer: User): List<ScoreboardEntry> {
@@ -47,9 +48,14 @@ private suspend fun computeScoreboard(room: Room, observer: User): List<Scoreboa
                 // Unattributed (ANONYMOUS+) questions never enter the scoreboard: a
                 // per-user score contribution over a resolved binary question is
                 // invertible back to the prediction (differencing two scoreboard
-                // snapshots isolates it). PSEUDONYM questions do enter — the
-                // scoreboard shows aliases, which is a feature, not a leak.
-                q.effectiveAttribution.level < AttributionLevel.ANONYMOUS
+                // snapshots isolates it). PSEUDONYM questions enter aliased
+                // scoreboards (a feature) — but the presentation floor also binds:
+                // a question may only feed a scoreboard presenting at its level or
+                // above, else a real-named ranking would carry contributions that
+                // score-differencing de-anonymizes (mixed rooms, group scoreboards
+                // aggregating stricter children).
+                q.effectiveAttribution.level < AttributionLevel.ANONYMOUS &&
+                q.effectiveAttribution.level <= room.resolvedDefaultAttribution.level
     }
     val minQ = getenv("CONFIDO_SCORE_MIN_QUESTIONS")?.toIntOrNull() ?: 1
     val entries = serverState.users.mapNotNull { (_, u) ->
