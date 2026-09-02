@@ -217,6 +217,27 @@ async def main():
                 "TEST-22", "unparented room has the inherited policy pinned as its own",
                 str(child.get("defaultAttribution")))
 
+    # Sealed-only strictness is still strictness: a child stricter than the group
+    # solely via moderatorAccess=false cannot reset to inherit once activity exists
+    # (that would unseal existing masked content to piercing moderators).
+    sid = json.loads(post("/rooms/add",
+        {"name": "Sealed child", "description": "", "color": "RED", "icon": None,
+         "parentRoom": gid,
+         "defaultAttribution": {"level": "PSEUDONYM", "moderatorAccess": False}}, admin))
+    post(f"/rooms/{sid}/questions/add",
+         {"_id": "", "name": "Sealed child q", "answerSpace": {"type": "binary"},
+          "groupPredVisible": True}, admin)
+    async with await connect_ws(admin) as ws:
+        await ws.send(json.dumps({"sub": [f"room/{sid}/questions"]}))
+        seen = by_topic(await recv_updates(ws))
+        sqid2 = next(iter(seen[f"room/{sid}/questions"]["data"]))
+    post(f"/questions/{sqid2}/comments/add",
+         {"content": "sealed child whisper", "attachPrediction": False}, member)
+    t.check(post_status(f"/rooms/{sid}/edit",
+        {"name": "Sealed child", "description": "", "color": "RED", "icon": None,
+         "parentRoom": gid, "defaultAttribution": None}, admin) == 400,
+            "TEST-24", "sealed-stricter child cannot reset to inherit once activity exists")
+
     # Separate namespace: a per-child room gets fresh aliases, distinct from every
     # group alias (hierarchy-wide uniqueness prevents false linkage).
     bid = json.loads(post("/rooms/add",
