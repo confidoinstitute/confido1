@@ -8,6 +8,7 @@ import asyncio
 import json
 import urllib.error
 import urllib.request
+import socket
 
 from confido_test import *
 
@@ -55,8 +56,44 @@ def upload_pdf(rid, pdf, cookie):
     return urllib.request.urlopen(req)
 
 
+def upload_status(rid, pdf, cookie):
+    """upload_pdf, returning (status, body text) instead of raising on 4xx."""
+    try:
+        r = upload_pdf(rid, pdf, cookie)
+        return r.status, r.read().decode()
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode(errors="replace")
+
+
+MAX_SLIDES = 200
+MAX_PDF_BYTES = 50 * 1024 * 1024
+
+
 def note(nid, text=""):
     return {"type": "note", "id": nid, "text": text, "warning": False}
+
+
+# A public 38-slide Google Slides deck used for the URL-import test.
+GSLIDES_ID = "1SGvmyvJL1Hy29lk2sOCloUQmd-ohW3E8E_bMIEKJBlM"
+GSLIDES_EDIT_URL = (f"https://docs.google.com/presentation/d/{GSLIDES_ID}/edit"
+                    "?slide=id.gd1bf8d60a4_0_0#slide=id.gd1bf8d60a4_0_0")
+GSLIDES_PAGES = 38
+
+
+def google_reachable():
+    try:
+        socket.create_connection(("docs.google.com", 443), timeout=5).close()
+        return True
+    except OSError:
+        return False
+
+
+def import_status(rid, url, cookie):
+    """POST the URL import; returns (status, body-or-error-text)."""
+    try:
+        return 200, post(f"/rooms/{rid}/presentation/import-url", {"url": url}, cookie)
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode(errors="replace")
 
 
 def slide(sid, idx):
@@ -134,7 +171,43 @@ async def main():
                         {"items": [note("n1"), set_state("a1", qa)]}, admin) == 200,
             "TEST-6", "valid items save")
 
-    # --- Slide-order normalization (needs real slides) ---
+    # --- Limits: page count and byte size (both sources share the installer) ---
+    st, body = upload_status(ra, make_pdf(MAX_SLIDES + 1), admin)
+    t.check(st == 400 and str(MAX_SLIDES) in body,
+            "TEST-6a", f"a PDF with more than {MAX_SLIDES} pages is rejected", f"{st} {body[:100]}")
+    # Padding after %%EOF keeps it a valid PDF; the size check fires before parsing.
+    st, body = upload_status(ra, make_pdf(1) + b"%" * (MAX_PDF_BYTES + 1), admin)
+    t.check(st == 400 and "MB" in body,
+            "TEST-6a2", "an oversized PDF is rejected", f"{st} {body[:100]}")
+    st, body = upload_status(ra, make_pdf(MAX_SLIDES), admin)
+    t.check(st == 200 and body.strip() == str(MAX_SLIDES),
+            "TEST-6a3", f"exactly {MAX_SLIDES} pages is accepted", f"{st} {body[:100]}")
+
+    # --- Upload auto-populates the flow (needs real slides) ---
+    post(f"/rooms/{ra}/presentation/edit", {"items": [note("n0", "intro")]}, admin)
+    upload_pdf(ra, make_pdf(3), admin)
+    async with await connect_ws(admin) as ws:
+        await ws.send(json.dumps({"sub": [f"room/{ra}/presentation"]}))
+        d = by_topic(await recv_updates(ws))
+        pres = (d.get(f"room/{ra}/presentation", {}).get("data") or {}).get("presentation") or {}
+        kinds = [(i.get("type"), i.get("slideIndex")) for i in pres.get("items") or []]
+        t.check(kinds == [("note", None), ("slide", 0), ("slide", 1), ("slide", 2)],
+                "TEST-6b", "upload appends every slide to the flow, existing items untouched",
+                json.dumps(kinds))
+        # A slide the user removed comes back only via re-upload; a shrunk deck
+        # drops out-of-range slides and the rest keep their slots.
+        post(f"/rooms/{ra}/presentation/edit",
+             {"items": [slide("s2", 2), note("n1"), slide("s0", 0)]}, admin)
+        await recv_updates(ws)
+        upload_pdf(ra, make_pdf(2), admin)
+        d = by_topic(await recv_updates(ws))
+        pres = (d.get(f"room/{ra}/presentation", {}).get("data") or {}).get("presentation") or {}
+        kinds = [(i.get("type"), i.get("slideIndex")) for i in pres.get("items") or []]
+        t.check(kinds == [("slide", 0), ("note", None), ("slide", 1)],
+                "TEST-6c", "re-upload drops out-of-range slides and fills the missing one into a slot",
+                json.dumps(kinds))
+
+    # --- Slide-order normalization ---
     upload_pdf(ra, make_pdf(3), admin)
     status = post_status(f"/rooms/{ra}/presentation/edit",
                          {"items": [slide("s2", 2), note("n1"), slide("s0", 0), slide("s0b", 0)]},
@@ -158,6 +231,42 @@ async def main():
         t.check(v1 >= 1 and pres2.get("slidesVersion", 0) == v1 + 1,
                 "TEST-7b", "slide re-upload bumps slidesVersion",
                 f"v1={v1} v2={pres2.get('slidesVersion')}")
+
+        # --- Google Slides URL import: same pipeline as an upload ---
+        st, body = import_status(ra, "https://example.com/deck.pdf", admin)
+        t.check(st == 400 and "Google Slides" in body,
+                "TEST-7c", "non-Google-Slides URL is rejected with a hint", f"{st} {body[:120]}")
+        st, body = import_status(ra, "https://docs.google.com/spreadsheets/d/abc/edit", admin)
+        t.check(st == 400, "TEST-7d", "a Sheets link is not accepted as a Slides link", f"{st} {body[:120]}")
+        if google_reachable():
+            v2 = pres2.get("slidesVersion", 0)
+            st, body = import_status(ra, GSLIDES_EDIT_URL, admin)
+            d = by_topic(await recv_updates(ws))
+            pres3 = (d.get(f"room/{ra}/presentation", {}).get("data") or {}).get("presentation") or {}
+            t.check(st == 200 and body.strip() == str(GSLIDES_PAGES)
+                    and pres3.get("numSlides") == GSLIDES_PAGES
+                    and pres3.get("slidesVersion", 0) == v2 + 1
+                    and len(pres3.get("slideLabels") or []) == GSLIDES_PAGES
+                    and sum(1 for i in pres3.get("items") or [] if i.get("type") == "slide") == GSLIDES_PAGES,
+                    "TEST-7e", "edit-mode Slides link imports every page, populates the flow, bumps slidesVersion",
+                    f"{st} {body[:80]} numSlides={pres3.get('numSlides')} v={pres3.get('slidesVersion')}")
+            r = urllib.request.urlopen(urllib.request.Request(
+                BASE + f"/presentations/{pres3['_id']}/{pres3['fileToken']}/slides/0038.png"
+                + f"?v={pres3.get('slidesVersion')}", headers={"Cookie": admin}))
+            t.check(r.status == 200 and r.read(8)[:4] == b"\x89PNG",
+                    "TEST-7f", "last imported slide is served as a PNG")
+            # A missing / private deck: Google answers with an HTML page, never a PDF.
+            st, body = import_status(
+                ra, "https://docs.google.com/presentation/d/1AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/edit",
+                admin)
+            t.check(st == 400 and "Anyone with the link" in body,
+                    "TEST-7g", "unfetchable deck fails with the sharing hint, slides untouched",
+                    f"{st} {body[:120]}")
+            # Put the small deck back so the rest of the file sees 3 slides.
+            upload_pdf(ra, make_pdf(3), admin)
+            await recv_updates(ws)
+        else:
+            print("TEST-7e..7g SKIP: docs.google.com unreachable")
 
         # --- Run-state: sticky per-step view overrides ---
         post(f"/rooms/{ra}/presentation/edit",

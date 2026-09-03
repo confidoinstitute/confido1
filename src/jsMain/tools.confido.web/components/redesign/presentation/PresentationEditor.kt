@@ -19,12 +19,17 @@ import tools.confido.web.ext.dndkit.sortable.*
 import tools.confido.web.ext.dndkit.utilities.closestCenter
 import emotion.react.css
 import tools.confido.web.hooks.useCoroutineLock
+import io.ktor.client.call.*
 import io.ktor.client.request.forms.*
 import io.ktor.http.*
 import js.objects.unsafeJso as jso
 import kotlinx.coroutines.await
 import tools.confido.payloads.requests.EditPresentation
+import tools.confido.payloads.requests.ImportUrlRequest
+import tools.confido.web.ApiError
 import tools.confido.web.components.redesign.presenter.FlowActionDescription
+import tools.confido.web.components.redesign.presenter.openPresenterWindow
+import tools.confido.web.components.redesign.presenter.setPresenterView
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.img
@@ -112,6 +117,10 @@ private fun readFileAsBytes(file: dynamic): kotlin.js.Promise<ByteArray> = kotli
     reader.readAsArrayBuffer(file)
 }
 
+/** Check whether a string looks like a Google Slides URL (any of the edit/preview/export forms). */
+private fun isGoogleSlidesUrl(url: String): Boolean =
+    url.contains("docs.google.com/presentation/")
+
 val PresentationEditor = FC<PresentationEditorProps> { props ->
     val room = use(RoomContext)!!
     val submitLock = useCoroutineLock()
@@ -125,6 +134,10 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
     var slideLabels by useState(pres.slideLabels)
     var dirty by useState(false)
     var uploading by useState(false)
+    // Slides dialog: PDF upload or Google Slides URL import (replaces any current deck)
+    var slidesDialogOpen by useState(false)
+    var importUrl by useState("")
+    var slidesError by useState<String?>(null)
     // Drill-in: non-null while a loop's body is open in the sub-editor.
     var editingLoopId by useState<String?>(null)
 
@@ -257,6 +270,168 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
         dialogOpen = true
     }
 
+    // Both slide sources run the same server pipeline (render, label, auto-populate
+    // the flow); on success the editor resyncs from the server (dirty reset).
+    fun uploadSlidesPdf(file: dynamic) {
+        submitLock {
+            uploading = true
+            slidesError = null
+            try {
+                val byteArray = readFileAsBytes(file).await()
+                val resp = Client.httpClient.submitFormWithBinaryData(
+                    url = "${room.urlPrefix}/presentation/upload-slides",
+                    formData = formData {
+                        append("file", byteArray, Headers.build {
+                            append(HttpHeaders.ContentDisposition, "filename=\"presentation.pdf\"")
+                            append(HttpHeaders.ContentType, "application/pdf")
+                        })
+                    }
+                )
+                if (resp.status.isSuccess()) {
+                    slidesDialogOpen = false
+                    dirty = false
+                } else {
+                    slidesError = resp.body<String>().ifBlank { "Upload failed" }
+                }
+            } catch (e: Exception) {
+                slidesError = e.message ?: "Upload failed"
+            } finally {
+                uploading = false
+            }
+        }
+    }
+
+    fun importFromGoogleSlides() {
+        submitLock {
+            uploading = true
+            slidesError = null
+            try {
+                Client.call(Api.presentationImportUrl(room.ref), ImportUrlRequest(url = importUrl))
+                slidesDialogOpen = false
+                importUrl = ""
+                dirty = false
+            } catch (e: ApiError) {
+                slidesError = e.message
+            } catch (e: Exception) {
+                slidesError = e.message ?: "Import failed"
+            } finally {
+                uploading = false
+            }
+        }
+    }
+
+    val hasSlides = pres.numSlides > 0
+    Dialog {
+        open = slidesDialogOpen
+        title = if (hasSlides) "Replace slides" else "Upload slides"
+        // Each source has its own trigger (file pick / Import), like the CSV import step.
+        action = ""
+        disabledAction = true
+        onClose = { if (!uploading) { slidesDialogOpen = false; slidesError = null } }
+        Stack {
+            css { gap = 20.px; minWidth = 480.px }
+            // FormSection pads its own content; the loose rows pad themselves to match.
+            div {
+                css { fontFamily = sansSerif; fontSize = 14.px; lineHeight = 20.px; color = Color("#666666"); padding = Padding(0.px, 20.px) }
+                +(if (hasSlides) "The new deck replaces the current ${pres.numSlides} slides. "
+                  else "")
+                +"Every slide is added to the flow automatically; slides already in the flow keep their place. "
+                +"Limits: ${MAX_SLIDES_PDF_BYTES / (1024 * 1024)} MB per PDF, $MAX_SLIDES slides."
+            }
+            if (dirty) div {
+                css {
+                    fontFamily = sansSerif; fontSize = 13.px; lineHeight = 18.px
+                    color = Color("#b26a00"); backgroundColor = Color("#fff3cd")
+                    padding = 10.px; borderRadius = 5.px; margin = Margin(0.px, 20.px)
+                }
+                +"You have unsaved flow changes. They will be discarded when the slides are replaced — close this dialog and save first to keep them."
+            }
+            FormSection {
+                title = "Upload a PDF file"
+                div {
+                    css {
+                        border = Border(2.px, LineStyle.dashed, Color("#CCCCCC"))
+                        borderRadius = 8.px
+                        padding = 20.px
+                        textAlign = TextAlign.center
+                        backgroundColor = Color("#FAFAFA")
+                        "&:hover" { borderColor = Color("#6319FF"); backgroundColor = Color("#F5F0FF") }
+                    }
+                    input {
+                        type = InputType.file
+                        accept = ".pdf"
+                        css { width = 100.pct; cursor = Cursor.pointer; fontFamily = sansSerif; fontSize = 15.px }
+                        disabled = uploading
+                        onChange = onChange@{ event ->
+                            val files = event.target.asDynamic().files ?: return@onChange
+                            val file = files[0] ?: return@onChange
+                            // Same limit the server enforces; refusing here spares the upload.
+                            if ((file.size as Number).toDouble() > MAX_SLIDES_PDF_BYTES.toDouble()) {
+                                slidesError = "The PDF is larger than ${MAX_SLIDES_PDF_BYTES / (1024 * 1024)} MB."
+                                event.target.asDynamic().value = ""
+                            } else uploadSlidesPdf(file)
+                        }
+                    }
+                }
+            }
+            // Divider
+            div {
+                css {
+                    display = Display.flex; alignItems = AlignItems.center; gap = 12.px
+                    fontFamily = sansSerif; fontSize = 13.px; color = Color("#999999")
+                    padding = Padding(0.px, 20.px)
+                }
+                div { css { flex = Flex(number(1.0), number(1.0), Auto.auto); height = 1.px; backgroundColor = Color("#DDDDDD") } }
+                +"or"
+                div { css { flex = Flex(number(1.0), number(1.0), Auto.auto); height = 1.px; backgroundColor = Color("#DDDDDD") } }
+            }
+            FormSection {
+                title = "Import from Google Slides"
+                FormField {
+                    comment = "Paste a Google Slides sharing link. The presentation must be publicly accessible " +
+                        "(\"Anyone with the link\" in sharing settings)."
+                    Stack {
+                        direction = FlexDirection.row
+                        css { gap = 10.px; alignItems = AlignItems.stretch }
+                        TextInput {
+                            css { flex = Flex(number(1.0), number(1.0), Auto.auto) }
+                            placeholder = "https://docs.google.com/presentation/d/..."
+                            value = importUrl
+                            disabled = uploading
+                            onChange = { e -> importUrl = e.target.value; slidesError = null }
+                            onKeyDown = { e ->
+                                if (e.key == "Enter" && !uploading && isGoogleSlidesUrl(importUrl)) importFromGoogleSlides()
+                            }
+                        }
+                        Button {
+                            disabled = uploading || !isGoogleSlidesUrl(importUrl)
+                            onClick = { importFromGoogleSlides() }
+                            +"Import"
+                        }
+                    }
+                }
+            }
+            if (uploading) div {
+                css { fontFamily = sansSerif; fontSize = 14.px; color = Color("#6319FF"); textAlign = TextAlign.center; padding = Padding(0.px, 20.px) }
+                +"Processing slides…"
+            }
+            slidesError?.let { err ->
+                div {
+                    css {
+                        fontFamily = sansSerif
+                        fontSize = 14.px
+                        color = Color("#F35454")
+                        padding = 10.px
+                        backgroundColor = Color("#FFF0F0")
+                        borderRadius = 5.px
+                        margin = Margin(0.px, 20.px)
+                    }
+                    +err
+                }
+            }
+        }
+    }
+
     // Unified flow item configuration dialog
     ExpectedWorldContext.Provider {
         value = expectedWorld
@@ -290,127 +465,79 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
         }
     }
 
+    // Sticky toolbar (see PresentationHeader): the flow can be long, so the
+    // commit affordances must not scroll away with it.
+    val missing = missingSlideIndices().size
+    PresentationHeader {
+        presentation = pres
+        if (dirty) span {
+            css { fontSize = 12.px; color = Color("#e65100"); fontFamily = sansSerif; fontWeight = integer(400) }
+            +(if (configProblems.isEmpty()) "Unsaved changes"
+              else "${configProblems.size} ${if (configProblems.size == 1) "item needs" else "items need"} configuration before saving")
+        }
+        // Slides drop out of the flow only by explicit removal (uploads
+        // auto-populate), so the affordance appears just when there is
+        // something to add back.
+        if (missing > 0) Button {
+            css {
+                margin = 0.px
+                padding = Padding(6.px, 16.px)
+                fontSize = 13.px
+                backgroundColor = Color("#E8E0F5")
+                color = Color("#6319FF")
+            }
+            title = "$missing ${if (missing == 1) "slide is" else "slides are"} not in the flow"
+            +"Add missing slides ($missing)"
+            onClick = { addSlideItems() }
+        }
+        Button {
+            css {
+                margin = 0.px
+                padding = Padding(6.px, 16.px)
+                fontSize = 13.px
+            }
+            disabled = uploading
+            +(if (hasSlides) "Replace slides" else "Upload slides")
+            onClick = { slidesError = null; slidesDialogOpen = true }
+        }
+        if (dirty) Button {
+            css {
+                margin = 0.px
+                padding = Padding(6.px, 16.px)
+                fontSize = 13.px
+                backgroundColor = Color("#4caf50")
+            }
+            disabled = configProblems.isNotEmpty()
+            +"Save"
+            onClick = { save() }
+        }
+        // Run starts the *saved* flow; while there are unsaved edits it would
+        // silently present stale content, so it waits for Save.
+        if (pres.items.isNotEmpty()) Button {
+            css {
+                margin = 0.px
+                padding = Padding(6.px, 16.px)
+                fontSize = 13.px
+                backgroundColor = Color("#4caf50")
+            }
+            disabled = dirty
+            title = if (dirty) "Save your changes first" else ""
+            +"Run"
+            onClick = {
+                submitLock {
+                    Client.call(Api.presentationStart(room.ref))
+                    // Set PresentationPV on user session and open presenter window
+                    setPresenterView(PresentationPV(room.ref))
+                    openPresenterWindow()
+                }
+            }
+        }
+    }
+
     Stack {
         css {
             padding = 15.px
             gap = 10.px
-        }
-
-        // Upload slides bar
-        Stack {
-            direction = FlexDirection.row
-            css {
-                gap = 10.px
-                alignItems = AlignItems.center
-                flexWrap = FlexWrap.wrap
-            }
-
-            // PDF upload
-            div {
-                css {
-                    position = Position.relative
-                    display = Display.inlineBlock
-                }
-                Button {
-                    css {
-                        margin = 0.px
-                        padding = Padding(6.px, 16.px)
-                        fontSize = 13.px
-                    }
-                    disabled = uploading
-                    +(if (pres.numSlides > 0) "Re-upload slides (PDF)" else "Upload slides (PDF)")
-                }
-                input {
-                    type = InputType.file
-                    accept = ".pdf"
-                    css {
-                        position = Position.absolute
-                        top = 0.px
-                        left = 0.px
-                        width = 100.pct
-                        height = 100.pct
-                        opacity = number(0.0)
-                        cursor = Cursor.pointer
-                    }
-                    disabled = uploading
-                    onChange = onChange@{ event ->
-                        val target = event.target.asDynamic()
-                        val files = target.files ?: return@onChange
-                        val file = files[0] ?: return@onChange
-
-                        submitLock {
-                            uploading = true
-                            try {
-                                val byteArray = readFileAsBytes(file).await()
-                                val resp = Client.httpClient.submitFormWithBinaryData(
-                                    url = "${room.urlPrefix}/presentation/upload-slides",
-                                    formData = formData {
-                                        append("file", byteArray, Headers.build {
-                                            append(HttpHeaders.ContentDisposition, "filename=\"presentation.pdf\"")
-                                            append(HttpHeaders.ContentType, "application/pdf")
-                                        })
-                                    }
-                                )
-                                if (!resp.status.isSuccess()) {
-                                    showError("Upload failed")
-                                }
-                            } catch (e: Exception) {
-                                showError(e.message ?: "Upload failed")
-                            } finally {
-                                uploading = false
-                                // Reset dirty so we pick up new slides
-                                dirty = false
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (pres.numSlides > 0) {
-                val missing = missingSlideIndices().size
-                Button {
-                    css {
-                        margin = 0.px
-                        padding = Padding(6.px, 16.px)
-                        fontSize = 13.px
-                        backgroundColor = Color("#E8E0F5")
-                        color = Color("#6319FF")
-                    }
-                    disabled = missing == 0
-                    +"Auto-populate slides"
-                    onClick = { addSlideItems() }
-                }
-                span {
-                    css { fontSize = 12.px; color = Color("#888"); fontFamily = sansSerif }
-                    +(if (missing == 0) "All slides are in the flow"
-                      else "$missing ${if (missing == 1) "slide" else "slides"} not in the flow")
-                }
-            }
-
-            div { css { flexGrow = number(1.0) } }
-
-            if (dirty) {
-                Button {
-                    css {
-                        margin = 0.px
-                        padding = Padding(6.px, 16.px)
-                        fontSize = 13.px
-                        backgroundColor = Color("#4caf50")
-                    }
-                    disabled = configProblems.isNotEmpty()
-                    +"Save"
-                    onClick = { save() }
-                }
-                span {
-                    css {
-                        fontSize = 12.px
-                        color = Color("#e65100")
-                        fontFamily = sansSerif
-                    }
-                    +(if (configProblems.isEmpty()) "Unsaved changes"
-                      else "${configProblems.size} ${if (configProblems.size == 1) "item needs" else "items need"} configuration before saving")
-                }
-            }
         }
 
         FlowItemList {
@@ -434,8 +561,8 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
             }
             this.openInsertDialog = { idx -> openInsertDialog(idx) }
             this.emptyText =
-                if (pres.numSlides > 0) "No items yet. Auto-populate your uploaded slides, or add items one by one."
-                else "No items yet. Upload a slide PDF, or add items one by one."
+                if (hasSlides) "No items yet. Add the missing slides, or add items one by one."
+                else "No items yet. Upload slides (PDF or Google Slides), or add items one by one."
         }
     }
 

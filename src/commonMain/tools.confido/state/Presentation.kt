@@ -10,6 +10,11 @@ import tools.confido.refs.ref
 import tools.confido.refs.ServerImmediateDerefEntity
 import tools.confido.utils.HasUrlPrefix
 
+/** Largest slide PDF accepted (upload or URL import). Shared so the client can refuse early. */
+const val MAX_SLIDES_PDF_BYTES: Long = 50L * 1024 * 1024
+/** Most slides per presentation — a proxy for rendered-PNG storage (~0.3 MB per slide at 150 DPI). */
+const val MAX_SLIDES = 200
+
 /**
  * A presentation flow associated with a room. Contains an ordered list of
  * flow items (slides, actions, presenter views, notes) that can be stepped

@@ -1,6 +1,11 @@
 package tools.confido.application.routes
 
 import tools.confido.api.Api
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsChannel
+import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.readRemaining
+import kotlinx.io.readByteArray
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.server.request.*
@@ -41,6 +46,96 @@ private suspend fun getPresentation(room: tools.confido.rooms.Room): Presentatio
     return presentationStore.get(ref.id)
 }
 
+/** Regex to extract the deck ID from a Google Slides URL (edit, preview or export links alike). */
+private val GOOGLE_SLIDES_ID_REGEX = Regex(
+    """docs\.google\.com/presentation/(?:u/\d+/)?d/([a-zA-Z0-9_-]+)"""
+)
+
+private val pdfTooLargeMessage = "The PDF is larger than ${MAX_SLIDES_PDF_BYTES / (1024 * 1024)} MB."
+
+/**
+ * Read at most [MAX_SLIDES_PDF_BYTES] from a channel; returns null when the
+ * source has more (so an oversized body is never buffered in full).
+ */
+private suspend fun ByteReadChannel.readBoundedPdf(): ByteArray? {
+    val bytes = readRemaining(MAX_SLIDES_PDF_BYTES + 1).readByteArray()
+    return if (bytes.size > MAX_SLIDES_PDF_BYTES) null else bytes
+}
+
+private fun isPdf(bytes: ByteArray): Boolean =
+    bytes.size >= 4 && bytes[0] == '%'.code.toByte() && bytes[1] == 'P'.code.toByte() &&
+        bytes[2] == 'D'.code.toByte() && bytes[3] == 'F'.code.toByte()
+
+/**
+ * Render a PDF into slide images, extract slide titles and update the
+ * presentation entity. Shared by direct upload and URL import. Returns the
+ * number of slides; throws a bad-request [ResponseError] if the PDF cannot be
+ * processed.
+ */
+private suspend fun installSlidesPdf(pres: Presentation, bytes: ByteArray): Int {
+    if (bytes.size > MAX_SLIDES_PDF_BYTES) badRequest(pdfTooLargeMessage)
+    // Render into a staging directory and swap it in only when complete:
+    // overwriting the live slides in place would let a concurrently
+    // fetched thumbnail observe a half-written PNG (and cache it broken).
+    val slideDir = File(presentationDir, "${pres.id}/slides")
+    val stagingDir = File(presentationDir, "${pres.id}/slides_staging")
+    stagingDir.deleteRecursively()
+    stagingDir.mkdirs()
+
+    // Save original PDF
+    File(presentationDir, "${pres.id}/orig.pdf").writeBytes(bytes)
+
+    // Convert PDF pages to PNG images and extract slide titles
+    var numSlides = 0
+    var slideLabels = emptyList<String>()
+    try {
+        val doc = Loader.loadPDF(bytes)
+        doc.use { pdf ->
+            numSlides = pdf.numberOfPages
+            if (numSlides == 0) badRequest("The PDF has no pages.")
+            if (numSlides > MAX_SLIDES) badRequest("The PDF has $numSlides pages; at most $MAX_SLIDES slides are supported.")
+            val renderer = PDFRenderer(pdf)
+            for (i in 0 until numSlides) {
+                val image = renderer.renderImageWithDPI(i, 150f)
+                val filename = (i + 1).toString().padStart(4, '0') + ".png"
+                ImageIO.write(image, "PNG", File(stagingDir, filename))
+            }
+
+            // Heuristically extract slide titles from PDF text
+            slideLabels = (0 until numSlides).map { i ->
+                val title = extractSlideTitle(pdf, i)
+                if (title != null) "Slide ${i + 1}: $title" else "Slide ${i + 1}"
+            }
+        }
+    } catch (e: ResponseError) {
+        stagingDir.deleteRecursively()
+        throw e
+    } catch (e: Exception) {
+        stagingDir.deleteRecursively()
+        badRequest("Failed to process PDF: ${e.message}")
+    }
+    slideDir.deleteRecursively()
+    if (!stagingDir.renameTo(slideDir)) badRequest("Failed to store slide images.")
+
+    // Update presentation entity. A re-upload may shrink the slide count;
+    // drop now-out-of-range slide items so stored flows stay valid, then
+    // auto-populate: every slide not yet in the flow gets an item (appended,
+    // and sunk into its ordered slot by normalization), so a fresh deck is
+    // presentable right away and a replaced deck's new pages don't go missing.
+    // The version bump changes slide URLs, forcing browsers to refetch
+    // (file names are identical across a replace).
+    presentationStore.modify(pres.id) { p ->
+        val kept = p.items.filter { it !is SlideItem || it.slideIndex < numSlides }
+        val present = kept.filterIsInstance<SlideItem>().map { it.slideIndex }.toSet()
+        val missing = (0 until numSlides).filter { it !in present }
+            .map { SlideItem(id = generateId(), slideIndex = it) }
+        p.copy(numSlides = numSlides, slideLabels = slideLabels,
+            slidesVersion = p.slidesVersion + 1,
+            items = normalizeFlowItems(kept + missing))
+    }
+    return numSlides
+}
+
 fun presentationRoutes(routing: Routing) = routing.apply {
     // Create a new presentation for a room; responds with its id
     apiST(Api.presentationCreate) { rRef, payload ->
@@ -64,12 +159,16 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot manage presentations.")
             val pres = getPresentation(room) ?: notFound("No presentation for this room.")
 
+            // Cheap early refusal on the declared length, then a bounded read so a
+            // client lying about it still cannot make us buffer an oversized body.
+            val declared = call.request.contentLength() ?: 0L
+            if (declared > MAX_SLIDES_PDF_BYTES) badRequest(pdfTooLargeMessage)
             val multipart = call.receiveMultipart()
             var fileBytes: ByteArray? = null
 
             multipart.forEachPart { part ->
                 if (part is PartData.FileItem) {
-                    fileBytes = part.provider().toByteArray()
+                    fileBytes = part.provider().readBoundedPdf() ?: badRequest(pdfTooLargeMessage)
                 }
                 part.dispose()
             }
@@ -77,55 +176,47 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             val bytes = fileBytes ?: badRequest("No file uploaded.")
             if (bytes.isEmpty()) badRequest("Uploaded file is empty.")
 
-            // Render into a staging directory and swap it in only when complete:
-            // overwriting the live slides in place would let a concurrently
-            // fetched thumbnail observe a half-written PNG (and cache it broken).
-            val slideDir = File(presentationDir, "${pres.id}/slides")
-            val stagingDir = File(presentationDir, "${pres.id}/slides_staging")
-            stagingDir.deleteRecursively()
-            stagingDir.mkdirs()
-
-            // Save original PDF
-            File(presentationDir, "${pres.id}/orig.pdf").writeBytes(bytes)
-
-            // Convert PDF pages to PNG images and extract slide titles
-            var numSlides = 0
-            var slideLabels = emptyList<String>()
-            try {
-                val doc = Loader.loadPDF(bytes)
-                doc.use { pdf ->
-                    val renderer = PDFRenderer(pdf)
-                    numSlides = pdf.numberOfPages
-                    for (i in 0 until numSlides) {
-                        val image = renderer.renderImageWithDPI(i, 150f)
-                        val filename = (i + 1).toString().padStart(4, '0') + ".png"
-                        ImageIO.write(image, "PNG", File(stagingDir, filename))
-                    }
-
-                    // Heuristically extract slide titles from PDF text
-                    slideLabels = (0 until numSlides).map { i ->
-                        val title = extractSlideTitle(pdf, i)
-                        if (title != null) "Slide ${i + 1}: $title" else "Slide ${i + 1}"
-                    }
-                }
-            } catch (e: Exception) {
-                stagingDir.deleteRecursively()
-                badRequest("Failed to process PDF: ${e.message}")
-            }
-            slideDir.deleteRecursively()
-            if (!stagingDir.renameTo(slideDir)) badRequest("Failed to store slide images.")
-
-            // Update presentation entity. A re-upload may shrink the slide count;
-            // drop now-out-of-range slide items so stored flows stay valid. The
-            // version bump changes slide URLs, forcing browsers to refetch
-            // (file names are identical across a replace).
-            presentationStore.modify(pres.id) { p ->
-                p.copy(numSlides = numSlides, slideLabels = slideLabels,
-                    slidesVersion = p.slidesVersion + 1,
-                    items = p.items.filter { it !is SlideItem || it.slideIndex < numSlides })
-            }
-
+            val numSlides = installSlidesPdf(pres, bytes)
             call.respond(HttpStatusCode.OK, numSlides.toString())
+        }
+    }
+
+    // Import slides from a public Google Slides deck: Google serves any deck
+    // shared as "anyone with the link" as a PDF at .../export/pdf, which then
+    // goes through the same pipeline as an uploaded file.
+    apiST(Api.presentationImportUrl) { rRef, payload ->
+        call.withRoom(rRef) {
+            assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot manage presentations.")
+            val pres = getPresentation(room) ?: notFound("No presentation for this room.")
+
+            val url = payload.url.trim()
+            val idMatch = GOOGLE_SLIDES_ID_REGEX.find(url)
+                ?: badRequest("Not a valid Google Slides URL. Please paste a sharing link like: https://docs.google.com/presentation/d/...")
+            val exportUrl = "https://docs.google.com/presentation/d/${idMatch.groupValues[1]}/export/pdf"
+
+            val httpResponse = try {
+                externalFetchClient.get(exportUrl)
+            } catch (e: Exception) {
+                badRequest("Failed to fetch presentation: ${e.message}")
+            }
+            if (!httpResponse.status.isSuccess()) {
+                badRequest(
+                    "Could not fetch presentation (HTTP ${httpResponse.status.value}). " +
+                    "Make sure the presentation is publicly accessible via \"Anyone with the link\"."
+                )
+            }
+            if ((httpResponse.contentLength() ?: 0L) > MAX_SLIDES_PDF_BYTES) badRequest(pdfTooLargeMessage)
+            val bytes = httpResponse.bodyAsChannel().readBoundedPdf() ?: badRequest(pdfTooLargeMessage)
+            // A private deck does not fail: Google redirects to a sign-in page
+            // that comes back as 200 text/html. Only trust an actual PDF body.
+            if (!isPdf(bytes)) {
+                badRequest(
+                    "Google did not return a PDF for this link. " +
+                    "Make sure the presentation is publicly accessible via \"Anyone with the link\"."
+                )
+            }
+
+            installSlidesPdf(pres, bytes)
         }
     }
 

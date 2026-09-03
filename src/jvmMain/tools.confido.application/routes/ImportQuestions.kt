@@ -1,8 +1,6 @@
 package tools.confido.application.routes
 
 import tools.confido.api.Api
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsBytes
 import io.ktor.http.*
@@ -199,13 +197,6 @@ private fun extractGid(url: String): String? {
     return null
 }
 
-/** Lazy-initialized Ktor HTTP client for fetching external URLs. */
-private val fetchClient: HttpClient by lazy {
-    HttpClient(CIO) {
-        followRedirects = true
-    }
-}
-
 fun importQuestionRoutes(routing: Routing) = routing.apply {
 
     // Parse CSV endpoint: receives multipart file, returns parsed rows + header guess + suggested mappings
@@ -262,7 +253,7 @@ fun importQuestionRoutes(routing: Routing) = routing.apply {
 
             // Fetch TSV from Google Sheets
             val httpResponse = try {
-                fetchClient.get(exportUrl)
+                externalFetchClient.get(exportUrl)
             } catch (e: Exception) {
                 badRequest("Failed to fetch spreadsheet: ${e.message}")
             }

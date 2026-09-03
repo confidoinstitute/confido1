@@ -140,6 +140,8 @@ object Api {
     /** Responds with the created presentation's id. */
     val presentationCreate = ApiSpec(POST, roomPrefix / "presentation/create", serializer<CreatePresentation>(), serializer<String>())
     val presentationEdit = ApiSpec(POST, roomPrefix / "presentation/edit", serializer<EditPresentation>(), serializer<Unit>())
+    /** Fetch a public Google Slides deck as PDF and install it as the slides; responds with the slide count. */
+    val presentationImportUrl = ApiSpec(POST, roomPrefix / "presentation/import-url", serializer<ImportUrlRequest>(), serializer<Int>())
     val presentationDelete = ApiSpec(DELETE, roomPrefix / "presentation", serializer<Unit>(), serializer<Unit>())
     val presentationStart = ApiSpec(POST, roomPrefix / "presentation/start", serializer<Unit>(), serializer<Unit>())
     val presentationStop = ApiSpec(POST, roomPrefix / "presentation/stop", serializer<Unit>(), serializer<Unit>())

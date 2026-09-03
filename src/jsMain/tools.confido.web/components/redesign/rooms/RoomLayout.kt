@@ -242,6 +242,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                     dialogOpen = false
                     runCoroutine {
                         Client.call(Api.presentationCreate(room.ref), CreatePresentation())
+                        navigate("${room.urlPrefix}/presentation")
                     }
                 }
             }
@@ -484,7 +485,12 @@ val RoomLayout = FC<RoomLayoutProps> { props->
             // entities only — counts travel on room/<id>/questions/counts.
             val roomQuestionsWS = useSubscription(Topics.roomQuestions(room.ref))
             val questionMap = (roomQuestionsWS as? WSData)?.data ?: emptyMap()
-            val routes = useMemo(room.id, myUser, questionMap) {
+            // Keyed on the room object, not just its id: the route set depends on
+            // room fields (presentation, scoring, isGroup, membership-derived
+            // permissions). Keying on the id alone left the list stale when e.g. a
+            // presentation was created — the tab appeared, but its route did not,
+            // so the tab rendered empty until a reload.
+            val routes = useMemo(room, myUser, questionMap) {
                 buildList {
                     if (room.isGroup) {
                         // Group rooms land on their child-room list (the Questions slot)
