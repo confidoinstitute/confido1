@@ -51,26 +51,34 @@ class MigrationContext internal constructor(
  * Call [runPending] between `serverState.initialize()` and `serverState.load()`
  * to ensure documents are migrated before they are deserialized into Kotlin objects.
  *
- * Safety model — **copy, transform aside, verify, then promote**
- * (see PERSISTENCE_SYNC_REDESIGN.md §6):
+ * Safety model — **copy, transform aside, verify, then promote**, applied to the whole
+ * pending backlog as ONE batch (see PERSISTENCE_SYNC_REDESIGN.md §6):
  *
- * 1. Each declared collection is copied to a working copy `<name>_mig_<id>`; the
- *    migration transforms only the copies. **Live collections are untouched until
- *    the transform has completed and verified**, so no failure or crash before
- *    promotion can damage or roll back live data. Working copies are disposable:
- *    a leftover one (from a crash or a failed run, where it is deliberately kept
- *    for inspection) is dropped and rebuilt on the next attempt, so migrations do
+ * 1. Every collection any pending migration declares is copied once to a working copy
+ *    `<name>_mig_<batch>` (batch = id of the last pending migration); the migrations
+ *    then run in order, each transforming the shared copies — so a later migration sees
+ *    an earlier one's output exactly as it would on live data. **Live collections are
+ *    untouched until the whole batch has completed and verified**, so no failure or
+ *    crash before promotion can damage or roll back live data. Working copies are
+ *    disposable: a leftover one (from a crash or a failed run, where it is deliberately
+ *    kept for inspection) is dropped and rebuilt on the next attempt, so migrations do
  *    not need to be idempotent.
- * 2. **Verify pass**: each working copy is strictly decoded with the real entity
- *    serializers (see `serverState.collectionVerifiers()`) before promotion,
- *    catching a transform that completed but produced broken documents.
+ * 2. **Verify pass**, once, at the end: each touched working copy is strictly decoded
+ *    with the real entity serializers (see `serverState.collectionVerifiers()`) before
+ *    promotion. Only the batch's *final* state is verified: the current code can only
+ *    read the final state, and the intermediate states between migrations are not a
+ *    property of the current serializers (e.g. comments carry fully-qualified
+ *    discriminators until 004 shortens them — a per-migration verify pass used to reject
+ *    that mid-state). A failure anywhere in the batch promotes nothing: a half-applied
+ *    backlog is no more bootable than an unapplied one.
  * 3. **Promotion** copies each verified working copy over its live collection via
  *    `$out` (atomic per collection; preserves the live collection's indexes),
- *    bracketed by a two-phase ledger entry (`promoting` → `done`). After a crash
- *    mid-promotion, the next boot finishes promoting the remaining verified
- *    working copies instead of re-running the transform.
- * 4. Just before promotion, the pre-migration state of each live collection is
- *    saved to `<name>_pre_<id>` for **manual** rollback or forensics. No code path
+ *    bracketed by a two-phase ledger entry per migration (`promoting` → `done`, all
+ *    entries of the batch written together, tagged with the batch). After a crash
+ *    mid-promotion, the next boot finishes promoting the remaining verified working
+ *    copies instead of re-running the transform.
+ * 4. Just before promotion, the pre-migration state of each touched live collection is
+ *    saved to `<name>_pre_<batch>` for **manual** rollback or forensics. No code path
  *    ever reads these backups — in particular, a lost or damaged ledger can not
  *    cause an old backup to be silently restored; the worst case of a lost ledger
  *    entry is a re-transform of *current* data, gated by the verify pass.
@@ -95,6 +103,8 @@ object MigrationRunner {
         RoomGroupsEdtToCoreMigration,
     )
 
+    private fun workingName(collection: String, batch: String) = "${collection}_mig_$batch"
+
     /**
      * Check for and execute any migrations that haven't been applied yet.
      *
@@ -106,71 +116,105 @@ object MigrationRunner {
         val col = db.getCollection<Document>("_migrations")
         val ledger = col.find().toList()
         // Entries written before the two-phase scheme have no "phase" field; treat them as done.
-        val applied = ledger.filter { it.getString("phase") != PHASE_PROMOTING }.mapNotNull { it.getString("id") }.toSet()
-        val promoting = ledger.filter { it.getString("phase") == PHASE_PROMOTING }.mapNotNull { it.getString("id") }.toSet()
+        val applied = ledger.filter { it.getString("phase") != PHASE_PROMOTING }.mapNotNull { it.getString("id") }.toMutableSet()
+        val promoting = ledger.filter { it.getString("phase") == PHASE_PROMOTING }
 
-        for (migration in migrations) {
-            if (migration.id in applied) continue
-            val working = migration.collections.associateWith { "${it}_mig_${migration.id}" }
-
-            if (migration.id in promoting) {
-                // Crashed after verification, during promotion. The remaining working
-                // copies are verified-good; finish promoting them, do not re-transform.
-                println("Migration ${migration.id}: finishing interrupted promotion.")
-                promote(db, working)
-                markDone(col, migration.id)
-                println("Migration ${migration.id} completed.")
-                continue
-            }
-
-            println("Running migration: ${migration.id} — ${migration.description}")
-            val existing = db.listCollectionNames().toSet()
-            working.forEach { (orig, work) ->
-                if (work in existing) db.getCollection<Document>(work).drop() // stale earlier attempt
-                if (orig in existing) copyCollection(db, orig, work)
-            }
-
-            try {
-                migration.run(MigrationContext(db, migration.id, working))
-                working.forEach { (orig, work) ->
-                    verifiers[orig]?.let {
-                        println("  Verifying $orig...")
-                        it(work)
-                    }
-                }
-            } catch (e: Exception) {
-                println("Migration ${migration.id} FAILED: ${e.message}")
-                println("  Live collections are untouched. Working copies (${working.values.joinToString()}) kept for inspection.")
-                throw e
-            }
-
-            // Keep a manual-rollback backup of the pre-migration state, then promote.
-            working.keys.forEach { orig ->
-                if (orig in existing) copyCollection(db, orig, "${orig}_pre_${migration.id}")
-            }
-            col.insertOne(Document(mapOf(
-                "id" to migration.id,
-                "description" to migration.description,
-                "phase" to PHASE_PROMOTING,
-            )))
+        if (promoting.isNotEmpty()) {
+            // Crashed after verification, during promotion. The remaining working copies
+            // are verified-good; finish promoting them, do not re-transform. Entries from
+            // the earlier per-migration scheme carry no batch tag: their copies were
+            // named after the migration id itself.
+            val byId = migrations.associateBy { it.id }
+            val working = promoting.flatMap { entry ->
+                val id = entry.getString("id")
+                val batch = entry.getString("batch") ?: id
+                byId[id]?.collections.orEmpty().map { it to workingName(it, batch) }
+            }.toMap()
+            println("Migrations ${promoting.map { it.getString("id") }}: finishing interrupted promotion.")
             promote(db, working)
-            markDone(col, migration.id)
-            println("Migration ${migration.id} completed.")
+            promoting.forEach { entry ->
+                val id = entry.getString("id")
+                markDone(col, id)
+                applied.add(id)
+            }
+            println("Interrupted promotion completed.")
         }
+
+        val pending = migrations.filter { it.id !in applied }
+        if (pending.isNotEmpty()) runBatch(db, col, pending, verifiers)
 
         // Sweep working copies of applied migrations (left over e.g. when a run was
         // interrupted after its ledger entry was written). Only reached when no
         // migration failed, so copies kept for inspection are never swept.
         val names = db.listCollectionNames().toSet()
         migrations.forEach { m ->
-            m.collections.forEach { orig ->
-                val work = "${orig}_mig_${m.id}"
-                if (work in names) {
-                    println("Dropping stale migration working copy $work.")
-                    db.getCollection<Document>(work).drop()
-                }
+            names.filter { it.endsWith("_mig_${m.id}") }.forEach { work ->
+                println("Dropping stale migration working copy $work.")
+                db.getCollection<Document>(work).drop()
             }
         }
+    }
+
+    private suspend fun runBatch(
+        db: MongoDatabase,
+        col: MongoCollection<Document>,
+        pending: List<Migration>,
+        verifiers: Map<String, suspend (String) -> Unit>,
+    ) {
+        val batch = pending.last().id
+        val touched = pending.flatMap { it.collections }.distinct()
+        val working = touched.associateWith { workingName(it, batch) }
+        println("Running ${pending.size} pending migration(s) as one batch (${batch}); collections: ${touched.joinToString()}")
+
+        val existing = db.listCollectionNames().toSet()
+        working.forEach { (orig, work) ->
+            if (work in existing) db.getCollection<Document>(work).drop() // stale earlier attempt
+            if (orig in existing) copyCollection(db, orig, work)
+        }
+
+        try {
+            for (migration in pending) {
+                println("Running migration: ${migration.id} — ${migration.description}")
+                try {
+                    migration.run(MigrationContext(db, migration.id, working.filterKeys { it in migration.collections }))
+                } catch (e: Exception) {
+                    println("Migration ${migration.id} FAILED: ${e.message}")
+                    throw e
+                }
+            }
+            working.forEach { (orig, work) ->
+                verifiers[orig]?.let {
+                    println("  Verifying $orig...")
+                    try {
+                        it(work)
+                    } catch (e: Exception) {
+                        println("Verification of $orig after the batch FAILED: ${e.message}")
+                        throw e
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            println("Migration batch $batch FAILED — nothing was promoted.")
+            println("  Live collections are untouched. Working copies (${working.values.joinToString()}) kept for inspection.")
+            throw e
+        }
+
+        // Keep a manual-rollback backup of the pre-migration state, then promote the
+        // whole batch under one set of ledger entries.
+        working.keys.forEach { orig ->
+            if (orig in existing) copyCollection(db, orig, "${orig}_pre_$batch")
+        }
+        col.insertMany(pending.map { migration ->
+            Document(mapOf(
+                "id" to migration.id,
+                "description" to migration.description,
+                "phase" to PHASE_PROMOTING,
+                "batch" to batch,
+            ))
+        })
+        promote(db, working)
+        pending.forEach { markDone(col, it.id) }
+        println("Migration batch $batch completed (${pending.joinToString { it.id }}).")
     }
 
     /** Copy each existing working copy over its live collection, then drop it. */

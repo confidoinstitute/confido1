@@ -585,17 +585,30 @@ which alone prevents an unusable instance (migrations already run at boot before
 crash-midway is the only mechanical threat; per-document updates are atomic; data volume is
 thousands of documents, so "too expensive at scale" techniques are free):
 
-1. **Copy–transform–verify–promote envelope** in `MigrationRunner` *(implemented in P0)*:
-   migrations declare the collections they modify and receive *working copies*
-   (`<name>_mig_<id>`) via a `MigrationContext` — they cannot touch live collections at all
-   (undeclared access throws). The transform and the verify pass both run against the
-   copies; only then does a two-phase-ledgered promotion (`promoting` → `done`) `$out` each
-   verified copy over its live collection (atomic per collection, preserves live indexes).
-   Properties: **live data is never modified until the transform is verified**; working
-   copies are disposable (a leftover from a crash or failure is dropped and redone — on
-   failure it is deliberately kept for inspecting the bad transform); a crash mid-promotion
-   is completed on the next boot from the already-verified copies, so **migrations need not
-   be idempotent**.
+1. **Copy–transform–verify–promote envelope** in `MigrationRunner` *(implemented in P0;
+   batched 2026-09-14)*: the whole pending backlog runs as **one batch**. Migrations
+   declare the collections they modify and receive *working copies*
+   (`<name>_mig_<batch>`, batch = last pending id; one copy per collection, shared by every
+   migration in the batch so each sees its predecessor's output) via a `MigrationContext` —
+   they cannot touch live collections at all (undeclared access throws). The transforms
+   and then a single verify pass over the batch's final state run against the copies; only
+   then does a two-phase-ledgered promotion (`promoting` → `done`, one entry per migration,
+   all written together and tagged with the batch) `$out` each verified copy over its live
+   collection (atomic per collection, preserves live indexes).
+   Properties: **live data is never modified until the whole batch is verified**; a
+   failure anywhere promotes nothing (a half-applied backlog is no more bootable than an
+   unapplied one); working copies are disposable (a leftover from a crash or failure is
+   dropped and redone — on failure it is deliberately kept for inspecting the bad
+   transform); a crash mid-promotion is completed on the next boot from the
+   already-verified copies, so **migrations need not be idempotent**.
+   *(Why not per-migration verification, as P0 first did: the verify pass uses the
+   current serializers, which only define the final state — intermediate states between
+   migrations are whatever the code looked like when each was written. It passed for a
+   year only because the old codec ignored unknown discriminators; a stricter codec
+   rejected the FQN `___type` comments carry until 004. Mongo transactions were
+   considered again and rejected: 60s default lifetime, ~1k-document guidance, and no
+   `$out`/drop inside a transaction — the copy-aside batch gives the same
+   all-or-nothing up to promotion without those limits.)*
    *(History: an earlier P0 iteration used snapshot-then-restore-in-place, but a restore
    consumed automatically by the runner makes leftover snapshots authoritative — a lost or
    damaged ledger next to a stale snapshot would silently roll live data back in time. The
@@ -608,7 +621,7 @@ thousands of documents, so "too expensive at scale" techniques are free):
    real entity serializers (`serverState.collectionVerifiers()`) *before* promotion; failure
    aborts startup with live data untouched. This targets the actually-likelier failure: a
    transform that completes successfully but is subtly wrong. Additionally, the
-   pre-promotion state is kept as `<name>_pre_<id>` for **manual** rollback/forensics —
+   pre-promotion state is kept as `<name>_pre_<batch>` for **manual** rollback/forensics —
    written by the runner but never read by it.
 3. **Tolerant reader** for the component splits specifically: serializers accept both flat
    legacy and nested component shapes during the transition; "migration" = boot, load
