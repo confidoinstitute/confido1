@@ -382,6 +382,9 @@ fun Sync.releaseCommon() {
     from(tasks.named("jsBrowserDistribution")) { into("static") }
     from("static") { into("static") }
     from("config.example")
+    // Operational tooling that must match the migrations compiled into this release.
+    from("scripts/downgrade_v3.py") { into("tools") }
+    from("scripts/anonymize_db.py") { into("tools") }
 }
 
 val releaseJvm by tasks.registering(Sync::class) {
@@ -395,7 +398,9 @@ val releaseNative by tasks.registering(Sync::class) {
     description = "Assemble a self-contained native release tree in build/release/native"
     releaseCommon()
     destinationDir = file("build/release/native")
-    from(tasks.named("nativeCompile")) { include("confido-server") }
+    // PDFBox pulls in AWT, so native-image emits libawt & co. next to the binary;
+    // they must ship with it (see native-config/README.md).
+    from(tasks.named("nativeCompile")) { include("confido-server", "*.so") }
 }
 
 // Packed releases — currently unused (internal deployments run unpacked,

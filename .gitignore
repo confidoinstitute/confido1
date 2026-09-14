@@ -7,3 +7,4 @@ gradle
 .aider*
 .kotlin
 __pycache__/
+replicas/

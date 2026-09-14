@@ -61,6 +61,8 @@ val QuestionSticker = FC<QuestionStickerProps> {props ->
                 fontWeight = integer(600)
                 fontSize = 13.px
                 lineHeight = 36.px
+                // Never yield height to a long question body; the body is what gets clipped.
+                flexShrink = number(0.0)
                 overflow = Overflow.hidden
                 textOverflow = TextOverflow.ellipsis
                 whiteSpace = WhiteSpace.nowrap
