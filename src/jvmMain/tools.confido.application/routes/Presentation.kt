@@ -40,6 +40,25 @@ import tools.confido.state.ServerEntityLookup
 
 val presentationDir = File(System.getenv("CONFIDO_PRESENTATION_PATH") ?: "presentations").canonicalFile
 
+/**
+ * Stop a running presentation (with extension callbacks) and delete its entity. Stages
+ * into the ambient transaction, so room deletion can cascade through it atomically.
+ * Slide files are disk I/O and are cleaned up separately, after commit, by
+ * [deletePresentationFiles].
+ */
+suspend fun deletePresentationEntity(room: Room, pres: Presentation) {
+    if (serverState.setPresentationRunState(room.ref, null) != null) {
+        ServerExtension.forEach { it.onPresentationStopped(room) }
+    }
+    presentationStore.delete(pres.id)
+}
+
+/** Remove a deleted presentation's slide images from disk. */
+fun deletePresentationFiles(pres: Presentation) {
+    val presDir = File(presentationDir, pres.id)
+    if (presDir.exists()) presDir.deleteRecursively()
+}
+
 /** Resolve a room's presentation from the in-memory manager. */
 private suspend fun getPresentation(room: tools.confido.rooms.Room): Presentation? {
     val ref = room.presentation ?: return null
@@ -243,22 +262,14 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot manage presentations.")
             val pres = getPresentation(room) ?: notFound("No presentation for this room.")
 
-            // Stop run if active
-            if (serverState.setPresentationRunState(room.ref, null) != null) {
-                ServerExtension.forEach { it.onPresentationStopped(room) }
-            }
+            deletePresentationEntity(room, pres)
 
             // Remove reference from room
             tools.confido.store.roomStore.modify(room.ref) {
                 it.copy(presentation = null)
             }
 
-            // Delete entity
-            presentationStore.delete(pres.id)
-
-            // Delete files from disk
-            val presDir = File(presentationDir, pres.id)
-            if (presDir.exists()) presDir.deleteRecursively()
+            deletePresentationFiles(pres)
         }
     }
 

@@ -302,16 +302,22 @@ fun roomRoutes(routing: Routing) = routing.apply {
     apiST(Api.roomDelete) { rRef, _ ->
         call.withRoom(rRef) {
             assertPermission(RoomPermission.ROOM_OWNER, "You cannot delete this room.")
+            // Presentations point at their room; the room's own `presentation` ref may
+            // lag, so cascade by the back-reference (resident store, rare operation).
+            val presentations = tools.confido.store.presentationStore.asMap.values.filter { it.room eqid room }
             // transact (not legacy withTransaction) so the per-question cascade hooks
             // can stage into the ambient transaction
             transact {
                 room.questions.forEach { question ->
                     tools.confido.store.questionStore.delete(question)
                 }
+                presentations.forEach { deletePresentationEntity(room, it) }
                 // Room comments (and each question's comments and predictions) are deleted
                 // by the cascade hooks on the stores.
                 tools.confido.store.roomStore.delete(room.ref)
             }
+            // Disk cleanup strictly after the commit (no I/O inside the transaction).
+            presentations.forEach { deletePresentationFiles(it) }
         }
     }
     // Remove a room's member
