@@ -1,9 +1,11 @@
 package tools.confido.application.migrations
 
 import com.mongodb.client.model.Filters
+import com.mongodb.kotlin.client.coroutine.MongoCollection
+import com.mongodb.kotlin.client.coroutine.MongoDatabase
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.flow.toSet
 import org.bson.Document
-import org.litote.kmongo.coroutine.CoroutineCollection
-import org.litote.kmongo.coroutine.CoroutineDatabase
 
 /**
  * A database migration that transforms raw MongoDB documents.
@@ -34,11 +36,11 @@ interface Migration {
 
 /** Resolves declared collection names to this run's working copies. */
 class MigrationContext internal constructor(
-    private val db: CoroutineDatabase,
+    private val db: MongoDatabase,
     private val migrationId: String,
     private val workingNames: Map<String, String>,
 ) {
-    fun collection(name: String): CoroutineCollection<Document> =
+    fun collection(name: String): MongoCollection<Document> =
         db.getCollection(workingNames[name]
             ?: error("Migration $migrationId accessed collection '$name' not declared in its `collections`"))
 }
@@ -100,7 +102,7 @@ object MigrationRunner {
      *   with the name of the collection to actually read (the working copy) and
      *   should throw if any document fails to deserialize.
      */
-    suspend fun runPending(db: CoroutineDatabase, verifiers: Map<String, suspend (String) -> Unit> = emptyMap()) {
+    suspend fun runPending(db: MongoDatabase, verifiers: Map<String, suspend (String) -> Unit> = emptyMap()) {
         val col = db.getCollection<Document>("_migrations")
         val ledger = col.find().toList()
         // Entries written before the two-phase scheme have no "phase" field; treat them as done.
@@ -172,7 +174,7 @@ object MigrationRunner {
     }
 
     /** Copy each existing working copy over its live collection, then drop it. */
-    private suspend fun promote(db: CoroutineDatabase, working: Map<String, String>) {
+    private suspend fun promote(db: MongoDatabase, working: Map<String, String>) {
         val present = db.listCollectionNames().toSet()
         working.forEach { (orig, work) ->
             if (work in present) {
@@ -182,7 +184,7 @@ object MigrationRunner {
         }
     }
 
-    private suspend fun markDone(col: CoroutineCollection<Document>, id: String) {
+    private suspend fun markDone(col: MongoCollection<Document>, id: String) {
         col.updateOne(
             Filters.eq("id", id),
             Document("\$set", Document(mapOf("phase" to PHASE_DONE, "executedAt" to java.util.Date()))),
@@ -190,9 +192,9 @@ object MigrationRunner {
     }
 
     /** Replace the contents of collection [to] with a copy of collection [from]. */
-    private suspend fun copyCollection(db: CoroutineDatabase, from: String, to: String) {
+    private suspend fun copyCollection(db: MongoDatabase, from: String, to: String) {
         db.getCollection<Document>(from).aggregate<Document>(
             listOf(Document("\$match", Document()), Document("\$out", to))
-        ).toList()
+        ).toCollection()
     }
 }

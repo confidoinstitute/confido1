@@ -5,7 +5,7 @@ import kotlin.text.set
 
 val ktorVersion = "3.3.1"
 val serializationVersion = "1.9.0"
-val kmongoVersion = "4.7.2"
+val mongoDriverVersion = "5.11.1"
 val kotlinWrappersVersion = "2025.10.8"
 val ktomlVersion = "0.7.1"
 
@@ -151,8 +151,8 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.8.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
                 implementation("org.slf4j:slf4j-simple:2.0.4")
-                implementation("org.litote.kmongo:kmongo-coroutine:$kmongoVersion")
-                implementation("org.litote.kmongo:kmongo-coroutine-serialization:$kmongoVersion")
+                implementation("org.mongodb:mongodb-driver-kotlin-coroutine:$mongoDriverVersion")
+                implementation("org.mongodb:bson-kotlinx:$mongoDriverVersion")
                 implementation("com.password4j:password4j:1.6.1")
                 implementation("org.simplejavamail:simple-java-mail:7.5.0")
                 implementation("com.github.jnr:jnr-unixsocket:0.38.19") // for mongodb unix socket connection (faster)
@@ -244,7 +244,7 @@ val printJvmRuntimeClasspath by tasks.registering {
 // has BINARY retention, so this needs a bytecode scanner, not runtime reflection)
 // and registers each class plus its Companion / $serializer nested classes.
 // These are exactly the members kotlinx.serialization's serializer(KType) lookup
-// (used by Ktor content negotiation and KMongo codecs) accesses reflectively.
+// (used by Ktor content negotiation and the Mongo driver's kotlinx codec) accesses reflectively.
 // This makes the config independent of which endpoints the tracing agent happened
 // to exercise; the agent-generated config in native-config/ then only needs to
 // cover non-serialization reflection (Ktor internals, JNI, resources, ...).

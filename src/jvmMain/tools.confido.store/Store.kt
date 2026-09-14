@@ -1,13 +1,13 @@
 package tools.confido.store
 
 import com.mongodb.client.model.ReplaceOptions
-import com.mongodb.reactivestreams.client.ClientSession
+import com.mongodb.kotlin.client.coroutine.ClientSession
+import com.mongodb.kotlin.client.coroutine.MongoCollection
 import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.Clock
-import org.litote.kmongo.coroutine.CoroutineCollection
 import tools.confido.refs.Entity
 import tools.confido.refs.HasExpiration
 import tools.confido.refs.HasId
@@ -73,7 +73,7 @@ interface Archive<E : HasId, P> {
  */
 interface ManagedStore {
     /** Typed collections owned by this store, for index creation and migration verification. */
-    val mongoCollections: List<CoroutineCollection<*>>
+    val mongoCollections: List<MongoCollection<*>>
     /** Create indexes etc. Runs before migrations. */
     suspend fun initialize() {}
     /** Load resident state / boot aggregates. Runs after migrations. */
@@ -95,7 +95,7 @@ class DuplicateIdException : Exception()
  * the same change listeners that maintain indexes live), write-through staged mutations.
  */
 open class MongoStore<E : Entity>(
-    internal val coll: CoroutineCollection<E>,
+    internal val coll: MongoCollection<E>,
     private val withId: (E, String) -> E,
 ) : ChangeSource<E>(), Store<E>, ManagedStore {
     private val _state = MutableStateFlow<PersistentMap<String, E>>(persistentMapOf())
@@ -115,7 +115,7 @@ open class MongoStore<E : Entity>(
     protected fun applyBeforeSave(old: E?, new: E): E = beforeSaveHooks.fold(new) { acc, cb -> cb(old, acc) }
 
     override suspend fun load() {
-        coll.find().toFlow().collect { e ->
+        coll.find().collect { e ->
             _state.value = _state.value.put(e.id, e)
             emitChange(Change.Added(e)) // boot replays through the same folds as live changes
         }
@@ -152,11 +152,12 @@ open class MongoStore<E : Entity>(
                 // a bare replace into a silently lost write; upsert self-heals both.
                 cur != null -> {
                     val opts = ReplaceOptions().upsert(true)
-                    if (sess == null) coll.replaceOneById(cur.id, cur, opts)
-                    else coll.replaceOneById(sess, cur.id, cur, opts)
+                    if (sess == null) coll.replaceOne(idFilter(cur.id), cur, opts)
+                    else coll.replaceOne(sess, idFilter(cur.id), cur, opts)
                 }
                 committedOld != null ->
-                    if (sess == null) coll.deleteOneById(committedOld.id) else coll.deleteOneById(sess, committedOld.id)
+                    if (sess == null) coll.deleteOne(idFilter(committedOld.id))
+                    else coll.deleteOne(sess, idFilter(committedOld.id))
                 else -> {} // inserted and deleted within one transaction: net nothing
             }
         }
@@ -247,7 +248,7 @@ interface ExpiringStore {
 }
 
 open class ExpiringMongoStore<E>(
-    coll: CoroutineCollection<E>,
+    coll: MongoCollection<E>,
     withId: (E, String) -> E,
     private val tolerance: Duration = 0.seconds,
 ) : MongoStore<E>(coll, withId), ExpiringStore where E : Entity, E : HasExpiration {

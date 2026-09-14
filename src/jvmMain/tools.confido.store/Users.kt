@@ -1,13 +1,12 @@
 package tools.confido.store
 
+import kotlinx.coroutines.flow.toList
 import com.mongodb.MongoCommandException
 import com.mongodb.MongoException
 import com.mongodb.client.model.Collation
 import com.mongodb.client.model.CollationStrength
 import com.mongodb.client.model.IndexOptions
 import org.bson.Document
-import org.litote.kmongo.*
-import org.litote.kmongo.coroutine.*
 import tools.confido.state.serverState
 import tools.confido.users.User
 
@@ -19,7 +18,9 @@ object userStore : MongoStore<User>(
     val byEmail = UniqueIndex(this) { it.email?.lowercase() }
 
     override suspend fun initialize() {
-        coll.ensureIndex(User::email)
+        // No plain email index next to the unique one: both would be auto-named `email_1`,
+        // so creating them in turn just dropped and recreated the index every boot. The
+        // unique partial index below serves email lookups as well.
         // Bugfix: originally we created a unique index on email without a null filter.
         // This prevented multiple user entries with null email. And also it had incorrect
         // collation so it wasn't case-insensitive.
@@ -34,7 +35,8 @@ object userStore : MongoStore<User>(
             }
             ?.let {
                 try {
-                    coll.dropIndex(it)
+                    // Drop by name: the index-info document is not a key spec.
+                    coll.dropIndex(it.getString("name"))
                     println("Dropped old email index without partial filter: $it")
                 } catch (e: MongoCommandException) {
                     if (e.errorCode != 27) { // 27 is "index not found"
@@ -43,13 +45,17 @@ object userStore : MongoStore<User>(
                 }
             }
         try {
-            // Unique constraint on emails, case insensitive, ignores nulls.
+            // Unique constraint on emails, case insensitive, ignores nulls. The collation
+            // must be a real locale: "simple" means binary comparison and the server
+            // silently ignores the strength (so the index used to be case-sensitive).
+            // Strength SECONDARY = case-insensitive, diacritic-sensitive, matching the
+            // lowercase-keyed in-memory byEmail index.
             coll.ensureUniqueIndex(
                 User::email,
                 indexOptions = IndexOptions()
                     .collation(
                         Collation.builder()
-                            .locale("simple")
+                            .locale("en")
                             .collationStrength(CollationStrength.SECONDARY)
                             .build()
                     )
@@ -58,7 +64,7 @@ object userStore : MongoStore<User>(
                     )
             )
         } catch (e: MongoException) {
-            println("Creating unique index failed, there are probably duplicate emails already")
+            println("Creating the unique email index failed — there are probably emails differing only by case: ${e.message}")
         }
     }
 }

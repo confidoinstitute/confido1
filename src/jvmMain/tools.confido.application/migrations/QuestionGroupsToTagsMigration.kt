@@ -1,5 +1,6 @@
 package tools.confido.application.migrations
 
+import kotlinx.coroutines.flow.toList
 import com.mongodb.client.model.Filters
 import org.bson.Document
 

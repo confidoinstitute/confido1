@@ -1,16 +1,20 @@
 package tools.confido.store
 
+import com.mongodb.client.model.Accumulators
+import com.mongodb.client.model.Aggregates
 import com.mongodb.client.model.Filters.and
-import com.mongodb.reactivestreams.client.ClientSession
+import com.mongodb.client.model.ReplaceOptions
+import com.mongodb.kotlin.client.coroutine.ClientSession
+import com.mongodb.kotlin.client.coroutine.MongoCollection
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.plus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.Instant
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import org.litote.kmongo.*
-import org.litote.kmongo.coroutine.CoroutineCollection
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.refs.Ref
@@ -45,7 +49,7 @@ import tools.confido.rooms.AttributionLevel
 
 /** "Latest prediction per (question, user)" — materialized view of [userPredictionLog]. */
 object latestPredictions : ChangeSource<Prediction>() {
-    internal val coll: CoroutineCollection<Prediction> = serverState.database.getCollection("userPred")
+    internal val coll: MongoCollection<Prediction> = serverState.database.getCollection("userPred")
 
     private val _state =
         MutableStateFlow<PersistentMap<Ref<Question>, PersistentMap<Ref<User>, Prediction>>>(persistentMapOf())
@@ -65,7 +69,7 @@ object latestPredictions : ChangeSource<Prediction>() {
     }
 
     internal suspend fun load() {
-        coll.find().toFlow().collect { pred ->
+        coll.find().collect { pred ->
             val user = pred.user ?: return@collect
             byQuestion = byQuestion.put(pred.question,
                 (byQuestion[pred.question] ?: persistentMapOf()).put(user, pred))
@@ -77,7 +81,7 @@ object latestPredictions : ChangeSource<Prediction>() {
     /** Deterministic rebuild procedure required of a materialized view: refold the log. */
     suspend fun rebuildFromLog() {
         byQuestion = persistentMapOf()
-        userPredictionLog.coll.find().toFlow().collect { pred ->
+        userPredictionLog.coll.find().collect { pred ->
             val user = pred.user ?: return@collect
             val cur = byQuestion[pred.question]?.get(user)
             if (cur == null || pred.ts >= cur.ts)
@@ -103,7 +107,7 @@ object latestPredictions : ChangeSource<Prediction>() {
 
 /** The user prediction event log (`userPredHist`), ordered by `ts` within (question, user). */
 object userPredictionLog {
-    internal val coll: CoroutineCollection<Prediction> = serverState.database.getCollection("userPredHist")
+    internal val coll: MongoCollection<Prediction> = serverState.database.getCollection("userPredHist")
 
     internal suspend fun initialize() {
         coll.ensureIndex(Prediction::question, Prediction::user, Prediction::ts)
@@ -113,27 +117,27 @@ object userPredictionLog {
     /** All entries for (question, user), ascending by ts. */
     fun query(question: Ref<Question>, user: Ref<User>) =
         coll.find(and(Prediction::question eq question, Prediction::user eq user))
-            .sort(ascending(Prediction::ts)).toFlow()
+            .sort(ascending(Prediction::ts))
 
     /** Newest entry with `ts <= ts`, or the head value when [ts] is null ("now"). */
     suspend fun at(question: Ref<Question>, user: Ref<User>, ts: Instant?): Prediction? =
         if (ts == null) latestPredictions.get(question, user)
         else coll.find(and(Prediction::question eq question, Prediction::user eq user,
                 Prediction::ts lte ts.epochSeconds.toInt()))
-            .sort(descending(Prediction::ts)).first()
+            .sort(descending(Prediction::ts)).firstOrNull()
 
     /** The ts at which the question first had [n] distinct predictors (the n-th
      *  smallest per-user first-entry ts), or null if it never reached [n]. */
     suspend fun nthDistinctPredictorTs(question: Ref<Question>, n: Int): Int? {
         @Serializable
-        data class FirstTs(val ts: Int)
+        data class FirstTs(@SerialName("_id") val user: String?, val ts: Int)
         return coll.aggregate<FirstTs>(listOf(
-            match(Prediction::question eq question),
-            group(Prediction::user, FirstTs::ts.min(Prediction::ts)),
-            sort(ascending(FirstTs::ts)),
-            skip(n - 1),
-            limit(1),
-        )).first()?.ts
+            Aggregates.match(Prediction::question eq question),
+            Aggregates.group("$" + Prediction::user.field, Accumulators.min(FirstTs::ts.field, "$" + Prediction::ts.field)),
+            Aggregates.sort(ascending(FirstTs::ts)),
+            Aggregates.skip(n - 1),
+            Aggregates.limit(1),
+        )).firstOrNull()?.ts
     }
 }
 
@@ -158,7 +162,7 @@ suspend fun Question.aggregateHistoryFloorTs(): Int =
 
 /** The group prediction event log (`groupPredHist`); entries always have `user == null`. */
 object groupPredictionLog {
-    internal val coll: CoroutineCollection<Prediction> = serverState.database.getCollection("groupPredHist")
+    internal val coll: MongoCollection<Prediction> = serverState.database.getCollection("groupPredHist")
 
     internal suspend fun initialize() {
         coll.ensureIndex(Prediction::question, Prediction::ts)
@@ -166,14 +170,14 @@ object groupPredictionLog {
 
     /** All entries for a question, ascending by ts. */
     fun query(question: Ref<Question>) =
-        coll.find(Prediction::question eq question).sort(ascending(Prediction::ts)).toFlow()
+        coll.find(Prediction::question eq question).sort(ascending(Prediction::ts))
 
     /** Newest entry with `ts <= ts`, or the current group prediction when [ts] is null. */
     suspend fun at(question: Ref<Question>, ts: Instant?): Prediction? =
         if (ts == null) predictionData.groupPred[question]
         else coll.find(and(Prediction::question eq question,
                 Prediction::ts lte ts.epochSeconds.toInt()))
-            .sort(descending(Prediction::ts)).first()
+            .sort(descending(Prediction::ts)).firstOrNull()
 }
 
 /**
@@ -222,10 +226,10 @@ object predictionData : ManagedStore {
         latestPredictions.load()
         latestPredictions.asMap.keys.forEach { recomputeGroup(it) }
         @Serializable
-        data class Result(val question: Ref<Question>, val cnt: Int)
+        data class Result(@SerialName("_id") val question: Ref<Question>, val cnt: Int)
         userPredictionLog.coll.aggregate<Result>(
-            listOf(group(Prediction::question, Result::question first Prediction::question, Result::cnt.sum(1)))
-        ).toFlow().collect { predictionCount.set(it.question, it.cnt) }
+            listOf(Aggregates.group("$" + Prediction::question.field, Accumulators.sum(Result::cnt.field, 1)))
+        ).collect { predictionCount.set(it.question, it.cnt) }
     }
 }
 
@@ -267,7 +271,7 @@ private class HeadPutOp(val pred: Prediction) : StagedWrite {
     override suspend fun flush(sess: ClientSession?) {
         val stored = pred.copy(id = "${pred.question.id}:${pred.user!!.id}")
         val filter = and(Prediction::question eq pred.question, Prediction::user eq pred.user)
-        val options = com.mongodb.client.model.ReplaceOptions().upsert(true)
+        val options = ReplaceOptions().upsert(true)
         if (sess == null) latestPredictions.coll.replaceOne(filter, stored, options)
         else latestPredictions.coll.replaceOne(sess, filter, stored, options)
     }
@@ -285,16 +289,16 @@ private class AppendOp(val pred: Prediction, val scoreTime: Instant?, val groupP
         // coalescing decision is defined against.
         val log = userPredictionLog.coll
         val myLast = log.find(and(Prediction::question eq pred.question, Prediction::user eq pred.user))
-            .sort(descending(Prediction::ts)).first()
+            .sort(descending(Prediction::ts)).firstOrNull()
 
         var lastOther: Prediction? = null
         if (myLast != null && pred.ts - myLast.ts < appConfig.predictionCoalesceInterval &&
             !(scoreTime != null && myLast.ts <= scoreTime.epochSeconds && pred.ts > scoreTime.epochSeconds)
         ) {
             coalesced = true
-            if (sess == null) log.deleteOneById(myLast.id) else log.deleteOneById(sess, myLast.id)
+            if (sess == null) log.deleteOne(idFilter(myLast.id)) else log.deleteOne(sess, idFilter(myLast.id))
             lastOther = log.find(Prediction::question eq pred.question)
-                .sort(descending(Prediction::ts)).first()
+                .sort(descending(Prediction::ts)).firstOrNull()
         }
         val entry = pred.copy(id = generateId())
         if (sess == null) log.insertOne(entry) else log.insertOne(sess, entry)
@@ -305,10 +309,10 @@ private class AppendOp(val pred: Prediction, val scoreTime: Instant?, val groupP
                 // If the newest group log entry was caused by the entry we just replaced,
                 // replace it as well.
                 val lastGroup = groupLog.find(Prediction::question eq pred.question)
-                    .sort(descending(Prediction::ts)).first()
+                    .sort(descending(Prediction::ts)).firstOrNull()
                 if (lastGroup != null && lastGroup.ts >= lastOther.ts) {
-                    if (sess == null) groupLog.deleteOneById(lastGroup.id)
-                    else groupLog.deleteOneById(sess, lastGroup.id)
+                    if (sess == null) groupLog.deleteOne(idFilter(lastGroup.id))
+                    else groupLog.deleteOne(sess, idFilter(lastGroup.id))
                 }
             }
             val groupEntry = gp.copy(id = generateId())

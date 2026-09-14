@@ -667,10 +667,10 @@ working untouched mid-transition.
   plus `loginLinkStore` as the resident-`Store`/`UniqueIndex` pilot. Implementation
   decisions that amend earlier sketches:
   - **No separate `Backend` interface yet** (deliberate descope): store implementations in
-    `tools.confido.store` use KMongo directly, but all Mongo touchpoints are confined to
+    `tools.confido.store` use the Mongo driver directly, but all Mongo touchpoints are confined to
     that package, so the §3.3 backend split can be introduced when SQLite actually lands.
     Data formats are byte-identical to the old managers' (verified against live data —
-    including the `___type` discriminator KMongo emits for sealed classes like Comment).
+    including the `___type` discriminator emitted for sealed classes like Comment — kept when the codec moved from KMongo to the official driver).
   - **Change delivery is synchronous listener dispatch**, not a Flow: the server is
     single-threaded and route handlers read derived views immediately after a mutation; an
     asynchronously collected fold would be one step stale there. The async

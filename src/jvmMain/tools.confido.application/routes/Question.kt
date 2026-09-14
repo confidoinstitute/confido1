@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import org.litote.kmongo.eq
 import tools.confido.payloads.requests.*
 import tools.confido.payloads.responses.*
 import tools.confido.rooms.AttributionLevel

@@ -1,6 +1,6 @@
 package tools.confido.store
 
-import com.mongodb.reactivestreams.client.ClientSession
+import com.mongodb.kotlin.client.coroutine.ClientSession
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 

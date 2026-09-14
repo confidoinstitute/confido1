@@ -1,9 +1,8 @@
 package tools.confido.store
 
-import com.mongodb.reactivestreams.client.ClientSession
+import com.mongodb.kotlin.client.coroutine.ClientSession
 import kotlinx.coroutines.asContextElement
 import kotlinx.coroutines.withContext
-import org.litote.kmongo.coroutine.commitTransactionAndAwait
 import org.slf4j.LoggerFactory
 import tools.confido.state.serverState
 
@@ -107,7 +106,7 @@ suspend fun <R> transact(block: suspend () -> R): R {
                 serverState.client.startSession().use { sess ->
                     sess.startTransaction()
                     dbOps.forEach { it.flush(sess) }
-                    sess.commitTransactionAndAwait()
+                    sess.commitTransaction()
                 }
             }
             r

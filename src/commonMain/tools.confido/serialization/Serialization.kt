@@ -6,6 +6,8 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.plus
 import kotlinx.serialization.modules.serializersModuleOf
@@ -33,6 +35,26 @@ open class CoercingNullSerializer<T : Any>(
     override val descriptor: SerialDescriptor = delegate.descriptor
 
     override fun deserialize(decoder: Decoder): T? {
+        // Consume the whole value as a tree first and decode from that: a decode that
+        // fails halfway through a *streaming* decoder leaves it positioned mid-value, and
+        // everything after it (the rest of the document, the next document in a Mongo
+        // cursor batch) is then misread. Both the JSON decoder and the Mongo driver's
+        // BSON decoder expose the tree via the JsonDecoder bridge; the driver's `json`
+        // mirrors its BSON configuration (discriminator, module), we only relax it to
+        // match the streaming decoder's tolerance of unknown keys.
+        if (decoder is JsonDecoder) {
+            val element = decoder.decodeJsonElement()
+            if (element is JsonNull) return null
+            val json = Json(from = decoder.json) {
+                ignoreUnknownKeys = true
+                allowSpecialFloatingPointValues = true
+            }
+            return try {
+                json.decodeFromJsonElement(delegate, element)
+            } catch (e: Exception) {
+                null
+            }
+        }
         return try {
             delegate.deserialize(decoder)
         } catch (e: Exception) {

@@ -1,10 +1,14 @@
 package tools.confido.store
 
-import com.mongodb.reactivestreams.client.ClientSession
-import kotlinx.serialization.Serializable
-import org.litote.kmongo.*
-import org.litote.kmongo.coroutine.CoroutineCollection
+import com.mongodb.client.model.Accumulators
+import com.mongodb.client.model.Aggregates
+import com.mongodb.client.model.Updates
+import com.mongodb.kotlin.client.coroutine.ClientSession
+import com.mongodb.kotlin.client.coroutine.MongoCollection
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.toList
 import tools.confido.rooms.Room
+import tools.confido.question.Comment
 import tools.confido.question.Question
 import tools.confido.question.QuestionComment
 import tools.confido.question.RoomComment
@@ -14,6 +18,7 @@ import tools.confido.refs.ref
 import tools.confido.state.serverState
 import tools.confido.utils.generateId
 import tools.confido.users.User
+import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 
 /**
@@ -26,8 +31,13 @@ import kotlin.reflect.KProperty1
  * `commentCount` per question. (The former `commentAuthors` folds died with the
  * censor's referencedUsers — comment authors ship as embedded presentations, §5.3.)
  */
-open class MongoCommentArchive<E : tools.confido.question.Comment, P : Ref<*>>(
-    internal val coll: CoroutineCollection<E>,
+open class MongoCommentArchive<E : Comment, P : Ref<*>>(
+    /** Typed by the sealed parent on purpose: the stored format carries a top-level
+     *  `___type` discriminator (kept from the KMongo era, see ShortSerialNamesMigration),
+     *  which the codec only writes when encoding through the polymorphic serializer.
+     *  Each archive holds one subtype; [entityClass] checks the cast on read. */
+    internal val coll: MongoCollection<Comment>,
+    private val entityClass: KClass<E>,
     private val partitionProp: KProperty1<E, P>,
     private val userProp: KProperty1<E, Ref<User>>,
     private val withId: (E, String) -> E,
@@ -42,14 +52,20 @@ open class MongoCommentArchive<E : tools.confido.question.Comment, P : Ref<*>>(
         override suspend fun fetch(partition: P) = all(partition)
     }
 
+    @Suppress("UNCHECKED_CAST")
+    private fun typed(c: Comment): E {
+        check(entityClass.isInstance(c)) { "${coll.namespace.collectionName}: unexpected ${c::class.simpleName} ${c.id}" }
+        return c as E
+    }
+
     override suspend fun all(partition: P): List<E> =
-        coll.find(partitionProp eq partition).toList()
+        coll.find(partitionProp eq partition).toList().map(::typed)
 
     override suspend fun get(partition: P, id: String): E? =
-        coll.findOneById(id)?.takeIf { partitionProp.get(it) == partition }
+        coll.find(idFilter(id)).firstOrNull()?.let(::typed)?.takeIf { partitionProp.get(it) == partition }
 
     suspend fun byAuthor(user: Ref<User>): List<E> =
-        coll.find(userProp eq user).toList()
+        coll.find(userProp eq user).toList().map(::typed)
 
     /** Insert a new comment; assigns an id if empty. Returns the stored entity. */
     suspend fun insert(entity: E): E {
@@ -72,14 +88,14 @@ open class MongoCommentArchive<E : tools.confido.question.Comment, P : Ref<*>>(
     suspend fun update(old: E, new: E) {
         check(old.id == new.id)
         withTxnScope { it.stage(Op(new) { sess ->
-            if (sess == null) coll.replaceOneById(new.id, new)
-            else coll.replaceOneById(sess, new.id, new)
+            if (sess == null) coll.replaceOne(idFilter(new.id), new)
+            else coll.replaceOne(sess, idFilter(new.id), new)
         }.emitting { Change.Updated(old, new) }) }
     }
 
     suspend fun delete(entity: E) {
         withTxnScope { it.stage(Op(entity) { sess ->
-            if (sess == null) coll.deleteOneById(entity.id) else coll.deleteOneById(sess, entity.id)
+            if (sess == null) coll.deleteOne(idFilter(entity.id)) else coll.deleteOne(sess, idFilter(entity.id))
         }.emitting { Change.Removed(entity) }) }
     }
 
@@ -103,8 +119,8 @@ open class MongoCommentArchive<E : tools.confido.question.Comment, P : Ref<*>>(
         withTxnScope { scope ->
             scope.stage(object : StagedWrite {
                 override suspend fun flush(sess: ClientSession?) {
-                    val filter = tools.confido.question.Comment::likes contains user
-                    val update = pull(tools.confido.question.Comment::likes, user)
+                    val filter = Comment::likes contains user
+                    val update = Updates.pull(Comment::likes.field, user.id)
                     if (sess == null) coll.updateMany(filter, update)
                     else coll.updateMany(sess, filter, update)
                 }
@@ -127,7 +143,7 @@ open class MongoCommentArchive<E : tools.confido.question.Comment, P : Ref<*>>(
 }
 
 object questionCommentArchive : MongoCommentArchive<QuestionComment, Ref<Question>>(
-    serverState.database.getCollection("questionComments"),
+    serverState.database.getCollection<Comment>("questionComments"), QuestionComment::class,
     QuestionComment::question, QuestionComment::user,
     { e, id -> e.copy(id = id) },
     { e, likes -> e.copy(likes = likes) },
@@ -137,7 +153,7 @@ object questionCommentArchive : MongoCommentArchive<QuestionComment, Ref<Questio
 }
 
 object roomCommentArchive : MongoCommentArchive<RoomComment, Ref<Room>>(
-    serverState.database.getCollection("roomComments"),
+    serverState.database.getCollection<Comment>("roomComments"), RoomComment::class,
     RoomComment::room, RoomComment::user,
     { e, id -> e.copy(id = id) },
     { e, likes -> e.copy(likes = likes) },
@@ -147,6 +163,8 @@ object roomCommentArchive : MongoCommentArchive<RoomComment, Ref<Room>>(
 }
 
 object commentData : ManagedStore {
+    // Verified through the sealed parent, like the archives read: the migration verify
+    // pass runs on the batch's final state only, so the top-level `___type` is checked too.
     override val mongoCollections get() = listOf(questionCommentArchive.coll, roomCommentArchive.coll)
 
     val commentCount = CountView<Ref<Question>>()
@@ -172,9 +190,8 @@ object commentData : ManagedStore {
         // Boot = one per-question count aggregate instead of loading every comment
         // into memory. Raw BSON: refs are stored as plain string ids.
         questionCommentArchive.coll.aggregate<org.bson.Document>(listOf(
-            org.bson.Document("\$group", org.bson.Document("_id", "\$question")
-                .append("cnt", org.bson.Document("\$sum", 1)))
-        )).toFlow().collect { doc ->
+            Aggregates.group("$" + QuestionComment::question.field, Accumulators.sum("cnt", 1))
+        )).collect { doc ->
             val q = doc.getString("_id") ?: return@collect
             commentCount.increment(Ref(q), doc.getInteger("cnt"))
         }

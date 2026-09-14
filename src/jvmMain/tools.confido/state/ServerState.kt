@@ -3,14 +3,8 @@
 package tools.confido.state
 
 import com.mongodb.ConnectionString
-import com.mongodb.MongoCommandException
-import com.mongodb.MongoException
-import com.mongodb.client.model.Collation
-import com.mongodb.client.model.CollationStrength
-import com.mongodb.client.model.Filters.and
-import com.mongodb.client.model.IndexOptions
-import com.mongodb.client.model.ReplaceOptions
-import com.mongodb.reactivestreams.client.ClientSession
+import com.mongodb.MongoClientSettings
+import com.mongodb.kotlin.client.coroutine.MongoClient
 import io.ktor.util.*
 import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.persistentMapOf
@@ -23,10 +17,9 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.bson.Document
-import org.litote.kmongo.*
-import org.litote.kmongo.coroutine.*
-import org.litote.kmongo.reactivestreams.KMongo
+import org.bson.codecs.configuration.CodecRegistries
+import org.bson.codecs.kotlinx.BsonConfiguration
+import org.bson.codecs.kotlinx.KotlinSerializerCodecProvider
 import tools.confido.rooms.AttributionLevel
 import tools.confido.rooms.Room
 import tools.confido.distributions.*
@@ -34,6 +27,7 @@ import tools.confido.extensions.ServerExtension
 import tools.confido.question.*
 import tools.confido.refs.*
 import tools.confido.serialization.confidoJSON
+import tools.confido.serialization.confidoSM
 import tools.confido.spaces.*
 import tools.confido.store.Stores
 import tools.confido.store.TransientCell
@@ -44,11 +38,7 @@ import tools.confido.store.questionStore
 import tools.confido.store.roomStore
 import tools.confido.store.userStore
 import tools.confido.utils.*
-import tools.confido.users.EmailVerificationLink
-import tools.confido.users.LoginLink
-import tools.confido.users.PasswordResetLink
 import tools.confido.users.User
-import java.lang.RuntimeException
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
@@ -132,7 +122,28 @@ object serverState {
     // Now, for simplicity, serialize all mutations
     val mutationMutex = Mutex()
 
-    val client = KMongo.createClient(ConnectionString(System.getenv("CONFIDO_MONGODB_URL") ?: "mongodb://localhost/?replicaSet=rs01")).coroutine
+    /**
+     * Entity (de)serialization uses the kotlinx-serialization codec of the official
+     * driver, configured to produce the exact document shape the previous KMongo/kbson
+     * codec did, so existing data reads unchanged: `___type` discriminator, defaults
+     * and nulls written out explicitly. Unknown keys are skipped (as before), so a
+     * stale field only dies when a migration removes it. `confidoSM` supplies the
+     * polymorphic modules (distributions, presenter views, flow actions).
+     */
+    private val bsonConfiguration = BsonConfiguration(
+        encodeDefaults = true,
+        explicitNulls = true,
+        classDiscriminator = "___type",
+    )
+    val client = MongoClient.create(
+        MongoClientSettings.builder()
+            .applyConnectionString(ConnectionString(System.getenv("CONFIDO_MONGODB_URL") ?: "mongodb://localhost/?replicaSet=rs01"))
+            .codecRegistry(CodecRegistries.fromRegistries(
+                CodecRegistries.fromProviders(KotlinSerializerCodecProvider(confidoSM, bsonConfiguration)),
+                MongoClientSettings.getDefaultCodecRegistry(),
+            ))
+            .build()
+    )
     val database = client.getDatabase(System.getenv("CONFIDO_DB_NAME") ?: "confido1")
 
     val shortInviteLinks = mutableMapOf<String, ShortLink>()
@@ -179,9 +190,9 @@ object serverState {
      */
     fun collectionVerifiers(): Map<String, suspend (String) -> Unit> =
         Stores.all.flatMap { it.mongoCollections }.associate { coll ->
-            val docClass = coll.collection.documentClass
+            val docClass = coll.documentClass
             coll.namespace.collectionName to { name: String ->
-                database.database.getCollection(name, docClass).coroutine.find().toFlow().collect {}
+                database.getCollection(name, docClass).find().collect {}
             }
         }
     // initial load from database

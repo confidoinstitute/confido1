@@ -4,7 +4,7 @@
 
 Confido is a **Kotlin Multiplatform** collaborative forecasting/prediction web application.
 
-- **Backend**: Kotlin/JVM with Ktor 3.3.1, MongoDB via KMongo
+- **Backend**: Kotlin/JVM with Ktor 3.3.1, MongoDB via the official Kotlin coroutine driver (`bson-kotlinx` codec)
 - **Frontend**: Kotlin/JS with React (via kotlin-wrappers), Emotion for CSS-in-JS
 - **Shared**: Common code in `src/commonMain/` for models, serialization, utilities
 
@@ -157,7 +157,7 @@ Environment variables (see `config.example`):
 | Package | Version | Purpose |
 |---------|---------|---------|
 | Ktor | 3.3.1 | HTTP server + client |
-| KMongo | 4.7.2 | MongoDB driver |
+| mongodb-driver-kotlin-coroutine + bson-kotlinx | 5.11.1 | MongoDB driver + kotlinx-serialization codec |
 | kotlinx-serialization | 1.9.0 | JSON/CBOR serialization |
 | kotlin-wrappers | 2025.10.8 | React, Emotion, Router |
 | PlotlyKt | 0.7.1.1 | Charting library |

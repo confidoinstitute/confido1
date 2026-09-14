@@ -34,8 +34,6 @@ import tools.confido.payloads.responses.*
 import org.slf4j.LoggerFactory
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.codec.digest.MessageDigestAlgorithms.SHA_224
-import org.litote.kmongo.serialization.registerModule
-import org.litote.kmongo.serialization.registerSerializer
 import org.simplejavamail.api.mailer.config.TransportStrategy
 import org.simplejavamail.mailer.MailerBuilder
 import tools.confido.rooms.*
@@ -48,11 +46,9 @@ import tools.confido.application.sessions.user
 import tools.confido.application.sessions.userSession
 import tools.confido.store.*
 import tools.confido.extensions.ServerExtension
-import tools.confido.refs.RefAsStringSerializer
 import tools.confido.refs.deref
 import tools.confido.refs.ref
 import tools.confido.serialization.confidoJSON
-import tools.confido.serialization.confidoSM
 import tools.confido.state.QuestionCounts
 import tools.confido.state.appConfig
 import tools.confido.state.serverState
@@ -172,13 +168,8 @@ fun main() {
     // headless, turning slide uploads into 500s. Must be set before any AWT
     // class loads.
     System.setProperty("java.awt.headless", "true")
-    registerModule(confidoSM)
-    // XXX kotlinx.serialization can serialize value classes out of the box. But KMongo uses
-    // some low level magic and tries to manage its own serializer repository, and cannot
-    // serialize Ref by default. So we must create a custom serializer and also register it
-    // with KMongo.
-    registerSerializer(RefAsStringSerializer)
-    registerSerializer(tools.confido.rooms.RoomRoleRefSerializer)
+    // (Mongo codec configuration — serializers module, discriminator — lives with the
+    // client in serverState; the driver's kotlinx codec needs no global registration.)
 
     // Registration order = boot load order: base entity stores first, then the stores
     // whose boot folds dereference them (prediction group aggregates need questions).

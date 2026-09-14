@@ -844,15 +844,6 @@
       ]
     },
     {
-      "type": "org.litote.kmongo.jackson.JacksonClassMappingTypeService"
-    },
-    {
-      "type": "org.litote.kmongo.property.KPropertyPath"
-    },
-    {
-      "type": "org.litote.kmongo.serialization.SerializationClassMappingTypeService"
-    },
-    {
       "type": "org.simplejavamail.internal.batchsupport.BatchSupport"
     },
     {
@@ -1821,9 +1812,6 @@
     },
     {
       "glob": "META-INF/services/org.apache.commons.logging.LogFactory"
-    },
-    {
-      "glob": "META-INF/services/org.litote.kmongo.service.ClassMappingTypeService"
     },
     {
       "glob": "META-INF/services/org.slf4j.spi.SLF4JServiceProvider"

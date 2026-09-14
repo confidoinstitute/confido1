@@ -44,7 +44,7 @@ build feeds it two configs:
    `build.gradle.kts` bytecode-scans the whole jvm runtime classpath for
    `@Serializable` classes and registers each class plus its `Companion` and
    `$serializer` nested classes. These are exactly the members that
-   `serializer(KType)` — used by Ktor content negotiation and KMongo codecs —
+   `serializer(KType)` — used by Ktor content negotiation and the driver's kotlinx codec —
    accesses reflectively. Serialization itself runs through compiled
    serializers and needs no reflection, only the lookup does; that is why no
    instances ever need to be constructed. This regenerates on every build, so
@@ -52,7 +52,7 @@ build feeds it two configs:
 
 2. **Traced: everything else** (`reachability-metadata.json` in this
    directory). Non-serialization reflection: Ktor CIO selector internals,
-   KMongo/driver internals, kotlin.reflect metadata, JNI, resources. This part
+   Mongo driver internals, kotlin.reflect metadata, JNI, resources. This part
    is library-level and stable — it only needs regenerating when upgrading or
    adding libraries, not when adding app features.
 

@@ -5,12 +5,16 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
-import org.litote.kmongo.*
-import org.litote.kmongo.coroutine.CoroutineCollection
+import com.mongodb.client.model.Filters.and
+import com.mongodb.kotlin.client.coroutine.MongoCollection
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import tools.confido.application.routes.*
 import tools.confido.store.asView
+import tools.confido.store.ensureIndex
+import tools.confido.store.eq
 import tools.confido.store.combineViews
 import tools.confido.store.userStore
 import tools.confido.calibration.CalibrationBin
@@ -37,7 +41,7 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
     private var trainingQuestions: List<TrainingQuestion> = emptyList()
     
     // MongoDB collection for user responses
-    private lateinit var responseCollection: CoroutineCollection<TrainingResponse>
+    private lateinit var responseCollection: MongoCollection<TrainingResponse>
     // Monotonic change counter for the responses collection (wake signal for the
     // leaderboard topic; bumped after every insert).
     private val responsesVersion = tools.confido.store.TransientCell(0L)
@@ -333,12 +337,12 @@ object CalibrationTrainingSE : ServerExtension, CalibrationTrainingExtension() {
                         ?: return@withUser call.respond(HttpStatusCode.NotFound, "Question not found")
                     
                     // Check if already answered
-                    val existing = responseCollection.findOne(
+                    val existing = responseCollection.find(
                         and(
                             TrainingResponse::user eq user.ref,
                             TrainingResponse::questionId eq request.questionId
                         )
-                    )
+                    ).firstOrNull()
                     if (existing != null) {
                         return@withUser call.respond(HttpStatusCode.Conflict, "Question already answered")
                     }
