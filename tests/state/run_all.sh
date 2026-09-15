@@ -123,6 +123,7 @@ if [ "$BROWSER" = 1 ]; then
     run group_browser_test.py
     run presentation_browser_test.py
     run presentation_create_browser_test.py
+    run presenter_multi_browser_test.py
     run dialog_stack_browser_test.py
     run connection_browser_test.py   # kills + restarts the scratch server itself
 fi

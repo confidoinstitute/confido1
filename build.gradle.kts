@@ -194,8 +194,6 @@ kotlin {
                 implementation("io.ktor:ktor-client-websockets:$ktorVersion")
                 implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
                 implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
-                // Plotly
-                implementation("space.kscience:plotlykt-core:0.7.1.1")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
                 // DND Kit
                 implementation(npm("@dnd-kit/core", "6.0.5"))

@@ -1,7 +1,7 @@
 package tools.confido.web.components.presenter
 
 import tools.confido.question.BinaryHistogram
-import tools.confido.web.components.DistributionPlot
+import tools.confido.web.components.redesign.questions.predictions.NumericPredGraph
 import tools.confido.web.components.redesign.basic.Stack
 import tools.confido.web.components.redesign.basic.sansSerif
 import tools.confido.web.components.redesign.questions.predictions.BinaryPrediction
@@ -12,10 +12,13 @@ import react.FC
 import react.Props
 import react.dom.html.ReactHTML.div
 import tools.confido.distributions.BinaryDistribution
+import tools.confido.distributions.ContinuousProbabilityDistribution
 import tools.confido.question.Prediction
 import tools.confido.question.Question
 import tools.confido.spaces.BinarySpace
 import tools.confido.spaces.BinaryValue
+import tools.confido.spaces.NumericValue
+import web.window.window
 import tools.confido.state.MultiQuestionPV
 import tools.confido.utils.formatPercent
 import web.cssom.*
@@ -136,12 +139,18 @@ private val TileGroupPred = FC<TileGroupPredProps> { props ->
                         if (props.showResolution && question.resolution != null)
                             resolution = question.resolution as? BinaryValue?
                     }
-                } else {
-                    DistributionPlot {
-                        distribution = dist
-                        fontSize = 16.0
+                } else if (dist is ContinuousProbabilityDistribution) {
+                    // The same graph the question page and GroupPredPP use, sized
+                    // for a tile rather than the whole screen.
+                    NumericPredGraph {
+                        space = dist.space
+                        this.dist = dist
+                        isGroup = true
+                        interactive = false
+                        graphHeight = window.innerHeight * 0.2
+                        fontScale = 1.3
                         if (props.showResolution)
-                            resolutionLine = question.resolution?.value as? Double
+                            resolution = question.resolution as? NumericValue
                     }
                 }
             } ?: div {

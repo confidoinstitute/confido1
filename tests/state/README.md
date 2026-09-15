@@ -46,6 +46,7 @@ They assume a devmode server (`CONFIDO_DEVMODE=1`) whose `GET /init/` seeds
 | `group_browser_test.py` | (browser) sidebar group hierarchy, hover-+, create-new menu, group Rooms tab, ?group= preselect |
 | `browser_test.py` | real bundle end-to-end (admin): slices apply, live room/self updates, members tab + admin directory render from their topics, console-error sweep |
 | `member_browser_test.py` | ordinary-member view: no Members tab, no foreign identity data, no errors on presentation-only codepaths |
+| `presenter_multi_browser_test.py` | (browser) multi-question presenter: numeric tile renders the canvas group graph (NumericPredGraph) with estimate + resolution flags, no Plotly DOM, console-error sweep |
 | `dialog_stack_browser_test.py` | nested dialogs: per-layer backdrops (0.5 page / 0.25 inter-dialog), open-order stacking beats portal DOM order, backdrop click closes only the topmost dialog |
 | `connection_browser_test.py` | disconnect UX: kills the scratch server under a live session (banner + immediate-commit controls disable after the debounce), restarts it (recovery + live updates) |
 

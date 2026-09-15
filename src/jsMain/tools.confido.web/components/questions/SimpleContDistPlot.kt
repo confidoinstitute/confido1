@@ -5,7 +5,6 @@ import web.html.HTMLDivElement
 import react.*
 import react.dom.html.ReactHTML.canvas
 import react.dom.html.ReactHTML.div
-import space.kscience.dataforge.meta.Value
 import tools.confido.distributions.ContinuousProbabilityDistribution
 import web.canvas.CanvasRenderingContext2D
 import web.canvas.ID
@@ -21,7 +20,7 @@ external interface SimpleCondDistPlotProps : Props {
     var dist: ContinuousProbabilityDistribution
     var preferredCICenter: Double?
     var confidences: List<ConfidenceColor>
-    var outsideColor: Value?
+    var outsideColor: String?
     var visible: Boolean
     var height: Double?
 }
