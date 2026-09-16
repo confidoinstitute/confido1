@@ -51,6 +51,30 @@
       "type": "com.sun.mail.smtp.SMTPSSLProvider"
     },
     {
+      "type": "com.sun.mail.smtp.SMTPTransport",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "jakarta.mail.Session",
+            "jakarta.mail.URLName"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.sun.mail.smtp.SMTPSSLTransport",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "jakarta.mail.Session",
+            "jakarta.mail.URLName"
+          ]
+        }
+      ]
+    },
+    {
       "type": "io.ktor.http.HttpStatusCode"
     },
     {

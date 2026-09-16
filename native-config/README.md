@@ -79,8 +79,13 @@ A missed entry shows up as `MissingReflectionRegistrationError` at runtime
 
 A convenient way to exercise most of the API in one go is the driver script in
 this directory (needs `pip install websockets`; server must run with
-`CONFIDO_DEVMODE=1`, `CONFIDO_MAIL_DEBUG=1` on port 8123 against an empty DB,
-then `GET /init/` once):
+`CONFIDO_DEVMODE=1`, `CONFIDO_SMTP_HOST=127.0.0.1`, `CONFIDO_SMTP_PORT=8125`
+on port 8123 against an empty DB, then `GET /init/` once). The script runs a
+dummy SMTP sink on port 8125 so that real mail sending is exercised — do NOT
+use `CONFIDO_MAIL_DEBUG=1` here: debug mode returns before Jakarta Mail
+reflectively instantiates its transport class, so the agent would miss it and
+every mail send in the native binary would then fail with a 503 before even
+opening a connection (this happened once):
 
 ```bash
 python3 native-config/exercise.py
@@ -95,6 +100,14 @@ re-add if regenerating from scratch):
   this the server crashes on the first socket bind. (The unified
   `reachability-metadata.json` schema has no `allDeclaredFields` wildcard, the
   fields must be listed one by one.)
+- `com.sun.mail.smtp.SMTPTransport` and `com.sun.mail.smtp.SMTPSSLTransport`
+  with the `(Session, URLName)` constructor — Jakarta Mail's
+  `Session.getTransport()` maps protocol → class name via
+  `META-INF/javamail.default.providers` and instantiates it with
+  `Class.forName` + reflective constructor lookup on the first actual send.
+  `exercise.py` now covers `SMTPTransport` (plain/STARTTLS), but
+  `SMTPSSLTransport` (`CONFIDO_SMTP_TRANSPORT=tls`) is not exercised and must
+  stay registered manually.
 
 ## Runtime
 

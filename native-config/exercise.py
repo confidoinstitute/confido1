@@ -1,10 +1,44 @@
 #!/usr/bin/env python3
 """Exercise as many Confido server code paths as possible (for native-image tracing agent)."""
-import asyncio, json, sys, time
+import asyncio, json, socket, sys, threading, time
 import urllib.request, urllib.error, http.cookiejar
 import websockets
 
 BASE = "http://127.0.0.1:8123"
+MAIL_SINK_PORT = 8125
+
+def start_mail_sink(port=MAIL_SINK_PORT):
+    """Minimal SMTP sink. Run the server with CONFIDO_SMTP_HOST=127.0.0.1
+    CONFIDO_SMTP_PORT=8125 (NOT CONFIDO_MAIL_DEBUG=1) so real mail sending is
+    exercised — debug mode short-circuits before the Jakarta Mail transport is
+    reflectively instantiated, which is exactly what the tracing agent must see."""
+    srv = socket.socket()
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv.bind(("127.0.0.1", port))
+    srv.listen(5)
+    def serve():
+        while True:
+            c, _ = srv.accept()
+            try:
+                c.sendall(b"220 sink ESMTP\r\n")
+                f = c.makefile("rb")
+                for line in f:
+                    u = line.decode(errors="replace").strip().upper()
+                    if u.startswith("EHLO"): c.sendall(b"250-sink\r\n250 8BITMIME\r\n")
+                    elif u.startswith("HELO"): c.sendall(b"250 sink\r\n")
+                    elif u.startswith("DATA"):
+                        c.sendall(b"354 go\r\n")
+                        for _ in iter(f.readline, b".\r\n"): pass
+                        c.sendall(b"250 ok\r\n")
+                        print("  mail sink: received a message")
+                    elif u.startswith("QUIT"):
+                        c.sendall(b"221 bye\r\n"); break
+                    else: c.sendall(b"250 ok\r\n")
+            except OSError:
+                pass
+            finally:
+                c.close()
+    threading.Thread(target=serve, daemon=True).start()
 
 class Client:
     def __init__(self):
@@ -48,6 +82,7 @@ async def ws_state(client, label, nmsgs=1, timeout=15):
         return None
 
 def main():
+    start_mail_sink()
     admin = Client()
     member = Client()
 
@@ -61,8 +96,9 @@ def main():
     dev = Client()
     dev.get("/login_users")
     dev.post("/login_users", {"username": "debugmember", "validity": "TRANSIENT"})
-    # email link login (mail debug mode prints it)
-    Client().post("/login_email/create", {"email": "member@confido.example", "url": "/", "validity": "PERMANENT"}, expect_ok=False)
+    # email link login — actually sends mail (to the sink); a 503 here means the
+    # SMTP transport path is broken (e.g. missing native-image reflection entries)
+    Client().post("/login_email/create", {"email": "member@confido.example", "url": "/", "validity": "PERMANENT"})
 
     print("== static/front ==")
     admin.get("/")

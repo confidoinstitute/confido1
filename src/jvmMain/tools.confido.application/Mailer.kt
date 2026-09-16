@@ -30,7 +30,14 @@ class Mailer(
             logger.info("Debug mode; not sending the following email:")
             logger.info(mail.toString())
         } else {
-            mailer!!.sendMail(mail)
+            try {
+                mailer!!.sendMail(mail)
+            } catch (e: Exception) {
+                // Callers turn this into a 503 without surfacing the cause; log it here
+                // so mail failures (SMTP trouble, native-image reflection gaps) are diagnosable.
+                logger.error("Failed to send email", e)
+                throw e
+            }
         }
     }
 
