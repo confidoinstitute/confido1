@@ -2,9 +2,9 @@ package tools.confido.web.components.presenter
 
 import tools.confido.web.Client
 import tools.confido.api.Api
-import tools.confido.web.components.redesign.basic.Stack
-import tools.confido.web.components.redesign.calibration.CalibrationGraph
-import tools.confido.web.components.redesign.calibration.CalibrationReqView
+import tools.confido.web.components.basic.Stack
+import tools.confido.web.components.calibration.CalibrationGraph
+import tools.confido.web.components.calibration.CalibrationReqView
 import web.cssom.*
 import emotion.react.css
 import tools.confido.web.hooks.useSuspendResult

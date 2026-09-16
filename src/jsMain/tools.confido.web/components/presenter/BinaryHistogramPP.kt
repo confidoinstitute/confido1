@@ -2,8 +2,8 @@ package tools.confido.web.components.presenter
 
 import tools.confido.question.BinaryHistogram
 import tools.confido.question.HistogramBin
-import tools.confido.web.components.redesign.basic.Stack
-import tools.confido.web.components.redesign.basic.sansSerif
+import tools.confido.web.components.basic.Stack
+import tools.confido.web.components.basic.sansSerif
 import web.cssom.*
 import emotion.react.css
 import tools.confido.web.hooks.useSubscription

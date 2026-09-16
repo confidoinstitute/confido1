@@ -1,16 +1,16 @@
 package tools.confido.extensions.calibration_training
 
 import tools.confido.web.Client
-import tools.confido.web.components.redesign.basic.*
-import tools.confido.web.components.redesign.forms.Button
-import tools.confido.web.components.redesign.forms.TextButton
-import tools.confido.web.components.redesign.layout.LayoutMode
-import tools.confido.web.components.redesign.questions.predictions.BinaryPredInput
-import tools.confido.web.components.redesign.questions.predictions.BinaryPrediction
-import tools.confido.web.components.redesign.questions.predictions.MyPredictionDescription
-import tools.confido.web.components.redesign.questions.predictions.binaryColors
-import tools.confido.web.components.redesign.questions.predictions.descriptionClass
-import tools.confido.web.components.redesign.questions.predictions.yesNoColored
+import tools.confido.web.components.basic.*
+import tools.confido.web.components.forms.Button
+import tools.confido.web.components.forms.TextButton
+import tools.confido.web.components.layout.LayoutMode
+import tools.confido.web.components.questions.predictions.BinaryPredInput
+import tools.confido.web.components.questions.predictions.BinaryPrediction
+import tools.confido.web.components.questions.predictions.MyPredictionDescription
+import tools.confido.web.components.questions.predictions.binaryColors
+import tools.confido.web.components.questions.predictions.descriptionClass
+import tools.confido.web.components.questions.predictions.yesNoColored
 import emotion.css.ClassName
 import emotion.react.css
 import tools.confido.web.hooks.useCoroutineLock

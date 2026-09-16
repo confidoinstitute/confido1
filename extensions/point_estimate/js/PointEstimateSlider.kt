@@ -1,12 +1,12 @@
 package tools.confido.extensions.point_estimate
 
-import tools.confido.web.components.redesign.basic.PropsWithElementSize
-import tools.confido.web.components.redesign.basic.Stack
-import tools.confido.web.components.redesign.basic.elementSizeWrapper
-import tools.confido.web.components.redesign.basic.sansSerif
-import tools.confido.web.components.redesign.layout.LayoutMode
-import tools.confido.web.components.redesign.layout.LayoutModeContext
-import tools.confido.web.components.redesign.questions.predictions.*
+import tools.confido.web.components.basic.PropsWithElementSize
+import tools.confido.web.components.basic.Stack
+import tools.confido.web.components.basic.elementSizeWrapper
+import tools.confido.web.components.basic.sansSerif
+import tools.confido.web.components.layout.LayoutMode
+import tools.confido.web.components.layout.LayoutModeContext
+import tools.confido.web.components.questions.predictions.*
 import web.cssom.*
 import web.html.HTMLElement
 import emotion.react.css

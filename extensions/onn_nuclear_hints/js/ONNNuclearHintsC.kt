@@ -1,7 +1,7 @@
 package tools.confido.extensions.onn_nuclear_hints
 
 import tools.confido.web.components.useMyPredictions
-import tools.confido.web.components.redesign.questions.predictions.MyPredictionDescriptionProps
+import tools.confido.web.components.questions.predictions.MyPredictionDescriptionProps
 import react.ChildrenBuilder
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div

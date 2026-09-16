@@ -1,10 +1,10 @@
 package tools.confido.extensions.calibration_training
 
 import tools.confido.web.Client
-import tools.confido.web.components.redesign.basic.*
-import tools.confido.web.components.redesign.calibration.CalibrationView
-import tools.confido.web.components.redesign.forms.Button
-import tools.confido.web.components.redesign.forms.TextButton
+import tools.confido.web.components.basic.*
+import tools.confido.web.components.calibration.CalibrationView
+import tools.confido.web.components.forms.Button
+import tools.confido.web.components.forms.TextButton
 import emotion.react.css
 import tools.confido.web.hooks.useCoroutineLock
 import io.ktor.client.call.*

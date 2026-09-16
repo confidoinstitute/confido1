@@ -1,7 +1,7 @@
 package tools.confido.web.hooks
 
 import tools.confido.web.ApiError
-import tools.confido.web.components.redesign.basic.showError
+import tools.confido.web.components.basic.showError
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import react.useMemo

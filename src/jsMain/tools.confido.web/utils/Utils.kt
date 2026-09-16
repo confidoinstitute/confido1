@@ -3,9 +3,9 @@
 package tools.confido.web.utils
 
 import tools.confido.web.ApiError
-import tools.confido.web.components.redesign.basic.css
-import tools.confido.web.components.redesign.basic.rowStyleTableCSS
-import tools.confido.web.components.redesign.basic.showError
+import tools.confido.web.components.basic.css
+import tools.confido.web.components.basic.rowStyleTableCSS
+import tools.confido.web.components.basic.showError
 import csstype.Properties
 import csstype.PropertiesBuilder
 import io.ktor.client.*

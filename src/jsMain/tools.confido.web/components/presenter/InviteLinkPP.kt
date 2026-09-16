@@ -1,6 +1,6 @@
 package tools.confido.web.components.presenter
 
-import tools.confido.web.components.redesign.basic.Stack
+import tools.confido.web.components.basic.Stack
 import web.cssom.*
 import web.html.HTMLDivElement
 import tools.confido.web.ext.qrcodereact.QRCodeSVG

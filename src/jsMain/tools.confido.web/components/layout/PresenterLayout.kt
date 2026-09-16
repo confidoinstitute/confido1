@@ -3,11 +3,11 @@ package tools.confido.web.components.layout
 import tools.confido.web.components.usePresenterInfo
 import tools.confido.web.components.AppStateWebsocketProvider
 import tools.confido.web.components.presenter.PresenterPage
-import tools.confido.web.components.redesign.basic.ConnectionBanner
-import tools.confido.web.components.redesign.DefaultTheme
-import tools.confido.web.components.redesign.ThemeProvider
-import tools.confido.web.components.redesign.layout.LayoutMode
-import tools.confido.web.components.redesign.layout.LayoutModeContext
+import tools.confido.web.components.basic.ConnectionBanner
+import tools.confido.web.components.DefaultTheme
+import tools.confido.web.components.ThemeProvider
+import tools.confido.web.components.layout.LayoutMode
+import tools.confido.web.components.layout.LayoutModeContext
 import emotion.react.Global
 import emotion.react.css
 import emotion.react.styles

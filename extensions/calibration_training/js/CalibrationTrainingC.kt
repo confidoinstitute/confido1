@@ -2,9 +2,9 @@ package tools.confido.extensions.calibration_training
 
 import tools.confido.web.components.presenter.PresenterPageProps
 import tools.confido.web.components.presenter.presenterPageMap
-import tools.confido.web.components.redesign.basic.*
-import tools.confido.web.components.redesign.calibration.CalibrationGraph
-import tools.confido.web.components.redesign.rooms.RoomLink
+import tools.confido.web.components.basic.*
+import tools.confido.web.components.calibration.CalibrationGraph
+import tools.confido.web.components.rooms.RoomLink
 import emotion.react.css
 import tools.confido.web.hooks.useSubscription
 import js.objects.unsafeJso as jso

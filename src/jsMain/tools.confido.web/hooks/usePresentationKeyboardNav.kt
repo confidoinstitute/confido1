@@ -3,7 +3,7 @@ package tools.confido.web.hooks
 import tools.confido.api.Api
 import tools.confido.web.ApiError
 import tools.confido.web.Client
-import tools.confido.web.components.redesign.presenter.setPresenterView
+import tools.confido.web.components.presenter.setPresenterView
 import tools.confido.payloads.requests.NavigateDirection
 import tools.confido.payloads.requests.NavigatePresentation
 import react.useEffectOnceWithCleanup

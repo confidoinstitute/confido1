@@ -1,12 +1,12 @@
 package tools.confido.extensions.conditional_baseline
 
 import tools.confido.web.components.useMyPredictions
-import tools.confido.web.components.redesign.forms.FormField
-import tools.confido.web.components.redesign.forms.FormSection
-import tools.confido.web.components.redesign.forms.TextInput
-import tools.confido.web.components.redesign.questions.dialog.EditQuestionDialogProps
-import tools.confido.web.components.redesign.questions.predictions.BinaryPredInputProps
-import tools.confido.web.components.redesign.questions.predictions.MyPredictionDescriptionProps
+import tools.confido.web.components.forms.FormField
+import tools.confido.web.components.forms.FormSection
+import tools.confido.web.components.forms.TextInput
+import tools.confido.web.components.questions.dialog.EditQuestionDialogProps
+import tools.confido.web.components.questions.predictions.BinaryPredInputProps
+import tools.confido.web.components.questions.predictions.MyPredictionDescriptionProps
 import web.cssom.NamedColor
 import web.cssom.Position
 import web.cssom.integer

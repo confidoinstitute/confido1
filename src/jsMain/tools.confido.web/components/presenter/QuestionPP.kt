@@ -1,6 +1,6 @@
 package tools.confido.web.components.presenter
 
-import tools.confido.web.components.redesign.basic.Stack
+import tools.confido.web.components.basic.Stack
 import web.cssom.*
 import emotion.css.ClassName
 import emotion.react.css

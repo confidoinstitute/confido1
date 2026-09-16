@@ -1,10 +1,10 @@
 package tools.confido.web.components.presenter
 
 import tools.confido.question.BinaryHistogram
-import tools.confido.web.components.redesign.questions.predictions.NumericPredGraph
-import tools.confido.web.components.redesign.basic.Stack
-import tools.confido.web.components.redesign.basic.sansSerif
-import tools.confido.web.components.redesign.questions.predictions.BinaryPrediction
+import tools.confido.web.components.questions.predictions.NumericPredGraph
+import tools.confido.web.components.basic.Stack
+import tools.confido.web.components.basic.sansSerif
+import tools.confido.web.components.questions.predictions.BinaryPrediction
 import emotion.react.css
 import tools.confido.web.hooks.useSubscription
 import tools.confido.payloads.responses.WSData

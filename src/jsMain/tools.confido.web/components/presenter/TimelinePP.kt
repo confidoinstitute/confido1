@@ -9,10 +9,10 @@ import tools.confido.refs.ref
 import tools.confido.state.TimelinePV
 import tools.confido.state.Topics
 import tools.confido.web.components.QuestionPredictors
-import tools.confido.web.components.redesign.basic.Stack
-import tools.confido.web.components.redesign.basic.sansSerif
-import tools.confido.web.components.redesign.questions.predictions.GroupPredictionTimeline
-import tools.confido.web.components.redesign.rooms.RoomContext
+import tools.confido.web.components.basic.Stack
+import tools.confido.web.components.basic.sansSerif
+import tools.confido.web.components.questions.predictions.GroupPredictionTimeline
+import tools.confido.web.components.rooms.RoomContext
 import tools.confido.web.components.useQuestion
 import tools.confido.web.hooks.useSubscription
 import web.cssom.*

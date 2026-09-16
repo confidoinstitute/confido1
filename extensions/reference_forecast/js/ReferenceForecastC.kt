@@ -2,15 +2,15 @@ package tools.confido.extensions.reference_forecast
 
 import tools.confido.web.components.presenter.PresenterPageProps
 import tools.confido.web.components.presenter.presenterPageMap
-import tools.confido.web.components.redesign.basic.Stack
-import tools.confido.web.components.redesign.basic.rowStyleTableCSS
-import tools.confido.web.components.redesign.basic.sansSerif
-import tools.confido.web.components.redesign.forms.*
-import tools.confido.web.components.redesign.presenter.PresenterContext
-import tools.confido.web.components.redesign.questions.dialog.EditQuestionDialogProps
-import tools.confido.web.components.redesign.forms.Button
-import tools.confido.web.components.redesign.presentation.pvFlowEditor
-import tools.confido.web.components.redesign.presentation.roomSubject
+import tools.confido.web.components.basic.Stack
+import tools.confido.web.components.basic.rowStyleTableCSS
+import tools.confido.web.components.basic.sansSerif
+import tools.confido.web.components.forms.*
+import tools.confido.web.components.presenter.PresenterContext
+import tools.confido.web.components.questions.dialog.EditQuestionDialogProps
+import tools.confido.web.components.forms.Button
+import tools.confido.web.components.presentation.pvFlowEditor
+import tools.confido.web.components.presentation.roomSubject
 import web.cssom.*
 import emotion.react.css
 import tools.confido.web.hooks.useSubscription

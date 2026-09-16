@@ -1,7 +1,7 @@
 package tools.confido.web
 
 import tools.confido.web.components.App
-import tools.confido.web.components.redesign.basic.showError
+import tools.confido.web.components.basic.showError
 import tools.confido.web.websocket.MultiplexWS
 import io.ktor.client.*
 import io.ktor.client.call.*

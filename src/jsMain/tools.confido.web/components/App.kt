@@ -2,7 +2,7 @@ package tools.confido.web.components
 
 import web.dom.document
 import tools.confido.web.components.layout.PresenterLayout
-import tools.confido.web.components.redesign.Header
+import tools.confido.web.components.Header
 import web.cssom.*
 import js.objects.unsafeJso as jso
 import react.*
@@ -39,9 +39,9 @@ val AppMobile = memo(FC<AppProps> {props ->
     
     val router = useMemo(isLoggedIn) {
         val layout = if (!isLoggedIn)
-            tools.confido.web.components.redesign.layout.NoUserLayout
+            tools.confido.web.components.layout.NoUserLayout
         else
-            tools.confido.web.components.redesign.layout.RootLayout
+            tools.confido.web.components.layout.RootLayout
             
         createBrowserRouter(arrayOf(
             jso<RouteObject> {

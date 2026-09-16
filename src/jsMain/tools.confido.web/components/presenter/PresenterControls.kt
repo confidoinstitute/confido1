@@ -17,11 +17,11 @@ import tools.confido.rooms.TimelineMark
 import tools.confido.spaces.BinarySpace
 import tools.confido.state.*
 import tools.confido.utils.unixNow
-import tools.confido.web.components.redesign.forms.FormField
-import tools.confido.web.components.redesign.forms.FormSwitch
-import tools.confido.web.components.redesign.forms.OptionGroup
-import tools.confido.web.components.redesign.forms.Select
-import tools.confido.web.components.redesign.questions.predictions.formatUpdateDateTime
+import tools.confido.web.components.forms.FormField
+import tools.confido.web.components.forms.FormSwitch
+import tools.confido.web.components.forms.OptionGroup
+import tools.confido.web.components.forms.Select
+import tools.confido.web.components.questions.predictions.formatUpdateDateTime
 import tools.confido.web.components.useMyUser
 import tools.confido.web.components.useQuestion
 import tools.confido.web.hooks.useSubscription
@@ -299,7 +299,7 @@ val TimelinePC = FC<PresenterControlsProps<TimelinePV>> { props ->
 val view2controls by lazy { mapOf(
     presenterControlsMap(GroupPredPC),
     presenterControlsMap(BinaryHistogramPC),
-    presenterControlsMap(tools.confido.web.components.redesign.presentation.PresentationPC),
+    presenterControlsMap(tools.confido.web.components.presentation.PresentationPC),
     presenterControlsMap(MultiQuestionPC),
     presenterControlsMap(ComparePC),
     presenterControlsMap(TimelinePC),

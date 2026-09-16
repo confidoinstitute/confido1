@@ -17,7 +17,7 @@ import react.use
  *    disconnected is a feature of the topic cache);
  *  - Client's send helpers refuse with a clear error while disconnected, so anything
  *    the UI sweep missed degrades to an explicit message, not a hung request;
- *  - the [tools.confido.web.components.redesign.basic.ConnectionBanner] names the state globally.
+ *  - the [tools.confido.web.components.basic.ConnectionBanner] names the state globally.
  */
 val ConnectionContext = createContext<Boolean>()
 

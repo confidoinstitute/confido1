@@ -2,12 +2,12 @@ package tools.confido.extensions
 
 import tools.confido.web.components.presenter.PresenterControlsType
 import tools.confido.web.components.presenter.PresenterPageType
-import tools.confido.web.components.redesign.layout.LayoutMode
-import tools.confido.web.components.redesign.questions.dialog.EditQuestionDialogProps
-import tools.confido.web.components.redesign.questions.dialog.QuestionQuickSettingsDialogProps
-import tools.confido.web.components.redesign.questions.predictions.BinaryPredInputProps
-import tools.confido.web.components.redesign.questions.predictions.MyPredictionDescriptionProps
-import tools.confido.web.components.redesign.rooms.RoomListProps
+import tools.confido.web.components.layout.LayoutMode
+import tools.confido.web.components.questions.dialog.EditQuestionDialogProps
+import tools.confido.web.components.questions.dialog.QuestionQuickSettingsDialogProps
+import tools.confido.web.components.questions.predictions.BinaryPredInputProps
+import tools.confido.web.components.questions.predictions.MyPredictionDescriptionProps
+import tools.confido.web.components.rooms.RoomListProps
 import react.ChildrenBuilder
 import react.FC
 import react.Props
@@ -95,7 +95,7 @@ interface ClientExtension : Extension {
     fun roomTabsExtra(room: Room, layoutMode: LayoutMode): List<Pair<String, String>>  = emptyList()
     fun roomRoutesExtra(room: Room): Array<RouteObject> = emptyArray()
     fun rootLayoutStartHook() {}
-    fun renderPredictionInput(props: tools.confido.web.components.redesign.questions.predictions.PredictionInputProps): react.ReactNode? = null
+    fun renderPredictionInput(props: tools.confido.web.components.questions.predictions.PredictionInputProps): react.ReactNode? = null
     fun  hideDefaultPredictionDesc(dist: ProbabilityDistribution?, question: Question?, b: Boolean) = false
     fun binarySliderExtra(props: BinaryPredInputProps, zoom: PZState?, cb: ChildrenBuilder) {}
     fun sidebarExtra(place: SidebarPlace, small: Boolean, cb: ChildrenBuilder) {}
@@ -103,7 +103,7 @@ interface ClientExtension : Extension {
     /** Override room entries rendering in the sidebar (the room links portion, not the "Create room" link).
      *  Return true if the extension handled rendering (default entries are skipped).
      *  Return false to fall back to default rendering.
-     *  The extension can reuse [tools.confido.web.components.redesign.rooms.RoomListEntries] for rendering room entries. */
+     *  The extension can reuse [tools.confido.web.components.rooms.RoomListEntries] for rendering room entries. */
     fun renderSidebarRoomEntries(rooms: Map<String, Room>, small: Boolean, cb: ChildrenBuilder): Boolean = false
 
     fun rootRoutesExtra(): List<RouteObject> = emptyList()
