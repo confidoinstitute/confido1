@@ -73,11 +73,12 @@ def note(nid, text=""):
     return {"type": "note", "id": nid, "text": text, "warning": False}
 
 
-# A public 38-slide Google Slides deck used for the URL-import test.
+# A public Google Slides deck used for the URL-import test. Its page count is not
+# ours to pin (it went from 38 to 55 pages under us); the test checks that the
+# pipeline is self-consistent for whatever Google exports today.
 GSLIDES_ID = "1SGvmyvJL1Hy29lk2sOCloUQmd-ohW3E8E_bMIEKJBlM"
 GSLIDES_EDIT_URL = (f"https://docs.google.com/presentation/d/{GSLIDES_ID}/edit"
                     "?slide=id.gd1bf8d60a4_0_0#slide=id.gd1bf8d60a4_0_0")
-GSLIDES_PAGES = 38
 
 
 def google_reachable():
@@ -240,18 +241,22 @@ async def main():
         t.check(st == 400, "TEST-7d", "a Sheets link is not accepted as a Slides link", f"{st} {body[:120]}")
         if google_reachable():
             v2 = pres2.get("slidesVersion", 0)
-            st, body = import_status(ra, GSLIDES_EDIT_URL, admin)
+            # Off the event loop: Google takes 15-20 s to export the deck and the
+            # render adds more; a blocking call here would stop the client from
+            # answering the server's websocket pings and get the socket closed.
+            st, body = await asyncio.to_thread(import_status, ra, GSLIDES_EDIT_URL, admin)
             d = by_topic(await recv_updates(ws))
             pres3 = (d.get(f"room/{ra}/presentation", {}).get("data") or {}).get("presentation") or {}
-            t.check(st == 200 and body.strip() == str(GSLIDES_PAGES)
-                    and pres3.get("numSlides") == GSLIDES_PAGES
+            n = int(body.strip()) if st == 200 and body.strip().isdigit() else 0
+            t.check(st == 200 and n > 3
+                    and pres3.get("numSlides") == n
                     and pres3.get("slidesVersion", 0) == v2 + 1
-                    and len(pres3.get("slideLabels") or []) == GSLIDES_PAGES
-                    and sum(1 for i in pres3.get("items") or [] if i.get("type") == "slide") == GSLIDES_PAGES,
+                    and len(pres3.get("slideLabels") or []) == n
+                    and sum(1 for i in pres3.get("items") or [] if i.get("type") == "slide") == n,
                     "TEST-7e", "edit-mode Slides link imports every page, populates the flow, bumps slidesVersion",
                     f"{st} {body[:80]} numSlides={pres3.get('numSlides')} v={pres3.get('slidesVersion')}")
             r = urllib.request.urlopen(urllib.request.Request(
-                BASE + f"/presentations/{pres3['_id']}/{pres3['fileToken']}/slides/0038.png"
+                BASE + f"/presentations/{pres3['_id']}/{pres3['fileToken']}/slides/{n:04d}.png"
                 + f"?v={pres3.get('slidesVersion')}", headers={"Cookie": admin}))
             t.check(r.status == 200 and r.read(8)[:4] == b"\x89PNG",
                     "TEST-7f", "last imported slide is served as a PNG")

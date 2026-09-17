@@ -1853,18 +1853,6 @@
       "glob": "kotlin/kotlin.kotlin_builtins"
     },
     {
-      "glob": "org/apache/pdfbox/resources/glyphlist/additional.txt"
-    },
-    {
-      "glob": "org/apache/pdfbox/resources/glyphlist/glyphlist.txt"
-    },
-    {
-      "glob": "org/apache/pdfbox/resources/glyphlist/zapfdingbats.txt"
-    },
-    {
-      "glob": "org/apache/pdfbox/resources/text/BidiMirroring.txt"
-    },
-    {
       "glob": "org/fusesource/jansi/internal/native/Linux/x86_64/libjansi.so"
     },
     {
@@ -1889,6 +1877,20 @@
     },
     {
       "bundle": "sun.awt.resources.awt"
+    },
+    {
+      "glob": "org/apache/pdfbox/resources/**"
+    },
+    {
+      "glob": "org/apache/fontbox/**"
+    },
+    {
+      "module": "java.desktop",
+      "glob": "sun/java2d/cmm/profiles/*"
+    },
+    {
+      "module": "java.desktop",
+      "glob": "com/sun/imageio/plugins/common/*.properties"
     }
   ]
 }

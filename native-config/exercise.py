@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Exercise as many Confido server code paths as possible (for native-image tracing agent)."""
-import asyncio, json, socket, sys, threading, time
+import asyncio, json, os, socket, sys, threading, time
 import urllib.request, urllib.error, http.cookiejar
 import websockets
 
@@ -224,19 +224,19 @@ def main():
 
     print("== presentation ==")
     admin.post(f"/rooms/{rid}/presentation/create", {"name": "Graal preso"}, expect_ok=False)
-    # upload a tiny PDF (exercises pdfbox rendering)
+    # Upload the smoke deck (native-config/smoke-slides.pdf, see gen_smoke_pdf.py): it
+    # drives PDFBox through clip paths, every image raster flavour, JPEG, CMYK and
+    # transparency, i.e. the Java2D JNI surface the native image must have registered.
+    # A blank page (what used to be uploaded here) exercises none of that.
     try:
-        import zlib
-        pdf = (b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
-               b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
-               b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\n"
-               b"xref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000055 00000 n \n0000000105 00000 n \n"
-               b"trailer<</Size 4/Root 1 0 R>>\nstartxref\n170\n%%EOF\n")
+        pdf = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "smoke-slides.pdf"), "rb").read()
         boundary = "----graalpdf"
-        body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"test.pdf\"\r\n"
+        body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"smoke-slides.pdf\"\r\n"
                 f"Content-Type: application/pdf\r\n\r\n").encode() + pdf + f"\r\n--{boundary}--\r\n".encode()
-        admin.post(f"/rooms/{rid}/presentation/upload-slides", body,
-                   ctype=f"multipart/form-data; boundary={boundary}", expect_ok=False)
+        n = admin.post(f"/rooms/{rid}/presentation/upload-slides", body,
+                       ctype=f"multipart/form-data; boundary={boundary}")
+        if n is None or n.decode() != "4":
+            print(f"  !!! slide rendering FAILED (expected 4 slides, got {n!r}) — check the server log")
         admin.post(f"/rooms/{rid}/presentation/start", {}, expect_ok=False)
         admin.post(f"/rooms/{rid}/presentation/navigate", {"direction": "NEXT"}, expect_ok=False)
         admin.post(f"/rooms/{rid}/presentation/stop", {}, expect_ok=False)

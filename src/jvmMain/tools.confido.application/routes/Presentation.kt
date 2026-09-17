@@ -5,6 +5,11 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readRemaining
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.io.readByteArray
 import io.ktor.http.*
 import io.ktor.http.content.*
@@ -72,6 +77,9 @@ private val GOOGLE_SLIDES_ID_REGEX = Regex(
 
 private val pdfTooLargeMessage = "The PDF is larger than ${MAX_SLIDES_PDF_BYTES / (1024 * 1024)} MB."
 
+/** Serializes slide rendering (see [installSlidesPdf]). */
+private val slideRenderMutex = Mutex()
+
 /**
  * Read at most [MAX_SLIDES_PDF_BYTES] from a channel; returns null when the
  * source has more (so an oversized body is never buffered in full).
@@ -104,34 +112,52 @@ private suspend fun installSlidesPdf(pres: Presentation, bytes: ByteArray): Int 
     // Save original PDF
     File(presentationDir, "${pres.id}/orig.pdf").writeBytes(bytes)
 
-    // Convert PDF pages to PNG images and extract slide titles
+    // Convert PDF pages to PNG images and extract slide titles. This is seconds to
+    // tens of seconds of CPU for a big deck, and touches no server state, so it runs
+    // off the single-threaded request dispatcher — on it, a 200-page upload froze
+    // every other request (and websocket pings) for its whole duration. Renders are
+    // serialized among themselves: two at once could race on a staging dir and
+    // double the peak heap.
     var numSlides = 0
     var slideLabels = emptyList<String>()
     try {
-        val doc = Loader.loadPDF(bytes)
-        doc.use { pdf ->
-            numSlides = pdf.numberOfPages
-            if (numSlides == 0) badRequest("The PDF has no pages.")
-            if (numSlides > MAX_SLIDES) badRequest("The PDF has $numSlides pages; at most $MAX_SLIDES slides are supported.")
-            val renderer = PDFRenderer(pdf)
-            for (i in 0 until numSlides) {
-                val image = renderer.renderImageWithDPI(i, 150f)
-                val filename = (i + 1).toString().padStart(4, '0') + ".png"
-                ImageIO.write(image, "PNG", File(stagingDir, filename))
-            }
+        slideRenderMutex.withLock { withContext(Dispatchers.IO) {
+            val doc = Loader.loadPDF(bytes)
+            doc.use { pdf ->
+                numSlides = pdf.numberOfPages
+                if (numSlides == 0) badRequest("The PDF has no pages.")
+                if (numSlides > MAX_SLIDES) badRequest("The PDF has $numSlides pages; at most $MAX_SLIDES slides are supported.")
+                val renderer = PDFRenderer(pdf)
+                for (i in 0 until numSlides) {
+                    val image = renderer.renderImageWithDPI(i, 150f)
+                    val filename = (i + 1).toString().padStart(4, '0') + ".png"
+                    ImageIO.write(image, "PNG", File(stagingDir, filename))
+                }
 
-            // Heuristically extract slide titles from PDF text
-            slideLabels = (0 until numSlides).map { i ->
-                val title = extractSlideTitle(pdf, i)
-                if (title != null) "Slide ${i + 1}: $title" else "Slide ${i + 1}"
+                // Heuristically extract slide titles from PDF text
+                slideLabels = (0 until numSlides).map { i ->
+                    val title = extractSlideTitle(pdf, i)
+                    if (title != null) "Slide ${i + 1}: $title" else "Slide ${i + 1}"
+                }
             }
-        }
+        } }
     } catch (e: ResponseError) {
         stagingDir.deleteRecursively()
         throw e
-    } catch (e: Exception) {
+    } catch (e: CancellationException) {
         stagingDir.deleteRecursively()
-        badRequest("Failed to process PDF: ${e.message}")
+        throw e
+    } catch (e: Throwable) {
+        // Throwable, not Exception: rendering can also die with an Error (OOM on a huge
+        // page, or a LinkageError from a missing JNI registration in the native image),
+        // which must still clean up staging and be reported. Log it: a 400 is otherwise
+        // invisible in the server log, and a malformed deck is not distinguishable from
+        // a deployment bug without the trace.
+        stagingDir.deleteRecursively()
+        System.err.println("Slide PDF processing failed for presentation ${pres.id}:")
+        e.printStackTrace()
+        val cause = generateSequence<Throwable>(e) { it.cause }.last()
+        badRequest("Failed to process PDF: ${cause.message ?: cause::class.simpleName}")
     }
     slideDir.deleteRecursively()
     if (!stagingDir.renameTo(slideDir)) badRequest("Failed to store slide images.")
