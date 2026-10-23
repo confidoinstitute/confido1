@@ -104,6 +104,11 @@ data class NumericSpace(
     val unit: String = "",
     var decimals: Int = 1
 ) : TypedSpace<Double>() {
+    init {
+        // 0 bins makes every Binner degenerate (infinite bin size, value2bin always 0).
+        // Pre-2022-10-27 date spaces could get it from a fromDates bug (see migration 012).
+        require(bins >= 1) { "A numeric space needs at least one bin (got $bins)." }
+    }
 
     @Transient
     val isInfinite = min.isInfinite() || max.isInfinite()

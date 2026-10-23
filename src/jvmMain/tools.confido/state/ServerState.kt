@@ -200,10 +200,15 @@ object serverState {
         Stores.all.forEach { it.load() }
     }
 
-    fun calculateGroupDist(space: Space, dists: Collection<ProbabilityDistribution>): ProbabilityDistribution =
+    /** Null when there is nothing to aggregate over: a zero-width numeric space (old
+     *  production data has some) cannot carry a normalizable density. */
+    fun calculateGroupDist(space: Space, dists: Collection<ProbabilityDistribution>): ProbabilityDistribution? =
         when (space) {
-            is NumericSpace -> {
-                val probs = dists.mapNotNull { (it as? ContinuousProbabilityDistribution)?.discretize()?.binProbs }
+            is NumericSpace -> if (!(space.size > 0)) null else {
+                // Discretize onto the *question's* binner: a prediction's own embedded
+                // space may have a different bin count, and `Z+` (a zip) would silently
+                // truncate the sum to the shortest list.
+                val probs = dists.mapNotNull { (it as? ContinuousProbabilityDistribution)?.discretize(space.binner)?.binProbs }
                     .fold(zeros(space.bins)) { a,b -> a `Z+` b }.normalize()
                 DiscretizedContinuousDistribution(space, probs)
             }
@@ -221,8 +226,9 @@ object serverState {
                 ServerExtension.enabled.mapNotNull {
                     it.calculateGroupPred(question, preds)
                 }.firstOrNull() ?:
-                Prediction(user = null, ts = preds.map{it.ts}.max(), question = question.ref,
-                            dist = calculateGroupDist(question.answerSpace, preds.map{it.dist}))
+                calculateGroupDist(question.answerSpace, preds.map{it.dist})?.let { dist ->
+                    Prediction(user = null, ts = preds.map{it.ts}.max(), question = question.ref, dist = dist)
+                }
             }
         }?.let { summarizeGroupPred(question, it) }
 

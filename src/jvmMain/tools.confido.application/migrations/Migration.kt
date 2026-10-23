@@ -102,6 +102,7 @@ object MigrationRunner {
         AttributionFloorMigration,
         RoomGroupsEdtToCoreMigration,
         CommentDiscriminatorMigration,
+        DateSpaceBinsMigration,
     )
 
     private fun workingName(collection: String, batch: String) = "${collection}_mig_$batch"

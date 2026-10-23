@@ -309,7 +309,7 @@ fun main() {
                             val history =
                                 call.parameters["history"]?.let { ExportHistory.valueOf(it) } ?: ExportHistory.LAST
                             val buckets = call.parameters["buckets"]?.toIntOrNull() ?: 32
-                            if (buckets < 0) badRequest("You cannot request negative amount of buckets.")
+                            if (buckets < 1) badRequest("You must request at least one bucket.")
 
                             PredictionExport(exportable, group, history, buckets, user)
                         }

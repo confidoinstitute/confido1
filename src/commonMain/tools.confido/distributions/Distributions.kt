@@ -149,6 +149,9 @@ data class DiscretizedContinuousDistribution(
     val origMean: Double? = null,
     val origStdev: Double? = null,
 ) : DiscretizedProbabilityDistribution, ContinuousProbabilityDistribution {
+    init {
+        require(binProbs.isNotEmpty()) { "A discretized distribution needs at least one bin." }
+    }
 
     @Transient
     val bins  = binProbs.size
