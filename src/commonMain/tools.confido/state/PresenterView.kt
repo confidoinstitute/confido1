@@ -121,10 +121,9 @@ data class SlidePV(
     val slidesVersion: Int = 0,
 ) : PresenterView() {
     override fun describe() = "presentation slide"
-    fun slideUrl(): String {
-        val num = (slideIndex + 1).toString().padStart(4, '0')
-        return "/presentations/$presentationId/$fileToken/slides/$num.png?v=$slidesVersion"
-    }
+    fun slideUrl() = slideArtifactUrl(presentationId, fileToken, slidesVersion, slideIndex, "png")
+    /** Vector rendering for the projector (crisp at any resolution); PNG if the server has none. */
+    fun svgUrl() = slideArtifactUrl(presentationId, fileToken, slidesVersion, slideIndex, "svg")
 }
 
 /**

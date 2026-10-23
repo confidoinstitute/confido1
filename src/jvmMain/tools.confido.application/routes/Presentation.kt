@@ -17,11 +17,6 @@ import io.ktor.server.request.*
 import io.ktor.utils.io.toByteArray
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import org.apache.pdfbox.Loader
-import org.apache.pdfbox.pdmodel.PDDocument
-import org.apache.pdfbox.rendering.PDFRenderer
-import org.apache.pdfbox.text.PDFTextStripper
-import org.apache.pdfbox.text.TextPosition
 import tools.confido.payloads.requests.*
 import tools.confido.rooms.Room
 import tools.confido.rooms.RoomPermission
@@ -39,7 +34,6 @@ import tools.confido.state.*
 import tools.confido.store.*
 import java.io.File
 import java.io.StringWriter
-import javax.imageio.ImageIO
 import tools.confido.state.Topics
 import tools.confido.state.ServerEntityLookup
 
@@ -109,36 +103,34 @@ private suspend fun installSlidesPdf(pres: Presentation, bytes: ByteArray): Int 
     stagingDir.deleteRecursively()
     stagingDir.mkdirs()
 
-    // Save original PDF
-    File(presentationDir, "${pres.id}/orig.pdf").writeBytes(bytes)
+    // Save original PDF (also the input for the poppler tools below)
+    val origFile = File(presentationDir, "${pres.id}/orig.pdf")
+    origFile.writeBytes(bytes)
 
-    // Convert PDF pages to PNG images and extract slide titles. This is seconds to
-    // tens of seconds of CPU for a big deck, and touches no server state, so it runs
+    // Render pages to PNG and extract slide titles through poppler (see [Poppler]).
+    // Seconds to minutes of CPU for a big deck, touching no server state, so it runs
     // off the single-threaded request dispatcher — on it, a 200-page upload froze
     // every other request (and websocket pings) for its whole duration. Renders are
     // serialized among themselves: two at once could race on a staging dir and
-    // double the peak heap.
+    // double the load.
+    if (!Poppler.available)
+        serviceUnavailable("Slide import is not available on this server: poppler-utils is not installed " +
+            "(missing: ${Poppler.missing.joinToString()}).")
     var numSlides = 0
     var slideLabels = emptyList<String>()
     try {
         slideRenderMutex.withLock { withContext(Dispatchers.IO) {
-            val doc = Loader.loadPDF(bytes)
-            doc.use { pdf ->
-                numSlides = pdf.numberOfPages
-                if (numSlides == 0) badRequest("The PDF has no pages.")
-                if (numSlides > MAX_SLIDES) badRequest("The PDF has $numSlides pages; at most $MAX_SLIDES slides are supported.")
-                val renderer = PDFRenderer(pdf)
-                for (i in 0 until numSlides) {
-                    val image = renderer.renderImageWithDPI(i, 150f)
-                    val filename = (i + 1).toString().padStart(4, '0') + ".png"
-                    ImageIO.write(image, "PNG", File(stagingDir, filename))
-                }
-
-                // Heuristically extract slide titles from PDF text
-                slideLabels = (0 until numSlides).map { i ->
-                    val title = extractSlideTitle(pdf, i)
-                    if (title != null) "Slide ${i + 1}: $title" else "Slide ${i + 1}"
-                }
+            numSlides = pdfPageCount(origFile)
+            if (numSlides == 0) badRequest("The PDF has no pages.")
+            if (numSlides > MAX_SLIDES) badRequest("The PDF has $numSlides pages; at most $MAX_SLIDES slides are supported.")
+            renderPdfPages(origFile, stagingDir, numSlides)
+            // Thumbnails and vector pages are best-effort: the slide route falls back
+            // to the full PNG when either is missing, so a deck that trips one of the
+            // tools still imports.
+            renderThumbnails(origFile, File(stagingDir, "thumbs"))
+            renderSvgPages(origFile, File(stagingDir, "svg"), numSlides)
+            slideLabels = extractSlideTitles(origFile, numSlides).mapIndexed { i, title ->
+                if (title != null) "Slide ${i + 1}: $title" else "Slide ${i + 1}"
             }
         } }
     } catch (e: ResponseError) {
@@ -147,12 +139,14 @@ private suspend fun installSlidesPdf(pres: Presentation, bytes: ByteArray): Int 
     } catch (e: CancellationException) {
         stagingDir.deleteRecursively()
         throw e
+    } catch (e: Poppler.ToolFailed) {
+        // A malformed or encrypted deck; the tool's last stderr line says which.
+        stagingDir.deleteRecursively()
+        badRequest("Failed to process PDF: ${e.message}")
     } catch (e: Throwable) {
-        // Throwable, not Exception: rendering can also die with an Error (OOM on a huge
-        // page, or a LinkageError from a missing JNI registration in the native image),
-        // which must still clean up staging and be reported. Log it: a 400 is otherwise
-        // invisible in the server log, and a malformed deck is not distinguishable from
-        // a deployment bug without the trace.
+        // Throwable, not Exception: cleanup and a reported 400 must also happen for
+        // Errors. Log it: a 400 is otherwise invisible in the server log, and a
+        // malformed deck is not distinguishable from a deployment bug without the trace.
         stagingDir.deleteRecursively()
         System.err.println("Slide PDF processing failed for presentation ${pres.id}:")
         e.printStackTrace()
@@ -299,11 +293,15 @@ fun presentationRoutes(routing: Routing) = routing.apply {
         }
     }
 
-    // Serve slide images (with file token for access protection)
-    getST("/presentations/{presId}/{fileToken}/slides/{filename}") {
+    // Serve slide artifacts (with file token for access protection): the full-size
+    // PNG (`NNNN.png`), a thumbnail (`thumbs/NNNN.jpg`) or a vector rendering
+    // (`svg/NNNN.svg`). The latter two are best-effort at import and absent for
+    // decks rendered before they existed, so a missing one falls back to the PNG —
+    // an <img> does not care which it gets.
+    getST("/presentations/{presId}/{fileToken}/slides/{path...}") {
         val presId = call.parameters["presId"] ?: badRequest("Missing presentation ID.")
         val token = call.parameters["fileToken"] ?: badRequest("Missing file token.")
-        val filename = call.parameters["filename"] ?: badRequest("Missing filename.")
+        val path = call.parameters.getAll("path") ?: badRequest("Missing filename.")
 
         // Validate token
         val pres = presentationStore.get(presId) ?: notFound("Presentation not found.")
@@ -312,11 +310,28 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             !MessageDigest.isEqual(pres.fileToken.toByteArray(), token.toByteArray())
         ) unauthorized("Invalid file token.")
 
-        // Sanitize filename to prevent path traversal
-        if (!filename.matches(Regex("^\\d{4}\\.png$"))) badRequest("Invalid filename.")
+        // Strict whitelist of path shapes (also prevents traversal)
+        val num = when (path.size) {
+            1 -> SLIDE_PNG_RE.matchEntire(path[0])?.groupValues?.get(1)
+            2 -> when (path[0]) {
+                "thumbs" -> SLIDE_JPG_RE.matchEntire(path[1])?.groupValues?.get(1)
+                "svg" -> SLIDE_SVG_RE.matchEntire(path[1])?.groupValues?.get(1)
+                else -> null
+            }
+            else -> null
+        } ?: badRequest("Invalid filename.")
 
-        val file = File(presentationDir, "$presId/slides/$filename")
+        val slidesDir = File(presentationDir, "$presId/slides")
+        val png = File(slidesDir, "$num.png")
+        val file = File(slidesDir, path.joinToString("/")).takeIf { it.exists() } ?: png
         if (!file.exists()) notFound("Slide not found.")
+        if (file.extension == "svg") {
+            // pdftocairo output holds only paths and inline images (no <text>, no
+            // scripts), but the file is user-derived: forbid script execution and
+            // sniffing in case it is ever opened directly rather than via <img>.
+            call.response.header("Content-Security-Policy", "sandbox")
+            call.response.header("X-Content-Type-Options", "nosniff")
+        }
         call.respondFile(file)
     }
 
@@ -723,13 +738,85 @@ private suspend fun executeFlowAction(action: FlowAction, room: tools.confido.ro
 }
 
 // ---------------------------------------------------------------------------
-// Heuristic slide title extraction from PDF text
+// Slide rendering and heuristic title extraction via poppler
 // ---------------------------------------------------------------------------
 
+private const val SLIDE_DPI = 150
+/** Wide enough for the editor's 360 px hover preview and the runner's 400 px preview. */
+private const val THUMB_WIDTH = 400
+private val SLIDE_PNG_RE = Regex("""^(\d{4})\.png$""")
+private val SLIDE_JPG_RE = Regex("""^(\d{4})\.jpg$""")
+private val SLIDE_SVG_RE = Regex("""^(\d{4})\.svg$""")
+private const val PDF_TOOL_TIMEOUT_S = 60L
+/** pdftoppm on a heavy 200-page deck: ~1 s/page is normal. */
+private const val PDF_RENDER_TIMEOUT_S = 600L
+
+private val PDFINFO_PAGES_RE = Regex("""^Pages:\s+(\d+)""", RegexOption.MULTILINE)
+private val PDFTOPPM_OUTPUT_RE = Regex("""^p-(\d+)\.(png|jpg)$""")
+
+private fun pdfPageCount(pdf: File): Int {
+    val info = Poppler.run("pdfinfo", pdf.path, timeoutSeconds = PDF_TOOL_TIMEOUT_S).decodeToString()
+    return PDFINFO_PAGES_RE.find(info)?.groupValues?.get(1)?.toInt()
+        ?: badRequest("Could not read the PDF's page count.")
+}
+
 /**
- * A text run collected from a single [PDFTextStripper.writeString] call,
- * representing a contiguous piece of text on the page.
+ * Rasterize every page into [outDir] as `0001.png`, `0002.png`, ... pdftoppm
+ * names them `<prefix>-<n>.<ext>` with `n` zero-padded to the width of the page
+ * count, so the files are renamed to our fixed 4-digit scheme.
  */
+private fun renderPdfPages(pdf: File, outDir: File, expected: Int) {
+    Poppler.run("pdftoppm", "-r", SLIDE_DPI.toString(), "-png", pdf.path, File(outDir, "p").path,
+        timeoutSeconds = PDF_RENDER_TIMEOUT_S)
+    val count = normalizePdftoppmNames(outDir)
+    if (count != expected) badRequest("Rendered $count of $expected pages.")
+}
+
+private fun normalizePdftoppmNames(outDir: File): Int {
+    var count = 0
+    for (f in outDir.listFiles() ?: emptyArray()) {
+        val m = PDFTOPPM_OUTPUT_RE.matchEntire(f.name) ?: continue
+        val name = m.groupValues[1].toInt().toString().padStart(4, '0') + "." + m.groupValues[2]
+        if (!f.renameTo(File(outDir, name))) badRequest("Failed to store slide images.")
+        count++
+    }
+    return count
+}
+
+/** Small JPEG per page for lists and previews (a fraction of the PNG's size and render time). */
+private fun renderThumbnails(pdf: File, outDir: File) {
+    outDir.mkdirs()
+    try {
+        Poppler.run("pdftoppm", "-scale-to-x", THUMB_WIDTH.toString(), "-scale-to-y", "-1",
+            "-jpeg", "-jpegopt", "quality=80", pdf.path, File(outDir, "p").path,
+            timeoutSeconds = PDF_RENDER_TIMEOUT_S)
+        normalizePdftoppmNames(outDir)
+    } catch (e: Poppler.ToolFailed) {
+        System.err.println("Slide thumbnails failed (falling back to full images): ${e.message}")
+        outDir.deleteRecursively()
+    }
+}
+
+/**
+ * Vector rendering of each page for the projector: crisp at any resolution, text
+ * as glyph outlines (no font dependency in the browser), images inlined. One
+ * pdftocairo call per page — it writes a single page per SVG file.
+ */
+private fun renderSvgPages(pdf: File, outDir: File, numPages: Int) {
+    outDir.mkdirs()
+    try {
+        for (i in 1..numPages) {
+            val out = File(outDir, i.toString().padStart(4, '0') + ".svg")
+            Poppler.run("pdftocairo", "-svg", "-f", i.toString(), "-l", i.toString(), pdf.path, out.path,
+                timeoutSeconds = PDF_TOOL_TIMEOUT_S)
+        }
+    } catch (e: Poppler.ToolFailed) {
+        System.err.println("Slide SVG rendering failed (falling back to PNG): ${e.message}")
+        outDir.deleteRecursively()
+    }
+}
+
+/** A text run on a page, as reported by `pdftohtml -xml`. */
 private data class TextRun(
     val text: String,
     val fontSize: Float,
@@ -738,31 +825,51 @@ private data class TextRun(
     val pageHeight: Float,
 )
 
-/**
- * Custom [PDFTextStripper] that collects text runs with their font size
- * and position rather than producing plain text output.
- */
-private class SlideTextExtractor : PDFTextStripper() {
-    val runs = mutableListOf<TextRun>()
+// pdftohtml -xml (zoom 1, so units are PDF points):
+//   <page number="1" position="absolute" top="0" left="0" height="405" width="720">
+//   <fontspec id="0" size="14" family="Helvetica" color="#000000"/>
+//   <text top="45" left="60" width="162" height="19" font="0">Small <b>header</b></text>
+private val XML_PAGE_RE = Regex("""<page number="(\d+)"[^>]*\bheight="(\d+)"[^>]*>(.*?)</page>""", RegexOption.DOT_MATCHES_ALL)
+private val XML_FONTSPEC_RE = Regex("""<fontspec id="(\d+)" size="(-?\d+)"""")
+private val XML_TEXT_RE = Regex("""<text top="(\d+)" left="\d+" width="\d+" height="(\d+)" font="(\d+)">(.*?)</text>""", RegexOption.DOT_MATCHES_ALL)
+private val XML_TAG_RE = Regex("""<[^>]*>""")
+private val XML_ENTITY_RE = Regex("""&(#x[0-9a-fA-F]+|#\d+|amp|lt|gt|quot|apos);""")
 
-    override fun writeString(text: String, textPositions: List<TextPosition>) {
-        if (textPositions.isEmpty()) return
-        val trimmed = text.trim()
-        if (trimmed.isEmpty()) return
-
-        // Use the dominant (most common) font size across the run's characters
-        val fontSize = textPositions
-            .groupingBy { it.fontSizeInPt }
-            .eachCount()
-            .maxByOrNull { it.value }
-            ?.key ?: return
-
-        // Use the first character's adjusted Y position (top-down coordinate)
-        val yPos = textPositions.first().yDirAdj
-        val pageHeight = textPositions.first().pageHeight
-
-        runs.add(TextRun(trimmed, fontSize, yPos, pageHeight))
+private fun decodeXmlText(raw: String): String =
+    XML_ENTITY_RE.replace(XML_TAG_RE.replace(raw, "")) { m ->
+        when (val e = m.groupValues[1]) {
+            "amp" -> "&"; "lt" -> "<"; "gt" -> ">"; "quot" -> "\""; "apos" -> "'"
+            else -> (if (e.startsWith("#x")) e.drop(2).toInt(16) else e.drop(1).toInt()).toChar().toString()
+        }
     }
+
+/**
+ * Heuristic slide titles for every page (null where no suitable text exists),
+ * from one `pdftohtml -xml` run over the whole deck. Extraction failure is not
+ * an import failure: slides then simply get numbered labels.
+ */
+private fun extractSlideTitles(pdf: File, numPages: Int): List<String?> {
+    val xml = try {
+        Poppler.run("pdftohtml", "-xml", "-i", "-q", "-nodrm", "-zoom", "1", "-enc", "UTF-8", "-stdout", pdf.path,
+            timeoutSeconds = PDF_TOOL_TIMEOUT_S).decodeToString()
+    } catch (e: Poppler.ToolFailed) {
+        System.err.println("Slide title extraction failed, using numbered labels: ${e.message}")
+        return List(numPages) { null }
+    }
+    val fontSizes = XML_FONTSPEC_RE.findAll(xml).associate { it.groupValues[1] to kotlin.math.abs(it.groupValues[2].toFloat()) }
+    val titles = arrayOfNulls<String>(numPages)
+    for (page in XML_PAGE_RE.findAll(xml)) {
+        val index = page.groupValues[1].toInt() - 1
+        if (index !in 0 until numPages) continue
+        val pageHeight = page.groupValues[2].toFloat()
+        val runs = XML_TEXT_RE.findAll(page.groupValues[3]).mapNotNull { m ->
+            val text = decodeXmlText(m.groupValues[4]).trim()
+            if (text.isEmpty()) null
+            else TextRun(text, fontSizes[m.groupValues[3]] ?: m.groupValues[2].toFloat(), m.groupValues[1].toFloat(), pageHeight)
+        }.toList()
+        titles[index] = pickTitle(runs)
+    }
+    return titles.toList()
 }
 
 /**
@@ -828,27 +935,9 @@ private fun scoreLine(line: TextLine, maxFontSize: Float): Double {
 
 private const val MAX_TITLE_LENGTH = 80
 
-/**
- * Extract a heuristic slide title from a single page of a PDF document.
- *
- * @param pdf   The loaded PDF document.
- * @param pageIndex  Zero-based page index.
- * @return The extracted title, or `null` if no suitable text was found.
- */
-private fun extractSlideTitle(pdf: PDDocument, pageIndex: Int): String? {
-    val extractor = SlideTextExtractor().apply {
-        startPage = pageIndex + 1  // PDFTextStripper uses 1-based page numbers
-        endPage = pageIndex + 1
-    }
-    try {
-        extractor.getText(pdf)
-    } catch (_: Exception) {
-        return null
-    }
-
-    val runs = extractor.runs
+/** Pick the most title-like line from one page's text runs, or null. */
+private fun pickTitle(runs: List<TextRun>): String? {
     if (runs.isEmpty()) return null
-
     val lines = groupRunsIntoLines(runs)
     if (lines.isEmpty()) return null
 

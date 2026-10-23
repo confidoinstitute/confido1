@@ -134,7 +134,7 @@ val PresentationRunner = FC<PresentationRunnerProps> { props ->
                             +label
                         }
                         img {
-                            src = pres.slideUrl(currentItem.slideIndex)
+                            src = pres.thumbUrl(currentItem.slideIndex)
                             css {
                                 maxWidth = 400.px
                                 maxHeight = 250.px

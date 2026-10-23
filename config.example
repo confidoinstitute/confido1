@@ -13,6 +13,9 @@
 # custom content (e.g. an organization's privacy policy page). Defaults to
 # the dev build output plus the repo's static/ dir.
 #CONFIDO_STATIC_PATH=/srv/confido/custom:/srv/confido/static
+# Presentation slide import renders decks with poppler-utils (pdfinfo, pdftoppm,
+# pdftohtml, pdftocairo). They are looked up on PATH unless a directory is given here.
+#CONFIDO_POPPLER_BIN_DIR=/usr/bin
 
 # Location of the directory with svg room icons.
 # Files from this directory will be selectable in the room dialog.

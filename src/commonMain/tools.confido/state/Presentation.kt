@@ -45,11 +45,22 @@ data class Presentation(
 ) : ServerImmediateDerefEntity, HasUrlPrefix {
     override val urlPrefix get() = "/presentations/$id"
 
-    /** Build the URL path for a slide image. */
-    fun slideUrl(slideIndex: Int): String {
-        val num = (slideIndex + 1).toString().padStart(4, '0')
-        return "/presentations/$id/$fileToken/slides/$num.png?v=$slidesVersion"
-    }
+    /** URL of a slide's full-size PNG. */
+    fun slideUrl(slideIndex: Int) = slideArtifactUrl(id, fileToken, slidesVersion, slideIndex, "png")
+    /** URL of a slide's thumbnail (400 px wide JPEG; the server serves the PNG if it is missing). */
+    fun thumbUrl(slideIndex: Int) = slideArtifactUrl(id, fileToken, slidesVersion, slideIndex, "thumbs")
+}
+
+/**
+ * URL of one rendering of a slide: `kind` is `png` (full-size raster, `NNNN.png`),
+ * `thumbs` (`thumbs/NNNN.jpg`) or `svg` (`svg/NNNN.svg`). The version query
+ * cache-busts across re-uploads (file names are identical); the server falls back
+ * to the PNG when a thumbnail or SVG does not exist.
+ */
+fun slideArtifactUrl(presentationId: String, fileToken: String, slidesVersion: Int, slideIndex: Int, kind: String): String {
+    val num = (slideIndex + 1).toString().padStart(4, '0')
+    val file = when (kind) { "thumbs" -> "thumbs/$num.jpg"; "svg" -> "svg/$num.svg"; else -> "$num.png" }
+    return "/presentations/$presentationId/$fileToken/slides/$file?v=$slidesVersion"
 }
 
 /**

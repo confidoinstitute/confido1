@@ -1097,7 +1097,7 @@ val FlowItemRow = FC<FlowItemRowProps> { props ->
                         var previewPos by useState<Pair<Double, Double>?>(null)
                         img {
                             ref = thumbRef
-                            src = props.presentation.slideUrl(item.slideIndex)
+                            src = props.presentation.thumbUrl(item.slideIndex)
                             css {
                                 height = 40.px
                                 borderRadius = 2.px
@@ -1114,7 +1114,7 @@ val FlowItemRow = FC<FlowItemRowProps> { props ->
                         }
                         if (previewPos != null) {
                             img {
-                                src = props.presentation.slideUrl(item.slideIndex)
+                                src = props.presentation.thumbUrl(item.slideIndex)
                                 css {
                                     position = Position.fixed
                                     left = previewPos!!.first.px

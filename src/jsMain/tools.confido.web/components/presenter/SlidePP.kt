@@ -9,7 +9,7 @@ import web.cssom.*
 val SlidePP = FC<PresenterPageProps<SlidePV>> { props ->
     val view = props.view
     img {
-        src = view.slideUrl()
+        src = view.svgUrl()
         css {
             width = 100.vw
             height = 100.vh

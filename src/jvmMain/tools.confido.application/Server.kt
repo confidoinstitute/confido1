@@ -12,6 +12,7 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
+import io.ktor.server.plugins.compression.*
 import io.ktor.utils.io.writeFully
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
@@ -163,11 +164,10 @@ suspend fun initData() {
 }
 
 fun main() {
-    // PDFBox's slide rendering goes through AWT; without this, a stray DISPLAY
-    // env var makes AWT try (and fail) to reach an X server instead of running
-    // headless, turning slide uploads into 500s. Must be set before any AWT
-    // class loads.
-    System.setProperty("java.awt.headless", "true")
+    if (!tools.confido.application.routes.Poppler.available)
+        System.err.println("WARNING: poppler-utils not found (missing: " +
+            tools.confido.application.routes.Poppler.missing.joinToString() +
+            "); presentation slide import will be unavailable. Install poppler-utils or set CONFIDO_POPPLER_BIN_DIR.")
     // (Mongo codec configuration — serializers module, discriminator — lives with the
     // client in serverState; the driver's kotlinx codec needs no global registration.)
 
@@ -227,6 +227,14 @@ fun main() {
         embeddedServer(CIO, port = port, host = host) {
             install(WebSockets)
             install(CallLogging)
+            // Slide SVGs are large text (glyph outlines) and gzip 2-4x; everything else
+            // is deliberately left as it was.
+            install(Compression) {
+                gzip {
+                    matchContentType(ContentType.Image.SVG)
+                    minimumSize(1024)
+                }
+            }
             install(ContentNegotiation) {
                 this.json(confidoJSON)
             }

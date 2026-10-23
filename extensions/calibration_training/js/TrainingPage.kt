@@ -644,7 +644,7 @@ val TrainingWelcomeView = FC<TrainingWelcomeViewProps> { props ->
                 }
                 
                 li {
-                    +"It's not a knowledge contest. Knowing the answer for sure is not better than being uncertain. The improtant thing is knowing how (un)sure you are."
+                    +"It's not a knowledge contest. Knowing the answer for sure is not better than being uncertain. The important thing is knowing how (un)sure you are."
                 }
                 
                 li {

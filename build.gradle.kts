@@ -2,10 +2,6 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import kotlin.text.set
-import java.net.URI
-import java.nio.file.FileSystemAlreadyExistsException
-import java.nio.file.FileSystems
-import java.nio.file.Files
 val ktorVersion = "3.3.1"
 val serializationVersion = "1.9.0"
 val mongoDriverVersion = "5.11.1"
@@ -148,6 +144,7 @@ kotlin {
                 implementation("io.ktor:ktor-server-html-builder-jvm:$ktorVersion")
                 implementation("io.ktor:ktor-server-websockets:$ktorVersion")
                 implementation("io.ktor:ktor-server-call-logging:$ktorVersion")
+                implementation("io.ktor:ktor-server-compression:$ktorVersion")
                 implementation("io.ktor:ktor-serialization:$ktorVersion")
                 implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
                 implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
@@ -167,7 +164,6 @@ kotlin {
                 implementation("io.ktor:ktor-client-core:$ktorVersion")
                 implementation("io.ktor:ktor-client-cio:$ktorVersion")
                 // PDF to image conversion for presentation slides
-                implementation("org.apache.pdfbox:pdfbox:3.0.4")
                 // Persistent (immutable) maps for store-layer state snapshots
                 implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.8")
             }
@@ -282,101 +278,6 @@ val generateSerializationReflectConfig by tasks.registering {
     }
 }
 
-// Systematically derives native-image JNI + reflection config for the AWT/Java2D
-// machinery that PDFBox slide rendering pulls in. Which classes those libraries look up through
-// JNI (GetFieldID/GetMethodID/FindClass) is fixed by the JDK's C code, not by the PDF
-// being rendered — but the tracing agent only records lookups it happened to observe,
-// so a traced config is only complete for the decks that were traced (a single
-// non-rectangular clip path crashed production with NoSuchFieldError on
-// ShapeSpanIterator.pData). Instead, enumerate the lookup surface from the libraries
-// themselves: every `Java_<class>_init*IDs` symbol (a static initializer binding
-// field/method IDs) and every `java/...`-style class-name string literal (FindClass
-// targets). Registering all members of those classes as JNI-accessible
-// over-approximates everything the native code can ever resolve, independent of input.
-val generateAwtJniConfig by tasks.registering {
-    val jdkHome = graalvmNative.binaries.named("main").flatMap { it.javaLauncher }
-        .map { it.metadata.installationPath.asFile }
-    // The libraries loaded in headless mode (libawt_xawt is X11-only).
-    val libNames = listOf("libawt", "libawt_headless", "libfontmanager", "libjavajpeg", "liblcms", "libmlib_image")
-    val libFiles = jdkHome.map { home -> libNames.map { File(home, "lib/$it.so") }.filter { it.exists() } }
-    val outDir = layout.buildDirectory.dir("generated/native-awt-jni-config")
-    inputs.files(libFiles)
-    outputs.dir(outDir)
-    doLast {
-        val initIds = Regex("""^Java_([A-Za-z0-9_]+)_init[A-Za-z]*IDs$""")
-        val className = Regex("""^(java|javax|sun|com)/[A-Za-z0-9_/$]+$""")
-        // Never reached headless; keep X11 and printing code out of the image.
-        val excluded = listOf("sun.java2d.x11.", "sun.awt.X11", "sun.print.")
-        // JNI name mangling: `_00024` is `$`, `_1` is a literal underscore, `_` separates packages.
-        fun demangle(s: String) = s.replace("_00024", "$").replace("_1", "\u0000")
-            .replace('_', '.').replace('\u0000', '_')
-        val classes = sortedSetOf<String>()
-        for (lib in libFiles.get()) {
-            val sb = StringBuilder()
-            fun flush() {
-                if (sb.length >= 4) {
-                    val str = sb.toString()
-                    initIds.matchEntire(str)?.let { classes += demangle(it.groupValues[1]) }
-                    if (className.matches(str)) classes += str.replace('/', '.')
-                }
-                sb.setLength(0)
-            }
-            for (b in lib.readBytes()) {
-                val ch = b.toInt()
-                if (ch in 0x20..0x7e) sb.append(ch.toChar()) else flush()
-            }
-            flush()
-        }
-        // Classes handed to an init*IDs native as `Foo.class` arguments from Java leave
-        // no string literal in the library. Derived from the JDK sources (src.zip) with:
-        //   grep -rE 'init\w*IDs\s*\(.*\.class' java.desktop/{sun/java2d,sun/awt,sun/font,java/awt,com/sun/imageio}
-        // Stable across JDK releases; recheck when bumping the toolchain major version.
-        classes += listOf(
-            // sun.java2d.loops.GraphicsPrimitiveMgr.initIDs(...)
-            "sun.java2d.loops.GraphicsPrimitive", "sun.java2d.loops.CompositeType",
-            "sun.java2d.loops.SurfaceType", "sun.java2d.loops.XORComposite", "sun.java2d.SunGraphics2D",
-            "java.awt.AlphaComposite", "java.awt.Color", "java.awt.geom.AffineTransform",
-            "java.awt.geom.Path2D", "java.awt.geom.Path2D\$Float", "sun.awt.SunHints",
-            // sun.awt.image.BufImgSurfaceData.initIDs(...)
-            "sun.awt.image.BufImgSurfaceData\$ICMColorData", "java.awt.image.IndexColorModel",
-            // com.sun.imageio.plugins.jpeg.JPEGImage{Reader,Writer}.init{Reader,Writer}IDs(...)
-            "javax.imageio.stream.ImageInputStream", "javax.imageio.plugins.jpeg.JPEGHuffmanTable",
-            "javax.imageio.plugins.jpeg.JPEGQTable",
-            // sun.font.FreetypeFontScaler.initIDs(FreetypeFontScaler.class)
-            "sun.font.FreetypeFontScaler",
-        )
-        // Java-side reflection with input-dependent targets: GraphicsPrimitiveProxy
-        // instantiates rendering loops by name (`Class.forName("sun.java2d.loops." + ...)`)
-        // on first use of each drawing operation × composite × surface combination —
-        // register the whole package from the toolchain's module image.
-        val jrt = try {
-            FileSystems.newFileSystem(URI.create("jrt:/"), mapOf("java.home" to jdkHome.get().path))
-        } catch (_: FileSystemAlreadyExistsException) {
-            FileSystems.getFileSystem(URI.create("jrt:/"))
-        }
-        Files.list(jrt.getPath("/modules/java.desktop/sun/java2d/loops")).use { files ->
-            files.filter { it.fileName.toString().endsWith(".class") }
-                .forEach { classes += "sun.java2d.loops." + it.fileName.toString().removeSuffix(".class") }
-        }
-        // Constant-name Class.forName targets reached lazily (first colour conversion,
-        // first image op, first path fill); grep for Class.forName in the same sources.
-        classes += listOf(
-            "sun.java2d.cmm.lcms.LcmsServiceProvider",        // sun.java2d.cmm.CMSManager
-            "sun.java2d.marlin.DMarlinRenderingEngine",       // sun.java2d.pipe.RenderingEngine
-            "java.awt.image.LookupOp", "java.awt.image.AffineTransformOp", "java.awt.image.ConvolveOp", // sun.awt.image.ImagingLib
-        )
-        classes.removeAll { c -> excluded.any { c.startsWith(it) } }
-        val entries = classes.map {
-            mapOf("type" to it, "jniAccessible" to true, "allDeclaredFields" to true,
-                  "allDeclaredMethods" to true, "allDeclaredConstructors" to true)
-        }
-        val out = outDir.get().file("reachability-metadata.json").asFile
-        out.parentFile.mkdirs()
-        out.writeText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(mapOf("reflection" to entries))))
-        println("Registered ${entries.size} JNI-accessible AWT/Java2D classes from ${libFiles.get().size} JDK libraries")
-    }
-}
-
 graalvmNative {
     toolchainDetection.set(false)
     binaries {
@@ -390,17 +291,15 @@ graalvmNative {
             classpath(tasks.named("jvmJar"), configurations.named("jvmRuntimeClasspath"))
             configurationFileDirectories.from(file("native-config"))
             configurationFileDirectories.from(generateSerializationReflectConfig)
-            configurationFileDirectories.from(generateAwtJniConfig)
             buildArgs.add("-H:+ReportExceptionStackTraces")
             buildArgs.add("--enable-url-protocols=http,https")
-            // Charset detection (question import) and PDFBox may request arbitrary
-            // charsets at runtime; only a few are bundled by default.
+            // Charset detection (question import) may request arbitrary charsets at
+            // runtime; only a few are bundled by default.
             buildArgs.add("-H:+AddAllCharsets")
             // Deliberately NOT --exact-reachability-metadata, even package-scoped: the
             // scope does not apply to resource lookups, and libraries probe optional
             // resources expecting null (Jakarta Mail's META-INF/mailcap broke mail sending
-            // when this was tried). Missing JNI entries still fail with a clear
-            // NoSuchFieldError/NoSuchMethodError naming the member on first use.
+            // when this was tried).
             // Must point at a GraalVM JDK (needs the native-image tool).
             javaLauncher.set(extensions.getByType<JavaToolchainService>().launcherFor {
                 languageVersion.set(JavaLanguageVersion.of(25))
@@ -417,7 +316,7 @@ graalvmNative {
 // Register the image build task manually against the binary configured above.
 tasks.register("nativeCompile", org.graalvm.buildtools.gradle.tasks.BuildNativeImageTask::class) {
     options.set(graalvmNative.binaries.named("main"))
-    dependsOn(tasks.named("jvmJar"), generateSerializationReflectConfig, generateAwtJniConfig)
+    dependsOn(tasks.named("jvmJar"), generateSerializationReflectConfig)
     service.set(org.graalvm.buildtools.gradle.NativeImageService.registerOn(project))
 }
 
@@ -500,8 +399,8 @@ val releaseNative by tasks.registering(Sync::class) {
     description = "Assemble a self-contained native release tree in build/release/native"
     releaseCommon()
     destinationDir = file("build/release/native")
-    // PDFBox pulls in AWT, so native-image emits libawt & co. next to the binary;
-    // they must ship with it (see native-config/README.md).
+    // Any JDK native libraries native-image emits next to the binary must ship with it
+    // (none at present: slide rendering runs through poppler subprocesses, not AWT).
     from(tasks.named("nativeCompile")) { include("confido-server", "*.so") }
 }
 

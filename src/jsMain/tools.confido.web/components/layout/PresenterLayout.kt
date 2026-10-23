@@ -4,6 +4,7 @@ import tools.confido.web.components.usePresenterInfo
 import tools.confido.web.components.AppStateWebsocketProvider
 import tools.confido.web.components.presenter.PresenterPage
 import tools.confido.web.components.basic.ConnectionBanner
+import tools.confido.web.components.basic.sansSerif
 import tools.confido.web.components.DefaultTheme
 import tools.confido.web.components.ThemeProvider
 import tools.confido.web.components.layout.LayoutMode
@@ -45,6 +46,11 @@ val PresenterLayoutInner = FC<Props> {
             "html, body" {
                 margin = 0.px
                 padding = 0.px
+                // The presenter tree renders outside RootLayout, which is where
+                // the app font is normally established — without this, any view
+                // that forgets a local fontFamily falls back to the browser
+                // default serif on the projector.
+                fontFamily = sansSerif
             }
         }
     }

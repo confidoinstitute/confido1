@@ -260,6 +260,23 @@ async def main():
                 + f"?v={pres3.get('slidesVersion')}", headers={"Cookie": admin}))
             t.check(r.status == 200 and r.read(8)[:4] == b"\x89PNG",
                     "TEST-7f", "last imported slide is served as a PNG")
+            base = BASE + f"/presentations/{pres3['_id']}/{pres3['fileToken']}/slides/"
+            r = urllib.request.urlopen(urllib.request.Request(base + f"thumbs/{n:04d}.jpg", headers={"Cookie": admin}))
+            t.check(r.status == 200 and r.read(2) == b"\xff\xd8",
+                    "TEST-7f2", "thumbnail is served as a JPEG")
+            r = urllib.request.urlopen(urllib.request.Request(base + f"svg/{n:04d}.svg",
+                                                              headers={"Cookie": admin, "Accept-Encoding": "gzip"}))
+            svg_ok = r.status == 200 and r.headers.get("Content-Encoding") == "gzip" \
+                and r.headers.get("Content-Security-Policy") == "sandbox"
+            t.check(svg_ok, "TEST-7f3", "vector slide is served gzipped and sandboxed",
+                    f"{r.status} {dict(r.headers)}")
+            for bad in (f"../{n:04d}.png", f"thumbs/../{n:04d}.png", "thumbs/0001.png", "x/0001.svg"):
+                st = 200
+                try: urllib.request.urlopen(urllib.request.Request(base + bad, headers={"Cookie": admin}))
+                except urllib.error.HTTPError as e: st = e.code
+                if st == 200: t.check(False, "TEST-7f4", "only whitelisted slide artifact paths are served", bad); break
+            else:
+                t.check(True, "TEST-7f4", "only whitelisted slide artifact paths are served")
             # A missing / private deck: Google answers with an HTML page, never a PDF.
             st, body = import_status(
                 ra, "https://docs.google.com/presentation/d/1AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/edit",

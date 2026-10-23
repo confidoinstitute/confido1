@@ -23,6 +23,7 @@ Confido is a **Kotlin Multiplatform** collaborative forecasting/prediction web a
 - **JS target**: ES2015 with IR compiler, Webpack bundling
 - **Testing**: runtime state-sync suite in `tests/state/` (`run_all.sh [--browser]` — self-managed scratch server; see its README); no unit-test framework
 - **Database**: MongoDB with replica set required; init demo data via `GET /init`
+- **Slide import**: needs poppler-utils (`pdfinfo`, `pdftoppm`, `pdftohtml`, `pdftocairo`) on PATH or `CONFIDO_POPPLER_BIN_DIR`; rendering is a subprocess, never in-process AWT (native-image cannot cover it)
 
 ## Directory Structure
 
@@ -149,6 +150,7 @@ Environment variables (see `config.example`):
 - `CONFIDO_HTTP_HOST`, `CONFIDO_HTTP_PORT` - Server binding
 - `CONFIDO_MONGODB_URL`, `CONFIDO_DB_NAME` - Database
 - `CONFIDO_SMTP_HOST`, `CONFIDO_SMTP_PORT` - Email
+- `CONFIDO_POPPLER_BIN_DIR` - Directory with poppler tools (default: PATH lookup)
 - `CONFIDO_DEVMODE=1` - Development endpoints
 - `CONFIDO_DEMO=1` - Demo mode
 
