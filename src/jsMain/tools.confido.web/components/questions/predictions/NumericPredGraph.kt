@@ -18,6 +18,11 @@ import tools.confido.web.utils.panzoom1d.PZState
 import tools.confido.web.utils.panzoom1d.usePanZoom
 import web.canvas.CanvasRenderingContext2D
 import web.canvas.ID
+import web.pointer.POINTER_LEAVE
+import web.pointer.POINTER_MOVE
+import web.pointer.PointerEvent
+import tools.confido.utils.formatPercent
+import kotlin.math.floor
 
 data class ConfidenceColor(
     val p: Double,
@@ -38,6 +43,10 @@ external interface NumericPredGraphProps : PropsWithElementSize, BasePredictionG
     /** Scale factor for text (mark labels, flag values) and mark density —
      *  presenter screens pass >1 together with a taller [graphHeight]. */
     var fontScale: Double?
+    /** Mouse hover shows a cursor line with the value under it and splits the
+     *  density into P(below)/P(above) halves. Defaults to true. On input graphs
+     *  the split needs Shift held, as the CI coloring is the editing feedback. */
+    var hoverInsights: Boolean?
 }
 
 
@@ -93,6 +102,29 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
 
     )
     val outsideColor = "#b08bff"
+    // Canvas fillStyle wants plain strings.
+    val belowColor = splitBelowColor.toString()
+    val aboveColor = splitAboveColor.toString()
+
+    // Hover position in viewport px (not content coords), so a wheel zoom under a
+    // stationary mouse keeps reading out whatever is under the pointer.
+    val hoverEnabled = props.hoverInsights ?: true
+    val isInput = props.isInput ?: false
+    var hoverPx by useState<Double>()
+    val shiftHeld = useModifierKey(ModifierKey.SHIFT, enabled = hoverEnabled && isInput)
+    // Native listeners, not React's onPointerMove: usePan's draggable stops
+    // pointermove propagation, so React's root-delegated handler never sees it.
+    val hoverMoveRE = useEventListener<HTMLDivElement, PointerEvent>(PointerEvent.POINTER_MOVE) { ev ->
+        // Mouse only: touch gestures belong to pan-zoom, and a held button means
+        // a pan or range selection is under way.
+        hoverPx = if (ev.pointerType != "mouse" || ev.buttons.unsafeCast<Int>() != 0) null
+            else ev.clientX - (ev.currentTarget as HTMLElement).getBoundingClientRect().left
+    }
+    val hoverLeaveRE = useEventListener<HTMLDivElement, PointerEvent>(PointerEvent.POINTER_LEAVE) { hoverPx = null }
+    val contentViewport = zoomState.leftPadVisible..(zoomState.params.viewportWidth - zoomState.rightPadVisible)
+    val cursorPx = hoverPx?.takeIf { hoverEnabled && it in contentViewport }
+    val cursorX = cursorPx?.let { zoomState.viewportToContent(it) }
+    val splitX = cursorX?.takeIf { dist != null && (!isInput || shiftHeld) }
 
 
     val bins = (zoomState.visibleContentWidth*dpr).toInt()
@@ -106,6 +138,14 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
         binner.binRanges.map { props.dist?.densityBetween(it) ?: 0.0 }
     }
     val ghost = props.ghostDist as? ContinuousProbabilityDistribution
+    val readout = cursorX?.let { space.formatAtResolution(it, zoomState.params.contentWidth / zoomState.paperWidth) }
+    val graphSplit = splitX?.let { x -> dist?.let { d -> readout?.let { label ->
+        GraphSplit(x, label, d.cdf(x))
+    } } }
+    // Mirrored to a sibling description (e.g. PredictionDescription) if one listens.
+    val splitChannel = use(GraphSplitContext)
+    useEffect(graphSplit) { splitChannel?.publish(graphSplit) }
+    useEffectWithCleanup(splitChannel) { onCleanup { splitChannel?.publish(null) } }
     val ghostProbs = useMemo(ghost, bins, zoomState.visibleContentRange.start, zoomState.visibleContentRange.endInclusive) {
         ghost?.let { g -> binner.binRanges.map { g.densityBetween(it) } }
     }
@@ -118,7 +158,9 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
         else confidences.map {
         Pair(dist.confidenceInterval(it.p, props.preferredCICenter ?: dist.preferredCICenter), it.color)
     }
-    fun barColor(x: Double) = confidenceIntervals.find {
+    fun barColor(x: Double) = if (splitX != null) {
+        if (x < splitX) belowColor else aboveColor
+    } else confidenceIntervals.find {
         x in it.first
     }?.second ?: outsideColor
 
@@ -126,7 +168,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
 
     val yScale = graphHeight / maxDensity
 
-    useLayoutEffect(yTicks, yScale, physicalWidth, physicalHeight, ghostProbs) {
+    useLayoutEffect(yTicks, yScale, physicalWidth, physicalHeight, ghostProbs, cursorPx) {
         val context = canvas.current?.getContext(CanvasRenderingContext2D.ID)
         context?.apply {
             clearRect(0.0, 0.0, physicalWidth.toDouble(), physicalHeight.toDouble())
@@ -160,20 +202,34 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
                 stroke()
                 lineWidth = 1.0
             }
+            cursorPx?.let { px ->
+                // Snapped to the middle of a physical pixel so a 1px stroke stays crisp.
+                val x = floor(px * dpr) + 0.5
+                beginPath()
+                moveTo(x, 0.0)
+                lineTo(x, (GRAPH_TOP_PAD + graphHeight) * dpr)
+                strokeStyle = "rgba(0,0,0,0.65)"
+                stroke()
+            }
         }
     }
     Stack {
-        ref = combineRefs(panZoomRE, clickRE).unsafeCast<Ref<HTMLElement>>()
+        ref = combineRefs(panZoomRE, clickRE, hoverMoveRE, hoverLeaveRE).unsafeCast<Ref<HTMLElement>>()
         css {
             position = Position.relative
             overflow = Overflow.hidden
         }
+        // Keyed: the DSL drops absent conditional children instead of leaving a
+        // placeholder, so e.g. the ghost chip appearing would shift and remount
+        // every later sibling (canvas, flags) by position.
         if (props.interactive?:true)
         GraphButtons {
+            key = "buttons"
             +props
         }
         if (ghost != null && props.ghostLabel != null) {
             div {
+                key = "ghostChip"
                 css {
                     position = Position.absolute
                     top = 8.px
@@ -208,6 +264,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
             }
         }
         ReactHTML.canvas {
+            key = "canvas"
             style = jso {
                 this.width = logicalWidth.px
                 this.height = logicalHeight.px
@@ -252,6 +309,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
             })
 
             div {
+                key = "flags"
                 style = jso {
                     this.width = logicalWidth.px
                     this.height = logicalHeight.px
@@ -270,6 +328,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
             }
         }
         div {
+            key = "labels"
             css {
                 height = (LABELS_HEIGHT * fontScale).px
                 flexGrow = number(0.0)
@@ -280,11 +339,25 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
                 position = Position.relative
                 fontFamily = sansSerif
             }
+            // Lives in the label row rather than the plot, where the value flags
+            // (which can sit anywhere from mid-height down) would overlap it.
+            val cursorReadout = if (cursorPx != null && readout != null) CursorReadout(
+                cursorPx, logicalWidth, readout,
+                below = graphSplit?.let { ReadoutChip("← ${formatPercent(it.below)}", splitBelowColor) },
+                above = graphSplit?.let { ReadoutChip("${formatPercent(1 - it.below)} →", splitAboveColor) },
+                fontScale = fontScale,
+            ) else null
             filteredMarks.forEachIndexed {idx, value->
+                val markPx = zoomState.contentToViewport(value)
+                val markLabel = space.formatValue(value, false, true)
+                val markHalf = markLabel.length * 3.5 * fontScale
+                val covered = cursorReadout?.covered?.let { markPx + markHalf > it.start && markPx - markHalf < it.endInclusive } ?: false
                 div {
+                    key = value.toString()
                     style = jso {
-                        left = zoomState.contentToViewport(value).px
+                        left = markPx.px
                         top = 50.pct
+                        if (covered) visibility = Visibility.hidden
                     }
                     css {
                         val xtrans = when(idx) {
@@ -294,9 +367,10 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
                         transform = translate(xtrans, (-50).pct)
                         position = Position.absolute
                     }
-                    + space.formatValue(value, false, true)
+                    + markLabel
                 }
             }
+            cursorReadout?.render(this)
         }
     }
 

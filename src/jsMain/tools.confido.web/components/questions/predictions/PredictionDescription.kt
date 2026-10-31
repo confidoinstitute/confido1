@@ -38,6 +38,9 @@ external interface GroupPredictionDescriptionProps : Props {
     var myPredictionExists: Boolean
     var numPredictors: Int
     var predictionTerminology: PredictionTerminology
+    /** When a comparison is open, describe it instead of the current prediction
+     *  (which the chart then isn't showing). */
+    var compare: CompareSides?
 }
 
 external interface BinaryHistogramDescriptionProps : Props {
@@ -62,8 +65,106 @@ val descriptionClass = emotion.css.ClassName(ClassName("prediction-desription"))
     lineHeight = 18.px
 }
 
+/** "an" for numbers read with a leading vowel sound (8…, 11, 18), else "a". */
+private fun articleFor(number: String) =
+    if (number.startsWith("8") || Regex("^1[18](?![0-9])").containsMatchIn(number)) "an" else "a"
+
+private fun ChildrenBuilder.splitChip(text: String, color: Color, dark: Boolean = false) = ReactHTML.b {
+    css {
+        backgroundColor = color
+        this.color = if (dark) Color("#FFFFFF") else Color("#333333")
+        borderRadius = 3.px
+        padding = Padding(0.px, 4.px)
+    }
+    +text
+}
+
+/**
+ * The hovered graph's below/above split as a sentence, color-keyed like the
+ * graph's own readout chips; stands in for the 80% CI sentence while hovering.
+ */
+private fun ChildrenBuilder.splitSentence(split: GraphSplit, present: String, past: String, resolved: Boolean) = div {
+    fun chance(p: Double, color: Color) {
+        val pct = formatPercent(p, space = false)
+        +"${articleFor(pct)} "
+        splitChip(pct, color)
+        +" chance"
+    }
+    +"${if (resolved) past else present} "
+    chance(split.below, splitBelowColor)
+    +" that the answer ${if (resolved) "would be" else "is"} below "
+    splitChip(split.label, Color("#555555"), dark = true)
+    +", and "
+    chance(1 - split.below, splitAboveColor)
+    +" that it ${if (resolved) "would be" else "is"} above."
+}
+
+/**
+ * An open comparison in sentences: how the median and the 80% range moved, or,
+ * while the chart is hovered, how P(answer < cursor) moved. Older values in the
+ * older side's color, newer in the newer's, matching the chart's legend.
+ */
+private fun ChildrenBuilder.compareSentences(c: CompareSides, split: GraphSplit?) {
+    val older = c.distA
+    val newer = c.distB
+    // Extensions, not plain local funs: a local fun's implicit receiver is lexical
+    // (the outer builder), so its output would escape the sentence's div.
+    fun ChildrenBuilder.olderValue(text: String) = b { css { this.color = compareOldText }; +text }
+    fun ChildrenBuilder.newerValue(text: String) = b { css { this.color = compareNewText }; +text }
+    fun ChildrenBuilder.between() {
+        +"Between "
+        compareSideChip(0, c.labelA)
+        +" and "
+        compareSideChip(1, c.labelB)
+        +", "
+    }
+    /** "moved from X to Y", or "stayed at X" when they print the same. */
+    fun ChildrenBuilder.change(from: String, to: String) {
+        if (from == to) { +"stayed at "; newerValue(to) }
+        else { +"moved from "; olderValue(from); +" to "; newerValue(to) }
+    }
+    when {
+        older is ContinuousProbabilityDistribution && newer is ContinuousProbabilityDistribution -> {
+            val space = newer.space
+            div {
+                between()
+                +"the median estimate "
+                change(space.formatValue(older.median), space.formatValue(newer.median))
+                +"."
+            }
+            if (split?.belowBefore != null) div {
+                +"The chance that the answer is below "
+                splitChip(split.label, Color("#555555"), dark = true)
+                +" "
+                change(formatPercent(split.belowBefore, space = false), formatPercent(split.below, space = false))
+                +"."
+            } else div {
+                // The unit once per range ("24.6–55.4 kg"); dates carry none.
+                fun range(d: ContinuousProbabilityDistribution) = d.confidenceInterval(0.8, preferredCenter = d.median)
+                    .let { space.formatValue(it.start, showUnit = false) + "–" + space.formatValue(it.endInclusive) }
+                +"The 80% range "
+                change(range(older), range(newer))
+                +"."
+            }
+        }
+        older is BinaryDistribution && newer is BinaryDistribution -> div {
+            between()
+            +"the chance of "
+            yesNoColored(true)
+            +" "
+            change(formatPercent(older.yesProb, space = false), formatPercent(newer.yesProb, space = false))
+            val d = newer.yesProb - older.yesProb
+            if (formatPercent(older.yesProb) != formatPercent(newer.yesProb))
+                +", ${if (d > 0) "up" else "down"} ${formatPercent(kotlin.math.abs(d)).removeSuffix("%")} percentage points"
+            +"."
+        }
+        // A side still loading or unavailable: the chart says so itself.
+    }
+}
+
 val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
     val predTerm = props.predictionTerminology
+    val split = useGraphSplit()
     Stack {
         css(descriptionClass) {}
         div {
@@ -103,6 +204,8 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
                 }
             }
         }
+        props.compare?.let { compareSentences(it, split) }
+        if (props.compare == null)
         when (val dist = props.prediction?.dist) {
             is BinaryDistribution -> {
                 var optionColor = binaryColors[dist.likelyOutcome]
@@ -145,7 +248,8 @@ val GroupPredictionDescription = FC<GroupPredictionDescriptionProps> { props ->
 
                 val confidence = 0.8
                 val confidenceInterval = dist.confidenceInterval(confidence, preferredCenter = dist.median)
-                div {
+                if (split != null) splitSentence(split, "The group thinks there is", "The group thought there was", props.resolved)
+                else div {
                     if (props.resolved) {
                         +"The group believed with "
                     } else {
@@ -272,6 +376,7 @@ val BinaryHistogramDescription = FC<BinaryHistogramDescriptionProps> { props ->
 
 val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
     var exactOpen by useState(false)
+    val split = useGraphSplit()
     if (props.question != null)
     ExactEstimateDialog {
         question = props.question!!
@@ -344,7 +449,8 @@ val MyPredictionDescription = FC<MyPredictionDescriptionProps> { props ->
 
                 val confidence = 0.8
                 val confidenceInterval = dist.confidenceInterval(confidence)
-                ReactHTML.div {
+                if (split != null) splitSentence(split, "You think there is", "You thought there was", props.resolved)
+                else ReactHTML.div {
                     if (props.resolved) {
                         +"You were "
                     } else {

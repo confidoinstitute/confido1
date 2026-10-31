@@ -5,7 +5,9 @@ import emotion.css.ClassName
 import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
+import react.dom.svg.ReactSVG.line
 import react.dom.svg.ReactSVG.path
+import react.dom.svg.ReactSVG.rect
 import react.dom.svg.ReactSVG.svg
 import react.dom.svg.ReactSVG.text
 import react.dom.svg.TextAnchor
@@ -45,6 +47,15 @@ sealed interface CompareEndpoint {
     data class At(val ts: Int) : CompareEndpoint
 }
 
+/** The two sides of an open comparison, older first (as the chart shows them),
+ *  for text that accompanies the chart. A null dist is not (yet) available. */
+data class CompareSides(
+    val distA: ProbabilityDistribution?,
+    val labelA: String,
+    val distB: ProbabilityDistribution?,
+    val labelB: String,
+)
+
 external interface CompareDistributionsProps : PropsWithElementSize {
     var space: Space
     var question: Question
@@ -67,6 +78,9 @@ external interface CompareDistributionsProps : PropsWithElementSize {
      *  ("dist" / "changes" / "scatter"). */
     var onPresent: ((String) -> Unit)?
     var onClose: (() -> Unit)?
+    /** Show the terse delta lines under the chart. Defaults to true; turn off
+     *  when a description renders the comparison in full sentences. */
+    var showSummary: Boolean?
 }
 
 private const val CHART_HEIGHT = 150.0
@@ -80,6 +94,11 @@ private const val DECREASE_FILL = "#b08bff"
 private const val OVERLAP_FILL = "#DDDDDD"
 private const val OLD_STROKE = "#9d7bdd"
 private const val NEW_STROKE = "#00C2FF"
+/** Text colors keyed to the two sides (stroke hues, darkened for legibility). */
+val compareOldText = Color("#8a63d6")
+val compareNewText = Color("#0090C8")
+/** The hover tint over the region below the cursor (and its readout chip). */
+private const val BELOW_TINT = "#E6E6E6"
 
 private val presenterIconSize = ClassName { width = 14.px; height = 14.px }
 
@@ -98,6 +117,12 @@ private fun legendChip(bg: String, borderColor: String, clickable: Boolean = fal
         cursor = Cursor.pointer
         hover { opacity = number(0.8) }
     }
+}
+
+/** A legend-style chip naming one side of a comparison (0 = older, 1 = newer). */
+fun ChildrenBuilder.compareSideChip(side: Int, label: String) = span {
+    className = if (side == 0) legendChip("#F3EDFC", DECREASE_FILL) else legendChip("#E9FBFF", NEW_STROKE)
+    +label
 }
 
 /**
@@ -133,6 +158,26 @@ val CompareDistributions = elementSizeWrapper(FC<CompareDistributionsProps>("Com
             if (rowsReq.current == key) rows = r
         }
     }
+
+    // Hover on the numeric chart: a cursor line, the below-cursor region tinted,
+    // and P(answer < x) under both states. Hooks stay up here, unconditional.
+    var hoverPx by useState<Double>()
+    val plotWidth = width - 2 * SIDE_PAD
+    val numeric = (space as? NumericSpace)?.let { sp ->
+        (props.distA as? ContinuousProbabilityDistribution)?.let { a ->
+            (props.distB as? ContinuousProbabilityDistribution)?.let { b -> Triple(sp, a, b) }
+        }
+    }
+    val cursorPx = hoverPx?.takeIf { activeTab == "dist" && plotWidth > 0 && it in SIDE_PAD..(width - SIDE_PAD) }
+    val hoverSplit = cursorPx?.let { px -> numeric?.let { (sp, a, b) ->
+        val unitsPerPx = (sp.max - sp.min) / plotWidth
+        val x = sp.min + (px - SIDE_PAD) * unitsPerPx
+        GraphSplit(x, sp.formatAtResolution(x, unitsPerPx), below = b.cdf(x), belowBefore = a.cdf(x))
+    } }
+    // Mirrored to the description below the chart, when it listens.
+    val splitChannel = use(GraphSplitContext)
+    useEffect(hoverSplit) { splitChannel?.publish(hoverSplit) }
+    useEffectWithCleanup(splitChannel) { onCleanup { splitChannel?.publish(null) } }
 
     div {
         css {
@@ -256,40 +301,91 @@ val CompareDistributions = elementSizeWrapper(FC<CompareDistributionsProps>("Com
                     "M " + vals.mapIndexed { i, v -> "${px(i)} ${py(v)}" }.joinToString(" L ")
                 val overlap = a.zip(b) { x, y -> min(x, y) }
 
-                svg {
-                    this.width = width
-                    this.height = CHART_TOP + CHART_HEIGHT
-                    viewBox = "0 0 $width ${CHART_TOP + CHART_HEIGHT}"
-                    css { pointerEvents = None.none }
-                    path { d = areaPath(overlap, List(bins) { 0.0 }); fill = OVERLAP_FILL; stroke = "none" }
-                    path { d = areaPath(a, overlap); fill = DECREASE_FILL; fillOpacity = "0.55"; stroke = "none" }
-                    path { d = areaPath(b, overlap); fill = INCREASE_FILL; fillOpacity = "0.8"; stroke = "none" }
-                    path { d = linePath(a); fill = "none"; stroke = OLD_STROKE; strokeWidth = 1.5; strokeDasharray = "5 3" }
-                    path { d = linePath(b); fill = "none"; stroke = NEW_STROKE; strokeWidth = 2.0 }
-                }
-                // Value axis labels.
+                // Hover area: the chart plus its axis row.
                 div {
-                    css {
-                        position = Position.relative
-                        height = AXIS_HEIGHT.px
-                        fontSize = 12.px
-                        color = Color("rgba(0,0,0,30%)")
+                    onPointerMove = { ev ->
+                        hoverPx = if (ev.pointerType.unsafeCast<String>() != "mouse") null
+                            else ev.clientX - ev.currentTarget.getBoundingClientRect().left
                     }
-                    markSpacing(width - 2 * SIDE_PAD, space.min, space.max) { space.formatValue(it, false, true) }
-                        .forEach { v ->
-                            span {
-                                css {
-                                    position = Position.absolute
-                                    left = (SIDE_PAD + (v - space.min) / (space.max - space.min) * (width - 2 * SIDE_PAD)).px
-                                    transform = translatex((-50).pct)
-                                }
-                                +space.formatValue(v, false, true)
+                    onPointerLeave = { hoverPx = null }
+                    svg {
+                        this.width = width
+                        this.height = CHART_TOP + CHART_HEIGHT
+                        viewBox = "0 0 $width ${CHART_TOP + CHART_HEIGHT}"
+                        css { pointerEvents = None.none }
+                        // Tint first, so the change fills keep their hues on top of it.
+                        cursorPx?.let { px ->
+                            rect {
+                                x = SIDE_PAD; y = CHART_TOP
+                                this.width = px - SIDE_PAD; this.height = CHART_HEIGHT
+                                fill = BELOW_TINT; fillOpacity = "0.6"
                             }
                         }
+                        path { d = areaPath(overlap, List(bins) { 0.0 }); fill = OVERLAP_FILL; stroke = "none" }
+                        path { d = areaPath(a, overlap); fill = DECREASE_FILL; fillOpacity = "0.55"; stroke = "none" }
+                        path { d = areaPath(b, overlap); fill = INCREASE_FILL; fillOpacity = "0.8"; stroke = "none" }
+                        path { d = linePath(a); fill = "none"; stroke = OLD_STROKE; strokeWidth = 1.5; strokeDasharray = "5 3" }
+                        path { d = linePath(b); fill = "none"; stroke = NEW_STROKE; strokeWidth = 2.0 }
+                        cursorPx?.let { px ->
+                            line {
+                                x1 = px; x2 = px; y1 = 0.0; y2 = CHART_TOP + CHART_HEIGHT
+                                stroke = "rgba(0,0,0,0.65)"; strokeWidth = 1.0
+                            }
+                        }
+                    }
+                    // Value axis labels.
+                    div {
+                        css {
+                            position = Position.relative
+                            height = AXIS_HEIGHT.px
+                            fontSize = 12.px
+                            color = Color("rgba(0,0,0,30%)")
+                        }
+                        // P(below) and P(above), older to newer, each on its side's own
+                        // color (the tint for below, white-ish for the untinted rest).
+                        val cursorReadout = if (cursorPx != null && hoverSplit != null) {
+                            val before = hoverSplit.belowBefore ?: 0.0
+                            // (Not `old`/`new`: `new` is reserved in JS and got mangled.)
+                            fun chip(pBefore: Double, pAfter: Double, below: Boolean): ReadoutChip {
+                                val (o, n) = formatPercent(pBefore) to formatPercent(pAfter)
+                                val text = if (below) "← $o to $n" else "$o to $n →"
+                                return ReadoutChip(text, Color(if (below) BELOW_TINT else "#F4F4F4")) {
+                                    if (below) +"← "
+                                    span { css { color = compareOldText }; +o }
+                                    span { css { color = Color("#999999") }; +" to " }
+                                    span { css { color = compareNewText }; +n }
+                                    if (!below) +" →"
+                                }
+                            }
+                            CursorReadout(cursorPx, width, hoverSplit.label,
+                                below = chip(before, hoverSplit.below, below = true),
+                                above = chip(1 - before, 1 - hoverSplit.below, below = false))
+                        } else null
+                        markSpacing(width - 2 * SIDE_PAD, space.min, space.max) { space.formatValue(it, false, true) }
+                            .forEach { v ->
+                                val markPx = SIDE_PAD + (v - space.min) / (space.max - space.min) * (width - 2 * SIDE_PAD)
+                                val markLabel = space.formatValue(v, false, true)
+                                val markHalf = markLabel.length * 3.5
+                                val covered = cursorReadout?.covered
+                                span {
+                                    key = v.toString()
+                                    css {
+                                        position = Position.absolute
+                                        left = markPx.px
+                                        transform = translatex((-50).pct)
+                                        if (covered != null && markPx + markHalf > covered.start && markPx - markHalf < covered.endInclusive)
+                                            visibility = Visibility.hidden
+                                    }
+                                    +markLabel
+                                }
+                            }
+                        cursorReadout?.render(this)
+                    }
                 }
                 // Delta summary.
                 val ciA = da.confidenceInterval(0.8)
                 val ciB = db.confidenceInterval(0.8)
+                if (props.showSummary != false)
                 div {
                     css {
                         padding = Padding(4.px, SIDE_PAD.px, 0.px, SIDE_PAD.px)
@@ -342,6 +438,7 @@ val CompareDistributions = elementSizeWrapper(FC<CompareDistributionsProps>("Com
                                 +formatPercent(p)
                             }
                         }
+                    if (props.showSummary != false)
                     div {
                         css { fontSize = 12.px; color = Color("#666666"); gridColumn = "1 / -1".unsafeCast<GridColumn>() }
                         val d = (db.yesProb - da.yesProb) * 100

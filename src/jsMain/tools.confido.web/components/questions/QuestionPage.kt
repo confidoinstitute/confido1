@@ -227,14 +227,17 @@ val QuestionPage = FC<QuestionLayoutProps>("QuestionPage") { props ->
                 this.onNext = nextQ?.let { { navigate(room.urlPrefix + questionUrl(it.id) )  } }
                 this.onPrev = prevQ?.let { { navigate(room.urlPrefix + questionUrl(it.id) )  } }
             }
-            QuestionPredictionSection {
-                this.question = props.question
-                if (props.question.state == QuestionState.RESOLVED) {
-                    this.resolution = props.question.resolution
+            // Lets the graph's hover split reach the description below it.
+            GraphSplitScope {
+                QuestionPredictionSection {
+                    this.question = props.question
+                    if (props.question.state == QuestionState.RESOLVED) {
+                        this.resolution = props.question.resolution
+                    }
+                    this.myPrediction = myPrediction
+                    this.numPredictors = counts.predictors
+                    this.groupPrediction = groupPrediction.data
                 }
-                this.myPrediction = myPrediction
-                this.numPredictors = counts.predictors
-                this.groupPrediction = groupPrediction.data
             }
             if (props.question.allowComments && usePermission(room, RoomPermission.VIEW_QUESTION_COMMENTS)) {
                     QuestionCommentSection {
@@ -362,6 +365,25 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
             ?: (Long.MAX_VALUE - if (ends[i] == CompareEndpoint.Selection) 1 else 0)
         if (rank(0) <= rank(1)) List2(0, 1) else List2(1, 0)
     }
+    // A compared moment that coincides with a marker goes by the
+    // marker's name (plus its time), not the bare timestamp.
+    fun momentLabel(ts: Int): String {
+        val name = (room.timelineMarks + question.timelineMarks)
+            .firstOrNull { it.ts == ts }?.name
+        val dt = formatUpdateDateTime(ts)
+        return if (name != null) "$name · $dt" else dt
+    }
+    fun chipLabel(e: CompareEndpoint): String = when (e) {
+        CompareEndpoint.Now -> "now"
+        CompareEndpoint.Selection -> resolveEnd(e)?.let { momentLabel(it) }
+            ?: "click the timeline…"
+        is CompareEndpoint.At -> momentLabel(e.ts)
+    }
+    // Shared by the chart and the description, older side first.
+    val compareSides = compareEnds?.let { ends -> orderedSlots?.let { slots ->
+        fun distOf(slot: Int) = if (slot == 0) compareDists?.first else compareDists?.second
+        CompareSides(distOf(slots.e1), chipLabel(ends[slots.e1]), distOf(slots.e2), chipLabel(ends[slots.e2]))
+    } }
     val resolvedKey = compareEnds?.map { "${resolveEnd(it)}" }?.joinToString(":") ?: ""
     useEffect(resolvedKey, props.groupPrediction) {
         val ends = compareEnds ?: run { compareDists = null; return@useEffect }
@@ -565,31 +587,19 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                 if (compareEnds != null) {
                     val ends = compareEnds!!
                     val slots = orderedSlots!!
-                    // A compared moment that coincides with a marker goes by the
-                    // marker's name (plus its time), not the bare timestamp.
-                    fun momentLabel(ts: Int): String {
-                        val name = (room.timelineMarks + question.timelineMarks)
-                            .firstOrNull { it.ts == ts }?.name
-                        val dt = formatUpdateDateTime(ts)
-                        return if (name != null) "$name · $dt" else dt
-                    }
-                    fun chipLabel(e: CompareEndpoint): String = when (e) {
-                        CompareEndpoint.Now -> "now"
-                        CompareEndpoint.Selection -> resolveEnd(e)?.let { momentLabel(it) }
-                            ?: "click the timeline…"
-                        is CompareEndpoint.At -> momentLabel(e.ts)
-                    }
-                    fun distOf(slot: Int) = if (slot == 0) compareDists?.first else compareDists?.second
+                    val sides = compareSides!!
                     CompareDistributions {
                         key = "groupPredictionCompare"
                         space = props.question.answerSpace
                         this.question = props.question
-                        distA = distOf(slots.e1)
-                        labelA = chipLabel(ends[slots.e1])
+                        distA = sides.distA
+                        labelA = sides.labelA
                         tsA = resolveEnd(ends[slots.e1])
-                        distB = distOf(slots.e2)
-                        labelB = chipLabel(ends[slots.e2])
+                        distB = sides.distB
+                        labelB = sides.labelB
                         tsB = resolveEnd(ends[slots.e2])
+                        // The description below says it in full sentences.
+                        showSummary = false
                         individualTabs = canViewIndividual
                         onChipClick = { side -> pickerSlot = slots[side] }
                         presenterCtl?.let { ctl ->
@@ -770,6 +780,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                 this.resolved = props.resolution != null
                 this.numPredictors = props.numPredictors
                 this.predictionTerminology = props.question.predictionTerminology
+                this.compare = compareSides
             }
         }
     }
