@@ -12,7 +12,11 @@ import io.ktor.client.plugins.websocket.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.*
-import kotlinx.coroutines.delay
+import js.objects.unsafeJso as jso
+import kotlinx.coroutines.*
+import web.http.*
+import js.promise.await
+import kotlin.coroutines.EmptyCoroutineContext
 import react.create
 import react.dom.client.createRoot
 import tools.confido.extensions.ClientExtension
@@ -137,9 +141,11 @@ object Client {
     }
 
     @Suppress("UNCHECKED_CAST")
-    private suspend fun <Resp> decode(api: BoundApi<*, Resp>, resp: HttpResponse): Resp =
+    private fun <Resp> decode(api: BoundApi<*, Resp>, body: String): Resp =
         if (api.respSer.encodesUnit) Unit as Resp
-        else confidoJSON.decodeFromString(api.respSer, resp.bodyAsText())
+        else confidoJSON.decodeFromString(api.respSer, body)
+
+    private const val DISCONNECTED_MESSAGE = "No connection to the server — try again when reconnected."
 
     /**
      * Invoke a typed endpoint: the decoded response on success, [ApiError] on failure
@@ -154,12 +160,40 @@ object Client {
         payload: Req,
         req: HttpRequestBuilder.() -> Unit = {},
     ): Resp {
-        if (MultiplexWS.disconnected)
-            throw ApiError(null, "No connection to the server — try again when reconnected.")
+        if (MultiplexWS.disconnected) throw ApiError(null, DISCONNECTED_MESSAGE)
         if (appConfig.devMode) console.log("Call", api.toString(), payload)
         val resp = request(api, payload, req)
         if (!resp.status.isSuccess()) throw ApiError(resp.status, resp.bodyAsText())
-        return decode(api, resp)
+        return decode(api, resp.bodyAsText())
+    }
+
+    /**
+     * [call], but the request leaves *now*: a `fetch` with `keepalive`, started
+     * synchronously, so it is delivered even if the page is unloaded or frozen right
+     * after (pagehide, visibilitychange). Ktor cannot promise that — its engine starts
+     * the fetch from a dispatched task, which may never run during unload. Await the
+     * result for [call]'s semantics while the page lives. Browsers cap keepalive
+     * request bodies (64 KiB in total).
+     */
+    fun <Req, Resp> callKeepalive(api: BoundApi<Req, Resp>, payload: Req): Deferred<Resp> {
+        if (MultiplexWS.disconnected)
+            return CompletableDeferred<Resp>().apply { completeExceptionally(ApiError(null, DISCONNECTED_MESSAGE)) }
+        if (appConfig.devMode) console.log("Call (keepalive)", api.toString(), payload)
+        val response = fetchAsync(api.url, jso {
+            method = api.method.name.unsafeCast<RequestMethod>()
+            credentials = RequestCredentials.include
+            keepalive = true
+            if (!api.reqSer.encodesUnit) {
+                headers = web.http.Headers().apply { set("Content-Type", "application/json; charset=utf-8") }
+                body = BodyInit(confidoJSON.encodeToString(api.reqSer, payload))
+            }
+        })
+        return CoroutineScope(EmptyCoroutineContext).async {
+            val resp = response.await()
+            val body = resp.text()
+            if (!resp.ok) throw ApiError(HttpStatusCode.fromValue(resp.status.toInt()), body)
+            decode(api, body)
+        }
     }
 
     suspend fun <Resp> call(

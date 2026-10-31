@@ -4,6 +4,11 @@ import tools.confido.web.ApiError
 import tools.confido.question.BinaryHistogram
 import tools.confido.web.Client
 import web.window.window
+import web.dom.DocumentVisibilityState
+import web.dom.document
+import web.dom.hidden
+import web.events.Event
+import web.events.EventType
 import tools.confido.web.components.*
 import tools.confido.web.components.*
 import tools.confido.web.components.basic.*
@@ -423,30 +428,80 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
     var pendingPrediction: ProbabilityDistribution? by useState(null) // to be submitted
     var predictionPreview: ProbabilityDistribution? by useState(null) // continuously updated preview
     var pendingPredictionState by useState(PendingPredictionState.NONE)
+    // The newest commit, updated synchronously with pendingPrediction. A send that
+    // completes after a newer commit must neither clear it (which would cancel its
+    // debounce, losing it) nor report over it — each prediction supersedes the last.
+    val latestPending = useRef<ProbabilityDistribution>(null)
+    fun setPending(dist: ProbabilityDistribution?) {
+        latestPending.current = dist
+        pendingPrediction = dist
+    }
+    val disconnected = useDisconnected()
 
     val predictionTerm = question.predictionTerminology.term
     val predictionTerms = question.predictionTerminology.plural
 
+    // Errors stay up until the next interaction: the input keeps showing the unsaved value.
     useDebounce(5000, pendingPredictionState.toString()) {
-        if (pendingPredictionState in listOf(PendingPredictionState.ACCEPTED, PendingPredictionState.ERROR))
+        if (pendingPredictionState == PendingPredictionState.ACCEPTED)
             pendingPredictionState = PendingPredictionState.NONE
     }
 
-    useDebounce(1000, confidoJSON.encodeToString(pendingPrediction)) {
-        pendingPrediction?.let { dist ->
-            runCoroutine {
-                pendingPredictionState = PendingPredictionState.SENDING
-                try {
-                    Client.call(Api.questionPredict(question.ref), dist)
-                    pendingPredictionState = PendingPredictionState.ACCEPTED
-                } catch (e: ApiError) {
-                    pendingPredictionState = PendingPredictionState.ERROR
-                }
-                pendingPrediction = null
+    // Sends go out one at a time, in commit order — the server keeps whichever arrives
+    // last, and concurrent requests may arrive out of order. A commit whose turn comes
+    // while another send is in flight waits for it; only leaving the page skips ahead.
+    val inFlight = useRef<ProbabilityDistribution>(null)
+    val queued = useRef<ProbabilityDistribution>(null)
+    fun submit(dist: ProbabilityDistribution, immediately: Boolean = false) {
+        if (inFlight.current === dist) return
+        if (inFlight.current != null && !immediately) { queued.current = dist; return }
+        queued.current = null
+        inFlight.current = dist
+        pendingPredictionState = PendingPredictionState.SENDING
+        // Keepalive, started right here: the send survives the page being closed or
+        // frozen while it is in flight (see Client.callKeepalive).
+        val send = Client.callKeepalive(Api.questionPredict(question.ref), dist)
+        runCoroutine {
+            // Transient failures (no connection, network error, 5xx) keep the prediction
+            // pending for a retry; a rejection by the server would only fail again.
+            val (newState, keep) = try {
+                send.await()
+                PendingPredictionState.ACCEPTED to false
+            } catch (e: ApiError) {
+                val status = e.status
+                PendingPredictionState.ERROR to (status == null || status.value >= 500)
+            } catch (e: Throwable) {
+                PendingPredictionState.ERROR to true
+            }
+            if (inFlight.current === dist) inFlight.current = null
+            if (latestPending.current === dist) { // else superseded meanwhile
+                pendingPredictionState = newState
+                if (!keep) setPending(null)
+            }
+            queued.current?.let { next ->
+                queued.current = null
+                if (next === latestPending.current) submit(next)
             }
         }
     }
-    useOnUnmount(pendingPrediction) { runCoroutine { Client.call(Api.questionPredict(question.ref), it) } }
+
+    // Keyed on the connection too: a prediction held back (or failed) while disconnected
+    // is sent once the connection is back.
+    useDebounce(1000, confidoJSON.encodeToString(pendingPrediction), disconnected) {
+        if (disconnected) return@useDebounce
+        latestPending.current?.let { submit(it) }
+    }
+    useOnUnmount(pendingPrediction) { submit(it) }
+    // Leaving or backgrounding the page (tab close, reload, switching apps on mobile,
+    // where the page gets frozen and maybe discarded, so the debounce would never fire)
+    // sends right away instead of waiting it out.
+    useDocumentEventListener(EventType<Event>("visibilitychange")) {
+        if (document.visibilityState == DocumentVisibilityState.hidden)
+            latestPending.current?.let { submit(it, immediately = true) }
+    }
+    useWindowEventListener(EventType<Event>("pagehide")) {
+        latestPending.current?.let { submit(it, immediately = true) }
+    }
 
 
     // Tabs
@@ -519,7 +574,7 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                         this.dist = props.myPrediction?.dist
                         // Immediate-commit control: predictions send on interaction,
                         // so the whole input gates on the connection.
-                        this.disabled = !question.open || !hasPredictPermission || useDisconnected()
+                        this.disabled = !question.open || !hasPredictPermission || disconnected
                         this.question = question
                         if (question.resolutionVisible)
                             this.resolution = question.resolution
@@ -527,12 +582,13 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                             this.onChange = { newDist, isCommit->
                                 if (isCommit) {
                                     pendingPredictionState = PendingPredictionState.MAKING
-                                    pendingPrediction = newDist
+                                    setPending(newDist)
                                     predictionPreview = null
                                 } else {
+                                    // A commit still pending stays so: the drag may yet be
+                                    // cancelled (touchcancel reverts the slider to it).
                                     pendingPredictionState = PendingPredictionState.NONE
                                     predictionPreview = newDist
-                                    pendingPrediction = null
                                 }
                             }
                         }

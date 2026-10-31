@@ -18,6 +18,7 @@ import web.pointer.POINTER_DOWN
 import web.pointer.POINTER_MOVE
 import web.pointer.POINTER_UP
 import web.pointer.PointerEvent
+import web.touch.TOUCH_CANCEL
 import web.touch.TOUCH_END
 import web.touch.TOUCH_MOVE
 import web.touch.TOUCH_START
@@ -30,6 +31,7 @@ private class DragEventManager<T: HTMLElement>(
     var onDragStart: (() -> Unit)? = null,
     var onDrag: ((Double, Boolean) -> Unit)? = null,
     var onDragEnd: (() -> Unit)? = null,
+    var onDragCancel: (() -> Unit)? = null,
 ) {
     companion object {
         var anyPressed: Boolean = false
@@ -82,6 +84,17 @@ private class DragEventManager<T: HTMLElement>(
         doRelease(ev.clientX.toDouble())
         ev.stopPropagation()
         ev.preventDefault()
+    }
+    /** The browser took the touch over (scroll, system gesture, …): an interrupted drag
+     *  is not a chosen endpoint, so end it without a commit and let [onDragCancel] revert. */
+    private fun onWindowTouchCancel(ev: TouchEvent) {
+        if (!pressed || ev.changedTouches.asList().none { it.identifier == touchId }) return
+        pressed = false
+        anyPressed = false
+        uninstallWindowListeners()
+        console.log("cancel thumb drag")
+        this.onDragCancel?.invoke()
+        this.onDragEnd?.invoke()
     }
     private fun onWindowTouchEnd(ev: TouchEvent) {
         val touch = ev.changedTouches.asList().firstOrNull { it.identifier == touchId }
@@ -150,6 +163,7 @@ private class DragEventManager<T: HTMLElement>(
         touchId = touch.identifier
         installWindowListener(TouchEvent.TOUCH_MOVE, this::onWindowTouchMove, windowEventOpts)
         installWindowListener(TouchEvent.TOUCH_END, this::onWindowTouchEnd, windowEventOpts)
+        installWindowListener(TouchEvent.TOUCH_CANCEL, this::onWindowTouchCancel, windowEventOpts)
         event.preventDefault()
         event.stopPropagation()
     }
@@ -161,15 +175,17 @@ fun <T: HTMLElement> useDraggable(
     onDragStart: (() -> Unit)? = null,
     onDrag: ((Double, Boolean) -> Unit)? = null,
     onDragEnd: (() -> Unit)? = null,
+    onDragCancel: (() -> Unit)? = null,
 ): RefObject<T> {
     val draggableRef = useRef<T>()
     val mgr = useMemo { DragEventManager(container, draggableRef=draggableRef,
-        onClick=onClick, onDragStart=onDragStart, onDrag=onDrag, onDragEnd=onDragEnd) }
-    useEffect(onClick,onDragStart,onDrag,onDragEnd) {
+        onClick=onClick, onDragStart=onDragStart, onDrag=onDrag, onDragEnd=onDragEnd, onDragCancel=onDragCancel) }
+    useEffect(onClick,onDragStart,onDrag,onDragEnd,onDragCancel) {
         mgr.onClick = { console.log("click"); draggableRef.current?.focus(); onClick?.invoke() }
         mgr.onDragStart = onDragStart
         mgr.onDrag = onDrag
         mgr.onDragEnd = onDragEnd
+        mgr.onDragCancel = onDragCancel
     }
     val ref = combineRefs(
         draggableRef,

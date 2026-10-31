@@ -48,6 +48,7 @@ They assume a devmode server (`CONFIDO_DEVMODE=1`) whose `GET /init/` seeds
 | `member_browser_test.py` | ordinary-member view: no Members tab, no foreign identity data, no errors on presentation-only codepaths |
 | `presenter_multi_browser_test.py` | (browser) multi-question presenter: numeric tile renders the canvas group graph (NumericPredGraph) with estimate + resolution flags, no Plotly DOM, console-error sweep |
 | `dialog_stack_browser_test.py` | nested dialogs: per-layer backdrops (0.5 page / 0.25 inter-dialog), open-order stacking beats portal DOM order, backdrop click closes only the topmost dialog |
+| `prediction_browser_test.py` | question-page prediction submission: a slow older send neither cancels nor overtakes a newer commit (sends one at a time, in order), a commit made right before leaving the page is saved (keepalive flush on pagehide/visibilitychange), touchcancel mid-drag reverts the thumb without committing |
 | `connection_browser_test.py` | disconnect UX: kills the scratch server under a live session (banner + immediate-commit controls disable after the debounce), restarts it (recovery + live updates) |
 
 Shared plumbing: `confido_test.py` (HTTP/websocket protocol helpers, `Suite`

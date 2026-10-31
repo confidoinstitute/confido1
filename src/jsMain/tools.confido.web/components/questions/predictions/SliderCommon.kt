@@ -96,10 +96,12 @@ val SliderThumb = FC<SliderThumbProps>("SliderThumb") { props->
     val kind = props.kind
     val svg = kind.svg(disabled)
     val thumbRef = useRef<HTMLDivElement>()
+    val dragStartPos = useRef<Double>(null)
 
     val dragRE = useDraggable<HTMLDivElement>(props.containerElement,
         onDragStart = {
                             if (disabled) return@useDraggable
+                            dragStartPos.current = props.pos
                             pressed=true
                             if (!focused) {
                                 thumbRef.current?.focus()
@@ -111,6 +113,11 @@ val SliderThumb = FC<SliderThumbProps>("SliderThumb") { props->
             if (disabled) return@useDraggable
             props.onDrag?.invoke(zoomState.viewportToContent(pos), isCommit)},
         onDragEnd = {pressed=false },
+        // Move back to where the drag started, uncommitted (a pending commit stays pending).
+        onDragCancel = {
+            if (disabled) return@useDraggable
+            dragStartPos.current?.let { props.onDrag?.invoke(it, false) }
+        },
         onClick = {
             if (disabled) return@useDraggable
             thumbRef.current?.focus()
