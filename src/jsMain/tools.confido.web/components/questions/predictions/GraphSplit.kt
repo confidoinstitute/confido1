@@ -93,11 +93,12 @@ class ReadoutChip(
 /**
  * The value under a chart's cursor, for the chart's axis-label row: a value
  * chip centered on the cursor (clamped into the chart), flanked by chips for
- * the regions [below] and [above] it. A side chip that would run past the
- * chart edge is left out rather than pushing the value off the cursor; the
- * other side, being the complement, still tells the story.
+ * the regions [below] and [above] it, joined to it so the three read as one
+ * "from this point on" unit. A side chip that would run past the chart edge
+ * is left out rather than pushing the value off the cursor; the other side,
+ * being the complement, still tells the story.
  *
- * Widths are estimated (~7px per glyph at 12px) — good enough to decide
+ * Widths are estimated (~7.5px per glyph at 12px, bold) — good enough to decide
  * visibility and which axis ticks to hide ([covered]); the placement itself
  * is exact CSS.
  */
@@ -109,21 +110,22 @@ class CursorReadout(
     val above: ReadoutChip?,
     val fontScale: Double = 1.0,
 ) {
-    private val glyph = 7.0 * fontScale
+    private val glyph = 7.5 * fontScale
     private val pad = 5.0 * fontScale
-    // Not `gap`: inside css { } that name is the CSS gap property.
-    private val chipGap = 2.0
     private fun width(text: String) = text.length * glyph + 2 * pad
     private val valueWidth = width(label)
     private val valueLeft = (cursorPx - valueWidth / 2).coerceIn(0.0, maxOf(0.0, chartWidth - valueWidth))
-    private val showBelow = below != null && valueLeft - chipGap - width(below.text) >= 0
-    private val showAbove = above != null && valueLeft + valueWidth + chipGap + width(above.text) <= chartWidth
+    private val showBelow = below != null && valueLeft - width(below.text) >= 0
+    private val showAbove = above != null && valueLeft + valueWidth + width(above.text) <= chartWidth
 
     /** The horizontal span (chart px) the readout occupies. */
-    val covered = (if (showBelow) valueLeft - chipGap - width(below!!.text) else valueLeft)..
-        (if (showAbove) valueLeft + valueWidth + chipGap + width(above!!.text) else valueLeft + valueWidth)
+    val covered = (if (showBelow) valueLeft - width(below!!.text) else valueLeft)..
+        (if (showAbove) valueLeft + valueWidth + width(above!!.text) else valueLeft + valueWidth)
 
     fun render(cb: ChildrenBuilder) = with(cb) {
+        // Wrapper: positioning only, sized to the value chip. The value chip is a
+        // separate child on a higher layer so the side chips can tuck under its
+        // rounded corners (a child can't paint beneath its own parent's background).
         div {
             key = "readout"
             style = js.objects.unsafeJso {
@@ -137,27 +139,48 @@ class CursorReadout(
                 position = Position.absolute
                 whiteSpace = WhiteSpace.nowrap
                 fontWeight = integer(600)
-                backgroundColor = Color("#555555")
-                color = Color("#FFFFFF")
-                borderRadius = 3.px
-                padding = Padding(0.px, pad.px)
             }
-            +label
+            div {
+                css {
+                    position = Position.relative
+                    zIndex = integer(1)
+                    backgroundColor = Color("#555555")
+                    color = Color("#FFFFFF")
+                    borderRadius = RADIUS.px
+                    padding = Padding(0.px, pad.px)
+                }
+                +label
+            }
             fun side(chip: ReadoutChip, onLeft: Boolean) = div {
                 css {
                     position = Position.absolute
                     top = 0.px
-                    if (onLeft) { right = 100.pct; marginRight = chipGap.px }
-                    else { left = 100.pct; marginLeft = chipGap.px }
+                    bottom = 0.px
+                    // Extends RADIUS under the value chip, padded so the text stays put.
+                    if (onLeft) {
+                        right = 100.pct
+                        marginRight = (-RADIUS).px
+                        padding = Padding(0.px, (pad + RADIUS).px, 0.px, pad.px)
+                        borderTopLeftRadius = RADIUS.px
+                        borderBottomLeftRadius = RADIUS.px
+                    } else {
+                        left = 100.pct
+                        marginLeft = (-RADIUS).px
+                        padding = Padding(0.px, pad.px, 0.px, (pad + RADIUS).px)
+                        borderTopRightRadius = RADIUS.px
+                        borderBottomRightRadius = RADIUS.px
+                    }
                     backgroundColor = chip.color
                     color = Color("#333333")
-                    borderRadius = 3.px
-                    padding = Padding(0.px, pad.px)
                 }
                 chip.content(this)
             }
             if (showBelow) side(below!!, onLeft = true)
             if (showAbove) side(above!!, onLeft = false)
         }
+    }
+
+    private companion object {
+        const val RADIUS = 3.0
     }
 }
