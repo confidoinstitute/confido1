@@ -927,8 +927,11 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
             }
         }
 
+        // Hiding and resolving arrive as live updates; the keys keep the description
+        // (and its SeeMore expanded state) from being remounted by position.
         if (props.isHidden) {
             QuestionStatusLine {
+                key = "hiddenStatus"
                 text = "This question is hidden from participants"
             }
         }
@@ -936,6 +939,7 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
         // Resolution
         props.resolution?.let {
             div {
+                key = "resolution"
                 css {
                     fontFamily = sansSerif
                     fontWeight = FontWeight.bold
@@ -954,6 +958,7 @@ private val QuestionHeader = FC<QuestionHeaderProps> { props ->
 
         // Question description
         div {
+            key = "description"
             css {
                 padding = Padding(10.px, 0.px, 0.px)
                 fontFamily = sansSerif
@@ -993,8 +998,11 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
     val isFirstByMe = comments.data?.none { it.isMine } ?: true
     val effectiveTemplate = if (isFirstByMe) room.commentTemplate else ""
 
+    // Keyed: the dialog is conditional, and the field's draft text below must
+    // not be remounted by position when it appears.
     if (comments.data != null)
     AddCommentDialog {
+        key = "addCommentDialog"
         open = addCommentOpen
         onClose = { addCommentOpen = false }
         id = props.question.id
@@ -1004,6 +1012,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
     }
 
     Stack {
+        key = "commentsHeader"
         css {
             gap = 27.px
             if (layoutMode >= LayoutMode.TABLET) {
@@ -1036,6 +1045,7 @@ private val QuestionCommentSection = FC<QuestionCommentSectionProps> { props ->
     }
 
     Stack {
+        key = "commentList"
         css {
             flexGrow = number(1.0)
             gap = 8.px

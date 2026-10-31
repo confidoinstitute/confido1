@@ -284,8 +284,11 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
         }
         FormSection {
             title = "Anonymity"
+            // Nearly every child here is conditional on other form state; keys keep
+            // the stateful ones (AttributionSection, PseudonymPoolSection) mounted.
             if (parentEntity != null) {
                 FormSwitch {
+                    key = "customAttribution"
                     label = "Custom attribution"
                     comment = if (defaultAttribution == null)
                         "Following the group setting: ${inheritedEff.level.label.lowercase()}."
@@ -299,6 +302,7 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
             }
             (defaultAttribution ?: (if (parentEntity == null) AttributionPolicy() else null))?.let { policy ->
                 AttributionSection {
+                    key = "attribution"
                     value = policy
                     persisted = props.room?.defaultAttribution
                     ratchetFloor = attributionRatchetFloor
@@ -310,6 +314,7 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                 }
                 if (configViolation) {
                     div {
+                        key = "configViolation"
                         css { fontSize = 12.px; this.color = Color("#F35454") }
                         +"This cannot be looser than the group's setting (${inheritedEff.level.label.lowercase()})."
                     }
@@ -317,6 +322,7 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
             }
             if (inheritViolation) {
                 div {
+                    key = "inheritViolation"
                     css { fontSize = 12.px; this.color = Color("#F35454") }
                     +("The group setting is weaker than the promise this room's existing " +
                         "activity was made under; it cannot switch back to following it.")
@@ -326,6 +332,7 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
             if (effLevel == AttributionLevel.PSEUDONYM && !isGroup) {
                 if (parentEntity != null) {
                     FormSwitch {
+                        key = "separatePseudonyms"
                         label = "Separate pseudonyms for this room"
                         comment = if (separatePseudonyms)
                             "This room keeps its own aliases, unlinkable to the group's. " +
@@ -342,6 +349,7 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
             }
             if (effLevel == AttributionLevel.PSEUDONYM && (parentEntity == null || separatePseudonyms || isGroup)) {
                 PseudonymPoolSection {
+                    key = "pseudonymPool"
                     pool = pseudonymPool
                     onChange = { pseudonymPool = it }
                     memberCount = props.room?.members?.size ?: 0

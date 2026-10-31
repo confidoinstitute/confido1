@@ -110,9 +110,13 @@ val RoomMembers = FC<Props> {
             marginRight = Auto.auto
 
         }
+        // Sections come and go with the membership (first guest joins, last invitation
+        // deleted), so everything is keyed; positional matching would remount the
+        // later sections' rows and close their open dialogs.
         groupedMembership["internal"]?.let {
-            DividerHeading { text = "Users from this organization" }
+            DividerHeading { key = "internalHeading"; text = "Users from this organization" }
             Stack {
+                key = "internal"
                 css { gap = 10.px; padding = 15.px; backgroundColor = bgColor }
                 it.map {
                     RoomMember {
@@ -124,8 +128,9 @@ val RoomMembers = FC<Props> {
             }
         }
         groupedMembership["guest"]?.let {
-            DividerHeading { text = "Temporary guests" }
+            DividerHeading { key = "guestHeading"; text = "Temporary guests" }
             Stack {
+                key = "guest"
                 css { gap = 10.px }
                 css { gap = 10.px; padding = 15.px; backgroundColor = bgColor }
                 it.map {
@@ -138,12 +143,12 @@ val RoomMembers = FC<Props> {
             }
         }
         if (invitations.isNotEmpty()) {
-            DividerHeading { text = "Invitation links" }
+            DividerHeading { key = "invitationHeading"; text = "Invitation links" }
             invitations.entries.sortedBy { it.key.createdAt }.map { (invitation, maybeMembers) ->
                 Stack {
+                    key = "invitation__" + invitation.token
                     css { gap = 10.px; padding = 15.px; backgroundColor = bgColor }
                     InvitationMembers {
-                        key = "invitation__" + invitation.token
                         this.invitation = invitation
                         this.members = maybeMembers
                         this.onEditDialog = { editInviteLinkDialog(it) }
@@ -155,8 +160,9 @@ val RoomMembers = FC<Props> {
             // Group implied members by their source (impliedFrom)
             val groupedImplied = impliedMembers.groupBy { it.impliedFrom ?: "Inherited" }
             groupedImplied.forEach { (source, members) ->
-                DividerHeading { text = "Inherited from $source" }
+                DividerHeading { key = "impliedHeading__$source"; text = "Inherited from $source" }
                 Stack {
+                    key = "implied__$source"
                     css { gap = 10.px; padding = 15.px; backgroundColor = bgColor; opacity = number(0.7) }
                     members.map {
                         RoomMember {
@@ -169,6 +175,7 @@ val RoomMembers = FC<Props> {
             }
         }
         div {
+            key = "filler"
             css {
                 flexGrow = number(1.0)
                 backgroundColor = bgColor

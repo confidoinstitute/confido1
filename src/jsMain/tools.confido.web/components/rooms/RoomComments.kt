@@ -61,7 +61,10 @@ val RoomComments = FC<Props> {
             flexGrow = number(1.0)
         }
 
+        // Keyed: the input field is conditional on the layout breakpoint, and the
+        // comment list after it must not be remounted by position when it flips.
         DividerHeading {
+            key = "heading"
             hiddenOnPhone = true
             text = "Room discussion"
         }
@@ -69,6 +72,7 @@ val RoomComments = FC<Props> {
         if (layoutMode != LayoutMode.PHONE) {
             if (usePermission(room, RoomPermission.POST_ROOM_COMMENT)) {
                 AddCommentField {
+                    key = "addComment"
                     id = room.id
                     variant = CommentInputVariant.ROOM
                 }
@@ -76,6 +80,7 @@ val RoomComments = FC<Props> {
         }
 
         Stack {
+            key = "comments"
             css {
                 flexDirection = FlexDirection.column
                 gap = 8.px

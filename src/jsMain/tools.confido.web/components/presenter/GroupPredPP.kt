@@ -40,7 +40,10 @@ val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
             alignItems = AlignItems.center
             justifyContent = JustifyContent.spaceBetween
         }
+        // Keyed: the graph and description are conditional on the data, and the
+        // footer's predictor subscription must not be remounted by position.
         div {
+            key = "title"
             css {
                 fontFamily = sansSerif
                 textAlign = TextAlign.center
@@ -53,6 +56,7 @@ val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
         }
         if (response is WSData) {
             div {
+                key = "graph"
                 css {
                     width = 100.pct
                     flexGrow = number(1.0)
@@ -88,6 +92,7 @@ val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
             }
             if (response.data?.dist !is BinaryDistribution)
             div {
+                key = "description"
                 css { fontSize = 4.vh }
                 response.data?.dist?.let{
                     +it.description
@@ -95,6 +100,7 @@ val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
             }
         }
         Stack {
+            key = "footer"
             direction = FlexDirection.row
             css {
                 width = 100.pct

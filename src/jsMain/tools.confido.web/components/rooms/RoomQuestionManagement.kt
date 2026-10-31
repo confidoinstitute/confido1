@@ -251,8 +251,11 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
         }
     }
 
+    // The error line and the tag bar toggle at runtime; keys keep the question
+    // table (DnD state, open row dialogs) from being remounted by position.
     if (groupPredsWS is WSError) {
         div { // TODO styling
+            key = "groupPredsError"
             css { color = NamedColor.red }
             +groupPredsWS.prettyMessage
         }
@@ -261,6 +264,7 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
     // Tag filter bar
     if (allTags.isNotEmpty()) {
         Stack {
+            key = "tagFilter"
             direction = FlexDirection.row
             css {
                 flexWrap = FlexWrap.wrap
@@ -314,6 +318,7 @@ val QuestionManagement = FC<QuestionManagementProps> { props ->
     }
 
     DndContext {
+        key = "questionTable"
         collisionDetection = closestCenter
         modifiers = arrayOf(restrictToVerticalAxis, restrictToWindowEdges)
         this.sensors = sensors

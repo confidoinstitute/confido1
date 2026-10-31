@@ -41,11 +41,13 @@ external interface BinaryPredictionProps : Props, BasePredictionGraphProps {
     var onSliderZoomChange: ((PZState)->Unit)?
 }
 
-fun ChildrenBuilder.proportionalCircle(text: String, color: Color, prob: Double?, size: Double = 145.0, leftText:Boolean=false) {
+fun ChildrenBuilder.proportionalCircle(text: String, color: Color, prob: Double?, size: Double = 145.0, leftText:Boolean=false,
+                                       key: String? = null) {
     // Base size from Figma is 145 px, scale accordingly
     val scalar = size / 145.0
     var wantAlt = false
     div {
+        key?.let { this.key = it }
         css {
             display = Display.flex
             alignItems = AlignItems.center
@@ -248,9 +250,11 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
             alignItems = AlignItems.center
             position = Position.relative
         }
-        // Inspect-mode chip: the display shows a past moment's values.
+        // Inspect-mode chip: the display shows a past moment's values. It toggles
+        // on timeline hover, so its later siblings are keyed to keep their identity.
         if (props.ghostLabel != null) {
             div {
+                key = "ghostChip"
                 css {
                     position = Position.absolute
                     top = 8.px
@@ -294,13 +298,14 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
         } else {
             yesGreen
         }
-        proportionalCircle("No", noColor, props.dist?.yesProb?.let { 1 - it }, size = circleSize, leftText=true)
-        proportionalCircle("Yes", yesColor, props.dist?.yesProb, size = circleSize)
+        proportionalCircle("No", noColor, props.dist?.yesProb?.let { 1 - it }, size = circleSize, leftText=true, key = "no")
+        proportionalCircle("Yes", yesColor, props.dist?.yesProb, size = circleSize, key = "yes")
         if (props.interactive ?: true) {
             props.sliderZoom?.let { zoom ->
                 props.onSliderZoomChange?.let { onZoomChange->
 
                     GraphButtonContainer {
+                        key = "zoomButton"
                         side = Side.LEFT
                         BinaryZoomButton {
                             curZoom = zoom
@@ -311,6 +316,7 @@ val BinaryPrediction = FC<BinaryPredictionProps> { props ->
             }
             GraphButtons {
                 +props
+                key = "buttons"
                 if (props.question != null) {
                     onHistogramClick = props.onHistogramButtonClick
                 }

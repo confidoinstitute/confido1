@@ -75,8 +75,11 @@ private val MultiQuestionTile = FC<MultiQuestionTileProps> { props ->
             gap = 1.5.vh
             minHeight = 0.px
         }
+        // Keyed throughout: the presenter toggles the optional sections live, and
+        // unkeyed later siblings would be remounted by position (resubscribing).
         // Question title
         div {
+            key = "title"
             css {
                 fontFamily = sansSerif
                 textAlign = TextAlign.center
@@ -89,6 +92,7 @@ private val MultiQuestionTile = FC<MultiQuestionTileProps> { props ->
         // Group prediction
         if (props.showGroupPred) {
             TileGroupPred {
+                key = "groupPred"
                 this.question = question
                 this.showResolution = props.showResolution
             }
@@ -96,11 +100,13 @@ private val MultiQuestionTile = FC<MultiQuestionTileProps> { props ->
         // Histogram (binary only)
         if (props.showHistogram && isBinary) {
             TileHistogram {
+                key = "histogram"
                 this.question = question
             }
         }
         // Footer
         div {
+            key = "footer"
             css {
                 fontFamily = sansSerif
                 fontSize = 2.vh
