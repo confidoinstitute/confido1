@@ -37,8 +37,17 @@ val view2page by lazy { mapOf(
 fun getPresenterPageComponent(view: PresenterView): PresenterPageType =
     view2page[view::class] ?: EmptyPP.unsafeCast<PresenterPageType>()
 
+/** React key for a view's page: *what* it shows (type + questions), not *how*.
+ *  Switching to another question remounts, so the page can't flash the previous
+ *  question's data under the new title; display toggles (showResolution, ...)
+ *  update in place instead of remounting and resubscribing everything. */
+fun PresenterView.pageKey() = this::class.simpleName + ":" + questionRefs().joinToString(",") { it.id }
+
 val PresenterPage = FC<PresenterPageProps<PresenterView>> { props->
     val comp = getPresenterPageComponent(props.view)
-    comp { this.view = props.view }
+    comp {
+        key = props.view.pageKey()
+        this.view = props.view
+    }
 }
 

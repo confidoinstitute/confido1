@@ -30,6 +30,7 @@ val PresentationPP = FC<PresenterPageProps<PresentationPV>> { props ->
         val innerView: PresenterView? = ws.data.runState?.currentView
         if (innerView != null) {
             lookupPresenterPage(innerView) {
+                key = innerView.pageKey()
                 this.view = innerView
             }
         }
