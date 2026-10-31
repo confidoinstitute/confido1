@@ -41,9 +41,6 @@ import tools.confido.web.utils.runCoroutine
 import web.animations.requestAnimationFrame
 import web.events.Event
 import web.events.EventType
-import web.events.addEventHandler
-import web.events.addEventListener
-import web.events.removeEventListener
 import web.scroll.smooth
 import web.timers.*
 import web.window.window
@@ -284,16 +281,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
         }
     }
 
-    useEffectOnceWithCleanup {
-        val onScroll = { event: Event ->
-            scrollY = window.scrollY
-        }
-
-        window.addEventHandler(EventType("scroll"), onScroll)
-        onCleanup {
-            window.removeEventListener(EventType<Event>("scroll"), onScroll)
-        }
-    }
+    useWindowEventListener(EventType<Event>("scroll")) { scrollY = window.scrollY }
 
     // A child room's back button goes up to its group — but only when the viewer
     // can actually see the group (an implied member of just the child cannot).

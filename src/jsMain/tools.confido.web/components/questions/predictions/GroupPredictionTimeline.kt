@@ -1,5 +1,6 @@
 package tools.confido.web.components.questions.predictions
 
+import tools.confido.web.hooks.useDocumentEventListener
 import tools.confido.web.components.basic.*
 import web.cssom.*
 import emotion.react.*
@@ -44,10 +45,7 @@ import tools.confido.web.utils.panzoom1d.PZDragMode
 import tools.confido.web.utils.panzoom1d.PZParams
 import tools.confido.web.utils.panzoom1d.PZState
 import tools.confido.web.utils.panzoom1d.usePanZoom
-import web.dom.document
 import web.events.EventType
-import web.events.addEventListener
-import web.events.removeEventListener
 import web.html.HTMLDivElement
 import web.html.HTMLElement
 import web.keyboard.KeyboardEvent
@@ -194,19 +192,15 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
 
     // Escape: close the marker dialog if open, else release the pin. Lives here
     // (not in QuestionPage) so an open dialog can't lose the pin underneath it.
-    useEffectWithCleanup {
-        val onKey: (KeyboardEvent) -> Unit = { e ->
-            if (e.key == "Escape") {
-                when {
-                    markDialogOpen -> markDialogOpen = false
-                    markersMenuOpen -> markersMenuOpen = false
-                    props.pickArmed == true -> props.onPickCancel?.invoke()
-                    else -> props.onPin?.invoke(null)
-                }
+    useDocumentEventListener(EventType<KeyboardEvent>("keydown")) { e ->
+        if (e.key == "Escape") {
+            when {
+                markDialogOpen -> markDialogOpen = false
+                markersMenuOpen -> markersMenuOpen = false
+                props.pickArmed == true -> props.onPickCancel?.invoke()
+                else -> props.onPin?.invoke(null)
             }
         }
-        document.addEventListener(EventType<KeyboardEvent>("keydown"), onKey)
-        onCleanup { document.removeEventListener(EventType<KeyboardEvent>("keydown"), onKey) }
     }
 
     if (points.size < 2) return@FC

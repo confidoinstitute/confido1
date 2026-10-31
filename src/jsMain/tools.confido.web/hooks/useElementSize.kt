@@ -5,10 +5,7 @@ import web.html.HTMLDivElement
 import web.html.HTMLElement
 import react.*
 import web.events.Event
-import web.events.EventType
 import web.events.RESIZE
-import web.events.addEventListener
-import web.events.removeEventListener
 import web.resize.ResizeObserver
 
 data class ElementSize<T: HTMLElement>(
@@ -53,14 +50,9 @@ fun useViewportSize(): ViewportSize {
     val (width, setWidth) = useState { window.innerWidth }
     val (height, setHeight) = useState { window.innerHeight }
 
-    val handleResize = useCallback { _: Event ->
+    useWindowEventListener(Event.RESIZE) {
         setWidth(window.innerWidth)
         setHeight(window.innerHeight)
-    }
-
-    useEffectWithCleanup {
-        window.addEventListener(Event.RESIZE, handleResize)
-        onCleanup { window.removeEventListener(Event.RESIZE, handleResize) }
     }
 
     return ViewportSize(width, height)

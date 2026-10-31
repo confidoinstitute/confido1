@@ -13,6 +13,7 @@ import web.cssom.*
 import web.html.*
 import emotion.react.*
 import tools.confido.web.hooks.useEffectNotFirst
+import tools.confido.web.hooks.useDocumentEventListener
 import js.objects.unsafeJso as jso
 import react.*
 import react.dom.*
@@ -30,7 +31,6 @@ import web.storage.*
 import web.dom.document
 import web.events.EventType
 import web.events.addEventListener
-import web.events.removeEventListener
 import web.keyboard.KeyboardEvent
 import web.mouse.MouseEvent
 import web.window.WindowTarget
@@ -184,14 +184,8 @@ private val MenuPopover = FC<DialogMenuProps> { props ->
         if (props.open) props.onClose?.invoke()
     }
 
-    useEffectWithCleanup(props.open) {
-        if (props.open) {
-            val handler: (KeyboardEvent) -> Unit = { e ->
-                if (e.key == "Escape") props.onClose?.invoke()
-            }
-            document.addEventListener(EventType<KeyboardEvent>("keydown"), handler)
-            onCleanup { document.removeEventListener(EventType<KeyboardEvent>("keydown"), handler) }
-        }
+    useDocumentEventListener(EventType<KeyboardEvent>("keydown"), enabled = props.open) { e ->
+        if (e.key == "Escape") props.onClose?.invoke()
     }
 
     if (props.open) +createPortal(

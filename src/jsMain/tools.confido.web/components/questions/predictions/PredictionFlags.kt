@@ -1,5 +1,6 @@
 package tools.confido.web.components.questions.predictions
 
+import tools.confido.web.hooks.useWindowEventListener
 import web.window.window
 import web.cssom.*
 import web.html.HTMLDivElement
@@ -12,9 +13,6 @@ import react.dom.html.ReactHTML.div
 import react.dom.svg.ReactSVG
 import react.dom.svg.ReactSVG.svg
 import tools.confido.utils.intersects
-import web.events.Event
-import web.events.addEventHandler
-import web.events.removeEventListener
 import web.mouse.MOUSE_MOVE
 import web.mouse.MouseEvent
 
@@ -115,30 +113,21 @@ val PredictionFlagContent = FC<PredictionFlagContentProps> { props ->
     var hidden by useState(collapseUntilHovered)
     val background = useRef<HTMLDivElement>()
 
-    useEffectWithCleanup {
-        // This must not be a fun, as referencing it through ::onMouseMove would result
-        // in a different function being created in addEventListener and removeEventListener,
-        // and removal would fail.
-        val onMouseMove = { e: MouseEvent ->
-            val target = background.current as HTMLDivElement
-            val boundingRect = target.getBoundingClientRect()
-            val x = when (pos.anchor) {
-                PredictionFlagAnchor.LEFT -> e.clientX - boundingRect.left - 1
-                PredictionFlagAnchor.RIGHT -> boundingRect.right - e.clientX - 1
-            }
-
-            val distance = 20
-            val isMouseNearPole = e.y in boundingRect.top..boundingRect.bottom
-                    && x in (pos.positionX - props.size.width - distance)..(pos.positionX + props.size.width + distance)
-            if (collapseUntilHovered) {
-                hidden = !isMouseNearPole
-            }
+    // Only collapsing flags react to the mouse; no window listener otherwise.
+    useWindowEventListener(MouseEvent.MOUSE_MOVE, enabled = collapseUntilHovered) listener@{ e ->
+        // On unmount React clears the ref at commit but removes the listener only
+        // later (after paint for non-discrete updates); a mousemove can land between.
+        val target = background.current ?: return@listener
+        val boundingRect = target.getBoundingClientRect()
+        val x = when (pos.anchor) {
+            PredictionFlagAnchor.LEFT -> e.clientX - boundingRect.left - 1
+            PredictionFlagAnchor.RIGHT -> boundingRect.right - e.clientX - 1
         }
 
-        window.addEventHandler(MouseEvent.MOUSE_MOVE, onMouseMove);
-        onCleanup {
-            window.removeEventListener(MouseEvent.MOUSE_MOVE, onMouseMove);
-        }
+        val distance = 20
+        val isMouseNearPole = e.y in boundingRect.top..boundingRect.bottom
+                && x in (pos.positionX - props.size.width - distance)..(pos.positionX + props.size.width + distance)
+        hidden = !isMouseNearPole
     }
 
     div {

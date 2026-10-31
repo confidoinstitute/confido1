@@ -1,7 +1,6 @@
 package tools.confido.web.components.questions.predictions
 
 import tools.confido.question.BinaryHistogram
-import web.window.window
 import tools.confido.web.components.basic.*
 import tools.confido.web.components.layout.LayoutMode
 import tools.confido.web.components.layout.LayoutModeContext
@@ -25,9 +24,6 @@ import tools.confido.web.utils.panzoom1d.PZParams
 import tools.confido.web.utils.panzoom1d.usePanZoom
 import web.canvas.CanvasRenderingContext2D
 import web.canvas.ID
-import web.events.Event
-import web.events.addEventHandler
-import web.events.removeEventListener
 import web.mouse.MOUSE_MOVE
 
 external interface BinaryPredictionHistogramProps : PropsWithElementSize {
@@ -114,31 +110,21 @@ val BinaryPredictionHistogram: FC<BinaryPredictionHistogramProps> = elementSizeW
     }
 
     var hoveredBin by useState<Int?>(null)
-    useEffectWithCleanup {
-        // This must not be a fun, as referencing it through ::onMouseMove would result
-        // in a different function being created in addEventListener and removeEventListener,
-        // and removal would fail.
-        val onMouseMove = { e: MouseEvent ->
-            val target = canvas.current as HTMLCanvasElement
-            val boundingRect = target.getBoundingClientRect()
-            val x = e.clientX - boundingRect.left
-            val y = e.clientY - boundingRect.top
+    useWindowEventListener(MouseEvent.MOUSE_MOVE) listener@{ e ->
+        // Null between unmount and the listener's removal (see PredictionFlags).
+        val target = canvas.current ?: return@listener
+        val boundingRect = target.getBoundingClientRect()
+        val x = e.clientX - boundingRect.left
+        val y = e.clientY - boundingRect.top
 
-            var foundIndex: Int? = null
-            for ((index, rect) in rectangles.withIndex()) {
-                if (rect.contains(x, y)) {
-                    foundIndex = index
-                    break
-                }
+        var foundIndex: Int? = null
+        for ((index, rect) in rectangles.withIndex()) {
+            if (rect.contains(x, y)) {
+                foundIndex = index
+                break
             }
-            hoveredBin = foundIndex
         }
-
-
-        window.addEventHandler(MouseEvent.MOUSE_MOVE, onMouseMove)
-        onCleanup {
-            window.removeEventListener(MouseEvent.MOUSE_MOVE, onMouseMove)
-        }
+        hoveredBin = foundIndex
     }
 
     useLayoutEffect(

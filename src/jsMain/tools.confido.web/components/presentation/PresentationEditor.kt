@@ -19,6 +19,7 @@ import tools.confido.web.ext.dndkit.sortable.*
 import tools.confido.web.ext.dndkit.utilities.closestCenter
 import emotion.react.css
 import tools.confido.web.hooks.useCoroutineLock
+import tools.confido.web.hooks.useWindowEventListener
 import io.ktor.client.call.*
 import io.ktor.client.request.forms.*
 import io.ktor.http.*
@@ -39,8 +40,6 @@ import react.dom.html.ReactHTML.span
 import react.router.useBlocker
 import web.events.Event
 import web.events.EventType
-import web.events.addEventListener
-import web.events.removeEventListener
 import web.window.window
 import tools.confido.extensions.FlowItemCategory
 import tools.confido.state.*
@@ -215,13 +214,7 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
     // Unsaved-changes guards (save is explicit — mid-configuration items are
     // legitimately invalid, so implicit saving is not an option): hard
     // reload/close via beforeunload…
-    useEffectWithCleanup(dirty) {
-        if (dirty) {
-            val handler: (Event) -> Unit = { it.preventDefault() }
-            window.addEventListener(EventType<Event>("beforeunload"), handler)
-            onCleanup { window.removeEventListener(EventType<Event>("beforeunload"), handler) }
-        }
-    }
+    useWindowEventListener(EventType<Event>("beforeunload"), enabled = dirty) { it.preventDefault() }
     // …and in-app route changes via the router blocker (the app root is a data
     // router, so this catches tab switches and sidebar navigation).
     val blocker = useBlocker(dirty)
