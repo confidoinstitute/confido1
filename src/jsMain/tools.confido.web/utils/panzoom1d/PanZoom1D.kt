@@ -20,7 +20,9 @@ data class PZParams(
 ) {
     fun key() = "${contentDomain.start}:${contentDomain.endInclusive}:$viewportWidth:$sidePad:$maxZoom"
     val contentWidth get() = contentDomain.size
-    val paperWidthUnzoomed by lazy { (viewportWidth - 2* sidePad) }
+    // Floored at 1px: a viewport narrower than the side padding would otherwise yield
+    // a negative paper width, inverting every coerceIn range (and 0 would divide by zero).
+    val paperWidthUnzoomed by lazy { (viewportWidth - 2* sidePad).coerceAtLeast(1.0) }
 
     /**
      * Given a zoom level and a mapping content coord -> viewport coord, return
@@ -89,7 +91,7 @@ data class PZState(
     val rightPadVisible by lazy { maxOf(params.viewportWidth - (paperWidth - panEffective), 0.0) }
 
     val visibleContentRange by lazy { viewportToContent(0.0)..viewportToContent(params.viewportWidth) }
-    val visibleContentWidth by lazy { params.viewportWidth - leftPadVisible - rightPadVisible }
+    val visibleContentWidth by lazy { (params.viewportWidth - leftPadVisible - rightPadVisible).coerceAtLeast(0.0) }
 }
 
 /** What a mouse drag means on a pan/zoom surface. Touch drags always pan
