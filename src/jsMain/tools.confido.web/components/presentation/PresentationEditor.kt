@@ -970,6 +970,54 @@ val InsertHoverZone = FC<InsertHoverZoneProps> { props ->
 }
 
 
+external interface SlideThumbProps : Props {
+    var presentation: Presentation
+    var slideIndex: Int
+}
+
+/** A slide row's thumbnail; hovering shows a large preview above it. Its own
+ *  component so the hover hooks don't sit under FlowItemRow's conditionals. */
+private val SlideThumb = FC<SlideThumbProps> { props ->
+    val thumbRef = useRef<web.html.HTMLElement>(null)
+    var previewPos by useState<Pair<Double, Double>?>(null)
+    img {
+        ref = thumbRef
+        src = props.presentation.thumbUrl(props.slideIndex)
+        css {
+            height = 40.px
+            borderRadius = 2.px
+            marginLeft = 8.px
+            border = Border(1.px, LineStyle.solid, Color("#ddd"))
+            cursor = Cursor.pointer
+        }
+        onMouseEnter = {
+            thumbRef.current?.getBoundingClientRect()?.let { rect ->
+                previewPos = Pair(rect.left, rect.top)
+            }
+        }
+        onMouseLeave = { previewPos = null }
+    }
+    previewPos?.let { (left, top) ->
+        img {
+            src = props.presentation.thumbUrl(props.slideIndex)
+            css {
+                position = Position.fixed
+                this.left = left.px
+                this.top = top.px
+                transform = translatey((-100).pct)
+                width = 360.px
+                borderRadius = 4.px
+                border = Border(2.px, LineStyle.solid, Color("#ccc"))
+                boxShadow = BoxShadow(0.px, 4.px, 16.px, rgb(0, 0, 0, 0.2))
+                backgroundColor = NamedColor.white
+                zIndex = integer(1000)
+                pointerEvents = None.none
+                padding = 4.px
+            }
+        }
+    }
+}
+
 // A single row in the flow item list (sortable)
 external interface FlowItemRowProps : Props {
     var item: FlowItem
@@ -1093,43 +1141,9 @@ val FlowItemRow = FC<FlowItemRowProps> { props ->
                     }
                     // Slide thumbnail with hover preview
                     if (props.presentation.numSlides > 0) {
-                        val thumbRef = useRef<web.html.HTMLElement>(null)
-                        var previewPos by useState<Pair<Double, Double>?>(null)
-                        img {
-                            ref = thumbRef
-                            src = props.presentation.thumbUrl(item.slideIndex)
-                            css {
-                                height = 40.px
-                                borderRadius = 2.px
-                                marginLeft = 8.px
-                                border = Border(1.px, LineStyle.solid, Color("#ddd"))
-                                cursor = Cursor.pointer
-                            }
-                            onMouseEnter = {
-                                thumbRef.current?.getBoundingClientRect()?.let { rect ->
-                                    previewPos = Pair(rect.left, rect.top)
-                                }
-                            }
-                            onMouseLeave = { previewPos = null }
-                        }
-                        if (previewPos != null) {
-                            img {
-                                src = props.presentation.thumbUrl(item.slideIndex)
-                                css {
-                                    position = Position.fixed
-                                    left = previewPos!!.first.px
-                                    top = previewPos!!.second.px
-                                    transform = translatey((-100).pct)
-                                    width = 360.px
-                                    borderRadius = 4.px
-                                    border = Border(2.px, LineStyle.solid, Color("#ccc"))
-                                    boxShadow = BoxShadow(0.px, 4.px, 16.px, rgb(0, 0, 0, 0.2))
-                                    backgroundColor = NamedColor.white
-                                    zIndex = integer(1000)
-                                    pointerEvents = None.none
-                                    padding = 4.px
-                                }
-                            }
+                        SlideThumb {
+                            presentation = props.presentation
+                            slideIndex = item.slideIndex
                         }
                     }
                 }
