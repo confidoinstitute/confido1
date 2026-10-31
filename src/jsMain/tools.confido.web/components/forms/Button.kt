@@ -132,6 +132,9 @@ val IconLink = ExtendableLink.withRipple().withStyle<IconLinkProps>("palette") {
 
 val InlineHelpButton = FC<ButtonHTMLAttributes<HTMLButtonElement>> { props->
     ButtonUnstyled {
+        // Not the HTML default "submit": help buttons sit inside forms (field
+        // labels, comment inputs) and must not submit them.
+        type = ButtonType.button
         +props
         title = "Show help"
         HelpIconNoPad {
