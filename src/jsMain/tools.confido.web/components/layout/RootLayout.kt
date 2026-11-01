@@ -15,6 +15,7 @@ import tools.confido.web.components.presenter.PresenterControlPanel
 import tools.confido.web.components.presenter.PresenterControllerProvider
 import tools.confido.web.components.profile.UserProfile
 import tools.confido.web.components.profile.VerifyToken
+import tools.confido.web.components.profile.PasswordResetPage
 import tools.confido.web.components.rooms.*
 import tools.confido.web.components.search.SearchPage
 import web.cssom.*
@@ -169,13 +170,7 @@ private val RootLayoutInner = FC<Props> {
                     })
                     add(jso<RouteObject> {
                         path = "password_reset"
-                        element = VerifyToken.create {
-                            api = Api.profilePasswordResetFinish()
-                            failureTitle = "Password reset failed"
-                            successTitle = "Password was reset"
-                            failureText = "The link is expired or invalid."
-                            successText = "Your password has been successfully reset. You can log in by e-mail only now."
-                        }
+                        element = PasswordResetPage.create()
                     })
                     add(jso<RouteObject> {
                         path = "email_login"

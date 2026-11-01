@@ -46,5 +46,7 @@ data class SelfState(
     val followingPresentation: Ref<Room>? = null,
     val myPredictions: Map<Ref<Question>, Prediction> = emptyMap(),
     val myPasswordIsSet: Boolean = false,
+    /** An address the viewer asked to change to, awaiting verification (null = none). */
+    val myPendingEmail: String? = null,
     val presenterWindowActive: Boolean = false,
 )

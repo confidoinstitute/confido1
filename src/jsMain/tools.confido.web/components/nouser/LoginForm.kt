@@ -22,6 +22,7 @@ import react.dom.html.ReactHTML.p
 import react.dom.html.ReactHTML.span
 import react.dom.html.ReactHTML.title
 import tools.confido.state.UserSessionValidity
+import tools.confido.users.isEmailValid
 import tools.confido.web.utils.*
 
 val LoginLinkButton = ButtonBase.withStyle {
@@ -104,6 +105,8 @@ val LoginForm = FC<LoginFormProps> { props ->
     var emailSent by useState(false)
     var emailError by useState<String?>(null)
     var passwordError by useState<String?>(null)
+    // Set by "Forgot password?": e-mail login doubles as the recovery path.
+    var forgotPassword by useState(false)
 
     val login = useCoroutineLock()
 
@@ -158,6 +161,16 @@ val LoginForm = FC<LoginFormProps> { props ->
                     gap = 1.px
                 }
                 if (!emailSent) {
+                    if (forgotPassword && mode == LoginMode.MagicLink)
+                        p {
+                            css {
+                                fontSize = 13.px
+                                lineHeight = 17.px
+                                margin = Margin(0.px, 0.px, 10.px)
+                                color = palette.text.color
+                            }
+                            +"We will e-mail you a login link. Once logged in, you can choose a new password in User settings."
+                        }
                     LoginInput {
                         error = emailError != null
                         placeholder = "Email"
@@ -253,6 +266,7 @@ val LoginForm = FC<LoginFormProps> { props ->
                 LoginLinkButton {
                     onClick = {
                         mode = LoginMode.Password
+                        forgotPassword = false
                         emailError = null
                     }
                     +"Log in with a password"
@@ -278,6 +292,16 @@ val LoginForm = FC<LoginFormProps> { props ->
                     emailError = null
                 }
                 +"Log in with email only"
+            }
+            LoginLinkButton {
+                onClick = {
+                    mode = LoginMode.MagicLink
+                    forgotPassword = true
+                    password = ""
+                    passwordError = null
+                    emailError = null
+                }
+                +"Forgot password?"
             }
         }
     }

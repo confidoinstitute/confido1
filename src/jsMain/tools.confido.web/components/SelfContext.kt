@@ -43,4 +43,5 @@ fun useMyPrediction(question: Ref<Question>): Prediction? = useSelf().myPredicti
 fun usePresenterInfo() = useSelf().presenterInfo
 fun useFollowingPresentation() = useSelf().followingPresentation
 fun useMyPasswordIsSet() = useSelf().myPasswordIsSet
+fun useMyPendingEmail() = useSelf().myPendingEmail
 fun usePresenterWindowActive() = useSelf().presenterWindowActive

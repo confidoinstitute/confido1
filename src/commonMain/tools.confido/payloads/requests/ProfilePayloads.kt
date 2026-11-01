@@ -2,14 +2,6 @@ package tools.confido.payloads.requests
 
 import kotlinx.serialization.Serializable
 
-@kotlinx.serialization.Serializable
-data class EditProfile(
-    val nick: String,
-    val email: String,
-    val currentPassword: String?,
-    val newPassword: String?,
-)
-
 @Serializable
 data class SetNick(
     val name: String,
@@ -37,13 +29,19 @@ data class StartEmailVerification (
 )
 
 /**
- * Verify a given [token] with the server and perform its associated action.
- *
- * Used for different tokens:
- * - E-mail verification
- * - Password reset
+ * Verify a given e-mail verification [token] with the server.
  */
 @Serializable
 data class TokenVerification (
     val token: String,
+)
+
+/**
+ * Finish a password reset: the reset link's [token] authorizes setting [newPassword]
+ * (no current password needed, no session needed).
+ */
+@Serializable
+data class PasswordResetFinish(
+    val token: String,
+    val newPassword: String,
 )

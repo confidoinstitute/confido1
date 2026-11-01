@@ -90,11 +90,6 @@ fun webSocketUrl(path: String): String {
 }
 
 /** A very simple check for ruling out most common mistakes. */
-fun isEmailValid(mail: String): Boolean {
-    val regex = Regex(".+@.+\\..+")
-    return regex.matches(mail)
-}
-
 fun <E> List<List<E>>.transposeForHeatmap(missingElementDefault: E? = null): List<List<E?>> {
     val input = this
 

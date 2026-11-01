@@ -20,6 +20,7 @@ import react.router.*
 import tools.confido.rooms.InviteFieldPolicy
 import tools.confido.state.UserSessionValidity
 import tools.confido.users.UserType
+import tools.confido.users.isEmailValid
 import tools.confido.web.utils.*
 import web.html.InputType
 import web.html.email

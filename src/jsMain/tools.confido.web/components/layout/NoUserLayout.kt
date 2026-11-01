@@ -9,6 +9,7 @@ import tools.confido.web.components.nouser.*
 import tools.confido.web.components.nouser.EmailLogin
 import tools.confido.web.components.nouser.LoginForm
 import tools.confido.web.components.profile.VerifyToken
+import tools.confido.web.components.profile.PasswordResetPage
 import web.cssom.*
 import emotion.react.*
 import js.objects.unsafeJso as jso
@@ -65,13 +66,7 @@ val NoUserLayout = FC<Props> {
             },
             jso<RouteObject> {
                 path = "password_reset"
-                element = VerifyToken.create {
-                    api = Api.profilePasswordResetFinish()
-                    failureTitle = "Password reset failed"
-                    successTitle = "Password was reset"
-                    failureText = "The link is expired or invalid."
-                    successText = "Your password has been successfully reset. You can log in by e-mail only now."
-                }
+                element = PasswordResetPage.create()
             }
         )
     }

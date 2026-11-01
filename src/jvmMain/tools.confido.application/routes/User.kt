@@ -8,7 +8,6 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.datetime.Clock
 import tools.confido.payloads.requests.*
-import tools.confido.payloads.responses.EditProfileResult
 import tools.confido.payloads.responses.InviteStatus
 import tools.confido.rooms.*
 import tools.confido.api.Api
@@ -24,7 +23,6 @@ import tools.confido.store.transact
 import tools.confido.store.verificationLinkStore
 import tools.confido.utils.*
 import tools.confido.users.*
-import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
 data class UserContext(val user: User, val session: UserSession, val transientData: TransientData, val call: ApplicationCall)
@@ -154,93 +152,73 @@ fun loginRoutes(routing: Routing) = routing.apply {
 
 
 
+/** Hash [newPassword] for storage after the shared length policy (badRequest on violation). */
+private fun hashNewPassword(newPassword: String): String {
+    when (checkPassword(newPassword)) {
+        PasswordCheckResult.OK -> {}
+        PasswordCheckResult.TOO_SHORT ->
+            badRequest("Please choose a password at least $MIN_PASSWORD_LENGTH characters long.")
+        PasswordCheckResult.TOO_LONG ->
+            badRequest("Please choose a password at most $MAX_PASSWORD_LENGTH characters long.")
+    }
+    return Password.hash(newPassword).addRandomSalt().withArgon2().result
+}
+
+private suspend fun deleteVerificationLinks(user: Ref<User>) =
+    verificationLinkStore.asMap.values.filter { it.user eqid user }.forEach { verificationLinkStore.delete(it.ref) }
+
+private suspend fun deletePasswordResetLinks(user: Ref<User>) =
+    passwordResetLinkStore.asMap.values.filter { it.user eqid user }.forEach { passwordResetLinkStore.delete(it.ref) }
+
+/**
+ * Profile self-service. Nickname, e-mail and password are independent actions, each
+ * with its own endpoint (and its own save button in the UI): no partial-success
+ * bundles. Mailed links carry the authority for their action, so the link endpoints
+ * need no session — they are often opened in another browser (a phone's mail app).
+ */
 fun profileRoutes(routing: Routing) = routing.apply {
-    suspend fun UserContext.changeEmail(email: String) {
-        val expiration = 15.minutes
-        val expiresAt = Clock.System.now().plus(expiration)
-        val link = EmailVerificationLink(
-            token = generateToken(),
-            user = user.ref,
-            expiryTime = expiresAt,
-            email = email
-        )
-        try {
-            call.mailer.sendVerificationMail(email, link, expiration)
-        } catch (e: org.simplejavamail.MailException) {
-            serviceUnavailable("Verification e-mail failed to send")
-        }
-
-        verificationLinkStore.insert(link)
-    }
-
-    suspend fun UserContext.changePassword(currentPassword: String?, newPassword: String) {
-        if (user.password != null) {
-            if (currentPassword == null || !Password.check(
-                    currentPassword,
-                    user.password
-                ).withArgon2()
-            ) unauthorized("The current password is incorrect.")
-        }
-
-        when (checkPassword(newPassword)) {
-            PasswordCheckResult.OK -> {}
-            PasswordCheckResult.TOO_SHORT ->
-                badRequest("Password is too short, needs to be at least $MIN_PASSWORD_LENGTH characters long.")
-            PasswordCheckResult.TOO_LONG ->
-                badRequest("Password is too long, needs to be at most $MAX_PASSWORD_LENGTH characters long.")
-        }
-
-        val hash = Password.hash(newPassword).addRandomSalt().withArgon2().result
-        tools.confido.store.userStore.modify(user.ref) {
-            it.copy(password = hash)
-        }
-        invalidateUserSessions(user.ref, exceptSessionId = session.id)
-
-        // Prepare password change notification
-        val expiration = 7.days
-        val expiresAt = Clock.System.now().plus(expiration)
-        val link = PasswordResetLink(
-            token = generateToken(),
-            user = user.ref,
-            expiryTime = expiresAt,
-        )
-        try {
-            if (user.email != null)
-                call.mailer.sendPasswordChangedEmail(user.email, link)
-        } catch (e: org.simplejavamail.MailException) {
-            //serviceUnavailable("Password change e-mail failed to send")
-            call.application.log.info("The link to undo password change for ${user.ref} is ${link.link("")}")
-        }
-        passwordResetLinkStore.insert(link)
-
-        // TODO: Anti password undo spam DDoS
-
-        call.application.log.info("User ${user.ref} changed password.")
-    }
-
-    suspend fun UserContext.changeNick(nick: String) {
-        val newNick = sanitizeNick(nick).ifEmpty { null }
-
-        tools.confido.store.userStore.modify(user.ref) {
-            it.copy(nick = newNick)
+    apiST(Api.profileNick) { setNick ->
+        call.withUser {
+            val newNick = sanitizeNick(setNick.name).ifEmpty { null }
+            if (newNick != user.nick)
+                tools.confido.store.userStore.modify(user.ref) { it.copy(nick = newNick) }
         }
     }
 
-
-    // E-mail verification: Step one (sending e-mail)
+    // E-mail change, step one: mail a verification link to the new address. The address
+    // replaces the current one only once verified; until then it is pending
+    // (SelfState.myPendingEmail). Also re-sends verification for an unverified current address.
     apiST(Api.profileEmailStartVerification) { mail ->
         // TODO: Rate limiting
         call.withUser {
-            if (user.emailVerified && user.email?.lowercase() == mail.email.lowercase())
-                badRequest("The e-mail is already verified")
+            val email = mail.email.trim().lowercase()
+            if (!isEmailValid(email)) badRequest("This is not a valid e-mail address.")
+            if (user.emailVerified && email == user.email?.lowercase())
+                badRequest("This is already your e-mail address.")
 
-            changeEmail(mail.email)
+            val link = EmailVerificationLink(
+                token = generateToken(),
+                user = user.ref,
+                expiryTime = Clock.System.now() + EMAIL_VERIFICATION_VALIDITY,
+                email = email,
+            )
+            try {
+                call.mailer.sendVerificationMail(email, link, EMAIL_VERIFICATION_VALIDITY)
+            } catch (e: org.simplejavamail.MailException) {
+                serviceUnavailable("The verification e-mail failed to send.")
+            }
+            tools.confido.store.transact {
+                // Only the newest link counts: an older one could switch the address back.
+                deleteVerificationLinks(user.ref)
+                verificationLinkStore.insert(link)
+            }
         }
     }
-    // E-mail verification: Step two (accepting token)
+    // E-mail change, step two: the link's token is the credential (no session needed).
     apiST(Api.profileEmailVerify) { validation ->
-        val verificationLink = verificationLinkStore.byToken[validation.token] ?: unauthorized("No such token exists.")
-        if (verificationLink.isExpired()) unauthorized("The token has already expired.")
+        val verificationLink = verificationLinkStore.byToken[validation.token]
+            ?: unauthorized("This link is invalid or was already used.")
+        if (verificationLink.isExpired()) unauthorized("This link has expired.")
         // Checked here rather than when sending: only the inbox owner learns the address is taken.
         val holder = tools.confido.store.userStore.byEmail[verificationLink.email.lowercase()]
         if (holder != null && !(holder eqid verificationLink.user))
@@ -250,68 +228,78 @@ fun profileRoutes(routing: Routing) = routing.apply {
             tools.confido.store.userStore.modify(verificationLink.user) {
                 it.copy(email = verificationLink.email.lowercase(), emailVerified = true)
             }
-
-            // Verification links are single-use
-            verificationLinkStore.delete(verificationLink.ref)
+            deleteVerificationLinks(verificationLink.user)
         }
     }
-    // Change password
+    apiST(Api.profileEmailCancel) { _ ->
+        call.withUser { deleteVerificationLinks(user.ref) }
+    }
+
+    // Set or change the password (the current one is required once one is set).
     apiST(Api.profilePassword) { passwordChange ->
         call.withUser {
-            if (user.email == null) badRequest("You cannot reset password without e-mail.")
-            changePassword(passwordChange.currentPassword, passwordChange.newPassword)
-        }
-    }
-    // Remove password
-    apiST(Api.profilePasswordReset) { _ ->
-        call.withUser {
-            if (user.email == null) badRequest("You cannot reset password without e-mail.")
-            // Prepare password change notification
-            val expiration = 15.minutes
-            val expiresAt = Clock.System.now().plus(expiration)
+            val email = user.email ?: badRequest("Add an e-mail address first: you log in with it and the password.")
+            if (user.password != null) {
+                val current = passwordChange.currentPassword
+                if (current == null || !Password.check(current, user.password).withArgon2())
+                    badRequest("The current password is incorrect.")
+            }
+            val hash = hashNewPassword(passwordChange.newPassword)
+            tools.confido.store.userStore.modify(user.ref) { it.copy(password = hash) }
+            invalidateUserSessions(user.ref, exceptSessionId = session.id)
+
+            // "Not you?" notification, carrying a reset link for the account owner.
             val link = PasswordResetLink(
                 token = generateToken(),
                 user = user.ref,
-                expiryTime = expiresAt,
+                expiryTime = Clock.System.now() + PASSWORD_CHANGED_UNDO_VALIDITY,
             )
             try {
-                call.mailer.sendPasswordResetEmail(user.email, link, expiration)
+                call.mailer.sendPasswordChangedEmail(email, link)
             } catch (e: org.simplejavamail.MailException) {
-                //serviceUnavailable("Password reset e-mail failed to send")
-                call.application.log.info("The link to undo password reset for ${user.ref} is ${link.link("")}")
+                call.application.log.info("The link to undo password change for ${user.ref} is ${link.link("")}")
             }
-
+            passwordResetLinkStore.insert(link)
+            // TODO: Anti password undo spam DDoS
+            call.application.log.info("User ${user.ref} changed password.")
+        }
+    }
+    // Password reset, step one: mail a link for choosing a new password without the
+    // current one. (Logged out, e-mail login already covers a forgotten password.)
+    apiST(Api.profilePasswordReset) { _ ->
+        // TODO: Rate limiting
+        call.withUser {
+            val email = user.email ?: badRequest("Your account has no e-mail address to send the link to.")
+            val link = PasswordResetLink(
+                token = generateToken(),
+                user = user.ref,
+                expiryTime = Clock.System.now() + PASSWORD_RESET_VALIDITY,
+            )
+            try {
+                call.mailer.sendPasswordResetEmail(email, link, PASSWORD_RESET_VALIDITY)
+            } catch (e: org.simplejavamail.MailException) {
+                serviceUnavailable("The password reset e-mail failed to send.")
+            }
             passwordResetLinkStore.insert(link)
         }
     }
-    // Undo password change
-    apiST(Api.profilePasswordResetFinish) { validation ->
-        val verificationLink = passwordResetLinkStore.byToken[validation.token] ?: unauthorized("No such token exists.")
-        if (verificationLink.isExpired()) unauthorized("The token has already expired.")
+    // Password reset, step two (also the target of the "password changed" mail): set the
+    // new password and log everyone else out — whoever changed it may hold a session.
+    apiST(Api.profilePasswordResetFinish) { reset ->
+        val resetLink = passwordResetLinkStore.byToken[reset.token]
+            ?: unauthorized("This link is invalid or was already used.")
+        if (resetLink.isExpired()) unauthorized("This link has expired.")
+        resetLink.user.deref() ?: unauthorized("The user does not exist.")
+        val hash = hashNewPassword(reset.newPassword) // before consuming the link
 
         tools.confido.store.transact {
-            tools.confido.store.userStore.modify(verificationLink.user) {
-                it.copy(password = null)
-            }
-
-            // Verification links are single-use
-            passwordResetLinkStore.delete(verificationLink.ref)
-
-            // Whoever changed the password may still hold a session; end them all except the
-            // one opening this link (it belongs to the inbox owner, if it is the same user).
-            val ownSession = call.userSession?.takeIf { it.userRef eqid verificationLink.user }
-            invalidateUserSessions(verificationLink.user, exceptSessionId = ownSession?.id)
+            tools.confido.store.userStore.modify(resetLink.user) { it.copy(password = hash) }
+            deletePasswordResetLinks(resetLink.user)
+            // The opener's own session survives if it is the same user (inbox owner).
+            val ownSession = call.userSession?.takeIf { it.userRef eqid resetLink.user }
+            invalidateUserSessions(resetLink.user, exceptSessionId = ownSession?.id)
         }
-    }
-    // Change nick
-    apiST(Api.profileNick) { setNick ->
-        call.withUser {
-            val newNick = sanitizeNick(setNick.name).ifEmpty { null }
-
-            tools.confido.store.userStore.modify(user.ref) {
-                it.copy(nick = newNick)
-            }
-        }
+        call.application.log.info("User ${resetLink.user} reset password via link.")
     }
 
     // Set/clear one personal UI preference (bounded: these are tiny display prefs).
@@ -325,47 +313,6 @@ fun profileRoutes(routing: Routing) = routing.apply {
                 if (newSettings.size > 200) badRequest("Too many UI settings.")
                 it.copy(uiSettings = newSettings)
             }
-        }
-    }
-
-    // Edit profile (everything, redesign)
-    apiST(Api.profileEdit) { profileData ->
-        call.withUser {
-            var nickChange = false
-            if (sanitizeNick(profileData.nick).ifEmpty { null } != user.nick) {
-                changeNick(profileData.nick)
-                nickChange = true
-            }
-
-            var emailChange = false
-            var emailError: String? = null
-            // Re-sending verification for an unchanged address is an explicit action
-            // (profileEmailStartVerification), not a side effect of every save.
-            val newEmail = profileData.email.trim()
-            if (newEmail.isEmpty()) {
-                // Email-less users (e.g. guests) may save other fields without adding one.
-                if (user.email != null) emailError = "The e-mail address cannot be removed."
-            } else if (newEmail.lowercase() != user.email?.lowercase()) {
-                try {
-                    changeEmail(newEmail)
-                    emailChange = true
-                } catch (e: ResponseError) {
-                    emailError = e.message
-                }
-            }
-
-            var passwordChange = false
-            var passwordError: String? = null
-            if (profileData.newPassword != null) {
-                try {
-                    changePassword(profileData.currentPassword, profileData.newPassword)
-                    passwordChange = true
-                } catch (e: ResponseError) {
-                    passwordError = e.message
-                }
-            }
-
-            EditProfileResult(nickChange, emailChange, emailError, passwordChange, passwordError)
         }
     }
 }
@@ -545,9 +492,12 @@ fun inviteRoutes(routing: Routing) = routing.apply {
             val invite = room.inviteLinks.find { it.token == accept.inviteToken && it.canJoin }
                 ?: unauthorized("The invite does not exist or is currently not active.")
 
+            val acceptEmail = accept.email?.trim()?.lowercase()?.ifEmpty { null }
+            if (acceptEmail != null && !isEmailValid(acceptEmail)) badRequest("This is not a valid e-mail address.")
+
             // TODO: Accept happens when not logged in without authentication being required.
             var userAlreadyExists = false
-            tools.confido.store.userStore.byEmail[accept.email?.lowercase()]?.let { user ->
+            tools.confido.store.userStore.byEmail[acceptEmail]?.let { user ->
                 if (room.members.none { it.user eqid user }) {
                     // Beware: this is copy-pasted in invite/accept
                     tools.confido.store.roomStore.modify(room.ref) {
@@ -556,7 +506,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                 }
                 userAlreadyExists = true
             } ?: run {
-                if (invite.emailPolicy == InviteFieldPolicy.REQUIRED && accept.email == null) {
+                if (invite.emailPolicy == InviteFieldPolicy.REQUIRED && acceptEmail == null) {
                     badRequest("An email is required.")
                 }
 
@@ -592,7 +542,7 @@ fun inviteRoutes(routing: Routing) = routing.apply {
                 val newUser = User(
                     randomString(32),
                     invite.targetUserType,
-                    accept.email,
+                    acceptEmail,
                     emailVerified = false,
                     sanitizedNick, // Store sanitized nickname
                     password = null,
@@ -618,13 +568,18 @@ fun inviteRoutes(routing: Routing) = routing.apply {
     }
 }
 
+/** Admin add/edit input, held to the same rules as self-service profile edits. */
+private fun User.normalizedByAdmin(): User {
+    val email = email?.trim()?.lowercase()?.ifEmpty { null }
+    if (email == null && type != UserType.GUEST) badRequest("Only guests can be without an e-mail address.")
+    if (email != null && !isEmailValid(email)) badRequest("This is not a valid e-mail address.")
+    return copy(email = email, nick = nick?.let { sanitizeNick(it) }?.ifEmpty { null })
+}
+
 fun adminUserRoutes(routing: Routing) = routing.apply {
     apiST(Api.userEdit) { receivedUser ->
         call.withAdmin {
-            var editedUser = receivedUser
-            editedUser = editedUser.copy(email = editedUser.email?.lowercase()?.ifEmpty { null },
-                nick = editedUser.nick?.ifEmpty { null })
-            if (editedUser.email == null && editedUser.type != UserType.GUEST) badRequest("Only guest can not have e-mail")
+            val editedUser = receivedUser.normalizedByAdmin()
             val isSelf = editedUser eqid user
 
             var duplicateEmail = false
@@ -639,9 +594,10 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
 
                 tools.confido.store.userStore.modify(editedUser.id) {
                     it.copy(
-                        nick = editedUser.nick?.ifEmpty { null },
-                        email = editedUser.email?.lowercase()?.ifEmpty { null },
-                        emailVerified = true,
+                        nick = editedUser.nick,
+                        email = editedUser.email,
+                        // An admin-entered address counts as verified; untouched ones keep their state.
+                        emailVerified = if (editedUser.email != it.email) editedUser.email != null else it.emailVerified,
                         type = if (isSelf) UserType.ADMIN else editedUser.type,
                         active = if (isSelf) true else editedUser.active,
                     )
@@ -734,10 +690,8 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
         call.withAdmin {
             val sendInvitationEmail = (call.parameters["invite"] != null)
 
-            var addedUser = receivedUser
-            addedUser = addedUser.copy(email = addedUser.email?.lowercase()?.ifEmpty { null },
-                nick = addedUser.nick?.ifEmpty { null })
-            if (addedUser.email == null && addedUser.type != UserType.GUEST) badRequest("Only guest can have empty e-mail")
+            // Passwords are only ever set (hashed) by their owner via the profile routes.
+            val addedUser = receivedUser.normalizedByAdmin().let { it.copy(emailVerified = it.email != null, password = null) }
 
             var duplicateEmail = false
             serverState.withMutationLock {

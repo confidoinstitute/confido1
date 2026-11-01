@@ -9,6 +9,7 @@ import asyncio
 import http.cookiejar
 import json
 import os
+import urllib.error
 import urllib.request
 
 BASE = os.environ.get("CONFIDO_TEST_BASE", "http://localhost:8099")
@@ -54,6 +55,42 @@ def post(path, body, cookie):
 def get_json(path, cookie=""):
     req = urllib.request.Request(BASE + path, headers={"Cookie": cookie})
     return json.loads(urllib.request.urlopen(req).read().decode())
+
+
+# Devmode mail goes to the server log (run_all.sh exports its path); link tokens are
+# read back from it.
+SERVER_LOG = os.environ.get("CONFIDO_TEST_LOG",
+                            os.path.join(os.environ.get("TMPDIR", "/tmp"), "confido_test_server.log"))
+
+
+def mail_tokens(kind):
+    """All tokens of one link kind (email_login / email_verify / password_reset) mailed so far."""
+    import re
+    with open(SERVER_LOG, errors="replace") as f:
+        return re.findall(kind + r"\?t=([A-Za-z0-9_-]+)", f.read())
+
+
+def new_mail_token(kind, before):
+    """The newest [kind] token once one beyond the [before] snapshot was mailed (None on timeout)."""
+    import time
+    for _ in range(20):
+        toks = mail_tokens(kind)
+        if len(toks) > len(before):
+            return toks[-1]
+        time.sleep(0.2)
+    return None
+
+
+def call(path, body, cookie=""):
+    """POST returning (status, body) instead of raising on HTTP errors."""
+    req = urllib.request.Request(
+        BASE + path, data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json", "Cookie": cookie}, method="POST")
+    try:
+        r = urllib.request.urlopen(req)
+        return r.status, r.read().decode()
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode()
 
 
 async def connect_ws(cookie):

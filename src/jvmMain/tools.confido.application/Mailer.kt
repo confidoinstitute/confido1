@@ -14,6 +14,8 @@ import tools.confido.question.Question
 import tools.confido.state.appConfig
 import tools.confido.users.*
 import kotlin.time.*
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 import tools.confido.question.effectiveSchedule
 import tools.confido.question.room
 
@@ -150,7 +152,7 @@ $feedback"""
             Open the following link to verify your email address:
             $url
             
-            This link will expire in ${expiration.inWholeMinutes} minutes.
+            This link will expire in ${expiration.humanize()}.
             
             If you did not make this request, please ignore this email.
             """.trimIndent()
@@ -175,9 +177,9 @@ $feedback"""
         val body = """
             Your password to Confido ($origin) has been changed.
             
-            If you did not wish to change your password, you can use the following link:
+            If this was not you, open the following link to choose a new password:
             $url
-            to reset your password. This action will invalidate all your sessions.
+            This also logs out everyone currently logged into your account.
             """.trimIndent()
 
         // TODO: Send multipart with HTML version.
@@ -198,10 +200,10 @@ $feedback"""
         val url = resetLink.link(origin)
 
         val body = """
-            Open the following link to reset your password:
+            Open the following link to choose a new password:
             $url
             
-            This link will expire in ${expiration.inWholeMinutes} minutes.
+            This link will expire in ${expiration.humanize()}.
             
             If you did not make this request, please ignore this email.
             """.trimIndent()
@@ -227,7 +229,7 @@ $feedback"""
         val url = login.link(origin)
 
         val body = """
-            Confirm that you want to log into Confido. This link will expire in ${expiration.inWholeMinutes} minutes.
+            Confirm that you want to log into Confido. This link will expire in ${expiration.humanize()}.
             
             Open the following link to log in:
             $url
@@ -243,7 +245,7 @@ $feedback"""
                     div {
                         p {
                             +"""
-                            Confirm that you want to log into Confido. This link will expire in ${expiration.inWholeMinutes} minutes.
+                            Confirm that you want to log into Confido. This link will expire in ${expiration.humanize()}.
                             Click the following button to log in:
                         """.trimIndent()
                         }
@@ -296,6 +298,16 @@ $feedback"""
             .buildEmail()
 
         sendMail(mail)
+    }
+}
+
+/** "15 minutes", "1 hour", "24 hours", "7 days" for link-expiry sentences. */
+private fun Duration.humanize(): String {
+    fun unit(n: Long, name: String) = if (n == 1L) "1 $name" else "$n ${name}s"
+    return when {
+        inWholeDays >= 2 && this == inWholeDays.days -> unit(inWholeDays, "day")
+        inWholeHours >= 1 && this == inWholeHours.hours -> unit(inWholeHours, "hour")
+        else -> unit(inWholeMinutes, "minute")
     }
 }
 

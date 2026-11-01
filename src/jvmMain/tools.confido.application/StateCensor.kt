@@ -294,6 +294,13 @@ fun selfState(sess: UserSession, transientData: TransientData): SelfState {
         myPredictions = if (user != null)
             serverState.userPred.mapValuesNotNull { it.value[user.ref] } else emptyMap(),
         myPasswordIsSet = user?.password != null,
+        // At most one live link per user (issuing one deletes the older ones); a link for
+        // the current address is a re-verification, not a change.
+        myPendingEmail = user?.let { u ->
+            tools.confido.store.verificationLinkStore.asMap.values
+                .firstOrNull { it.user eqid u && !it.isExpired() && it.email != u.email?.lowercase() }
+                ?.email
+        },
         presenterWindowActive = transientData.activePresenterWindows > 0,
     )
 }

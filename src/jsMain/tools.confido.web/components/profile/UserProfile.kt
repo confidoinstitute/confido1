@@ -1,30 +1,27 @@
 package tools.confido.web.components.profile
 
+import tools.confido.web.ApiError
 import tools.confido.web.Client
 import tools.confido.api.Api
-import tools.confido.web.components.useMyPasswordIsSet
-import tools.confido.web.components.useMyUser
-import tools.confido.web.components.useDisconnected
 import tools.confido.web.components.*
-import tools.confido.web.components.basic.Alert
 import tools.confido.web.components.basic.PageHeader
 import tools.confido.web.components.basic.Stack
-import tools.confido.web.components.basic.showError
 import tools.confido.web.components.forms.*
 import emotion.react.css
 import web.cssom.*
 import tools.confido.web.hooks.useCoroutineLock
-import io.ktor.client.call.*
-import io.ktor.http.*
-import tools.confido.payloads.requests.EditProfile
+import tools.confido.payloads.requests.SetNick
+import tools.confido.payloads.requests.SetPassword
 import tools.confido.payloads.requests.StartEmailVerification
-import tools.confido.payloads.responses.EditProfileResult
+import react.ChildrenBuilder
 import react.FC
 import react.Props
-import react.use
+import react.PropsWithChildren
+import react.dom.html.ReactHTML.b
+import react.dom.html.ReactHTML.div
 import react.useState
 import tools.confido.users.*
-import tools.confido.web.utils.isEmailValid
+import web.autofill.AutoFill
 import web.html.ButtonType
 import web.html.InputType
 import web.html.button
@@ -32,195 +29,293 @@ import web.html.email
 import web.html.password
 import web.html.submit
 
+/**
+ * The profile page: nickname, e-mail and password are independent sections, each
+ * saved on its own (one endpoint each), with errors and confirmations inline.
+ */
 val UserProfile = FC<Props> {
-    val user = useMyUser()
-    // Read during render: context accessors throw when called from event handlers.
-    val passwordIsSet = useMyPasswordIsSet()
-    // Users without an e-mail (e.g. guests invited without one) may leave it empty.
-    val emailRequired = user?.email != null
-
-    var nick by useState(user?.nick ?: "")
-
-    var email by useState(user?.email ?: "")
-    var verificationResent by useState(false)
-
-    var oldPassword by useState("")
-    var newPassword by useState("")
-    var confirmPassword by useState("")
-    var passwordReset by useState(false)
-
-    var editResult by useState<EditProfileResult?>(null)
-
-    val edit = useCoroutineLock()
-    val sideAction = useCoroutineLock()
-
-    fun resendVerification() = sideAction {
-        val address = user?.email ?: return@sideAction
-        Client.call(Api.profileEmailStartVerification(), StartEmailVerification(address))
-        verificationResent = true
-    }
-
-    fun resetPassword() = sideAction {
-        Client.call(Api.profilePasswordReset())
-        passwordReset = true
-        oldPassword = ""
-        newPassword = ""
-        confirmPassword = ""
-    }
-
-    fun editProfile() = edit {
-        if ((emailRequired || email.isNotBlank()) && !isEmailValid(email.trim())) {
-            editResult = EditProfileResult(emailError = "This is not a valid e-mail address.")
-            return@edit
-        }
-        if (newPassword != confirmPassword) {
-            editResult = EditProfileResult(passwordError = "The passwords do not match.")
-            return@edit
-        }
-
-        val changingPassword = oldPassword.isNotEmpty() || newPassword.isNotEmpty() || confirmPassword.isNotEmpty()
-        if (changingPassword)
-            when (checkPassword(newPassword)) {
-                PasswordCheckResult.OK -> {}
-                PasswordCheckResult.TOO_SHORT -> {
-                    editResult = EditProfileResult(passwordError = "Please choose a password at least $MIN_PASSWORD_LENGTH characters long.")
-                    return@edit
-                }
-                PasswordCheckResult.TOO_LONG -> {
-                    editResult = EditProfileResult(passwordError = "Please choose a password at most $MAX_PASSWORD_LENGTH characters long.")
-                    return@edit
-                }
-            }
-
-        editResult = Client.call(Api.profileEdit(), EditProfile(
-                nick, email,
-                if (passwordIsSet) oldPassword else null,
-                newPassword.ifEmpty { null }))
-    }
-
     PageHeader {
         navigateBack = "/"
-        title = "Edit profile"
-        action = "Save"
-        disabledAction = edit.running
-        onAction = { editProfile() }
+        title = "User settings"
     }
 
     ThemeProvider {
         theme = { theme -> theme.copy(colors = theme.colors.copy(form = AltFormColors)) }
-        Form {
-            onSubmit = {
-                editProfile()
+        NickSection {}
+        EmailSection {}
+        PasswordSection {}
+    }
+}
+
+/** Runs an API call, routing its [ApiError] into [onError] (inline) instead of the snackbar. */
+private suspend fun inlineErrors(onError: (String?) -> Unit, block: suspend () -> Unit) {
+    onError(null)
+    try {
+        block()
+    } catch (e: ApiError) {
+        onError(e.message)
+    }
+}
+
+private external interface SaveButtonProps : PropsWithChildren {
+    var disabled: Boolean
+}
+
+private val SaveButton = FC<SaveButtonProps> { props ->
+    Stack {
+        Button {
+            type = ButtonType.submit
+            css {
+                display = Display.block
+                margin = Margin(0.px, 0.px, 0.px, Auto.auto)
+                fontWeight = integer(500)
             }
-            FormSection {
-                FormField {
-                    title = "Display nickname"
-                    required = true
-                    TextInput {
-                        name = "nick"
-                        value = nick
-                        onChange = { nick = it.target.value }
-                    }
-                    comment = if (editResult?.nickChanged == true)
-                        "Nickname was set."
-                    else
-                        "Your nickname may appear whenever you comment or answer questions. You can change it at any time."
-                }
+            disabled = useDisconnected() || props.disabled
+            +props.children
+        }
+    }
+}
 
-                if (user?.email != null && !user.emailVerified)
-                    Alert {
-                        +"Your email is not verified! "
-                        if (verificationResent)
-                            +"We sent you a new verification e-mail."
-                        else
-                            TextButton {
-                                type = ButtonType.button
-                                css { margin = 0.px }
-                                disabled = sideAction.running
-                                onClick = { resendVerification() }
-                                +"Resend verification e-mail"
+/** Field content stacked above its inline actions (FormField lays children out in a row). */
+private val FieldColumn = FC<PropsWithChildren> { props ->
+    Stack {
+        css {
+            width = 100.pct
+            gap = 7.px
+            alignItems = AlignItems.flexStart
+        }
+        +props.children
+    }
+}
+
+private fun ChildrenBuilder.inlineAction(text: String, disabled: Boolean, onClick: () -> Unit) =
+    TextButton {
+        type = ButtonType.button
+        css {
+            margin = 0.px
+            alignSelf = AlignSelf.flexStart
+        }
+        this.disabled = disabled
+        this.onClick = { onClick() }
+        +text
+    }
+
+private val NickSection = FC<Props> {
+    val user = useMyUser()
+    var nick by useState(user?.nick ?: "")
+    var error by useState<String?>(null)
+    var saved by useState(false)
+    val save = useCoroutineLock()
+    val unchanged = sanitizeNick(nick).ifEmpty { null } == user?.nick
+
+    Form {
+        onSubmit = {
+            save {
+                inlineErrors({ error = it }) {
+                    Client.call(Api.profileNick(), SetNick(nick))
+                    nick = sanitizeNick(nick)
+                    saved = true
+                }
+            }
+        }
+        FormSection {
+            title = "Nickname"
+            FormField {
+                title = "Display nickname"
+                TextInput {
+                    name = "nick"
+                    value = nick
+                    onChange = { nick = it.target.value; saved = false }
+                }
+                this.error = error
+                comment = if (saved) "Nickname saved."
+                    else "Your nickname may appear whenever you comment or answer questions. Leave it empty to appear as an anonymous user."
+            }
+            SaveButton {
+                disabled = unchanged || save.running
+                +"Save nickname"
+            }
+        }
+    }
+}
+
+private val EmailSection = FC<Props> {
+    val user = useMyUser()
+    val pending = useMyPendingEmail()
+    var newEmail by useState("")
+    var error by useState<String?>(null)
+    var info by useState<String?>(null)
+    val action = useCoroutineLock()
+
+    fun startVerification(address: String) = action {
+        inlineErrors({ error = it }) {
+            Client.call(Api.profileEmailStartVerification(), StartEmailVerification(address.trim()))
+            info = "We sent a verification link to ${address.trim()}. Open it to confirm the address."
+            newEmail = ""
+        }
+    }
+
+    Form {
+        onSubmit = {
+            if (!isEmailValid(newEmail.trim())) error = "This is not a valid e-mail address."
+            else startVerification(newEmail)
+        }
+        FormSection {
+            title = "E-mail"
+            FormField {
+                title = "Current e-mail address"
+                FieldColumn {
+                    div {
+                        if (user?.email != null) b { +user.email } else +"None"
+                    }
+                    if (user?.email != null && !user.emailVerified && pending == null)
+                        inlineAction("Send verification e-mail", action.running) { startVerification(user.email) }
+                }
+                comment = when {
+                    user?.email == null ->
+                        "Without an e-mail address you cannot log in again after your session ends."
+                    user.emailVerified ->
+                        "Verified. Used for logging in; may be shown to other members of the organization."
+                    else -> "Not verified yet."
+                }
+            }
+            if (pending != null)
+                FormField {
+                    title = "Waiting for verification"
+                    comment = "The new address replaces the current one once you open the link we sent to it."
+                    FieldColumn {
+                        div { b { +pending } }
+                        Stack {
+                            direction = FlexDirection.row
+                            css { gap = 15.px }
+                            inlineAction("Resend link", action.running) { startVerification(pending) }
+                            inlineAction("Cancel change", action.running) {
+                                action {
+                                    inlineErrors({ error = it }) {
+                                        Client.call(Api.profileEmailCancel())
+                                        info = null
+                                    }
+                                }
                             }
+                        }
                     }
-
-                FormField {
-                    title = "E-mail address"
-                    required = emailRequired
-                    TextInput {
-                        name = "email"
-                        value = email
-                        type = InputType.email
-                        onChange = { email = it.target.value }
-                    }
-                    error = editResult?.emailError
-                    comment = if (editResult?.emailChanged == true)
-                        "We sent you a verification e-mail, please check your inbox and verify your e-mail."
-                    else
-                        "This email address is used for logging into your account and may be shown to other members of the organization."
                 }
+            FormField {
+                title = if (user?.email == null) "Add e-mail address" else "Change e-mail address"
+                TextInput {
+                    name = "email"
+                    type = InputType.email
+                    placeholder = "New e-mail address"
+                    value = newEmail
+                    onChange = { newEmail = it.target.value; error = null }
+                }
+                this.error = error
+                comment = info ?: "We will send a verification link to the new address."
+            }
+            SaveButton {
+                disabled = newEmail.isBlank() || action.running
+                +"Send verification link"
+            }
+        }
+    }
+}
 
+private val PasswordSection = FC<Props> {
+    val user = useMyUser()
+    // Read during render: context accessors throw when called from event handlers.
+    val passwordIsSet = useMyPasswordIsSet()
+    var currentPassword by useState("")
+    var newPassword by useState("")
+    var confirmPassword by useState("")
+    var error by useState<String?>(null)
+    var info by useState<String?>(null)
+    val action = useCoroutineLock()
+
+    fun save() = action {
+        if (newPassword != confirmPassword) {
+            error = "The passwords do not match."
+            return@action
+        }
+        when (checkPassword(newPassword)) {
+            PasswordCheckResult.OK -> {}
+            PasswordCheckResult.TOO_SHORT -> {
+                error = "Please choose a password at least $MIN_PASSWORD_LENGTH characters long."
+                return@action
+            }
+            PasswordCheckResult.TOO_LONG -> {
+                error = "Please choose a password at most $MAX_PASSWORD_LENGTH characters long."
+                return@action
+            }
+        }
+        inlineErrors({ error = it }) {
+            Client.call(Api.profilePassword(), SetPassword(currentPassword.takeIf { passwordIsSet }, newPassword))
+            info = "Password saved. Your other sessions were logged out."
+            currentPassword = ""
+            newPassword = ""
+            confirmPassword = ""
+        }
+    }
+
+    fun sendResetLink() = action {
+        inlineErrors({ error = it }) {
+            Client.call(Api.profilePasswordReset())
+            info = "We sent a link to ${user?.email}. It lets you choose a new password without the current one."
+        }
+    }
+
+    Form {
+        onSubmit = { save() }
+        FormSection {
+            title = "Password"
+            if (user?.email == null) {
                 FormField {
                     title = "Password"
-                    Stack {
-                        css {
-                            width = 100.pct
-                            gap = 7.px
-                        }
-
-                        if (passwordIsSet)
-                            TextInput {
-                                name = "old_password"
-                                type = InputType.password
-                                placeholder = "Old password"
-                                value = oldPassword
-                                onChange = { oldPassword = it.target.value }
-                            }
-                        TextInput {
-                            name = "new_password"
-                            type = InputType.password
-                            placeholder = "New password"
-                            value = newPassword
-                            onChange = { newPassword = it.target.value }
-                        }
-                        TextInput {
-                            name = "confirm_password"
-                            type = InputType.password
-                            placeholder = "Confirm new password"
-                            value = confirmPassword
-                            onChange = { confirmPassword = it.target.value }
-                        }
-                        if (passwordIsSet && !passwordReset)
-                            TextButton {
-                                type = ButtonType.button
-                                css {
-                                    margin = 0.px
-                                }
-                                disabled = sideAction.running
-                                onClick = { resetPassword() }
-                                +"Reset password"
-                            }
-                    }
-                    error = editResult?.passwordError
-                    comment = if (!passwordIsSet)
-                        "Your password is not set."
-                    else if (passwordReset)
-                        "We sent you an e-mail. Its link removes your current password; then you can set a new one here without the old one."
-                    else if (editResult?.passwordChanged == true)
-                        "Password was set."
-                    else ""
+                    comment = "Add an e-mail address first: you log in with it and the password."
                 }
-
+                return@FormSection
+            }
+            FormField {
+                title = if (passwordIsSet) "Change password" else "Set a password"
                 Stack {
-                    Button {
-                        type = ButtonType.submit
-                        css {
-                            display = Display.block
-                            margin = Margin(20.px, 20.px, 10.px)
-                            fontWeight = integer(500)
-                        }
-                        +"Edit profile"
-                        disabled = useDisconnected() || edit.running
+                    css {
+                        width = 100.pct
+                        gap = 7.px
                     }
+                    if (passwordIsSet)
+                        TextInput {
+                            name = "current_password"
+                            type = InputType.password
+                            autoComplete = "current-password".unsafeCast<AutoFill>()
+                            placeholder = "Current password"
+                            value = currentPassword
+                            onChange = { currentPassword = it.target.value; error = null }
+                        }
+                    TextInput {
+                        name = "new_password"
+                        type = InputType.password
+                        autoComplete = "new-password".unsafeCast<AutoFill>()
+                        placeholder = "New password"
+                        value = newPassword
+                        onChange = { newPassword = it.target.value; error = null }
+                    }
+                    TextInput {
+                        name = "confirm_password"
+                        type = InputType.password
+                        autoComplete = "new-password".unsafeCast<AutoFill>()
+                        placeholder = "Confirm new password"
+                        value = confirmPassword
+                        onChange = { confirmPassword = it.target.value; error = null }
+                    }
+                    if (passwordIsSet)
+                        inlineAction("Forgot your current password? Reset it by e-mail", action.running) { sendResetLink() }
                 }
+                this.error = error
+                comment = info ?: if (passwordIsSet) null
+                    else "You have no password yet and log in with e-mail links. A password lets you log in directly."
+            }
+            SaveButton {
+                disabled = newPassword.isEmpty() || action.running
+                +(if (passwordIsSet) "Change password" else "Set password")
             }
         }
     }

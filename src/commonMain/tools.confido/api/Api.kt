@@ -106,11 +106,12 @@ object Api {
     val profileEmailVerify = ApiSpec(POST, path("profile/email/verify"), serializer<TokenVerification>(), serializer<Unit>())
     val profilePassword = ApiSpec(POST, path("profile/password"), serializer<SetPassword>(), serializer<Unit>())
     val profilePasswordReset = ApiSpec(POST, path("profile/password/reset"), serializer<Unit>(), serializer<Unit>())
-    val profilePasswordResetFinish = ApiSpec(POST, path("profile/password/reset/finish"), serializer<TokenVerification>(), serializer<Unit>())
+    /** Withdraw a pending (unverified) e-mail change; its verification links stop working. */
+    val profileEmailCancel = ApiSpec(POST, path("profile/email/cancel"), serializer<Unit>(), serializer<Unit>())
+    val profilePasswordResetFinish = ApiSpec(POST, path("profile/password/reset/finish"), serializer<PasswordResetFinish>(), serializer<Unit>())
     val profileNick = ApiSpec(POST, path("profile/nick"), serializer<SetNick>(), serializer<Unit>())
     /** Set/clear one personal UI preference (User.uiSettings); syncs back via the self slice. */
     val profileUiSetting = ApiSpec(POST, path("profile/ui_setting"), serializer<SetUiSetting>(), serializer<Unit>())
-    val profileEdit = ApiSpec(POST, path("profile/edit"), serializer<EditProfile>(), serializer<EditProfileResult>())
 
     val joinCheck = ApiSpec(GET, path("join") / tokenParam / "check", serializer<Unit>(), serializer<InviteStatus>())
     /** Responds with the created invite link. */

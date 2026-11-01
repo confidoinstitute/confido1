@@ -47,7 +47,7 @@ import tools.confido.utils.capFirst
 import tools.confido.users.DeleteUserOptions
 import tools.confido.users.User
 import tools.confido.users.UserType
-import tools.confido.web.utils.isEmailValid
+import tools.confido.users.isEmailValid
 import tools.confido.web.utils.runCoroutine
 import tools.confido.web.utils.toDateTime
 import web.html.InputType

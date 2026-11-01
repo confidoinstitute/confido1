@@ -565,6 +565,7 @@ fun main() {
                         userStore.state.asView(),
                         latestPredictions.state.asView(),
                         transientData.activePresenterWindowsState.asView(),
+                        verificationLinkStore.state.asView(), // pending e-mail change
                     ).map {
                         val sessionData = call.userSession ?: unauthorized("Not logged in.")
                         if (sessionData.user == null) unauthorized("Not logged in.")

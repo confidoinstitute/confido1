@@ -10,6 +10,8 @@ import tools.confido.refs.ImmediateDerefEntity
 import tools.confido.refs.Ref
 import tools.confido.refs.ServerImmediateDerefEntity
 import tools.confido.state.UserSessionValidity
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 
 @Serializable
 data class User(
@@ -105,6 +107,15 @@ data class PasswordResetLink(
 data class DeleteUserOptions(
     val deleteComments: Boolean = false, // if false, comments will be anonymized
 )
+
+/** How long the links mailed for these flows stay valid. */
+val EMAIL_VERIFICATION_VALIDITY = 24.hours
+val PASSWORD_RESET_VALIDITY = 1.hours
+/** The "your password was changed — not you?" link: long, the owner may read mail late. */
+val PASSWORD_CHANGED_UNDO_VALIDITY = 7.days
+
+/** Deliberately loose (something@something.tld): the verification mail is the real check. */
+fun isEmailValid(mail: String): Boolean = Regex(".+@.+\\..+").matches(mail)
 
 enum class PasswordCheckResult {
     OK,
