@@ -106,6 +106,9 @@ val ComparePP = FC<PresenterPageProps<ComparePV>> { props ->
             css { width = 100.pct }
             when (v.mode) {
                 CompareViewMode.DISTRIBUTIONS -> CompareDistributions {
+                    // Keyed: the view applies on mount, and a re-offer may change it.
+                    key = v.view.toString()
+                    initialView = v.view?.let { r -> r.start..r.endInclusive }
                     space = question.answerSpace
                     this.question = question
                     distA = distOf(tsA, 0)

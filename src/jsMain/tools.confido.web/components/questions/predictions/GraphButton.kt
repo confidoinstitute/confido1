@@ -66,6 +66,8 @@ val GraphButtonContainer = FC<GraphButtonContainerProps> { props->
 
 external interface GraphPresenterButtonProps: Props {
     var question: Question
+    /** The graph's zoomed value range, carried to the presenter screen. */
+    var view: ClosedFloatingPointRange<Double>?
 }
 
 val GraphPresenterButton = FC<GraphPresenterButtonProps> { props->
@@ -74,7 +76,7 @@ val GraphPresenterButton = FC<GraphPresenterButtonProps> { props->
         this.palette = MainPalette.secondary
         PresenterIcon {}
         onClick = {
-            presenterCtl.offer(GroupPredPV(props.question.ref, false))
+            presenterCtl.offer(GroupPredPV(props.question.ref, false, view = props.view))
         }
     }
 }
@@ -117,6 +119,8 @@ external interface GraphButtonsProps : Props, BasePredictionGraphProps {
     override var dist: ProbabilityDistribution?
     override var space: Space
     var onHistogramClick: (() -> Unit)?
+    /** Zoomed value range of the graph, for the presenter button to carry over. */
+    var presenterView: ClosedFloatingPointRange<Double>?
     /** Rendered before the standard buttons, e.g. a zoom pill that grows leftwards. */
     var leading: ReactNode?
 }
@@ -126,7 +130,7 @@ val GraphButtons = FC<GraphButtonsProps>("GraphButtons") { props->
     GraphButtonContainer {
         props.leading?.let { +it }
         if (props.isGroup && layoutMode >= LayoutMode.TABLET && props.dist != null) {
-            props.question?.let { GraphPresenterButton { question = it } }
+            props.question?.let { GraphPresenterButton { question = it; view = props.presenterView } }
         }
         if (props.isInput == true && props.question?.state == QuestionState.OPEN) {
             props.question?.let { GraphExactPredictionButton { question = it; dist = props.dist } }

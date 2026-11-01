@@ -32,6 +32,7 @@ CMP_Q = f"Zoom UX compare q {int(time.time())}"  # fresh per run: history must s
 CMP = "document.querySelector('.prediction-box path[stroke-dasharray=\"5 3\"]').closest('div')"
 # Before a comparison opens, the timeline is the only wide svg in the group box.
 TIMELINE = "[...document.querySelectorAll('.prediction-box svg')].find(e => e.getBoundingClientRect().width > 300)"
+PRESENT = "document.querySelector('.prediction-box path[d^=\"M20 2H4C3.45\"]').closest('button')"
 CLOSE_CMP = "[...document.querySelectorAll('.prediction-box button')].find(b => b.textContent === '✕' && !b.title)"
 SMALL_SPACE = {"type": "numeric", "min": 0.0, "max": 1.0, "decimals": 3}
 NUM_SPACE = {"type": "numeric", "min": 0.0, "max": 1000.0, "unit": "km"}
@@ -206,6 +207,48 @@ async def compare_section(cdp, s, check):
     await asyncio.sleep(0.4)
     rng = await evaluate(cdp, s, RANGE)
     check(rng == fit_rng, f"closing hands the comparison's view back to the group graph ({rng!r})")
+
+    # Presenting the zoomed graph carries the zoom to the presenter screen.
+    await cdp.cmd("Fetch.enable", {"patterns": [{"urlPattern": "*/presenter/set", "requestStage": "Request"}]}, s)
+    n0 = len(cdp.events)
+    await click(cdp, s, PRESENT)
+    # A confirmation dialog first, unless a presenter window is already open (then
+    # the view is sent right away).
+    req = None
+    for _ in range(20):
+        req = next((e["params"] for e in cdp.events[n0:] if e.get("method") == "Fetch.requestPaused"), None)
+        if req: break
+        await evaluate(cdp, s, "[...document.querySelectorAll('button')].find(b => b.textContent === 'Open presentation window')?.click()")
+        await cdp.drain(0.25)
+    view = json.loads(req["request"]["postData"]).get("view") if req else None
+    if req:
+        await cdp.cmd("Fetch.continueRequest", {"requestId": req["requestId"]}, s)
+    await cdp.cmd("Fetch.disable", {}, s)
+    check(view is not None and abs(view[0] - lo) < 2 and abs(view[1] - hi) < 2,
+          f"presenting sends the graph's view ({view} vs {fit_rng!r})")
+    await cdp.cmd("Page.navigate", {"url": BASE + "/presenter"}, session=s)
+    await wait_for(cdp, s, "!!document.querySelector('canvas')", desc="presenter graph")
+    await asyncio.sleep(0.8)
+    ticks = await evaluate(cdp, s, "[...document.querySelectorAll('div')].filter(d => d.style.top === '50%' && d.style.left).map(d => +d.textContent)")
+    check(len(ticks) >= 3 and view is not None and all(view[0] - 1 <= t <= view[1] + 1 for t in ticks),
+          f"presenter graph shows the zoomed range (ticks {ticks})")
+
+    # The comparison's presenter page honours a view too (and it survives the
+    # server's decode of ComparePV).
+    pv = {"type": "compare", "question": cmp_q, "tp1": {"type": "at", "ts": int(time.time())},
+          "tp2": {"type": "now"}, "view": [350.0, 450.0]}
+    st = await evaluate(cdp, s, f"""fetch('/presenter/set', {{method:'POST', headers:{{'Content-Type':'application/json'}},
+        body: JSON.stringify({json.dumps(pv)})}}).then(r => r.status)""", await_promise=True)
+    await cdp.cmd("Page.navigate", {"url": BASE + "/presenter"}, session=s)
+    try:
+        await wait_for(cdp, s, "!!document.querySelector('path[stroke-dasharray=\"5 3\"]')", timeout=8,
+                       desc="presenter comparison plot")
+        await asyncio.sleep(0.5)
+        ticks = await evaluate(cdp, s, "[...document.querySelectorAll('span')].filter(e => getComputedStyle(e).position === 'absolute' && /^\\d+$/.test(e.textContent)).map(e => +e.textContent)")
+    except RuntimeError:
+        ticks = []
+    check(st == 200 and len(ticks) >= 3 and all(349 <= t <= 451 for t in ticks),
+          f"presenter comparison shows the zoomed range (set -> {st}, ticks {ticks})")
 
 
 async def click_at_fraction(cdp, s, el, fx):

@@ -2,6 +2,7 @@ package tools.confido.state
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import tools.confido.serialization.RangeSerializer
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
@@ -65,6 +66,9 @@ data class QuestionPV(
 data class GroupPredPV(
     val question: Ref<Question>,
     val showResolution: Boolean = false,
+    /** Numeric value range to show zoomed to (as on the presenting graph); null = full range. */
+    @Serializable(with = RangeSerializer::class)
+    val view: ClosedRange<Double>? = null,
 ) : PresenterView() {
     override fun isValid(lookup: EntityLookup) = lookup.question(question) != null
     override fun describe() = "group predictions for this question"
@@ -204,6 +208,9 @@ data class ComparePV(
     /** Label individual movements with predictor names (only meaningful for the
      *  individual modes, and only when the viewing session may see them). */
     val showNames: Boolean = false,
+    /** Numeric value range the distributions plot shows zoomed to; null = full range. */
+    @Serializable(with = RangeSerializer::class)
+    val view: ClosedRange<Double>? = null,
 ) : PresenterView() {
     override fun isValid(lookup: EntityLookup) = lookup.question(question) != null
     override fun describe() = "comparison of two moments"

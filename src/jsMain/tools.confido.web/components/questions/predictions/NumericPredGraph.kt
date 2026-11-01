@@ -248,6 +248,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
             key = "buttons"
             +props
             leading = zoom.pill
+            presenterView = zoomState.visibleDomainRange.takeIf { zoomState.zoom > 1.0 }
         }
         if (ghost != null && props.ghostLabel != null) {
             div {

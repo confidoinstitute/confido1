@@ -677,7 +677,8 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                                     else -> CompareViewMode.DISTRIBUTIONS
                                 }
                                 ctl.offer(ComparePV(question.ref,
-                                    toTP(ends[slots.e1]), toTP(ends[slots.e2]), mode))
+                                    toTP(ends[slots.e1]), toTP(ends[slots.e2]), mode,
+                                    view = groupView.current.takeIf { mode == CompareViewMode.DISTRIBUTIONS }))
                             }
                         }
                         onClose = { closeCompare() }

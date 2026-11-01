@@ -75,6 +75,9 @@ val GroupPredPP = FC <PresenterPageProps<GroupPredPV>> { props ->
                         // The same graph the question page uses, scaled up for the
                         // big screen (fonts and mark density follow fontScale).
                         NumericPredGraph {
+                            // Keyed: the view applies on mount, and a re-offer may change it.
+                            key = props.view.view.toString()
+                            initialView = props.view.view?.let { v -> v.start..v.endInclusive }
                             space = it.space
                             dist = it
                             isGroup = true
