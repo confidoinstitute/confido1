@@ -65,6 +65,16 @@ val NoUserLayout = FC<Props> {
                 }
             },
             jso<RouteObject> {
+                path = "email_revert"
+                element = VerifyToken.create {
+                    api = Api.profileEmailRevert()
+                    failureTitle = "Could not restore your e-mail address"
+                    successTitle = "Your e-mail address was restored"
+                    failureText = "The link is expired or invalid."
+                    successText = "Everyone was logged out of your account and its password was removed. Log in with an e-mail link; you can set a new password in User settings."
+                }
+            },
+            jso<RouteObject> {
                 path = "password_reset"
                 element = PasswordResetPage.create()
             }

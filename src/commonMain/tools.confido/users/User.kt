@@ -91,6 +91,27 @@ data class EmailVerificationLink(
     fun link(origin: String) = "$origin/email_verify?t=$token"
 }
 
+/**
+ * Mailed to the previous address after an e-mail change ("not you?"): restores [email]
+ * and locks the account down. Using one cancels only links created after it — those
+ * stem from later changes, possibly an intruder's — so the owner's (earliest) link
+ * always wins. Kept after use ([usedAt]) so repeated opens stay harmless successes.
+ */
+@Serializable
+data class EmailRevertLink(
+    @SerialName("_id")
+    override val id: String = "", // generated on insert
+    val token: String,
+    val user: Ref<User>,
+    val email: String,
+    val createdAt: Instant,
+    override val expiryTime: Instant,
+    val usedAt: Instant? = null,
+) : ImmediateDerefEntity, ExpiringEntity {
+
+    fun link(origin: String) = "$origin/email_revert?t=$token"
+}
+
 @Serializable
 data class PasswordResetLink(
     @SerialName("_id")
@@ -111,8 +132,9 @@ data class DeleteUserOptions(
 /** How long the links mailed for these flows stay valid. */
 val EMAIL_VERIFICATION_VALIDITY = 24.hours
 val PASSWORD_RESET_VALIDITY = 1.hours
-/** The "your password was changed — not you?" link: long, the owner may read mail late. */
+/** The "your password/e-mail was changed — not you?" links: long, the owner may read mail late. */
 val PASSWORD_CHANGED_UNDO_VALIDITY = 7.days
+val EMAIL_CHANGE_REVERT_VALIDITY = 7.days
 
 /** Deliberately loose (something@something.tld): the verification mail is the real check. */
 fun isEmailValid(mail: String): Boolean = Regex(".+@.+\\..+").matches(mail)

@@ -3,7 +3,9 @@
 other sessions ended); e-mail change via verification (pending on the self slice, only
 the newest link valid, cancel, verify logged out, duplicate address refused); password
 reset links (choose a new password logged out, every session and reset link ended);
-password removal (current one required, other sessions ended, settable again);
+password removal (current one required, other sessions ended, settable again); the
+e-mail-change "not you?" revert chain (all sessions end, earliest link wins, reuse no-op);
+up-front duplicate-address errors for proper users only;
 e-mail-less guests; admin input held to the same e-mail rules.
 
 Link tokens are read from the devmode mailer's log (see confido_test.mail_tokens)."""
@@ -86,12 +88,15 @@ def main():
     _, _, token = start_verification(a, NEW_EMAIL.upper())
     st, body = call("/profile/email/verify", {"token": old_token})
     t.check(st == 401, "TEST-10", "re-sending invalidates the older link", f"{st} {body}")
+    revert_before = mail_tokens("email_revert")
     st, body = call("/profile/email/verify", {"token": token})
+    owner_revert = new_mail_token("email_revert", revert_before)
     me = self_data(a)
     t.check(st == 200 and (me.get("user") or {}).get("email") == NEW_EMAIL and not me.get("myPendingEmail"),
             "TEST-11", "verification works logged out, applies the (lowercased) address, clears pending",
             f"{st} {body} {json.dumps(me.get('user'))[:200]}")
-    t.check(password_login(NEW_EMAIL, "password1"), "TEST-12", "password login works with the new address")
+    t.check(password_login(NEW_EMAIL, "password1") and owner_revert,
+            "TEST-12", "password login works with the new address; the old one got a revert link")
 
     _, _, token = start_verification(a, "profiletest3@confido.example")
     st, _ = call("/profile/email/cancel", None, a)
@@ -99,10 +104,9 @@ def main():
     t.check(st == 200 and not self_data(a).get("myPendingEmail") and st2 == 401,
             "TEST-13", "cancel withdraws the pending change and its link", f"{st} {st2}")
 
-    _, _, token = start_verification(a, MEMBER_EMAIL)
-    st, body = call("/profile/email/verify", {"token": token}, a)
+    st, body, _ = start_verification(a, MEMBER_EMAIL)
     t.check(st == 400 and "already used" in body,
-            "TEST-14", "verifying an address owned by another account is refused", f"{st} {body}")
+            "TEST-14", "proper member is told up front that an address is taken", f"{st} {body}")
 
     # --- Password reset: choose a new password logged out ---
     before = mail_tokens("password_reset")
@@ -136,6 +140,30 @@ def main():
     t.check(st == 200 and password_login(NEW_EMAIL, "password5"),
             "TEST-25", "a password can be set again without a current one", f"{st} {body}")
 
+    # --- E-mail change "not you?" chain: the earliest revert link always wins ---
+    def change(cookie, email):
+        _, _, tok = start_verification(cookie, email)
+        before = mail_tokens("email_revert")
+        call("/profile/email/verify", {"token": tok})
+        return new_mail_token("email_revert", before)
+    r1 = change(c, "evil1@confido.example")   # restores NEW_EMAIL, mailed to the owner's inbox
+    r2 = change(c, "evil2@confido.example")   # restores evil1, mailed to the intruder's inbox
+    st, _ = call("/profile/email/revert", {"token": r2})
+    t.check(st == 200 and not alive(c), "TEST-26", "revert ends every session, the opener's included", str(st))
+    st, _ = call("/profile/email/revert", {"token": r1})
+    st2, _ = call("/profile/email/revert", {"token": r1})
+    st3, _ = call("/profile/email/revert", {"token": r2})
+    t.check(st == 200 and st2 == 200 and st3 == 401 and not password_login(NEW_EMAIL, "password5"),
+            "TEST-27", "an earlier link still works after a later one was used and cancels it; "
+            "reopening the used link is a harmless no-op", f"{st} {st2} {st3}")
+    e = email_login(NEW_EMAIL)
+    t.check(alive(e), "TEST-28", "the owner's address is back (e-mail login works)")
+    st, _ = call("/profile/email/revert", {"token": owner_revert})
+    t.check(st == 200 and not alive(e), "TEST-29", "the earliest link restores the original address", str(st))
+    e = email_login(USER_EMAIL)
+    t.check(alive(e) and (self_data(e).get("user") or {}).get("email") == USER_EMAIL,
+            "TEST-30", "logged in again by e-mail link at the original address")
+
     # --- E-mail-less guest ---
     link = json.loads(post("/rooms/testroom/invites/create",
                            {"description": "profile guests", "role": "forecaster"}, admin))
@@ -148,13 +176,18 @@ def main():
         headers={"Content-Type": "application/json"}))
     guest = cookie_str(cj)
     st, _ = call("/profile/nick", {"name": "profguest2"}, guest)
-    t.check(st == 200, "TEST-26", "e-mail-less guest can rename", str(st))
+    t.check(st == 200, "TEST-31", "e-mail-less guest can rename", str(st))
     st, body = call("/profile/password", {"currentPassword": None, "newPassword": "password1"}, guest)
-    t.check(st == 400 and "e-mail address first" in body, "TEST-27", "password needs an e-mail first", f"{st} {body}")
+    t.check(st == 400 and "e-mail address first" in body, "TEST-32", "password needs an e-mail first", f"{st} {body}")
+    st, body, token = start_verification(guest, MEMBER_EMAIL)
+    st2, body2 = call("/profile/email/verify", {"token": token})
+    t.check(st == 200 and st2 == 400 and "already used" in body2,
+            "TEST-33", "guests learn an address is taken only at verification (no directory to leak from)",
+            f"{st} {body} / {st2} {body2}")
 
     # --- Admin input: same e-mail rules ---
     st, body = call("/users/add", {"_id": "", "type": "MEMBER", "email": "not-an-address"}, admin)
-    t.check(st == 400, "TEST-28", "admin add refuses an invalid address", f"{st} {body}")
+    t.check(st == 400, "TEST-34", "admin add refuses an invalid address", f"{st} {body}")
 
     t.finish()
 

@@ -3,7 +3,8 @@
 link: the nickname section saves and reports back (a save handler once read a context
 accessor outside render and failed silently), the password section sets a first
 password, a requested reset link opens the choose-a-new-password page and sets it, the
-password can be removed again, and no console errors."""
+password can be removed again, an e-mail change's revert link reads as a success even
+though it logs this very tab out, and no console errors."""
 import asyncio
 import sys
 
@@ -85,6 +86,25 @@ async def main():
         await wait_for(cdp, s, "document.body.innerText.includes('Password removed')", desc="password removed")
         await wait_for(cdp, s, "!document.querySelector('input[name=\"current_password\"]')", desc="back to set form")
         print("PASS: password section removes the password")
+
+        # E-mail change, then its "not you?" revert link opened in this logged-in tab: the
+        # revert ends this very session, the app drops to the logged-out layout and the
+        # page remounts — it must still read as a success, not a spent link.
+        before = mail_tokens("email_verify")
+        await evaluate(cdp, s, """fetch('/profile/email/start_verification', {method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({email:'profilebrowser2@confido.example'})}).then(r => r.status)""", await_promise=True)
+        token = new_mail_token("email_verify", before)
+        before = mail_tokens("email_revert")
+        call("/profile/email/verify", {"token": token})
+        token = new_mail_token("email_revert", before)
+        await cdp.cmd("Page.navigate", {"url": f"{BASE}/email_revert?t={token}"}, session=s)
+        await wait_for(cdp, s, "document.body.innerText.includes('Your e-mail address was restored')", desc="revert done")
+        await asyncio.sleep(4)  # the session close lands; the logged-out layout remounts the page
+        body = await evaluate(cdp, s, "document.body.innerText")
+        if "Your e-mail address was restored" not in body or "Could not restore" in body:
+            print("FAIL: revert page after logout remount:", body[:300]); sys.exit(1)
+        print("PASS: revert page stays a success across the logged-out remount")
 
         await cdp.drain(1.5)
         errors = collect_errors(cdp)

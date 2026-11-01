@@ -169,6 +169,36 @@ $feedback"""
         sendMail(mail)
     }
 
+    /** "Not you?" notice to the [previous] address after an e-mail change applied. */
+    fun sendEmailChangedEmail(previous: String, newAddress: String, revertLink: EmailRevertLink, expiration: Duration) {
+        if (appConfig.demoMode) return
+        val subject = "Your Confido e-mail address was changed"
+        val url = revertLink.link(origin)
+
+        val body = """
+            The e-mail address of your Confido account ($origin) was changed
+            from $previous to $newAddress.
+            
+            If this was you, no action is needed.
+            
+            If not, open the following link within ${expiration.humanize()} to restore $previous.
+            It also logs out everyone currently logged into your account and removes its
+            password; you can then log in with an e-mail link and set a new one:
+            $url
+            """.trimIndent()
+
+        // TODO: Send multipart with HTML version.
+
+        val mail = EmailBuilder.startingBlank()
+            .from(senderName, senderAddress)
+            .to(previous)
+            .withSubject(subject)
+            .withPlainText(body)
+            .buildEmail()
+
+        sendMail(mail)
+    }
+
     /** "Not you?" notice after the password was changed or [removed]. */
     fun sendPasswordChangedEmail(address: String, resetLink: PasswordResetLink, removed: Boolean = false) {
         if (appConfig.demoMode) return

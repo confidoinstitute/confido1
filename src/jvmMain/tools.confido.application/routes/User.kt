@@ -17,6 +17,7 @@ import tools.confido.refs.*
 import tools.confido.state.*
 import tools.confido.store.loginLinkStore
 import tools.confido.store.passwordResetLinkStore
+import tools.confido.store.emailRevertLinkStore
 import tools.confido.store.questionCommentArchive
 import tools.confido.store.roomCommentArchive
 import tools.confido.store.transact
@@ -195,6 +196,13 @@ fun profileRoutes(routing: Routing) = routing.apply {
             if (!isEmailValid(email)) badRequest("This is not a valid e-mail address.")
             if (user.emailVerified && email == user.email?.lowercase())
                 badRequest("This is already your e-mail address.")
+            // Proper users see every address in the users directory anyway, so telling them
+            // now leaks nothing; guests learn it only at verification (inbox owners only).
+            if (user.type.isProper()) {
+                val holder = tools.confido.store.userStore.byEmail[email]
+                if (holder != null && !(holder eqid user))
+                    badRequest("This e-mail address is already used by another account.")
+            }
 
             val link = EmailVerificationLink(
                 token = generateToken(),
@@ -224,12 +232,63 @@ fun profileRoutes(routing: Routing) = routing.apply {
         if (holder != null && !(holder eqid verificationLink.user))
             badRequest("This e-mail address is already used by another account.")
 
+        val previous = verificationLink.user.deref()?.email
+        val newEmail = verificationLink.email.lowercase()
         tools.confido.store.transact {
             tools.confido.store.userStore.modify(verificationLink.user) {
-                it.copy(email = verificationLink.email.lowercase(), emailVerified = true)
+                it.copy(email = newEmail, emailVerified = true)
             }
             deleteVerificationLinks(verificationLink.user)
         }
+
+        // A session alone suffices to move the account to another inbox, so the previous
+        // one gets a "not you?" notice with a way back (no confirmation required there:
+        // losing the old inbox is a main reason to change the address).
+        if (previous != null && previous.lowercase() != newEmail) {
+            val now = Clock.System.now()
+            val link = EmailRevertLink(
+                token = generateToken(),
+                user = verificationLink.user,
+                email = previous.lowercase(),
+                createdAt = now,
+                expiryTime = now + EMAIL_CHANGE_REVERT_VALIDITY,
+            )
+            try {
+                call.mailer.sendEmailChangedEmail(previous, newEmail, link, EMAIL_CHANGE_REVERT_VALIDITY)
+            } catch (e: org.simplejavamail.MailException) {
+                call.application.log.info("The link to revert the e-mail change of ${verificationLink.user} is ${link.link("")}")
+            }
+            emailRevertLinkStore.insert(link)
+        }
+    }
+    // E-mail change "not you?": restore the previous address and lock the account down —
+    // every session ends (the opener's too: a stolen cookie *is* the opener's session),
+    // the password goes (the intruder may have set it), pending links die.
+    apiST(Api.profileEmailRevert) { revert ->
+        val revertLink = emailRevertLinkStore.byToken[revert.token]
+            ?: unauthorized("This link is invalid or was cancelled by an earlier one.")
+        if (revertLink.usedAt != null) return@apiST // repeated open (e.g. the page remounting logged out)
+        if (revertLink.isExpired()) unauthorized("This link has expired.")
+        val holder = tools.confido.store.userStore.byEmail[revertLink.email]
+        if (holder != null && !(holder eqid revertLink.user))
+            badRequest("This e-mail address is now used by another account. Please contact an administrator.")
+
+        tools.confido.store.transact {
+            tools.confido.store.userStore.modify(revertLink.user) {
+                it.copy(email = revertLink.email, emailVerified = true, password = null)
+            }
+            // Later links stem from later changes, possibly the intruder's own; earlier ones
+            // (the owner's) stay usable, so the original owner always gets the last word.
+            emailRevertLinkStore.asMap.values
+                .filter { it.user eqid revertLink.user && it.createdAt > revertLink.createdAt }
+                .forEach { emailRevertLinkStore.delete(it.ref) }
+            emailRevertLinkStore.modify(revertLink.ref) { it.copy(usedAt = Clock.System.now()) }
+            deleteVerificationLinks(revertLink.user)
+            deletePasswordResetLinks(revertLink.user)
+            loginLinkStore.asMap.values.filter { it.user eqid revertLink.user }.forEach { loginLinkStore.delete(it.ref) }
+            invalidateUserSessions(revertLink.user)
+        }
+        call.application.log.info("User ${revertLink.user} reverted an e-mail change to ${revertLink.email}.")
     }
     apiST(Api.profileEmailCancel) { _ ->
         call.withUser { deleteVerificationLinks(user.ref) }
@@ -680,6 +739,11 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
                     .filter { it.user eqid userToDelete }
                     .forEach {
                         passwordResetLinkStore.delete(it.ref)
+                    }
+                emailRevertLinkStore.asMap.values
+                    .filter { it.user eqid userToDelete }
+                    .forEach {
+                        emailRevertLinkStore.delete(it.ref)
                     }
 
                 if (willGhost) {
