@@ -19,7 +19,12 @@ import tools.confido.question.Question
 import tools.confido.spaces.NumericSpace
 import tools.confido.spaces.NumericValue
 import tools.confido.utils.multiletNotNull
+import tools.confido.web.utils.panzoom1d.PZController
 import tools.confido.web.utils.panzoom1d.PZState
+import tools.confido.web.utils.panzoom1d.ZoomHint
+import tools.confido.web.hooks.useEventListener
+import web.mouse.WHEEL
+import web.mouse.WheelEvent
 
 
 external interface NumericPredInputProps : PredictionInputProps {
@@ -217,6 +222,11 @@ val NumericPredInput = FC<NumericPredInputProps>("NumericPredInput") { props->
     val previewDist = spec.useDist()
     val didSetCenter = spec.center != null
     val simulateClickRef = useRef<(Double)->Unit>()
+    // The slider shares the graph's axis, so wheel zoom/pan over it drives the graph.
+    val graphZoomCtl = useRef<PZController>()
+    val sliderWheelRE = useEventListener<HTMLDivElement, WheelEvent>(WheelEvent.WHEEL, passive = false) {
+        graphZoomCtl.current?.onWheel(it)
+    }
     val predictionTerminology = props.question?.predictionTerminology ?: PredictionTerminology.ANSWER
     fun setAsymmetric(newAsym: Boolean) {
         spec = spec.setAsymmetric(newAsym)
@@ -235,6 +245,7 @@ val NumericPredInput = FC<NumericPredInputProps>("NumericPredInput") { props->
                 this.isInput = true
                 this.isGroup = false
                 this.dimLines = (previewDist == null)
+                this.zoomCtlRef = graphZoomCtl
                 this.onGraphClick = { spaceX, relY ->
                     console.log("OGC $spaceX $relY ${simulateClickRef.current}")
                     //if (relY >= 2.0/3.0)
@@ -268,24 +279,27 @@ val NumericPredInput = FC<NumericPredInputProps>("NumericPredInput") { props->
                 // a prediction. Instead, we use NumericPredGraphProps.dimLines to dim the vertical lines only but
                 // not the labels.
                 dimBackground = false
-                +"Click below to create ${predictionTerminology.aTerm}. You can also zoom the graph using two fingers or the mouse wheel."
+                +"Click below to create ${predictionTerminology.aTerm}. You can also zoom the graph using two fingers or ${ZoomHint.modifierLabel}+scroll."
             }
         }
         if (zoomState != null)
-        NumericPredSlider {
-            this.disabled = props.disabled
-            this.space = props.space as NumericSpace
-            this.marks = marks
-            this.zoomState = zoomState!!
-            this.spec = spec
-            this.onSpecChange = { newSpec, isCommit ->
-                spec = newSpec
-                newSpec.dist?.let { dist ->
-                    props.onChange?.invoke(dist, isCommit)
+        div {
+            ref = sliderWheelRE
+            NumericPredSlider {
+                this.disabled = props.disabled
+                this.space = props.space as NumericSpace
+                this.marks = marks
+                this.zoomState = zoomState!!
+                this.spec = spec
+                this.onSpecChange = { newSpec, isCommit ->
+                    spec = newSpec
+                    newSpec.dist?.let { dist ->
+                        props.onChange?.invoke(dist, isCommit)
+                    }
                 }
+                this.question = props.question
+                this.simulateClickRef = simulateClickRef
             }
-            this.question = props.question
-            this.simulateClickRef = simulateClickRef
         }
     }
 }

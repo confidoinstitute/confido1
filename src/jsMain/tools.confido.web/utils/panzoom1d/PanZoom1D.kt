@@ -105,6 +105,8 @@ open class PZController(var params: PZParams, initialState: PZState = PZState(pa
     /** Live drag-selection (viewport px), null when none; the consumer renders
      *  the highlight. Fires with null when the selection commits or cancels. */
     var onSelectionChange: ((ClosedFloatingPointRange<Double>?) -> Unit)? = null
+    /** Fires after a drag-selection actually zoomed (not for rejected ones). */
+    var onSelectZoom: (() -> Unit)? = null
 
     fun onPinchStart(startPinch: PinchState): PinchUpdateHandler {
         val startState = state
@@ -138,23 +140,45 @@ open class PZController(var params: PZParams, initialState: PZState = PZState(pa
             if (b - a > 4.0) onSelectionChange?.invoke(a..b)
         } else {
             onSelectionChange?.invoke(null)
-            if (b - a > 8.0) {
-                state = params.solveMapMap(
+            // Guards against slips: a short twitch, or a selection spanning nearly the
+            // whole view (which would barely zoom), is dropped rather than applied.
+            if (b - a >= MIN_SELECT_PX) {
+                val newState = params.solveMapMap(
                     List2(state.viewportToContent(a), state.viewportToContent(b)),
                     List2(params.sidePad, params.viewportWidth - params.sidePad))
+                if (newState.zoom >= state.zoom * MIN_SELECT_ZOOM_GAIN) {
+                    state = newState
+                    onSelectZoom?.invoke()
+                }
             }
         }
     }
 
+    /** Plain vertical wheel is left to the page, so scrolling past a graph never zooms it;
+     *  zooming takes Ctrl/Cmd (trackpad pinch arrives as a ctrlKey wheel too). Whatever
+     *  is handled here is preventDefault-ed, keeping the browser's own Ctrl+wheel page
+     *  zoom out — even at the zoom limits. */
     fun onWheel(ev: WheelEvent) {
+        // Relative to the surface the listener sits on: offsetX would be relative to
+        // whatever child is under the cursor (a slider thumb, a label).
+        val viewportX = ev.clientX - (ev.currentTarget as HTMLElement).getBoundingClientRect().left
         if (abs(ev.deltaX) > abs(ev.deltaY)) {
-            // Horizontal scroll (touchpad swipe, shift+wheel) pans; a no-op unzoomed.
+            // Horizontal scroll (touchpad swipe, shift+wheel) pans. Unzoomed there is
+            // nothing to pan, so let it through (e.g. for the macOS swipe-back gesture).
+            if (state.zoom <= 1.0) return
+            ev.preventDefault()
             state = state.copy(pan = (state.pan + ev.deltaX).coerceIn(state.panRange))
         } else {
-            val mouseContent = state.viewportToContent(ev.offsetX)
+            if (!ev.ctrlKey && !ev.metaKey) {
+                ZoomHint.onPlainWheel(ev)
+                return
+            }
+            ev.preventDefault()
+            ZoomHint.onWheelZoom()
+            val mouseContent = state.viewportToContent(viewportX)
             val zoomDelta = kotlin.math.exp(ev.deltaY * -0.005)
             val newZoom = (state.zoom * zoomDelta).coerceIn(1.0..params.maxZoom)
-            state = params.solveZoomMap(newZoom, mouseContent, ev.offsetX)
+            state = params.solveZoomMap(newZoom, mouseContent, viewportX)
         }
     }
 
@@ -169,6 +193,11 @@ open class PZController(var params: PZParams, initialState: PZState = PZState(pa
     var state: PZState = initialState
         get() = field
         set(value)  { field = value; onChange?.invoke(value) }
+
+    companion object {
+        const val MIN_SELECT_PX = 16.0
+        const val MIN_SELECT_ZOOM_GAIN = 1.25
+    }
 }
 
 data class PZRet<T: HTMLElement>(
@@ -185,10 +214,11 @@ fun <T:HTMLElement> usePanZoom(params: PZParams, initialState: PZState = PZState
     useEffect(params.key()) {
         ctl.updateParams(params)
     }
+    useEffect(Unit) { ZoomHint.install() }
     val refEffect = combineRefs<T>(
         usePinch(ctl::onPinchStart),
         usePan(ctl::onPanStart),
-        useEventListener(WheelEvent.WHEEL, callback = ctl::onWheel, passive = false, preventDefault = true),
+        useEventListener(WheelEvent.WHEEL, callback = ctl::onWheel, passive = false),
     )
     return PZRet(refEffect, zoomState, ctl)
 }

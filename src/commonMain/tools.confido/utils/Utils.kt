@@ -227,20 +227,30 @@ fun pluralize(word: String, count: Int, includeCount: Boolean = false): String {
 fun toNiceStr(n: Number, maxDecimals: Int) =
     when (n) {
         //is Int -> n.toString() // XXX seems broken
-        else-> n.toDouble().toFixed(maxDecimals).trimEnd('0').trimEnd('.', ',')
+        // Only fractional zeros are trimmed: with 0 decimals there is no separator,
+        // and trimming would eat integer zeros ("30" -> "3").
+        else-> n.toDouble().toFixed(maxDecimals).let { s ->
+            if ('.' in s || ',' in s) s.trimEnd('0').trimEnd('.', ',') else s
+        }
     }
 fun condensedNum(n: Number) = condensedNum(n, Double.MAX_VALUE)
-fun condensedNum(n: Number, range: Double) =  n.toDouble().let { d->
+/** With [step] (e.g. axis tick spacing), shows enough decimals to tell values
+ *  [step] apart; otherwise at most one. */
+fun condensedNum(n: Number, range: Double, step: Double? = null) =  n.toDouble().let { d->
+    fun dec(divisor: Double) = step?.let { stepDecimals(it / divisor) } ?: 1
     if (d >= 1_000_000_000.0 && range >= 10_000_000_000.0) {
-        toNiceStr(d / 1_000_000_000.0, 1) + "B"
+        toNiceStr(d / 1_000_000_000.0, dec(1e9)) + "B"
     } else if (d >= 1_000_000.0 && range >= 10_000_000.0) {
-        toNiceStr(d / 1_000_000.0, 1) + "M"
+        toNiceStr(d / 1_000_000.0, dec(1e6)) + "M"
     } else if (d >= 1000.0 && range >= 10_000.0) {
-        toNiceStr(d / 1000.0, 1) + "K"
+        toNiceStr(d / 1000.0, dec(1e3)) + "K"
     } else {
-        toNiceStr(n, 1)
+        toNiceStr(n, dec(1.0))
     }
 }
+/** Decimals needed to tell apart values [step] apart (0.05 -> 2, 0.2 -> 1, 5 -> 0). */
+fun stepDecimals(step: Double) =
+    if (!(step > 0.0)) 1 else kotlin.math.ceil(-kotlin.math.log10(step) - 1e-9).toInt().coerceAtLeast(0)
 val ClosedRange<Double>.size get() = endInclusive - start
 val ClosedRange<Double>.mid get() = (start + endInclusive)/2.0
 val <T: Comparable<T>> ClosedRange<T>.endpoints get() = List2(start, endInclusive)

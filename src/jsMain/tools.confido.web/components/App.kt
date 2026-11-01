@@ -1,5 +1,6 @@
 package tools.confido.web.components
 
+import tools.confido.web.components.questions.predictions.ZoomHintToast
 import web.dom.document
 import tools.confido.web.components.layout.PresenterLayout
 import tools.confido.web.components.Header
@@ -88,4 +89,5 @@ val App = FC<Props> {
 
         AppMobile { this.isLoggedIn = isLoggedIn }
     }
+    ZoomHintToast {}
 }

@@ -117,11 +117,14 @@ external interface GraphButtonsProps : Props, BasePredictionGraphProps {
     override var dist: ProbabilityDistribution?
     override var space: Space
     var onHistogramClick: (() -> Unit)?
+    /** Rendered before the standard buttons, e.g. a zoom pill that grows leftwards. */
+    var leading: ReactNode?
 }
 
 val GraphButtons = FC<GraphButtonsProps>("GraphButtons") { props->
     val layoutMode = use(LayoutModeContext)!!
     GraphButtonContainer {
+        props.leading?.let { +it }
         if (props.isGroup && layoutMode >= LayoutMode.TABLET && props.dist != null) {
             props.question?.let { GraphPresenterButton { question = it } }
         }

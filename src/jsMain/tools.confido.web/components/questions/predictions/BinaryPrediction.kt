@@ -24,6 +24,8 @@ import tools.confido.utils.List2
 import tools.confido.utils.endpoints
 import tools.confido.utils.formatPercent
 import tools.confido.utils.toFixed
+import tools.confido.utils.toNiceStr
+import tools.confido.utils.stepDecimals
 import tools.confido.web.utils.panzoom1d.PZParams
 import tools.confido.web.utils.panzoom1d.PZState
 import tools.confido.web.utils.panzoom1d.usePanZoom
@@ -151,83 +153,39 @@ external interface  BinaryZoomButtonProps : PropsWithClassName {
 
 val BinaryZoomButton = FC<BinaryZoomButtonProps> { props->
     var expanded by useState(false)
-        Stack {
-            direction = FlexDirection.row
-            tabIndex = 0
-            onBlur = { ev->
-                // Auto close if focus gets outside out subtree
-                // (check is needed as clicking one of the individual preset buttons focuses it causing
-                //  the toplevel element to lose focus)
-                if (ev.relatedTarget == null || !ev.currentTarget.contains(ev.relatedTarget as Node)) expanded = false
-            }
-            css {
-                alignItems = AlignItems.center
-                borderRadius = 5.px
-                height = 30.px
-                border = Border(1.px, LineStyle.solid, MainPalette.primary.color)
-                background = NamedColor.white
-                position = Position.relative
-            }
-            GraphButton {
-                ZoomIcon {
-                    css { transform = scalex(-1) }
-                }
-                onClick = { expanded = !expanded }
-            }
-            div {
-                css {
-                    fontSize = 12.px
-                    color = NamedColor.black
-                    display = Display.flex
-                    flexDirection = FlexDirection.row
-                    overflow = Overflow.hidden
-                    maxWidth = if (expanded) 300.px else if (props.curZoom.zoom > 1.0) 80.px else 0.px
+    val zoomState = props.curZoom
+    ZoomPill {
+        zoomed = zoomState.zoom > 1.0
+        val shown = zoomState.visibleDomainRange
+        rangeLabel = shown.endpoints.joinToString("-") { toNiceStr(it, stepDecimals((shown.endInclusive - shown.start) / 10)) } + "%"
+        this.expanded = expanded
+        onToggle = { expanded = !expanded }
+        onReset = { props.onZoomChange?.invoke(PZState(zoomState.params)) }
+        onBlurOutside = { expanded = false }
+        if (expanded) {
+            EXTREME_PRESETS.forEach { (name, preset)->
+                val paperCenter = zoomState.copy(zoom=preset.zoom).contentToPaper(preset.center)
+                val viewportCenter = zoomState.params.viewportWidth / 2
+                val pan = paperCenter - viewportCenter
+                val newState = PZState(zoomState.params, preset.zoom, pan)
 
-                    transition = Transition(
-                        property = PropertyName.maxWidth,
-                        duration = 200.ms,
-                        timingFunction = TransitionTimingFunction.easeInOut
-                    )
-                }
-                if (expanded) {
-                    EXTREME_PRESETS.forEach { (name, preset)->
-                        val zoomState = props.curZoom
-                        val paperCenter = zoomState.copy(zoom=preset.zoom).contentToPaper(preset.center)
-                        val viewportCenter = props.curZoom.params.viewportWidth / 2
-                        val pan = paperCenter - viewportCenter
-                        val newState = PZState(zoomState.params, preset.zoom, pan)
-
-                        ButtonUnstyled {
-                            css {
-                                padding = Padding(2.px, 5.px)
-                                whiteSpace = WhiteSpace.nowrap
-                                if (newState == props.curZoom)
-                                    fontWeight = integer(700)
-                            }
-                            onClick = {
-                                props.onZoomChange?.invoke(
-                                    newState
-                                )
-                                expanded = false
-                            }
-                            +name
-                        }
+                ButtonUnstyled {
+                    key = name
+                    css {
+                        padding = Padding(2.px, 5.px)
+                        whiteSpace = WhiteSpace.nowrap
+                        if (newState == zoomState)
+                            fontWeight = integer(700)
                     }
-                } else {
-                    if (props.curZoom.zoom > 1.0)
-                    ButtonUnstyled {
-                        css {
-                            padding = Padding(2.px, 5.px)
-                            whiteSpace = WhiteSpace.nowrap
-                        }
-                        onClick = {expanded=true}
-                        +(props.curZoom.visibleContentRange.endpoints.joinToString("-") {
-                            it.toFixed(0)
-                        }+"%")
+                    onClick = {
+                        props.onZoomChange?.invoke(newState)
+                        expanded = false
                     }
+                    +name
                 }
             }
         }
+    }
 }
 
 val yesGreen = Color("#00CC2E")
@@ -397,7 +355,11 @@ val RangeSelector = FC<RangeSelectorProps> { props ->
 }
 
 external interface BinaryPredSliderProps : PredictionInputProps, PropsWithElementSize {
+    /** Reports the slider's live zoom state (the slider owns it). */
     var onZoomChange: ((PZState)->Unit)?
+    /** One-shot request to jump to a zoom state (e.g. a preset). Applied whenever a new
+     *  instance arrives; must not be fed back from [onZoomChange], or the two lagging
+     *  copies chase each other and the zoom oscillates. */
     var zoom: PZState?
 }
 val BIN_PRED_SPACE = NumericSpace(0.0, 100.0, unit="%")
@@ -409,18 +371,12 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
     val zoomParams = PZParams(viewportWidth = props.elementWidth, contentDomain = 0.0..100.0, sidePad = SIDE_PAD, maxZoom = maxZoom)
     val (pzRef, zoomState, ctl) = usePanZoom<HTMLElement >(zoomParams, initialState = props.zoom ?: PZState(zoomParams))
     useEffect(zoomState.zoom, zoomState.pan) { props.onZoomChange?.invoke(zoomState)}
-    useEffectNotFirst(props.zoom?.zoom, props.zoom?.pan) {
-        console.log("propzoom change")
+    // Keyed on identity, so re-picking the same preset after panning away still applies.
+    useEffectNotFirst(props.zoom) {
         props.zoom?.let { newZoom -> ctl.state = newZoom }
     }
 
-    fun formatPercentage(value: Double): String {
-        val decimals = when {
-            zoomState.zoom >= 100.0 -> 1
-            else -> 0
-        }
-        return "${value.toFixed(decimals)}%"
-    }
+    fun formatPercentage(value: Double, step: Double) = toNiceStr(value, stepDecimals(step)) + "%"
     val propProb = (props.dist as? BinaryDistribution)?.yesProb
     var yesProb by useState(propProb)
     var shouldAutoFocus by useState(false)
@@ -449,7 +405,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
 
         ref = combineRefs(clickRE, pzRef)
         val marks = useMemo(zoomState.paperWidth) {
-            markSpacing(zoomState.paperWidth, 0.0, 100.0) { v: Number -> formatPercentage(v.toDouble()) }
+            markSpacing(zoomState.paperWidth, 0.0, 100.0, ::formatPercentage)
         }
         val filteredMarks = marks.filter { it in zoomState.visibleContentRange }
         console.log("M: ${marks.toTypedArray()} FM: ${filteredMarks.toTypedArray() } ")
@@ -481,7 +437,7 @@ val BinaryPredSlider = elementSizeWrapper(FC<BinaryPredSliderProps> { props->
                         transform = translate(xtrans, (-50).pct)
                         position = Position.absolute
                     }
-                    +formatPercentage(value)
+                    +formatPercentage(value, marks.step)
                 }
             }
         }
@@ -603,7 +559,10 @@ val BinaryPredInput = FC<BinaryPredInputProps> { props->
     var previewDist by useState(propDist)
     val predictionTerminology = props.question?.predictionTerminology ?: PredictionTerminology.ANSWER
     useEffect(propDist?.yesProb) { previewDist = propDist }
-    var sliderZoom by useState<PZState>()
+    // Two one-way channels: zoomRequest carries preset picks down to the slider,
+    // observedZoom mirrors the slider's live state back up for display.
+    var zoomRequest by useState<PZState>()
+    var observedZoom by useState<PZState>()
 
     val realSize = useElementSize<HTMLElement>()
     val clickRE = usePureClick<HTMLElement> { ev->
@@ -613,7 +572,7 @@ val BinaryPredInput = FC<BinaryPredInputProps> { props->
             val width = rect.width
             val x = ev.clientX - rect.left
             val zoomParams = PZParams(viewportWidth = width, contentDomain = 0.0..100.0, sidePad = SIDE_PAD)
-            val zoomState = sliderZoom ?: PZState(zoomParams)
+            val zoomState = observedZoom ?: PZState(zoomParams)
             val pos = zoomState.viewportToContent(x)
             val newDist = BinaryDistribution(pos / 100.0)
             console.log("x: $x, pos: $pos, width: $width")
@@ -635,8 +594,8 @@ val BinaryPredInput = FC<BinaryPredInputProps> { props->
                 this.resolution = props.resolution as BinaryValue?
                 this.isInput = true
                 this.isGroup = false
-                this.sliderZoom = sliderZoom
-                this.onSliderZoomChange = { sliderZoom = it }
+                this.sliderZoom = observedZoom
+                this.onSliderZoomChange = { zoomRequest = it }
             }
             if (previewDist == null) {
                 PredictionOverlay {
@@ -655,11 +614,11 @@ val BinaryPredInput = FC<BinaryPredInputProps> { props->
                     previewDist = (newDist as BinaryDistribution)
                     props.onChange?.invoke(newDist, isCommit)
                 }
-                this.zoom = sliderZoom
-                onZoomChange = { sliderZoom = it }
+                this.zoom = zoomRequest
+                onZoomChange = { observedZoom = it }
                 this.disabled = props.disabled
             }
-            ClientExtension.forEach { it.binarySliderExtra(props, sliderZoom, this) }
+            ClientExtension.forEach { it.binarySliderExtra(props, observedZoom, this) }
         }
     }
 }

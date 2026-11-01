@@ -40,9 +40,7 @@ val PointEstimateSlider = elementSizeWrapper(FC<PointEstimateSliderProps>("Point
     val (panZoomRE, zoomState) = usePanZoom<HTMLElement>(zoomParams)
 
     val marks = useMemo(zoomState.paperWidth, space.min, space.max, space.unit) {
-        markSpacing(zoomState.paperWidth, space.min, space.max) { v ->
-            space.formatValue(v, false, true)
-        }
+        markSpacing(zoomState.paperWidth, space.min, space.max, space::formatMark)
     }
     val filteredMarks = marks.filter { it in zoomState.visibleContentRange }
     val disabled = props.disabled ?: false
@@ -103,7 +101,7 @@ val PointEstimateSlider = elementSizeWrapper(FC<PointEstimateSliderProps>("Point
                         transform = translate(xtrans, (-50).pct)
                         position = Position.absolute
                     }
-                    +space.formatValue(value, false, true)
+                    +space.formatMark(value, marks.step)
                 }
             }
         }

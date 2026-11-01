@@ -354,6 +354,10 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
     // no entry point on phones). Endpoints are typed: fixed values (now / an
     // instant) or the live "Selection" reference that follows the pin.
     var compareEnds by useState<List2<CompareEndpoint>?>(null)
+    // The numeric group graph and the comparison replace each other in one box; this
+    // carries the zoomed view across the switch. A ref: it is only read on mount, and
+    // state would re-render the page on every wheel tick.
+    val groupView = useRef<ClosedFloatingPointRange<Double>>()
     var pickerSlot by useState<Int?>(null)     // endpoint slot an open picker menu edits
     var pickSlot by useState<Int?>(null)       // slot armed for pick-on-timeline capture
     var pickedTime by useState<Instant?>(null) // the picker menu's free-form date/time row
@@ -677,6 +681,8 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                             }
                         }
                         onClose = { closeCompare() }
+                        initialView = groupView.current
+                        onViewChange = { groupView.current = it }
                     }
                     // Endpoint picker for the chip's side of the comparison.
                     pickerSlot?.let { slot ->
@@ -761,6 +767,8 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
                         }
                         resolution = props.resolution
                         isGroup = true
+                        initialView = groupView.current
+                        onViewChange = { groupView.current = it }
                         this.question = props.question
                         if (question.effectiveAttributionIn(room).aggregatesVisible(props.numPredictors))
                             onHistogramButtonClick = { groupHistogramOpen = !groupHistogramOpen }

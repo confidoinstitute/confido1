@@ -54,6 +54,10 @@ external interface BasePredictionGraphProps : PropsWithRef<HTMLElement>, PropsWi
     /** When set, the ghost chip shows a dismiss button (pinned ghosts only —
      *  transient hover ghosts dismiss themselves). */
     var onGhostDismiss: (() -> Unit)?
+    /** Value-axis view (numeric graphs): a content range to start zoomed to, and a
+     *  report of the visible range while zoomed (null at full range). */
+    var initialView: ClosedFloatingPointRange<Double>?
+    var onViewChange: ((ClosedFloatingPointRange<Double>?) -> Unit)?
 }
 
 external interface PredictionGraphProps : Props, BasePredictionGraphProps {

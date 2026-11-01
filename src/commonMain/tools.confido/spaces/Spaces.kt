@@ -144,6 +144,10 @@ data class NumericSpace(
         return r
     }
 
+    /** Axis tick label (condensed, no unit), precise enough to tell ticks [step] apart. */
+    fun formatMark(value: Double, step: Double): String =
+        if (representsDays) formatValue(value, false, true) else condensedNum(value, size, step)
+
     fun formatDifference(value: Double, showUnit: Boolean = true): String {
         if (representsDays) {
             return "${(value / 86400).toFixed(1)} days"

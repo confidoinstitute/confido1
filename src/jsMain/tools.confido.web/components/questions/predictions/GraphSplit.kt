@@ -28,11 +28,11 @@ data class GraphSplit(
 
 /** Formats [x] to about the precision one pixel resolves at [unitsPerPx],
  *  capped by the space's own [NumericSpace.decimals]. */
-fun NumericSpace.formatAtResolution(x: Double, unitsPerPx: Double): String {
-    if (representsDays || !(unitsPerPx > 0.0)) return formatValue(x, true, false)
+fun NumericSpace.formatAtResolution(x: Double, unitsPerPx: Double, showUnit: Boolean = true): String {
+    if (representsDays || !(unitsPerPx > 0.0)) return formatValue(x, showUnit, false)
     val pxDecimals = -floor(log10(unitsPerPx)).toInt()
     val step = 10.0.pow(-pxDecimals.coerceAtMost(0))
-    return copy(decimals = pxDecimals.coerceIn(0, decimals)).formatValue(round(x / step) * step, true, false)
+    return copy(decimals = pxDecimals.coerceIn(0, decimals)).formatValue(round(x / step) * step, showUnit, false)
 }
 
 /**

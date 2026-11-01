@@ -14,18 +14,23 @@ fun roundNumbers() = sequence {
     }
 }
 
-fun markSpacing(width: Double, start: Double, end: Double, formatter: ((value: Number) -> String)?): List<Double> {
+/** Axis mark positions plus their spacing, which label formatting needs to show
+ *  enough decimals (see [tools.confido.spaces.NumericSpace.formatMark]). */
+class Marks(val values: List<Double>, val step: Double) : List<Double> by values
+
+/** [formatter] gets each value with the candidate spacing, so measured label
+ *  widths match what will be rendered. */
+fun markSpacing(width: Double, start: Double, end: Double, formatter: ((value: Double, step: Double) -> String)?): Marks {
     val range = end - start
     val unitWidth = width / range
 
-    if (width == 0.0) return emptyList()
-
-    fun strLength(x: Double) = (formatter?:{it.toString()})(x).length
+    if (width == 0.0) return Marks(emptyList(), 0.0)
 
     val markBase = roundNumbers().takeWhile{it <= range}.find { step ->
         val lastMark = floor(end / step) * step
-        (width / (range / step) >= strLength(lastMark) * 8 + 8)
-    } ?: return emptyList()
+        val labelLength = (formatter ?: { v, _ -> v.toString() })(lastMark, step).length
+        (width / (range / step) >= labelLength * 8 + 8)
+    } ?: return Marks(emptyList(), 0.0)
 
     var firstMark = ceil(start / markBase) * markBase
     //if (unitWidth * (firstMark - start) < 10 * strLength(firstMark) + 10) firstMark += markBase
@@ -33,7 +38,7 @@ fun markSpacing(width: Double, start: Double, end: Double, formatter: ((value: N
     var lastMark = floor(end / markBase) * markBase
     //if (unitWidth * (end - lastMark) < 10 * strLength(lastMark) + 10) lastMark -= markBase
 
-    return sequence {
+    return Marks(sequence {
         //yield(start)
         var mark = firstMark
         while (mark <= lastMark) {
@@ -42,7 +47,7 @@ fun markSpacing(width: Double, start: Double, end: Double, formatter: ((value: N
         }
         //yield(end)
 
-    }.toList()
+    }.toList(), markBase)
 }
 
 @JsName("monthSpacing")

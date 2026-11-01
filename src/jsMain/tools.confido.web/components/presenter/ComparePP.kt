@@ -114,6 +114,9 @@ val ComparePP = FC<PresenterPageProps<ComparePV>> { props ->
                     distB = distOf(tsB, 1)
                     labelB = label(ordered.e2, tsB)
                     this.tsB = tsB
+                    // Presenter screens are display-only (and CSS-zoomed, which
+                    // would skew pointer coordinates anyway).
+                    interactive = false
                 }
                 CompareViewMode.CHANGES, CompareViewMode.SCATTER -> {
                     if (rows == null) div {

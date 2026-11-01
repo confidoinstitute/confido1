@@ -126,6 +126,7 @@ if [ "$BROWSER" = 1 ]; then
     run presenter_multi_browser_test.py
     run dialog_stack_browser_test.py
     run prediction_browser_test.py
+    run zoom_browser_test.py
     run connection_browser_test.py   # kills + restarts the scratch server itself
 fi
 

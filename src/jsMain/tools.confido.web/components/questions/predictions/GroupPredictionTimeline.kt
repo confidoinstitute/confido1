@@ -240,7 +240,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
     val allMarks = ((room?.timelineMarks ?: emptyList()) + props.question.timelineMarks).sortedBy { it.ts }
 
     val gridValues = when (space) {
-        is NumericSpace -> markSpacing(GRAPH_HEIGHT * 1.6, space.min, space.max) { space.formatValue(it, false, true) }
+        is NumericSpace -> markSpacing(GRAPH_HEIGHT * 1.6, space.min, space.max, space::formatMark)
         else -> listOf(0.0, 0.5, 1.0)
     }
 
@@ -487,7 +487,11 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                     fontSize = 9.0
                     fill = "rgba(0,0,0,30%)"
                     // Grid labels get whole percents; the hover readout keeps precision.
-                    +if (space is BinarySpace) formatPercent(v, decimals = 0) else formatY(v)
+                    +when {
+                        space is BinarySpace -> formatPercent(v, decimals = 0)
+                        space is NumericSpace && gridValues is Marks -> space.formatMark(v, gridValues.step)
+                        else -> formatY(v)
+                    }
                 }
             }
 

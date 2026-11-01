@@ -28,6 +28,13 @@ import tools.confido.web.components.PresenterIcon
 import tools.confido.web.components.basic.*
 import tools.confido.web.components.forms.ButtonUnstyled
 import tools.confido.web.utils.runCoroutine
+import tools.confido.web.utils.panzoom1d.PZParams
+import tools.confido.web.hooks.*
+import web.html.HTMLDivElement
+import web.html.HTMLElement
+import web.pointer.POINTER_LEAVE
+import web.pointer.POINTER_MOVE
+import web.pointer.PointerEvent
 import web.cssom.*
 import kotlin.math.max
 import kotlin.math.min
@@ -81,6 +88,11 @@ external interface CompareDistributionsProps : PropsWithElementSize {
     /** Show the terse delta lines under the chart. Defaults to true; turn off
      *  when a description renders the comparison in full sentences. */
     var showSummary: Boolean?
+    /** Pan/zoom gestures and the zoom pill (numeric). Defaults to true. */
+    var interactive: Boolean?
+    /** Numeric view to start at / visible range while zoomed; see [useGraphZoom]. */
+    var initialView: ClosedFloatingPointRange<Double>?
+    var onViewChange: ((ClosedFloatingPointRange<Double>?) -> Unit)?
 }
 
 private const val CHART_HEIGHT = 150.0
@@ -159,19 +171,37 @@ val CompareDistributions = elementSizeWrapper(FC<CompareDistributionsProps>("Com
         }
     }
 
-    // Hover on the numeric chart: a cursor line, the below-cursor region tinted,
-    // and P(answer < x) under both states. Hooks stay up here, unconditional.
-    var hoverPx by useState<Double>()
-    val plotWidth = width - 2 * SIDE_PAD
+    // Value-axis zoom of the numeric chart. Hooks stay up here, unconditional (a
+    // placeholder space stands in for binary questions, which never use it).
+    val interactive = props.interactive ?: true
     val numeric = (space as? NumericSpace)?.let { sp ->
         (props.distA as? ContinuousProbabilityDistribution)?.let { a ->
             (props.distB as? ContinuousProbabilityDistribution)?.let { b -> Triple(sp, a, b) }
         }
     }
-    val cursorPx = hoverPx?.takeIf { activeTab == "dist" && plotWidth > 0 && it in SIDE_PAD..(width - SIDE_PAD) }
+    val zoomSpace = space as? NumericSpace ?: NumericSpace(0.0, 1.0)
+    val zoomParams = PZParams(contentDomain = zoomSpace.range, viewportWidth = width, sidePad = SIDE_PAD, maxZoom = 10.0)
+    // Fitting both states, so neither curve gets cut off.
+    val zoom = useGraphZoom(zoomParams, zoomSpace, numeric?.let { listOf(it.second, it.third) } ?: emptyList(),
+        props.initialView, props.onViewChange, compactPill = true)
+    val zs = zoom.state
+
+    // Hover on the numeric chart: a cursor line, the below-cursor region tinted,
+    // and P(answer < x) under both states. Native listeners: usePan's draggable
+    // stops pointermove propagation, so React's delegated onPointerMove would not see it.
+    var hoverPx by useState<Double>()
+    val hoverMoveRE = useEventListener<HTMLDivElement, PointerEvent>(PointerEvent.POINTER_MOVE) { ev ->
+        // Mouse only, and not mid-drag (a pan or range selection).
+        hoverPx = if (ev.pointerType != "mouse" || ev.buttons.unsafeCast<Int>() != 0) null
+            else ev.clientX - (ev.currentTarget as HTMLElement).getBoundingClientRect().left
+    }
+    val hoverLeaveRE = useEventListener<HTMLDivElement, PointerEvent>(PointerEvent.POINTER_LEAVE) { hoverPx = null }
+    val chartRef = combineRefs(if (interactive) zoom.ref else null, hoverMoveRE, hoverLeaveRE)
+    val contentViewport = zs.leftPadVisible..(zs.params.viewportWidth - zs.rightPadVisible)
+    val cursorPx = hoverPx?.takeIf { activeTab == "dist" && it in contentViewport }
     val hoverSplit = cursorPx?.let { px -> numeric?.let { (sp, a, b) ->
-        val unitsPerPx = (sp.max - sp.min) / plotWidth
-        val x = sp.min + (px - SIDE_PAD) * unitsPerPx
+        val unitsPerPx = zs.params.contentWidth / zs.paperWidth
+        val x = zs.viewportToContent(px)
         GraphSplit(x, sp.formatAtResolution(x, unitsPerPx), below = b.cdf(x), belowBefore = a.cdf(x))
     } }
     // Mirrored to the description below the chart, when it listens.
@@ -206,6 +236,7 @@ val CompareDistributions = elementSizeWrapper(FC<CompareDistributionsProps>("Com
             span { css { color = Color("rgba(0,0,0,40%)"); fontSize = 12.px }; +"→" }
             chip(1, "#E9FBFF", NEW_STROKE, props.labelB)
             div { css { flexGrow = number(1.0) } }
+            if (interactive && numeric != null && activeTab == "dist") +zoom.pill
             props.onPresent?.let { present ->
                 ButtonUnstyled {
                     css {
@@ -284,13 +315,16 @@ val CompareDistributions = elementSizeWrapper(FC<CompareDistributionsProps>("Com
         val db = props.distB
         when {
             space is NumericSpace && da is ContinuousProbabilityDistribution && db is ContinuousProbabilityDistribution -> {
+                // Binned over the visible range only, so zooming in adds detail.
+                val visible = zs.visibleDomainRange
                 val bins = 240
-                val binner = Binner(space, bins)
+                val binner = Binner(space.subspace(visible.start, visible.endInclusive), bins)
                 val a = binner.binRanges.map { da.densityBetween(it) }
                 val b = binner.binRanges.map { db.densityBetween(it) }
-                val maxDensity = max(a.max(), b.max()).takeIf { it > 0.0 } ?: 1.0
+                // From the distributions, not the visible bins: panning must not rescale.
+                val maxDensity = max(da.maxDensity, db.maxDensity).takeIf { it > 0.0 } ?: 1.0
                 val yScale = CHART_HEIGHT / maxDensity
-                fun px(i: Int) = SIDE_PAD + (i + 0.5) / bins * (width - 2 * SIDE_PAD)
+                fun px(i: Int) = zs.contentToViewport(binner.binMidpoints[i])
                 fun py(v: Double) = CHART_TOP + CHART_HEIGHT - v * yScale
                 fun areaPath(upper: List<Double>, lower: List<Double>): String {
                     val fwd = upper.mapIndexed { i, v -> "${px(i)} ${py(v)}" }
@@ -303,11 +337,15 @@ val CompareDistributions = elementSizeWrapper(FC<CompareDistributionsProps>("Com
 
                 // Hover area: the chart plus its axis row.
                 div {
-                    onPointerMove = { ev ->
-                        hoverPx = if (ev.pointerType.unsafeCast<String>() != "mouse") null
-                            else ev.clientX - ev.currentTarget.getBoundingClientRect().left
+                    ref = chartRef
+                    css {
+                        position = Position.relative
+                        overflow = Overflow.hidden
+                        // Vertical drags still scroll the page; pinch and sideways pans are ours.
+                        touchAction = TouchAction.panY
+                        graphZoomCursor(zoom)
                     }
-                    onPointerLeave = { hoverPx = null }
+                    zoom.selectionOverlay(0.0, CHART_TOP + CHART_HEIGHT)?.let { +it }
                     svg {
                         this.width = width
                         this.height = CHART_TOP + CHART_HEIGHT
@@ -316,8 +354,8 @@ val CompareDistributions = elementSizeWrapper(FC<CompareDistributionsProps>("Com
                         // Tint first, so the change fills keep their hues on top of it.
                         cursorPx?.let { px ->
                             rect {
-                                x = SIDE_PAD; y = CHART_TOP
-                                this.width = px - SIDE_PAD; this.height = CHART_HEIGHT
+                                x = zs.leftPadVisible; y = CHART_TOP
+                                this.width = px - zs.leftPadVisible; this.height = CHART_HEIGHT
                                 fill = BELOW_TINT; fillOpacity = "0.6"
                             }
                         }
@@ -361,24 +399,24 @@ val CompareDistributions = elementSizeWrapper(FC<CompareDistributionsProps>("Com
                                 below = chip(before, hoverSplit.below, below = true),
                                 above = chip(1 - before, 1 - hoverSplit.below, below = false))
                         } else null
-                        markSpacing(width - 2 * SIDE_PAD, space.min, space.max) { space.formatValue(it, false, true) }
-                            .forEach { v ->
-                                val markPx = SIDE_PAD + (v - space.min) / (space.max - space.min) * (width - 2 * SIDE_PAD)
-                                val markLabel = space.formatValue(v, false, true)
-                                val markHalf = markLabel.length * 3.5
-                                val covered = cursorReadout?.covered
-                                span {
-                                    key = v.toString()
-                                    css {
-                                        position = Position.absolute
-                                        left = markPx.px
-                                        transform = translatex((-50).pct)
-                                        if (covered != null && markPx + markHalf > covered.start && markPx - markHalf < covered.endInclusive)
-                                            visibility = Visibility.hidden
-                                    }
-                                    +markLabel
+                        val marks = markSpacing(zs.paperWidth, space.min, space.max, space::formatMark)
+                        marks.filter { it in visible }.forEach { v ->
+                            val markPx = zs.contentToViewport(v)
+                            val markLabel = space.formatMark(v, marks.step)
+                            val markHalf = markLabel.length * 3.5
+                            val covered = cursorReadout?.covered
+                            span {
+                                key = v.toString()
+                                css {
+                                    position = Position.absolute
+                                    left = markPx.px
+                                    transform = translatex((-50).pct)
+                                    if (covered != null && markPx + markHalf > covered.start && markPx - markHalf < covered.endInclusive)
+                                        visibility = Visibility.hidden
                                 }
+                                +markLabel
                             }
+                        }
                         cursorReadout?.render(this)
                     }
                 }

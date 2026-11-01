@@ -13,16 +13,26 @@ import react.dom.html.*
 import react.dom.html.ReactHTML.div
 import tools.confido.distributions.*
 import tools.confido.spaces.*
+import tools.confido.web.utils.panzoom1d.PZController
+import tools.confido.web.utils.panzoom1d.PZDragMode
+import tools.confido.web.utils.panzoom1d.ZoomHint
 import tools.confido.web.utils.panzoom1d.PZParams
 import tools.confido.web.utils.panzoom1d.PZState
 import tools.confido.web.utils.panzoom1d.usePanZoom
 import web.canvas.CanvasRenderingContext2D
 import web.canvas.ID
+import web.dom.Node
+import web.events.EventType
+import web.keyboard.KeyboardEvent
 import web.pointer.POINTER_LEAVE
 import web.pointer.POINTER_MOVE
 import web.pointer.PointerEvent
 import tools.confido.utils.formatPercent
+import kotlin.math.abs
 import kotlin.math.floor
+import kotlin.math.ln
+import tools.confido.utils.List2
+import tools.confido.web.components.forms.ButtonUnstyled
 
 data class ConfidenceColor(
     val p: Double,
@@ -47,6 +57,9 @@ external interface NumericPredGraphProps : PropsWithElementSize, BasePredictionG
      *  density into P(below)/P(above) halves. Defaults to true. On input graphs
      *  the split needs Shift held, as the CI coloring is the editing feedback. */
     var hoverInsights: Boolean?
+    /** Receives the graph's pan/zoom controller, so a companion widget (the input
+     *  slider below) can forward its wheel events and zoom the graph too. */
+    var zoomCtlRef: RefObject<PZController>?
 }
 
 
@@ -72,8 +85,12 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
 
     val zoomParams = PZParams(contentDomain = space.range, viewportWidth = props.elementWidth, sidePad = SIDE_PAD,
         maxZoom = props.maxZoom ?: 10.0)
-    val (panZoomRE, zoomState) = usePanZoom<HTMLDivElement>(zoomParams)
+    val zoom = useGraphZoom(zoomParams, space, listOfNotNull(dist), props.initialView, props.onViewChange)
+    val zoomState = zoom.state
+    props.zoomCtlRef?.current = zoom.ctl
     val clickRE = usePureClick<HTMLDivElement> { ev->
+        // A click while armed backs out of zoom selection rather than predicting.
+        if (zoom.armed) { zoom.disarm(); return@usePureClick }
         val rect = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
         val x = ev.clientX - rect.left
         val xSp = zoomState.viewportToContent(x)
@@ -88,7 +105,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
     // markSpacing assumes ~8px glyphs; scaled-up labels claim proportionally
     // more room, which dividing the available width models exactly.
     val marks = useMemo(zoomState.paperWidth, space.min, space.max, space.unit, fontScale) {
-        markSpacing(zoomState.paperWidth / fontScale, space.min, space.max, { space.formatValue(it, false, true) })
+        markSpacing(zoomState.paperWidth / fontScale, space.min, space.max, space::formatMark)
     }
     val filteredMarks = useMemo(marks, zoomState.pan) {
         marks.filter{ it in zoomState.visibleContentRange }
@@ -121,6 +138,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
             else ev.clientX - (ev.currentTarget as HTMLElement).getBoundingClientRect().left
     }
     val hoverLeaveRE = useEventListener<HTMLDivElement, PointerEvent>(PointerEvent.POINTER_LEAVE) { hoverPx = null }
+    val rootRef = combineRefs(zoom.ref, clickRE, hoverMoveRE, hoverLeaveRE)
     val contentViewport = zoomState.leftPadVisible..(zoomState.params.viewportWidth - zoomState.rightPadVisible)
     val cursorPx = hoverPx?.takeIf { hoverEnabled && it in contentViewport }
     val cursorX = cursorPx?.let { zoomState.viewportToContent(it) }
@@ -214,10 +232,11 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
         }
     }
     Stack {
-        ref = combineRefs(panZoomRE, clickRE, hoverMoveRE, hoverLeaveRE).unsafeCast<Ref<HTMLElement>>()
+        ref = rootRef.unsafeCast<Ref<HTMLElement>>()
         css {
             position = Position.relative
             overflow = Overflow.hidden
+            graphZoomCursor(zoom)
         }
         // Keyed: the DSL drops absent conditional children instead of leaving a
         // placeholder, so e.g. the ghost chip appearing would shift and remount
@@ -226,6 +245,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
         GraphButtons {
             key = "buttons"
             +props
+            leading = zoom.pill
         }
         if (ghost != null && props.ghostLabel != null) {
             div {
@@ -263,6 +283,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
                 }
             }
         }
+        zoom.selectionOverlay(ABOVE_GRAPH_PAD, GRAPH_TOP_PAD + graphHeight)?.let { +it }
         ReactHTML.canvas {
             key = "canvas"
             style = jso {
@@ -349,7 +370,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
             ) else null
             filteredMarks.forEachIndexed {idx, value->
                 val markPx = zoomState.contentToViewport(value)
-                val markLabel = space.formatValue(value, false, true)
+                val markLabel = space.formatMark(value, marks.step)
                 val markHalf = markLabel.length * 3.5 * fontScale
                 val covered = cursorReadout?.covered?.let { markPx + markHalf > it.start && markPx - markHalf < it.endInclusive } ?: false
                 div {
