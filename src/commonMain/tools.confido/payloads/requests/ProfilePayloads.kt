@@ -13,6 +13,12 @@ data class SetPassword(
     val newPassword: String,
 )
 
+/** Remove the password (log in by e-mail links only); proven by the [currentPassword]. */
+@Serializable
+data class RemovePassword(
+    val currentPassword: String,
+)
+
 /** Set (or clear, with a null [value]) one [tools.confido.users.User.uiSettings] entry. */
 @Serializable
 data class SetUiSetting(

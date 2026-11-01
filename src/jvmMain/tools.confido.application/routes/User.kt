@@ -235,33 +235,48 @@ fun profileRoutes(routing: Routing) = routing.apply {
         call.withUser { deleteVerificationLinks(user.ref) }
     }
 
+    /** Once a password is set, changing or removing it requires it (badRequest otherwise). */
+    fun UserContext.requireCurrentPassword(current: String?) {
+        val stored = user.password ?: return
+        if (current.isNullOrEmpty()) badRequest("Please enter your current password.")
+        if (!Password.check(current, stored).withArgon2()) badRequest("The current password is incorrect.")
+    }
+
+    /** Store [hash] (null = no password) and end the user's other sessions, then mail the
+     *  owner a "not you?" notice carrying a reset link. */
+    suspend fun UserContext.replacePassword(hash: String?) {
+        tools.confido.store.userStore.modify(user.ref) { it.copy(password = hash) }
+        invalidateUserSessions(user.ref, exceptSessionId = session.id)
+
+        val link = PasswordResetLink(
+            token = generateToken(),
+            user = user.ref,
+            expiryTime = Clock.System.now() + PASSWORD_CHANGED_UNDO_VALIDITY,
+        )
+        try {
+            user.email?.let { call.mailer.sendPasswordChangedEmail(it, link, removed = hash == null) }
+        } catch (e: org.simplejavamail.MailException) {
+            call.application.log.info("The link to undo password change for ${user.ref} is ${link.link("")}")
+        }
+        passwordResetLinkStore.insert(link)
+        // TODO: Anti password undo spam DDoS
+        call.application.log.info("User ${user.ref} ${if (hash == null) "removed" else "changed"} password.")
+    }
+
     // Set or change the password (the current one is required once one is set).
     apiST(Api.profilePassword) { passwordChange ->
         call.withUser {
-            val email = user.email ?: badRequest("Add an e-mail address first: you log in with it and the password.")
-            if (user.password != null) {
-                val current = passwordChange.currentPassword
-                if (current == null || !Password.check(current, user.password).withArgon2())
-                    badRequest("The current password is incorrect.")
-            }
-            val hash = hashNewPassword(passwordChange.newPassword)
-            tools.confido.store.userStore.modify(user.ref) { it.copy(password = hash) }
-            invalidateUserSessions(user.ref, exceptSessionId = session.id)
-
-            // "Not you?" notification, carrying a reset link for the account owner.
-            val link = PasswordResetLink(
-                token = generateToken(),
-                user = user.ref,
-                expiryTime = Clock.System.now() + PASSWORD_CHANGED_UNDO_VALIDITY,
-            )
-            try {
-                call.mailer.sendPasswordChangedEmail(email, link)
-            } catch (e: org.simplejavamail.MailException) {
-                call.application.log.info("The link to undo password change for ${user.ref} is ${link.link("")}")
-            }
-            passwordResetLinkStore.insert(link)
-            // TODO: Anti password undo spam DDoS
-            call.application.log.info("User ${user.ref} changed password.")
+            if (user.email == null) badRequest("Add an e-mail address first: you log in with it and the password.")
+            requireCurrentPassword(passwordChange.currentPassword)
+            replacePassword(hashNewPassword(passwordChange.newPassword))
+        }
+    }
+    // Remove the password: back to e-mail-link login, the state every account starts in.
+    apiST(Api.profilePasswordRemove) { removal ->
+        call.withUser {
+            if (user.password == null) badRequest("You have no password set.")
+            requireCurrentPassword(removal.currentPassword)
+            replacePassword(null)
         }
     }
     // Password reset, step one: mail a link for choosing a new password without the

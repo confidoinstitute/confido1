@@ -11,6 +11,7 @@ import emotion.react.css
 import web.cssom.*
 import tools.confido.web.hooks.useCoroutineLock
 import tools.confido.payloads.requests.SetNick
+import tools.confido.payloads.requests.RemovePassword
 import tools.confido.payloads.requests.SetPassword
 import tools.confido.payloads.requests.StartEmailVerification
 import react.ChildrenBuilder
@@ -63,6 +64,7 @@ private external interface SaveButtonProps : PropsWithChildren {
 
 private val SaveButton = FC<SaveButtonProps> { props ->
     Stack {
+        css { flexGrow = number(1.0) }
         Button {
             type = ButtonType.submit
             css {
@@ -256,6 +258,20 @@ private val PasswordSection = FC<Props> {
         }
     }
 
+    fun removePassword() = action {
+        if (currentPassword.isEmpty()) {
+            error = "Enter your current password to remove it."
+            return@action
+        }
+        inlineErrors({ error = it }) {
+            Client.call(Api.profilePasswordRemove(), RemovePassword(currentPassword))
+            info = "Password removed: you log in with e-mail links now. Your other sessions were logged out."
+            currentPassword = ""
+            newPassword = ""
+            confirmPassword = ""
+        }
+    }
+
     fun sendResetLink() = action {
         inlineErrors({ error = it }) {
             Client.call(Api.profilePasswordReset())
@@ -313,9 +329,15 @@ private val PasswordSection = FC<Props> {
                 comment = info ?: if (passwordIsSet) null
                     else "You have no password yet and log in with e-mail links. A password lets you log in directly."
             }
-            SaveButton {
-                disabled = newPassword.isEmpty() || action.running
-                +(if (passwordIsSet) "Change password" else "Set password")
+            Stack {
+                direction = FlexDirection.row
+                css { alignItems = AlignItems.center }
+                if (passwordIsSet)
+                    inlineAction("Remove password", action.running) { removePassword() }
+                SaveButton {
+                    disabled = newPassword.isEmpty() || action.running
+                    +(if (passwordIsSet) "Change password" else "Set password")
+                }
             }
         }
     }

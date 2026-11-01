@@ -3,6 +3,7 @@
 other sessions ended); e-mail change via verification (pending on the self slice, only
 the newest link valid, cancel, verify logged out, duplicate address refused); password
 reset links (choose a new password logged out, every session and reset link ended);
+password removal (current one required, other sessions ended, settable again);
 e-mail-less guests; admin input held to the same e-mail rules.
 
 Link tokens are read from the devmode mailer's log (see confido_test.mail_tokens)."""
@@ -117,6 +118,24 @@ def main():
     st, _ = call("/profile/password/reset/finish", {"token": undo_token, "newPassword": "password4"})
     t.check(st == 401, "TEST-19", "a reset consumes the user's other reset links", str(st))
 
+    # --- Removing the password: back to e-mail-link login ---
+    c = email_login(NEW_EMAIL)
+    d = email_login(NEW_EMAIL)
+    st, body = call("/profile/password/remove", {"currentPassword": "wrong-password"}, c)
+    t.check(st == 400 and "incorrect" in body, "TEST-20", "removal requires the current password", f"{st} {body}")
+    reset_before = mail_tokens("password_reset")
+    st, body = call("/profile/password/remove", {"currentPassword": "password3"}, c)
+    t.check(st == 200 and not self_data(c).get("myPasswordIsSet") and not password_login(NEW_EMAIL, "password3"),
+            "TEST-21", "password removed; password login no longer works", f"{st} {body}")
+    t.check(alive(c) and not alive(d), "TEST-22", "removal ends other sessions, keeps the current one")
+    t.check(new_mail_token("password_reset", reset_before) is not None,
+            "TEST-23", "removal mails a 'not you?' reset link")
+    st, body = call("/profile/password/remove", {"currentPassword": "password3"}, c)
+    t.check(st == 400, "TEST-24", "nothing to remove without a password", f"{st} {body}")
+    st, body = call("/profile/password", {"currentPassword": None, "newPassword": "password5"}, c)
+    t.check(st == 200 and password_login(NEW_EMAIL, "password5"),
+            "TEST-25", "a password can be set again without a current one", f"{st} {body}")
+
     # --- E-mail-less guest ---
     link = json.loads(post("/rooms/testroom/invites/create",
                            {"description": "profile guests", "role": "forecaster"}, admin))
@@ -129,13 +148,13 @@ def main():
         headers={"Content-Type": "application/json"}))
     guest = cookie_str(cj)
     st, _ = call("/profile/nick", {"name": "profguest2"}, guest)
-    t.check(st == 200, "TEST-20", "e-mail-less guest can rename", str(st))
+    t.check(st == 200, "TEST-26", "e-mail-less guest can rename", str(st))
     st, body = call("/profile/password", {"currentPassword": None, "newPassword": "password1"}, guest)
-    t.check(st == 400 and "e-mail address first" in body, "TEST-21", "password needs an e-mail first", f"{st} {body}")
+    t.check(st == 400 and "e-mail address first" in body, "TEST-27", "password needs an e-mail first", f"{st} {body}")
 
     # --- Admin input: same e-mail rules ---
     st, body = call("/users/add", {"_id": "", "type": "MEMBER", "email": "not-an-address"}, admin)
-    t.check(st == 400, "TEST-22", "admin add refuses an invalid address", f"{st} {body}")
+    t.check(st == 400, "TEST-28", "admin add refuses an invalid address", f"{st} {body}")
 
     t.finish()
 

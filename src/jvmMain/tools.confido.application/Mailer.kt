@@ -169,13 +169,14 @@ $feedback"""
         sendMail(mail)
     }
 
-    fun sendPasswordChangedEmail(address: String, resetLink: PasswordResetLink) {
+    /** "Not you?" notice after the password was changed or [removed]. */
+    fun sendPasswordChangedEmail(address: String, resetLink: PasswordResetLink, removed: Boolean = false) {
         if (appConfig.demoMode) return
-        val subject = "Your Confido password has changed"
+        val subject = if (removed) "Your Confido password was removed" else "Your Confido password has changed"
         val url = resetLink.link(origin)
 
         val body = """
-            Your password to Confido ($origin) has been changed.
+            ${if (removed) "The password to your Confido account ($origin) has been removed; you now log in with e-mail links." else "Your password to Confido ($origin) has been changed."}
             
             If this was not you, open the following link to choose a new password:
             $url

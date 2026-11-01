@@ -105,6 +105,7 @@ object Api {
     val profileEmailStartVerification = ApiSpec(POST, path("profile/email/start_verification"), serializer<StartEmailVerification>(), serializer<Unit>())
     val profileEmailVerify = ApiSpec(POST, path("profile/email/verify"), serializer<TokenVerification>(), serializer<Unit>())
     val profilePassword = ApiSpec(POST, path("profile/password"), serializer<SetPassword>(), serializer<Unit>())
+    val profilePasswordRemove = ApiSpec(POST, path("profile/password/remove"), serializer<RemovePassword>(), serializer<Unit>())
     val profilePasswordReset = ApiSpec(POST, path("profile/password/reset"), serializer<Unit>(), serializer<Unit>())
     /** Withdraw a pending (unverified) e-mail change; its verification links stop working. */
     val profileEmailCancel = ApiSpec(POST, path("profile/email/cancel"), serializer<Unit>(), serializer<Unit>())

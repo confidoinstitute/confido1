@@ -2,8 +2,8 @@
 """Profile UI in the real bundle, as a fresh password-less user logged in by e-mail
 link: the nickname section saves and reports back (a save handler once read a context
 accessor outside render and failed silently), the password section sets a first
-password, a requested reset link opens the choose-a-new-password page and sets it, and
-no console errors."""
+password, a requested reset link opens the choose-a-new-password page and sets it, the
+password can be removed again, and no console errors."""
 import asyncio
 import sys
 
@@ -76,6 +76,15 @@ async def main():
         if st != 200:
             print("FAIL: new password does not log in", st); sys.exit(1)
         print("PASS: reset link page sets a new password")
+
+        # Remove it again from the profile (the reset kept this tab's session).
+        await cdp.cmd("Page.navigate", {"url": BASE + "/profile"}, session=s)
+        await wait_for(cdp, s, "!!document.querySelector('input[name=\"current_password\"]')", desc="change form")
+        await evaluate(cdp, s, f"({SET_INPUT})('current_password', 'second-password')")
+        await evaluate(cdp, s, click_button("Remove password"))
+        await wait_for(cdp, s, "document.body.innerText.includes('Password removed')", desc="password removed")
+        await wait_for(cdp, s, "!document.querySelector('input[name=\"current_password\"]')", desc="back to set form")
+        print("PASS: password section removes the password")
 
         await cdp.drain(1.5)
         errors = collect_errors(cdp)
