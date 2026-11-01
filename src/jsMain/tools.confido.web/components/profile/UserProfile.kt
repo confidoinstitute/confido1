@@ -17,6 +17,7 @@ import tools.confido.web.hooks.useCoroutineLock
 import io.ktor.client.call.*
 import io.ktor.http.*
 import tools.confido.payloads.requests.EditProfile
+import tools.confido.payloads.requests.StartEmailVerification
 import tools.confido.payloads.responses.EditProfileResult
 import react.FC
 import react.Props
@@ -24,7 +25,6 @@ import react.use
 import react.useState
 import tools.confido.users.*
 import tools.confido.web.utils.isEmailValid
-import tools.confido.web.utils.runCoroutine
 import web.html.ButtonType
 import web.html.InputType
 import web.html.button
@@ -34,11 +34,15 @@ import web.html.submit
 
 val UserProfile = FC<Props> {
     val user = useMyUser()
+    // Read during render: context accessors throw when called from event handlers.
+    val passwordIsSet = useMyPasswordIsSet()
+    // Users without an e-mail (e.g. guests invited without one) may leave it empty.
+    val emailRequired = user?.email != null
 
     var nick by useState(user?.nick ?: "")
 
     var email by useState(user?.email ?: "")
-    var emailPending by useState(false)
+    var verificationResent by useState(false)
 
     var oldPassword by useState("")
     var newPassword by useState("")
@@ -48,8 +52,15 @@ val UserProfile = FC<Props> {
     var editResult by useState<EditProfileResult?>(null)
 
     val edit = useCoroutineLock()
+    val sideAction = useCoroutineLock()
 
-    fun resetPassword() = runCoroutine {
+    fun resendVerification() = sideAction {
+        val address = user?.email ?: return@sideAction
+        Client.call(Api.profileEmailStartVerification(), StartEmailVerification(address))
+        verificationResent = true
+    }
+
+    fun resetPassword() = sideAction {
         Client.call(Api.profilePasswordReset())
         passwordReset = true
         oldPassword = ""
@@ -58,7 +69,7 @@ val UserProfile = FC<Props> {
     }
 
     fun editProfile() = edit {
-        if (!isEmailValid(email)) {
+        if ((emailRequired || email.isNotBlank()) && !isEmailValid(email.trim())) {
             editResult = EditProfileResult(emailError = "This is not a valid e-mail address.")
             return@edit
         }
@@ -83,7 +94,7 @@ val UserProfile = FC<Props> {
 
         editResult = Client.call(Api.profileEdit(), EditProfile(
                 nick, email,
-                if (useMyPasswordIsSet()) oldPassword else null,
+                if (passwordIsSet) oldPassword else null,
                 newPassword.ifEmpty { null }))
     }
 
@@ -116,14 +127,24 @@ val UserProfile = FC<Props> {
                         "Your nickname may appear whenever you comment or answer questions. You can change it at any time."
                 }
 
-                if (user?.emailVerified == false)
+                if (user?.email != null && !user.emailVerified)
                     Alert {
-                        +"Your email is not verified!"
+                        +"Your email is not verified! "
+                        if (verificationResent)
+                            +"We sent you a new verification e-mail."
+                        else
+                            TextButton {
+                                type = ButtonType.button
+                                css { margin = 0.px }
+                                disabled = sideAction.running
+                                onClick = { resendVerification() }
+                                +"Resend verification e-mail"
+                            }
                     }
 
                 FormField {
                     title = "E-mail address"
-                    required = true
+                    required = emailRequired
                     TextInput {
                         name = "email"
                         value = email
@@ -145,7 +166,7 @@ val UserProfile = FC<Props> {
                             gap = 7.px
                         }
 
-                        if (useMyPasswordIsSet())
+                        if (passwordIsSet)
                             TextInput {
                                 name = "old_password"
                                 type = InputType.password
@@ -167,21 +188,22 @@ val UserProfile = FC<Props> {
                             value = confirmPassword
                             onChange = { confirmPassword = it.target.value }
                         }
-                        if (useMyPasswordIsSet() && !passwordReset)
+                        if (passwordIsSet && !passwordReset)
                             TextButton {
                                 type = ButtonType.button
                                 css {
                                     margin = 0.px
                                 }
+                                disabled = sideAction.running
                                 onClick = { resetPassword() }
                                 +"Reset password"
                             }
                     }
                     error = editResult?.passwordError
-                    comment = if (!useMyPasswordIsSet())
+                    comment = if (!passwordIsSet)
                         "Your password is not set."
                     else if (passwordReset)
-                        "Password reset request was sent."
+                        "We sent you an e-mail. Its link removes your current password; then you can set a new one here without the old one."
                     else if (editResult?.passwordChanged == true)
                         "Password was set."
                     else ""

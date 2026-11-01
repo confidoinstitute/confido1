@@ -54,6 +54,16 @@ val NoUserLayout = FC<Props> {
                 element = RoomInviteNoUser.create()
             },
             jso<RouteObject> {
+                path = "email_verify"
+                element = VerifyToken.create {
+                    api = Api.profileEmailVerify()
+                    failureTitle = "Email verification failed"
+                    successTitle = "Email verification success"
+                    failureText = "The verification link is expired or invalid."
+                    successText = "Your email address has been successfully verified."
+                }
+            },
+            jso<RouteObject> {
                 path = "password_reset"
                 element = VerifyToken.create {
                     api = Api.profilePasswordResetFinish()

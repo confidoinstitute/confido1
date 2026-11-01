@@ -43,6 +43,7 @@ val VerifyToken = FC<VerifyTokenProps> { props ->
     val verificationToken = searchParams.get("t") ?: ""
 
     var status by useState(CheckStatus.CHECKING)
+    var failureReason by useState<String?>(null)
 
     useEffectOnce {
         runCoroutine {
@@ -50,6 +51,8 @@ val VerifyToken = FC<VerifyTokenProps> { props ->
                 Client.call(props.api, TokenVerification(verificationToken))
                 CheckStatus.SUCCESS
             } catch (e: ApiError) {
+                // Client errors carry a user-facing reason (expired, address taken, ...).
+                if (e.status?.value in 400..499) failureReason = e.message
                 CheckStatus.FAILURE
             }
         }
@@ -77,10 +80,10 @@ val VerifyToken = FC<VerifyTokenProps> { props ->
             }
         } else if (status == CheckStatus.FAILURE) {
             b {
-                +props.failureText
+                +props.failureTitle
             }
             span {
-                +props.failureTitle
+                +(failureReason ?: props.failureText)
             }
         }
         Link {

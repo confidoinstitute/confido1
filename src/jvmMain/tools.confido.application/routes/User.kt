@@ -43,6 +43,13 @@ suspend fun <T> ApplicationCall.withAdmin(body: suspend UserContext.() -> T): T 
 
 fun ApplicationCall.assertSession() = userSession ?: badRequest("Missing session.")
 
+/** Delete all of [user]'s sessions except [exceptSessionId]; their websockets close on their own. */
+suspend fun invalidateUserSessions(user: Ref<User>, exceptSessionId: String? = null) {
+    tools.confido.store.userSessionStore.asMap.values
+        .filter { it.userRef eqid user && it.id != exceptSessionId }
+        .forEach { tools.confido.store.userSessionStore.delete(it.ref) }
+}
+
 suspend fun ApplicationCall.initSession(user: User, validity: UserSessionValidity) {
     if (userSession != null) {
         destroyUserSession()
@@ -187,6 +194,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
         tools.confido.store.userStore.modify(user.ref) {
             it.copy(password = hash)
         }
+        invalidateUserSessions(user.ref, exceptSessionId = session.id)
 
         // Prepare password change notification
         val expiration = 7.days
@@ -211,7 +219,7 @@ fun profileRoutes(routing: Routing) = routing.apply {
     }
 
     suspend fun UserContext.changeNick(nick: String) {
-        val newNick = nick.ifEmpty { null }
+        val newNick = sanitizeNick(nick).ifEmpty { null }
 
         tools.confido.store.userStore.modify(user.ref) {
             it.copy(nick = newNick)
@@ -231,10 +239,12 @@ fun profileRoutes(routing: Routing) = routing.apply {
     }
     // E-mail verification: Step two (accepting token)
     apiST(Api.profileEmailVerify) { validation ->
-        call.assertSession()
-
         val verificationLink = verificationLinkStore.byToken[validation.token] ?: unauthorized("No such token exists.")
         if (verificationLink.isExpired()) unauthorized("The token has already expired.")
+        // Checked here rather than when sending: only the inbox owner learns the address is taken.
+        val holder = tools.confido.store.userStore.byEmail[verificationLink.email.lowercase()]
+        if (holder != null && !(holder eqid verificationLink.user))
+            badRequest("This e-mail address is already used by another account.")
 
         tools.confido.store.transact {
             tools.confido.store.userStore.modify(verificationLink.user) {
@@ -276,8 +286,6 @@ fun profileRoutes(routing: Routing) = routing.apply {
     }
     // Undo password change
     apiST(Api.profilePasswordResetFinish) { validation ->
-        call.assertSession()
-
         val verificationLink = passwordResetLinkStore.byToken[validation.token] ?: unauthorized("No such token exists.")
         if (verificationLink.isExpired()) unauthorized("The token has already expired.")
 
@@ -288,14 +296,17 @@ fun profileRoutes(routing: Routing) = routing.apply {
 
             // Verification links are single-use
             passwordResetLinkStore.delete(verificationLink.ref)
-        }
 
-        // TODO invalidate all user's sessions
+            // Whoever changed the password may still hold a session; end them all except the
+            // one opening this link (it belongs to the inbox owner, if it is the same user).
+            val ownSession = call.userSession?.takeIf { it.userRef eqid verificationLink.user }
+            invalidateUserSessions(verificationLink.user, exceptSessionId = ownSession?.id)
+        }
     }
     // Change nick
     apiST(Api.profileNick) { setNick ->
         call.withUser {
-            val newNick = setNick.name.ifEmpty { null }
+            val newNick = sanitizeNick(setNick.name).ifEmpty { null }
 
             tools.confido.store.userStore.modify(user.ref) {
                 it.copy(nick = newNick)
@@ -321,16 +332,22 @@ fun profileRoutes(routing: Routing) = routing.apply {
     apiST(Api.profileEdit) { profileData ->
         call.withUser {
             var nickChange = false
-            if (profileData.nick != user.nick) {
+            if (sanitizeNick(profileData.nick).ifEmpty { null } != user.nick) {
                 changeNick(profileData.nick)
                 nickChange = true
             }
 
             var emailChange = false
             var emailError: String? = null
-            if (profileData.email.lowercase() != user.email?.lowercase() || !user.emailVerified) {
+            // Re-sending verification for an unchanged address is an explicit action
+            // (profileEmailStartVerification), not a side effect of every save.
+            val newEmail = profileData.email.trim()
+            if (newEmail.isEmpty()) {
+                // Email-less users (e.g. guests) may save other fields without adding one.
+                if (user.email != null) emailError = "The e-mail address cannot be removed."
+            } else if (newEmail.lowercase() != user.email?.lowercase()) {
                 try {
-                    changeEmail(profileData.email)
+                    changeEmail(newEmail)
                     emailChange = true
                 } catch (e: ResponseError) {
                     emailError = e.message
@@ -677,11 +694,7 @@ fun adminUserRoutes(routing: Routing) = routing.apply {
                 }
 
                 // Delete all sessions for this user
-                tools.confido.store.userSessionStore.asMap.values
-                    .filter { it.userRef eqid userToDelete }
-                    .forEach { session ->
-                        tools.confido.store.userSessionStore.delete(session.ref)
-                    }
+                invalidateUserSessions(userToDelete.ref)
                 loginLinkStore.asMap.values
                     .filter { it.user eqid userToDelete }
                     .forEach {

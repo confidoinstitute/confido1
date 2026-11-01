@@ -67,7 +67,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "== starting scratch server on :$PORT$([ "$NATIVE" = 1 ] && echo ' (native image)')"
-export CONFIDO_DB_NAME="$DB" CONFIDO_DEVMODE=1 CONFIDO_HTTP_PORT="$PORT" CONFIDO_STATIC_PATH="$STATIC:$REPO_ROOT/static"
+export CONFIDO_DB_NAME="$DB" CONFIDO_DEVMODE=1 CONFIDO_MAIL_DEBUG=1 CONFIDO_HTTP_PORT="$PORT" CONFIDO_STATIC_PATH="$STATIC:$REPO_ROOT/static"
 if [ "$NATIVE" = 1 ]; then
     "$NATIVE_BIN" >"${TMPDIR:-/tmp}/confido_test_server.log" 2>&1 &
 else
@@ -80,6 +80,8 @@ if [ -z "$(port_pid "$PORT")" ]; then
 fi
 
 export CONFIDO_TEST_BASE="http://localhost:$PORT" CONFIDO_TEST_CDP="$CDP"
+# Devmode mail goes to the server log; profile_test.py reads link tokens from it.
+export CONFIDO_TEST_LOG="${TMPDIR:-/tmp}/confido_test_server.log"
 # Lets connection_browser_test.py restart the same kind of server it killed.
 [ "$NATIVE" = 1 ] && export CONFIDO_TEST_SERVER_CMD="$NATIVE_BIN"
 
@@ -116,10 +118,12 @@ run presentation_test.py
 run dashboard_test.py
 run search_test.py
 run group_revoke_test.py
+run profile_test.py
 
 if [ "$BROWSER" = 1 ]; then
     run browser_test.py
     run member_browser_test.py
+    run profile_browser_test.py
     run group_browser_test.py
     run presentation_browser_test.py
     run presentation_create_browser_test.py
