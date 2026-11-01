@@ -18,6 +18,7 @@ import react.ChildrenBuilder
 import react.FC
 import react.Props
 import react.PropsWithChildren
+import react.dom.aria.AriaRole
 import react.dom.html.ReactHTML.b
 import react.dom.html.ReactHTML.div
 import react.useState
@@ -78,6 +79,41 @@ private val SaveButton = FC<SaveButtonProps> { props ->
     }
 }
 
+private external interface SectionFeedbackProps : Props {
+    var error: String?
+    var info: String?
+}
+
+/**
+ * A section's outcome, right above the button that caused it: a tinted box that stays
+ * until the next edit (a field comment or a 5-second snackbar is too easy to miss).
+ */
+private val SectionFeedback = FC<SectionFeedbackProps> { props ->
+    val text = props.error ?: props.info ?: return@FC
+    val isError = props.error != null
+    div {
+        role = if (isError) AriaRole.alert else AriaRole.status
+        css {
+            display = Display.flex
+            alignItems = AlignItems.center
+            gap = 10.px
+            padding = Padding(10.px, 12.px)
+            borderRadius = 5.px
+            fontSize = 14.px
+            lineHeight = 18.px
+            if (isError) {
+                backgroundColor = Color("#FDECEC")
+                color = Color("#B3261E")
+            } else {
+                backgroundColor = Color("#E6F4EA")
+                color = Color("#1E6B34")
+            }
+        }
+        if (isError) b { +"!" } else CheckmarkIcon {}
+        div { +text }
+    }
+}
+
 /** Field content stacked above its inline actions (FormField lays children out in a row). */
 private val FieldColumn = FC<PropsWithChildren> { props ->
     Stack {
@@ -106,7 +142,7 @@ private val NickSection = FC<Props> {
     val user = useMyUser()
     var nick by useState(user?.nick ?: "")
     var error by useState<String?>(null)
-    var saved by useState(false)
+    var info by useState<String?>(null)
     val save = useCoroutineLock()
     val unchanged = sanitizeNick(nick).ifEmpty { null } == user?.nick
 
@@ -116,7 +152,7 @@ private val NickSection = FC<Props> {
                 inlineErrors({ error = it }) {
                     Client.call(Api.profileNick(), SetNick(nick))
                     nick = sanitizeNick(nick)
-                    saved = true
+                    info = "Nickname saved."
                 }
             }
         }
@@ -127,11 +163,13 @@ private val NickSection = FC<Props> {
                 TextInput {
                     name = "nick"
                     value = nick
-                    onChange = { nick = it.target.value; saved = false }
+                    onChange = { nick = it.target.value; error = null; info = null }
                 }
+                comment = "Your nickname may appear whenever you comment or answer questions. Leave it empty to appear as an anonymous user."
+            }
+            SectionFeedback {
                 this.error = error
-                comment = if (saved) "Nickname saved."
-                    else "Your nickname may appear whenever you comment or answer questions. Leave it empty to appear as an anonymous user."
+                this.info = info
             }
             SaveButton {
                 disabled = unchanged || save.running
@@ -159,7 +197,7 @@ private val EmailSection = FC<Props> {
 
     Form {
         onSubmit = {
-            if (!isEmailValid(newEmail.trim())) error = "This is not a valid e-mail address."
+            if (!isEmailValid(newEmail.trim())) { info = null; error = "This is not a valid e-mail address." }
             else startVerification(newEmail)
         }
         FormSection {
@@ -195,7 +233,7 @@ private val EmailSection = FC<Props> {
                                 action {
                                     inlineErrors({ error = it }) {
                                         Client.call(Api.profileEmailCancel())
-                                        info = null
+                                        info = "The e-mail change was cancelled."
                                     }
                                 }
                             }
@@ -209,10 +247,14 @@ private val EmailSection = FC<Props> {
                     type = InputType.email
                     placeholder = "New e-mail address"
                     value = newEmail
-                    onChange = { newEmail = it.target.value; error = null }
+                    onChange = { newEmail = it.target.value; error = null; info = null }
                 }
+                comment = if (user?.email == null) "We will send a verification link to the new address."
+                    else "We will send a verification link to the new address, and a notice to the current one once it changes."
+            }
+            SectionFeedback {
                 this.error = error
-                comment = info ?: "We will send a verification link to the new address."
+                this.info = info
             }
             SaveButton {
                 disabled = newEmail.isBlank() || action.running
@@ -304,7 +346,7 @@ private val PasswordSection = FC<Props> {
                             autoComplete = "current-password".unsafeCast<AutoFill>()
                             placeholder = "Current password"
                             value = currentPassword
-                            onChange = { currentPassword = it.target.value; error = null }
+                            onChange = { currentPassword = it.target.value; error = null; info = null }
                         }
                     TextInput {
                         name = "new_password"
@@ -312,7 +354,7 @@ private val PasswordSection = FC<Props> {
                         autoComplete = "new-password".unsafeCast<AutoFill>()
                         placeholder = "New password"
                         value = newPassword
-                        onChange = { newPassword = it.target.value; error = null }
+                        onChange = { newPassword = it.target.value; error = null; info = null }
                     }
                     TextInput {
                         name = "confirm_password"
@@ -320,14 +362,17 @@ private val PasswordSection = FC<Props> {
                         autoComplete = "new-password".unsafeCast<AutoFill>()
                         placeholder = "Confirm new password"
                         value = confirmPassword
-                        onChange = { confirmPassword = it.target.value; error = null }
+                        onChange = { confirmPassword = it.target.value; error = null; info = null }
                     }
                     if (passwordIsSet)
                         inlineAction("Forgot your current password? Reset it by e-mail", action.running) { sendResetLink() }
                 }
-                this.error = error
-                comment = info ?: if (passwordIsSet) null
+                comment = if (passwordIsSet) null
                     else "You have no password yet and log in with e-mail links. A password lets you log in directly."
+            }
+            SectionFeedback {
+                this.error = error
+                this.info = info
             }
             Stack {
                 direction = FlexDirection.row
