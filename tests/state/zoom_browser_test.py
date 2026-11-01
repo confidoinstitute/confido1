@@ -160,6 +160,23 @@ async def compare_section(cdp, s, check):
     check(await evaluate(cdp, s, f"/\\d%? to \\d+(\\.\\d+)?% →/.test(({CMP}).textContent)"),
           "comparison hover readout shows P(below) old to new")
 
+    # Under CSS zoom (as on the presenter screen) the cursor line must still sit
+    # under the pointer: client px are visual, the chart draws in layout px.
+    await evaluate(cdp, s, "document.querySelector('.prediction-box').style.zoom = '2.2'")
+    await asyncio.sleep(0.3)
+    await evaluate(cdp, s, f"({CMP}).scrollIntoView({{block: 'start'}})")
+    await asyncio.sleep(0.3)
+    px, py = await evaluate(cdp, s, f"""(() => {{ const r = ({CMP}).getBoundingClientRect();
+        return [r.left + r.width * 0.4, r.top + r.height * 0.4]; }})()""")
+    await cdp.cmd("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": px, "y": py}, s)
+    await asyncio.sleep(0.3)
+    line_x, layout_w = await evaluate(cdp, s, f"""(() => {{ const c = {CMP}, l = c.querySelector('svg line');
+        return [l ? +l.getAttribute('x1') : null, c.offsetWidth]; }})()""")
+    check(line_x is not None and abs(line_x - 0.4 * layout_w) < 2,
+          f"cursor line follows the pointer under CSS zoom (x1={line_x}, expected {0.4 * layout_w:.1f})")
+    await evaluate(cdp, s, "document.querySelector('.prediction-box').style.zoom = ''")
+    await asyncio.sleep(0.3)
+
     await click(cdp, s, RESET)
     await asyncio.sleep(0.4)
     check(await evaluate(cdp, s, RANGE) is None, "✕ resets the comparison to the full range")

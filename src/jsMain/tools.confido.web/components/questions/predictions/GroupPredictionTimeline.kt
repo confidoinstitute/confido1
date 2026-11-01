@@ -1,5 +1,6 @@
 package tools.confido.web.components.questions.predictions
 
+import tools.confido.web.utils.localX
 import tools.confido.web.hooks.useDocumentEventListener
 import tools.confido.web.components.basic.*
 import web.cssom.*
@@ -178,7 +179,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
     // eyedropper captures the moment instead and leaves the pin alone.
     val pinClickRef = usePureClick<HTMLDivElement> { ev ->
         val el = ev.currentTarget as HTMLElement
-        val offsetX = ev.clientX - el.getBoundingClientRect().left
+        val offsetX = el.localX(ev.clientX.toDouble())
         if (props.pickArmed == true) {
             momentAt(offsetX)?.let { props.onPickMoment?.invoke(it) }
         } else props.onPin?.let { pin ->
@@ -447,8 +448,7 @@ val GroupPredictionTimeline = elementSizeWrapper(FC<GroupPredictionTimelineProps
                     hoverTs = null
                     props.onHover?.invoke(null)
                 } else {
-                    val rectBox = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
-                    val moment = momentAt(ev.clientX - rectBox.left)
+                    val moment = momentAt((ev.currentTarget as HTMLDivElement).localX(ev.clientX))
                     hoverTs = moment?.ts
                     props.onHover?.invoke(moment)
                 }

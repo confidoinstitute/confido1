@@ -1,5 +1,6 @@
 package tools.confido.web.utils.panzoom1d
 
+import tools.confido.web.utils.localX
 import web.html.HTMLElement
 import tools.confido.web.hooks.*
 import io.ktor.util.*
@@ -161,7 +162,7 @@ open class PZController(var params: PZParams, initialState: PZState = PZState(pa
     fun onWheel(ev: WheelEvent) {
         // Relative to the surface the listener sits on: offsetX would be relative to
         // whatever child is under the cursor (a slider thumb, a label).
-        val viewportX = ev.clientX - (ev.currentTarget as HTMLElement).getBoundingClientRect().left
+        val viewportX = (ev.currentTarget as HTMLElement).localX(ev.clientX.toDouble())
         if (abs(ev.deltaX) > abs(ev.deltaY)) {
             // Horizontal scroll (touchpad swipe, shift+wheel) pans. Unzoomed there is
             // nothing to pan, so let it through (e.g. for the macOS swipe-back gesture).

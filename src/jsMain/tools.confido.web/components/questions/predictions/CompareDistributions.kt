@@ -1,5 +1,6 @@
 package tools.confido.web.components.questions.predictions
 
+import tools.confido.web.utils.localX
 import emotion.react.*
 import emotion.css.ClassName
 import react.*
@@ -193,7 +194,7 @@ val CompareDistributions = elementSizeWrapper(FC<CompareDistributionsProps>("Com
     val hoverMoveRE = useEventListener<HTMLDivElement, PointerEvent>(PointerEvent.POINTER_MOVE) { ev ->
         // Mouse only, and not mid-drag (a pan or range selection).
         hoverPx = if (ev.pointerType != "mouse" || ev.buttons.unsafeCast<Int>() != 0) null
-            else ev.clientX - (ev.currentTarget as HTMLElement).getBoundingClientRect().left
+            else (ev.currentTarget as HTMLElement).localX(ev.clientX.toDouble())
     }
     val hoverLeaveRE = useEventListener<HTMLDivElement, PointerEvent>(PointerEvent.POINTER_LEAVE) { hoverPx = null }
     val chartRef = combineRefs(if (interactive) zoom.ref else null, hoverMoveRE, hoverLeaveRE)

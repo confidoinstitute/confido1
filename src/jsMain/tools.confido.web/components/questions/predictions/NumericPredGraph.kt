@@ -1,5 +1,6 @@
 package tools.confido.web.components.questions.predictions
 
+import tools.confido.web.utils.localX
 import tools.confido.web.components.questions.*
 import tools.confido.web.components.basic.*
 import tools.confido.web.components.basic.Stack
@@ -91,8 +92,9 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
     val clickRE = usePureClick<HTMLDivElement> { ev->
         // A click while armed backs out of zoom selection rather than predicting.
         if (zoom.armed) { zoom.disarm(); return@usePureClick }
-        val rect = (ev.currentTarget as HTMLDivElement).getBoundingClientRect()
-        val x = ev.clientX - rect.left
+        val el = ev.currentTarget as HTMLDivElement
+        val rect = el.getBoundingClientRect()
+        val x = el.localX(ev.clientX.toDouble())
         val xSp = zoomState.viewportToContent(x)
         val y = ev.clientY - rect.top
         val yRel = y / rect.height
@@ -135,7 +137,7 @@ val NumericPredGraph: FC<NumericPredGraphProps> = elementSizeWrapper(FC<NumericP
         // Mouse only: touch gestures belong to pan-zoom, and a held button means
         // a pan or range selection is under way.
         hoverPx = if (ev.pointerType != "mouse" || ev.buttons.unsafeCast<Int>() != 0) null
-            else ev.clientX - (ev.currentTarget as HTMLElement).getBoundingClientRect().left
+            else (ev.currentTarget as HTMLElement).localX(ev.clientX.toDouble())
     }
     val hoverLeaveRE = useEventListener<HTMLDivElement, PointerEvent>(PointerEvent.POINTER_LEAVE) { hoverPx = null }
     val rootRef = combineRefs(zoom.ref, clickRE, hoverMoveRE, hoverLeaveRE)
