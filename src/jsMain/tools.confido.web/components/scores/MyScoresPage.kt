@@ -74,8 +74,8 @@ internal fun scoreColor(score: Double): Color {
 private fun sortItems(items: List<MyScoreItem>, sort: ScoreSortMode): List<MyScoreItem> = when (sort) {
     ScoreSortMode.BEST_FIRST -> items.sortedByDescending { it.score }
     ScoreSortMode.WORST_FIRST -> items.sortedBy { it.score }
-    ScoreSortMode.NEWEST_FIRST -> items.sortedByDescending { it.scoreTime }
-    ScoreSortMode.OLDEST_FIRST -> items.sortedBy { it.scoreTime }
+    ScoreSortMode.NEWEST_FIRST -> items.sortedByDescending { it.scoreTime ?: it.resolveTime }
+    ScoreSortMode.OLDEST_FIRST -> items.sortedBy { it.scoreTime ?: it.resolveTime }
     ScoreSortMode.BY_ROOM -> items.sortedWith(compareBy({ it.roomName }, { -it.score }))
 }
 
@@ -164,8 +164,7 @@ val MyScoresContent = FC<MyScoresContentProps> { props ->
                 ul {
                     li { +"The question must be a yes-no question." }
                     li { +"The question must have a resolution and be in the Resolved state." }
-                    li { +"The question must have a score time configured in its schedule." }
-                    li { +"Your prediction must be submitted before the score time." }
+                    li { +"You must have made a prediction on it (if the question has a score time, before that time)." }
                     li { +"Scoring must be enabled for the room." }
                 }
             }
@@ -426,7 +425,7 @@ val MyScoresContent = FC<MyScoresContentProps> { props ->
                             th {
                                 autoSized()
                                 abbr {
-                                    title = "When the prediction was frozen for scoring"
+                                    title = "When the prediction was frozen for scoring (\"latest\": your last prediction was scored)"
                                     css { textDecoration = None.none; borderBottom = Border(1.px, LineStyle.dotted) }
                                     +"Scored at"
                                 }
@@ -643,7 +642,7 @@ private val ScoreRow = FC<ScoreRowProps> { props ->
                         color = Color("#666")
                     }
                 }
-                +formatShortDate(item.scoreTime)
+                item.scoreTime?.let { +formatShortDate(it) } ?: +"latest"
             }
             td {
                 css {

@@ -97,7 +97,7 @@ fun calibrationRoutes(routing: Routing) = routing.apply {
             val qpred = calibAddPredictions(questions, req, user)
             val ret = qpred.flatMap { (q,pred)->
                 val dist = pred.dist
-                val scoreTime = q.effectiveSchedule.score ?: return@flatMap emptyList()
+                val scoreTime = q.effectiveSchedule.score
                 when (q.answerSpace) {
                     is BinarySpace -> {
                         if (dist !is BinaryDistribution) return@flatMap emptyList()

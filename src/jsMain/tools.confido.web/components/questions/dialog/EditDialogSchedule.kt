@@ -123,7 +123,7 @@ val EditQuestionDialogSchedule = FC<EditQuestionDialogScheduleProps> { props ->
             if (props.showOpen ?: true)
                 schedItem("open", "Opens at", sched.open, placeholder=props.openPlaceholder ?: "manually") { sched.copy(open = it) }
             if (props.showScore ?: true)
-                schedItem("score", "Scored at", sched.score, placeholder = "determined later") { sched.copy(score = it) }
+                schedItem("score", "Scored at", sched.score, placeholder = "latest prediction") { sched.copy(score = it) }
             if (props.showClose ?: true)
                 schedItem("close", "Closes at", sched.close, placeholder = "manually") { sched.copy(close = it) }
             if (props.showResolve ?: true)

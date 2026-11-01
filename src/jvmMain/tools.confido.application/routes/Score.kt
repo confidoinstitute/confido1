@@ -44,7 +44,6 @@ private suspend fun computeScoreboard(room: Room, observer: User): List<Scoreboa
         ?: room.questions
     val questions = questionRefs.mapDeref().filter { q ->
         q.answerSpace is BinarySpace && q.state == QuestionState.RESOLVED && q.resolution != null &&
-                q.effectiveSchedule.score != null &&
                 // Unattributed (ANONYMOUS+) questions never enter the scoreboard: a
                 // per-user score contribution over a resolved binary question is
                 // invertible back to the prediction (differencing two scoreboard
@@ -97,8 +96,7 @@ fun scoreRoutes(routing: Routing) = routing.apply {
                     q.answerSpace is BinarySpace &&
                             q.state == QuestionState.RESOLVED &&
                             q.resolution is BinaryValue &&
-                            (q.resolutionVisible || room.hasPermission(user, RoomPermission.VIEW_ALL_RESOLUTIONS)) &&
-                            q.effectiveSchedule.score != null
+                            (q.resolutionVisible || room.hasPermission(user, RoomPermission.VIEW_ALL_RESOLUTIONS))
                 }
                 for (q in questions) {
                     if (isAggregating) {
@@ -122,7 +120,7 @@ fun scoreRoutes(routing: Routing) = routing.apply {
                         score = score,
                         prediction = dist.yesProb,
                         resolution = (q.resolution as BinaryValue).value,
-                        scoreTime = q.effectiveSchedule.score!!,
+                        scoreTime = q.effectiveSchedule.score,
                         resolveTime = resolveTime,
                     )
                 }

@@ -52,10 +52,6 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
         selectedQuestions.any { roomQuestions[it.id]?.answerSpace is NumericSpace }
     }
 
-    val canScored = useMemo(selectedQuestions.joinToString(",") { it.id }, roomQuestions) {
-        selectedQuestions.all { roomQuestions[it.id]?.effectiveScheduleIn(room)?.score != null }
-    }
-
     // Unattributed (ANONYMOUS+) questions have no individual export (server-enforced
     // for everyone, moderators included); a mixed selection exports the rest only.
     val canIndividual = usePermission(room, RoomPermission.VIEW_INDIVIDUAL_PREDICTIONS)
@@ -136,8 +132,7 @@ val CsvExportDialog = FC<CsvExportDialogProps> {props->
                             title = "Include prediction history"
                             options = buildList {
                                 add(ExportHistory.LAST to "Most recent prediction only")
-                                if (canScored)
-                                    add(ExportHistory.LAST_SCORED to "Most recent scored prediction")
+                                add(ExportHistory.LAST_SCORED to "Most recent scored prediction")
                                 add(ExportHistory.DAILY to "Daily updates")
                                 add(ExportHistory.FULL to "All updates")
                             }

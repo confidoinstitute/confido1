@@ -18,8 +18,9 @@ data class MyScoreItem(
     val prediction: Double,
     /** true = Yes, false = No */
     val resolution: Boolean,
-    /** effectiveSchedule.score - when the prediction was frozen for scoring */
-    val scoreTime: Instant,
+    /** effectiveSchedule.score - when the prediction was frozen for scoring;
+     *  null = no score time set, the user's latest prediction was scored */
+    val scoreTime: Instant?,
     /** When the question state changed to RESOLVED (null if unknown) */
     val resolveTime: Instant?,
     /** Other rooms (e.g. group rooms) that also include this question via effectiveQuestions.

@@ -48,7 +48,7 @@ enum class CalibrationHelpSection(val title: String) {
     CONFIDENCE("Belief and confidence"),
     ACCURACY("Accuracy; confidence bracketing"),
     RESULTS("Well-calibrated, overconfident and underconfident"),
-    SCORE_DATES("Score times; why am I seeing no data?"),
+    SCORE_DATES("Which predictions count; why am I seeing no data?"),
     NUMERIC("What about numeric/date questions?"),
     GROUP("Group calibration"),
 }
@@ -347,17 +347,18 @@ val CalibrationHelpDialog = dialogStateWrapper(FC<CalibrationHelpDialogProps> { 
                     +"must hold:"
                     ul {
                         li {
-                            +"The question must have a "
-                            b {+"score time"}
-                            +" set in its schedule. This determines the time point from which predictions are "
-                            +" used for calibration computation."
+                            +"You must have made at least one prediction on the question. By default, your "
+                            b {+"latest"}
+                            +" prediction is used."
                         }
                         li {
-                            +"You must have made at least one prediction "
+                            +"If the question has a "
+                            b {+"score time"}
+                            +" set in its schedule, you must have predicted "
                             b{+"before"}
-                            +" the score time "
-                            note { +"(if you updated it afterwards, the last update made before the score time "
-                                +" is used for purposes of calibration and further updates are ignored)." }
+                            +" it "
+                            note { +"(the last update made before the score time is used for purposes of "
+                                +" calibration and further updates are ignored)." }
                         }
                         li {
                             +"The question must have a resolution and be marked as "
@@ -367,8 +368,9 @@ val CalibrationHelpDialog = dialogStateWrapper(FC<CalibrationHelpDialogProps> { 
                     }
                 }
                 p {
-                    +"The score time is set by the question author or another moderator, either when creating the question "
-                    +" or later when resolving it. "
+                    +"A score time is optional. It can be set by the question author or another moderator, either when "
+                    +" creating the question or later when resolving it, typically when the answer became obvious "
+                    +" before the question was closed. "
                     +" It should be set based on a compromise between the forecasters having enough time to think "
                     +" about the question and the answer not yet being too obvious."
                 }

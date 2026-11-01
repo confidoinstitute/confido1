@@ -20,7 +20,8 @@ sealed class CalibrationQuestion(
     abstract val questionName: String
     abstract val room: Ref<Room>?
     abstract val scoredPrediction: Prediction
-    abstract val scoreTime: Instant
+    /** null = no score time set, the latest prediction was used */
+    abstract val scoreTime: Instant?
     abstract val confidence: Double
     abstract val bin: CalibrationBin
     abstract val isCorrect: Boolean
@@ -33,7 +34,7 @@ data class BinaryCalibrationQuestion(
     override val questionName: String = "",
     override val room: Ref<Room>? = null,
     override val scoredPrediction: Prediction,
-    override val scoreTime: Instant,
+    override val scoreTime: Instant?,
     override val confidence: Double,
     override val bin: CalibrationBin,
     val expectedOutcome: Boolean,
@@ -52,7 +53,7 @@ data class NumericCalibrationQuestion(
     /** The question's numeric space, for interval/resolution formatting. */
     val space: NumericSpace? = null,
     override val scoredPrediction: Prediction,
-    override val scoreTime: Instant,
+    override val scoreTime: Instant?,
     override val confidence: Double,
     override val bin: CalibrationBin,
     @Serializable(with = RangeSerializer::class)

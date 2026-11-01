@@ -228,7 +228,13 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                         +" only. "
                     }
                     div {
-                        +"In order for a question to be scored, you have to set a "
+                        +"By default, each user's "
+                        b { +"latest prediction" }
+                        +" is scored. "
+                    }
+                    div {
+                        +"To score predictions as of an earlier moment instead (e.g. before the outcome "
+                        +"became obvious, or if the question was reopened), set a "
                         b { +"score time" }
                         +" in the question schedule "
                         +" (either set for each question separately or configure a "
@@ -244,10 +250,8 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
                         } else {
                             +"default schedule"
                         }
-                        +" right here for the whole room)."
-                    }
-                    div {
-                        +"For each user, only the last prediction submitted "
+                        +" right here for the whole room). "
+                        +"Then, for each user, only the last prediction submitted "
                         +" before the score time is used for scoring."
                     }
                 }

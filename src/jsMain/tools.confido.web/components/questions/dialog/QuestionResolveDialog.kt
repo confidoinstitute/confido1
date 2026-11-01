@@ -95,7 +95,7 @@ val QuestionResolveDialog = dialogStateWrapper(FC<QuestionResolveDialogProps>("Q
                     comment = "Set a time from which predictions should be used for computing calibration." +
                                    " This is usually a compromise " +
                                    " between the forecasters having had enough time to think about the question and the " +
-                                   " outcome not yet being too obvious. If no time is set, the question will be excluded from calibration."
+                                   " outcome not yet being too obvious. If no time is set, each forecaster's latest prediction is used."
                     inputComponent = DateTimeInput
                     inputProps = jso {
                         value = scoreTime?.toLocalDateTime(tz)

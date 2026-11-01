@@ -11,8 +11,12 @@ import tools.confido.store.userPredictionLog
 import tools.confido.users.User
 import tools.confido.question.effectiveSchedule
 
+/**
+ * The prediction used for scoring and calibration: the last one submitted before the
+ * question's score time, or the current (latest) one when no score time is set.
+ */
 suspend fun getScoredPrediction(q: Question, u: Ref<User>? = null): Prediction? {
-    val scoreTS = q.effectiveSchedule.score ?: return null
+    val scoreTS = q.effectiveSchedule.score
     val pred = if (u == null) groupPredictionLog.at(q.ref, scoreTS)
                 else userPredictionLog.at(q.ref, u, scoreTS)
     return pred

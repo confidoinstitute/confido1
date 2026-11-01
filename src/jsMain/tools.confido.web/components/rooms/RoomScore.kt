@@ -183,8 +183,7 @@ val RoomScore = FC<Props> {
                         ul {
                             li { +"The question must be a yes-no question." }
                             li { +"The question must have a resolution and be in the Resolved state." }
-                            li { +"The question must have a score time configured in its schedule." }
-                            li { +"The prediction must be submitted before the score time." }
+                            li { +"Someone must have made a prediction on it (if the question has a score time, before that time)." }
                         }
                     }
             } else {
