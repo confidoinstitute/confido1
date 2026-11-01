@@ -8,3 +8,5 @@ gradle
 .kotlin
 __pycache__/
 replicas/
+prod_slots/
+presentations/
