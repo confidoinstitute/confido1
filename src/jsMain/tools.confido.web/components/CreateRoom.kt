@@ -28,6 +28,8 @@ import tools.confido.api.Api
 import tools.confido.refs.Ref
 import tools.confido.rooms.Room
 import tools.confido.web.utils.roomUrl
+import tools.confido.state.FeatureFlag
+import tools.confido.state.enabled
 
 external interface CreateRoomProps : Props {
     /** Create a group container instead of an ordinary room. */
@@ -40,7 +42,7 @@ val CreateRoom = FC<CreateRoomProps> { props ->
     val create = useCoroutineLock()
     // "Create room in this group" entry points preselect the parent via ?group=
     val (searchParams, _) = useSearchParams()
-    val groupId = searchParams.get("group")
+    val groupId = searchParams.get("group")?.takeIf { FeatureFlag.ROOM_GROUPS.enabled }
 
     var baseInfo by useState<BaseRoomInformation?>(null)
 

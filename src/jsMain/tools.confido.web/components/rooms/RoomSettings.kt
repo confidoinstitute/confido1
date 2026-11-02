@@ -27,6 +27,8 @@ import web.html.submit
 import tools.confido.web.hooks.useSubscription
 import tools.confido.payloads.responses.WSData
 import tools.confido.state.Topics
+import tools.confido.state.FeatureFlag
+import tools.confido.state.enabled
 import tools.confido.refs.Ref
 import tools.confido.refs.ref
 
@@ -132,8 +134,11 @@ val RoomSettings = FC<RoomSettingsProps> { props ->
             // Groups the user can attach this room to. Attaching needs the group
             // owner's consent (enforced server-side as ROOM_OWNER there); the current
             // parent stays listed regardless so the selection is representable.
+            // With room groups disabled, only an existing (grandfathered) parent is
+            // offered, so the room can still leave its group but not join one.
             val availableGroups = if (isGroup) emptyList() else allRooms.values.filter {
-                it.isGroup && (it.hasPermission(myUser, RoomPermission.ROOM_OWNER) || it.id == parentRoom?.id)
+                it.isGroup && (it.id == parentRoom?.id ||
+                    FeatureFlag.ROOM_GROUPS.enabled && it.hasPermission(myUser, RoomPermission.ROOM_OWNER))
             }
             if (availableGroups.isNotEmpty()) FormField {
                 title = "Group"

@@ -16,6 +16,8 @@ import react.router.dom.*
 import tools.confido.rooms.Room
 import tools.confido.rooms.RoomPermission
 import tools.confido.extensions.ClientExtension
+import tools.confido.state.FeatureFlag
+import tools.confido.state.enabled
 import tools.confido.web.utils.ExtendableLink
 import tools.confido.web.utils.ExtendableLinkProps
 import react.dom.html.ReactHTML.button
@@ -218,6 +220,9 @@ val RoomList = FC<RoomListProps> {props ->
     val layoutMode = use(LayoutModeContext)!!
     val myUser = useMyUser()
     var createMenuOpen by useState(false)
+    val navigateTo = useNavigate()
+    // Without room groups there is only one kind to create: skip the menu.
+    val groupsEnabled = FeatureFlag.ROOM_GROUPS.enabled
 
     val iconSize = if(props.small) 36.px else 48.px
 
@@ -248,7 +253,7 @@ val RoomList = FC<RoomListProps> {props ->
                             group = room
                             childRooms = rooms.values.filter { it.parentRoom?.id == room.id }
                             small = props.small
-                            canCreateInGroup = props.canCreate &&
+                            canCreateInGroup = groupsEnabled && props.canCreate &&
                                 room.hasPermission(myUser, RoomPermission.ROOM_OWNER)
                         }
                     } else {
@@ -283,13 +288,13 @@ val RoomList = FC<RoomListProps> {props ->
                         backgroundColor = rgb(0,0,0, 0.05)
                     }
                 }
-                onClick = { createMenuOpen = true }
+                onClick = { if (groupsEnabled) createMenuOpen = true else navigateTo("/new_room") }
                 CreateEntryIcon { size = iconSize }
                 span {
-                    +"Create new…"
+                    +(if (groupsEnabled) "Create new…" else "Create a new room…")
                 }
             }
-            DialogMenu {
+            if (groupsEnabled) DialogMenu {
                 open = createMenuOpen
                 onClose = { createMenuOpen = false }
                 DialogMenuNav {

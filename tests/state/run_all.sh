@@ -67,6 +67,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "== starting scratch server on :$PORT$([ "$NATIVE" = 1 ] && echo ' (native image)')"
+export CONFIDO_FEAT_ROOM_GROUPS="${CONFIDO_FEAT_ROOM_GROUPS:-1}"  # group tests need it; off in production by default
 export CONFIDO_DB_NAME="$DB" CONFIDO_DEVMODE=1 CONFIDO_MAIL_DEBUG=1 CONFIDO_HTTP_PORT="$PORT" CONFIDO_STATIC_PATH="$STATIC:$REPO_ROOT/static"
 if [ "$NATIVE" = 1 ]; then
     "$NATIVE_BIN" >"${TMPDIR:-/tmp}/confido_test_server.log" 2>&1 &

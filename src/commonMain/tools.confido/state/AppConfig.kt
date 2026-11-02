@@ -6,6 +6,9 @@ import tools.confido.rooms.RoomRole
 enum class FeatureFlag {
     UPDATE_HISTORY,
     ENCOURAGE_COMMENTS,
+    /** Offer creating room groups and attaching rooms to them. Off by default:
+     *  existing groups keep working (grandfathered), only new structure is gated. */
+    ROOM_GROUPS,
 }
 
 val FeatureFlag.enabled : Boolean

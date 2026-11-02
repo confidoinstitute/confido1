@@ -11,6 +11,8 @@ import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 import tools.confido.rooms.Room
 import tools.confido.rooms.RoomPermission
+import tools.confido.state.FeatureFlag
+import tools.confido.state.enabled
 
 external interface GroupChildRoomListProps : Props {
     var group: Room
@@ -23,7 +25,8 @@ val GroupChildRoomList = FC<GroupChildRoomListProps> { props ->
     val children = useRooms().values.filter { it.parentRoom?.id == props.group.id }
     // Creating a room inside the group needs both the global create capability
     // and the group's consent (its ROOM_OWNER); mirrors the server-side check.
-    val canCreateInGroup = myUser?.type?.isProper() == true &&
+    val groupsEnabled = FeatureFlag.ROOM_GROUPS.enabled
+    val canCreateInGroup = groupsEnabled && myUser?.type?.isProper() == true &&
         props.group.hasPermission(myUser, RoomPermission.ROOM_OWNER)
 
     Stack {
@@ -64,7 +67,7 @@ val GroupChildRoomList = FC<GroupChildRoomListProps> { props ->
                 }
                 +"You can also add an existing room to the group from that room's settings."
             }
-        } else if (children.isEmpty()) {
+        } else if (groupsEnabled && children.isEmpty()) {
             div {
                 css {
                     fontFamily = sansSerif

@@ -75,6 +75,8 @@ fun roomRoutes(routing: Routing) = routing.apply {
     apiST(Api.roomAdd) { information ->
         val room = call.withUser {
             if (!user.type.isProper()) unauthorized("Guests cannot do this.")
+            if (!FeatureFlag.ROOM_GROUPS.enabled && (information.isGroup || information.parentRoom != null))
+                badRequest("Room groups are not enabled.")
             if (information.isGroup && information.parentRoom != null)
                 badRequest("A group room cannot be assigned to another group.")
             information.parentRoom?.let { checkGroupAssignment(user, it) }
@@ -117,8 +119,11 @@ fun roomRoutes(routing: Routing) = routing.apply {
 
             // Group assignment: only re-validated when it actually changes, so an
             // ordinary settings save doesn't require standing in the current group.
+            // With room groups disabled, existing links are grandfathered (and can
+            // still be removed) but no room can newly join a group.
             if (information.parentRoom != room.parentRoom) {
                 information.parentRoom?.let {
+                    if (!FeatureFlag.ROOM_GROUPS.enabled) badRequest("Room groups are not enabled.")
                     if (room.isGroup) badRequest("A group room cannot be assigned to another group.")
                     checkGroupAssignment(user, it)
                 }

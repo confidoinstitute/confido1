@@ -191,7 +191,7 @@ private val RootLayoutInner = FC<Props> {
                             path = "new_room"
                             element = CreateRoom.create()
                         })
-                        add(jso<RouteObject> {
+                        if (FeatureFlag.ROOM_GROUPS.enabled) add(jso<RouteObject> {
                             path = "new_group"
                             element = CreateRoom.create { isGroup = true }
                         })

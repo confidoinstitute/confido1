@@ -76,6 +76,10 @@ CONFIDO_FEAT_UPDATE_HISTORY=1
 # Add a popup to encourage users to comment when they make a prediction
 #CONFIDO_FEAT_ENCOURAGE_COMMENTS=1
 
+# Allow creating room groups (rooms sharing members and a combined scoreboard).
+# Existing groups keep working when this is off; only new groups/attachments are blocked.
+#CONFIDO_FEAT_ROOM_GROUPS=1
+
 # Path to TOML file for adding/overriding room roles.
 # Built-in roles (viewer, forecaster, moderator, owner) are always present.
 # The config file can add new roles or override built-in ones.
