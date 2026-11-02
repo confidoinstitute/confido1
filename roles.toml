@@ -6,6 +6,7 @@
 # Each [[role]] block defines or overrides a role:
 #   id                  - Unique string identifier
 #   name                - Human-readable display name (optional for overrides)
+#   description         - (Optional) Explanation shown to users in the role help dialog
 #   permissions         - List of permission IDs to grant
 #   inherit             - (Optional) ID of another role whose permissions to include
 #   available_to_guests - (Optional) Whether guests can be assigned this role
@@ -28,6 +29,7 @@
 # [[role]]
 # id = "question_writer"
 # name = "Question Writer"
+# description = "Like a Forecaster, but can also add new questions."
 # inherit = "forecaster"
 # permissions = ["add_question"]
 # available_to_guests = true

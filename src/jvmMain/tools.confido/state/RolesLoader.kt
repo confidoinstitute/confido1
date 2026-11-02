@@ -18,6 +18,7 @@ import java.io.File
 private data class TomlRoleEntry(
     val id: String,
     val name: String? = null,
+    val description: String? = null,
     val permissions: List<String> = emptyList(),
     val inherit: String? = null,
     val available_to_guests: Boolean? = null,
@@ -128,6 +129,7 @@ private fun mergeRoles(
         val role = if (isOverride) {
             existing!!.copy(
                 name = entry.name ?: existing.name,
+                description = entry.description ?: existing.description,
                 permissions = if (entry.permissions.isNotEmpty() || entry.inherit != null)
                     inheritedPermissions + ownPermissions
                 else
@@ -139,6 +141,7 @@ private fun mergeRoles(
             RoomRole(
                 id = entry.id,
                 name = entry.name ?: error("New role '${entry.id}' must specify a name."),
+                description = entry.description ?: "",
                 permissions = inheritedPermissions + ownPermissions,
                 availableToGuests = entry.available_to_guests ?: false,
                 allPermissions = entry.all_permissions ?: false,
@@ -191,9 +194,23 @@ fun builtinDefaultRoles(): List<RoomRole> {
     )
 
     return listOf(
-        RoomRole(id = "viewer", name = "Observer", permissions = viewerPerms, availableToGuests = true),
-        RoomRole(id = "forecaster", name = "Forecaster", permissions = forecasterPerms, availableToGuests = true),
-        RoomRole(id = "moderator", name = "Moderator", permissions = moderatorPerms),
-        RoomRole(id = "owner", name = "Owner", allPermissions = true),
+        RoomRole(
+            id = "viewer", name = "Observer", permissions = viewerPerms, availableToGuests = true,
+            description = "Can see the questions, group predictions and discussion, but cannot forecast or comment.",
+        ),
+        RoomRole(
+            id = "forecaster", name = "Forecaster", permissions = forecasterPerms, availableToGuests = true,
+            description = "Can submit their own predictions and comment. " +
+                "Sees group predictions only where a question allows it.",
+        ),
+        RoomRole(
+            id = "moderator", name = "Moderator", permissions = moderatorPerms,
+            description = "Manages questions (incl. resolving) and members; sees hidden questions " +
+                "and individual predictions. Cannot change room settings.",
+        ),
+        RoomRole(
+            id = "owner", name = "Owner", allPermissions = true,
+            description = "Has full control over the room, including its settings and deletion.",
+        ),
     )
 }

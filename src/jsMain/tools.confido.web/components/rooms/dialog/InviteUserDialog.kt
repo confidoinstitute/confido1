@@ -4,6 +4,7 @@ import tools.confido.web.Client
 import tools.confido.web.components.basic.*
 import tools.confido.web.components.forms.*
 import tools.confido.web.components.rooms.RoomContext
+import tools.confido.web.components.rooms.RoleSelector
 import web.cssom.*
 import emotion.react.css
 import tools.confido.web.hooks.useSubscription
@@ -157,22 +158,10 @@ val AddMemberDialog = dialogStateWrapper(FC<BaseDialogProps> { props ->
         FormSection {
             FormField {
                 title = "Added member role"
-                Select {
-                    css {
-                        width = important(100.pct)
-                    }
-                    value = role.id
-                    onChange = { event ->
-                        role = appConfig.roleById(event.target.value)
-                            ?: error("Unknown role: ${event.target.value}")
-                    }
-                    // Show guest-available roles for adding members
-                    appConfig.roles.filter { it.availableToGuests }.map { r ->
-                        ReactHTML.option {
-                            this.value = r.id
-                            +r.name
-                        }
-                    }
+                RoleSelector {
+                    value = role
+                    guestRolesOnly = true
+                    onChange = { role = it }
                 }
                 comment = "The added member will get this role."
             }

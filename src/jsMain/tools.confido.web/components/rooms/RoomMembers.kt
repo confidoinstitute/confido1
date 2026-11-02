@@ -6,7 +6,6 @@ import tools.confido.web.components.usePermission
 import tools.confido.web.components.useIsAdmin
 import tools.confido.web.components.useMyUser
 import tools.confido.web.components.useRooms
-import tools.confido.web.components.useDisconnected
 import tools.confido.web.components.ConfirmDialog
 import tools.confido.web.components.InviteLinkIcon
 import tools.confido.web.components.NavMenuIcon
@@ -16,7 +15,6 @@ import tools.confido.web.components.basic.sansSerif
 import tools.confido.web.components.basic.showError
 import tools.confido.web.components.forms.FormDivider
 import tools.confido.web.components.forms.IconButton
-import tools.confido.web.components.forms.Select
 import tools.confido.web.components.layout.LayoutMode
 import tools.confido.web.components.layout.LayoutModeContext
 import tools.confido.web.components.rooms.dialog.AddMemberDialog
@@ -39,7 +37,6 @@ import react.FC
 import react.Props
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.div
-import react.dom.html.ReactHTML.option
 import react.use
 import react.useState
 import tools.confido.rooms.*
@@ -48,7 +45,6 @@ import tools.confido.extensions.ClientExtension
 import tools.confido.refs.ref
 import tools.confido.users.User
 import tools.confido.state.Topics
-import tools.confido.state.appConfig
 import tools.confido.utils.pluralize
 import tools.confido.utils.stringToColor
 import tools.confido.web.utils.runCoroutine
@@ -295,9 +291,9 @@ val RoomMember = FC<RoomMemberProps> {props ->
             }
             ClientExtension.forEach { it.roomMemberExtra(room, member, this) }
         }
-        MemberRoleSelect {
+        RoleSelector {
             value = member.role
-            isGuest = !member.isProperUser
+            forGuest = !member.isProperUser
             disabled = props.disabled || !canChangeSelf || userRef == null
             onChange = { role ->
                 // Promoting someone to your own tier hands them symmetric power
@@ -429,34 +425,3 @@ val InvitationMembers = FC<InvitationMembersProps> { props ->
     }
 }
 
-external interface MemberRoleSelectProps : Props {
-    var value: RoomRole
-    var isGuest: Boolean
-    var disabled: Boolean
-    var onChange: ((RoomRole) -> Unit)?
-}
-
-val MemberRoleSelect = FC<MemberRoleSelectProps> {props ->
-    val room = use(RoomContext)!!
-    val myUser = useMyUser()  // captured for the onChange handler
-    val canChange = canChangeRole(myUser, room, props.value)
-
-    Select {
-        value = props.value.id
-        disabled = props.disabled || useDisconnected() || !canChange
-        onChange = { event ->
-            val changedRole = appConfig.roleById(event.target.value)
-                ?: error("Unknown role: ${event.target.value}")
-            if (canChangeRole(myUser, room, changedRole))
-                props.onChange?.invoke(changedRole)
-        }
-        appConfig.roles.map { role ->
-            option {
-                value = role.id
-                +role.name
-                if (!canChangeRole(myUser, room, role) || (props.isGuest && !role.availableToGuests))
-                    disabled = true
-            }
-        }
-    }
-}

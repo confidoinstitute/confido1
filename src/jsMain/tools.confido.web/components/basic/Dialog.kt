@@ -161,7 +161,10 @@ private fun installMenuAnchorTracking() {
             ?: MenuAnchor(e.clientX.toDouble(), e.clientY.toDouble(), e.clientX.toDouble(), e.clientY.toDouble())
     })
     document.addEventListener(EventType<KeyboardEvent>("keydown"), { e ->
-        if (e.key == "Enter" || e.key == " ") {
+        // Arrow keys open select-like popup triggers (aria-haspopup), e.g. RoleSelector.
+        val activates = e.key == "Enter" || e.key == " " ||
+            ((e.key == "ArrowDown" || e.key == "ArrowUp") && document.activeElement?.hasAttribute("aria-haspopup") == true)
+        if (activates) {
             val el = document.activeElement ?: return@addEventListener
             if (el.matches("button, a, [role=\"button\"]")) lastTriggerAnchor = el.toMenuAnchor()
         }

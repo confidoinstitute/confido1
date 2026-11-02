@@ -90,14 +90,21 @@ async def main():
 
         # Peer-promotion confirmation: selecting a role at the viewer's own tier
         # (admin = implied owner; assigning "owner") must open the confirm dialog.
+        # Pick a role through the RoleSelector menu of the row currently showing
+        # role name `cur` (only changeable selectors).
         select_role = """
-            (role => { const sel = [...document.querySelectorAll('select')].find(s => s.value === '%s');
-                const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
-                setter.call(sel, role); sel.dispatchEvent(new Event('change', {bubbles: true})); return true; })('%s')"""
+            (async (cur, role) => {
+                const trig = [...document.querySelectorAll('[aria-haspopup=listbox][data-readonly=false]')]
+                    .find(b => b.innerText.trim() === cur);
+                trig.click();
+                for (let i = 0; i < 20 && !document.querySelector('[role=listbox]'); i++)
+                    await new Promise(r => setTimeout(r, 100));
+                document.querySelector(`[role=option][data-role-id="${role}"]`).click();
+                return true; })('%s', '%s')"""
         member_role = ("(window.curTopics['room/testroom/members'].data"
                        ".find(m => (m.user.displayName || '') === 'debugmember') || {}).role")
 
-        await evaluate(cdp, s, select_role % ("forecaster", "owner"))
+        await evaluate(cdp, s, select_role % ("Forecaster", "owner"), await_promise=True)
         await wait_for(cdp, s, "document.body.innerText.includes('will be able to change your role too')",
                        desc="peer-promotion confirm dialog")
         await evaluate(cdp, s, "[...document.querySelectorAll('button')].find(b => b.innerText.trim() === 'Cancel').click()")
@@ -106,7 +113,7 @@ async def main():
             print("FAIL: cancelled peer promotion still changed the role"); sys.exit(1)
         print("PASS: peer-promotion dialog shown; cancel leaves the role unchanged")
 
-        await evaluate(cdp, s, select_role % ("forecaster", "owner"))
+        await evaluate(cdp, s, select_role % ("Forecaster", "owner"), await_promise=True)
         await wait_for(cdp, s, "document.body.innerText.includes('will be able to change your role too')",
                        desc="confirm dialog (second open)")
         await evaluate(cdp, s, "[...document.querySelectorAll('button')].find(b => b.innerText.trim() === 'Promote').click()")

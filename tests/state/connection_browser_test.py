@@ -61,9 +61,9 @@ async def main():
         await wait_for(cdp, s, "document.body.innerText.includes('debugmember')", desc="member rows")
         if await evaluate(cdp, s, "document.body.innerText.includes('Connection lost')"):
             print("FAIL: banner shown while connected"); sys.exit(1)
-        if not await evaluate(cdp, s, "document.querySelectorAll('select:not(:disabled)').length"):
-            print("FAIL: no enabled role selects while connected"); sys.exit(1)
-        print("PASS: connected baseline (no banner, role selects enabled)")
+        if not await evaluate(cdp, s, "document.querySelectorAll('[aria-haspopup=listbox][data-readonly=false]').length"):
+            print("FAIL: no changeable role selectors while connected"); sys.exit(1)
+        print("PASS: connected baseline (no banner, role selectors changeable)")
 
         # --- Kill the server: banner + gating must appear after the debounce ---
         os.kill(server_pid(), 15)
@@ -71,8 +71,8 @@ async def main():
         await wait_for(cdp, s, "document.body.innerText.includes('Connection lost')",
                        timeout=15, desc="disconnect banner")
         await wait_for(cdp, s,
-            "document.querySelectorAll('select').length > 0 && document.querySelectorAll('select:not(:disabled)').length === 0",
-            timeout=10, desc="role selects disabled while disconnected")
+            "document.querySelectorAll('[aria-haspopup=listbox]').length > 0 && document.querySelectorAll('[aria-haspopup=listbox][data-readonly=false]').length === 0",
+            timeout=10, desc="role selectors read-only while disconnected")
         print("PASS: banner shown and immediate-commit controls disabled after disconnect")
 
         # --- Restart the server: reconnect must clear the banner and re-enable ---
@@ -91,8 +91,8 @@ async def main():
             print("FAIL: server did not come back"); sys.exit(1)
         await wait_for(cdp, s, "!document.body.innerText.includes('Connection lost')",
                        timeout=30, desc="banner cleared after reconnect")
-        await wait_for(cdp, s, "document.querySelectorAll('select:not(:disabled)').length > 0",
-                       timeout=10, desc="role selects re-enabled")
+        await wait_for(cdp, s, "document.querySelectorAll('[aria-haspopup=listbox][data-readonly=false]').length > 0",
+                       timeout=10, desc="role selectors changeable again")
         print("PASS: reconnect clears banner and re-enables controls")
 
         # Live updates flow again on the resubscribed connection

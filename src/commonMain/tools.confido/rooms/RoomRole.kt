@@ -110,6 +110,8 @@ object RoomPermissionSerializer : KSerializer<RoomPermission> {
 data class RoomRole(
     val id: String,
     val name: String,
+    /** Freeform user-facing explanation of the role, shown in the role help dialog. */
+    val description: String = "",
     val permissions: Set<@Serializable(with = RoomPermissionSerializer::class) RoomPermission> = emptySet(),
     val availableToGuests: Boolean = false,
     val allPermissions: Boolean = false,

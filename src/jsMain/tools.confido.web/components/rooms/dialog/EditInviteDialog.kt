@@ -9,6 +9,7 @@ import tools.confido.web.components.basic.Stack
 import tools.confido.web.components.basic.showError
 import tools.confido.web.components.forms.*
 import tools.confido.web.components.rooms.RoomContext
+import tools.confido.web.components.rooms.RoleSelector
 import web.cssom.*
 import emotion.react.css
 import tools.confido.web.hooks.EditEntityDialogProps
@@ -97,22 +98,10 @@ val EditInviteDialog = FC<EditInviteDialogProps> { props ->
 
                 FormField {
                     title = "Member role"
-                    Select {
-                        css {
-                            width = important(100.pct)
-                        }
-                        value = role.id
-                        onChange = { event ->
-                            role = appConfig.roleById(event.target.value)
-                                ?: error("Unknown role: ${event.target.value}")
-                        }
-                        // Show guest-available roles for invite links
-                        appConfig.roles.filter { it.availableToGuests }.map { r ->
-                            option {
-                                this.value = r.id
-                                +r.name
-                            }
-                        }
+                    RoleSelector {
+                        value = role
+                        guestRolesOnly = true
+                        onChange = { role = it }
                     }
                     comment = "Any new user that joins via this link will get this role."
                 }
