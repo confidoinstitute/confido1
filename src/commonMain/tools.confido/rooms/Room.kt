@@ -137,8 +137,10 @@ data class Room(
     fun userRole(user: User?): RoomRole? {
         if (user == null) return null
         // Admins are injected as implied owners in effectiveMembers (server-side),
-        // so no special case needed here.
-        return effectiveMembers.find { user eqid it.user }?.role
+        // so no special case needed here. A user can hold several memberships
+        // (e.g. an admin who is also a direct member): the strongest one counts.
+        return effectiveMembers.filter { user eqid it.user }
+            .maxByOrNull { it.role.effectivePermissions.size }?.role
     }
 
     /**

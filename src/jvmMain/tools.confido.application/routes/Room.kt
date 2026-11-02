@@ -326,7 +326,10 @@ fun roomRoutes(routing: Routing) = routing.apply {
             val membership = room.members.find { it.user eqid uRef } ?: notFound("No such member.")
             assertPermission(RoomPermission.MANAGE_MEMBERS, "Cannot manage members.")
 
-            if (!canChangeRole(room.userRole(user), membership.role)) unauthorized("You cannot give this role.")
+            // Admins bypass like in roomMemberAdd (their own direct membership may be
+            // weaker than the role they want to remove).
+            if (!(user.type == UserType.ADMIN || canChangeRole(room.userRole(user), membership.role)))
+                unauthorized("You cannot give this role.")
 
             tools.confido.store.roomStore.modify(room.ref) {
                 it.copy(members = it.members.filterNot { m -> m.user eqid uRef })

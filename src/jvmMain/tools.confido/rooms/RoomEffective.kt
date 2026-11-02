@@ -87,10 +87,12 @@ actual val Room.effectiveMembers: List<RoomMembership>
         // Inject admin users as implied owners so they are subject to
         // memberEffectivePermissions like everyone else (e.g. group rooms
         // correctly strip question-related permissions from admins too).
-        val memberUserIds = base.map { it.user.id }.toSet()
+        // A direct membership with a lesser role must not shadow this: an admin
+        // who demoted themselves would otherwise lose the power to undo it.
         val ownerRole = appConfig.roleById("owner") ?: return base
+        val ownerUserIds = base.filter { it.role == ownerRole }.map { it.user.id }.toSet()
         val adminMembers = serverState.users.values
-            .filter { it.type == UserType.ADMIN && it.id !in memberUserIds }
+            .filter { it.type == UserType.ADMIN && it.id !in ownerUserIds }
             .map { RoomMembership(it.ref, ownerRole, implied = true, impliedFrom = "Admin") }
 
         return if (adminMembers.isEmpty()) base else base + adminMembers

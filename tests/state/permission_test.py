@@ -225,6 +225,29 @@ async def main():
                          "user": mal_id, "role": "viewer"}, mallory) == 200,
             "TEST-16", "moderator can still demote themselves (step down)")
 
+    # --- An admin's own direct membership does not shadow their implied ownership ---
+    # The admin creates a room (direct owner) and demotes themselves to forecaster;
+    # they must keep owner powers via the admin injection and be able to undo it.
+    rida = post("/rooms/add", {"name": "Perm admin self-demote", "description": "", "color": "RED", "icon": None},
+                admin).strip('"')
+    t.check(post_status(f"/rooms/{rida}/members/add",
+                        {"type": "existingMember", "user": "debugadmin", "role": "forecaster"}, admin) == 200,
+            "TEST-17", "admin can demote their own direct membership")
+    async with await connect_ws(admin) as ws:
+        await ws.send(json.dumps({"sub": [f"room/{rida}"]}))
+        d = by_topic(await recv_updates(ws))
+        own = (d.get(f"room/{rida}", {}).get("data") or {}).get("_effectiveMembers") or []
+    t.check(any(m.get("role") == "owner" and m.get("impliedFrom") == "Admin" for m in own),
+            "TEST-18", "self-demoted admin keeps the implied Admin owner membership", json.dumps(own)[:400])
+    status = post_status(f"/rooms/{rida}/members/add",
+                         {"type": "existingMember", "user": "debugadmin", "role": "owner"}, admin)
+    async with await connect_ws(admin) as ws:
+        await ws.send(json.dumps({"sub": [f"room/{rida}"]}))
+        d = by_topic(await recv_updates(ws))
+        direct = (d.get(f"room/{rida}", {}).get("data") or {}).get("members") or [{}]
+    t.check(status == 200 and direct[0].get("role") == "owner",
+            "TEST-19", "self-demoted admin can restore their owner role", f"status={status} direct={direct}")
+
     t.finish()
 
 
