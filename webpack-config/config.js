@@ -19,7 +19,13 @@ config.module.rules.push({
   }
 });
 
-// Or use alias approach
-if (!config.resolve) config.resolve = {};
-if (!config.resolve.alias) config.resolve.alias = {};
-config.resolve.alias['plotly.js/dist/plotly'] = 'plotly.js/dist/plotly.js';
+config.entry.main = Array.isArray(config.entry.main)
+    ? config.entry.main
+    : [config.entry.main];
+
+config.entry.main.unshift(
+    require.resolve('@milkdown/crepe/theme/common/style.css')
+);
+config.entry.main.unshift(
+    require.resolve('@milkdown/crepe/theme/nord.css')
+);

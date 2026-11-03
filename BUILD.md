@@ -17,11 +17,30 @@ into git, because, well, that's ugly. And it makes merges more painful.
 # Running
 
 To run use the gradle `run` task (either via IDE Run button or `./gradlew run`). This
-runs the backend, which serves compiled frontend from `build/distributions/confido1.js`
-(built during the build step.) This can be overriden by setting `CONFIDO_STATIC_PATH`
-to a different directory.
+runs the backend, which serves the compiled frontend bundle and the repo's `static/`
+assets under `/static`. `CONFIDO_STATIC_PATH` is a colon-delimited search list of
+directories (first match wins); its default covers the dev build output and `static/`.
 
 After running, the app listens on `http://localhost:8080/`
+
+# Releases
+
+`gradle releaseJvm` / `gradle releaseNative` assemble self-contained deployment
+trees under `build/release/{jvm,native}`:
+
+```
+confido-server.jar   (or confido-server native binary)
+static/              compiled JS bundle + static web assets, merged
+config.example
+```
+
+Deploy by copying the tree and running the server from inside it —
+`java -jar confido-server.jar` (or `./confido-server`); `static/` is found
+automatically in the working directory, so only database/SMTP environment
+needs configuring. To overlay custom content (e.g. an org's privacy policy
+page), prepend a directory: `CONFIDO_STATIC_PATH=custom:static`. Tar.gz
+packaging tasks exist commented-out in build.gradle.kts if packed
+distribution is ever needed.
 
 ## Database
 

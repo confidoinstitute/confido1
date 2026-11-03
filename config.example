@@ -6,9 +6,16 @@
 # Host settings
 # -------------
 #
-# Location of the directory with the static data
-# Used by the build script and the webserver to detect the Confido version
-#CONFIDO_STATIC_PATH=/srv/confido/static
+# Colon-delimited list of directories served under /static; first match wins.
+# One entry must contain the compiled JS bundle (confido1.js) — also used to
+# detect the Confido version (bundle hash). Usually a single directory in
+# production (a release tree's static/); prepend extra entries to overlay
+# custom content (e.g. an organization's privacy policy page). Defaults to
+# the dev build output plus the repo's static/ dir.
+#CONFIDO_STATIC_PATH=/srv/confido/custom:/srv/confido/static
+# Presentation slide import renders decks with poppler-utils (pdfinfo, pdftoppm,
+# pdftohtml, pdftocairo). They are looked up on PATH unless a directory is given here.
+#CONFIDO_POPPLER_BIN_DIR=/usr/bin
 
 # Location of the directory with svg room icons.
 # Files from this directory will be selectable in the room dialog.
@@ -66,8 +73,35 @@ CONFIDO_MAIL_FEEDBACK_TO=feedback@confido.tools
 # Enable viewing of the update history; experimental
 CONFIDO_FEAT_UPDATE_HISTORY=1
 
-# Add a Question Writer role
-#CONFIDO_FEAT_QUESTION_WRITER_ROLE=1
-
 # Add a popup to encourage users to comment when they make a prediction
 #CONFIDO_FEAT_ENCOURAGE_COMMENTS=1
+
+# Allow creating room groups (rooms sharing members and a combined scoreboard).
+# Existing groups keep working when this is off; only new groups/attachments are blocked.
+#CONFIDO_FEAT_ROOM_GROUPS=1
+
+# Path to TOML file for adding/overriding room roles.
+# Built-in roles (viewer, forecaster, moderator, owner) are always present.
+# The config file can add new roles or override built-in ones.
+# If not set, defaults to roles.toml in the working directory.
+# If the file does not exist, only built-in defaults are used.
+#CONFIDO_ROLES_FILE=roles.toml
+
+# --------------------------
+# Millionaire extension settings
+# --------------------------
+#
+# Configured via CONFIDO_EXTRA_DATA JSON object. Keys:
+#   millionaire_mode:   "multiplicative" (default) or "ladder"
+#                       - multiplicative: original mode, score *= multiplier each round (starts at $1000)
+#                       - ladder: fixed prize steps, additive Brier scoring (starts at $0)
+#   millionaire_timer:  "none" (default), "fixed:SECONDS", or "countdown:SECONDS"
+#                       - none: no timer
+#                       - fixed:30: 30s timer auto-starts when each question opens
+#                       - countdown:15: 15s countdown triggered manually by game master
+#   millionaire_ladder: comma-separated custom prize values
+#                       Default: 100,200,300,500,1000,2000,4000,8000,16000,32000,64000,125000,250000,500000,1000000
+#                       Ladder is truncated to the number of questions in the game.
+#
+# Example for ladder mode with 15-second manual countdown:
+#CONFIDO_EXTRA_DATA='{"millionaire_mode":"ladder","millionaire_timer":"countdown:15"}'

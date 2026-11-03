@@ -1,0 +1,243 @@
+@file:OptIn(ExperimentalWasmJsInterop::class)
+
+package tools.confido.web.utils
+
+import tools.confido.web.ApiError
+import tools.confido.web.components.basic.css
+import tools.confido.web.components.basic.rowStyleTableCSS
+import tools.confido.web.components.basic.showError
+import csstype.Properties
+import csstype.PropertiesBuilder
+import io.ktor.client.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import js.array.component1
+import js.array.component2
+import js.collections.WeakMap
+import js.objects.Object
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.datetime.*
+import org.intellij.markdown.ast.ASTNode
+import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
+import org.intellij.markdown.html.HtmlGenerator
+import org.intellij.markdown.parser.MarkdownParser
+import react.FC
+import react.Props
+import react.PropsWithClassName
+import react.PropsWithRef
+import react.StateInstance
+import react.dom.html.ReactHTML.div
+import react.router.dom.Link
+import react.useMemo
+import remix.run.router.RelativeRoutingType
+import remix.run.router.To
+import tools.confido.rooms.Room
+import tools.confido.question.Question
+import tools.confido.utils.*
+import web.cssom.Border
+import web.cssom.BorderCollapse
+import web.cssom.Color
+import web.cssom.LineStyle
+import web.cssom.LineStyle.Companion.solid
+import web.cssom.px
+import web.html.HTMLAnchorElement
+import web.location.location
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.js.Date
+import kotlin.reflect.KProperty
+import js.objects.unsafeJso as jso
+
+// Build an object which does not have properly defined interface
+inline fun <T: Any> buildObject(init: dynamic.() -> Unit): T =
+    jso(init).unsafeCast<T>()
+
+fun Number.toDateTime(): String = Date(this.toDouble() * 1000).toLocaleString()
+fun Number.toIsoDateTime(): String = Date(this.toDouble() * 1000).toISOString()
+
+
+fun linearSpace(first: Double, last: Double, step: Double) = sequence {
+    var current = first
+    while (current <= last) {
+        yield(current)
+        current += step
+    }
+}
+
+fun timestampToDate(timestamp: Double): LocalDate {
+    val dateTime = Instant.fromEpochSeconds(timestamp.toLong(), 0).toLocalDateTime(TimeZone.UTC)
+    return LocalDate(dateTime.year, dateTime.month, dateTime.dayOfMonth)
+}
+
+
+fun durationAgo(difference: Number) = difference.toInt().let {
+    when(it) {
+        in 0..10 -> "now"
+        in 10..120 -> "$it s"
+        in 120..7200 -> "${it / 60} min"
+        in 7200..172800 -> "${it / 3600} h"
+        else -> "${it / 86400} days"
+    }
+}
+
+fun webSocketUrl(path: String): String {
+    val protocol = when(location.protocol) {
+        "https:" -> "wss:"
+        else -> "ws:"
+    }
+    return protocol + "//" + location.host + path
+}
+
+/** A very simple check for ruling out most common mistakes. */
+fun <E> List<List<E>>.transposeForHeatmap(missingElementDefault: E? = null): List<List<E?>> {
+    val input = this
+
+    val columnIndices = 0 until input.size-1
+
+    val maxRowSize = input.maxOf { it.size }
+    val rowIndices = 0 until maxRowSize
+
+    return rowIndices.map { columnIndex ->
+        columnIndices.map { rowIndex ->
+            // instead of getting input[column][row], get input[row][column]
+            val element = input.getOrNull(rowIndex)?.getOrNull(columnIndex)
+            element  ?: missingElementDefault
+        }
+    }
+}
+
+fun <E> Set<E>.xor(element: E) =
+    if (element in this) this.minus(element) else this.plus(element)
+
+/** Fire-and-forget coroutine for UI actions. An escaping [ApiError] becomes an error
+ *  toast — the default failure mode of every [Client.call]; catch it in [coro] for
+ *  custom handling. */
+inline fun runCoroutine(noinline coro: suspend CoroutineScope.() -> Unit) {
+    CoroutineScope(EmptyCoroutineContext).launch {
+        try { coro() } catch (e: ApiError) { showError(e.message) }
+    }
+}
+
+fun questionUrl(id: String) = Question.urlPrefix(id)
+fun roomUrl(id: String) = Room.urlPrefix(id)
+
+private val oidMap = WeakMap<Any, Int>()
+private var oidMax = 0
+
+/**
+ * Generate unique integer determining object's identity, like python's id() function.
+ * https://stackoverflow.com/questions/2020670/javascript-object-id/35306050#35306050
+ */
+fun objectId(obj: Any) =
+    oidMap.get(obj) ?: run {
+        oidMax += 1
+        val newId = oidMax
+        oidMap.set(obj, newId)
+        newId
+    }
+
+/**
+ * A variant of the addEventListener function that allows callbacks that take the
+ * new web.events.Event types instead of the legacy org.w3c.dom.events.Event
+ */
+/// fun Window.addEventListener(type: String, callback: (Event)->Unit, options: dynamic = jso<dynamic>()) =
+///     addEventListener(type, callback.unsafeCast<(LegacyEvent)->Unit>(), options)
+/// fun Window.removeEventListener(type: String, callback: (Event)->Unit, options: dynamic = jso<dynamic>()) =
+///     removeEventListener(type, callback.unsafeCast<(LegacyEvent)->Unit>(), options)
+
+// HACK to allow defining class properties as "by useState"
+inline operator fun <T, U> StateInstance<T>.getValue(thisRef: U, property: KProperty<*>) : T =
+    asDynamic()[0]
+inline operator fun <T, U> StateInstance<T>.setValue(
+    thisRef: U,
+    property: KProperty<*>,
+    value: T,
+) { asDynamic()[1](value) }
+
+
+fun buildProps(builder: PropertiesBuilder.() -> Unit): Properties = jso(builder)
+
+
+fun <T> T.except(vararg except: String): T  where T: Props {
+    val newProps = jso<dynamic> {  }
+    Object.entries(this).forEach { (k,v)->
+        if (k !in except) newProps[k] = this.asDynamic()[k]
+    }
+    return newProps as T
+}
+
+// It is sealed in react, cannot extend
+external interface ExtendableLinkProps: Props, PropsWithRef<HTMLAnchorElement>,
+    react.dom.html.AnchorHTMLAttributes<HTMLAnchorElement> {
+    var reloadDocument: Boolean?
+    var replace: Boolean?
+    var state: Any?
+    var preventScrollReset: Boolean?
+    var relative: RelativeRoutingType?
+    var to: To
+    var viewTransition: Boolean?
+
+    @Deprecated(message = "don't use href", level = DeprecationLevel.HIDDEN)
+    override var href: String?
+}
+
+val ExtendableLink = Link.unsafeCast<FC<ExtendableLinkProps>>()
+
+fun md2html(md: String): String {
+    val flavour = GFMFlavourDescriptor()
+    val parsedTree = MarkdownParser(flavour).buildMarkdownTreeFromString(md)
+    val html = HtmlGenerator(md, parsedTree, flavour).generateHtml(object : HtmlGenerator.TagRenderer {
+        override fun openTag(
+            node: ASTNode,
+            tagName: CharSequence,
+            vararg attributes: CharSequence?,
+            autoClose: Boolean
+        ): CharSequence {
+            return buildString {
+                append("<$tagName")
+                for (attribute in attributes) {
+                    if (attribute != null) {
+                        append(" $attribute")
+                    }
+                }
+
+                if (tagName == "a") {
+                    append(" target='_blank'")
+                }
+
+                if (autoClose) {
+                    append(" />")
+                } else {
+                    append(">")
+                }
+            }
+        }
+
+        override fun closeTag(tagName: CharSequence): CharSequence = "</$tagName>"
+
+        override fun printHtml(html: CharSequence): CharSequence = html
+    })
+    return html
+}
+
+external interface MarkdownTextProps : PropsWithClassName {
+    var source: String
+}
+val MarkdownText = FC<MarkdownTextProps> { props->
+    val src = props.source
+
+    val html = useMemo(src) { md2html(src) }
+    div {
+        css(override=props) {
+            "table" { borderCollapse = BorderCollapse.collapse }
+            "table td, table th" {
+                border = Border(1.px, solid, Color("#333"))
+                padding = 4.px
+            }
+        }
+        dangerouslySetInnerHTML = jso {
+            __html = html
+        }
+    }
+}

@@ -5,3 +5,8 @@ gradlew
 gradlew.bat
 gradle
 .aider*
+.kotlin
+__pycache__/
+replicas/
+prod_slots/
+presentations/

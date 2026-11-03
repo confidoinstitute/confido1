@@ -1,0 +1,114 @@
+package tools.confido.extensions
+
+import kotlinx.serialization.KSerializer
+import tools.confido.distributions.ContinuousProbabilityDistribution
+import tools.confido.distributions.ProbabilityDistribution
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.buildClassSerialDescriptor
+import kotlinx.serialization.encoding.*
+import kotlinx.serialization.modules.PolymorphicModuleBuilder
+import kotlinx.serialization.serializer
+import tools.confido.state.FlowAction
+import tools.confido.state.PresenterView
+import tools.confido.state.appConfig
+import kotlin.reflect.KType
+import kotlin.reflect.typeOf
+
+expect val registeredExtensions: List<Extension>
+
+interface IExtensionDataKey {
+    val id: String
+}
+open class ExtensionDataKey<V>(override  val id: String) : IExtensionDataKey {
+}
+
+open class ExtensionDataKeyWithDefault<V>(id: String, val default: V): ExtensionDataKey<V>(id)
+
+class ExtensionDataType(val name: String) {
+    val valueSerializers: MutableMap<IExtensionDataKey, KSerializer<Any?>> = mutableMapOf()
+    init {
+        Extension.forEach {
+            it.registerEdtKeys(this)
+        }
+    }
+}
+inline fun <K: ExtensionDataKey<V>, reified V> ExtensionDataType.add(k: K) {
+    valueSerializers[k] = serializer(typeOf<V>())
+}
+
+class ExtensionData(val type: ExtensionDataType, val data: Map<IExtensionDataKey, Any?> = emptyMap()) {
+
+}
+inline fun <V> ExtensionData.with(k: ExtensionDataKey<V>, v: V) = ExtensionData(type, data + mapOf(k to v))
+inline fun <V> ExtensionData.without(k: ExtensionDataKey<V>) = ExtensionData(type, data.filterKeys{it != k})
+inline fun <V:Any> ExtensionData.withOrWithout(k: ExtensionDataKey<V>, v: V?) = if (v==null) without(k) else with(k,v)
+inline fun <V:Any> ExtensionData.modify(k: ExtensionDataKeyWithDefault<V>, mod: (V)->V) = with(k,mod(get(k)))
+operator inline fun <V> ExtensionData?.get(k: ExtensionDataKey<V>): V? = this?.let { data[k] as? V? }
+operator inline fun <V> ExtensionData.get(k: ExtensionDataKeyWithDefault<V>): V = if (data.keys.contains(k)) data[k] as V else k.default
+
+abstract class  ExtensionDataSerializer(val type: ExtensionDataType): KSerializer<ExtensionData> {
+    override val descriptor: SerialDescriptor
+        get() = buildClassSerialDescriptor("ExtensionData:${type.name}") {
+            type.valueSerializers.entries.sortedBy { it.key.id  }.forEach {
+                element(it.key.id, it.value.descriptor)
+            }
+        }
+
+    override fun serialize(encoder: Encoder, value: ExtensionData) {
+        if (value.type != type) throw Exception("EDT mismatch")
+        encoder.encodeStructure(descriptor) {
+            val keys = type.valueSerializers.keys.sortedBy { it.id }
+            value.data.entries.forEach { (k,v) ->
+                val serializer = type.valueSerializers[k] ?: throw  Exception("Key ${k.id} not registered for EDT ${type.name} ${type.valueSerializers.size}")
+                encodeSerializableElement(descriptor, keys.indexOf(k), serializer, v)
+            }
+        }
+    }
+
+    override fun deserialize(decoder: Decoder): ExtensionData {
+        val m = mutableMapOf<IExtensionDataKey, Any?>()
+        decoder.decodeStructure(descriptor) {
+            while (true) {
+                val index = decodeElementIndex(descriptor)
+                val keys = type.valueSerializers.keys.sortedBy { it.id }
+
+                if (index == CompositeDecoder.DECODE_DONE) break
+                else if (index >= keys.size)  error("Unexpected index: $index")
+                // The element index must be passed through: streaming decoders read values
+                // sequentially and ignore it, but tree decoders (decodeFromJsonElement, used
+                // by the multiplexed websocket client) resolve the JSON member by the name at
+                // this index — a hardcoded 0 makes them read the wrong field's value.
+                else m[keys[index]] = decodeSerializableElement(descriptor, index, type.valueSerializers[keys[index]]!!)
+            }
+        }
+        return ExtensionData(type, m)
+    }
+}
+
+
+interface Extension {
+    fun registerPresenterViews(builder: PolymorphicModuleBuilder<PresenterView>) {
+    }
+
+    fun registerProbabilityDistributions(builder: PolymorphicModuleBuilder<ProbabilityDistribution>) {
+    }
+
+    fun registerContinuousProbabilityDistributions(builder: PolymorphicModuleBuilder<ContinuousProbabilityDistribution>) {
+    }
+
+    fun registerFlowActions(builder: PolymorphicModuleBuilder<FlowAction>) {}
+
+    fun registerEdtKeys(edt: ExtensionDataType) {}
+
+    /**
+     * Register custom [RoomPermission]s for this extension.
+     * Called at startup before role definitions are loaded.
+     */
+    fun registerPermissions() {}
+
+    val extensionId: String
+    companion object {
+        val enabled by lazy { registeredExtensions.filter { it.extensionId in appConfig.enabledExtensionIds } }
+        inline fun forEach(f: (Extension)->Unit) {  enabled.forEach(f) }
+    }
+}
