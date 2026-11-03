@@ -141,7 +141,7 @@ val QuestionList = FC<QuestionListProps> { props ->
                 // cycles); a menu can replace the cycle when a third mode lands.
                 HeaderGrayButton {
                     SortIcon {}
-                    +if (sortMode == "activity") "Recently active" else "Default order"
+                    +if (sortMode == "activity") "Recently active" else "Ordered by moderator"
                     onClick = { sortMode = if (sortMode == "room") "activity" else "room" }
                 }
             }
