@@ -277,7 +277,7 @@ val TrainingQuestionView = FC<TrainingQuestionViewProps> { props ->
     val disabled = props.disabled ?: false
     
     Stack {
-        css { gap = 24.px }
+        css(ClassName("training-question")) { gap = 24.px }
         
         // Question text
         QuestionText {
@@ -358,7 +358,7 @@ val TrainingFeedbackView = FC<TrainingFeedbackViewProps> { props ->
         (1 - fb.userPrediction)
     
     Stack {
-        css { gap = 16.px }
+        css(ClassName("training-feedback")) { gap = 16.px }
         QuestionText {
             +fb.question.text
             +" "
@@ -462,7 +462,7 @@ val BucketAccuracyGauge = FC<BucketAccuracyGaugeProps> { props ->
     val targetPercent = (props.targetAccuracy * 100).toInt()
     
     div {
-        css {
+        css(ClassName("bucket-accuracy-gauge")) {
             padding = Padding(16.px, 20.px)
             backgroundColor = Color("#f5f5f5")
             borderRadius = 8.px
@@ -556,7 +556,7 @@ external interface TrainingWelcomeViewProps : Props {
  */
 val TrainingWelcomeView = FC<TrainingWelcomeViewProps> { props ->
     Stack {
-        css {
+        css(ClassName("training-welcome")) {
             alignItems = AlignItems.center
             textAlign = TextAlign.center
             padding = Padding(20.px, 20.px)
@@ -680,7 +680,7 @@ external interface TrainingCompletedViewProps : Props {
  */
 val TrainingCompletedView = FC<TrainingCompletedViewProps> { props ->
     Stack {
-        css {
+        css(ClassName("training-completed")) {
             alignItems = AlignItems.center
             textAlign = TextAlign.center
             padding = 40.px

@@ -5,6 +5,7 @@ import tools.confido.web.components.presenter.presenterPageMap
 import tools.confido.web.components.basic.*
 import tools.confido.web.components.calibration.CalibrationGraph
 import tools.confido.web.components.rooms.RoomLink
+import emotion.css.ClassName
 import emotion.react.css
 import tools.confido.web.hooks.useSubscription
 import js.objects.unsafeJso as jso
@@ -180,7 +181,7 @@ val CalibrationLeaderboardPP = FC<PresenterPageProps<CalibrationLeaderboardPV>> 
 
             // Title
             div {
-                css {
+                css(ClassName("leaderboard-title")) {
                     fontSize = 5.vh
                     fontWeight = FontWeight.bold
                     color = Color("#333")
@@ -202,7 +203,7 @@ val CalibrationLeaderboardPP = FC<PresenterPageProps<CalibrationLeaderboardPV>> 
             } else {
                 // Two-column row container
                 div {
-                    css {
+                    css(ClassName("leaderboard-list")) {
                         width = 85.pct
                         maxHeight = 82.vh
                         overflow = Overflow.hidden
@@ -217,7 +218,7 @@ val CalibrationLeaderboardPP = FC<PresenterPageProps<CalibrationLeaderboardPV>> 
                         val isLeader = entry.score == topScore && idx == 0
 
                         div {
-                            css {
+                            css(ClassName("leaderboard-row")) {
                                 display = Display.flex
                                 flexDirection = FlexDirection.row
                                 alignItems = AlignItems.center
