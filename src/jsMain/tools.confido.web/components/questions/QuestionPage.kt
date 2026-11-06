@@ -1,5 +1,7 @@
 package tools.confido.web.components.questions
 
+import js.array.component1
+import js.array.component2
 import tools.confido.web.ApiError
 import tools.confido.question.BinaryHistogram
 import tools.confido.web.Client
@@ -326,6 +328,10 @@ private val QuestionPredictionSection = FC<QuestionEstimateSectionProps> { props
     // false = your estimate open, true = group estimate open
     // Open group prediction by default. If the user has no permission to predict, your estimate tab is not useful.
     var groupPredictionOpen by useState(!hasPredictPermission)
+    // A presentation's reveal sends followers here with ?show=group (see SHOW_GROUP_PARAM).
+    val (searchParams, _) = react.router.dom.useSearchParams()
+    val showGroup = searchParams.get("show") == "group"
+    useEffect(showGroup) { if (showGroup) groupPredictionOpen = true }
     var groupHistogramOpen by useState(false)
 
     // Timeline scrub ghost (numeric questions): hovering the history timeline

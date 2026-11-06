@@ -55,7 +55,7 @@ external interface QuestionPickerProps : Props {
     var currentQuestionOption: Boolean?
 }
 
-private const val CURRENT_LABEL = "↻ Current question"
+private const val CURRENT_LABEL = "↻ Each question in turn"
 
 val QuestionPicker = FC<QuestionPickerProps> { props ->
     val currentOpt = if (props.currentQuestionOption == true)

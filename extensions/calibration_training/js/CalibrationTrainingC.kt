@@ -336,6 +336,7 @@ object CalibrationTrainingCE : ClientExtension, CalibrationTrainingExtension() {
             createDefault = { ShowCalibrationLeaderboardAction() },
             editor = null,
             matches = { it is ShowCalibrationLeaderboardAction },
+            primary = true,
         )
     )
 

@@ -31,7 +31,7 @@ import react.dom.html.ReactHTML.span
 import react.router.*
 import tools.confido.rooms.*
 import tools.confido.web.components.presentation.PresentationTab
-import tools.confido.payloads.requests.CreatePresentation
+import tools.confido.web.components.presentation.CreatePresentationDialog
 import tools.confido.api.Api
 import tools.confido.extensions.ClientExtension
 import tools.confido.refs.*
@@ -187,6 +187,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
     var dialogOpen by useState(false)
     var editOpen by useState(props.openEdit ?: false)
     var exportOpen by useState(false)
+    var createPresentationOpen by useState(false)
     var deleteConfirmOpen by useState(false)
 
     fun delete() = runCoroutine {
@@ -202,6 +203,11 @@ val RoomLayout = FC<RoomLayoutProps> { props->
     CsvExportDialog {
         open = exportOpen
         onClose = { exportOpen = false }
+    }
+    CreatePresentationDialog {
+        open = createPresentationOpen
+        this.room = room
+        onClose = { createPresentationOpen = false }
     }
 
     ConfirmDialog {
@@ -237,10 +243,7 @@ val RoomLayout = FC<RoomLayoutProps> { props->
                 icon = PresentationIcon
                 onClick = {
                     dialogOpen = false
-                    runCoroutine {
-                        Client.call(Api.presentationCreate(room.ref), CreatePresentation())
-                        navigate("${room.urlPrefix}/presentation")
-                    }
+                    createPresentationOpen = true
                 }
             }
         }

@@ -28,6 +28,8 @@ import tools.confido.application.sessions.modifyUserSession
 import tools.confido.application.sessions.userSession
 import tools.confido.extensions.ServerExtension
 import tools.confido.question.Question
+import tools.confido.question.QuestionState
+import tools.confido.question.GroupPredictionVisibility
 import tools.confido.refs.Ref
 import tools.confido.refs.ref
 import tools.confido.state.*
@@ -183,7 +185,8 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             if (room.presentation != null) badRequest("Room already has a presentation.")
 
             val pres = presentationStore.insert(
-                Presentation(room = room.ref, name = payload.name, fileToken = generateToken())
+                Presentation(room = room.ref, name = payload.name, fileToken = generateToken(),
+                    audienceMode = payload.audienceMode, endBehavior = payload.endBehavior)
             )
             tools.confido.store.roomStore.modify(room.ref) {
                 it.copy(presentation = pres.ref)
@@ -271,6 +274,8 @@ fun presentationRoutes(routing: Routing) = routing.apply {
                 edit.name?.let { updated = updated.copy(name = it) }
                 validatedItems?.let { updated = updated.copy(items = it) }
                 edit.slideLabels?.let { updated = updated.copy(slideLabels = it) }
+                edit.audienceMode?.let { updated = updated.copy(audienceMode = it) }
+                edit.endBehavior?.let { updated = updated.copy(endBehavior = it) }
                 updated
             }
         }
@@ -343,14 +348,16 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             if (pres.items.isEmpty()) badRequest("Presentation has no items.")
 
             // Expand meta-items into a flat list of concrete items
-            val expandedItems = expandPresentationItems(pres.items, room)
+            val expandedItems = expandPresentationItems(pres.items, room, pres.audienceMode)
             if (expandedItems.isEmpty()) badRequest("Presentation has no items after expansion.")
+
+            if (pres.audienceMode == AudienceMode.ONE_AT_A_TIME) hideRoomForRun(pres, room)
 
             // Initialize run state at first item
             var runState = PresentationRunState(currentIndex = 0, expandedItems = expandedItems)
 
-            // Process the first item
-            runState = processCurrentItem(pres, runState, room)
+            // Process the first item (re-read: hiding may have stored the snapshot)
+            runState = processCurrentItem(getPresentation(room) ?: pres, runState, room)
 
             serverState.setPresentationRunState(room.ref, runState)
         }
@@ -362,6 +369,8 @@ fun presentationRoutes(routing: Routing) = routing.apply {
             assertPermission(RoomPermission.MANAGE_QUESTIONS, "Cannot control presentation.")
             serverState.setPresentationRunState(room.ref, null)
             ServerExtension.forEach { it.onPresentationStopped(room) }
+            // Also settles a run lost to a server restart (snapshot still pending).
+            getPresentation(room)?.let { finishRunSnapshot(it, room) }
             // Clear followingPresentation for all sessions following this room
             tools.confido.store.userSessionStore.asMap.values
                 .filter { it.followingPresentation?.id == room.id }
@@ -577,8 +586,9 @@ private fun validateFlowItems(items: List<FlowItem>, pres: Presentation, room: R
  * Expand presentation items by asking extensions to expand any expandable
  * (meta) actions. Non-expandable items pass through unchanged.
  */
-private fun expandPresentationItems(items: List<FlowItem>, room: tools.confido.rooms.Room): List<FlowItem> =
-    buildList {
+private fun expandPresentationItems(items: List<FlowItem>, room: Room, mode: AudienceMode): List<FlowItem> {
+    val roomQuestions = room.questions.mapNotNull { serverState.questions[it.id] }
+    return buildList {
         for (item in items) {
             if (item is ForEachItem) {
                 val candidates = room.questions.mapNotNull { serverState.questions[it.id] }
@@ -605,7 +615,57 @@ private fun expandPresentationItems(items: List<FlowItem>, room: tools.confido.r
             }
             add(item)
         }
+    }.flatMap { item ->
+        // Bind audience steps to concrete questions and the mode; one whose selection
+        // came out empty (e.g. a tag nobody carries yet) is skipped, like an
+        // inapplicable loop step. An ask then unfolds into its clicks (one by one,
+        // with reveals) — the first keeps the authored id.
+        if (item !is ActionItem || item.action !is AudienceStep) listOf(item)
+        else {
+            val bound = item.action.resolveAudienceStep(roomQuestions, mode)
+            when {
+                (bound as AudienceStep).resolved.isNullOrEmpty() -> emptyList()
+                bound is AskAudienceAction -> bound.expandClicks().mapIndexed { i, a ->
+                    ActionItem(id = if (i == 0) item.id else generateId(), action = a)
+                }
+                else -> listOf(item.copy(action = bound))
+            }
+        }
     }
+}
+
+/**
+ * Start of a one-at-a-time run: snapshot every room question's audience-facing state
+ * (unless a snapshot is still pending from a run that never stopped cleanly — that
+ * one holds the true pre-presentation state) and hide them all until asked.
+ */
+private suspend fun hideRoomForRun(pres: Presentation, room: Room) {
+    val questions = room.questions.mapNotNull { serverState.questions[it.id] }
+    if (pres.startSnapshot == null) {
+        presentationStore.modify(pres.id) { p ->
+            p.copy(startSnapshot = questions.associate { it.id to QuestionSnapshot.of(it) })
+        }
+    }
+    questions.filter { it.state != QuestionState.DRAFT }.forEach { q ->
+        questionStore.modify(q.id) { it.withState(QuestionState.DRAFT) }
+    }
+}
+
+/**
+ * End of a run (stopped at the end or midway): apply [Presentation.endBehavior] to a
+ * pending snapshot and drop it. KEEP_COVERED needs no work — the room already is
+ * "revealed visible, asked open, unreached hidden". Questions added during the run
+ * have no snapshot and are left as they are.
+ */
+private suspend fun finishRunSnapshot(pres: Presentation, room: Room) {
+    val snapshot = pres.startSnapshot ?: return
+    if (pres.endBehavior == PresentationEndBehavior.RESTORE) {
+        snapshot.forEach { (qid, snap) ->
+            if (room.questions.any { it.id == qid }) questionStore.modify(qid) { snap.applyTo(it) }
+        }
+    }
+    presentationStore.modify(pres.id) { it.copy(startSnapshot = null) }
+}
 
 /**
  * Process the current item in the presentation flow: compute the effective
@@ -631,7 +691,7 @@ private suspend fun processCurrentItem(
         is ActionItem -> {
             // Only execute side effects if not already executed in this run
             if (item.id !in state.executedActionIds) {
-                executeFlowAction(item.action, room)
+                executeFlowAction(item.action, room, pres)
                 newState = newState.copy(
                     executedActionIds = newState.executedActionIds + item.id,
                     lastExecutedId = item.id,
@@ -669,7 +729,7 @@ private fun warnForeignQuestion(room: Room, ref: Ref<Question>) =
 /**
  * Execute a flow action server-side.
  */
-private suspend fun executeFlowAction(action: FlowAction, room: tools.confido.rooms.Room) {
+private suspend fun executeFlowAction(action: FlowAction, room: Room, pres: Presentation) {
     when (action) {
         is SetQuestionStateAction -> {
             if (!room.ownsQuestion(action.question)) { warnForeignQuestion(room, action.question); return }
@@ -708,7 +768,39 @@ private suspend fun executeFlowAction(action: FlowAction, room: tools.confido.ro
             // No server-side side effects needed.
         }
         is CompositeAction -> {
-            action.actions.forEach { executeFlowAction(it, room) }
+            action.actions.forEach { executeFlowAction(it, room, pres) }
+        }
+        is AskAudienceAction -> {
+            // Only one-at-a-time changes the questions; the other modes just point
+            // the projector and devices (view + navigation, see processCurrentItem).
+            if (action.mode != AudienceMode.ONE_AT_A_TIME) return
+            action.resolved?.filter { room.ownsQuestion(it) }?.forEach { ref ->
+                questionStore.modify(ref.id) { q ->
+                    // Back to how it was before the run hid it — except drafts (and
+                    // questions created mid-run), which are what asking opens.
+                    val snap = pres.startSnapshot?.get(ref.id)
+                    val shown = if (snap == null || snap.state == QuestionState.DRAFT) q.withState(QuestionState.OPEN)
+                                else q.withState(snap.state)
+                    // Answers stay hidden while people answer (no anchoring).
+                    GroupPredictionVisibility.MODERATOR_ONLY.apply(shown)
+                }
+            }
+        }
+        is RevealAnswersAction -> {
+            if (action.mode != AudienceMode.ONE_AT_A_TIME) return
+            action.resolved?.filter { room.ownsQuestion(it) }?.forEach { ref ->
+                questionStore.modify(ref.id) { q ->
+                    val newState = when {
+                        // The correct answer is shown on devices by resolving.
+                        action.showResolution && q.resolution != null -> QuestionState.RESOLVED
+                        q.state == QuestionState.RESOLVED || q.state == QuestionState.CANCELLED -> q.state
+                        action.stopAnswers -> QuestionState.CLOSED
+                        q.state == QuestionState.DRAFT -> QuestionState.OPEN
+                        else -> q.state
+                    }
+                    GroupPredictionVisibility.EVERYONE.apply(q.withState(newState))
+                }
+            }
         }
         is CreateMarkAction -> {
             if (action.question != null && !room.ownsQuestion(action.question)) {

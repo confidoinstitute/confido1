@@ -35,6 +35,26 @@ import tools.confido.web.components.presenter.PresenterControlsType
 
 val flowItemTypes: List<FlowItemTypeEntry> by kotlin.lazy {
     buildList {
+        // --- Standard audience steps (the main path; see AudienceMode) ---
+        add(FlowItemTypeEntry(
+            key = "ask",
+            label = "Ask the audience",
+            category = FlowItemCategory.AUDIENCE,
+            createDefault = { AskAudienceAction() },
+            editor = AskAudienceEditor,
+            matches = { it is AskAudienceAction },
+            primary = true,
+        ))
+        add(FlowItemTypeEntry(
+            key = "reveal",
+            label = "Reveal answers",
+            category = FlowItemCategory.AUDIENCE,
+            createDefault = { RevealAnswersAction() },
+            editor = RevealAnswersEditor,
+            matches = { it is RevealAnswersAction },
+            primary = true,
+        ))
+
         // --- Side-effect actions ---
         add(FlowItemTypeEntry(
             key = "setQuestionState",
@@ -116,16 +136,18 @@ val flowItemTypes: List<FlowItemTypeEntry> by kotlin.lazy {
         ))
         add(FlowItemTypeEntry(
             key = "inviteLink",
-            label = "Invite link / QR code",
+            label = "QR code to join",
             category = FlowItemCategory.VIEW,
-            createDefault = { SetPresenterViewAction(InviteLinkPV(Ref(""), "FIRST")) },
+            // A presentation's join code is for following along: on by default.
+            createDefault = { SetPresenterViewAction(InviteLinkPV(Ref(""), "FIRST", followPresentation = true)) },
             editor = pvFlowEditor(roomSubject<InviteLinkPV>(
-                hint = "Will show the room's invite link as a QR code on the presenter screen.",
+                hint = "Shows a QR code on the projector. People scan it with their phone to join the room — no account needed.",
                 get = { it.room }, set = { v, r -> v.copy(room = r.ref, id = "FIRST") }),
                 // Authoring-only: joiners-follow is a property of the flow step,
                 // not a live knob (see InviteLinkPC).
                 extraControls = InviteLinkPC.unsafeCast<PresenterControlsType>()),
             matches = { it is SetPresenterViewAction && it.view is InviteLinkPV },
+            primary = true,
         ))
         add(FlowItemTypeEntry(
             key = "timeline",

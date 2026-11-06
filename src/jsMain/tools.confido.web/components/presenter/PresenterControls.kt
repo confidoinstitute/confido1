@@ -9,6 +9,7 @@ import react.use
 import react.dom.html.ReactHTML.option
 import tools.confido.question.Question
 import tools.confido.refs.Ref
+import tools.confido.refs.ref
 import tools.confido.extensions.ClientExtension
 import tools.confido.payloads.responses.WSData
 import tools.confido.rooms.AttributionLevel
@@ -254,12 +255,35 @@ val ComparePC = FC<PresenterControlsProps<ComparePV>> { props ->
  *  for a plain invite-link view. The flow editor mounts it via pvFlowEditor's
  *  extraControls slot. */
 val InviteLinkPC = FC<PresenterControlsProps<InviteLinkPV>> { props ->
+    // A QR step without a join link shows nothing useful: offer to make one right
+    // here instead of sending the author off to the Members tab.
+    val room = use(tools.confido.web.components.rooms.RoomContext)
+    val lock = tools.confido.web.hooks.useCoroutineLock()
+    if (room != null && room.inviteLinks.isEmpty()) {
+        FormField {
+            title = "This room has no join link yet"
+            comment = "People will scan the QR code to join. The link lets anyone join this room as a guest, " +
+                "without an account; you can change its settings later in the Members tab."
+            tools.confido.web.components.forms.Button {
+                disabled = lock.running
+                +"Create a join link"
+                onClick = {
+                    lock {
+                        val role = tools.confido.state.appConfig.roles.firstOrNull { it.availableToGuests }
+                            ?: tools.confido.state.appConfig.roles.first()
+                        tools.confido.web.Client.call(tools.confido.api.Api.inviteCreate(room.ref),
+                            tools.confido.payloads.requests.CreateNewInvite("Presentation join link", role))
+                    }
+                }
+            }
+        }
+    }
     FormSwitch {
-        label = "Joiners follow the presentation"
+        label = "People who join follow the presentation"
         disabled = props.disabled
         checked = props.view.followPresentation
         onChange = { e -> props.onChange(props.view.copy(followPresentation = e.target.checked)) }
-        comment = "Users joining via this link are navigated along with the presentation."
+        comment = "Their phone moves along with you — to each question as you ask it."
     }
 }
 

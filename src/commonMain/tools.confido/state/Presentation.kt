@@ -42,6 +42,18 @@ data class Presentation(
      * an empty token never authorizes access.
      */
     val fileToken: String = "",
+    /** What participants see on their devices; see [AudienceMode]. Stored presentations
+     *  predate the setting and keep their behavior (no start/end handling) as GUIDED. */
+    val audienceMode: AudienceMode = AudienceMode.GUIDED,
+    /** What a stopped [AudienceMode.ONE_AT_A_TIME] run does to the room. */
+    val endBehavior: PresentationEndBehavior = PresentationEndBehavior.KEEP_COVERED,
+    /**
+     * Audience-facing state of every room question when the current one-at-a-time
+     * run hid the room (question id → snapshot); null when no such run is pending.
+     * Persisted (run state is memory-only) so a server restart mid-talk can neither
+     * strand a hidden room nor re-snapshot the hidden state on the next Run.
+     */
+    val startSnapshot: Map<String, QuestionSnapshot>? = null,
 ) : ServerImmediateDerefEntity, HasUrlPrefix {
     override val urlPrefix get() = "/presentations/$id"
 
@@ -122,44 +134,15 @@ data class ForEachItem(
     val questions: List<Ref<Question>> = emptyList(),
     val body: List<FlowItem> = emptyList(),
 ) : FlowItem() {
+    /** The loop's question selection (the fields stay flat for stored data). */
+    val selection get() = QuestionSelection(all, tags, questions)
+    fun withSelection(sel: QuestionSelection) = copy(all = sel.all, tags = sel.tags, questions = sel.questions)
+
     /** Whether [q] is iterated over — the union of all checks. */
-    fun selects(q: Question): Boolean = all || q.tags.any { it in tags } || q.ref in questions
-
-    fun toggleAll() = copy(all = !all)
-    fun toggleTag(t: String) = copy(tags = if (t in tags) tags - t else tags + t)
-
-    /**
-     * Toggle one question. Selecting adds a static pick. Deselecting a question
-     * covered only by dynamic checks first *dissolves* the covering checks into
-     * static picks (minus the question) — targeted, so non-covering tags keep
-     * their include-later-questions dynamism.
-     */
-    fun toggleQuestion(q: Question, roomQuestions: List<Question>): ForEachItem {
-        if (!selects(q)) return copy(questions = questions + q.ref)
-        var result = this
-        for (t in tags.filter { it in q.tags }) {
-            result = result.copy(tags = result.tags - t,
-                questions = (result.questions +
-                    roomQuestions.filter { t in it.tags && it.id != q.id }.map { it.ref }).distinct())
-        }
-        if (result.all) {
-            result = result.copy(all = false,
-                questions = (result.questions +
-                    roomQuestions.filter { it.id != q.id }.map { it.ref }).distinct())
-        }
-        return result.copy(questions = result.questions.filter { it.id != q.id })
-    }
+    fun selects(q: Question): Boolean = selection.selects(q)
 
     /** Selection phrasing without access to the question list (row labels etc.). */
-    fun describeSelection(): String = when {
-        all -> "all room questions"
-        tags.isNotEmpty() && questions.isEmpty() ->
-            "questions tagged ${tags.sorted().joinToString(", ") { "\"$it\"" }}"
-        tags.isEmpty() && questions.isNotEmpty() ->
-            "${questions.size} picked ${if (questions.size == 1) "question" else "questions"}"
-        tags.isEmpty() && questions.isEmpty() -> "no questions (empty selection)"
-        else -> "a custom selection"
-    }
+    fun describeSelection(): String = selection.describe()
 }
 
 /**

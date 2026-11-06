@@ -38,6 +38,9 @@ import web.cssom.*
 external interface FlowItemConfigDialogProps : BaseDialogProps {
     /** Non-null when editing an existing action item's action. */
     var action: FlowAction?
+    /** When inserting: start with this step type already chosen and configured
+     *  (the flow list's direct "+ Ask" / "+ Reveal" buttons). */
+    var presetAction: FlowAction?
     /** True while inserting into a loop body — hides the (non-nestable) loop kind. */
     var inLoopBody: Boolean?
     var onConfirm: ((FlowItem) -> Unit)?
@@ -54,9 +57,11 @@ val FlowItemConfigDialog = dialogStateWrapper(FC<FlowItemConfigDialogProps> { pr
     // Compute initial state from props.action (runs fresh on each open thanks to
     // dialogStateWrapper). When inserting, nothing is preselected — the user
     // picks a chip first.
-    val initEntry = props.action?.let { a -> types.find { it.matches(a) } }
+    val initAction = props.action ?: props.presetAction
+    val initEntry = initAction?.let { a -> types.find { it.matches(a) } }
     var selectedKey by useState(initEntry?.key)
-    var currentAction by useState(props.action)
+    var currentAction by useState(initAction)
+    var showAdvanced by useState(initEntry?.primary == false)
     var noteText by useState("")
     var noteWarning by useState(false)
 
@@ -91,7 +96,7 @@ val FlowItemConfigDialog = dialogStateWrapper(FC<FlowItemConfigDialogProps> { pr
     Dialog {
         open = props.open
         onClose = { props.onClose?.invoke() }
-        title = if (editing) "Edit item" else "Add item"
+        title = if (editing) "Edit step" else "Add step"
         action = "OK"
         disabledAction = when (selectedKey) {
             null -> true
@@ -112,26 +117,58 @@ val FlowItemConfigDialog = dialogStateWrapper(FC<FlowItemConfigDialogProps> { pr
 
         FormSection {
             if (choosing) {
-                // BOTH types (e.g. the calibration leaderboard: shows a view AND
-                // navigates followers) sort under "show" — displaying something is
-                // their defining trait, the side effect is auxiliary.
-                typeChips("Show on projector", types.filter {
-                    it.category == FlowItemCategory.VIEW || it.category == FlowItemCategory.BOTH
-                })
-                typeChips("Actions", types.filter {
-                    it.category == FlowItemCategory.SIDE_EFFECT || it.category == FlowItemCategory.EXPANDABLE
-                })
-                // Notes are edited inline in their rows; the dialog only creates them.
-                // Loops are created here and configured in the drill-in sub-editor
-                // (and cannot nest, hence hidden inside a body).
-                if (!editing) div {
-                    FieldLabel { +"Other" }
+                // Main steps: the standard audience moves, notes and repeats, plus
+                // registry entries flagged primary. Everything else is an advanced
+                // step — a single projector view or a single side effect, which the
+                // standard steps compose according to the presentation's audience mode.
+                div {
+                    FieldLabel { +"Steps" }
                     Stack {
                         direction = FlexDirection.row
-                        css { gap = 6.px; marginTop = 6.px }
-                        typeChip("Note", selectedKey == NOTE_KEY) { selectedKey = NOTE_KEY }
-                        if (props.inLoopBody != true)
-                            typeChip("Repeat over questions…", selectedKey == FOREACH_KEY) { selectedKey = FOREACH_KEY }
+                        css { flexWrap = FlexWrap.wrap; gap = 6.px; marginTop = 6.px }
+                        types.filter { it.primary }.forEach { entry ->
+                            typeChip(entry.label, selectedKey == entry.key) { selectEntry(entry) }
+                        }
+                        // Notes are edited inline in their rows; the dialog only creates them.
+                        // Loops are created here and configured in their own dialog (and
+                        // cannot nest, hence hidden inside a body).
+                        if (!editing)
+                            typeChip("Note for yourself", selectedKey == NOTE_KEY) { selectedKey = NOTE_KEY }
+                    }
+                }
+                ButtonUnstyled {
+                    css {
+                        fontSize = 13.px
+                        fontFamily = sansSerif
+                        color = Color("#777777")
+                        cursor = Cursor.pointer
+                        textAlign = TextAlign.left
+                    }
+                    +(if (showAdvanced) "▾ Advanced steps" else "▸ Advanced steps")
+                    onClick = { showAdvanced = !showAdvanced }
+                }
+                if (showAdvanced) {
+                    div {
+                        css { fontFamily = sansSerif; fontSize = 12.px; color = Color("#999999") }
+                        +"Single moves that do exactly what they say, whatever the presentation's audience settings — for fine control."
+                    }
+                    // BOTH types (shows a view AND navigates followers) sort under
+                    // "show" — displaying something is their defining trait.
+                    typeChips("Show on projector", types.filter {
+                        !it.primary && (it.category == FlowItemCategory.VIEW || it.category == FlowItemCategory.BOTH)
+                    })
+                    typeChips("Actions", types.filter {
+                        !it.primary && (it.category == FlowItemCategory.SIDE_EFFECT || it.category == FlowItemCategory.EXPANDABLE)
+                    })
+                    // Asking several questions covers the common loops; this is for
+                    // custom per-question sequences (marker, timeline, ...).
+                    if (!editing && props.inLoopBody != true) div {
+                        FieldLabel { +"Other" }
+                        Stack {
+                            direction = FlexDirection.row
+                            css { gap = 6.px; marginTop = 6.px }
+                            typeChip("Repeat steps for several questions…", selectedKey == FOREACH_KEY) { selectedKey = FOREACH_KEY }
+                        }
                     }
                 }
             } else Stack {
@@ -141,8 +178,8 @@ val FlowItemConfigDialog = dialogStateWrapper(FC<FlowItemConfigDialogProps> { pr
                 direction = FlexDirection.row
                 css { alignItems = AlignItems.center; gap = 10.px }
                 typeChip(selectedEntry?.label ?: when (selectedKey) {
-                    FOREACH_KEY -> "Repeat over questions"
-                    else -> "Note"
+                    FOREACH_KEY -> "Repeat steps for several questions"
+                    else -> "Note for yourself"
                 }, selected = true) { selectedKey = null }
                 ButtonUnstyled {
                     css {
@@ -162,7 +199,7 @@ val FlowItemConfigDialog = dialogStateWrapper(FC<FlowItemConfigDialogProps> { pr
                     css { gap = 12.px; minWidth = 320.px }
                     div {
                         css { fontFamily = sansSerif; fontSize = 13.px; color = Color("#888888") }
-                        +"Starts over all room questions. Narrow the selection and add the repeated steps in the loop's own dialog, which opens next. Each step runs once per question, referencing it as the current question."
+                        +"Write a few steps once, and they are played for each question you choose — for example, mark the moment, ask, and show the timeline for every question tagged \"quiz\". (Just asking several questions is simpler with \"Ask the audience\".) You choose the questions and add the steps in the next window."
                     }
                 }
             } else if (!choosing && selectedKey == NOTE_KEY) {

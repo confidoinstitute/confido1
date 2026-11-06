@@ -25,7 +25,7 @@ private fun Question?.quotedName() = "“${this?.name?.ellipsize(50) ?: "?"}”"
 
 /** The loop sentinel gets a stable phrase instead of a (never-resolving) name lookup. */
 private fun describeQ(ref: Ref<Question>?, question: Question?) =
-    if (ref == CURRENT_QUESTION) "the current question" else question.quotedName()
+    if (ref == CURRENT_QUESTION) "each question in turn" else question.quotedName()
 
 val PresenterViewDescription = FC<PresenterViewDescriptionProps> { props ->
     val view = props.view
@@ -47,6 +47,7 @@ val PresenterViewDescription = FC<PresenterViewDescriptionProps> { props ->
         is BinaryHistogramPV -> "prediction histogram for $qName"
         is TimelinePV -> "prediction timeline for $qName"
         is ComparePV -> "comparison of ${view.tp1.describe()} vs ${view.tp2.describe()} for $qName"
+        is InviteLinkPV -> "the QR code to join"
         else -> view.describe()
     }
 }
@@ -57,9 +58,13 @@ external interface FlowActionDescriptionProps : Props {
 
 val FlowActionDescription = FC<FlowActionDescriptionProps> { props ->
     val action = props.action
+    // Audience steps name their question when exactly one is picked.
+    fun QuestionSelection.single() = questions.singleOrNull()?.takeIf { !all && tags.isEmpty() }
     val ref = when (action) {
         is SetQuestionStateAction -> action.question
         is NavigateToQuestionAction -> action.question
+        is AskAudienceAction -> action.selection.single()
+        is RevealAnswersAction -> action.selection.single()
         else -> null
     }
     val question = useQuestion(ref?.takeIf { it != CURRENT_QUESTION })
@@ -69,10 +74,25 @@ val FlowActionDescription = FC<FlowActionDescriptionProps> { props ->
             +(base + describeGroupPredVisibility(action.setGroupPredVisibility))
         }
         is NavigateToQuestionAction -> +"Navigate viewers to ${describeQ(ref, question)}"
+        is AskAudienceAction -> {
+            val several = ref == null && action.selection.questions != listOf(CURRENT_QUESTION)
+            val how = when {
+                several && action.oneByOne && action.reveal == RevealTiming.RIGHT_AFTER -> " · one by one, results after each"
+                several && action.oneByOne && action.reveal == RevealTiming.AT_END -> " · one by one, results at the end"
+                several && action.oneByOne -> " · one by one"
+                several && action.reveal != RevealTiming.LATER -> " · all at once, then results"
+                several -> " · all at once"
+                action.reveal != RevealTiming.LATER -> " · then results"
+                else -> ""
+            }
+            +"Ask: ${if (ref != null) describeQ(ref, question) else action.selection.describe()}$how"
+        }
+        is RevealAnswersAction -> +("Reveal answers: ${if (ref != null) describeQ(ref, question) else action.selection.describe()}" +
+            if (action.showResolution) " · with the correct answer" else "")
         is SetPresenterViewAction -> {
             +"Show "
             PresenterViewDescription { this.view = action.view }
-            +" on presenter"
+            +" on the projector"
         }
         else -> +action.describe()
     }

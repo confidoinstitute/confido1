@@ -2,6 +2,7 @@ package tools.confido.web.components.presentation
 
 import tools.confido.api.Api
 import tools.confido.question.Question
+import tools.confido.question.QuestionState
 import tools.confido.refs.Ref
 import tools.confido.refs.ref
 import tools.confido.rooms.Room
@@ -62,6 +63,7 @@ internal fun FlowAction.itemCategory(): FlowItemCategory {
 internal fun flowItemBgColor(item: FlowItem): Color = when (item) {
     is SlideItem -> Color("#f5f5f5")
     is ActionItem -> when (item.action.itemCategory()) {
+        FlowItemCategory.AUDIENCE -> Color("#e0f2f1")
         FlowItemCategory.VIEW -> Color("#e3f2fd")
         FlowItemCategory.EXPANDABLE -> Color("#f3e5f5")
         FlowItemCategory.BOTH -> Color("#ede7f6")
@@ -75,6 +77,7 @@ internal fun flowItemBgColor(item: FlowItem): Color = when (item) {
 internal fun flowItemBadgeColor(item: FlowItem): Color = when (item) {
     is SlideItem -> Color("#757575")
     is ActionItem -> when (item.action.itemCategory()) {
+        FlowItemCategory.AUDIENCE -> Color("#00796b")
         FlowItemCategory.VIEW -> Color("#1565c0")
         FlowItemCategory.EXPANDABLE -> Color("#7b1fa2")
         FlowItemCategory.BOTH -> Color("#512da8")
@@ -87,10 +90,12 @@ internal fun flowItemBadgeColor(item: FlowItem): Color = when (item) {
 /** Badge text for a flow item row. */
 internal fun flowItemBadgeText(item: FlowItem): String = when (item) {
     is SlideItem -> "SLIDE"
+    // Plain words for what a step touches: SCREEN = the projector only.
     is ActionItem -> when (item.action.itemCategory()) {
-        FlowItemCategory.VIEW -> "VIEW"
-        FlowItemCategory.EXPANDABLE -> "EXPAND"
-        FlowItemCategory.BOTH -> "ACTION+VIEW"
+        FlowItemCategory.AUDIENCE -> if (item.action is RevealAnswersAction) "REVEAL" else "ASK"
+        FlowItemCategory.VIEW -> "SCREEN"
+        FlowItemCategory.EXPANDABLE -> "SEQUENCE"
+        FlowItemCategory.BOTH -> "SCREEN+"
         FlowItemCategory.SIDE_EFFECT -> "ACTION"
     }
     is NoteItem -> if (item.warning) "WARNING" else "NOTE"
@@ -145,6 +150,9 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
     var editingItemId by useState<String?>(null) // null = inserting new, non-null = editing existing
     var dialogInsertAfter by useState(-1) // insertion position for new items
     var dialogInitial by useState<FlowAction?>(null) // initial action for editing
+    var dialogPreset by useState<FlowAction?>(null) // preselected type when inserting
+    var settingsOpen by useState(false)
+    var runCheckOpen by useState(false)
 
 
     // Sync from server when presentation changes (e.g. after slide upload)
@@ -256,10 +264,18 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
 
     // A gap "+" (or the end-of-list add button) goes straight into the config
     // dialog — the type chooser lives there (chips), no intermediate menu.
-    fun openInsertDialog(afterIndex: Int) {
+    fun openInsertDialog(afterIndex: Int, kind: String? = null) {
         dialogInsertAfter = afterIndex
         editingItemId = null
         dialogInitial = null
+        dialogPreset = when (kind) {
+            "ask" -> AskAudienceAction()
+            // A reveal almost always follows the ask it answers: start from its questions.
+            "reveal" -> RevealAnswersAction(selection = currentItems().take(afterIndex + 1).asReversed()
+                .firstNotNullOfOrNull { ((it as? ActionItem)?.action as? AskAudienceAction)?.selection }
+                ?: QuestionSelection())
+            else -> null
+        }
         dialogOpen = true
     }
 
@@ -428,18 +444,26 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
     // Unified flow item configuration dialog
     ExpectedWorldContext.Provider {
         value = expectedWorld
+        AudienceModeContext.Provider {
+        value = pres.audienceMode
         FlowItemConfigDialog {
             open = dialogOpen
             action = dialogInitial
+            presetAction = dialogPreset
             inLoopBody = editingLoop != null
             onClose = { dialogOpen = false; editingItemId = null }
             onConfirm = { rawItem ->
-                // In a loop body, unset question refs default to the current question.
-                val newItem = if (editingLoop != null && rawItem is ActionItem)
-                    rawItem.copy(action = rawItem.action.mapQuestionRefs {
-                        if (it.id.isEmpty()) CURRENT_QUESTION else it
+                // In a loop body, unset question refs (and empty audience-step
+                // selections) default to the loop's question.
+                val newItem = if (editingLoop != null && rawItem is ActionItem) {
+                    val mapped = rawItem.action.mapQuestionRefs { if (it.id.isEmpty()) CURRENT_QUESTION else it }
+                    val loopSel = QuestionSelection(questions = listOf(CURRENT_QUESTION))
+                    rawItem.copy(action = when {
+                        mapped is AskAudienceAction && mapped.selection.isEmpty -> mapped.copy(selection = loopSel)
+                        mapped is RevealAnswersAction && mapped.selection.isEmpty -> mapped.copy(selection = loopSel)
+                        else -> mapped
                     })
-                else rawItem
+                } else rawItem
                 val existingId = editingItemId
                 if (existingId != null) {
                     // Editing an existing action item: keep the row, replace the action.
@@ -456,13 +480,60 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
                 editingItemId = null
             }
         }
+        }
     }
 
     // Sticky toolbar (see PresentationHeader): the flow can be long, so the
     // commit affordances must not scroll away with it.
     val missing = missingSlideIndices().size
+    fun startRun() {
+        submitLock {
+            Client.call(Api.presentationStart(room.ref))
+            // Set PresentationPV on user session and open presenter window
+            setPresenterView(PresentationPV(room.ref))
+            openPresenterWindow()
+        }
+    }
+    PresentationSettingsDialog {
+        open = settingsOpen
+        presentation = pres
+        onClose = { settingsOpen = false }
+    }
+    // One-at-a-time runs change the room: say exactly how before doing it.
+    val visibleCount = roomQuestions.count { it.state != QuestionState.DRAFT }
+    ConfirmDialog {
+        open = runCheckOpen
+        title = "Start the presentation?"
+        confirmText = "Start"
+        cancelText = "Cancel"
+        onClose = { runCheckOpen = false }
+        onConfirm = { runCheckOpen = false; startRun() }
+        +(when {
+            pres.startSnapshot != null -> "The room is still hidden from the last run, which did not finish. " +
+                "It will stay hidden until you ask the questions. "
+            visibleCount == 0 -> "All questions are hidden until you ask them. "
+            else -> "Starting will hide ${if (visibleCount == 1) "1 question" else "$visibleCount questions"} " +
+                "from participants' devices until you ask ${if (visibleCount == 1) "it" else "them"}. "
+        })
+        +(when (pres.endBehavior) {
+            PresentationEndBehavior.KEEP_COVERED -> "When you stop, questions you revealed stay visible with their " +
+                "results, and the rest stay hidden."
+            PresentationEndBehavior.RESTORE -> "When you stop, every question goes back to how it was before."
+        })
+    }
     PresentationHeader {
         presentation = pres
+        ButtonUnstyled {
+            css {
+                fontSize = 13.px; fontFamily = sansSerif; color = Color("#6319FF")
+                padding = Padding(4.px, 10.px); borderRadius = 4.px; cursor = Cursor.pointer
+                backgroundColor = Color("#F5F0FF")
+                "&:hover" { backgroundColor = Color("#E8E0F5") }
+            }
+            title = "What participants see on their own devices"
+            +"Audience: ${pres.audienceMode.title.lowercase()}"
+            onClick = { settingsOpen = true }
+        }
         if (dirty) span {
             css { fontSize = 12.px; color = Color("#e65100"); fontFamily = sansSerif; fontWeight = integer(400) }
             +(if (configProblems.isEmpty()) "Unsaved changes"
@@ -517,12 +588,8 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
             title = if (dirty) "Save your changes first" else ""
             +"Run"
             onClick = {
-                submitLock {
-                    Client.call(Api.presentationStart(room.ref))
-                    // Set PresentationPV on user session and open presenter window
-                    setPresenterView(PresentationPV(room.ref))
-                    openPresenterWindow()
-                }
+                if (pres.audienceMode == AudienceMode.ONE_AT_A_TIME) runCheckOpen = true
+                else startRun()
             }
         }
     }
@@ -552,7 +619,7 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
                 slideLabels = newLabels
                 dirty = true
             }
-            this.openInsertDialog = { idx -> openInsertDialog(idx) }
+            this.openInsertDialog = { idx, kind -> openInsertDialog(idx, kind) }
             this.emptyText =
                 if (hasSlides) "No items yet. Add the missing slides, or add items one by one."
                 else "No items yet. Upload slides (PDF or Google Slides), or add items one by one."
@@ -580,7 +647,7 @@ val PresentationEditor = FC<PresentationEditorProps> { props ->
             dialogInitial = actionItem.action
             dialogOpen = true
         }
-        this.openInsertDialog = { idx -> openInsertDialog(idx) }
+        this.openInsertDialog = { idx, kind -> openInsertDialog(idx, kind) }
         onClose = { editingLoopId = null }
     }
 }
@@ -596,7 +663,7 @@ private external interface ForEachDialogProps : Props {
     var onLoopUpdate: (((ForEachItem) -> ForEachItem)) -> Unit
     var onBodyChange: (List<FlowItem>) -> Unit
     var onEditAction: (ActionItem) -> Unit
-    var openInsertDialog: (Int) -> Unit
+    var openInsertDialog: (Int, String?) -> Unit
     var onClose: () -> Unit
 }
 
@@ -605,25 +672,25 @@ private val ForEachDialog = FC<ForEachDialogProps> { props ->
     Dialog {
         open = props.open
         onClose = { props.onClose() }
-        title = "Repeat over questions"
+        title = "Repeat steps for several questions"
         action = "Done"
         onAction = { props.onClose() }
         if (loop != null) FormSection {
             FormField {
-                title = "Repeat over"
-                comment = "Each step runs once per question, referencing it as the current question." +
+                title = "For each of these questions"
+                comment = "The steps below are played for the first question, then again for the next one, and so on." +
                     if (props.tags.isEmpty())
                         " Tip: give questions tags in the question editor to select whole groups at once."
                     else ""
-                LoopSelectionPicker {
-                    this.loop = loop
-                    this.roomQuestions = props.roomQuestions
-                    this.tags = props.tags
-                    this.onLoopUpdate = props.onLoopUpdate
+                QuestionSelectionPicker {
+                    selection = loop.selection
+                    roomQuestions = props.roomQuestions
+                    header = "Repeat for"
+                    onUpdate = { f -> props.onLoopUpdate { it.withSelection(f(it.selection)) } }
                 }
             }
             FormField {
-                title = "Repeated steps"
+                title = "Play these steps"
                 Stack {
                     css { minWidth = 560.px }
                     FlowItemList {
@@ -644,144 +711,6 @@ private val ForEachDialog = FC<ForEachDialogProps> { props ->
     }
 }
 
-/**
- * The loop's question-selection control: a select-look button summarizing the
- * selection, opening a checkbox popover. "All room questions" and per-tag rows
- * are *dynamic* checks (they imply their members' checkmarks and keep including
- * questions added later); question rows are static picks. Unchecking an implied
- * question dissolves the covering dynamic checks into static picks (see
- * [ForEachItem.toggleQuestion]). Plain checkboxes in a popover rather than a
- * react-select: everything here is a toggle, so a combobox bought only fights
- * (decoded clicks, suppressed value rendering, inconsistent selected styling).
- */
-private external interface LoopSelectionPickerProps : Props {
-    var loop: ForEachItem
-    var roomQuestions: List<Question>
-    var tags: List<String>
-    var onLoopUpdate: (((ForEachItem) -> ForEachItem)) -> Unit
-}
-
-private val LoopSelectionPicker = FC<LoopSelectionPickerProps> { props ->
-    var open by useState(false)
-    var search by useState("")
-    val loop = props.loop
-    val qs = props.roomQuestions
-    val n = qs.count { loop.selects(it) }
-    val summary = when {
-        loop.all -> "All room questions ($n)"
-        loop.tags.isNotEmpty() && loop.questions.isEmpty() ->
-            "Questions tagged ${loop.tags.sorted().joinToString(", ") { "\"$it\"" }} ($n)"
-        loop.tags.isEmpty() && loop.questions.isEmpty() -> "No questions selected"
-        else -> "$n of ${qs.size} questions selected"
-    }
-
-    ButtonUnstyled {
-        css {
-            width = 100.pct
-            display = Display.flex
-            justifyContent = JustifyContent.spaceBetween
-            alignItems = AlignItems.center
-            gap = 8.px
-            padding = Padding(8.px, 10.px)
-            border = Border(1.px, LineStyle.solid, Color("#cccccc"))
-            borderRadius = 4.px
-            backgroundColor = NamedColor.white
-            fontFamily = sansSerif
-            fontSize = 14.px
-            textAlign = TextAlign.left
-            cursor = Cursor.pointer
-        }
-        span { +summary }
-        span { css { color = Color("#888888") }; +"▾" }
-        // The popover matches this control's width automatically: MenuPopover
-        // never renders narrower than its trigger.
-        onClick = { open = true }
-    }
-
-    // A row toggles via a single click anywhere on it; the checkbox itself is
-    // display-only (its click bubbles to the row) to avoid double toggling.
-    fun ChildrenBuilder.checkRow(rowKey: String, checked: Boolean, bold: Boolean,
-                                 label: String, onToggle: () -> Unit) {
-        Stack {
-            key = rowKey
-            direction = FlexDirection.row
-            css {
-                alignItems = AlignItems.center
-                gap = 8.px
-                padding = Padding(3.px, 15.px)
-                cursor = Cursor.pointer
-                "&:hover" { backgroundColor = Color("#f5f5f5") }
-            }
-            Checkbox {
-                this.checked = checked
-                onChange = {}
-                // No <label> wrapper: a label forwards clicks to its input, so the
-                // row's onClick would fire twice per checkbox click (= no-op toggle).
-                wrapLabel = false
-            }
-            span {
-                css {
-                    fontFamily = sansSerif
-                    fontSize = 14.px
-                    if (bold) fontWeight = integer(600)
-                    overflow = Overflow.hidden
-                    textOverflow = TextOverflow.ellipsis
-                    whiteSpace = WhiteSpace.nowrap
-                }
-                +label
-            }
-            onClick = { onToggle() }
-        }
-    }
-
-    DialogMenu {
-        this.open = open
-        onClose = { open = false; search = "" }
-        DialogMenuHeader { text = "Repeat over" }
-        div {
-            div {
-                css { padding = Padding(0.px, 15.px, 8.px) }
-                TextInput {
-                    value = search
-                    placeholder = "Search questions…"
-                    autoFocus = true
-                    onChange = { e -> search = e.target.value }
-                }
-            }
-            val filter = search.trim()
-            if (filter.isEmpty()) {
-                checkRow("//all", loop.all, true, "All room questions (${qs.size})") {
-                    props.onLoopUpdate { it.toggleAll() }
-                }
-                props.tags.forEach { t ->
-                    checkRow("//tag:$t", t in loop.tags, true,
-                        "Questions tagged \"$t\" (${qs.count { q -> t in q.tags }})") {
-                        props.onLoopUpdate { it.toggleTag(t) }
-                    }
-                }
-                div { css { borderTop = Border(1.px, LineStyle.solid, Color("#eeeeee")); margin = Margin(6.px, 0.px) } }
-            }
-            div {
-                css { maxHeight = 260.px; overflowY = Auto.auto }
-                qs.filter { filter.isEmpty() || it.name.contains(filter, ignoreCase = true) }.forEach { q ->
-                    checkRow(q.id, loop.selects(q), false, q.name) {
-                        props.onLoopUpdate { it.toggleQuestion(q, qs) }
-                    }
-                }
-            }
-            div {
-                css {
-                    padding = Padding(6.px, 15.px, 0.px)
-                    fontFamily = sansSerif
-                    fontSize = 11.px
-                    color = Color("#999999")
-                }
-                +"\"All\" and tag checks keep including questions added later; picked questions are fixed."
-            }
-        }
-    }
-}
-
 // The sortable flow list: rows, hover insert zones, end-of-list add affordance and
 // empty state. Serves both levels — the main flow and a loop body (drill-in); only
 // one instance is mounted at a time. Normalization is the owner's concern
@@ -795,7 +724,7 @@ private external interface FlowItemListProps : Props {
     var onEditAction: (ActionItem) -> Unit
     var onOpenLoop: ((ForEachItem) -> Unit)?
     var onUpdateSlideLabel: (Int, String) -> Unit
-    var openInsertDialog: (Int) -> Unit
+    var openInsertDialog: (Int, String?) -> Unit
     var emptyText: String
 }
 
@@ -833,7 +762,7 @@ private val FlowItemList = FC<FlowItemListProps> { props ->
 
                 InsertHoverZone {
                     visible = !dragging && items.isNotEmpty()
-                    onClick = { props.openInsertDialog(-1) }
+                    onInsert = { kind -> props.openInsertDialog(-1, kind) }
                 }
                 items.forEachIndexed { index, item ->
                     FlowItemRow {
@@ -853,7 +782,7 @@ private val FlowItemList = FC<FlowItemListProps> { props ->
                     InsertHoverZone {
                         key = "insert-after-${item.id}"
                         visible = !dragging
-                        onClick = { props.openInsertDialog(index) }
+                        onInsert = { kind -> props.openInsertDialog(index, kind) }
                     }
                 }
             }
@@ -873,33 +802,51 @@ private val FlowItemList = FC<FlowItemListProps> { props ->
                 fontSize = 14.px
             }
             +props.emptyText
-            Button {
-                css { margin = 0.px; padding = Padding(6.px, 16.px); fontSize = 13.px }
-                +"+ Add first item"
-                onClick = { props.openInsertDialog(-1) }
+            Stack {
+                direction = FlexDirection.row
+                css { gap = 8.px }
+                Button {
+                    css { margin = 0.px; padding = Padding(6.px, 16.px); fontSize = 13.px }
+                    +"+ Ask the audience"
+                    onClick = { props.openInsertDialog(-1, "ask") }
+                }
+                Button {
+                    css { margin = 0.px; padding = Padding(6.px, 16.px); fontSize = 13.px; backgroundColor = Color("#888888") }
+                    +"+ Other step…"
+                    onClick = { props.openInsertDialog(-1, null) }
+                }
             }
         }
     } else {
-        // Always-visible add affordance at the end of the list
-        div {
-            ButtonUnstyled {
-                css {
-                    fontSize = 12.px
-                    color = Color("#888")
-                    fontFamily = sansSerif
-                    padding = Padding(3.px, 10.px)
-                    borderRadius = 4.px
-                    border = Border(1.px, LineStyle.dashed, Color("#ccc"))
-                    cursor = Cursor.pointer
-                    "&:hover" {
-                        borderColor = Color("#999")
-                        color = Color("#555")
-                    }
-                }
-                +"+ Add item"
-                onClick = { props.openInsertDialog(items.lastIndex) }
+        // Always-visible add affordances at the end of the list: the two standard
+        // audience moves directly, everything else through the step dialog.
+        Stack {
+            direction = FlexDirection.row
+            css { gap = 6.px }
+            addButton("+ Ask the audience") { props.openInsertDialog(items.lastIndex, "ask") }
+            addButton("+ Reveal answers") { props.openInsertDialog(items.lastIndex, "reveal") }
+            addButton("+ Other step…") { props.openInsertDialog(items.lastIndex, null) }
+        }
+    }
+}
+
+private fun ChildrenBuilder.addButton(label: String, onClick: () -> Unit) {
+    ButtonUnstyled {
+        css {
+            fontSize = 12.px
+            color = Color("#888")
+            fontFamily = sansSerif
+            padding = Padding(3.px, 10.px)
+            borderRadius = 4.px
+            border = Border(1.px, LineStyle.dashed, Color("#ccc"))
+            cursor = Cursor.pointer
+            "&:hover" {
+                borderColor = Color("#999")
+                color = Color("#555")
             }
         }
+        +label
+        this.onClick = { onClick() }
     }
 }
 
@@ -912,7 +859,8 @@ private val FlowItemList = FC<FlowItemListProps> { props ->
 external interface InsertHoverZoneProps : Props {
     /** Hidden while a drag is in progress (so it can't swallow drop targets). */
     var visible: Boolean
-    var onClick: () -> Unit
+    /** Insert a step here: "ask" / "reveal" preselect that type, null opens the full choice. */
+    var onInsert: (String?) -> Unit
 }
 
 val InsertHoverZone = FC<InsertHoverZoneProps> { props ->
@@ -938,7 +886,8 @@ val InsertHoverZone = FC<InsertHoverZoneProps> { props ->
                 pointerEvents = None.none
             }
         }
-        ButtonUnstyled {
+        Stack {
+            direction = FlexDirection.row
             css(ClassName("insert-pill")) {
                 position = Position.absolute
                 top = 50.pct
@@ -946,18 +895,26 @@ val InsertHoverZone = FC<InsertHoverZoneProps> { props ->
                 transform = translate((-50).pct, (-50).pct)
                 opacity = number(0.0)
                 transition = "opacity 0.1s".unsafeCast<Transition>()
-                fontSize = 11.px
-                fontFamily = sansSerif
-                whiteSpace = WhiteSpace.nowrap
-                padding = Padding(1.px, 10.px)
-                borderRadius = 8.px
-                backgroundColor = Color("#E8E0F5")
-                color = Color("#6319FF")
-                cursor = Cursor.pointer
-                "&:hover" { backgroundColor = Color("#dccdf3") }
+                gap = 4.px
             }
-            +"+ Add"
-            onClick = { props.onClick() }
+            listOf("+ Ask" to "ask", "+ Reveal" to "reveal", "+ Other…" to null).forEach { (label, kind) ->
+                ButtonUnstyled {
+                    key = label
+                    css {
+                        fontSize = 11.px
+                        fontFamily = sansSerif
+                        whiteSpace = WhiteSpace.nowrap
+                        padding = Padding(1.px, 10.px)
+                        borderRadius = 8.px
+                        backgroundColor = Color("#E8E0F5")
+                        color = Color("#6319FF")
+                        cursor = Cursor.pointer
+                        "&:hover" { backgroundColor = Color("#dccdf3") }
+                    }
+                    +label
+                    onClick = { props.onInsert(kind) }
+                }
+            }
         }
     }
 }
@@ -1271,3 +1228,33 @@ val FlowItemRow = FC<FlowItemRowProps> { props ->
         }
     }
 }
+
+external interface PresentationSettingsDialogProps : BaseDialogProps {
+    var presentation: Presentation
+}
+
+/** Edit the audience settings of an existing presentation (saved immediately, independent of the flow). */
+private val PresentationSettingsDialog = dialogStateWrapper(FC<PresentationSettingsDialogProps> { props ->
+    val room = use(RoomContext)!!
+    val submitLock = useCoroutineLock()
+    var mode by useState(props.presentation.audienceMode)
+    var end by useState(props.presentation.endBehavior)
+    Dialog {
+        open = props.open
+        onClose = { props.onClose?.invoke() }
+        title = "Audience settings"
+        action = "Save"
+        disabledAction = submitLock.running
+        onAction = {
+            submitLock {
+                Client.call(Api.presentationEdit(room.ref), EditPresentation(audienceMode = mode, endBehavior = end))
+                props.onClose?.invoke()
+            }
+        }
+        PresentationSettingsForm {
+            this.mode = mode
+            endBehavior = end
+            onChange = { m, e -> mode = m; end = e }
+        }
+    }
+})

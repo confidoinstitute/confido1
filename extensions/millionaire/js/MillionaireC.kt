@@ -719,6 +719,7 @@ object MillionaireCE : ClientExtension, MillionaireExt() {
             createDefault = { MillionaireGameAction() },
             editor = MillionaireGameActionEditor,
             matches = { it is MillionaireGameAction },
+            primary = true,
         ),
     )
 

@@ -27,6 +27,8 @@ val QuestionPP = FC<PresenterPageProps<QuestionPV>> { props ->
             width = 100.pct
             height = 100.pct
             padding = 2.5.vh
+            // Padding inside the 100% box, or the right-aligned answer hint overflows the screen.
+            boxSizing = BoxSizing.borderBox
         }
 
         Stack {

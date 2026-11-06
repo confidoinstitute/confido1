@@ -129,6 +129,8 @@ enum class FlowItemCategory {
     BOTH,
     /** Expandable meta-action that produces multiple items at presentation start. */
     EXPANDABLE,
+    /** A standard audience step (ask / reveal): projector + devices, per the presentation's audience mode. */
+    AUDIENCE,
 }
 
 // ---- Flow Item Type Registry ----
@@ -149,6 +151,10 @@ data class FlowItemTypeEntry(
     val editor: FC<FlowItemEditorProps>?,
     /** Predicate to identify which existing actions this entry handles. */
     val matches: (FlowAction) -> Boolean,
+    /** Offered among the main steps of the add-step dialog; the rest sit under
+     *  "Advanced steps". Extensions with a self-contained audience activity
+     *  (a game, a leaderboard) should opt in. */
+    val primary: Boolean = false,
 )
 
 external interface ExtensionContextProviderProps: Props {

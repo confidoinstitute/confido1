@@ -116,6 +116,7 @@ run cascade_test.py
 run sensitive_test.py
 run pseudonym_test.py
 run presentation_test.py
+run audience_test.py
 run dashboard_test.py
 run search_test.py
 run group_revoke_test.py

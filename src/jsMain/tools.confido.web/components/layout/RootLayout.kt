@@ -71,7 +71,7 @@ private val PresentationFollowNavigator = FC<PresentationFollowNavigatorProps> {
         if (navUrl != null && navUrl != lastNavUrl.current) {
             lastNavUrl.current = navUrl
             // Only navigate if we're not already at the target URL
-            if (navUrl != window.location.pathname) {
+            if (navUrl != window.location.pathname + window.location.search) {
                 navigate(navUrl)
             }
         }

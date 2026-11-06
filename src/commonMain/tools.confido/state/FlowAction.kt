@@ -227,6 +227,8 @@ val flowActionSM by lazy { SerializersModule {
         subclass(SetPresenterViewAction::class)
         subclass(CompositeAction::class)
         subclass(CreateMarkAction::class)
+        subclass(AskAudienceAction::class)
+        subclass(RevealAnswersAction::class)
         Extension.forEach { it.registerFlowActions(this) }
     }
 } }
